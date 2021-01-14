@@ -1,0 +1,127 @@
+#pragma once
+#ifdef _STP_LAYERS_ALL_HPP_
+
+#include "STPCrossLayer.h"
+#include "../Biomes/STPBiomeRegistry.h"
+
+/**
+ * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
+ * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
+*/
+namespace STPDemo {
+	using SuperTerrainPlus::STPBiome::Seed;
+	using SuperTerrainPlus::STPBiome::Sample;
+
+	/**
+	 * @brief STPClimateLayer starts to populate the map with climate (temperature and precipitation/humidity) for later generation.
+	 * In this layer(s), biome numbers are interpreted as (just an interpretation, not the actual biome):
+	 * plains - hot or wet
+	 * desert - temperate or humid
+	 * mountains - cool or moderate
+	 * forest - cold or dry
+	*/
+	struct STPClimateLayer {
+	private:
+
+		//Do not init this class separately
+		STPClimateLayer() = default;
+
+		~STPClimateLayer() = default;
+
+	public:
+
+		/**
+		 * @brief STPClimateSingle adds only cold or dry climate
+		*/
+		class STPClimateSingle : public SuperTerrainPlus::STPBiome::STPLayer {
+		public:
+
+			STPClimateSingle(Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(global_seed, salt, parent) {
+
+			}
+
+			Sample sample(int x, int y, int z) override {
+				//get the sample from the previous layer
+				const Sample val = this->getAscendant()->sample_cached(x, y, z);
+				if (STPBiomeRegistry::isShallowOcean(val)) {
+					//we only operate land section, ocean should be untouched
+					return val;
+				}
+
+				//set the local seed
+				const Seed local_seed = this->genLocalSeed(x, z);
+				//get the local rng
+				const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
+
+				//1/6 chance of getting a forest or mountain
+				const Sample i = rng.nextVal(6);
+				switch (i) {
+				case 0u: return STPBiomeRegistry::FOREST.getID();
+					break;
+				case 1u: return STPBiomeRegistry::MOUNTAIN.getID();
+					break;
+				//otherwise it's still a plains
+				default: return STPBiomeRegistry::PLAINS.getID();
+					break;
+				}
+
+			}
+
+		};
+
+		/**
+		 * @brief STPClimateModerate adds climate with closed temperature and humidity, e.g., cool and warm, humid and moderate
+		*/
+		class STPClimateModerate : public STPCrossLayer {
+		public:
+
+			STPClimateModerate(Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(global_seed, salt, parent) {
+
+			}
+
+			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
+				//escape the one needs plains on the center
+				//and either mountain or forest on one of the other side
+				if (center == STPBiomeRegistry::PLAINS.getID()
+					&& (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
+						return !(val == STPBiomeRegistry::MOUNTAIN.getID() || val == STPBiomeRegistry::FOREST.getID());
+						}, north, east, south, west))) {
+					return STPBiomeRegistry::DESERT.getID();
+
+				}
+
+				return center;
+			}
+
+		};
+
+		/**
+		 * @brief STPClimateExtreme adds climate with extreme temperature and humidity, e.g., hot and cold, wet and dry
+		*/
+		class STPClimateExtreme : public STPCrossLayer {
+		public:
+
+			STPClimateExtreme(Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(global_seed, salt, parent) {
+
+			}
+
+			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
+				//escape the one needs forest on the center
+				//and either plains or desert on one of the other side
+				//extreme climate cannot be placed together
+				if (center != STPBiomeRegistry::FOREST.getID()
+					|| STPBiomeRegistry::applyAll([](Sample val) -> bool {
+						return val != STPBiomeRegistry::PLAINS.getID() && val != STPBiomeRegistry::DESERT.getID();
+						}, north, east, south, west)) {
+					return center;
+				}
+
+				return STPBiomeRegistry::MOUNTAIN.getID();
+			}
+
+		};
+
+	};
+
+}
+#endif//_STP_LAYERS_ALL_HPP_

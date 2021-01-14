@@ -1,0 +1,6 @@
+#Compiled files shouldn't be added
+x64/
+#Research paper shouldn't be added either
+Resource/
+
+.vs/

@@ -1,0 +1,73 @@
+#pragma once
+#ifndef _STP_SIMPLEX_NOISE_CUH_
+#define _STP_SIMPLEX_NOISE_CUH_
+
+//Helpers and Tools
+#include "STPPermutationsGenerator.cuh"
+//Settings
+#include "../Settings/STPSimplexNoiseSettings.hpp"
+
+/**
+ * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
+ * including perlin noise generated height map, hydrology processing and marching cube algorithm.
+ * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
+*/
+namespace SuperTerrainPlus {
+	/**
+	 * @brief GPGPU compute suites for Super Terrain + program, powered by CUDA
+	*/
+	namespace STPCompute {
+
+		/**
+		 * @brief Simplex noise is a method for constructing an n-dimensional noise function comparable to
+		 * Perlin noise ("classic" noise) but with fewer directional artifacts and, in higher dimensions, 
+		 * a lower computational overhead. Ken Perlin designed the algorithm in 2001[1] to address the limitations of his classic noise function, 
+		 * especially in higher dimensions. 
+		 * The advantages of simplex noise over Perlin noise:
+		 * - Simplex noise has a lower computational complexity and requires fewer multiplications.
+		 * - Simplex noise scales to higher dimensions (4D, 5D) with much less computational cost: the complexity is O ( n 2 ) {\displaystyle O(n^{2})} O(n^{2}) 
+		 *   for n {\displaystyle n} n dimensions instead of the O ( n 2 n ) {\displaystyle O(n\,2^{n})} {\displaystyle O(n\,2^{n})} of classic noise.[2]
+		 * - Simplex noise has no noticeable directional artifacts (is visually isotropic), though noise generated for different dimensions are visually distinct 
+		 *   (e.g. 2D noise has a different look than slices of 3D noise, and it looks increasingly worse for higher dimensions[citation needed]).
+		 * - Simplex noise has a well-defined and continuous gradient (almost) everywhere that can be computed quite cheaply.
+		 * - Simplex noise is easy to implement in hardware.
+		*/
+		class STPSimplexNoise : private STPPermutationsGenerator{
+		private:
+
+			static constexpr double F2 = 0.366025403784439; // 0.5 * (static_cast<double>(sqrt(3.0)) - 1.0);
+			static constexpr double G2 = 0.211324865405187; // (3.0 - static_cast<double>(sqrt(3.0))) / 6.0;, 
+			static constexpr double H2 = -0.577350269189626; // -1.0 + 2.0 * G2;
+
+			/**
+			 * @brief Perform a dot product for 2D vector
+			 * @param v1x vector 1, x
+			 * @param v1y vector 1, y
+			 * @param v2x vector 2, x
+			 * @param v2y vector 2. y
+			 * @return Dot product of the two vector
+			*/
+			__device__ float dot2D(float, float, float, float);
+
+		public:
+
+			/**
+			 * @brief Init the simplex noise generator
+			 * @param noise_settings Provide the settings for simplex noise
+			*/
+			__host__ STPSimplexNoise(const STPSettings::STPSimplexNoiseSettings* const);
+
+			__host__ ~STPSimplexNoise();
+
+			/**
+			 * @brief Generate 2D simplex noise
+			 * @param x X intput
+			 * @param y Y input
+			 * @return The simplex noise output
+			*/
+			__device__ float simplex2D(float, float);
+
+		};
+	}
+}
+#endif//_STP_SIMPLEX_NOISE_CUH_

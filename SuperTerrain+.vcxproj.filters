@@ -1,0 +1,283 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Renderers">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="GLSL">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="GPGPU">
+      <UniqueIdentifier>{e382ea7a-8fbd-4f4c-9ccc-d66caada9c2b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="World">
+      <UniqueIdentifier>{7919d8e7-6abc-4f26-9061-9bb219fce269}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Helpers">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="World\Chunk">
+      <UniqueIdentifier>{942e26a5-b0f0-4eca-87af-b8fee1e12b66}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Settings">
+      <UniqueIdentifier>{3bdf009c-c1ea-44ff-a8f3-77400329ad12}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="World\Biome">
+      <UniqueIdentifier>{86f54e6b-ef26-48a9-a1fa-2b0a36f0f60e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="World\Biome\Biomes">
+      <UniqueIdentifier>{ba303532-a6ec-4025-bb88-9e8052231125}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="World\Biome\Layers">
+      <UniqueIdentifier>{2353ec15-8391-43e3-a1ac-96226e081e23}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Helpers\STPStart.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="World\STPProcedural2DINF.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="Helpers\STPTextureStorage.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="Helpers\STPTerrainParaLoader.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\include\glad\glad.c">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="Helpers\STPThreadPool.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Chunk\STPChunk.cpp">
+      <Filter>World\Chunk</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Chunk\STPChunkManager.cpp">
+      <Filter>World\Chunk</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Chunk\STPChunkStorage.cpp">
+      <Filter>World\Chunk</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Chunk\STPChunkProvider.cpp">
+      <Filter>World\Chunk</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Biome\STPBiome.cpp">
+      <Filter>World\Biome</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Biome\STPLayer.cpp">
+      <Filter>World\Biome</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Biome\STPLayerCache.cpp">
+      <Filter>World\Biome</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Biome\STPSeedMixer.cpp">
+      <Filter>World\Biome</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GPGPU\STPPermutationsGenerator.cuh">
+      <Filter>GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="GPGPU\STPHeightfieldGenerator.cuh">
+      <Filter>GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\STPMasterRenderer.h">
+      <Filter>Renderers</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\STPOffscreenRenderer.h">
+      <Filter>Renderers</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\STPSkyRenderer.h">
+      <Filter>Renderers</Filter>
+    </ClInclude>
+    <ClInclude Include="Helpers\STPTextureStorage.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="Helpers\STPIndirectCommands.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\STPRendererCommander.h">
+      <Filter>Renderers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\STPProcedural2DINF.h">
+      <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="GPGPU\STPRainDrop.cuh">
+      <Filter>GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="GPGPU\STPImageConverter.cuh">
+      <Filter>GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="Helpers\STPTerrainParaLoader.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="Helpers\STPThreadPool.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="Helpers\STPThreadPool.inl">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Chunk\STPChunk.h">
+      <Filter>World\Chunk</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Chunk\STPChunkManager.h">
+      <Filter>World\Chunk</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Chunk\STPChunkStorage.h">
+      <Filter>World\Chunk</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Chunk\STPChunkProvider.h">
+      <Filter>World\Chunk</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings\STPChunkSettings.hpp">
+      <Filter>Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings\STPRainDropSettings.hpp">
+      <Filter>Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings\STPSettings.hpp">
+      <Filter>Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings\STPSimplexNoiseSettings.hpp">
+      <Filter>Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings\STPHeightfieldSettings.hpp">
+      <Filter>Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings\STPMeshSettings.hpp">
+      <Filter>Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings\STPConfigurations.hpp">
+      <Filter>Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="GPGPU\STPSimplexNoise.cuh">
+      <Filter>GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings\STPBiomeSettings.hpp">
+      <Filter>Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\STPBiome.h">
+      <Filter>World\Biome</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\STPBiome_def.h">
+      <Filter>World\Biome</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\STPLayer.h">
+      <Filter>World\Biome</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\STPLayerCache.h">
+      <Filter>World\Biome</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\STPSeedMixer.h">
+      <Filter>World\Biome</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPContinentLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPCrossLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPDeepOceanLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPIslandLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPLandLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPLayers_all.hpp">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPScaleLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPXCrossLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Biomes\STPBiomeRegistry.h">
+      <Filter>World\Biome\Biomes</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPClimateLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPBaseBiomeLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPNoiseLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPEdgeBiomeLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPSmoothScaleLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPRiverMixLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPNoiseToRiverLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPHillsLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPRiverErodeLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="GLSL\STPsky.frag">
+      <Filter>GLSL</Filter>
+    </None>
+    <None Include="GLSL\STPsky.vert">
+      <Filter>GLSL</Filter>
+    </None>
+    <None Include="GLSL\STPquad.frag">
+      <Filter>GLSL</Filter>
+    </None>
+    <None Include="GLSL\STPquad.vert">
+      <Filter>GLSL</Filter>
+    </None>
+    <None Include="GLSL\STPProcedural2DINF.vert">
+      <Filter>GLSL</Filter>
+    </None>
+    <None Include="GLSL\STPProcedural2DINF.frag">
+      <Filter>GLSL</Filter>
+    </None>
+    <None Include="GLSL\STPProcedural2DINF.tesc">
+      <Filter>GLSL</Filter>
+    </None>
+    <None Include="GLSL\STPProcedural2DINF.tese">
+      <Filter>GLSL</Filter>
+    </None>
+    <None Include="GLSL\STPProcedural2DINF.geom">
+      <Filter>GLSL</Filter>
+    </None>
+    <None Include="World\Biome\STPLayer.inl">
+      <Filter>World\Biome</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="GPGPU\STPSimplexNoise.cu">
+      <Filter>GPGPU</Filter>
+    </CudaCompile>
+    <CudaCompile Include="GPGPU\STPPermutationsGenerator.cu">
+      <Filter>GPGPU</Filter>
+    </CudaCompile>
+    <CudaCompile Include="GPGPU\STPHeightfieldGenerator.cu">
+      <Filter>GPGPU</Filter>
+    </CudaCompile>
+    <CudaCompile Include="GPGPU\STPRainDrop.cu">
+      <Filter>GPGPU</Filter>
+    </CudaCompile>
+    <CudaCompile Include="GPGPU\STPImageConverter.cu">
+      <Filter>GPGPU</Filter>
+    </CudaCompile>
+  </ItemGroup>
+</Project>
