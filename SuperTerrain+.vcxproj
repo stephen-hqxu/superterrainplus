@@ -25,6 +25,7 @@
     <ClCompile Include="Helpers\STPTextureStorage.cpp" />
     <ClCompile Include="Helpers\STPThreadPool.cpp" />
     <ClCompile Include="World\Biome\STPBiome.cpp" />
+    <ClCompile Include="World\Biome\STPBiomeFactory.cpp" />
     <ClCompile Include="World\Biome\STPLayer.cpp" />
     <ClCompile Include="World\Biome\STPLayerCache.cpp" />
     <ClCompile Include="World\Biome\STPSeedMixer.cpp" />
@@ -75,6 +76,7 @@
     <ClInclude Include="World\Biome\Layers\STPSmoothScaleLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPXCrossLayer.h" />
     <ClInclude Include="World\Biome\STPBiome.h" />
+    <ClInclude Include="World\Biome\STPBiomeFactory.h" />
     <ClInclude Include="World\Biome\STPBiome_def.h" />
     <ClInclude Include="World\Biome\STPLayer.h" />
     <ClInclude Include="World\Biome\STPLayerCache.h" />
@@ -98,6 +100,8 @@
     <ClInclude Include="Helpers\STPThreadPool.inl">
       <FileType>Document</FileType>
     </ClInclude>
+    <None Include="LICENSE" />
+    <None Include="README.md" />
     <None Include="World\Biome\STPLayer.inl" />
   </ItemGroup>
   <ItemGroup>

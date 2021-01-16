@@ -31,7 +31,7 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief STPLocalRNG is a random number generator for each local seed (a seed that is deterministic on world coordinate)
 			*/
-			struct STPLocalRNG {
+			struct STPLocalRNG final {
 			protected:
 
 				friend class STPLayer;
@@ -79,9 +79,6 @@ namespace SuperTerrainPlus {
 			};
 
 		private:
-
-			//The global cache size settings, remember to set it before init any layer
-			static size_t GLOBAL_CACHESIZE;
 
 			//The ascendant layer will be executed before this layer, like a singly linked list
 			//usually there is only one ascendant, but if there is a merge point in the chain, there will be multiple, depended on the actual implementation
@@ -145,6 +142,7 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Create a layer instance
 			 * @tparam L A layer instance
+			 * @tparam C Cache size for this layer, it should be in the power of 2
 			 * @tparam Arg A list of arguments for the child layer class
 			 * @param global_seed The global seed is the seed that used to generate the entire world, a.k.a., world seed.
 			 * @param salt The salt is a random number that used to mix the global to generate local and layer seed, such that each layer should use
@@ -152,7 +150,7 @@ namespace SuperTerrainPlus {
 			 * @param args All other arguments for the created layer to be used in their constructor.
 			 * @return A pointer new layer instance with the type of the specified child layer. The pointer needs to be freed with destroy() function
 			*/
-			template <class L, class... Arg>
+			template <class L, size_t C = 0ull, class... Arg>
 			static STPLayer* create(Seed, Seed, Arg&&...);
 
 			/**
@@ -166,19 +164,6 @@ namespace SuperTerrainPlus {
 			 * @return The size of the layer cache for this layer
 			*/
 			size_t cacheSize();
-
-			/**
-			 * @brief Set the global cache size setting, and layer created subsequently will be affected
-			 * @param capacity The new cache size for all subsequent layers, in byte.
-			 * The size should be power of 2.
-			*/
-			static void setCache(size_t);
-
-			/**
-			 * @brief Get the global cache size setting.
-			 * @return The global cache size that is using, in byte
-			*/
-			static size_t getCache();
 
 			/**
 			 * @brief Sample the layer, given the world coordinate and return a sample point.

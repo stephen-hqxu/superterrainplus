@@ -53,22 +53,17 @@ Sample STPLayerCache::cache(int x, int y, int z, std::function<Sample(int, int, 
 	//locate the index in our hash table
 	const unsigned long long index = STPLayerCache::mixKey(key) & this->Mask;
 
-	{
-		std::shared_lock<std::shared_mutex> read_safe(this->lock);
-		if (this->Key[index] == key) {
-			//cache found, read it directly
-			return this->Value[index];
-		}
+	//Please be aware the cache is not thread safe!
+	//That's because multithread performance is 100x worse than single thread so I remove it
+	if (this->Key[index] == key) {
+		//cache found, read it directly
+		return this->Value[index];
 	}
-	{	
-		std::unique_lock<std::shared_mutex> write_safe(this->lock);
-		//cache not found, compute then store
-		Sample sample = sampler(x, y, z);
-		this->Key[index] = key;
-		this->Value[index] = sample;
-		return sample;
-	}
-	
+	//cache not found, compute then store
+	Sample sample = sampler(x, y, z);
+	this->Key[index] = key;
+	this->Value[index] = sample;
+	return sample;
 }
 
 void STPLayerCache::clearCache() {

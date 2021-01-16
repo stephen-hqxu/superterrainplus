@@ -2,8 +2,6 @@
 
 using namespace SuperTerrainPlus::STPBiome;
 
-size_t STPLayer::GLOBAL_CACHESIZE = 0ull;
-
 STPLayer::STPLocalRNG::STPLocalRNG(Seed local_seed) : LocalSeed(local_seed) {
 
 }
@@ -51,8 +49,11 @@ STPLayer::~STPLayer() {
 	}
 	this->Ascendant.clear();
 
-	//delete the cache
-	delete this->Cache;
+	//delete the cache (if any)
+	if (this->Cache != nullptr) {
+		delete this->Cache;
+		this->Cache = nullptr;
+	}
 }
 
 Seed STPLayer::genLayerSeed(Seed global_seed, Seed salt) {
@@ -83,23 +84,19 @@ size_t STPLayer::cacheSize() {
 	return this->Cache->getCapacity();
 }
 
-void STPLayer::setCache(size_t capacity) {
-	STPLayer::GLOBAL_CACHESIZE = capacity;
-}
-
-size_t STPLayer::getCache() {
-	return STPLayer::GLOBAL_CACHESIZE;
-}
-
 STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) {
 	return STPLayer::STPLocalRNG(local_seed);
 }
 
 Sample STPLayer::sample_cached(int x, int y, int z) {
 	//pass the layer sampling function to cache, so it will compute it when necessary
-	return this->Cache->cache(x, y, z, [this](int x, int y, int z) -> Sample {
-		return this->sample(x, y, z);
-	});
+	if (this->Cache != nullptr) {
+		return this->Cache->cache(x, y, z, [this](int x, int y, int z) -> Sample {
+			return this->sample(x, y, z);
+			});
+	}
+	//there is no cache assigned
+	return this->sample(x, y, z);
 }
 
 STPLayer* const STPLayer::getAscendant(unsigned int index) {

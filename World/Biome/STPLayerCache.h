@@ -2,8 +2,6 @@
 #ifndef _STP_LAYER_CACHE_H_
 #define _STP_LAYER_CACHE_H_
 
-//Thread safety
-#include <shared_mutex>
 //Functional
 #include <functional>
 //Exception
@@ -24,7 +22,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPLayerCache is a smart caching system that stores computed layer sample and read directly from when available
 		*/
-		class STPLayerCache {
+		class STPLayerCache final {
 		private:
 
 			//Store the key value for a coordinate
@@ -33,8 +31,6 @@ namespace SuperTerrainPlus {
 			Sample* Value = nullptr;
 			//Mask is used to round the key value such that it will be suitable for looking up value in the hash table
 			unsigned long long Mask;
-			//A mutex lock
-			mutable std::shared_mutex lock;
 
 			/**
 			 * @brief Check if the number is power of 2
@@ -78,7 +74,8 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Find the value with coordinate specified in the cache. If found, read directly; if not, it will be evaluated using the sample function
-			 * then store into the cache
+			 * then store into the cache.
+			 * This method is NOT thread safe
 			 * @param x The x world coordinate
 			 * @param y The y world coordinate
 			 * @param z The z world coordinate
