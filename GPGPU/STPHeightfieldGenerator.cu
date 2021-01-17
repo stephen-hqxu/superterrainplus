@@ -3,9 +3,9 @@
 
 using namespace SuperTerrainPlus::STPCompute;
 
-__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPHeightfieldSettings* const settings, const STPSettings::STPSimplexNoiseSettings* const noise_settings) {
+__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPHeightfieldSettings* const settings,  STPSettings::STPSimplexNoiseSettings* const noise_settings) {
 	//Init simplex noise generator and store it inside the device
-	STPSimplexNoise simplex_h = STPSimplexNoise(noise_settings);
+	STPSimplexNoise simplex_h(noise_settings);
 	//allocating space
 	cudaMalloc(&this->simplex, sizeof(STPSimplexNoise));
 	//copy data
@@ -13,15 +13,9 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPHeight
 
 	//copy the parameters to device
 	cudaMalloc(&this->Settings, sizeof(STPSettings::STPHeightfieldSettings));
-	//this is a deep copy on STPHeightfieldSettings
-	STPSettings::STPHeightfieldSettings* settings_cpy = new STPSettings::STPHeightfieldSettings(*settings);
-	cudaMemcpy(this->Settings, settings_cpy, sizeof(STPSettings::STPHeightfieldSettings), cudaMemcpyHostToDevice);
-	//rain drop settings will delete the original pointer if it's not null, so in order to prevent from being deleted, we set to null
-	//this is basically the same as "memory move"
-	//we only move deep copied ptr, the argument ptr is not affected
-	settings_cpy->ErosionBrushWeights = nullptr;
-	settings_cpy->ErosionBrushIndices = nullptr;
-	delete settings_cpy;
+	//this is a deep move on STPHeightfieldSettings
+	STPSettings::STPHeightfieldSettings settings_cpy(std::move(*settings));
+	cudaMemcpy(this->Settings, &settings_cpy, sizeof(STPSettings::STPHeightfieldSettings), cudaMemcpyHostToDevice);
 
 	//kernel parameters
 	this->numThreadperBlock_Map = dim3(32, 32);

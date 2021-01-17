@@ -72,10 +72,10 @@ namespace SuperTerrainPlus {
 			//Gradient table for simplex noise 2D, the modular of the offset will equal to 1.0
 			double* GRADIENT2D = nullptr;
 
-		protected:
-			
 			//The size of the gradient table
-			const unsigned int GRADIENT2D_SIZE;
+			unsigned int GRADIENT2D_SIZE;
+
+		public:
 
 			/**
 			 * @brief Init thhe permutation generator
@@ -85,7 +85,17 @@ namespace SuperTerrainPlus {
 			*/
 			__host__ STPPermutationsGenerator(unsigned long long, unsigned int = 8u, double = 0.0);
 
+			//Copy permutation generator, deep copy for generated gradient and permutation will be performed.
+			__host__ STPPermutationsGenerator(const STPPermutationsGenerator&);
+
+			__host__ STPPermutationsGenerator(STPPermutationsGenerator&&) noexcept;
+
 			__host__ ~STPPermutationsGenerator();
+
+			//Copy the permutation to the destination class, deep copy for generated gradient and permutation will be performed.
+			__host__ STPPermutationsGenerator& operator=(const STPPermutationsGenerator&);
+
+			__host__ STPPermutationsGenerator& operator=(STPPermutationsGenerator&&) noexcept;
 
 			/**
 			 * @brief Return the randomly generated permutation element
@@ -101,6 +111,12 @@ namespace SuperTerrainPlus {
 			 * @return The gradient number
 			*/
 			__device__ double grad2D(int, int);
+
+			/**
+			 * @brief Get the number of element in the gradient 2D table
+			 * @return The number of element
+			*/
+			__device__ unsigned int grad2D_size();
 
 		};
 	}

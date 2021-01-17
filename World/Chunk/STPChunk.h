@@ -95,7 +95,7 @@ namespace SuperTerrainPlus {
 		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
 		 * @return Chunk position in world coordinate (x,z)
 		*/
-		static vec2 getChunkPosition(vec3, uvec2, float = 1.0f);
+		static vec2 getChunkPosition(vec3, uvec2, float = 1.0f) noexcept;
 
 		/**
 		 * @brief Move the chunk by chunk position
@@ -105,7 +105,7 @@ namespace SuperTerrainPlus {
 		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
 		 * @return The offset chunk position in world coordinate
 		*/
-		static vec2 offsetChunk(vec2, uvec2, ivec2, float = 1.0f);
+		static vec2 offsetChunk(vec2, uvec2, ivec2, float = 1.0f) noexcept;
 
 		/**
 		 * @brief Get an area of chunk coordinates, centered at a give chunk position
@@ -115,7 +115,7 @@ namespace SuperTerrainPlus {
 		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
 		 * @return Chunk positions in world coordinate (x,z), aligning from top-left to bottom right
 		*/
-		static STPChunkPosCache getRegion(vec2, uvec2, uvec2, float = 1.0f);
+		static STPChunkPosCache getRegion(vec2, uvec2, uvec2, float = 1.0f) noexcept;
 
 	};
 }

@@ -25,6 +25,8 @@ namespace SuperTerrainPlus {
 		class STPLayerCache final {
 		private:
 
+			friend class STPLayer;
+
 			//Store the key value for a coordinate
 			unsigned long long* Key = nullptr;
 			//Store the sample number for a layer for a coordinate
@@ -62,15 +64,21 @@ namespace SuperTerrainPlus {
 			*/
 			static unsigned long long mixKey(unsigned long long);
 
-		public:
-
 			/**
 			 * @brief Init STPLayerCache with allocated spaces
 			 * @param capacity The capacity of the cache, it must be power of 2
 			*/
 			STPLayerCache(size_t);
 
+			STPLayerCache(const STPLayerCache&) = delete;
+
+			STPLayerCache(STPLayerCache&&) = delete;
+
 			~STPLayerCache();
+
+			STPLayerCache& operator=(const STPLayerCache&) = delete;
+
+			STPLayerCache& operator=(STPLayerCache&&) = delete;
 
 			/**
 			 * @brief Find the value with coordinate specified in the cache. If found, read directly; if not, it will be evaluated using the sample function

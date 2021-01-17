@@ -62,7 +62,7 @@ namespace SuperTerrainPlus {
 			 * @param settings Stored all parameters for the heightmap calculation launch, it will be deep copied to the class so dynamic memory is not required
 			 * @param noise_settings Stored all parameters for the heightmap random number generator, it will be deep copied to the class so dynamic memory is not required
 			*/
-			__host__ STPHeightfieldGenerator(STPSettings::STPHeightfieldSettings* const, const STPSettings::STPSimplexNoiseSettings* const);
+			__host__ STPHeightfieldGenerator(STPSettings::STPHeightfieldSettings* const, STPSettings::STPSimplexNoiseSettings* const);
 
 			__host__ ~STPHeightfieldGenerator();
 

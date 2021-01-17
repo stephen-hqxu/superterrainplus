@@ -49,17 +49,50 @@ namespace SuperTerrainPlus {
 				this->Strength = 1.0f;
 			}
 
+			//Copy the source heightfield setting to the new instance
+			STPHeightfieldSettings(const STPHeightfieldSettings& obj) : STPRainDropSettings(obj) {
+				this->Scale = obj.Scale;
+				this->Octave = obj.Octave;
+				this->Persistence = obj.Persistence;
+				this->Lacunarity = obj.Lacunarity;
+				this->Strength = obj.Strength;
+			}
+
+			//Move the source setting to the new instance
+			STPHeightfieldSettings(STPHeightfieldSettings&& obj) noexcept : STPRainDropSettings(std::forward<STPRainDropSettings>(obj)) {
+				this->Scale = std::exchange(obj.Scale, 0.0f);
+				this->Octave = std::exchange(obj.Octave, 0u);
+				this->Persistence = std::exchange(obj.Persistence, 0.0f);
+				this->Lacunarity = std::exchange(obj.Lacunarity, 0.0f);
+				this->Strength = std::exchange(obj.Strength, 0.0f);
+			}
+
 			~STPHeightfieldSettings() = default;
 
-			STPHeightfieldSettings& operator=(const STPHeightfieldSettings& src) {
+			//Copy the source setting to current instance
+			STPHeightfieldSettings& operator=(const STPHeightfieldSettings& obj) {
 				//copy the base class
-				STPRainDropSettings::operator=(*dynamic_cast<const STPRainDropSettings*>(&src));
+				STPRainDropSettings::operator=(obj);
 
-				this->Scale = src.Scale;
-				this->Octave = src.Octave;
-				this->Persistence = src.Persistence;
-				this->Lacunarity = src.Lacunarity;
-				this->Strength = src.Strength;
+				this->Scale = obj.Scale;
+				this->Octave = obj.Octave;
+				this->Persistence = obj.Persistence;
+				this->Lacunarity = obj.Lacunarity;
+				this->Strength = obj.Strength;
+
+				return *this;
+			}
+
+			//Move source setting to current instance
+			STPHeightfieldSettings& operator=(STPHeightfieldSettings&& obj) noexcept {
+				//move the base class
+				STPRainDropSettings::operator=(std::forward<STPRainDropSettings>(obj));
+
+				this->Scale = std::exchange(obj.Scale, 0.0f);
+				this->Octave = std::exchange(obj.Octave, 0u);
+				this->Persistence = std::exchange(obj.Persistence, 0.0f);
+				this->Lacunarity = std::exchange(obj.Lacunarity, 0.0f);
+				this->Strength = std::exchange(obj.Strength, 0.0f);
 
 				return *this;
 			}

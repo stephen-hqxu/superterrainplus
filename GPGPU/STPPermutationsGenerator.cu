@@ -46,9 +46,127 @@ __host__ STPPermutationsGenerator::STPPermutationsGenerator(unsigned long long s
 	delete[] GRADIENT2D_HOST;
 }
 
+__host__ STPPermutationsGenerator::STPPermutationsGenerator(const STPPermutationsGenerator& obj) : GRADIENT2D_SIZE(obj.GRADIENT2D_SIZE) {
+	//deep copy gradient and permutation
+	if (obj.GRADIENT2D != nullptr) {
+		const size_t len = sizeof(double) * this->GRADIENT2D_SIZE * 2;
+		cudaMalloc(&this->GRADIENT2D, len);
+		cudaMemcpy(this->GRADIENT2D, obj.GRADIENT2D, len, cudaMemcpyDeviceToDevice);
+	}
+	else {
+		this->GRADIENT2D = nullptr;
+	}
+
+	if (obj.PERMUTATIONS != nullptr) {
+		const size_t len = sizeof(int) * 512;
+		cudaMalloc(&this->PERMUTATIONS, len);
+		cudaMemcpy(this->PERMUTATIONS, obj.PERMUTATIONS, len, cudaMemcpyDeviceToDevice);
+	}
+	else {
+		this->PERMUTATIONS = nullptr;
+	}
+}
+
+__host__ STPPermutationsGenerator::STPPermutationsGenerator(STPPermutationsGenerator&& obj) noexcept : GRADIENT2D_SIZE(std::exchange(obj.GRADIENT2D_SIZE, 0u)) {
+	//move the ptr
+	if (obj.GRADIENT2D != nullptr) {
+		//steal the pointer for our good!
+		this->GRADIENT2D = std::exchange(obj.GRADIENT2D, nullptr);
+	}
+	else {
+		this->GRADIENT2D = nullptr;
+	}
+	if (obj.PERMUTATIONS != nullptr) {
+		this->PERMUTATIONS = std::exchange(obj.PERMUTATIONS, nullptr);
+	}
+	else {
+		this->PERMUTATIONS = nullptr;
+	}
+}
+
 __host__ STPPermutationsGenerator::~STPPermutationsGenerator() {
-	cudaFree(this->PERMUTATIONS);
-	cudaFree(this->GRADIENT2D);
+	if (this->GRADIENT2D != nullptr) {
+		cudaFree(this->GRADIENT2D);
+		this->GRADIENT2D = nullptr;
+	}
+	if (this->PERMUTATIONS != nullptr) {
+		cudaFree(this->PERMUTATIONS);
+		this->PERMUTATIONS = nullptr;
+	}
+}
+
+__host__ STPPermutationsGenerator& STPPermutationsGenerator::operator=(const STPPermutationsGenerator& obj) {
+	//avoid duplicate copy
+	if (this == &obj) {
+		return *this;
+	}
+
+	if (obj.GRADIENT2D != nullptr) {
+		const size_t len = sizeof(double) * this->GRADIENT2D_SIZE * 2;
+		if (this->GRADIENT2D != nullptr) {
+			//free previous memory
+			cudaFree(this->GRADIENT2D);
+		}
+
+		cudaMalloc(&this->GRADIENT2D, len);
+		cudaMemcpy(this->GRADIENT2D, obj.GRADIENT2D, len, cudaMemcpyDeviceToDevice);
+	}
+	else if (this->GRADIENT2D != nullptr) {
+		//free previous memory and assign nullptr
+		cudaFree(this->GRADIENT2D);
+		this->GRADIENT2D = nullptr;
+	}
+	this->GRADIENT2D_SIZE = obj.GRADIENT2D_SIZE;
+
+	if (obj.PERMUTATIONS != nullptr) {
+		const size_t len = sizeof(int) * 512;
+		if (this->PERMUTATIONS != nullptr) {
+			//free previous memory
+			cudaFree(this->PERMUTATIONS);
+		}
+
+		cudaMalloc(&this->PERMUTATIONS, len);
+		cudaMemcpy(this->PERMUTATIONS, obj.PERMUTATIONS, len, cudaMemcpyDeviceToDevice);
+	}
+	else if (this->PERMUTATIONS != nullptr) {
+		//free previous memory
+		cudaFree(this->PERMUTATIONS);
+		this->PERMUTATIONS = nullptr;
+	}
+
+	return *this;
+}
+
+__host__ STPPermutationsGenerator& STPPermutationsGenerator::operator=(STPPermutationsGenerator&& obj) noexcept {
+	if (this == &obj) {
+		return *this;
+	}
+
+	if (obj.GRADIENT2D != nullptr) {
+		if (this->GRADIENT2D != nullptr) {
+			cudaFree(this->GRADIENT2D);
+		}
+		this->GRADIENT2D = std::exchange(obj.GRADIENT2D, nullptr);
+	}
+	else if (this->GRADIENT2D != nullptr) {
+		//free previous memory
+		cudaFree(this->GRADIENT2D);
+		this->GRADIENT2D = nullptr;
+	}
+	this->GRADIENT2D_SIZE = std::exchange(obj.GRADIENT2D_SIZE, 0u);
+
+	if (obj.PERMUTATIONS != nullptr) {
+		if (this->PERMUTATIONS != nullptr) {
+			cudaFree(this->PERMUTATIONS);
+		}
+		this->PERMUTATIONS = std::exchange(obj.PERMUTATIONS, nullptr);
+	}
+	else if (this->PERMUTATIONS != nullptr) {
+		cudaFree(this->PERMUTATIONS);
+		this->PERMUTATIONS = nullptr;
+	}
+
+	return *this;
 }
 
 __device__ int STPPermutationsGenerator::perm(int index) {
@@ -57,4 +175,8 @@ __device__ int STPPermutationsGenerator::perm(int index) {
 
 __device__ double STPPermutationsGenerator::grad2D(int index, int component) {
 	return this->GRADIENT2D[index * 2 + component];
+}
+
+__device__ unsigned int STPPermutationsGenerator::grad2D_size() {
+	return this->GRADIENT2D_SIZE;
 }

@@ -90,7 +90,15 @@ namespace SuperTerrainPlus {
 		*/
 		STPProcedural2DINF(STPSettings::STPConfigurations*, void* const, STPThreadPool* const);
 
+		STPProcedural2DINF(const STPProcedural2DINF&) = delete;
+
+		STPProcedural2DINF(STPProcedural2DINF&&) = delete;
+
 		~STPProcedural2DINF();
+
+		STPProcedural2DINF& operator=(const STPProcedural2DINF&) = delete;
+
+		STPProcedural2DINF& operator=(STPProcedural2DINF&&) = delete;
 
 		/**
 		 * @brief Get the 2d infinite terrain program

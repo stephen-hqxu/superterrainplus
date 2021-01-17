@@ -57,7 +57,15 @@ namespace SuperTerrainPlus {
 			*/
 			__host__ STPSimplexNoise(const STPSettings::STPSimplexNoiseSettings* const);
 
+			__host__ STPSimplexNoise(const STPSimplexNoise&);
+
+			__host__ STPSimplexNoise(STPSimplexNoise&&) noexcept;
+
 			__host__ ~STPSimplexNoise();
+
+			STPSimplexNoise& operator=(const STPSimplexNoise&);
+
+			STPSimplexNoise& operator=(STPSimplexNoise&&) noexcept;
 
 			/**
 			 * @brief Generate 2D simplex noise

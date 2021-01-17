@@ -113,8 +113,6 @@ namespace SuperTerrainPlus {
 			template <class... Asc>
 			STPLayer(Seed, Seed, Asc*...);
 
-			STPLayer(const STPLayer&) = delete;
-
 			~STPLayer();
 
 			/**
@@ -138,6 +136,14 @@ namespace SuperTerrainPlus {
 			const Seed Salt;
 			//Seed for each layer, the same layer under the same world seed and salt will always have the same layer seed
 			const Seed LayerSeed;
+
+			STPLayer(const STPLayer&) = delete;
+
+			STPLayer(STPLayer&&) = delete;
+
+			STPLayer& operator=(const STPLayer&) = delete;
+
+			STPLayer& operator=(STPLayer&&) = delete;
 
 			/**
 			 * @brief Create a layer instance

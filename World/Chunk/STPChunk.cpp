@@ -49,16 +49,16 @@ const uvec2& STPChunk::getSize() {
 	return this->PixelSize;
 }
 
-vec2 STPChunk::getChunkPosition(vec3 cameraPos, uvec2 chunkSize, float scaling) {
+vec2 STPChunk::getChunkPosition(vec3 cameraPos, uvec2 chunkSize, float scaling) noexcept {
 	const vec2 chunkSize_int = vec2(scaling * static_cast<int>(chunkSize.x), scaling * static_cast<int>(chunkSize.y));
 	return vec2(glm::floor(cameraPos.x / chunkSize_int.x) * chunkSize_int.x, glm::floor(cameraPos.z / chunkSize_int.y) * chunkSize_int.y);
 }
 
-vec2 STPChunk::offsetChunk(vec2 chunkPos, uvec2 chunkSize, ivec2 offset, float scaling) {
+vec2 STPChunk::offsetChunk(vec2 chunkPos, uvec2 chunkSize, ivec2 offset, float scaling) noexcept {
 	return chunkPos + vec2(scaling * static_cast<int>(chunkSize.x) * offset.x, scaling * static_cast<int>(chunkSize.y) * offset.y);
 }
 
-STPChunk::STPChunkPosCache STPChunk::getRegion(vec2 centerPos, uvec2 chunkSize, uvec2 regionSize, float scaling) {
+STPChunk::STPChunkPosCache STPChunk::getRegion(vec2 centerPos, uvec2 chunkSize, uvec2 regionSize, float scaling) noexcept {
 	const int num_chunk = regionSize.x * regionSize.y;
 	//We need to calculate the starting unit plane, i.e., the unit plane of the top-left corner of the entire rendered terrain
 	//We don't need y, all the plane will be aligned at the same height, so it contains x and z position
@@ -74,7 +74,7 @@ STPChunk::STPChunkPosCache STPChunk::getRegion(vec2 centerPos, uvec2 chunkSize, 
 		return STPChunk::offsetChunk(base_position, chunkSize, local_chunk_offset, scaling);
 	};
 
-	std::list<vec2> results;
+	STPChunkPosCache results;
 	//get the result
 	for (int i = 0; i < num_chunk; i++) {
 		//arranged from top-left to bottom right

@@ -8,8 +8,26 @@ __host__ STPSimplexNoise::STPSimplexNoise(const STPSettings::STPSimplexNoiseSett
 
 }
 
+__host__ STPSimplexNoise::STPSimplexNoise(const STPSimplexNoise& obj) : STPPermutationsGenerator(obj) {
+
+}
+
+__host__ STPSimplexNoise::STPSimplexNoise(STPSimplexNoise&& obj) noexcept : STPPermutationsGenerator(std::forward<STPPermutationsGenerator>(obj)) {
+
+}
+
 __host__ STPSimplexNoise::~STPSimplexNoise() {
 
+}
+
+STPSimplexNoise& STPSimplexNoise::operator=(const STPSimplexNoise& obj) {
+	STPPermutationsGenerator::operator=(obj);
+	return *this;
+}
+
+STPSimplexNoise& STPSimplexNoise::operator=(STPSimplexNoise&& obj) noexcept {
+	STPPermutationsGenerator::operator=(std::forward<STPPermutationsGenerator>(obj));
+	return *this;
 }
 
 __device__ float STPSimplexNoise::dot2D(float v1x, float v1y, float v2x, float v2y) {
@@ -54,9 +72,9 @@ __device__ float STPSimplexNoise::simplex2D(float x, float y) {
 	int grad_i[3];
 	int ii = i & 255,
 		jj = j & 255;
-	grad_i[0] = static_cast<int>(fmodf(this->perm(ii + this->perm(jj)), this->GRADIENT2D_SIZE));
-	grad_i[1] = static_cast<int>(fmodf(this->perm(ii + offseti1 + this->perm(jj + offsetj1)), this->GRADIENT2D_SIZE));
-	grad_i[2] = static_cast<int>(fmodf(this->perm(ii + 1 + this->perm(jj + 1)), this->GRADIENT2D_SIZE));
+	grad_i[0] = static_cast<int>(fmodf(this->perm(ii + this->perm(jj)), this->grad2D_size()));
+	grad_i[1] = static_cast<int>(fmodf(this->perm(ii + offseti1 + this->perm(jj + offsetj1)), this->grad2D_size()));
+	grad_i[2] = static_cast<int>(fmodf(this->perm(ii + 1 + this->perm(jj + 1)), this->grad2D_size()));
 
 	//Calcultate the weight from 3 corners
 	for (int vertex = 0; vertex < 3; vertex++) {

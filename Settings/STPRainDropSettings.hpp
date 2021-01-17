@@ -67,30 +67,6 @@ namespace SuperTerrainPlus {
 			//Precomputed erosion brush weights, stored on device.
 			float* ErosionBrushWeights;
 
-		private:
-
-			/**
-			 * @brief Deep copy the pointer only
-			 * @param src The source from where the copy will happen
-			*/
-			void performCopyptr(const STPRainDropSettings& src) {
-				//performing deep copy for the device memory
-				if (src.ErosionBrushIndices != nullptr) {
-					cudaMalloc(&this->ErosionBrushIndices, sizeof(int) * this->BrushSize);
-					cudaMemcpy(this->ErosionBrushIndices, src.ErosionBrushIndices, sizeof(int) * this->BrushSize, cudaMemcpyDeviceToDevice);
-				}
-				else {
-					this->ErosionBrushIndices = nullptr;
-				}
-				if (src.ErosionBrushWeights != nullptr) {
-					cudaMalloc(&this->ErosionBrushWeights, sizeof(float) * this->BrushSize);
-					cudaMemcpy(this->ErosionBrushWeights, src.ErosionBrushWeights, sizeof(float) * this->BrushSize, cudaMemcpyDeviceToDevice);
-				}
-				else {
-					this->ErosionBrushWeights = nullptr;
-				}
-			}
-
 		public:
 
 			/**
@@ -121,15 +97,54 @@ namespace SuperTerrainPlus {
 				, minWaterVolume(obj.minWaterVolume), Friction(obj.Friction), initSpeed(obj.initSpeed), ErodeSpeed(obj.ErodeSpeed)
 				, DepositSpeed(obj.DepositSpeed), EvaporateSpeed(obj.EvaporateSpeed), Gravity(obj.Gravity) {
 				//performing deep copy for the device memory
-				this->performCopyptr(obj);
+				if (obj.ErosionBrushIndices != nullptr) {
+					const size_t len = sizeof(int) * this->BrushSize;
+					cudaMalloc(&this->ErosionBrushIndices, len);
+					cudaMemcpy(this->ErosionBrushIndices, obj.ErosionBrushIndices, len, cudaMemcpyDeviceToDevice);
+				}
+				else {
+					this->ErosionBrushIndices = nullptr;
+				}
+
+				if (obj.ErosionBrushWeights != nullptr) {
+					const size_t len = sizeof(float) * this->BrushSize;
+					cudaMalloc(&this->ErosionBrushWeights, len);
+					cudaMemcpy(this->ErosionBrushWeights, obj.ErosionBrushWeights, len, cudaMemcpyDeviceToDevice);
+				}
+				else {
+					this->ErosionBrushWeights = nullptr;
+				}
+			}
+
+			//Move the source to the new raindrop settings
+			__host__ STPRainDropSettings(STPRainDropSettings&& obj) noexcept
+				: ErosionBrushRadius(std::exchange(obj.ErosionBrushRadius, 0u)), BrushSize(std::exchange(obj.BrushSize, 0u)), Inertia(std::exchange(obj.Inertia, 0.0f))
+				, SedimentCapacityFactor(std::exchange(obj.SedimentCapacityFactor, 0.0f)), minSedimentCapacity(std::exchange(obj.minSedimentCapacity, 0.0f)), initWaterVolume(std::exchange(obj.initWaterVolume, 0.0f))
+				, minWaterVolume(std::exchange(obj.minWaterVolume, 0.0f)), Friction(std::exchange(obj.Friction, 0.0f)), initSpeed(std::exchange(obj.initSpeed, 0.0f)), ErodeSpeed(std::exchange(obj.ErodeSpeed, 0.0f))
+				, DepositSpeed(std::exchange(obj.DepositSpeed, 0.0f)), EvaporateSpeed(std::exchange(obj.EvaporateSpeed, 0.0f)), Gravity(std::exchange(obj.Gravity, 0.0f)) {
+				//steal the pointer
+				if (obj.ErosionBrushIndices != nullptr) {
+					this->ErosionBrushIndices = std::exchange(obj.ErosionBrushIndices, nullptr);
+				}
+				else {
+					this->ErosionBrushIndices = nullptr;
+				}
+				if (obj.ErosionBrushWeights != nullptr) {
+					this->ErosionBrushWeights = std::exchange(obj.ErosionBrushWeights, nullptr);
+				}
+				else {
+					this->ErosionBrushWeights = nullptr;
+				}
 			}
 
 			__host__ ~STPRainDropSettings() {
 				if (this->ErosionBrushIndices != nullptr) {
 					cudaFree(this->ErosionBrushIndices);
+					this->ErosionBrushIndices = nullptr;
 				}
 				if (this->ErosionBrushWeights != nullptr) {
 					cudaFree(this->ErosionBrushWeights);
+					this->ErosionBrushWeights = nullptr;
 				}
 			}
 
@@ -138,23 +153,105 @@ namespace SuperTerrainPlus {
 			 * @param src The source from which to copy
 			 * @return Modified class object
 			*/
-			__host__ STPRainDropSettings& operator=(const STPRainDropSettings& src) {
-				this->ErosionBrushRadius = src.ErosionBrushRadius;
-				this->BrushSize = src.BrushSize;
-				this->Inertia = src.Inertia;
-				this->SedimentCapacityFactor = src.SedimentCapacityFactor;
-				this->minSedimentCapacity = src.minSedimentCapacity;
-				this->initWaterVolume = src.initWaterVolume;
-				this->minWaterVolume = src.minWaterVolume;
-				this->Friction = src.Friction;
-				this->initSpeed = src.initSpeed;
-				this->ErodeSpeed = src.ErodeSpeed;
-				this->DepositSpeed = src.DepositSpeed;
-				this->EvaporateSpeed = src.EvaporateSpeed;
-				this->Gravity = src.Gravity;
+			__host__ STPRainDropSettings& operator=(const STPRainDropSettings& obj) {
+				if (this == &obj) {
+					return *this;
+				}
+
+				this->ErosionBrushRadius = obj.ErosionBrushRadius;
+				this->BrushSize = obj.BrushSize;
+				this->Inertia = obj.Inertia;
+				this->SedimentCapacityFactor = obj.SedimentCapacityFactor;
+				this->minSedimentCapacity = obj.minSedimentCapacity;
+				this->initWaterVolume = obj.initWaterVolume;
+				this->minWaterVolume = obj.minWaterVolume;
+				this->Friction = obj.Friction;
+				this->initSpeed = obj.initSpeed;
+				this->ErodeSpeed = obj.ErodeSpeed;
+				this->DepositSpeed = obj.DepositSpeed;
+				this->EvaporateSpeed = obj.EvaporateSpeed;
+				this->Gravity = obj.Gravity;
+
 				//deep copy the device side erosion brush and indices
-				this->performCopyptr(src);
+				if (obj.ErosionBrushIndices != nullptr) {
+					const size_t len = sizeof(int) * this->BrushSize;
+					if (this->ErosionBrushIndices != nullptr) {
+						//free previous stuff
+						cudaFree(this->ErosionBrushIndices);
+					}
+					
+					cudaMalloc(&this->ErosionBrushIndices, len);
+					cudaMemcpy(this->ErosionBrushIndices, obj.ErosionBrushIndices, len, cudaMemcpyDeviceToDevice);
+				}
+				else if (this->ErosionBrushIndices != nullptr) {
+					cudaFree(this->ErosionBrushIndices);
+					this->ErosionBrushIndices = nullptr;
+				}
+
+				if (obj.ErosionBrushWeights != nullptr) {
+					const size_t len = sizeof(float) * this->BrushSize;
+					if (this->ErosionBrushWeights != nullptr) {
+						cudaFree(this->ErosionBrushWeights);
+					}
+
+					cudaMalloc(&this->ErosionBrushWeights, len);
+					cudaMemcpy(this->ErosionBrushWeights, obj.ErosionBrushWeights, len, cudaMemcpyDeviceToDevice);
+				}
+				else if (this->ErosionBrushWeights != nullptr) {
+					cudaFree(this->ErosionBrushWeights);
+					this->ErosionBrushWeights = nullptr;
+				}
 				
+				return *this;
+			}
+
+			/**
+			 * @brief Perform a move operation from the source
+			 * @param obj The source setting
+			 * @return The object after the move
+			*/
+			__host__ STPRainDropSettings& operator=(STPRainDropSettings&& obj) noexcept {
+				if (this == &obj) {
+					return *this;
+				}
+
+				this->ErosionBrushRadius = std::exchange(obj.ErosionBrushRadius, 0u);
+				this->BrushSize = std::exchange(obj.BrushSize, 0u);
+				this->Inertia = std::exchange(obj.Inertia, 0.0f);
+				this->SedimentCapacityFactor = std::exchange(obj.SedimentCapacityFactor, 0.0f);
+				this->minSedimentCapacity = std::exchange(obj.minSedimentCapacity, 0.0f);
+				this->initWaterVolume = std::exchange(obj.initWaterVolume, 0.0f);
+				this->minWaterVolume = std::exchange(obj.minWaterVolume, 0.0f);
+				this->Friction = std::exchange(obj.Friction, 0.0f);
+				this->initSpeed = std::exchange(obj.initSpeed, 0.0f);
+				this->ErodeSpeed = std::exchange(obj.ErodeSpeed, 0.0f);
+				this->DepositSpeed = std::exchange(obj.DepositSpeed, 0.0f);
+				this->EvaporateSpeed = std::exchange(obj.EvaporateSpeed, 0.0f);
+				this->Gravity = std::exchange(obj.Gravity, 0.0f);
+
+				//move the pointer
+				if (obj.ErosionBrushIndices != nullptr) {
+					if (this->ErosionBrushIndices != nullptr) {
+						cudaFree(this->ErosionBrushIndices);
+					}
+					this->ErosionBrushIndices = std::exchange(obj.ErosionBrushIndices, nullptr);
+				}
+				else if (this->ErosionBrushIndices != nullptr) {
+					cudaFree(this->ErosionBrushIndices);
+					this->ErosionBrushIndices = nullptr;
+				}
+
+				if (obj.ErosionBrushWeights != nullptr) {
+					if (this->ErosionBrushWeights != nullptr) {
+						cudaFree(this->ErosionBrushWeights);
+					}
+					this->ErosionBrushWeights = std::exchange(obj.ErosionBrushWeights, nullptr);
+				}
+				else if (this->ErosionBrushWeights != nullptr) {
+					cudaFree(this->ErosionBrushWeights);
+					this->ErosionBrushWeights = nullptr;
+				}
+
 				return *this;
 			}
 
