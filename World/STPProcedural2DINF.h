@@ -4,17 +4,11 @@
 
 //System
 #include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
 //OpenGL
 #include "glad/glad.h"
 //My Own Library
 #include "SglToolkit1.0/SgTShaderProc.h"
 #include "SglToolkit1.0/SgTUtils.h"
-//GLM
-using glm::mat4;
-using glm::identity;
 //Processing data with chunk manager so we can use the map directly
 #include "Chunk/STPChunkManager.h"
 
@@ -40,7 +34,7 @@ namespace SuperTerrainPlus {
 		//Calculated chunk data
 		//Calculate the coordinate of the top-left corner of each chunk
 		//It will be used as the key pair to search the map from our hash table
-		vec2* BaseChunkPosition = nullptr;
+		glm::vec2* BaseChunkPosition = nullptr;
 
 		//drawing command
 		const void* const command;
@@ -112,7 +106,7 @@ namespace SuperTerrainPlus {
 		 * @param projection - The camera projection matrix
 		 * @param position - The camera position
 		*/
-		void renderVisibleChunks(const mat4&, const mat4&, const vec3&);
+		void renderVisibleChunks(const glm::mat4&, const glm::mat4&, const glm::vec3&);
 
 	};
 }

@@ -56,7 +56,7 @@ namespace SuperTerrainPlus {
 
 			~STPBiomeSettings() = default;
 
-			bool validate() override {
+			bool validate() const override {
 				return this->Temperature >= 0.0f
 					&& this->Precipitation >= 0.0f
 					&& this->Depth >= 0.0f

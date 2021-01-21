@@ -81,9 +81,9 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Performing hydraulic erosion algorithm to descend the raindrop downhill once, water drop will bring sediment but lose water each time this method is called
-			 * @param settings - The parameters of the erosion algorithm
 			 * @param mapSize - The size of three maps, all three maps must have the same size
 			 * @param heightmap - The heightmap data, should be precomputed
+			 * @param settings - The raindrop settings for erosion
 			*/
 			__device__ void Erode(STPSettings::STPRainDropSettings* const, uint2, float*);
 

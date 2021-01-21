@@ -66,7 +66,7 @@ namespace SuperTerrainPlus {
 		 * @param chunkPos The world position of this chunk, this acts as a key in the look up table
 		 * @return True if all maps are computed and returned back to data storage.
 		*/
-		bool computeChunk(STPChunk* const, vec2);
+		bool computeChunk(STPChunk* const, glm::vec2);
 
 		/**
 		 * @brief Format the terrain image format, currently it will convert 32bit per channel to 16bit. 
@@ -95,7 +95,7 @@ namespace SuperTerrainPlus {
 		 * @param chunkPos The world position of this chunk, this acts as a key in the look up table
 		 * @return A pair of chunk ready status and the pointer to the chunk (respect to the provided chunk storage)
 		*/
-		STPChunkLoaded requestChunk(STPChunkStorage*, vec2);
+		STPChunkLoaded requestChunk(STPChunkStorage*, glm::vec2);
 
 		/**
 		 * @brief Get the chunk settings

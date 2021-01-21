@@ -130,6 +130,8 @@ namespace SuperTerrainPlus {
 			delete this->terrain2d_inf;
 			//delete thread pool
 			delete this->command_pool;
+			//clear settings
+			STPCompute::STPHeightfieldGenerator::useSettings();
 		}
 
 	public:
@@ -202,6 +204,8 @@ namespace SuperTerrainPlus {
 			//setting up renderers
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer, this->command_pool);
 			//setting terrain 2d inf
+			STPCompute::STPHeightfieldGenerator::useSettings(&config.getHeightfieldSettings());
+			STPCompute::STPSimplexNoise::initialise();
 			this->terrain2d_inf = new STPProcedural2DINF(&config, reinterpret_cast<void*>(this->command->Command_Procedural2DINF), this->command_pool);
 			this->terrain2d_inf->getChunkProvider()->setHeightfieldErosionIteration(std::stoul(this->engineSettings("iteration", "2DTerrainINF")));
 			this->terrain2d_inf->loadChunksAsync(this->Camera->getPosition());

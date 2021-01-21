@@ -1,5 +1,7 @@
 #include "STPChunkStorage.h"
 
+using glm::vec2;
+
 using namespace SuperTerrainPlus;
 
 size_t STPChunkStorage::STPHashvec2::operator()(const vec2& position) const {

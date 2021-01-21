@@ -35,10 +35,6 @@ namespace SuperTerrainPlus {
 		class STPSimplexNoise : private STPPermutationsGenerator{
 		private:
 
-			static constexpr double F2 = 0.366025403784439; // 0.5 * (static_cast<double>(sqrt(3.0)) - 1.0);
-			static constexpr double G2 = 0.211324865405187; // (3.0 - static_cast<double>(sqrt(3.0))) / 6.0;, 
-			static constexpr double H2 = -0.577350269189626; // -1.0 + 2.0 * G2;
-
 			/**
 			 * @brief Perform a dot product for 2D vector
 			 * @param v1x vector 1, x
@@ -47,12 +43,12 @@ namespace SuperTerrainPlus {
 			 * @param v2y vector 2. y
 			 * @return Dot product of the two vector
 			*/
-			__device__ float dot2D(float, float, float, float);
+			__device__ float dot2D(float, float, float, float) const;
 
 		public:
 
 			/**
-			 * @brief Init the simplex noise generator
+			 * @brief Init the simplex noise generator.
 			 * @param noise_settings Provide the settings for simplex noise
 			*/
 			__host__ STPSimplexNoise(const STPSettings::STPSimplexNoiseSettings* const);
@@ -63,9 +59,15 @@ namespace SuperTerrainPlus {
 
 			__host__ ~STPSimplexNoise();
 
-			STPSimplexNoise& operator=(const STPSimplexNoise&);
+			__host__ STPSimplexNoise& operator=(const STPSimplexNoise&);
 
-			STPSimplexNoise& operator=(STPSimplexNoise&&) noexcept;
+			__host__ STPSimplexNoise& operator=(STPSimplexNoise&&) noexcept;
+
+			/**
+			 * @brief Initialise simplex noise generator glbally
+			 * @return True if init is successful
+			*/
+			__host__ static bool initialise();
 
 			/**
 			 * @brief Generate 2D simplex noise
@@ -73,7 +75,7 @@ namespace SuperTerrainPlus {
 			 * @param y Y input
 			 * @return The simplex noise output
 			*/
-			__device__ float simplex2D(float, float);
+			__device__ float simplex2D(float, float) const;
 
 		};
 	}

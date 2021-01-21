@@ -33,7 +33,7 @@ namespace SuperTerrainPlus {
 			 * @brief Validate each setting values and check if all settings are legal
 			 * @return True if all settings are legal.
 			*/
-			virtual bool validate() = 0;
+			virtual bool validate() const = 0;
 		};
 
 	}

@@ -51,7 +51,7 @@ namespace SuperTerrainPlus {
 		 * @brief Check the number of task that is currently waiting for excecution. Data safety is guaranteed.
 		 * @return The number of task that is currently waiting.
 		*/
-		int size();
+		size_t size();
 
 		/**
 		 * @brief Check if the thread pool is running. Tasks can only be inserted if the pool is running.

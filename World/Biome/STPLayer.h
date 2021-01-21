@@ -169,7 +169,7 @@ namespace SuperTerrainPlus {
 			 * @brief Query the cache size on this layer cache
 			 * @return The size of the layer cache for this layer
 			*/
-			size_t cacheSize();
+			size_t cacheSize() const;
 
 			/**
 			 * @brief Sample the layer, given the world coordinate and return a sample point.
@@ -212,20 +212,20 @@ namespace SuperTerrainPlus {
 			 * @brief Get the number of ascendant in this layer, if there are more than one, it's a merging layer
 			 * @return The number of ascendant in this layer
 			*/
-			size_t getAscendantCount();
+			size_t getAscendantCount() const;
 
 
 			/**
 			 * @brief Test if there is more than one parent in this layer
 			 * @return True if yes
 			*/
-			bool isMerging();
+			bool isMerging() const;
 
 			/**
 			 * @brief Test if the current layer has any parent
 			 * @return True if any
 			*/
-			bool hasAscendant();
+			bool hasAscendant() const;
 
 		};
 	}

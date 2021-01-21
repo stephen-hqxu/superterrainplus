@@ -4,10 +4,7 @@
 
 //GLM
 #include "glm/vec2.hpp"
-using glm::uvec2;
 #include "glm/vec3.hpp"
-using glm::uvec3;
-using glm::ivec3;
 //Biome
 #include "STPBiome.h"
 #include "STPLayer.h"
@@ -30,20 +27,20 @@ namespace SuperTerrainPlus {
 		public:
 
 			//Specify the dimension of the generated biome map, in 3 dimension
-			const uvec3 BiomeDimension;
+			const glm::uvec3 BiomeDimension;
 
 			/**
 			 * @brief Init the biome factory
 			 * @param dimension The dimension of the biome map.
 			 * If the y component of the dimension is one, a 2D biome map will be generated
 			*/
-			STPBiomeFactory(uvec3);
+			STPBiomeFactory(glm::uvec3);
 
 			/**
 			 * @brief Init the biome factory
 			 * @param dimension The dimension of the biome map, this will init a 2D biome map generator, with x and z component only
 			*/
-			STPBiomeFactory(uvec2);
+			STPBiomeFactory(glm::uvec2);
 
 			~STPBiomeFactory();
 
@@ -66,7 +63,7 @@ namespace SuperTerrainPlus {
 			 * @param offset The offset of the biome map, that is equavalent to the world coordinate.
 			 * @return The biome id map, it needs to be freed maunally
 			*/
-			const Sample* generate(STPLayer* const, ivec3);
+			const Sample* generate(STPLayer* const, glm::ivec3);
 
 			/**
 			 * @brief Free up the storage of a biome map generated

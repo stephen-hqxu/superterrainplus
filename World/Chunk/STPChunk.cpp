@@ -1,5 +1,10 @@
 #include "STPChunk.h"
 
+using glm::vec2;
+using glm::uvec2;
+using glm::ivec2;
+using glm::vec3;
+
 using namespace SuperTerrainPlus;
 
 STPChunk::STPChunk(uvec2 size, bool initialise) : PixelSize(size) {

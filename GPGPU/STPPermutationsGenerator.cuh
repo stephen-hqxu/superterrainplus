@@ -10,11 +10,6 @@
 #include <random>
 #include <math.h>
 
-using std::copy;
-using std::begin;
-using std::end;
-using std::shuffle;
-
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
  * including perlin noise generated height map, hydrology processing and marching cube algorithm.
@@ -37,7 +32,7 @@ namespace SuperTerrainPlus {
 
 			static constexpr double PI = 3.14159265358979323846;
 			//Initial table, will be shuffled later
-			static constexpr int INIT_TABLE[256] = {
+			static constexpr unsigned char INIT_TABLE[256] = {
 				0,1,2,3,4,5,6,7,8,9,10,
 				11,12,13,14,15,16,17,18,19,20,
 				21,22,23,24,25,26,27,28,29,30,
@@ -67,13 +62,20 @@ namespace SuperTerrainPlus {
 			};
 			//Generated permutation table, it will be shuffled by rng
 			//stored on device
-			int* PERMUTATIONS = nullptr;
+			unsigned char* PERMUTATIONS = nullptr;
+			//cached permutation lookup table
+			cudaTextureObject_t PERMUTATIONS_cached;
 
 			//Gradient table for simplex noise 2D, the modular of the offset will equal to 1.0
 			double* GRADIENT2D = nullptr;
 
 			//The size of the gradient table
 			unsigned int GRADIENT2D_SIZE;
+
+			/**
+			 * @brief Cache the permutation table so it can be accessed more efficiently
+			*/
+			__host__ void cachePermutation();
 
 		public:
 
@@ -98,11 +100,11 @@ namespace SuperTerrainPlus {
 			__host__ STPPermutationsGenerator& operator=(STPPermutationsGenerator&&) noexcept;
 
 			/**
-			 * @brief Return the randomly generated permutation element
+			 * @brief Return the randomly generated permutation element from the class generated table.
 			 * @param index The index within the table
 			 * @return The number, ranged from 0-255 inclusive
 			*/
-			__device__ int perm(int);
+			__device__ int perm(int) const;
 
 			/**
 			 * @brief Return the graident table element
@@ -110,13 +112,13 @@ namespace SuperTerrainPlus {
 			 * @param component The vector component, either 0 or 1 for the 2D table
 			 * @return The gradient number
 			*/
-			__device__ double grad2D(int, int);
+			__device__ double grad2D(int, int) const;
 
 			/**
 			 * @brief Get the number of element in the gradient 2D table
 			 * @return The number of element
 			*/
-			__device__ unsigned int grad2D_size();
+			__device__ unsigned int grad2D_size() const;
 
 		};
 	}

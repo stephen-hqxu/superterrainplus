@@ -1,5 +1,9 @@
 #include "STPBiomeFactory.h"
 
+using glm::uvec2;
+using glm::uvec3;
+using glm::ivec3;
+
 using namespace SuperTerrainPlus::STPBiome;
 
 STPBiomeFactory::STPBiomeFactory(uvec3 dimension) : BiomeDimension(dimension) {

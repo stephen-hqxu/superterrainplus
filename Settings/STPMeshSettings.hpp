@@ -61,7 +61,7 @@ namespace SuperTerrainPlus {
 
 				~STPTessellationSettings() = default;
 
-				bool validate() override {
+				bool validate() const override {
 					return this->MaxTessLevel >= 0.0f
 						&& this->MinTessLevel >= 0.0f
 						&& this->FurthestTessDistance > 0.0f
@@ -100,7 +100,7 @@ namespace SuperTerrainPlus {
 
 			~STPMeshSettings() = default;
 
-			bool validate() override {
+			bool validate() const override {
 				return this->Altitude > 0.0f
 					&& this->LoDShiftFactor > 0.0f
 					&& this->TessSettings.validate();

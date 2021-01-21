@@ -4,8 +4,6 @@
 
 //GLM
 #include "glm/gtc/type_ptr.hpp"
-using glm::vec4;
-using glm::value_ptr;
 //OpenGL
 #include "glad/glad.h"
 //CUDA
@@ -30,7 +28,7 @@ namespace SuperTerrainPlus {
 	public:
 
 		//List that stored rendered chunks' ID and world position
-		typedef std::list<std::pair<int, vec2>> STPLocalChunks;
+		typedef std::list<std::pair<int, glm::vec2>> STPLocalChunks;
 
 	private:
 
@@ -53,7 +51,7 @@ namespace SuperTerrainPlus {
 
 		//for automatic chunk loading
 		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the currentCentralPos is different from this value
-		vec2 lastCentralPos = vec2(std::numeric_limits<float>::min());//the last world position of the central chunk of the entire visible chunks
+		glm::vec2 lastCentralPos = glm::vec2(std::numeric_limits<float>::min());//the last world position of the central chunk of the entire visible chunks
 		STPLocalChunks loadingLocals;//determine which chunks to render
 
 		/**
@@ -69,7 +67,7 @@ namespace SuperTerrainPlus {
 		 * For some reason if there is error generated during loading, false will be returned as well.
 		 * If destination is specified as nullptr, and chunk is fully prepared, true will eb returned, otherwise computation will be dispatched and false is returned
 		*/
-		bool MapLoader(vec2, const cudaArray_t[2]);
+		bool MapLoader(glm::vec2, const cudaArray_t[2]);
 
 	protected:
 
@@ -119,7 +117,7 @@ namespace SuperTerrainPlus {
 		 * for the current chunk.
 		 * If previous worker has yet finished, function will be blocked until the previous returned, then it will be proceed.
 		*/
-		bool loadChunksAsync(vec3);
+		bool loadChunksAsync(glm::vec3);
 
 		/**
 		 * @brief Sync the loadChunksAsync() to make sure the work has finished before this function returns. 

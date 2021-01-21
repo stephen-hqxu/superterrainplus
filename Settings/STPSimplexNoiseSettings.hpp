@@ -48,7 +48,7 @@ namespace SuperTerrainPlus {
 
 			~STPSimplexNoiseSettings() = default;
 
-			bool validate() override {
+			bool validate() const override {
 				return this->Distribution != 0
 					&& this->Offset >= 0.0
 					&& this->Offset < 360.0;

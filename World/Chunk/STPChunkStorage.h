@@ -31,10 +31,10 @@ namespace SuperTerrainPlus {
 			 * @param position The position represented by the vector
 			 * @return The hash of the pair
 			*/
-			size_t operator()(const vec2&) const;
+			size_t operator()(const glm::vec2&) const;
 		};
 		//Hash table that stores the chunks by world position
-		typedef std::unordered_map<vec2, std::unique_ptr<STPChunk>, STPHashvec2> STPChunkCache;
+		typedef std::unordered_map<glm::vec2, std::unique_ptr<STPChunk>, STPHashvec2> STPChunkCache;
 
 		//chunk storage
 		//the key will be the x,z world position of each chunk
@@ -55,14 +55,14 @@ namespace SuperTerrainPlus {
 		 * @param chunk new chunk with data
 		 * @return True if the chunk has been added, false if chunk exists thus it won't be inserted
 		*/
-		bool addChunk(vec2, STPChunk*);
+		bool addChunk(glm::vec2, STPChunk*);
 
 		/**
 		 * @brief Get the chunk by its world position
 		 * @param chunkPos the chunk world position
 		 * @return The chunk with specified world position, return null if not found
 		*/
-		STPChunk* getChunk(vec2);
+		STPChunk* getChunk(glm::vec2);
 
 		/**
 		 * @brief Remove the chunk by its world position
@@ -70,7 +70,7 @@ namespace SuperTerrainPlus {
 		 * @return True if the chunk with specified world position has removed, or false if not found. 
 		 * The chunk will be effectively deleted and memory is freed, and no longer be available inside the chunk
 		*/
-		bool removeChunk(vec2);
+		bool removeChunk(glm::vec2);
 
 		/**
 		 * @brief Effectively clear the storage and free all used memory

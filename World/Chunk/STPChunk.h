@@ -8,10 +8,6 @@
 #include <atomic>
 //GLM
 #include "glm/gtc/matrix_transform.hpp"
-using glm::vec2;
-using glm::uvec2;
-using glm::ivec2;
-using glm::vec3;
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -44,7 +40,7 @@ namespace SuperTerrainPlus {
 		friend class STPChunkProvider;
 
 		float* TerrainMaps[2];
-		const uvec2 PixelSize;//All maps must have the same size
+		const glm::uvec2 PixelSize;//All maps must have the same size
 
 		//Cache that OpenGL can use to render directly, it's converted from 32 bit internal texture to 16 bit.
 		//We need to keep the 32 bit copy for later chunk computations, e.g., chunk-chunk interpolation.
@@ -63,12 +59,12 @@ namespace SuperTerrainPlus {
 		 * @param size - The size of all maps, all maps must have the same size.
 		 * @param initialise - Set true to pre-allocate spaces for all map.
 		*/
-		STPChunk(uvec2, bool = true);
+		STPChunk(glm::uvec2, bool = true);
 
 		~STPChunk();
 
 		//A chunk position cache that stores a list of chunk world position
-		typedef std::list<vec2> STPChunkPosCache;
+		typedef std::list<glm::vec2> STPChunkPosCache;
 
 		/**
 		 * @brief Return the reference to the heightmap of this chunk
@@ -86,7 +82,7 @@ namespace SuperTerrainPlus {
 		 * @brief Return the reference to the size of the pixels for all maps
 		 * @return The reference to the size of the pixels for all maps
 		*/
-		const uvec2& getSize();
+		const glm::uvec2& getSize();
 
 		/**
 		 * @brief Get the chunk position in world where the camera is located
@@ -95,7 +91,7 @@ namespace SuperTerrainPlus {
 		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
 		 * @return Chunk position in world coordinate (x,z)
 		*/
-		static vec2 getChunkPosition(vec3, uvec2, float = 1.0f) noexcept;
+		static glm::vec2 getChunkPosition(glm::vec3, glm::uvec2, float = 1.0f) noexcept;
 
 		/**
 		 * @brief Move the chunk by chunk position
@@ -105,7 +101,7 @@ namespace SuperTerrainPlus {
 		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
 		 * @return The offset chunk position in world coordinate
 		*/
-		static vec2 offsetChunk(vec2, uvec2, ivec2, float = 1.0f) noexcept;
+		static glm::vec2 offsetChunk(glm::vec2, glm::uvec2, glm::ivec2, float = 1.0f) noexcept;
 
 		/**
 		 * @brief Get an area of chunk coordinates, centered at a give chunk position
@@ -115,7 +111,7 @@ namespace SuperTerrainPlus {
 		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
 		 * @return Chunk positions in world coordinate (x,z), aligning from top-left to bottom right
 		*/
-		static STPChunkPosCache getRegion(vec2, uvec2, uvec2, float = 1.0f) noexcept;
+		static STPChunkPosCache getRegion(glm::vec2, glm::uvec2, glm::uvec2, float = 1.0f) noexcept;
 
 	};
 }

@@ -80,7 +80,7 @@ void STPLayer::destroy(STPLayer* layer) {
 	delete layer;
 }
 
-size_t STPLayer::cacheSize() {
+size_t STPLayer::cacheSize() const {
 	return this->Cache->getCapacity();
 }
 
@@ -107,14 +107,14 @@ STPLayer* const STPLayer::getAscendant() {
 	return this->getAscendant(0);
 }
 
-size_t STPLayer::getAscendantCount() {
+size_t STPLayer::getAscendantCount() const {
 	return this->Ascendant.size();
 }
 
-bool STPLayer::isMerging() {
+bool STPLayer::isMerging() const {
 	return this->getAscendantCount() > 1;
 }
 
-bool STPLayer::hasAscendant() {
+bool STPLayer::hasAscendant() const {
 	return this->getAscendantCount() == 0;
 }

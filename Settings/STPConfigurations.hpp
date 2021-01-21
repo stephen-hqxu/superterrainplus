@@ -40,7 +40,7 @@ namespace SuperTerrainPlus {
 
 			~STPConfigurations() = default;
 
-			bool validate() override {
+			bool validate() const override {
 				return this->ChunkSettings.validate()
 					&& this->HeightfieldSettings.validate()
 					&& this->MeshSettings.validate()

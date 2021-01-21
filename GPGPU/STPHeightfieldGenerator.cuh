@@ -44,8 +44,6 @@ namespace SuperTerrainPlus {
 			 * @brief Simplex noise generator, on device
 			*/
 			STPSimplexNoise* simplex = nullptr;
-			//All parameters required for the heightfield generator, stored on deivce
-			STPSettings::STPHeightfieldSettings* Settings = nullptr;
 			//All parameters for the noise generator, stoed on host, passing value to device
 			STPSettings::STPSimplexNoiseSettings* Noise_Settings = nullptr;
 
@@ -59,12 +57,20 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Init the heightfield generator
-			 * @param settings Stored all parameters for the heightmap calculation launch, it will be deep copied to the class so dynamic memory is not required
 			 * @param noise_settings Stored all parameters for the heightmap random number generator, it will be deep copied to the class so dynamic memory is not required
 			*/
-			__host__ STPHeightfieldGenerator(STPSettings::STPHeightfieldSettings* const, STPSettings::STPSimplexNoiseSettings* const);
+			__host__ STPHeightfieldGenerator(STPSettings::STPSimplexNoiseSettings* const);
 
 			__host__ ~STPHeightfieldGenerator();
+
+			/**
+			 * @brief Load the settings for heightfield generator, all subsequent computation will base on this settings. Settings are copied.
+			 * It needs to be called before launching any compute
+			 * @param settings The parameters of the generation algorithm. It should be on host side.
+			 * Providing no arguement or nullptr will clear all exisiting settings, making it undefined.
+			 * @return True if setting can be used
+			*/
+			__host__ static bool useSettings(const STPSettings::STPHeightfieldSettings* const = nullptr);
 
 			/**
 			 * @brief Generate the terrain heightfield maps, each heightfield contains four maps, being heightmap and normalmap.
@@ -98,97 +104,7 @@ namespace SuperTerrainPlus {
 			*/
 			__host__ int getErosionIteration();
 
-			/**
-			 * @brief Set the heightfield parameter, the current parameter set will be replaced, the input will be copied to device
-			 * @param settings - The input settings stored on host, it will be copied to device
-			 * @return True if the new parameters have been set
-			*/
-			__host__ bool setHeightfieldParameter(const STPSettings::STPHeightfieldSettings&);
-
-			/**
-			 * @brief Get the current parameter stored in the class, it will be copied from device
-			 * @return The current parameter set on host, needs to be freed with freeHeightfieldGenerator()
-			*/
-			__host__ SuperTerrainPlus::STPSettings::STPHeightfieldSettings* getHeightfieldParameter();
-
-			/**
-			 * @brief Free the returning host parameter returned from getHeightfieldGenerator()
-			 * @param memory The returned memory that needs to be freed.
-			*/
-			__host__ void freeHeightfieldParameter(STPSettings::STPHeightfieldSettings* const);
-
 		};
-
-		/**
-		 * @brief Kernel launch and util functions
-		*/
-		namespace STPKernelLauncher{
-
-			/**
-			 * @brief Find the unit vector of the input vector
-			 * @param vec3 - Vector input 
-			 * @return Unit vector of the input
-			*/
-			__device__ float3 normalize3DKERNEL(float3);
-
-			/**
-			 * @brief Performing inverse linear interpolation for each value on the heightmap to scale it within [0,1] using CUDA kernel
-			 * @param minVal The mininmum value that can apperar in this height map
-			 * @param maxVal The maximum value that can apperar in this height map
-			 * @param value The input value
-			 * @return The interpolated value
-			*/
-			__device__ float InvlerpKERNEL(float, float, float);
-
-			/**
-			 * @brief Clamp the input value with the range
-			 * @param val The clamping value
-			 * @param lower The lowest possible value
-			 * @param upper The highest possible value
-			 * @return val if [lower, upper], lower if val < lower, upper if val > upper
-			*/
-			__device__ int clamp(int, int, int);
-
-			/**
-			 * @brief Init the curand generator for each thread
-			 * @param rng The random number generator array, it must have the same number of element as thread. e.g., 
-			 * generating x random number each in 1024 thread needs 1024 rng, each thread will use the same sequence.
-			 * @param seed The seed for each generator
-			*/
-			__global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG*, unsigned long long);
-
-			/**
-			 * @brief Generate our epic height map using simplex noise function within the CUDA kernel
-			 * @param noise_fun - The heightfield generator that's going to use
-			 * @param height_storage - The pointer to a location where the heightmap will be stored
-			 * @param dimension - The width and height of the generated heightmap
-			 * @param half_dimension - Precomputed dimension/2 so the kernel don't need to repeatly compute that
-			 * @param settings - The parameter set for the heightfield generator
-			 * @param offset - Controlling the offset on x, y and height offset on z
-			*/
-			__global__ void generateHeightmapKERNEL(STPSimplexNoise* const, float*, uint2, float2, STPSettings::STPHeightfieldSettings* const, float3);
-
-			/**
-			 * @brief Performing hydraulic erosion for the given heightmap terrain using CUDA parallel computing
-			 * @param height_storage Heightmap that is going to erode with raindrop
-			 * @param dimension The size of all maps, they must be the same
-			 * @param rng The random number generator map sequence, independent for each rain drop
-			 * @param settings The parameter set for each rain drop
-			*/
-			__global__ void performErosionKERNEL(float*, uint2, STPHeightfieldGenerator::curandRNG*, STPSettings::STPRainDropSettings* const);
-
-			/**
-			* @brief Generate the normal map for the height map within kernel
-			* @param noise_fun - The heightfield generator that's going to use
-			* @param heightmap - contains the height map that will be wused to generate the normal
-			* @param normal_storage - normal map, will be used to store the output of the normal map
-			* @param dimension - The width and height of both map
-			* @param settings - The parameter set for the heightfield generator
-			* @return True if the normal map is successully generated without errors
-			*/
-			__global__ void generateNormalmapKERNEL(STPSimplexNoise* const, float* const, float*, uint2, STPSettings::STPHeightfieldSettings* const);
-
-		}
 
 	}
 }

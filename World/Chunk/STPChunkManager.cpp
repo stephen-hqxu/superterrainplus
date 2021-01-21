@@ -1,6 +1,10 @@
 #pragma warning(disable : 4267)//implicit conversion may lose data wwarning (actually it won't)
 #include "STPChunkManager.h"
 
+using glm::vec2;
+using glm::vec4;
+using glm::value_ptr;
+
 using namespace SuperTerrainPlus;
 
 STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings, STPThreadPool* const shared_threadpool) : compute_pool(shared_threadpool) {

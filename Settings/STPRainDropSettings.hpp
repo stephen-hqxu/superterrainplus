@@ -255,7 +255,7 @@ namespace SuperTerrainPlus {
 				return *this;
 			}
 
-			__host__ virtual bool validate() override {
+			__host__ virtual bool validate() const override {
 				static auto checkRange = []__host__(float value, float lower, float upper) -> bool {
 					return value >= lower && value <= upper;
 				};

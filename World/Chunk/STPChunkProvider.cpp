@@ -1,12 +1,14 @@
 #include "STPChunkProvider.h"
 
+using glm::vec2;
+
 using namespace SuperTerrainPlus;
 
 STPChunkProvider::STPChunkProvider(STPSettings::STPConfigurations* settings, STPThreadPool* const shared_threadpool)
 	: ChunkSettings(settings->getChunkSettings()), compute_pool(shared_threadpool) {
 	//create those workers
 	const auto& chunk_settings = settings->getChunkSettings();
-	this->heightmap_gen = new STPCompute::STPHeightfieldGenerator(&settings->getHeightfieldSettings(), &settings->getSimplexNoiseSettings());
+	this->heightmap_gen = new STPCompute::STPHeightfieldGenerator(&settings->getSimplexNoiseSettings());
 	this->formatter = new STPCompute::STPImageConverter(make_uint2(chunk_settings.MapSize.x, chunk_settings.MapSize.y));
 }
 

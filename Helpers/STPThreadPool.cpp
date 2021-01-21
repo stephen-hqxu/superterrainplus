@@ -52,8 +52,8 @@ STPThreadPool::~STPThreadPool() {
 	}
 }
 
-int STPThreadPool::size() {
-	int size;
+size_t STPThreadPool::size() {
+	size_t size;
 	{
 		std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
 		size = this->task.size();

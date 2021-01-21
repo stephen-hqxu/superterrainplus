@@ -1,6 +1,14 @@
 #pragma once
 #include "STPProcedural2DINF.h"
 
+using std::cout;
+using std::cerr;
+using std::endl;
+
+using glm::vec2;
+using glm::mat4;
+using glm::identity;
+
 using namespace SuperTerrainPlus;
 
 STPProcedural2DINF::STPProcedural2DINF(STPSettings::STPConfigurations* const settings, void* const procedural2dinf_cmd, STPThreadPool* const shared_threadpool)

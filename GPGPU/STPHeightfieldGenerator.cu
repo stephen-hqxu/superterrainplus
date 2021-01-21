@@ -1,21 +1,85 @@
 #pragma once
 #include "STPHeightfieldGenerator.cuh"
 
+__constant__ unsigned char HeightfieldSettings[sizeof(SuperTerrainPlus::STPSettings::STPHeightfieldSettings)];
+
 using namespace SuperTerrainPlus::STPCompute;
 
-__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPHeightfieldSettings* const settings,  STPSettings::STPSimplexNoiseSettings* const noise_settings) {
+/**
+ * @brief Kernel launch and util functions
+*/
+namespace STPKernelLauncher {
+
+	/**
+	 * @brief Find the unit vector of the input vector
+	 * @param vec3 - Vector input
+	 * @return Unit vector of the input
+	*/
+	__device__ float3 normalize3DKERNEL(float3);
+
+	/**
+	 * @brief Performing inverse linear interpolation for each value on the heightmap to scale it within [0,1] using CUDA kernel
+	 * @param minVal The mininmum value that can apperar in this height map
+	 * @param maxVal The maximum value that can apperar in this height map
+	 * @param value The input value
+	 * @return The interpolated value
+	*/
+	__device__ float InvlerpKERNEL(float, float, float);
+
+	/**
+	 * @brief Clamp the input value with the range
+	 * @param val The clamping value
+	 * @param lower The lowest possible value
+	 * @param upper The highest possible value
+	 * @return val if [lower, upper], lower if val < lower, upper if val > upper
+	*/
+	__device__ int clamp(int, int, int);
+
+	/**
+	 * @brief Init the curand generator for each thread
+	 * @param rng The random number generator array, it must have the same number of element as thread. e.g.,
+	 * generating x random number each in 1024 thread needs 1024 rng, each thread will use the same sequence.
+	 * @param seed The seed for each generator
+	*/
+	__global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG*, unsigned long long);
+
+	/**
+	 * @brief Generate our epic height map using simplex noise function within the CUDA kernel
+	 * @param noise_fun - The heightfield generator that's going to use
+	 * @param height_storage - The pointer to a location where the heightmap will be stored
+	 * @param dimension - The width and height of the generated heightmap
+	 * @param half_dimension - Precomputed dimension/2 so the kernel don't need to repeatly compute that
+	 * @param offset - Controlling the offset on x, y and height offset on z
+	*/
+	__global__ void generateHeightmapKERNEL(STPSimplexNoise* const, float*, uint2, float2, float3);
+
+	/**
+	 * @brief Performing hydraulic erosion for the given heightmap terrain using CUDA parallel computing
+	 * @param height_storage Heightmap that is going to erode with raindrop
+	 * @param dimension The size of all maps, they must be the same
+	 * @param rng The random number generator map sequence, independent for each rain drop
+	*/
+	__global__ void performErosionKERNEL(float*, uint2, STPHeightfieldGenerator::curandRNG*);
+
+	/**
+	* @brief Generate the normal map for the height map within kernel
+	* @param noise_fun - The heightfield generator that's going to use
+	* @param heightmap - contains the height map that will be wused to generate the normal
+	* @param normal_storage - normal map, will be used to store the output of the normal map
+	* @param dimension - The width and height of both map
+	* @return True if the normal map is successully generated without errors
+	*/
+	__global__ void generateNormalmapKERNEL(STPSimplexNoise* const, float* const, float*, uint2);
+
+}
+
+__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPSimplexNoiseSettings* const noise_settings) {
 	//Init simplex noise generator and store it inside the device
 	STPSimplexNoise simplex_h(noise_settings);
 	//allocating space
 	cudaMalloc(&this->simplex, sizeof(STPSimplexNoise));
 	//copy data
 	cudaMemcpy(this->simplex, &simplex_h, sizeof(STPSimplexNoise), cudaMemcpyHostToDevice);
-
-	//copy the parameters to device
-	cudaMalloc(&this->Settings, sizeof(STPSettings::STPHeightfieldSettings));
-	//this is a deep move on STPHeightfieldSettings
-	STPSettings::STPHeightfieldSettings settings_cpy(std::move(*settings));
-	cudaMemcpy(this->Settings, &settings_cpy, sizeof(STPSettings::STPHeightfieldSettings), cudaMemcpyHostToDevice);
 
 	//kernel parameters
 	this->numThreadperBlock_Map = dim3(32, 32);
@@ -27,7 +91,6 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPHeight
 
 __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 	cudaFree(this->simplex);
-	cudaFree(this->Settings);
 	//check if the rng has been init
 	if (this->RNG_Map != nullptr) {
 		cudaFree(this->RNG_Map);
@@ -35,9 +98,34 @@ __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 	delete this->Noise_Settings;
 }
 
+__host__ bool STPHeightfieldGenerator::useSettings(const STPSettings::STPHeightfieldSettings* const settings) {
+	//keep a local copy of the setting so device can have access to the pointer inside the class
+	static const STPSettings::STPHeightfieldSettings* stored_settings = nullptr;
+
+	if (settings == nullptr) {
+		//clear memory
+		delete stored_settings;
+		return true;
+	}
+	if (stored_settings != settings) {
+		//validate memory
+		if (!settings->validate()) {
+			return false;
+		}
+		//replace current settings
+		if (stored_settings != nullptr) {
+			delete stored_settings;
+		}
+		//deep copy the thing
+		stored_settings = new STPSettings::STPHeightfieldSettings(*settings);
+	}
+
+	return cudaSuccess == cudaMemcpyToSymbol(HeightfieldSettings, stored_settings, sizeof(STPSettings::STPHeightfieldSettings), 0ull, cudaMemcpyHostToDevice);
+}
+
 __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap, float* normalmap, float3 offset) {
 	//check the availiability of the engine
-	if (this->Settings == nullptr || this->RNG_Map == nullptr) {
+	if (this->RNG_Map == nullptr) {
 		return false;
 	}
 	
@@ -60,13 +148,13 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap,
 
 	//calculate heightmap
 	STPKernelLauncher::generateHeightmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_d[0],
-		this->Noise_Settings->Dimension, make_float2(1.0f * this->Noise_Settings->Dimension.x / 2.0f, 1.0f * this->Noise_Settings->Dimension.y / 2.0f), this->Settings, offset);
+		this->Noise_Settings->Dimension, make_float2(1.0f * this->Noise_Settings->Dimension.x / 2.0f, 1.0f * this->Noise_Settings->Dimension.y / 2.0f), offset);
 	//performing erosion
 	STPKernelLauncher::performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, 0, stream >> > (heightfield_d[0], 
-		this->Noise_Settings->Dimension, this->RNG_Map, dynamic_cast<STPSettings::STPRainDropSettings*>(this->Settings));
+		this->Noise_Settings->Dimension, this->RNG_Map);
 	//calculating normalmap
 	STPKernelLauncher::generateNormalmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_d[0], heightfield_d[1],
-		this->Noise_Settings->Dimension, this->Settings);
+		this->Noise_Settings->Dimension);
 	
 	//copy the result back to the host
 	no_error &= cudaSuccess == cudaMemcpyAsync(heightmap, heightfield_d[0], map_size, cudaMemcpyDeviceToHost, stream);
@@ -111,22 +199,6 @@ __host__ int STPHeightfieldGenerator::getErosionIteration() {
 	return this->NumRaindrop;
 }
 
-__host__ bool STPHeightfieldGenerator::setHeightfieldParameter(const STPSettings::STPHeightfieldSettings& settings) {
-	return cudaMemcpy(this->Settings, &settings, sizeof(STPSettings::STPHeightfieldSettings), cudaMemcpyHostToDevice) == cudaSuccess;
-}
-
-__host__ SuperTerrainPlus::STPSettings::STPHeightfieldSettings* STPHeightfieldGenerator::getHeightfieldParameter() {
-	STPSettings::STPHeightfieldSettings* para = nullptr;
-	//pinned memory
-	cudaMallocHost(&para, sizeof(STPSettings::STPHeightfieldSettings*));
-	cudaMemcpy(para, this->Settings, sizeof(STPSettings::STPHeightfieldSettings*), cudaMemcpyDeviceToHost);
-	return para;
-}
-
-__host__ void STPHeightfieldGenerator::freeHeightfieldParameter(STPSettings::STPHeightfieldSettings* const memory) {
-	cudaFreeHost(memory);
-}
-
 __device__ float3 STPKernelLauncher::normalize3DKERNEL(float3 vec3) {
 	const float length = sqrtf(powf(vec3.x, 2) + powf(vec3.y, 2) + powf(vec3.z, 2));
 	return make_float3(fdividef(vec3.x, length), fdividef(vec3.y, length), fdividef(vec3.z, length));
@@ -149,7 +221,10 @@ __global__ void STPKernelLauncher::curandInitKERNEL(STPHeightfieldGenerator::cur
 }
 
 __global__ void STPKernelLauncher::generateHeightmapKERNEL(STPSimplexNoise* const noise_fun, float* height_storage,
-	uint2 dimension, float2 half_dimension, STPSettings::STPHeightfieldSettings* const settings, float3 offset) {
+	uint2 dimension, float2 half_dimension, float3 offset) {
+	//convert constant memory to usable class
+	const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const settings = reinterpret_cast<const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
+
 	//the current working pixel
 	unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -177,7 +252,10 @@ __global__ void STPKernelLauncher::generateHeightmapKERNEL(STPSimplexNoise* cons
 	return;
 }
 
-__global__ void STPKernelLauncher::performErosionKERNEL(float* height_storage, uint2 dimension, STPHeightfieldGenerator::curandRNG* rng, STPSettings::STPRainDropSettings* const settings) {
+__global__ void STPKernelLauncher::performErosionKERNEL(float* height_storage, uint2 dimension, STPHeightfieldGenerator::curandRNG* rng) {
+	//convert constant memory to usable class
+	SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const settings = reinterpret_cast<SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
+
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
 	//generating random location
@@ -198,7 +276,10 @@ __global__ void STPKernelLauncher::performErosionKERNEL(float* height_storage, u
 }
 
 __global__ void STPKernelLauncher::generateNormalmapKERNEL(STPSimplexNoise* const noise_fun,
-	float* const heightmap, float* normal_storage, uint2 dimension, STPSettings::STPHeightfieldSettings* const settings) {
+	float* const heightmap, float* normal_storage, uint2 dimension) {
+	//convert constant memory to usable class
+	SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const settings = reinterpret_cast<SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
+
 	//the current working pixel
 	unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y;

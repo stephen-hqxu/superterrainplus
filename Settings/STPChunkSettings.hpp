@@ -57,7 +57,7 @@ namespace SuperTerrainPlus {
 
 			~STPChunkSettings() = default;
 
-			bool validate() override {
+			bool validate() const override {
 				return ChunkScaling > 0.0f;
 			}
 		};
