@@ -1,6 +1,8 @@
 #include "STPChunkProvider.h"
 
 using glm::vec2;
+using std::atomic_load_explicit;
+using std::atomic_store_explicit;
 
 using namespace SuperTerrainPlus;
 
@@ -44,7 +46,7 @@ bool STPChunkProvider::computeChunk(STPChunk* const current_chunk, vec2 chunkPos
 			static_cast<float>(this->ChunkSettings.MapSize.y - 1u) * chunkPos.y / (static_cast<float>(this->ChunkSettings.ChunkSize.y) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.z));
 
 	if (result) {//computation was successful
-		std::atomic_store_explicit<STPChunk::STPChunkState>(
+		atomic_store_explicit<STPChunk::STPChunkState>(
 			&current_chunk->State, STPChunk::STPChunkState::Erosion_Ready, std::memory_order::memory_order_relaxed);
 
 		//now converting image format to 16bit
@@ -55,7 +57,7 @@ bool STPChunkProvider::computeChunk(STPChunk* const current_chunk, vec2 chunkPos
 }
 
 bool STPChunkProvider::formatChunk(STPChunk* const current_chunk) {
-	if (std::atomic_load_explicit<STPChunk::STPChunkState>(
+	if (atomic_load_explicit<STPChunk::STPChunkState>(
 		&current_chunk->State, std::memory_order::memory_order_relaxed) != STPChunk::STPChunkState::Complete) {
 		//A static warpper to call the class function async
 		auto conversion_warpper = [converter = this->formatter](const float* original, unsigned short* output, int channel) -> bool {
@@ -69,9 +71,9 @@ bool STPChunkProvider::formatChunk(STPChunk* const current_chunk) {
 		status &= this->formatter->floatToshortCUDA(current_chunk->TerrainMaps[1], current_chunk->TerrainMaps_cache[1], 4);
 
 		//update the status
-		std::atomic_store_explicit<STPChunk::STPChunkState>(
+		atomic_store_explicit<STPChunk::STPChunkState>(
 			&current_chunk->State, STPChunk::STPChunkState::Complete, std::memory_order::memory_order_relaxed);
-		std::atomic_store_explicit<bool>(&current_chunk->inUsed, false, std::memory_order::memory_order_relaxed);
+		atomic_store_explicit<bool>(&current_chunk->inUsed, false, std::memory_order::memory_order_relaxed);
 		return status;
 	}
 
@@ -100,7 +102,7 @@ STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage*
 
 		//a new chunk
 		STPChunk* const current_chunk = new STPChunk(this->ChunkSettings.MapSize, true);
-		std::atomic_store_explicit<bool>(&current_chunk->inUsed, true, std::memory_order::memory_order_relaxed);
+		atomic_store_explicit<bool>(&current_chunk->inUsed, true, std::memory_order::memory_order_relaxed);
 		//lock the thread while writing into the data structure
 		{
 			std::unique_lock<std::shared_mutex> write_lock(this->chunk_storage_locker);//it will handle exception for us
@@ -128,8 +130,8 @@ STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage*
 		//	return false;
 		//}
 		//simplified with boolean algebra and invert it to true condition
-		if (!std::atomic_load_explicit<bool>(&storage_unit->inUsed, std::memory_order::memory_order_relaxed) &&
-			std::atomic_load_explicit<STPChunk::STPChunkState>(
+		if (!atomic_load_explicit<bool>(&storage_unit->inUsed, std::memory_order::memory_order_relaxed) &&
+			atomic_load_explicit<STPChunk::STPChunkState>(
 				&storage_unit->State, std::memory_order::memory_order_relaxed) == STPChunk::STPChunkState::Complete) {
 			//chunk is ready, we can return
 			return std::make_pair(STPChunkReadyStatus::Complete, storage_unit);
@@ -140,7 +142,7 @@ STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage*
 	}
 }
 
-const STPSettings::STPChunkSettings* STPChunkProvider::getChunkSettings() {
+const STPSettings::STPChunkSettings* STPChunkProvider::getChunkSettings() const {
 	return &(this->ChunkSettings);
 }
 

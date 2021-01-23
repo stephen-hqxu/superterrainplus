@@ -3,6 +3,29 @@
 
 using namespace SuperTerrainPlus::STPCompute;
 
+/**
+ * @brief Kernel launch and util functions
+*/
+namespace STPKernelLauncher {
+
+	/**
+	 * @brief Performing the conversion from _32F to _16
+	 * @param input The input image, each color channel occupies 32 bit (float)
+	 * @param output The output image, each color channel occupies 16 bit (unsigne short int)
+	 * @param dimension The size of the map
+	 * @param channel How many channel in the texture, the input and output channel will have the same number of channel
+	*/
+	__global__ void floatToshortKERNEL(const float* const, unsigned short*, uint2, int);
+
+	/**
+	 * @brief Convert _32F format to _16F
+	 * @param input The input image, each color channel occupies 32 bit (float)
+	 * @param output The output image, each color channel occupies 16 bit half float (unsigned short int will be used to interpret IEEE-754 half float format)
+	 * @param dimension The size of the map
+	 * @param channel How many channel in the texture, the input and output channel will have the same number of channel
+	*/
+	__global__ void floatTohalfKERNEL(const float* const, STPImageConverter::STPfloat16*, int2, int);
+}
 
 __host__ STPImageConverter::STPImageConverter(uint2 mapSize) {
 	//kernel launch parameters
@@ -15,7 +38,7 @@ __host__ STPImageConverter::~STPImageConverter() {
 
 }
 
-__host__ bool STPImageConverter::floatToshortCUDA(const float* const input, unsigned short* output, int channel) {
+__host__ bool STPImageConverter::floatToshortCUDA(const float* const input, unsigned short* output, int channel) const {
 	//the output, which should be _16 format
 	const unsigned int num_channel = this->dimension.x * this->dimension.y * channel;
 	bool no_error = true;

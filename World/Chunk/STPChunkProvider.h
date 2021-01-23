@@ -89,6 +89,14 @@ namespace SuperTerrainPlus {
 
 		~STPChunkProvider();
 
+		STPChunkProvider(const STPChunkProvider&) = delete;
+
+		STPChunkProvider(STPChunkProvider&&) = delete;
+
+		STPChunkProvider& operator=(const STPChunkProvider&) = delete;
+
+		STPChunkProvider& operator=(STPChunkProvider&&) = delete;
+
 		/**
 		 * @brief Request the texture maps in the given chunk storage if they can be found on library, otherwise compute will be dispatched
 		 * @param source The location where to load chunks from
@@ -101,7 +109,7 @@ namespace SuperTerrainPlus {
 		 * @brief Get the chunk settings
 		 * @return The chunk settings
 		*/
-		const STPSettings::STPChunkSettings* getChunkSettings();
+		const STPSettings::STPChunkSettings* getChunkSettings() const;
 		
 		/**
 		 * @brief Set the number of iteration each heightfield generation will use

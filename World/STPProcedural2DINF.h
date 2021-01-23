@@ -67,7 +67,7 @@ namespace SuperTerrainPlus {
 		 * @param name Name of the uniform
 		 * @return The uniform location
 		*/
-		GLint getLoc(const GLchar* const);
+		GLint getLoc(const GLchar* const) const;
 
 		/**
 		 * @brief Clearup the program, deleting buffers and exit

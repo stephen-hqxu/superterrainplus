@@ -53,15 +53,15 @@ namespace SuperTerrainPlus {
 			*/
 			__host__ STPSimplexNoise(const STPSettings::STPSimplexNoiseSettings* const);
 
-			__host__ STPSimplexNoise(const STPSimplexNoise&);
+			__host__ STPSimplexNoise(const STPSimplexNoise&) = delete;
 
-			__host__ STPSimplexNoise(STPSimplexNoise&&) noexcept;
+			__host__ STPSimplexNoise(STPSimplexNoise&&) = delete;
+
+			__host__ STPSimplexNoise& operator=(const STPSimplexNoise&) = delete;
+
+			__host__ STPSimplexNoise& operator=(STPSimplexNoise&&) = delete;
 
 			__host__ ~STPSimplexNoise();
-
-			__host__ STPSimplexNoise& operator=(const STPSimplexNoise&);
-
-			__host__ STPSimplexNoise& operator=(STPSimplexNoise&&) noexcept;
 
 			/**
 			 * @brief Initialise simplex noise generator glbally

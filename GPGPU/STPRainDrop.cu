@@ -46,11 +46,11 @@ __device__ float3 STPRainDrop::calcHeightGradients(float* const heightmap, uint2
 	return height_gradients;
 }
 
-__device__ float STPRainDrop::getCurrentVolume() {
+__device__ float STPRainDrop::getCurrentVolume() const {
 	return this->volume;
 }
 
-__device__ void STPRainDrop::Erode(STPSettings::STPRainDropSettings* const settings, uint2 mapSize, float* heightmap) {
+__device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* const settings, uint2 mapSize, float* heightmap) {
 	//Err, this algorithm is gonna be sick... But let's start!
 	//Rain drop is still alive, continue descending...
 	while (this->volume >= settings->minWaterVolume) {
@@ -101,7 +101,6 @@ __device__ void STPRainDrop::Erode(STPSettings::STPRainDropSettings* const setti
 			heightmap[mapIndex + 1] += depositAmount * offset_cell.x * (1.0f - offset_cell.y);
 			heightmap[mapIndex + mapSize.x] += depositAmount * (1.0f - offset_cell.x) * offset_cell.y;
 			heightmap[mapIndex + mapSize.x + 1] += depositAmount * offset_cell.x *  offset_cell.y;
-
 		}
 		else {
 			//erode a fraction of the droplet's current carry capacity
@@ -110,8 +109,11 @@ __device__ void STPRainDrop::Erode(STPSettings::STPRainDropSettings* const setti
 
 			//use erode brush to erode from all nodes inside the droplet's erode radius
 			for (unsigned int brushPointIndex = 0u; brushPointIndex < settings->getErosionBrushSize(); brushPointIndex++) {
-				int erodeIndex = mapIndex + settings->ErosionBrushIndices[brushPointIndex];
-				float weightederodeAmout = erodeAmout * settings->ErosionBrushWeights[brushPointIndex];
+				const int brush_index = __ldg(settings->ErosionBrushIndices + brushPointIndex);
+				const float brush_weight = __ldg(settings->ErosionBrushWeights + brushPointIndex);
+
+				int erodeIndex = mapIndex + brush_index;
+				float weightederodeAmout = erodeAmout * brush_weight;
 				float deltaSediment = (heightmap[erodeIndex] < weightederodeAmout) ? heightmap[erodeIndex] : weightederodeAmout;
 				//erode the map
 				heightmap[erodeIndex] -= deltaSediment;

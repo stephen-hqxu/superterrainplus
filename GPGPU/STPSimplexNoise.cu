@@ -12,26 +12,8 @@ __host__ STPSimplexNoise::STPSimplexNoise(const STPSettings::STPSimplexNoiseSett
 
 }
 
-__host__ STPSimplexNoise::STPSimplexNoise(const STPSimplexNoise& obj) : STPPermutationsGenerator(obj) {
-
-}
-
-__host__ STPSimplexNoise::STPSimplexNoise(STPSimplexNoise&& obj) noexcept : STPPermutationsGenerator(std::forward<STPPermutationsGenerator>(obj)) {
-
-}
-
 __host__ STPSimplexNoise::~STPSimplexNoise() {
 
-}
-
-__host__ STPSimplexNoise& STPSimplexNoise::operator=(const STPSimplexNoise& obj) {
-	STPPermutationsGenerator::operator=(obj);
-	return *this;
-}
-
-__host__ STPSimplexNoise& STPSimplexNoise::operator=(STPSimplexNoise&& obj) noexcept {
-	STPPermutationsGenerator::operator=(std::forward<STPPermutationsGenerator>(obj));
-	return *this;
 }
 
 __device__ float STPSimplexNoise::dot2D(float v1x, float v1y, float v2x, float v2y) const {

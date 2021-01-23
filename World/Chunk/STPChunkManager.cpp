@@ -238,7 +238,7 @@ int STPChunkManager::SyncloadChunks() {
 	}
 }
 
-STPChunkProvider* const STPChunkManager::getChunkProvider() {
+STPChunkProvider* const STPChunkManager::getChunkProvider() const {
 	return this->ChunkProvider;
 }
 #pragma warning(default : 4267)

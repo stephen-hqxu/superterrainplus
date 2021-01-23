@@ -5,6 +5,9 @@ using glm::uvec2;
 using glm::ivec2;
 using glm::vec3;
 
+using std::atomic_init;
+using std::atomic_load_explicit;
+
 using namespace SuperTerrainPlus;
 
 STPChunk::STPChunk(uvec2 size, bool initialise) : PixelSize(size) {
@@ -18,12 +21,12 @@ STPChunk::STPChunk(uvec2 size, bool initialise) : PixelSize(size) {
 		this->TerrainMaps_cache[1] = new unsigned short[num_pixel * 4];
 	}
 
-	std::atomic_init<STPChunkState>(&this->State, STPChunkState::Empty);
-	std::atomic_init<bool>(&this->inUsed, false);
+	atomic_init<STPChunkState>(&this->State, STPChunkState::Empty);
+	atomic_init<bool>(&this->inUsed, false);
 }
 
 STPChunk::~STPChunk() {
-	while (std::atomic_load_explicit<bool>(&this->inUsed, std::memory_order::memory_order_relaxed)) {
+	while (atomic_load_explicit<bool>(&this->inUsed, std::memory_order::memory_order_relaxed)) {
 		//make sure the chunk is not in used, and all previous tasks are finished
 	}
 
@@ -50,7 +53,7 @@ float* STPChunk::getNormalmap() {
 	return this->TerrainMaps[1];
 }
 
-const uvec2& STPChunk::getSize() {
+const uvec2& STPChunk::getSize() const {
 	return this->PixelSize;
 }
 

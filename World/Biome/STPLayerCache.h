@@ -101,7 +101,7 @@ namespace SuperTerrainPlus {
 			 * @brief Retrieve the size of the cache
 			 * @return The size of the cache
 			*/
-			size_t getCapacity();
+			size_t getCapacity() const;
 		};
 	}
 }

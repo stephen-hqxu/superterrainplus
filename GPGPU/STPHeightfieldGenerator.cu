@@ -63,19 +63,16 @@ namespace STPKernelLauncher {
 
 	/**
 	* @brief Generate the normal map for the height map within kernel
-	* @param noise_fun - The heightfield generator that's going to use
 	* @param heightmap - contains the height map that will be wused to generate the normal
 	* @param normal_storage - normal map, will be used to store the output of the normal map
 	* @param dimension - The width and height of both map
 	* @return True if the normal map is successully generated without errors
 	*/
-	__global__ void generateNormalmapKERNEL(STPSimplexNoise* const, float* const, float*, uint2);
+	__global__ void generateNormalmapKERNEL(float* const, float*, uint2);
 
 }
 
-__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPSimplexNoiseSettings* const noise_settings) {
-	//Init simplex noise generator and store it inside the device
-	STPSimplexNoise simplex_h(noise_settings);
+__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPSimplexNoiseSettings* const noise_settings) : simplex_h(noise_settings), Noise_Settings(*noise_settings) {
 	//allocating space
 	cudaMalloc(&this->simplex, sizeof(STPSimplexNoise));
 	//copy data
@@ -86,7 +83,6 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPSimple
 	this->numBlock_Map = dim3(noise_settings->Dimension.x / numThreadperBlock_Map.x, noise_settings->Dimension.y / numThreadperBlock_Map.y);
 	this->numThreadperBlock_Erosion = 1024;
 	this->numBlock_Erosion = 0;//This will be set after user call the setErosionIterationCUDA() method
-	this->Noise_Settings = new STPSettings::STPSimplexNoiseSettings(*noise_settings);
 }
 
 __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
@@ -95,7 +91,6 @@ __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 	if (this->RNG_Map != nullptr) {
 		cudaFree(this->RNG_Map);
 	}
-	delete this->Noise_Settings;
 }
 
 __host__ bool STPHeightfieldGenerator::useSettings(const STPSettings::STPHeightfieldSettings* const settings) {
@@ -123,7 +118,7 @@ __host__ bool STPHeightfieldGenerator::useSettings(const STPSettings::STPHeightf
 	return cudaSuccess == cudaMemcpyToSymbol(HeightfieldSettings, stored_settings, sizeof(STPSettings::STPHeightfieldSettings), 0ull, cudaMemcpyHostToDevice);
 }
 
-__host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap, float* normalmap, float3 offset) {
+__host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap, float* normalmap, float3 offset) const {
 	//check the availiability of the engine
 	if (this->RNG_Map == nullptr) {
 		return false;
@@ -131,7 +126,7 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap,
 	
 	//allocating spaces for texture, storing on device
 	//this is the size for a texture in one channel
-	const int num_pixel = this->Noise_Settings->Dimension.x * this->Noise_Settings->Dimension.y;
+	const int num_pixel = this->Noise_Settings.Dimension.x * this->Noise_Settings.Dimension.y;
 	const int map_size = num_pixel * sizeof(float);
 	float* heightfield_d[2] = {nullptr};//heightmap and normalmap
 
@@ -148,13 +143,13 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap,
 
 	//calculate heightmap
 	STPKernelLauncher::generateHeightmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_d[0],
-		this->Noise_Settings->Dimension, make_float2(1.0f * this->Noise_Settings->Dimension.x / 2.0f, 1.0f * this->Noise_Settings->Dimension.y / 2.0f), offset);
+		this->Noise_Settings.Dimension, make_float2(1.0f * this->Noise_Settings.Dimension.x / 2.0f, 1.0f * this->Noise_Settings.Dimension.y / 2.0f), offset);
 	//performing erosion
 	STPKernelLauncher::performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, 0, stream >> > (heightfield_d[0], 
-		this->Noise_Settings->Dimension, this->RNG_Map);
+		this->Noise_Settings.Dimension, this->RNG_Map);
 	//calculating normalmap
-	STPKernelLauncher::generateNormalmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_d[0], heightfield_d[1],
-		this->Noise_Settings->Dimension);
+	STPKernelLauncher::generateNormalmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (heightfield_d[0], heightfield_d[1],
+		this->Noise_Settings.Dimension);
 	
 	//copy the result back to the host
 	no_error &= cudaSuccess == cudaMemcpyAsync(heightmap, heightfield_d[0], map_size, cudaMemcpyDeviceToHost, stream);
@@ -187,7 +182,7 @@ __host__ bool STPHeightfieldGenerator::setErosionIterationCUDA(unsigned int rain
 	}
 	no_error &= cudaSuccess == cudaMalloc(&this->RNG_Map, sizeof(curandRNG) * raindrop_count);
 	//and send to kernel
-	STPKernelLauncher::curandInitKERNEL<<<this->numBlock_Erosion, this->numThreadperBlock_Erosion>>>(this->RNG_Map, this->Noise_Settings->Seed);
+	STPKernelLauncher::curandInitKERNEL<<<this->numBlock_Erosion, this->numThreadperBlock_Erosion>>>(this->RNG_Map, this->Noise_Settings.Seed);
 	no_error &= cudaSuccess == cudaDeviceSynchronize();
 	//leave the result on device, and update the raindrop count
 	this->NumRaindrop = raindrop_count;
@@ -195,7 +190,7 @@ __host__ bool STPHeightfieldGenerator::setErosionIterationCUDA(unsigned int rain
 	return no_error;
 }
 
-__host__ int STPHeightfieldGenerator::getErosionIteration() {
+__host__ int STPHeightfieldGenerator::getErosionIteration() const {
 	return this->NumRaindrop;
 }
 
@@ -254,7 +249,8 @@ __global__ void STPKernelLauncher::generateHeightmapKERNEL(STPSimplexNoise* cons
 
 __global__ void STPKernelLauncher::performErosionKERNEL(float* height_storage, uint2 dimension, STPHeightfieldGenerator::curandRNG* rng) {
 	//convert constant memory to usable class
-	SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const settings = reinterpret_cast<SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
+	SuperTerrainPlus::STPSettings::STPRainDropSettings* const settings = 
+		reinterpret_cast<SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
 
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
@@ -275,8 +271,7 @@ __global__ void STPKernelLauncher::performErosionKERNEL(float* height_storage, u
 	droplet.Erode(settings, dimension, height_storage);
 }
 
-__global__ void STPKernelLauncher::generateNormalmapKERNEL(STPSimplexNoise* const noise_fun,
-	float* const heightmap, float* normal_storage, uint2 dimension) {
+__global__ void STPKernelLauncher::generateNormalmapKERNEL(float* const heightmap, float* normal_storage, uint2 dimension) {
 	//convert constant memory to usable class
 	SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const settings = reinterpret_cast<SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
 

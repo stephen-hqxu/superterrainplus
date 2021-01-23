@@ -72,6 +72,6 @@ void STPLayerCache::clearCache() {
 	memset(this->Value, 0x00, sizeof(Sample) * capacity);
 }
 
-size_t STPLayerCache::getCapacity() {
+size_t STPLayerCache::getCapacity() const {
 	return this->Mask + 1ull;
 }

@@ -66,7 +66,7 @@ Seed STPLayer::genLayerSeed(Seed global_seed, Seed salt) {
 	return layer_seed;
 }
 
-Seed STPLayer::genLocalSeed(int x, int z) {
+Seed STPLayer::genLocalSeed(int x, int z) const {
 	Seed local_seed = STPSeedMixer::mixSeed(this->LayerSeed, x);
 	local_seed = STPSeedMixer::mixSeed(local_seed, z);
 	local_seed = STPSeedMixer::mixSeed(local_seed, x);
@@ -84,7 +84,7 @@ size_t STPLayer::cacheSize() const {
 	return this->Cache->getCapacity();
 }
 
-STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) {
+STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) const {
 	return STPLayer::STPLocalRNG(local_seed);
 }
 
@@ -99,11 +99,11 @@ Sample STPLayer::sample_cached(int x, int y, int z) {
 	return this->sample(x, y, z);
 }
 
-STPLayer* const STPLayer::getAscendant(unsigned int index) {
+STPLayer* const STPLayer::getAscendant(unsigned int index) const {
 	return this->getAscendantCount() != 0 && index < this->getAscendantCount() ? this->Ascendant[index] : nullptr;
 }
 
-STPLayer* const STPLayer::getAscendant() {
+STPLayer* const STPLayer::getAscendant() const {
 	return this->getAscendant(0);
 }
 

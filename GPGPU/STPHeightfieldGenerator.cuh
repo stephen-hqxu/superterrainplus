@@ -44,8 +44,9 @@ namespace SuperTerrainPlus {
 			 * @brief Simplex noise generator, on device
 			*/
 			STPSimplexNoise* simplex = nullptr;
+			const STPSimplexNoise simplex_h;
 			//All parameters for the noise generator, stoed on host, passing value to device
-			STPSettings::STPSimplexNoiseSettings* Noise_Settings = nullptr;
+			const STPSettings::STPSimplexNoiseSettings Noise_Settings;
 
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency
 			curandRNG* RNG_Map = nullptr;
@@ -62,6 +63,14 @@ namespace SuperTerrainPlus {
 			__host__ STPHeightfieldGenerator(STPSettings::STPSimplexNoiseSettings* const);
 
 			__host__ ~STPHeightfieldGenerator();
+
+			__host__ STPHeightfieldGenerator(const STPHeightfieldGenerator&) = delete;
+
+			__host__ STPHeightfieldGenerator(STPHeightfieldGenerator&&) = delete;
+
+			__host__ STPHeightfieldGenerator& operator=(const STPHeightfieldGenerator&) = delete;
+
+			__host__ STPHeightfieldGenerator& operator=(STPHeightfieldGenerator&&) = delete;
 
 			/**
 			 * @brief Load the settings for heightfield generator, all subsequent computation will base on this settings. Settings are copied.
@@ -88,7 +97,7 @@ namespace SuperTerrainPlus {
 			 * The offset parameter will only be applied on the heightmap generation.
 			 * @return True if all operation are successful without any errors
 			*/
-			__host__ bool generateHeightfieldCUDA(float*, float*, float3 = make_float3(0.0f, 0.0f, 0.0f));
+			__host__ bool generateHeightfieldCUDA(float*, float*, float3 = make_float3(0.0f, 0.0f, 0.0f)) const;
 
 			/**
 			 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.
@@ -102,7 +111,7 @@ namespace SuperTerrainPlus {
 			 * @brief Get the number of iteration for hydraulic erosion
 			 * @return The number of raindrop to erode the terrain
 			*/
-			__host__ int getErosionIteration();
+			__host__ int getErosionIteration() const;
 
 		};
 

@@ -178,9 +178,9 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Users\steph\source\repos\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\steph\source\repos\libs;$(LibraryPath)</LibraryPath>
-    <ReferencePath>C:\Users\steph\source\repos\libs;$(ReferencePath)</ReferencePath>
+    <IncludePath>C:\Users\steph\source\repos\SuperTerrain+\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\steph\source\repos\SuperTerrain+\include\lib;$(LibraryPath)</LibraryPath>
+    <ReferencePath>C:\Users\steph\source\repos\SuperTerrain+\include\lib;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -214,8 +214,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>
-      </PreprocessorDefinitions>
+      <PreprocessorDefinitions>_STP_DEBUG_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>Default</LanguageStandard_C>
@@ -230,13 +229,19 @@
     </CudaCompile>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_52,sm_52;%(CodeGeneration)</CodeGeneration>
+      <CodeGeneration>compute_75,sm_75;%(CodeGeneration)</CodeGeneration>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
       <GPUDebugInfo>true</GPUDebugInfo>
       <HostDebugInfo>true</HostDebugInfo>
       <AdditionalOptions>--extended-lambda --ptxas-options=-v %(AdditionalOptions)</AdditionalOptions>
       <MaxRegCount>128</MaxRegCount>
     </CudaCompile>
+    <CudaLink>
+      <GPUDebugInfo>InheritFromProject</GPUDebugInfo>
+    </CudaLink>
+    <CudaLink>
+      <Optimization>InheritFromProject</Optimization>
+    </CudaLink>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -263,13 +268,19 @@
     </CudaCompile>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_52,sm_52;%(CodeGeneration)</CodeGeneration>
+      <CodeGeneration>compute_75,sm_75;%(CodeGeneration)</CodeGeneration>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
       <GPUDebugInfo>false</GPUDebugInfo>
       <HostDebugInfo>false</HostDebugInfo>
       <AdditionalOptions>--extended-lambda --ptxas-options=-v %(AdditionalOptions)</AdditionalOptions>
       <MaxRegCount>128</MaxRegCount>
     </CudaCompile>
+    <CudaLink>
+      <GPUDebugInfo>InheritFromProject</GPUDebugInfo>
+    </CudaLink>
+    <CudaLink>
+      <Optimization>InheritFromProject</Optimization>
+    </CudaLink>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

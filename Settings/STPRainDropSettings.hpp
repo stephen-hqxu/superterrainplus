@@ -63,11 +63,9 @@ namespace SuperTerrainPlus {
 			//Control how fast water droplet descends.
 			float Gravity;
 			//Precomputed erosion brush indices, stored on device.
-			int* ErosionBrushIndices;
+			int* ErosionBrushIndices = nullptr;
 			//Precomputed erosion brush weights, stored on device.
-			float* ErosionBrushWeights;
-
-		public:
+			float* ErosionBrushWeights = nullptr;
 
 			/**
 			 * @brief Init STPRainDropSettings with default values.
@@ -343,7 +341,7 @@ namespace SuperTerrainPlus {
 			 * @brief Get the radius of the erosion brush
 			 * @return The radius of the erosion brush
 			*/
-			__host__ __device__ unsigned int getErosionBrushRadius() {
+			__host__ __device__ unsigned int getErosionBrushRadius() const {
 				return this->ErosionBrushRadius;
 			}
 
@@ -351,9 +349,10 @@ namespace SuperTerrainPlus {
 			 * @brief Get the number of erosion brush
 			 * @return The number of erosion brush
 			*/
-			__host__ __device__ unsigned int getErosionBrushSize() {
+			__host__ __device__ unsigned int getErosionBrushSize() const {
 				return this->BrushSize;
 			}
+
 		};
 
 	}

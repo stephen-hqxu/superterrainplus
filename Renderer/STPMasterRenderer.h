@@ -181,6 +181,9 @@ namespace SuperTerrainPlus {
 			
 			glPatchParameteri(GL_PATCH_VERTICES, 3);//barycentric coordinate system
 
+			cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+			cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
+
 			//starting thread pool
 			this->command_pool = new STPThreadPool(5u);
 			//loading terrain 2d inf parameters

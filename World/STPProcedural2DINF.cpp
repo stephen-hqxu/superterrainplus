@@ -128,7 +128,7 @@ void STPProcedural2DINF::loadPlane() {
 	return;
 }
 
-GLint STPProcedural2DINF::getLoc(const GLchar* const name) {
+GLint STPProcedural2DINF::getLoc(const GLchar* const name) const {
 	return glGetUniformLocation(this->Terrain2d_shader.getP(), name);
 }
 

@@ -42,6 +42,14 @@ namespace SuperTerrainPlus {
 
 			__host__ ~STPImageConverter();
 
+			__host__ STPImageConverter(const STPImageConverter&) = delete;
+
+			__host__ STPImageConverter(STPImageConverter&&) = delete;
+
+			__host__ STPImageConverter& operator=(const STPImageConverter&) = delete;
+
+			__host__ STPImageConverter& operator=(STPImageConverter&&) = delete;
+
 			/**
 			 * @brief Convert _32F format to _16
 			 * @param input The input image, each color channel occupies 32 bit (float)
@@ -49,7 +57,7 @@ namespace SuperTerrainPlus {
 			 * @param channel How many channel in the texture, the input and output channel will have the same number of channel
 			 * @return True if conversion was successful without errors
 			*/
-			__host__ bool floatToshortCUDA(const float* const, unsigned short*, int);
+			__host__ bool floatToshortCUDA(const float* const, unsigned short*, int) const;
 
 			/**
 			 * @brief Convert _32F format to _16F
@@ -58,33 +66,9 @@ namespace SuperTerrainPlus {
 			 * @param channel How many channel in the texture, the input and output channel will have the same number of channel
 			 * @return True if conversion was successful without errors
 			*/
-			__host__ bool floatTohalfCUDA(const float* const, STPfloat16*, int);
+			__host__ bool floatTohalfCUDA(const float* const, STPfloat16*, int) const;
 			
 		};
-
-		/**
-		 * @brief Kernel launch and util functions
-		*/
-		namespace STPKernelLauncher {
-
-			/**
-			 * @brief Performing the conversion from _32F to _16
-			 * @param input The input image, each color channel occupies 32 bit (float)
-			 * @param output The output image, each color channel occupies 16 bit (unsigne short int)
-			 * @param dimension The size of the map
-			 * @param channel How many channel in the texture, the input and output channel will have the same number of channel
-			*/
-			__global__ void floatToshortKERNEL(const float* const, unsigned short*, uint2, int);
-
-			/**
-			 * @brief Convert _32F format to _16F
-			 * @param input The input image, each color channel occupies 32 bit (float)
-			 * @param output The output image, each color channel occupies 16 bit half float (unsigned short int will be used to interpret IEEE-754 half float format)
-			 * @param dimension The size of the map
-			 * @param channel How many channel in the texture, the input and output channel will have the same number of channel
-			*/
-			__global__ void floatTohalfKERNEL(const float* const, STPImageConverter::STPfloat16*, int2, int);
-		}
 
 	}
 }

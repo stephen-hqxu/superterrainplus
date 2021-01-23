@@ -52,6 +52,17 @@ namespace SuperTerrainPlus {
 		std::atomic<bool> inUsed;
 		std::atomic<STPChunkState> State;
 
+		/**
+		 * @brief Clone the terrain map, this is only used by STPChunk for constructors
+		 * @tparam T Type of the texture
+		 * @param dest The destination to store
+		 * @param src Source to clone from
+		 * @param size Number of byte to clone
+		 * @param realloc_dest If true, dest will be deleted first then reallocated and copy to.
+		*/
+		template<typename T>
+		static void cloneMap(T*&, const T* const, size_t, bool = false);
+
 	public:
 
 		/**
@@ -60,6 +71,14 @@ namespace SuperTerrainPlus {
 		 * @param initialise - Set true to pre-allocate spaces for all map.
 		*/
 		STPChunk(glm::uvec2, bool = true);
+
+		STPChunk(const STPChunk&) = delete;
+
+		STPChunk(STPChunk&&) = delete;
+
+		STPChunk& operator=(const STPChunk&) = delete;
+
+		STPChunk& operator=(STPChunk&&) = delete;
 
 		~STPChunk();
 
@@ -82,7 +101,7 @@ namespace SuperTerrainPlus {
 		 * @brief Return the reference to the size of the pixels for all maps
 		 * @return The reference to the size of the pixels for all maps
 		*/
-		const glm::uvec2& getSize();
+		const glm::uvec2& getSize() const;
 
 		/**
 		 * @brief Get the chunk position in world where the camera is located

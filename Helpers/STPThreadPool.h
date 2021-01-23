@@ -51,13 +51,13 @@ namespace SuperTerrainPlus {
 		 * @brief Check the number of task that is currently waiting for excecution. Data safety is guaranteed.
 		 * @return The number of task that is currently waiting.
 		*/
-		size_t size();
+		size_t size() const;
 
 		/**
 		 * @brief Check if the thread pool is running. Tasks can only be inserted if the pool is running.
 		 * @return True if the pool is running
 		*/
-		bool isRunning();
+		bool isRunning() const;
 
 		/**
 		 * @brief Adding new task into the worker queue. Function will continue without waiting for execution.

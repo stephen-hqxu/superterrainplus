@@ -77,7 +77,7 @@ namespace SuperTerrainPlus {
 			 * @brief Get the current water content in the droplet
 			 * @return The current volume in the water droplet
 			*/
-			__device__ float getCurrentVolume();
+			__device__ float getCurrentVolume() const;
 
 			/**
 			 * @brief Performing hydraulic erosion algorithm to descend the raindrop downhill once, water drop will bring sediment but lose water each time this method is called
@@ -85,7 +85,7 @@ namespace SuperTerrainPlus {
 			 * @param heightmap - The heightmap data, should be precomputed
 			 * @param settings - The raindrop settings for erosion
 			*/
-			__device__ void Erode(STPSettings::STPRainDropSettings* const, uint2, float*);
+			__device__ void Erode(const STPSettings::STPRainDropSettings* const, uint2, float*);
 
 		};
 

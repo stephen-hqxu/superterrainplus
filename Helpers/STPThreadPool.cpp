@@ -52,7 +52,7 @@ STPThreadPool::~STPThreadPool() {
 	}
 }
 
-size_t STPThreadPool::size() {
+size_t STPThreadPool::size() const {
 	size_t size;
 	{
 		std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
@@ -61,7 +61,7 @@ size_t STPThreadPool::size() {
 	return size;
 }
 
-bool STPThreadPool::isRunning() {
+bool STPThreadPool::isRunning() const {
 	bool isrunning;
 	{
 		std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);

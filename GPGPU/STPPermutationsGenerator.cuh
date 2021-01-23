@@ -63,19 +63,12 @@ namespace SuperTerrainPlus {
 			//Generated permutation table, it will be shuffled by rng
 			//stored on device
 			unsigned char* PERMUTATIONS = nullptr;
-			//cached permutation lookup table
-			cudaTextureObject_t PERMUTATIONS_cached;
 
 			//Gradient table for simplex noise 2D, the modular of the offset will equal to 1.0
 			double* GRADIENT2D = nullptr;
 
 			//The size of the gradient table
-			unsigned int GRADIENT2D_SIZE;
-
-			/**
-			 * @brief Cache the permutation table so it can be accessed more efficiently
-			*/
-			__host__ void cachePermutation();
+			const unsigned int GRADIENT2D_SIZE;
 
 		public:
 
@@ -88,16 +81,16 @@ namespace SuperTerrainPlus {
 			__host__ STPPermutationsGenerator(unsigned long long, unsigned int = 8u, double = 0.0);
 
 			//Copy permutation generator, deep copy for generated gradient and permutation will be performed.
-			__host__ STPPermutationsGenerator(const STPPermutationsGenerator&);
+			__host__ STPPermutationsGenerator(const STPPermutationsGenerator&) = delete;
 
-			__host__ STPPermutationsGenerator(STPPermutationsGenerator&&) noexcept;
-
-			__host__ ~STPPermutationsGenerator();
+			__host__ STPPermutationsGenerator(STPPermutationsGenerator&&) = delete;
 
 			//Copy the permutation to the destination class, deep copy for generated gradient and permutation will be performed.
-			__host__ STPPermutationsGenerator& operator=(const STPPermutationsGenerator&);
+			__host__ STPPermutationsGenerator& operator=(const STPPermutationsGenerator&) = delete;
 
-			__host__ STPPermutationsGenerator& operator=(STPPermutationsGenerator&&) noexcept;
+			__host__ STPPermutationsGenerator& operator=(STPPermutationsGenerator&&) = delete;
+
+			__host__ ~STPPermutationsGenerator();
 
 			/**
 			 * @brief Return the randomly generated permutation element from the class generated table.

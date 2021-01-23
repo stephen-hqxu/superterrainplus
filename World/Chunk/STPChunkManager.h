@@ -84,6 +84,14 @@ namespace SuperTerrainPlus {
 
 		~STPChunkManager();
 
+		STPChunkManager(const STPChunkManager&) = delete;
+
+		STPChunkManager(STPChunkManager&&) = delete;
+
+		STPChunkManager& operator=(const STPChunkManager&) = delete;
+
+		STPChunkManager& operator=(STPChunkManager&&) = delete;
+
 		/**
 		 * @brief Generate texture mipmap for 2 terrain texture
 		*/
@@ -131,7 +139,7 @@ namespace SuperTerrainPlus {
 		 * @brief Get the chunk provider
 		 * @return The chunk provider
 		*/
-		STPChunkProvider* const getChunkProvider();
+		STPChunkProvider* const getChunkProvider() const;
 
 	};
 }
