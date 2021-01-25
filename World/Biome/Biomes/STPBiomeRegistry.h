@@ -320,7 +320,7 @@ namespace STPDemo {
 			//the power of functional programming
 			//everyone must be true to be considered as true
 			//c++17 fold function
-			return (*(checker)(samples) && ...);
+			return ((*checker)(samples) && ...);
 		}
 
 		/**

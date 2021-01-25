@@ -61,6 +61,7 @@ Stephen Xu - stephen.hqxu@gmail.com
 Project Link: [Click Me](https://github.com/stephen-hqxu/superterrainplus)
 
 # Acknowledgements :envelope:
-- [README template](https://github.com/othneildrew/Best-README-Template
+- [README template](https://github.com/othneildrew/Best-README-Template)
 - [Ported from Minecraft biome generator](https://github.com/KaptainWutax/BiomeUtils)
-- [Prticle based hydraulic erosion](https://github.com/SebLague/Hydraulic-Erosion/tree/Coding-Adventure-E01)
+- [Particle based hydraulic erosion](https://github.com/SebLague/Hydraulic-Erosion/tree/Coding-Adventure-E01)
+- [Catch Test](https://github.com/catchorg/Catch2)

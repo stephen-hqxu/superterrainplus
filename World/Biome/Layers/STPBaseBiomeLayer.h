@@ -167,11 +167,11 @@ namespace STPDemo {
 			const Sample temp = this->getAscendant(0)->sample_cached(x, y, z);
 			const Sample prec = this->getAscendant(1)->sample_cached(x, y, z);
 			//get the index of lookup table
-			const unsigned short x = STPBaseBiomeLayer::interpret(temp);
-			const unsigned short y = STPBaseBiomeLayer::interpret(prec);
+			const unsigned short row = STPBaseBiomeLayer::interpret(temp);
+			const unsigned short column = STPBaseBiomeLayer::interpret(prec);
 			
 			//randomly choose a biome that satisfies our temp and prec
-			const BiomeList& biomes = this->ClimateClassification[x][y >> 1u];
+			const BiomeList& biomes = this->ClimateClassification[row][column >> 1u];
 
 			//there is no satifying biome, randomly choose one from the default biome
 			return biomes.empty() ? this->DEFAULT_BIOMES[rng.nextVal(this->DEFAULT_BIOMES.size())] : biomes[rng.nextVal(biomes.size())];
