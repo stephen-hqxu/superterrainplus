@@ -25,10 +25,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="STPTestFramework.h" />
+    <ClInclude Include="STPTestReporter.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="STPBiomeTest.cpp" />
     <ClCompile Include="STPSettingsValidation.cpp" />
     <ClCompile Include="STPTestFramework.cpp" />
+    <ClCompile Include="STPUtiltyTest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="STPAlgorithmTest.cu" />

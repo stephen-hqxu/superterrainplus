@@ -3,6 +3,10 @@
 using namespace SuperTerrainPlus;
 
 STPThreadPool::STPThreadPool(unsigned int count) {
+	if (count == 0u) {
+		throw std::invalid_argument("The number of worker in a thread pool must be greater than 0");
+	}
+
 	//start the thread pool
 	this->running = true;
 

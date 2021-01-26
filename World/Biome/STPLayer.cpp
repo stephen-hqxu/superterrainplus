@@ -116,5 +116,5 @@ bool STPLayer::isMerging() const {
 }
 
 bool STPLayer::hasAscendant() const {
-	return this->getAscendantCount() == 0;
+	return this->getAscendantCount() != 0;
 }

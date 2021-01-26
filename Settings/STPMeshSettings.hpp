@@ -64,8 +64,8 @@ namespace SuperTerrainPlus {
 				bool validate() const override {
 					return this->MaxTessLevel >= 0.0f
 						&& this->MinTessLevel >= 0.0f
-						&& this->FurthestTessDistance > 0.0f
-						&& this->NearestTessDistance > 0.0f
+						&& this->FurthestTessDistance >= 0.0f
+						&& this->NearestTessDistance >= 0.0f
 						//range check
 						&& this->MaxTessLevel >= this->MinTessLevel
 						&& this->FurthestTessDistance >= this->NearestTessDistance;

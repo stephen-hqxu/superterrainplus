@@ -8,6 +8,10 @@ using std::shuffle;
 using namespace SuperTerrainPlus::STPCompute;
 
 __host__ STPPermutationsGenerator::STPPermutationsGenerator(unsigned long long seed, unsigned int distribution, double offset) : GRADIENT2D_SIZE(distribution) {
+	if (distribution == 0u) {
+		throw std::exception("Distribution must be greater than 0");
+	}
+
 	//seed the engine
 	STPPermutationRNG rng;
 	rng.seed(seed);

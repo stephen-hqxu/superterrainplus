@@ -11,6 +11,7 @@ Super Terrain :mountain: :heavy_plus_sign: (or STP in short) is a 3-D procedural
 - [GLM](https://github.com/g-truc/glm)
 - [GLFW](https://www.glfw.org/)
 - [GLAD](https://glad.dav1d.de/)
+- [Catch2](https://github.com/catchorg/Catch2)
 
 Those libraries are available in my public repo :+1:
 
