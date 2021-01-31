@@ -236,6 +236,9 @@
     <ClInclude Include="World\Biome\STPBiomeFactory.h">
       <Filter>World\Biome</Filter>
     </ClInclude>
+    <ClInclude Include="Helpers\STPMemoryPool.hpp">
+      <Filter>Helpers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GLSL\STPsky.frag">
@@ -270,6 +273,9 @@
     </None>
     <None Include="LICENSE" />
     <None Include="README.md" />
+    <None Include="GPGPU\STPHeightfieldGenerator.inl">
+      <Filter>GPGPU</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="GPGPU\STPSimplexNoise.cu">

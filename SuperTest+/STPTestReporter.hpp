@@ -89,9 +89,30 @@ namespace Catch {
 
 		void testRunEndedCumulative() override {
 			
-		}
+		} 
 
 		void testGroupEnded(const TestGroupStats& group) override {
+			const auto& groupinfo = group.groupInfo;
+
+			std::stringstream ss;
+			ss << "Group " << groupinfo.groupIndex << "/" << groupinfo.groupsCounts << " -- " << groupinfo.name;
+			const std::string name = ss.str();
+			const size_t empty = CATCH_CONFIG_CONSOLE_WIDTH - name.length();
+			for (int i = 0; i < empty / 2; i++) {
+				stream << " ";
+			}
+			stream << name;
+			
+			for (int i = 0; i < empty / 2; i++) {
+				stream << " ";
+			}
+			stream << "\n";
+
+			for (int i = 0; i < CATCH_CONFIG_CONSOLE_WIDTH; i++) {
+				stream << ".";
+			}
+			stream << "\n";
+
 			for (auto cases = this->m_testCases.begin(); cases != this->m_testCases.end(); cases++) {
 				//writing test cases starting
 				const auto& case_stats = cases->get()->value;

@@ -72,6 +72,16 @@ namespace STPKernelLauncher {
 
 }
 
+__host__ float* STPHeightfieldGenerator::STPHeightfieldAllocator::allocate(size_t count) {
+	float* mem = nullptr;
+	cudaMalloc(&mem, sizeof(float) * count);
+	return mem;
+}
+
+__host__ void STPHeightfieldGenerator::STPHeightfieldAllocator::deallocate(size_t count, float* ptr) {
+	cudaFree(ptr);
+}
+
 __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPSimplexNoiseSettings* const noise_settings) : simplex_h(noise_settings), Noise_Settings(*noise_settings) {
 	//allocating space
 	cudaMalloc(&this->simplex, sizeof(STPSimplexNoise));
@@ -90,6 +100,9 @@ __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 	//check if the rng has been init
 	if (this->RNG_Map != nullptr) {
 		cudaFree(this->RNG_Map);
+	}
+	if (this->BiomeDictionary != nullptr) {
+		cudaFree(this->BiomeDictionary);
 	}
 }
 
@@ -123,6 +136,10 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap,
 	if (this->RNG_Map == nullptr) {
 		return false;
 	}
+	//check the availability of biome dictionary
+	/*if (this->BiomeDictionary == nullptr) {
+		return false;
+	}*/
 	
 	//allocating spaces for texture, storing on device
 	//this is the size for a texture in one channel
@@ -133,8 +150,11 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap,
 	bool no_error = true;//check for error, true if all successful
 	//regarding the size of the heightfields, heightmap, streammap and poolmap are all having R32F format, while normalmap uses RGBA32F
 	//so there are 7 channels in total
-	no_error &= cudaSuccess == cudaMalloc(&(heightfield_d[0]), map_size);
-	no_error &= cudaSuccess == cudaMalloc(&(heightfield_d[1]), map_size * 4);
+	{
+		std::unique_lock<std::mutex> lock(this->memorypool_lock);
+		heightfield_d[0] = this->MapCache_device.allocate(map_size);
+		heightfield_d[1] = this->MapCache_device.allocate(map_size * 4);
+	}
 
 	//creating stream so cpu thread can calculate all chunks altogether
 	cudaStream_t stream;
@@ -158,8 +178,11 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap,
 	//block the host thread 
 	no_error &= cudaSuccess == cudaStreamSynchronize(stream);
 	//clear up when the device is ready
-	no_error &= cudaSuccess == cudaFree(heightfield_d[0]);
-	no_error &= cudaSuccess == cudaFree(heightfield_d[1]);
+	{
+		std::unique_lock<std::mutex> lock(this->memorypool_lock);
+		this->MapCache_device.deallocate(map_size, heightfield_d[0]);
+		this->MapCache_device.deallocate(map_size * 4, heightfield_d[1]);
+	}
 	no_error &= cudaSuccess == cudaStreamDestroy(stream);
 
 	return no_error;
@@ -190,7 +213,7 @@ __host__ bool STPHeightfieldGenerator::setErosionIterationCUDA(unsigned int rain
 	return no_error;
 }
 
-__host__ int STPHeightfieldGenerator::getErosionIteration() const {
+__host__ unsigned int STPHeightfieldGenerator::getErosionIteration() const {
 	return this->NumRaindrop;
 }
 

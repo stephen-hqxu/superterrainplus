@@ -32,7 +32,7 @@ namespace SuperTerrainPlus {
 		//task queue
 		mutable std::shared_mutex task_queue_locker;
 		std::queue<std::function<void(void)>> task;
-		std::condition_variable_any condition;
+		mutable std::condition_variable_any condition;
 
 		//worker
 		std::vector<std::thread> worker;

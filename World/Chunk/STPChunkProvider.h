@@ -56,9 +56,9 @@ namespace SuperTerrainPlus {
 		const STPSettings::STPChunkSettings ChunkSettings;
 
 		//Heightfield generator
-		STPCompute::STPHeightfieldGenerator* heightmap_gen = nullptr;
+		STPCompute::STPHeightfieldGenerator heightmap_gen;
 		//formatter
-		STPCompute::STPImageConverter* formatter = nullptr;
+		const STPCompute::STPImageConverter formatter;
 
 		/**
 		 * @brief Dispatch compute for 2d terrain asynchornously, the results will be written back to chunk storage
@@ -87,15 +87,7 @@ namespace SuperTerrainPlus {
 		*/
 		STPChunkProvider(STPSettings::STPConfigurations*, STPThreadPool* const);
 
-		~STPChunkProvider();
-
-		STPChunkProvider(const STPChunkProvider&) = delete;
-
-		STPChunkProvider(STPChunkProvider&&) = delete;
-
-		STPChunkProvider& operator=(const STPChunkProvider&) = delete;
-
-		STPChunkProvider& operator=(STPChunkProvider&&) = delete;
+		~STPChunkProvider() = default;
 
 		/**
 		 * @brief Request the texture maps in the given chunk storage if they can be found on library, otherwise compute will be dispatched
@@ -103,7 +95,7 @@ namespace SuperTerrainPlus {
 		 * @param chunkPos The world position of this chunk, this acts as a key in the look up table
 		 * @return A pair of chunk ready status and the pointer to the chunk (respect to the provided chunk storage)
 		*/
-		STPChunkLoaded requestChunk(STPChunkStorage*, glm::vec2);
+		STPChunkLoaded requestChunk(STPChunkStorage&, glm::vec2);
 
 		/**
 		 * @brief Get the chunk settings

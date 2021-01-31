@@ -1,15 +1,19 @@
 #pragma once
 #include "STPSimplexNoise.cuh"
+#include <stdexcept>
 
 using namespace SuperTerrainPlus::STPCompute;
 
+bool init = false;
 __constant__ double F2[1]; // 0.5 * (static_cast<double>(sqrt(3.0)) - 1.0);
 __constant__ double G2[1]; // (3.0 - static_cast<double>(sqrt(3.0))) / 6.0;
 __constant__ double H2[1]; // -1.0 + 2.0 * G2;
 
 __host__ STPSimplexNoise::STPSimplexNoise(const STPSettings::STPSimplexNoiseSettings* const noise_settings)
 	: STPPermutationsGenerator(noise_settings->Seed, noise_settings->Distribution, noise_settings->Offset) {
-
+	if (!init) {
+		throw std::runtime_error("Simplex noise generator has been initialised");
+	}
 }
 
 __host__ STPSimplexNoise::~STPSimplexNoise() {
@@ -30,6 +34,7 @@ __host__ bool STPSimplexNoise::initialise() {
 	status &= cudaSuccess == cudaMemcpyToSymbol(G2, &g2, sizeof(double), 0ull, cudaMemcpyHostToDevice);
 	status &= cudaSuccess == cudaMemcpyToSymbol(H2, &h2, sizeof(double), 0ull, cudaMemcpyHostToDevice);
 
+	init = status;
 	return status;
 }
 

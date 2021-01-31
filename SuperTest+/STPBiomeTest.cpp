@@ -4,10 +4,29 @@
 #include "../World/Biome/STPLayerCache.cpp"
 #include "../World/Biome/STPLayer.cpp"
 
+#include "glm/vec2.hpp"
+#include "glm/vec3.hpp"
+
+using glm::ivec3;
+using glm::ivec2;
+typedef glm::vec<2, Seed> lvec2;
+
 using namespace Catch::Generators;
 using Catch::Matchers::EndsWith;
 using Catch::Matchers::Contains;
 using namespace SuperTerrainPlus::STPBiome;
+
+GeneratorWrapper<ivec3> genXYZ() {
+	return value(ivec3(random(0, 1000).get(), random(0, 1000).get(), random(0, 1000).get()));
+}
+
+GeneratorWrapper<ivec2> genXZ() {
+	return value(ivec2(random(0, 1000).get(), random(0, 1000).get()));
+}
+
+GeneratorWrapper<lvec2> genSeed() {
+	return value(lvec2(random(0u, 100000u).get(), random(0u, 100000u).get()));
+}
 
 class arbitary_biome : public STPLayer {
 public:
@@ -30,7 +49,7 @@ public:
 	}
 
 	Sample sample(int x, int y, int z) override {
-		return static_cast<Sample>(this->genLocalSeed(x, z) & 0xFFFEu);
+		return static_cast<Sample>(this->genLocalSeed(x, z) & 0xFFFFu);
 	}
 
 };
@@ -71,7 +90,7 @@ protected:
 public:
 
 	layer_test() {
-		this->b = STPLayer::create<arbitary_biome, 512u>(random(0u, 100000u).get(), random(0u, 100000u).get());
+		this->b = STPLayer::create<arbitary_biome, 32u>(random(0u, 100000u).get(), random(0u, 100000u).get());
 	}
 
 	~layer_test() {
@@ -172,20 +191,16 @@ TEST_CASE_METHOD(layer_test, "Biome basic framework test", "[STPBiome]") {
 		}
 
 		SECTION("Simple read from cache with cache miss") {
-			const int x = GENERATE(take(5, random(0, 1000)));
-			const int y = GENERATE(take(5, random(0, 1000)));
-			const int z = GENERATE(take(5, random(0, 1000)));
+			const ivec3 coord = GENERATE(take(5, genXYZ()));
 
-			REQUIRE(sample_cached(x, y, z) == x + y + z);
+			REQUIRE(sample_cached(coord.x, coord.y, coord.z) == coord.x + coord.y + coord.z);
 		}
 		
 		SECTION("Simple read from cache with cache hit") {
-			const int x = random(-10000, 10000).get();
-			const int y = random(-10000, 10000).get();
-			const int z = random(-10000, 10000).get();
+			const ivec3 coord = GENERATE(take(5, genXYZ()));
 
 			for (int i = 0; i < 5; i++) {
-				REQUIRE(sample_cached(x, y, z) == x + y + z);
+				REQUIRE(sample_cached(coord.x, coord.y, coord.z) == coord.x + coord.y + coord.z);
 			}
 		}
 		
@@ -198,11 +213,9 @@ TEST_CASE_METHOD(layer_test, "Biome basic framework test", "[STPBiome]") {
 		}
 
 		SECTION("Simple sampling method override") {
-			const int x = GENERATE(take(5, random(0, 1000)));
-			const int y = GENERATE(take(5, random(0, 1000)));
-			const int z = GENERATE(take(5, random(0, 1000)));
+			const ivec3 coord = GENERATE(take(5, genXYZ()));
 
-			REQUIRE(sample(x, y, z) == x + y + z);
+			REQUIRE(sample(coord.x, coord.y, coord.z) == coord.x + coord.y + coord.z);
 		}
 
 		SECTION("Randomness of layer seed generation") {
@@ -223,18 +236,16 @@ TEST_CASE_METHOD(layer_test, "Biome basic framework test", "[STPBiome]") {
 		}
 
 		SECTION("Deterministisity of layer seed generation") {
-			for (int i = 0; i < 5; i++) {
-				const Seed global = random(0u, 100000u).get();
-				const Seed salt = random(0u, 100000u).get();
-				STPLayer* layer1 = STPLayer::create<arbitary_biome, 0ull>(global, salt);
-				STPLayer* layer2 = STPLayer::create<arbitary_biome, 0ull>(global, salt);
+			const lvec2 global_salt = GENERATE(take(5, genSeed()));
 
-				INFO("Layer seed should be equal when seeds are the same: got " << layer1->LayerSeed << " and " << layer2->LayerSeed);
-				REQUIRE(layer1->LayerSeed == layer2->LayerSeed);
+			STPLayer* layer1 = STPLayer::create<arbitary_biome, 0ull>(global_salt.x, global_salt.y);
+			STPLayer* layer2 = STPLayer::create<arbitary_biome, 0ull>(global_salt.x, global_salt.y);
 
-				STPLayer::destroy(layer1);
-				STPLayer::destroy(layer2);
-			}
+			INFO("Layer seed should be equal when seeds are the same: got " << layer1->LayerSeed << " and " << layer2->LayerSeed);
+			REQUIRE(layer1->LayerSeed == layer2->LayerSeed);
+
+			STPLayer::destroy(layer1);
+			STPLayer::destroy(layer2);
 		}
 
 		SECTION("Randomness of local seed generation") {
@@ -258,22 +269,19 @@ TEST_CASE_METHOD(layer_test, "Biome basic framework test", "[STPBiome]") {
 		}
 
 		SECTION("Deterministisity of local seed generation") {
-			for (int i = 0; i < 5; i++) {
-				const Seed global = random(0u, 100000u).get();
-				const Seed salt = random(0u, 100000u).get();
-				const int x = random(-10000, 10000).get();
-				const int z = random(-10000, 10000).get();
-				STPLayer* layer1 = STPLayer::create<localseed_biome, 0ull>(global, salt);
-				STPLayer* layer2 = STPLayer::create<localseed_biome, 0ull>(global, salt);
+			const ivec2 coord = GENERATE(take(5, genXZ()));
+			const lvec2 global_salt = GENERATE(take(5, genSeed()));
 
-				const Sample seed1 = layer1->sample(x, 0, z);
-				const Sample seed2 = layer2->sample(x, 0, z);
-				INFO("Local seed should be equal when inputs are the same: got " << seed1 << " and " << seed2);
-				REQUIRE(seed1 == seed2);
+			STPLayer* layer1 = STPLayer::create<localseed_biome, 0ull>(global_salt.x, global_salt.y);
+			STPLayer* layer2 = STPLayer::create<localseed_biome, 0ull>(global_salt.x, global_salt.y);
 
-				STPLayer::destroy(layer1);
-				STPLayer::destroy(layer2);
-			}
+			const Sample seed1 = layer1->sample(coord.x, 0, coord.y);
+			const Sample seed2 = layer2->sample(coord.x, 0, coord.y);
+			INFO("Local seed should be equal when inputs are the same: got " << seed1 << " and " << seed2);
+			REQUIRE(seed1 == seed2);
+
+			STPLayer::destroy(layer1);
+			STPLayer::destroy(layer2);
 		}
 
 		SECTION("Randomness of local random number generator") {
@@ -297,22 +305,19 @@ TEST_CASE_METHOD(layer_test, "Biome basic framework test", "[STPBiome]") {
 		}
 
 		SECTION("Deterministisity of local random number generator") {
-			for (int i = 0; i < 5; i++) {
-				const Seed global = random(0u, 100000u).get();
-				const Seed salt = random(0u, 100000u).get();
-				const int x = random(-10000, 10000).get();
-				const int z = random(-10000, 10000).get();
-				STPLayer* layer1 = STPLayer::create<localseed_biome, 0ull>(global, salt);
-				STPLayer* layer2 = STPLayer::create<localseed_biome, 0ull>(global, salt);
+			const ivec2 coord = GENERATE(take(5, genXZ()));
+			const lvec2 global_salt = GENERATE(take(5, genSeed()));
 
-				const Sample seed1 = layer1->sample(x, 0, z);
-				const Sample seed2 = layer2->sample(x, 0, z);
-				INFO("Rng result should be equal when inputs are the same: got " << seed1 << " and " << seed2);
-				REQUIRE(seed1 == seed2);
+			STPLayer* layer1 = STPLayer::create<rng_biome, 0ull>(global_salt.x, global_salt.y);
+			STPLayer* layer2 = STPLayer::create<rng_biome, 0ull>(global_salt.x, global_salt.y);
 
-				STPLayer::destroy(layer1);
-				STPLayer::destroy(layer2);
-			}
+			const Sample seed1 = layer1->sample(coord.x, 0, coord.y);
+			const Sample seed2 = layer2->sample(coord.x, 0, coord.y);
+			INFO("Rng result should be equal when inputs are the same: got " << seed1 << " and " << seed2);
+			REQUIRE(seed1 == seed2);
+
+			STPLayer::destroy(layer1);
+			STPLayer::destroy(layer2);
 		}
 	}
 
@@ -351,40 +356,34 @@ TEST_CASE_METHOD(layer_test, "Biome basic framework test", "[STPBiome]") {
 		}
 
 		SECTION("Tree with only one straight branch") {
-			const int x = GENERATE(take(5, random(0, 1000)));
-			const int y = GENERATE(take(5, random(0, 1000)));
-			const int z = GENERATE(take(5, random(0, 1000)));
+			const ivec3 coord = GENERATE(take(5, genXYZ()));
 
 			STPLayer* tree = layer_node::direct_tree();
 
-			const Sample sample = tree->sample(x, y, z);
-			REQUIRE(sample == (x + y + z) * 3);
+			const Sample sample = tree->sample(coord.x, coord.y, coord.z);
+			REQUIRE(sample == (coord.x + coord.y + coord.z) * 3);
 
 			STPLayer::destroy(tree);
 		}
 
 		SECTION("Tree with two branches and they merge to a single node") {
-			const int x = GENERATE(take(5, random(0, 1000)));
-			const int y = GENERATE(take(5, random(0, 1000)));
-			const int z = GENERATE(take(5, random(0, 1000)));
+			const ivec3 coord = GENERATE(take(5, genXYZ()));
 
 			STPLayer* tree = layer_node::merging_only();
 
-			const Sample sample = tree->sample(x, y, z);
-			REQUIRE(sample == (x + y + z) * 3);
+			const Sample sample = tree->sample(coord.x, coord.y, coord.z);
+			REQUIRE(sample == (coord.x + coord.y + coord.z) * 3);
 
 			STPLayer::destroy(tree);
 		}
 
 		SECTION("Tree that diverges and converges, a.k.a., branch then merge") {
-			const int x = GENERATE(take(5, random(0, 1000)));
-			const int y = GENERATE(take(5, random(0, 1000)));
-			const int z = GENERATE(take(5, random(0, 1000)));
+			const ivec3 coord = GENERATE(take(5, genXYZ()));
 
 			STPLayer* tree = layer_node::merging_branching();
 
-			const Sample sample = tree->sample(x, y, z);
-			REQUIRE(sample == (x + y + z) * 5);
+			const Sample sample = tree->sample(coord.x, coord.y, coord.z);
+			REQUIRE(sample == (coord.x + coord.y + coord.z) * 5);
 
 			STPLayer::destroy(tree);
 		}

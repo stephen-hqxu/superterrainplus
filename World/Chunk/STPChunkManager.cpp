@@ -7,13 +7,10 @@ using glm::value_ptr;
 
 using namespace SuperTerrainPlus;
 
-STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings, STPThreadPool* const shared_threadpool) : compute_pool(shared_threadpool) {
-	//init chunk cache
-	this->ChunkCache = new STPChunkStorage();
-	//init chunk provider
-	this->ChunkProvider = new STPChunkProvider(settings, shared_threadpool);
+STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings, STPThreadPool* const shared_threadpool) : compute_pool(shared_threadpool)
+	, ChunkCache(), ChunkProvider(settings, shared_threadpool) {
 
-	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider->getChunkSettings();
+	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
 	const int chunk_num = static_cast<int>(chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y);
 	const int totaltexture_size = chunk_num * static_cast<int>(chunk_settings->MapSize.x * chunk_settings->MapSize.y) * sizeof(unsigned short);//one channel
 
@@ -41,8 +38,8 @@ STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings, STPTh
 	//init clear buffers that are used to clear texture when new rendered chunks are loaded (we need to clear the previous chunk data)
 	cudaMallocHost(&this->mono_clear, totaltexture_size);
 	cudaMallocHost(&this->quad_clear, totaltexture_size * 4);
-	memset(this->mono_clear, 0x00, totaltexture_size);
-	memset(this->quad_clear, 0x00, totaltexture_size * 4);
+	memset(this->mono_clear, 0xFF, totaltexture_size);
+	memset(this->quad_clear, 0xFF, totaltexture_size * 4);
 }
 
 STPChunkManager::~STPChunkManager() {
@@ -57,21 +54,16 @@ STPChunkManager::~STPChunkManager() {
 	//delete texture
 	glDeleteTextures(2, this->terrain_heightfield);
 
-	//delete chunk cache
-	delete this->ChunkCache;
-	//delete chunk provider
-	delete this->ChunkProvider;
-
 	//delete clear buffer
 	cudaFreeHost(this->mono_clear);
 	cudaFreeHost(this->quad_clear);
 }
 
 bool STPChunkManager::MapLoader(vec2 chunkPos, const cudaArray_t destination[2]) {
-	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider->getChunkSettings();
+	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
 
 	//ask provider if we can get the chunk
-	auto result = this->ChunkProvider->requestChunk(this->ChunkCache, chunkPos);
+	auto result = this->ChunkProvider.requestChunk(this->ChunkCache, chunkPos);
 
 	if (result.first == STPChunkProvider::STPChunkReadyStatus::Complete) {
 		//chunk is ready, we can start loading
@@ -191,7 +183,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 }
 
 bool STPChunkManager::loadChunksAsync(vec3 cameraPos) {
-	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider->getChunkSettings();
+	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
 	//waiting for the previous worker to finish(if any)
 	this->SyncloadChunks();
 	//make sure there isn't any worker accessing the loading_chunks, otherwise undefined behaviour warning
@@ -238,7 +230,7 @@ int STPChunkManager::SyncloadChunks() {
 	}
 }
 
-STPChunkProvider* const STPChunkManager::getChunkProvider() const {
+STPChunkProvider& STPChunkManager::getChunkProvider() {
 	return this->ChunkProvider;
 }
 #pragma warning(default : 4267)

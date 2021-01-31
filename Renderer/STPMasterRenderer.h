@@ -210,7 +210,7 @@ namespace SuperTerrainPlus {
 			STPCompute::STPHeightfieldGenerator::useSettings(&config.getHeightfieldSettings());
 			STPCompute::STPSimplexNoise::initialise();
 			this->terrain2d_inf = new STPProcedural2DINF(&config, reinterpret_cast<void*>(this->command->Command_Procedural2DINF), this->command_pool);
-			this->terrain2d_inf->getChunkProvider()->setHeightfieldErosionIteration(std::stoul(this->engineSettings("iteration", "2DTerrainINF")));
+			this->terrain2d_inf->getChunkProvider().setHeightfieldErosionIteration(std::stoul(this->engineSettings("iteration", "2DTerrainINF")));
 			this->terrain2d_inf->loadChunksAsync(this->Camera->getPosition());
 
 			//setting up ssbo

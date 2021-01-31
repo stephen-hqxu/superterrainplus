@@ -7,17 +7,9 @@ using std::atomic_store_explicit;
 using namespace SuperTerrainPlus;
 
 STPChunkProvider::STPChunkProvider(STPSettings::STPConfigurations* settings, STPThreadPool* const shared_threadpool)
-	: ChunkSettings(settings->getChunkSettings()), compute_pool(shared_threadpool) {
-	//create those workers
-	const auto& chunk_settings = settings->getChunkSettings();
-	this->heightmap_gen = new STPCompute::STPHeightfieldGenerator(&settings->getSimplexNoiseSettings());
-	this->formatter = new STPCompute::STPImageConverter(make_uint2(chunk_settings.MapSize.x, chunk_settings.MapSize.y));
-}
+	: ChunkSettings(settings->getChunkSettings()), compute_pool(shared_threadpool)
+	, heightmap_gen(&settings->getSimplexNoiseSettings()), formatter(make_uint2(settings->getChunkSettings().MapSize.x, settings->getChunkSettings().MapSize.y)) {
 
-STPChunkProvider::~STPChunkProvider() {
-	//delete those generators and workers
-	delete this->heightmap_gen;
-	delete this->formatter;
 }
 
 bool STPChunkProvider::computeChunk(STPChunk* const current_chunk, vec2 chunkPos) {
@@ -35,7 +27,7 @@ bool STPChunkProvider::computeChunk(STPChunk* const current_chunk, vec2 chunkPos
 	}*/
 
 	//computing
-	bool result = this->heightmap_gen->generateHeightfieldCUDA(current_chunk->getHeightmap(), current_chunk->getNormalmap(),
+	bool result = this->heightmap_gen.generateHeightfieldCUDA(current_chunk->getHeightmap(), current_chunk->getNormalmap(),
 		//first convert chunk world position to relative chunk position, then multiply by the map size, such that the generated map will be seamless
 		make_float3(
 			//we substract the mapsize by 1 for the offset
@@ -60,15 +52,15 @@ bool STPChunkProvider::formatChunk(STPChunk* const current_chunk) {
 	if (atomic_load_explicit<STPChunk::STPChunkState>(
 		&current_chunk->State, std::memory_order::memory_order_relaxed) != STPChunk::STPChunkState::Complete) {
 		//A static warpper to call the class function async
-		auto conversion_warpper = [converter = this->formatter](const float* original, unsigned short* output, int channel) -> bool {
+		auto conversion_warpper = [&converter = this->formatter](const float* original, unsigned short* output, int channel) -> bool {
 			//The function only read the mapsize from the class, so we can safely launch the converter in multithread
-			return converter->floatToshortCUDA(original, output, channel);
+			return converter.floatToshortCUDA(original, output, channel);
 		};
 
 		std::future<bool> conversion_workers[2];
 		bool status = true;
-		status &= this->formatter->floatToshortCUDA(current_chunk->TerrainMaps[0], current_chunk->TerrainMaps_cache[0], 1);
-		status &= this->formatter->floatToshortCUDA(current_chunk->TerrainMaps[1], current_chunk->TerrainMaps_cache[1], 4);
+		status &= this->formatter.floatToshortCUDA(current_chunk->TerrainMaps[0], current_chunk->TerrainMaps_cache[0], 1);
+		status &= this->formatter.floatToshortCUDA(current_chunk->TerrainMaps[1], current_chunk->TerrainMaps_cache[1], 4);
 
 		//update the status
 		atomic_store_explicit<STPChunk::STPChunkState>(
@@ -81,13 +73,13 @@ bool STPChunkProvider::formatChunk(STPChunk* const current_chunk) {
 	return false;
 }
 
-STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage* source, vec2 chunkPos) {
+STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage& source, vec2 chunkPos) {
 	//check if chunk exists
 	//lock the thread in shared state when writing
 	STPChunk* storage_unit = nullptr;
 	{
 		std::shared_lock<std::shared_mutex> read_lock(this->chunk_storage_locker);
-		storage_unit = source->getChunk(chunkPos);
+		storage_unit = source.getChunk(chunkPos);
 	}
 
 	if (storage_unit == nullptr) {
@@ -106,7 +98,7 @@ STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage*
 		//lock the thread while writing into the data structure
 		{
 			std::unique_lock<std::shared_mutex> write_lock(this->chunk_storage_locker);//it will handle exception for us
-			source->addChunk(chunkPos, current_chunk);//insertion is guarateed since we know chunk not found
+			source.addChunk(chunkPos, current_chunk);//insertion is guarateed since we know chunk not found
 		}
 
 		//then dispatch compute in another thread, the results will be copied to the new chunk directly
@@ -147,5 +139,5 @@ const STPSettings::STPChunkSettings* STPChunkProvider::getChunkSettings() const 
 }
 
 bool STPChunkProvider::setHeightfieldErosionIteration(unsigned int iteration) {
-	return this->heightmap_gen->setErosionIterationCUDA(iteration);
+	return this->heightmap_gen.setErosionIterationCUDA(iteration);
 }

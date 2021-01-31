@@ -36,9 +36,9 @@ namespace SuperTerrainPlus {
 		STPThreadPool* const compute_pool;
 
 		//chunk data
-		STPChunkStorage* ChunkCache = nullptr;
+		STPChunkStorage ChunkCache;
 		//chunk data provider
-		STPChunkProvider* ChunkProvider = nullptr;
+		STPChunkProvider ChunkProvider;
 
 		//registered buffer and texture
 		cudaGraphicsResource_t heightfield_texture_res[2];
@@ -137,9 +137,9 @@ namespace SuperTerrainPlus {
 
 		/**
 		 * @brief Get the chunk provider
-		 * @return The chunk provider
+		 * @return The pointer to the chunk provider
 		*/
-		STPChunkProvider* const getChunkProvider() const;
+		STPChunkProvider& getChunkProvider();
 
 	};
 }

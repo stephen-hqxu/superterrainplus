@@ -118,7 +118,7 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Generate a unique seed for this coordinate in this layer
 			 * @param x The x coordinate in world
-			 * @param z The y coordinate in world
+			 * @param z The z coordinate in world
 			 * @return The local seed associated with the world coordinate
 			*/
 			Seed genLocalSeed(int, int) const;

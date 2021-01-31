@@ -8,7 +8,6 @@
 #include <device_launch_parameters.h>
 //System
 #include <random>
-#include <math.h>
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques

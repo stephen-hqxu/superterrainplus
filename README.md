@@ -21,7 +21,7 @@ Those libraries are available in my public repo :+1:
 # Getting Started :bookmark_tabs:
 
 ## Minimum system requirement :desktop_computer:
-- CPU: Intel/AMD x64 2.0GHz, 4 cores.
+- CPU: Intel i5-7400 4 Cores/AMD r5-1400 4 Cores.
 - GPU-RT: Nvidia RTX 2060.
 
 > Supported compute capability >= 7.5. Nvidia Optix ray-tracing enabled.
@@ -30,7 +30,7 @@ Those libraries are available in my public repo :+1:
 
 > Supported compute capability >= 6.1. Intel/AMD not available.
 
-- RAM: 2GB
+- RAM: 1GB
 - OS: Windows 10/Linux
 
 ## Prerequisites

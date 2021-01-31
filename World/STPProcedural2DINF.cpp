@@ -27,7 +27,7 @@ STPProcedural2DINF::~STPProcedural2DINF() {
 }
 
 const bool STPProcedural2DINF::compile2DTerrainShader() {
-	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider()->getChunkSettings();
+	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider().getChunkSettings();
 	//log
 	GLchar* log = new GLchar[1024];
 	
@@ -70,7 +70,7 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 }
 
 void STPProcedural2DINF::calcBaseChunkPosition() {
-	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider()->getChunkSettings();
+	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider().getChunkSettings();
 	//allocate space
 	const unsigned int num_chunk = chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y;
 	this->BaseChunkPosition = new vec2[num_chunk];
@@ -81,7 +81,7 @@ void STPProcedural2DINF::calcBaseChunkPosition() {
 }
 
 void STPProcedural2DINF::loadPlane() {
-	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider()->getChunkSettings();
+	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider().getChunkSettings();
 	//create buffers
 	glCreateBuffers(1, &this->plane_vbo);
 	glCreateBuffers(1, &this->plane_indirect);
@@ -149,7 +149,7 @@ GLuint STPProcedural2DINF::getTerrain2DINFProgram() {
 }
 
 void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& projection, const vec3& position) {
-	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider()->getChunkSettings();
+	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider().getChunkSettings();
 	mat4 model = identity<mat4>();
 	//move the terrain center to the camera
 	vec2 chunk_center_position = STPChunk::getChunkPosition(

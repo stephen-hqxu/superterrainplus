@@ -18,7 +18,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPSeedMixer mixes two seeds together to form a new seed
 		*/
-		class STPSeedMixer {
+		class STPSeedMixer final {
 		private:
 
 			//No initialisation for a class with static functions only

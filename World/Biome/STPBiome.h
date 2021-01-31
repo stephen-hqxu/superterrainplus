@@ -2,8 +2,6 @@
 #ifndef _STP_BIOME_H_
 #define _STP_BIOME_H_
 
-//Smart pointer
-#include <memory>
 //Biome define
 #include "STPBiome_def.h"
 //Settings
@@ -27,7 +25,7 @@ namespace SuperTerrainPlus {
 		private:
 
 			//Settings for this biome
-			std::unique_ptr<STPSettings::STPBiomeSettings> BiomeSettings;
+			STPSettings::STPBiomeSettings BiomeSettings;
 
 			//Textures for this biome
 			//TODO: TBN

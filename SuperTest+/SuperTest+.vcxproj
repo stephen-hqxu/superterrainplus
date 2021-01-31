@@ -29,6 +29,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="STPBiomeTest.cpp" />
+    <ClCompile Include="STPChunkTest.cpp" />
     <ClCompile Include="STPSettingsValidation.cpp" />
     <ClCompile Include="STPTestFramework.cpp" />
     <ClCompile Include="STPUtiltyTest.cpp" />

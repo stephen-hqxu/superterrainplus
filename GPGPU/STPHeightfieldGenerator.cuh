@@ -2,12 +2,16 @@
 #ifndef _STP_HEIGHTFIELD_GENERATOR_CUH_
 #define _STP_HEIGHTFIELD_GENERATOR_CUH_
 
+//System
+#include <mutex>
 //CUDA
 //CUDA lib are included in the "Engine" section
 #include <curand_kernel.h>
 //Engine
 #include "STPSimplexNoise.cuh"
 #include "STPRainDrop.cuh"
+#include "../World/Biome/STPBiome.h"
+#include "../Helpers/STPMemoryPool.hpp"
 //Settings
 #include "../Settings/STPHeightfieldSettings.hpp"
 
@@ -33,7 +37,33 @@ namespace SuperTerrainPlus {
 			//Choosen generator for curand
 			typedef curandStatePhilox4_32_10 curandRNG;
 
+			//A function that converts biome id to the index corresponded in biome table
+			//By default it's a 1-1 mapping, meaning biome id = index
+			typedef size_t(*STPBiomeInterpreter)(STPBiome::Sample);
+
 		private:
+
+			/**
+			 * @brief Memory allocation of tempoary computing cache for heightfield generator
+			*/
+			class STPHeightfieldAllocator {
+			public:
+
+				/**
+				 * @brief Allocate memory on GPU
+				 * @param count The number of byte of float
+				 * @return The device pointer
+				*/
+				__host__ float* allocate(size_t);
+
+				/**
+				 * @brief Free up the GPU memory
+				 * @param count The number float to free
+				 * @param The device pointer to free
+				*/
+				__host__ void deallocate(size_t, float*);
+
+			};
 
 			//Launch parameter for texture
 			dim3 numThreadperBlock_Map, numBlock_Map;
@@ -52,7 +82,12 @@ namespace SuperTerrainPlus {
 			curandRNG* RNG_Map = nullptr;
 			//Determine the number of raindrop to summon, the higher the more accurate but slower
 			//Each time this value changes, the rng needs to be re-sampled
-			int NumRaindrop = 0;
+			unsigned int NumRaindrop = 0u;
+
+			STPBiome::STPBiome* BiomeDictionary = nullptr;
+			//Temp cache on device for heightmap computation
+			mutable std::mutex memorypool_lock;
+			mutable STPMemoryPool<float, STPHeightfieldAllocator> MapCache_device;
 
 		public:
 
@@ -80,6 +115,16 @@ namespace SuperTerrainPlus {
 			 * @return True if setting can be used
 			*/
 			__host__ static bool useSettings(const STPSettings::STPHeightfieldSettings* const = nullptr);
+
+			/**
+			 * @brief Define the biome dictionary for looking up biome settins according to the biome id. Each entry of biome will be copied to device
+			 * @tparam Ite The iterator to the original container with all biomes
+			 * @param begin The beginning of the container with biomes
+			 * @param end The end of the container with biomes
+			 * @return True if copy was successful
+			*/
+			template<typename Ite>
+			__host__ bool defineDictionary(Ite, Ite);
 
 			/**
 			 * @brief Generate the terrain heightfield maps, each heightfield contains four maps, being heightmap and normalmap.
@@ -111,10 +156,11 @@ namespace SuperTerrainPlus {
 			 * @brief Get the number of iteration for hydraulic erosion
 			 * @return The number of raindrop to erode the terrain
 			*/
-			__host__ int getErosionIteration() const;
+			__host__ unsigned int getErosionIteration() const;
 
 		};
 
 	}
 }
+#include "STPHeightfieldGenerator.inl"
 #endif//_STP_HEIGHTFIELD_GENERATOR_CUH_

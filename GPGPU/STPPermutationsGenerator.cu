@@ -1,4 +1,5 @@
 #include "STPPermutationsGenerator.cuh"
+#include <stdexcept>
 
 using std::copy;
 using std::begin;
@@ -9,7 +10,7 @@ using namespace SuperTerrainPlus::STPCompute;
 
 __host__ STPPermutationsGenerator::STPPermutationsGenerator(unsigned long long seed, unsigned int distribution, double offset) : GRADIENT2D_SIZE(distribution) {
 	if (distribution == 0u) {
-		throw std::exception("Distribution must be greater than 0");
+		throw std::invalid_argument("Distribution must be greater than 0");
 	}
 
 	//seed the engine
