@@ -10,6 +10,7 @@
 //Composite layer
 #include "STPCrossLayer.h"
 #include "STPXCrossLayer.h"
+#include "STPVoronoiLayer.h"
 
 //Land layer
 #include "STPContinentLayer.h"
@@ -21,9 +22,11 @@
 
 //Shore layer
 #include "STPEdgeBiomeLayer.h"
+#include "STPEaseEdgeLayer.h"
 
 //Temperature layer
 #include "STPClimateLayer.h"
+#include "STPOceanTemperatureLayer.h"
 
 //Water layer
 #include "STPDeepOceanLayer.h"

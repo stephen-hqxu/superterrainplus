@@ -17,7 +17,7 @@ namespace STPDemo {
 	class STPNoiseToRiverLayer : public STPCrossLayer {
 	private:
 
-		static Sample filterRiver(Sample val) {
+		inline static Sample filterRiver(Sample val) {
 			//giving 1/2 chance of having a river
 			return val >= 2 ? 2 + (val & 1) : val;
 		}

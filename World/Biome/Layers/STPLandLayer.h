@@ -53,7 +53,7 @@ namespace STPDemo {
 				return center;
 			}
 
-			Sample i = 0, j = 0;
+			Sample i = 1u, j = 1u;
 			//if we are surrounded by ocean, create lands with ever-decreased chance
 			if (!STPBiomeRegistry::isShallowOcean(nw) && rng.nextVal(i++) == 0) {
 				j = nw;

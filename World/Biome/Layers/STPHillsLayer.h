@@ -50,8 +50,14 @@ namespace STPDemo {
 				else if (land_val == STPBiomeRegistry::TAIGA.getID()) {
 					l = STPBiomeRegistry::TAIGA_HILLS.getID();
 				}
+				else if (land_val == STPBiomeRegistry::MOUNTAIN.getID()) {
+					l = STPBiomeRegistry::WOODED_MOUNTAIN.getID();
+				}
 				else if (land_val == STPBiomeRegistry::SNOWY_TUNDRA.getID() || land_val == STPBiomeRegistry::SNOWY_TAIGA.getID()) {
 					l = STPBiomeRegistry::SNOWY_MOUNTAIN.getID();
+				}
+				else if (land_val == STPBiomeRegistry::PLAINS.getID()) {
+					l = rng.nextVal(3) == 0 ? STPBiomeRegistry::FOREST_HILLS.getID() : STPBiomeRegistry::FOREST.getID();
 				}
 				else if (land_val == STPBiomeRegistry::FOREST.getID()) {
 					l = STPBiomeRegistry::FOREST_HILLS.getID();

@@ -8,7 +8,6 @@
 //RNG
 #include "STPSeedMixer.h"
 //Biome define
-#include "STPSeedMixer.h"
 #include "STPLayerCache.h"
 
 /**

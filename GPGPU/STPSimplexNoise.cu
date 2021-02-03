@@ -9,6 +9,16 @@ __constant__ double F2[1]; // 0.5 * (static_cast<double>(sqrt(3.0)) - 1.0);
 __constant__ double G2[1]; // (3.0 - static_cast<double>(sqrt(3.0))) / 6.0;
 __constant__ double H2[1]; // -1.0 + 2.0 * G2;
 
+/**
+ * @brief Perform 2D vector dot product
+ * @param v1x vector 1 x
+ * @param v1y vector 1 y
+ * @param v2x vector 2 x
+ * @param v2y vector 2 y
+ * @return The result
+*/
+__device__ __forceinline__ float dot2D(float, float, float, float);
+
 __host__ STPSimplexNoise::STPSimplexNoise(const STPSettings::STPSimplexNoiseSettings* const noise_settings)
 	: STPPermutationsGenerator(noise_settings->Seed, noise_settings->Distribution, noise_settings->Offset) {
 	if (!init) {
@@ -18,10 +28,6 @@ __host__ STPSimplexNoise::STPSimplexNoise(const STPSettings::STPSimplexNoiseSett
 
 __host__ STPSimplexNoise::~STPSimplexNoise() {
 
-}
-
-__device__ float STPSimplexNoise::dot2D(float v1x, float v1y, float v2x, float v2y) const {
-	return v1x * v2x + v1y * v2y;
 }
 
 __host__ bool STPSimplexNoise::initialise() {
@@ -44,12 +50,12 @@ __device__ float STPSimplexNoise::simplex2D(float x, float y) const {
 	float corner[3], dst_x[3], dst_y[3], weight[3];
 
 	//coordinate system skewing to determine which simplex cell we are in
-	float hairy_factor2D = this->dot2D(x, y, *F2, *F2);
+	float hairy_factor2D = dot2D(x, y, *F2, *F2);
 	int i = static_cast<int>(floor(x + hairy_factor2D)), //add then floor (round down)
 		j = static_cast<int>(floor(y + hairy_factor2D)); //(i,j) space
 	
 	//unskewing the cells
-	float original_factor2D = this->dot2D(i, j, *G2, *G2),
+	float original_factor2D = dot2D(i, j, *G2, *G2),
 		X0 = i - original_factor2D, //unskweing the cell origin back to (x,y) space
 		Y0 = j - original_factor2D;
 	dst_x[0] = x - X0; //The distance from the cell origin in (x,y) space
@@ -88,11 +94,15 @@ __device__ float STPSimplexNoise::simplex2D(float x, float y) const {
 		}
 		else {
 			weight[vertex] *= weight[vertex];
-			corner[vertex] = weight[vertex] * weight[vertex] * this->dot2D(this->grad2D(grad_i[vertex], 0), this->grad2D(grad_i[vertex], 1), dst_x[vertex], dst_y[vertex]);
+			corner[vertex] = weight[vertex] * weight[vertex] * dot2D(this->grad2D(grad_i[vertex], 0), this->grad2D(grad_i[vertex], 1), dst_x[vertex], dst_y[vertex]);
 		}
 	}
 
 	//add all the weights together
 	//scale the result to [-1,1]
 	return 70.0f * (corner[0] + corner[1] + corner[2]);
+}
+
+__device__ __forceinline__ float dot2D(float v1x, float v1y, float v2x, float v2y) {
+	return v1x * v2x + v1y * v2y;
 }

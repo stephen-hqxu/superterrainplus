@@ -68,7 +68,7 @@ namespace SuperTerrainPlus {
 		 * @brief Return the number of memory elements that are available in the pool in total
 		 * @return The number of allocated elements
 		*/
-		size_t size() const {
+		inline size_t size() const {
 			return this->availiable;
 		}
 
@@ -77,7 +77,7 @@ namespace SuperTerrainPlus {
 		 * @param size The size of the memory block to find
 		 * @return The number of memory with this size
 		*/
-		size_t size(size_t size) const {
+		inline size_t size(size_t size) const {
 			//using iterator to avoid creating a new queue object by unordered map
 			auto it = this->memory.find(size);
 			if (it != this->memory.end()) {
@@ -90,7 +90,7 @@ namespace SuperTerrainPlus {
 		 * @brief Check if there is any allocated elements available
 		 * @return True if there is no available memory
 		*/
-		bool empty() const {
+		inline bool empty() const {
 			return this->size() == 0ull;
 		}
 
@@ -99,7 +99,7 @@ namespace SuperTerrainPlus {
 		 * @param size The size of the memory block
 		 * @return True if there is no available memory for this size
 		*/
-		bool empty(size_t size) const {
+		inline bool empty(size_t size) const {
 			return this->size(size) == 0ull;
 		}
 
@@ -127,6 +127,22 @@ namespace SuperTerrainPlus {
 			block.pop();
 			this->availiable--;
 			return ptr;
+		}
+
+		/**
+		 * @brief Preallocate memory with defined memory block size and count
+		 * @tparam ...Arg Arguments for user defined manipulations to the new memory
+		 * @param size The size of the memory block to be allocated
+		 * @param count The number of allocation, each with the same size as defined
+		 * @param ...arg Arg Arguments for user defined manipulations to the new memory
+		*/
+		template<typename... Arg>
+		void preallocate(size_t size, size_t count, Arg&&... arg) {
+			std::queue<T*>& block = this->memory[size];
+
+			for (size_t i = 0ull; i < count; i++) {
+				block.push(this->allocator.allocate(size, std::forward<Arg>(arg)...));
+			}
 		}
 
 		/**

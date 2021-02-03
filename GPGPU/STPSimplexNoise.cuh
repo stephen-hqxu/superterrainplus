@@ -33,18 +33,6 @@ namespace SuperTerrainPlus {
 		 * - Simplex noise is easy to implement in hardware.
 		*/
 		class STPSimplexNoise : private STPPermutationsGenerator{
-		private:
-
-			/**
-			 * @brief Perform a dot product for 2D vector
-			 * @param v1x vector 1, x
-			 * @param v1y vector 1, y
-			 * @param v2x vector 2, x
-			 * @param v2y vector 2. y
-			 * @return Dot product of the two vector
-			*/
-			__device__ float dot2D(float, float, float, float) const;
-
 		public:
 
 			/**

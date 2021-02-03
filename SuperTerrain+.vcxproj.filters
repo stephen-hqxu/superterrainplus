@@ -239,6 +239,15 @@
     <ClInclude Include="Helpers\STPMemoryPool.hpp">
       <Filter>Helpers</Filter>
     </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPVoronoiLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPEaseEdgeLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPOceanTemperatureLayer.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GLSL\STPsky.frag">

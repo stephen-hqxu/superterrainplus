@@ -13,9 +13,12 @@ STPLayer::STPLocalRNG::~STPLocalRNG() {
 Sample STPLayer::STPLocalRNG::nextVal(Sample range) const {
 	//TODO: feel free to use your own algorithm to generate a random number
 	//Please do not use standard library rng, it will trash the performance
-	Sample val = static_cast<Sample>((this->LocalSeed >> 24ull) & static_cast<unsigned long long>(range - 1u));
+	static auto floorMod = [](Seed x, Seed y) -> Sample {
+		return static_cast<Sample>(x - (static_cast<Seed>(__floor(x / y)) * y));
+	};
 	//since our local seed is a constant
 	static Seed modified_local_seed = this->LocalSeed;
+	Sample val = floorMod(this->LocalSeed >> 24ull, static_cast<unsigned long long>(range));
 
 	if (val < 0u) {
 		val += range;

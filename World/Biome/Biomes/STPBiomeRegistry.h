@@ -104,6 +104,10 @@ namespace STPDemo {
 		*/
 		inline static STPBiome MOUNTAIN;
 		/**
+		 * @brief Wooded mountain biome, located inside mountain but the groud is greener, elvation is pretty much the same
+		*/
+		inline static STPBiome WOODED_MOUNTAIN;
+		/**
 		 * @brief Snowy mountatin biome, located inside snowy tundra but with higher variation
 		*/
 		inline static STPBiome SNOWY_MOUNTAIN;
@@ -233,6 +237,7 @@ namespace STPDemo {
 			//Hills
 			reg_insert(STPBiomeRegistry::DESERT_HILLS);
 			reg_insert(STPBiomeRegistry::TAIGA_HILLS);
+			reg_insert(STPBiomeRegistry::WOODED_MOUNTAIN);
 			reg_insert(STPBiomeRegistry::SNOWY_MOUNTAIN);
 			reg_insert(STPBiomeRegistry::FOREST_HILLS);
 			reg_insert(STPBiomeRegistry::JUNGLE_HILLS);
@@ -252,7 +257,7 @@ namespace STPDemo {
 		 * @param val The biome id to be checked against
 		 * @return True if it's a shallow ocean
 		*/
-		static bool isShallowOcean(Sample val) noexcept {
+		inline static bool isShallowOcean(Sample val) noexcept {
 			return val == STPBiomeRegistry::OCEAN.getID() || val == STPBiomeRegistry::FROZEN_OCEAN.getID()
 				|| val == STPBiomeRegistry::WARM_OCEAN.getID() || val == STPBiomeRegistry::LUKEWARM_OCEAN.getID()
 				|| val == STPBiomeRegistry::COLD_OCEAN.getID();
@@ -263,7 +268,7 @@ namespace STPDemo {
 		 * @param val The biome id to be checked against
 		 * @return True if it's an ocean biome.
 		*/
-		static bool isOcean(Sample val) noexcept {
+		inline static bool isOcean(Sample val) noexcept {
 			return STPBiomeRegistry::isShallowOcean(val) || val == STPBiomeRegistry::DEEP_OCEAN.getID()
 				|| val == STPBiomeRegistry::DEEP_WARM_OCEAN.getID() || val == STPBiomeRegistry::DEEP_LUKEWARM_OCEAN.getID()
 				|| val == STPBiomeRegistry::DEEP_COLD_OCEAN.getID() || val == STPBiomeRegistry::DEEP_FROZEN_OCEAN.getID();
@@ -274,7 +279,7 @@ namespace STPDemo {
 		 * @param val The biome id to be checked against
 		 * @return True if it's a river biome
 		*/
-		static bool isRiver(Sample val) noexcept {
+		inline static bool isRiver(Sample val) noexcept {
 			return val == STPBiomeRegistry::RIVER.getID() || val == STPBiomeRegistry::FROZEN_RIVER.getID();
 		}
 
@@ -330,7 +335,7 @@ namespace STPDemo {
 		 * @param fallback If comparator is not equal to comparable, return this value
 		 * @return Comparable if comparator equals comparable otherwise fallback value
 		*/
-		static Sample CAS(Sample comparator, Sample comparable, Sample fallback) noexcept {
+		inline static Sample CAS(Sample comparator, Sample comparable, Sample fallback) noexcept {
 			return comparator == comparable ? comparable : fallback;
 		}
 	};

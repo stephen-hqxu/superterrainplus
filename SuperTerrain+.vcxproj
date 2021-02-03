@@ -64,6 +64,7 @@
     <ClInclude Include="World\Biome\Layers\STPContinentLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPCrossLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPDeepOceanLayer.h" />
+    <ClInclude Include="World\Biome\Layers\STPEaseEdgeLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPEdgeBiomeLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPHillsLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPIslandLayer.h" />
@@ -71,10 +72,12 @@
     <ClInclude Include="World\Biome\Layers\STPLayers_all.hpp" />
     <ClInclude Include="World\Biome\Layers\STPNoiseLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPNoiseToRiverLayer.h" />
+    <ClInclude Include="World\Biome\Layers\STPOceanTemperatureLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPRiverErodeLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPRiverMixLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPScaleLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPSmoothScaleLayer.h" />
+    <ClInclude Include="World\Biome\Layers\STPVoronoiLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPXCrossLayer.h" />
     <ClInclude Include="World\Biome\STPBiome.h" />
     <ClInclude Include="World\Biome\STPBiomeFactory.h" />
