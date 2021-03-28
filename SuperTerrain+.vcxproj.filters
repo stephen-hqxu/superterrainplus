@@ -248,6 +248,9 @@
     <ClInclude Include="World\Biome\Layers\STPOceanTemperatureLayer.h">
       <Filter>World\Biome\Layers</Filter>
     </ClInclude>
+    <ClInclude Include="Helpers\STPSerialisationException.hpp">
+      <Filter>Helpers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GLSL\STPsky.frag">

@@ -8,6 +8,8 @@
 #include <stdexcept>
 //Biome define
 #include "STPBiome_def.h"
+//System
+#include <memory>
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -25,12 +27,10 @@ namespace SuperTerrainPlus {
 		class STPLayerCache final {
 		private:
 
-			friend class STPLayer;
-
 			//Store the key value for a coordinate
-			unsigned long long* Key = nullptr;
+			std::unique_ptr<unsigned long long[]> Key;
 			//Store the sample number for a layer for a coordinate
-			Sample* Value = nullptr;
+			std::unique_ptr<Sample[]> Value;
 			//Mask is used to round the key value such that it will be suitable for looking up value in the hash table
 			unsigned long long Mask;
 
@@ -63,6 +63,8 @@ namespace SuperTerrainPlus {
 			 * @return The raw index value, it's not the same as index, do remember to limit the range of the index using mask
 			*/
 			static unsigned long long mixKey(unsigned long long);
+
+		public:
 
 			/**
 			 * @brief Init STPLayerCache with allocated spaces

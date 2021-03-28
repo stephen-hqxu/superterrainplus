@@ -14,7 +14,7 @@ Sample STPLayer::STPLocalRNG::nextVal(Sample range) const {
 	//TODO: feel free to use your own algorithm to generate a random number
 	//Please do not use standard library rng, it will trash the performance
 	static auto floorMod = [](Seed x, Seed y) -> Sample {
-		return static_cast<Sample>(x - (static_cast<Seed>(__floor(x / y)) * y));
+		return static_cast<Sample>(x - (static_cast<Seed>(__floor(1.0 * x / y * 1.0)) * y));
 	};
 	//since our local seed is a constant
 	static Seed modified_local_seed = this->LocalSeed;
@@ -53,10 +53,7 @@ STPLayer::~STPLayer() {
 	this->Ascendant.clear();
 
 	//delete the cache (if any)
-	if (this->Cache != nullptr) {
-		delete this->Cache;
-		this->Cache = nullptr;
-	}
+	//automatically
 }
 
 Seed STPLayer::genLayerSeed(Seed global_seed, Seed salt) {
@@ -84,7 +81,8 @@ void STPLayer::destroy(STPLayer* layer) {
 }
 
 size_t STPLayer::cacheSize() const {
-	return this->Cache->getCapacity();
+	//check for nullptr
+	return this->Cache ? this->Cache->getCapacity() : 0ull ;
 }
 
 STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) const {
@@ -93,7 +91,7 @@ STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) const {
 
 Sample STPLayer::sample_cached(int x, int y, int z) {
 	//pass the layer sampling function to cache, so it will compute it when necessary
-	if (this->Cache != nullptr) {
+	if (this->Cache) {
 		return this->Cache->cache(x, y, z, [this](int x, int y, int z) -> Sample {
 			return this->sample(x, y, z);
 			});

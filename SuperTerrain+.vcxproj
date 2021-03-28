@@ -42,6 +42,7 @@
     <ClInclude Include="GPGPU\STPRainDrop.cuh" />
     <ClInclude Include="GPGPU\STPSimplexNoise.cuh" />
     <ClInclude Include="Helpers\STPMemoryPool.hpp" />
+    <ClInclude Include="Helpers\STPSerialisationException.hpp" />
     <ClInclude Include="Helpers\STPTerrainParaLoader.h" />
     <ClInclude Include="Helpers\STPIndirectCommands.h" />
     <ClInclude Include="Helpers\STPTextureStorage.h" />

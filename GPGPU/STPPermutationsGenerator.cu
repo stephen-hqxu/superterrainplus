@@ -1,5 +1,6 @@
 #include "STPPermutationsGenerator.cuh"
 #include <stdexcept>
+#include <memory>
 
 using std::copy;
 using std::begin;
@@ -36,7 +37,7 @@ __host__ STPPermutationsGenerator::STPPermutationsGenerator(unsigned long long s
 	//generate the gradient table
 	//we are going to distribute the gradient evenly in a circle
 	const double step = 360.0 / this->GRADIENT2D_SIZE * 1.0;//in degree
-	double* GRADIENT2D_HOST = new double[this->GRADIENT2D_SIZE * 2];//2D so we *2
+	std::unique_ptr<double[]> GRADIENT2D_HOST(new double[this->GRADIENT2D_SIZE * 2]);//2D so we *2
 	int counter = 0;
 	for (double angle = 0.0; angle < 360.0; angle += step) {//in degree
 		GRADIENT2D_HOST[counter * 2] = cos(STPPermutationsGenerator::PI * (angle + offset) / 180.0);
@@ -45,12 +46,11 @@ __host__ STPPermutationsGenerator::STPPermutationsGenerator(unsigned long long s
 		counter++;
 	}
 
-	shuffle(GRADIENT2D_HOST, GRADIENT2D_HOST + this->GRADIENT2D_SIZE * 2, rng);
+	shuffle(GRADIENT2D_HOST.get(), GRADIENT2D_HOST.get() + this->GRADIENT2D_SIZE * 2, rng);
 	//copy the host gradient to device
 	cudaMalloc(&this->GRADIENT2D, sizeof(double) * this->GRADIENT2D_SIZE * 2);
-	cudaMemcpy(this->GRADIENT2D, GRADIENT2D_HOST, sizeof(double) * this->GRADIENT2D_SIZE * 2, cudaMemcpyHostToDevice);
+	cudaMemcpy(this->GRADIENT2D, GRADIENT2D_HOST.get(), sizeof(double) * this->GRADIENT2D_SIZE * 2, cudaMemcpyHostToDevice);
 	//finishing up
-	delete[] GRADIENT2D_HOST;
 }
 
 __host__ STPPermutationsGenerator::~STPPermutationsGenerator() {

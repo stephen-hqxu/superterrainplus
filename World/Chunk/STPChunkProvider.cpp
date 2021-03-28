@@ -1,8 +1,6 @@
 #include "STPChunkProvider.h"
 
 using glm::vec2;
-using std::atomic_load_explicit;
-using std::atomic_store_explicit;
 
 using namespace SuperTerrainPlus;
 
@@ -27,7 +25,7 @@ bool STPChunkProvider::computeChunk(STPChunk* const current_chunk, vec2 chunkPos
 	}*/
 
 	//computing
-	bool result = this->heightmap_gen.generateHeightfieldCUDA(current_chunk->getHeightmap(), current_chunk->getNormalmap(),
+	bool result = this->heightmap_gen.generateHeightfieldCUDA(current_chunk->getRawMap(STPChunk::STPMapType::Heightmap), current_chunk->getRawMap(STPChunk::STPMapType::Normalmap),
 		//first convert chunk world position to relative chunk position, then multiply by the map size, such that the generated map will be seamless
 		make_float3(
 			//we substract the mapsize by 1 for the offset
@@ -38,8 +36,7 @@ bool STPChunkProvider::computeChunk(STPChunk* const current_chunk, vec2 chunkPos
 			static_cast<float>(this->ChunkSettings.MapSize.y - 1u) * chunkPos.y / (static_cast<float>(this->ChunkSettings.ChunkSize.y) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.z));
 
 	if (result) {//computation was successful
-		atomic_store_explicit<STPChunk::STPChunkState>(
-			&current_chunk->State, STPChunk::STPChunkState::Erosion_Ready, std::memory_order::memory_order_relaxed);
+		current_chunk->markChunkState(STPChunk::STPChunkState::Erosion_Ready);
 
 		//now converting image format to 16bit
 		result &= this->formatChunk(current_chunk);
@@ -49,23 +46,14 @@ bool STPChunkProvider::computeChunk(STPChunk* const current_chunk, vec2 chunkPos
 }
 
 bool STPChunkProvider::formatChunk(STPChunk* const current_chunk) {
-	if (atomic_load_explicit<STPChunk::STPChunkState>(
-		&current_chunk->State, std::memory_order::memory_order_relaxed) != STPChunk::STPChunkState::Complete) {
-		//A static warpper to call the class function async
-		auto conversion_warpper = [&converter = this->formatter](const float* original, unsigned short* output, int channel) -> bool {
-			//The function only read the mapsize from the class, so we can safely launch the converter in multithread
-			return converter.floatToshortCUDA(original, output, channel);
-		};
-
-		std::future<bool> conversion_workers[2];
+	if (current_chunk->getChunkState() != STPChunk::STPChunkState::Complete) {
 		bool status = true;
-		status &= this->formatter.floatToshortCUDA(current_chunk->TerrainMaps[0], current_chunk->TerrainMaps_cache[0], 1);
-		status &= this->formatter.floatToshortCUDA(current_chunk->TerrainMaps[1], current_chunk->TerrainMaps_cache[1], 4);
+		status &= this->formatter.floatToshortCUDA(current_chunk->getRawMap(STPChunk::STPMapType::Heightmap), current_chunk->getCacheMap(STPChunk::STPMapType::Heightmap), 1);
+		status &= this->formatter.floatToshortCUDA(current_chunk->getRawMap(STPChunk::STPMapType::Normalmap), current_chunk->getCacheMap(STPChunk::STPMapType::Normalmap), 4);
 
 		//update the status
-		atomic_store_explicit<STPChunk::STPChunkState>(
-			&current_chunk->State, STPChunk::STPChunkState::Complete, std::memory_order::memory_order_relaxed);
-		atomic_store_explicit<bool>(&current_chunk->inUsed, false, std::memory_order::memory_order_relaxed);
+		current_chunk->markChunkState(STPChunk::STPChunkState::Complete);
+		current_chunk->markOccupancy(false);
 		return status;
 	}
 
@@ -77,10 +65,7 @@ STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage&
 	//check if chunk exists
 	//lock the thread in shared state when writing
 	STPChunk* storage_unit = nullptr;
-	{
-		std::shared_lock<std::shared_mutex> read_lock(this->chunk_storage_locker);
-		storage_unit = source.getChunk(chunkPos);
-	}
+	storage_unit = source.getChunk(chunkPos);
 
 	if (storage_unit == nullptr) {
 		//chunk not found
@@ -94,12 +79,9 @@ STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage&
 
 		//a new chunk
 		STPChunk* const current_chunk = new STPChunk(this->ChunkSettings.MapSize, true);
-		atomic_store_explicit<bool>(&current_chunk->inUsed, true, std::memory_order::memory_order_relaxed);
+		current_chunk->markOccupancy(true);
 		//lock the thread while writing into the data structure
-		{
-			std::unique_lock<std::shared_mutex> write_lock(this->chunk_storage_locker);//it will handle exception for us
-			source.addChunk(chunkPos, current_chunk);//insertion is guarateed since we know chunk not found
-		}
+		source.addChunk(chunkPos, current_chunk);//insertion is guarateed since we know chunk not found
 
 		//then dispatch compute in another thread, the results will be copied to the new chunk directly
 		//we are only passing the pointer to the chunk (not the entire container), and each thread only deals with one chunk, so shared_read lock is not requried
@@ -122,9 +104,7 @@ STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage&
 		//	return false;
 		//}
 		//simplified with boolean algebra and invert it to true condition
-		if (!atomic_load_explicit<bool>(&storage_unit->inUsed, std::memory_order::memory_order_relaxed) &&
-			atomic_load_explicit<STPChunk::STPChunkState>(
-				&storage_unit->State, std::memory_order::memory_order_relaxed) == STPChunk::STPChunkState::Complete) {
+		if (!storage_unit->isOccupied() && storage_unit->getChunkState() == STPChunk::STPChunkState::Complete) {
 			//chunk is ready, we can return
 			return std::make_pair(STPChunkReadyStatus::Complete, storage_unit);
 		}

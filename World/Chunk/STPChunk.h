@@ -2,12 +2,16 @@
 #ifndef _STP_CHUNK_H_
 #define _STP_CHUNK_H_
 
-//System ADT
+//System
 #include <list>
+#include <iostream>
+#include <memory>
 //Threading
 #include <atomic>
 //GLM
 #include "glm/gtc/matrix_transform.hpp"
+
+#include "../../Helpers/STPSerialisationException.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -21,47 +25,54 @@ namespace SuperTerrainPlus {
 	* It also contains arithmetic operation for chunk position, making locating chunks in world easier.
 	*/
 	class STPChunk {
-	private:
+	public:
 
 		//Store the 1 bit state of the current chunk
 		enum class STPChunkState : unsigned char {
 			//Empty chunk with no heightmap and normal map
-			Empty = 0x00,
+			Empty = 0x00u,
 			//Chunk with heightmap generated
-			Heightmap_Ready = 0x01,
+			Heightmap_Ready = 0x01u,
 			//Chunk with hydraulic eroded heightmap
-			Erosion_Ready = 0x02,
+			Erosion_Ready = 0x02u,
 			//Chunk with normal map generated and formatted, this is considered as complete state
-			Complete = 0x03
+			Complete = 0x03u
 		};
 
-		//So only chunk related class can mutate the private values
-		friend class STPChunkManager;
-		friend class STPChunkProvider;
+		/**
+		 * @brief STPMapType specify the type of the chunk map
+		*/
+		enum class STPMapType : unsigned char {
+			//Heightmap contains data for the y-offset on mesh, usually contains only one channel
+			Heightmap = 0x00u,
+			//Normal contains the tangent space vector for mesh normal
+			Normalmap = 0x01u
+		};
 
-		float* TerrainMaps[2];
+	private:
+
+		//The last 8 bytes of the text "SuperTerrain+STPChunk" in SHA-256
+		constexpr static unsigned long long IDENTIFIER = 0x72539f230fdbf627ull;
+		//Serialisation version number, 1 byte for major version, 1 byte for minor version
+		//current v1.0
+		constexpr static unsigned short SERIAL_VERSION = 0x0100u;
+
 		const glm::uvec2 PixelSize;//All maps must have the same size
 
+		std::unique_ptr<float[]> TerrainMap[2];
 		//Cache that OpenGL can use to render directly, it's converted from 32 bit internal texture to 16 bit.
 		//We need to keep the 32 bit copy for later chunk computations, e.g., chunk-chunk interpolation.
 		//Storing them separately can avoid re-converting format everytime the chunks get updated
-		unsigned short* TerrainMaps_cache[2];
+		std::unique_ptr<unsigned short[]> TerrainMap_cache[2];
 
 		//Flags
 		//Determine if there is another thread copied the current chunk for generation, meaning we can't use right now
 		std::atomic<bool> inUsed;
 		std::atomic<STPChunkState> State;
 
-		/**
-		 * @brief Clone the terrain map, this is only used by STPChunk for constructors
-		 * @tparam T Type of the texture
-		 * @param dest The destination to store
-		 * @param src Source to clone from
-		 * @param size Number of byte to clone
-		 * @param realloc_dest If true, dest will be deleted first then reallocated and copy to.
-		*/
+		//A wrapper function to get map
 		template<typename T>
-		static void cloneMap(T*&, const T* const, size_t, bool = false);
+		T* getMap(STPMapType, const std::unique_ptr<T[]>*);
 
 	public:
 
@@ -84,24 +95,6 @@ namespace SuperTerrainPlus {
 
 		//A chunk position cache that stores a list of chunk world position
 		typedef std::list<glm::vec2> STPChunkPosCache;
-
-		/**
-		 * @brief Return the reference to the heightmap of this chunk
-		 * @return The reference to the heightmap of this chunk
-		*/
-		float* getHeightmap();
-
-		/**
-		 * @brief Return the reference to the normalmap of this chunk
-		 * @return The reference to the normalmap of this chunk
-		*/
-		float* getNormalmap();
-
-		/**
-		 * @brief Return the reference to the size of the pixels for all maps
-		 * @return The reference to the size of the pixels for all maps
-		*/
-		const glm::uvec2& getSize() const;
 
 		/**
 		 * @brief Get the chunk position in world where the camera is located
@@ -131,6 +124,56 @@ namespace SuperTerrainPlus {
 		 * @return Chunk positions in world coordinate (x,z), aligning from top-left to bottom right
 		*/
 		static STPChunkPosCache getRegion(glm::vec2, glm::uvec2, glm::uvec2, float = 1.0f) noexcept;
+
+		//serialise
+		friend std::ostream& operator<<(std::ostream&, const STPChunk* const);
+
+		//deserialise
+		friend std::istream& operator>>(std::istream&, STPChunk*&);
+
+		/**
+		 * @brief Atomically determine if current chunk is used by other threads
+		 * @return True if there are already thread grabbing this chunk
+		*/
+		bool isOccupied() const;
+
+		/**
+		 * @brief Atomically change the use status of this chunk
+		 * @param val The new occupancy status of this chunk
+		*/
+		void markOccupancy(bool);
+
+		/**
+		 * @brief Atomically determine the current state of the chunk
+		 * @return The state code of the chunk
+		*/
+		STPChunkState getChunkState() const;
+
+		/**
+		 * @brief Atomically change the chunk state
+		 * @param state The new state of this chunk
+		*/
+		void markChunkState(STPChunkState);
+
+		/**
+		 * @brief Return the reference to the 32bit raw map of this chunk
+		 * @param type The type of the map
+		 * @return The reference to the raw map
+		*/
+		float* getRawMap(STPMapType);
+
+		/**
+		 * @brief Return the reference to the 16bit integer map for rendering of this chunk
+		 * @param type The type of the map
+		 * @return The reference to the rendering map
+		*/
+		unsigned short* getCacheMap(STPMapType);
+
+		/**
+		 * @brief Return the reference to the size of the pixels for all maps
+		 * @return The reference to the size of the pixels for all maps
+		*/
+		const glm::uvec2& getSize() const;
 
 	};
 }

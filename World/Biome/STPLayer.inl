@@ -30,7 +30,7 @@ SuperTerrainPlus::STPBiome::STPLayer* SuperTerrainPlus::STPBiome::STPLayer::crea
 		//instantiate
 		STPLayer* newLayer = dynamic_cast<STPLayer*>(new L(global_seed, salt, std::forward<Arg>(args)...));
 		//assign the new cache, it might be nullptr if user didn't ask to create a cache
-		newLayer->Cache = cache;
+		newLayer->Cache = std::unique_ptr<STPLayerCache>(cache);
 		return newLayer;
 	}
 	catch (std::exception e) {

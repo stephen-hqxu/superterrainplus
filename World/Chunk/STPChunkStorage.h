@@ -5,6 +5,8 @@
 //System ADT
 #include  <memory>
 #include <unordered_map>
+//Thread safety
+#include <shared_mutex>
 //Chunks
 #include "STPChunk.h"
 
@@ -16,7 +18,8 @@
 namespace SuperTerrainPlus {
 
 	/**
-	 * @brief STPChunkStorage stores all chunks in a sensible data structure
+	 * @brief STPChunkStorage stores all chunks in a sensible data structure.
+	 * STPChunkStorage is thread safe.
 	*/
 	class STPChunkStorage {
 	private:
@@ -39,6 +42,9 @@ namespace SuperTerrainPlus {
 		//chunk storage
 		//the key will be the x,z world position of each chunk
 		STPChunkCache TerrainMap2D;
+		
+		//thread safety
+		mutable std::shared_mutex chunk_storage_lock;
 
 	public:
 
@@ -68,7 +74,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief Get the chunk by its world position
 		 * @param chunkPos the chunk world position
-		 * @return The chunk with specified world position, return null if not found
+		 * @return The chunk with specified position, return null if chunk not found
 		*/
 		STPChunk* getChunk(glm::vec2);
 

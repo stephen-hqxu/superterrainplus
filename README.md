@@ -34,8 +34,8 @@ Those libraries are available in my public repo :+1:
 - OS: Windows 10/Linux
 
 ## Prerequisites
-- Windows 10: Visual Studio 2019 with CUDA 7.5 Toolkit
-- Linux: TBN
+- Windows 10: Visual Studio 2019 with CUDA 7.0 Toolkit
+- Linux: Not yet supported
 
 ## Language Built Upon
 - C++ 17

@@ -1,6 +1,8 @@
 #pragma once
 #include "STPHeightfieldGenerator.cuh"
 
+#include <memory>
+
 __constant__ unsigned char HeightfieldSettings[sizeof(SuperTerrainPlus::STPSettings::STPHeightfieldSettings)];
 
 using namespace SuperTerrainPlus::STPCompute;
@@ -101,27 +103,24 @@ __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 
 __host__ bool STPHeightfieldGenerator::useSettings(const STPSettings::STPHeightfieldSettings* const settings) {
 	//keep a local copy of the setting so device can have access to the pointer inside the class
-	static const STPSettings::STPHeightfieldSettings* stored_settings = nullptr;
+	static std::unique_ptr<const STPSettings::STPHeightfieldSettings> stored_settings;
 
 	if (settings == nullptr) {
 		//clear memory
-		delete stored_settings;
-		return true;
+		stored_settings.reset();
 	}
-	if (stored_settings != settings) {
+	//if memory address isn't the same
+	if (stored_settings.get() != settings) {
 		//validate memory
 		if (!settings->validate()) {
 			return false;
 		}
 		//replace current settings
-		if (stored_settings != nullptr) {
-			delete stored_settings;
-		}
 		//deep copy the thing
-		stored_settings = new STPSettings::STPHeightfieldSettings(*settings);
+		stored_settings = std::unique_ptr<const STPSettings::STPHeightfieldSettings>(new STPSettings::STPHeightfieldSettings(*settings));
 	}
 
-	return cudaSuccess == cudaMemcpyToSymbol(HeightfieldSettings, stored_settings, sizeof(STPSettings::STPHeightfieldSettings), 0ull, cudaMemcpyHostToDevice);
+	return cudaSuccess == cudaMemcpyToSymbol(HeightfieldSettings, stored_settings.get(), sizeof(STPSettings::STPHeightfieldSettings), 0ull, cudaMemcpyHostToDevice);
 }
 
 __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap, float* normalmap, float3 offset) const {
@@ -141,8 +140,8 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap,
 	float* heightfield_d[2] = {nullptr};//heightmap and normalmap
 
 	bool no_error = true;//check for error, true if all successful
-	//regarding the size of the heightfields, heightmap, streammap and poolmap are all having R32F format, while normalmap uses RGBA32F
-	//so there are 7 channels in total
+	//regarding the size of the heightfields, heightmap has R32F format, while normalmap uses RGBA32F
+	//so there are 5 channels in total
 	{
 		std::unique_lock<std::mutex> lock(this->memorypool_lock);
 		heightfield_d[0] = this->MapCache_device.allocate(map_size);
@@ -265,8 +264,7 @@ __global__ void generateHeightmapKERNEL(STPSimplexNoise* const noise_fun, float*
 
 __global__ void performErosionKERNEL(float* height_storage, uint2 dimension, STPHeightfieldGenerator::curandRNG* rng) {
 	//convert constant memory to usable class
-	SuperTerrainPlus::STPSettings::STPRainDropSettings* const settings = 
-		reinterpret_cast<SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
+	SuperTerrainPlus::STPSettings::STPRainDropSettings* const settings = (SuperTerrainPlus::STPSettings::STPRainDropSettings* const)(reinterpret_cast<const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings));
 
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;

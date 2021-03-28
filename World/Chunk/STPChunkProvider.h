@@ -47,8 +47,6 @@ namespace SuperTerrainPlus {
 
 	private:
 
-		//thread safety
-		mutable std::shared_mutex chunk_storage_locker;
 		//thread pool
 		STPThreadPool* const compute_pool;
 

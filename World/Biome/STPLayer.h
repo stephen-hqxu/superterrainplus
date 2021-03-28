@@ -4,6 +4,7 @@
 
 //System
 #include <vector>
+#include <memory>
 #include <type_traits>
 //RNG
 #include "STPSeedMixer.h"
@@ -88,7 +89,7 @@ namespace SuperTerrainPlus {
 			unsigned short ReferenceCount;
 
 			//layer cache for dynamic programming
-			STPLayerCache* Cache = nullptr;
+			std::unique_ptr<STPLayerCache> Cache;
 
 			/**
 			 * @brief Generate a unique seed for this layer
@@ -112,7 +113,7 @@ namespace SuperTerrainPlus {
 			template <class... Asc>
 			STPLayer(Seed, Seed, Asc*...);
 
-			~STPLayer();
+			virtual ~STPLayer();
 
 			/**
 			 * @brief Generate a unique seed for this coordinate in this layer

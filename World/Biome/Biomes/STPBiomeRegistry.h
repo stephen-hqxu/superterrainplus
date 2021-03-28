@@ -3,7 +3,7 @@
 #define _STP_BIOME_REGISTRY_H_
 
 //ADT
-#include <unordered_map>
+#include <map>
 #include <type_traits>
 //Biome
 #include "../STPBiome.h"
@@ -43,7 +43,7 @@ namespace STPDemo {
 		};
 
 		//A table of settings for registered biome
-		inline static std::unordered_map<Sample, const STPBiome*> REGISTRY;
+		inline static std::map<Sample, const STPBiome*> REGISTRY;
 
 		//A table of registered biome id, note that biomes are unordered
 
@@ -203,7 +203,7 @@ namespace STPDemo {
 			//assigning configuration to biomes, id, name, etc.
 			//TODO
 
-			//Adding all biomes to registry
+			//add all biomes to registry
 			static auto reg_insert = [](const STPBiome& biome) -> void {
 				STPBiomeRegistry::REGISTRY.emplace(biome.getID(), &biome);
 				return;

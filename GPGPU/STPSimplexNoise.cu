@@ -17,7 +17,7 @@ __constant__ double H2[1]; // -1.0 + 2.0 * G2;
  * @param v2y vector 2 y
  * @return The result
 */
-__device__ __forceinline__ float dot2D(float, float, float, float);
+__device__ __forceinline__ double dot2D(double, double, double, double);
 
 __host__ STPSimplexNoise::STPSimplexNoise(const STPSettings::STPSimplexNoiseSettings* const noise_settings)
 	: STPPermutationsGenerator(noise_settings->Seed, noise_settings->Distribution, noise_settings->Offset) {
@@ -31,6 +31,11 @@ __host__ STPSimplexNoise::~STPSimplexNoise() {
 }
 
 __host__ bool STPSimplexNoise::initialise() {
+	if (init) {
+		//no need to reinit
+		return init;
+	}
+
 	bool status = true;
 	const double f2 = 0.366025403784439;
 	const double g2 = 0.211324865405187;
@@ -51,8 +56,8 @@ __device__ float STPSimplexNoise::simplex2D(float x, float y) const {
 
 	//coordinate system skewing to determine which simplex cell we are in
 	float hairy_factor2D = dot2D(x, y, *F2, *F2);
-	int i = static_cast<int>(floor(x + hairy_factor2D)), //add then floor (round down)
-		j = static_cast<int>(floor(y + hairy_factor2D)); //(i,j) space
+	int i = static_cast<int>(floorf(x + hairy_factor2D)), //add then floor (round down)
+		j = static_cast<int>(floorf(y + hairy_factor2D)); //(i,j) space
 	
 	//unskewing the cells
 	float original_factor2D = dot2D(i, j, *G2, *G2),
@@ -103,6 +108,6 @@ __device__ float STPSimplexNoise::simplex2D(float x, float y) const {
 	return 70.0f * (corner[0] + corner[1] + corner[2]);
 }
 
-__device__ __forceinline__ float dot2D(float v1x, float v1y, float v2x, float v2y) {
+__device__ __forceinline__ double dot2D(double v1x, double v1y, double v2x, double v2y) {
 	return v1x * v2x + v1y * v2y;
 }

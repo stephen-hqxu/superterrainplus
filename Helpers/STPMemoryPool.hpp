@@ -15,13 +15,31 @@
 namespace SuperTerrainPlus {
 
 	/**
+	 * @brief STPClassicMemoryManager is the default allocator and deallocator
+	 * @tparam T The type of the object to allocate memory
+	*/
+	template<typename T>
+	class STPClassicMemoryManager {
+	public:
+
+		T* allocate(size_t size) {
+			return new T[size];
+		}
+
+		void deallocate(size_t size, T* ptr) {
+			delete[] ptr;
+		}
+
+	};
+
+	/**
 	 * @brief STPMemoryPool is a pool that stores allocated memories, sending out if request, storing it if no longer required instead of reallocating.
 	 * Whenever a new memory is requested, it will first check if any more free memory available, or allocate new blocks of memory.
 	 * STPMemoryPool is designed for non-contiguous memory blocks.
 	 * @tparam T The type of object to allocate memory
 	 * @tparam A The allocator for memory pool. See the allocate() and deallocate() function to learn the type signature
 	*/
-	template<typename T, class A>
+	template<typename T, class A = STPClassicMemoryManager<T>>
 	class STPMemoryPool {
 	private:
 

@@ -36,15 +36,14 @@ STPLayerCache::STPLayerCache(size_t capacity) {
 	
 	this->Mask = capacity - 1ull;
 	//allocate space for cache and clear the storage
-	this->Key = new unsigned long long[capacity];
-	this->Value = new Sample[capacity];
+	this->Key = std::unique_ptr<unsigned long long[]>(new unsigned long long[capacity]);
+	this->Value = std::unique_ptr<Sample[]>(new Sample[capacity]);
 	this->clearCache();
 
 }
 
 STPLayerCache::~STPLayerCache() {
-	delete[] this->Key;
-	delete[] this->Value;
+	//Key and Value will be deleted automatically
 }
 
 Sample STPLayerCache::cache(int x, int y, int z, std::function<Sample(int, int, int)> sampler) {
@@ -68,8 +67,8 @@ Sample STPLayerCache::cache(int x, int y, int z, std::function<Sample(int, int, 
 
 void STPLayerCache::clearCache() {
 	const size_t capacity = this->getCapacity();
-	memset(this->Key, 0x00, sizeof(unsigned long long) * capacity);
-	memset(this->Value, 0x00, sizeof(Sample) * capacity);
+	memset(this->Key.get(), 0x00, sizeof(unsigned long long) * capacity);
+	memset(this->Value.get(), 0x00, sizeof(Sample) * capacity);
 }
 
 size_t STPLayerCache::getCapacity() const {

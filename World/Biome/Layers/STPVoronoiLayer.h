@@ -26,7 +26,7 @@ namespace STPDemo {
 		static double sqrtDist(Seed seed, int x, int y, int z, double xFrac, double yFrac, double zFrac) {
 			static auto distribute = [](Seed seed) -> double {
 				static auto floorMod = [](Seed x, Seed y) -> double {
-					return static_cast<double>(x - (static_cast<Seed>(__floor(x / y)) * y));
+					return static_cast<double>(x - (static_cast<Seed>(__floor(1.0 * x / y * 1.0)) * y));
 				};
 				const double d = floorMod(seed >> 24ull, 1024ull) / 1024.0;
 				return (d - 0.5) * 0.9;

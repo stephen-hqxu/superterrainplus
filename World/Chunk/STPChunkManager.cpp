@@ -73,12 +73,12 @@ bool STPChunkManager::MapLoader(vec2 chunkPos, const cudaArray_t destination[2])
 		bool no_error = true;
 		no_error &= cudaSuccess == cudaStreamCreateWithFlags(&copy_stream, cudaStreamNonBlocking);
 		//host array does not have pitch so pitch = width
-		no_error &= cudaSuccess == cudaMemcpy2DToArrayAsync(destination[0], 0, 0, chunk->TerrainMaps_cache[0],
-			static_cast<int>(chunk->PixelSize.x) * sizeof(unsigned short), static_cast<int>(chunk->PixelSize.x) * sizeof(unsigned short),
-			static_cast<int>(chunk->PixelSize.y), cudaMemcpyHostToDevice, copy_stream);
-		no_error &= cudaSuccess == cudaMemcpy2DToArrayAsync(destination[1], 0, 0, chunk->TerrainMaps_cache[1],
-			static_cast<int>(chunk->PixelSize.x) * sizeof(unsigned short) * 4, static_cast<int>(chunk->PixelSize.x) * sizeof(unsigned short) * 4,
-			static_cast<int>(chunk->PixelSize.y), cudaMemcpyHostToDevice, copy_stream);
+		no_error &= cudaSuccess == cudaMemcpy2DToArrayAsync(destination[0], 0, 0, chunk->getCacheMap(STPChunk::STPMapType::Heightmap),
+			static_cast<int>(chunk->getSize().x) * sizeof(unsigned short), static_cast<int>(chunk->getSize().x) * sizeof(unsigned short),
+			static_cast<int>(chunk->getSize().y), cudaMemcpyHostToDevice, copy_stream);
+		no_error &= cudaSuccess == cudaMemcpy2DToArrayAsync(destination[1], 0, 0, chunk->getCacheMap(STPChunk::STPMapType::Normalmap),
+			static_cast<int>(chunk->getSize().x) * sizeof(unsigned short) * 4, static_cast<int>(chunk->getSize().x) * sizeof(unsigned short) * 4,
+			static_cast<int>(chunk->getSize().y), cudaMemcpyHostToDevice, copy_stream);
 		no_error &= cudaSuccess == cudaStreamSynchronize(copy_stream);
 		no_error &= cudaSuccess == cudaStreamDestroy(copy_stream);
 
@@ -116,7 +116,8 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 	}
 
 	//async chunk loader
-	auto asyncChunkLoader = [this, &loading_chunks](const cudaArray_t *const *const heightfields) -> int {
+	auto asyncChunkLoader = [this, &loading_chunks](std::list<std::unique_ptr<cudaArray_t[]>>& heightfield) -> int {
+		static std::queue<std::future<bool>, std::list<std::future<bool>>> loader;
 		//A functoin to load one chunk
 		//return true if chunk is loaded
 		auto chunk_loader = [this](const std::pair<int, vec2>& local_chunk, const cudaArray_t loading_dest[2]) -> bool {
@@ -127,12 +128,13 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 
 		//launching async loading
 		const int original_size = loading_chunks.size();
-		std::future<bool>* loader = new std::future<bool>[original_size];
 		auto current_node = loading_chunks.begin();
+		auto heightfield_node = heightfield.begin();
 		for (int threadID = 0; threadID < original_size; threadID++) {
 			//start loading
-			loader[threadID] = this->compute_pool->enqueue_future(chunk_loader, *current_node, heightfields[threadID]);
+			loader.emplace(this->compute_pool->enqueue_future(chunk_loader, *current_node, (*heightfield_node).get()));
 
+			heightfield_node++;
 			current_node++;
 		}
 
@@ -140,7 +142,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 		//get the result
 		current_node = loading_chunks.begin();
 		for (int i = 0; i < original_size; i++) {
-			if (loader[i].get()) {
+			if (loader.front().get()) {
 				//loaded
 				//traversing the list while erasing it is quite good	
 				current_node = loading_chunks.erase(current_node);
@@ -153,32 +155,33 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 			}
 
 			//delete the mapped array
-			delete[] heightfields[i];
+			loader.pop();
 		}
 
 		//release the mapping
-		delete[] loader;
-		delete[] heightfields;
+		heightfield.clear();
+		//deleted by smart ptr
 		return loading_chunks.size();
 	};
 
 	//texture storage
 	const int loading_size = loading_chunks.size();
-	cudaArray_t** heightfields = new cudaArray_t * [loading_size];
+	static std::list<std::unique_ptr<cudaArray_t[]>> heightfield;
 	//map the texture, all opengl related work must be done on the main contexted thread
 	cudaGraphicsMapResources(2, this->heightfield_texture_res);
 	//get the mapped array on the main contexte thread
 	auto node = loading_chunks.begin();
 	for (int i = 0; i < loading_size; i++) {
 		//allocating spaces for this chunk (2 tetxures per chunk)
-		heightfields[i] = new cudaArray_t[2];
+		std::unique_ptr<cudaArray_t[]> heightfield_ptr = std::unique_ptr<cudaArray_t[]>(new cudaArray_t[2]);
 		//map each texture
-		cudaGraphicsSubResourceGetMappedArray(&(heightfields[i][0]), this->heightfield_texture_res[0], node->first, 0);
-		cudaGraphicsSubResourceGetMappedArray(&(heightfields[i][1]), this->heightfield_texture_res[1], node->first, 0);
+		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[0]), this->heightfield_texture_res[0], node->first, 0);
+		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[1]), this->heightfield_texture_res[1], node->first, 0);
+		heightfield.push_back(std::move(heightfield_ptr));
 		node++;
 	}
 	//start loading chunk
-	this->ChunkLoader = this->compute_pool->enqueue_future(asyncChunkLoader, heightfields);
+	this->ChunkLoader = this->compute_pool->enqueue_future(asyncChunkLoader, std::ref(heightfield));
 	return true;
 }
 

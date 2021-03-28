@@ -7,6 +7,11 @@ using glm::vec3;
 
 using std::atomic_init;
 using std::atomic_load_explicit;
+using std::atomic_store_explicit;
+using std::memory_order;
+using std::ostream;
+using std::istream;
+using std::ios_base;
 
 using namespace SuperTerrainPlus;
 
@@ -14,11 +19,11 @@ STPChunk::STPChunk(uvec2 size, bool initialise) : PixelSize(size) {
 	if (initialise) {
 		const int num_pixel = size.x * size.y;
 		//heightmap is RED format
-		this->TerrainMaps[0] = new float[num_pixel];
-		this->TerrainMaps_cache[0] = new unsigned short[num_pixel];
+		this->TerrainMap[0] = std::unique_ptr<float[]>(new float[num_pixel]);
+		this->TerrainMap_cache[0] = std::unique_ptr<unsigned short[]>(new unsigned short[num_pixel]);
 		//normal map is RGBA format
-		this->TerrainMaps[1] = new float[num_pixel * 4];
-		this->TerrainMaps_cache[1] = new unsigned short[num_pixel * 4];
+		this->TerrainMap[1] = std::unique_ptr<float[]>(new float[num_pixel * 4]);
+		this->TerrainMap_cache[1] = std::unique_ptr<unsigned short[]>(new unsigned short[num_pixel * 4]);
 	}
 
 	atomic_init<STPChunkState>(&this->State, STPChunkState::Empty);
@@ -30,27 +35,46 @@ STPChunk::~STPChunk() {
 		//make sure the chunk is not in used, and all previous tasks are finished
 	}
 
-	if (this->TerrainMaps[0] != nullptr) {
-		delete[] this->TerrainMaps[0];
-	}
-	if (this->TerrainMaps_cache[0] != nullptr) {
-		delete[] this->TerrainMaps_cache[0];
-	}
+	//array deleted by smart ptr
+}
 
-	if (this->TerrainMaps[1] != nullptr) {
-		delete[] this->TerrainMaps[1];
-	}
-	if (this->TerrainMaps_cache[1] != nullptr) {
-		delete[] this->TerrainMaps_cache[1];
+template<typename T>
+T* STPChunk::getMap(STPMapType type, const std::unique_ptr<T[]>* map) {
+	switch (type) {
+	case STPMapType::Heightmap:
+		return map[0].get();
+		break;
+	case STPMapType::Normalmap:
+		return map[1].get();
+		break;
+	default:
+		return nullptr;
+		break;
 	}
 }
 
-float* STPChunk::getHeightmap() {
-	return this->TerrainMaps[0];
+bool STPChunk::isOccupied() const {
+	return atomic_load_explicit(&this->inUsed, memory_order::memory_order_relaxed);
 }
 
-float* STPChunk::getNormalmap() {
-	return this->TerrainMaps[1];
+void STPChunk::markOccupancy(bool val) {
+	atomic_store_explicit(&this->inUsed, val, memory_order::memory_order_relaxed);
+}
+
+STPChunk::STPChunkState STPChunk::getChunkState() const {
+	return atomic_load_explicit(&this->State, memory_order::memory_order_relaxed);
+}
+
+void STPChunk::markChunkState(STPChunkState state) {
+	atomic_store_explicit(&this->State, state, memory_order::memory_order_relaxed);
+}
+
+float* STPChunk::getRawMap(STPMapType type) {
+	return this->getMap(type, this->TerrainMap);
+}
+
+unsigned short* STPChunk::getCacheMap(STPMapType type) {
+	return this->getMap(type, this->TerrainMap_cache);
 }
 
 const uvec2& STPChunk::getSize() const {
@@ -90,4 +114,73 @@ STPChunk::STPChunkPosCache STPChunk::getRegion(vec2 centerPos, uvec2 chunkSize, 
 	}
 
 	return results;
+}
+
+namespace SuperTerrainPlus {
+
+	ostream& operator<<(ostream& output, const STPChunk* const chunk) {
+		output.seekp(ios_base::beg);
+		//write identifier
+		output.write(reinterpret_cast<const char*>(&STPChunk::IDENTIFIER), sizeof(unsigned long long));
+		//write serial version number
+		output.write(reinterpret_cast<const char*>(&STPChunk::SERIAL_VERSION), sizeof(unsigned short));
+
+		//main content
+		//write chunk state
+		const char state = static_cast<const char>(atomic_load_explicit(&chunk->State, memory_order::memory_order_relaxed));
+		output.write(&state, sizeof(char));
+		//write pixel size, x and y
+		output.write(reinterpret_cast<const char*>(&chunk->PixelSize.x), sizeof(unsigned int));
+		output.write(reinterpret_cast<const char*>(&chunk->PixelSize.y), sizeof(unsigned int));
+		const unsigned int size = chunk->PixelSize.x * chunk->PixelSize.y;
+		//write heightmap, 1 channel
+		output.write(reinterpret_cast<const char*>(chunk->TerrainMap[0].get()), sizeof(float) * size);
+		//write normal map, 4 channels
+		output.write(reinterpret_cast<const char*>(chunk->TerrainMap[1].get()), sizeof(float) * size * 4);
+
+		//finish up
+		output.flush();
+		return output;
+	}
+
+	istream& operator>>(istream& input, STPChunk*& chunk) {
+		input.seekg(ios_base::beg);
+		//read identifier
+		unsigned long long id;
+		input.read(reinterpret_cast<char*>(&id), sizeof(unsigned long long));
+		//id check
+		if ((~id & STPChunk::IDENTIFIER) != 0ull) {
+			throw STPSerialisationException("File format is not defined as a valid STPChunk object");
+		}
+		//read serial version number
+		unsigned short version;
+		input.read(reinterpret_cast<char*>(&version), sizeof(unsigned short));
+		//version check
+		if (((~version & STPChunk::SERIAL_VERSION) >> 8u) != 0u) {
+			//if the major version doesn't match, stop parsing
+			throw STPSerialisationException("Serialisation protocol version is deprecated");
+		}
+
+		//main content
+		//read chunk state
+		char state;
+		input.read(&state, sizeof(char));
+		//read pixel size, x and y
+		glm::uvec2 pix_size;
+		input.read(reinterpret_cast<char*>(&pix_size.x), sizeof(unsigned int));
+		input.read(reinterpret_cast<char*>(&pix_size.y), sizeof(unsigned int));
+		const unsigned int size = pix_size.x * pix_size.y;
+		//allocation
+		chunk = new STPChunk(pix_size, true);
+		//read heightmap, 1 channel
+		input.read(reinterpret_cast<char*>(chunk->TerrainMap[0].get()), sizeof(float));
+		//read normalmap, 4 channels
+		input.read(reinterpret_cast<char*>(chunk->TerrainMap[1].get()), sizeof(float) * 4);
+		//chunk state
+		atomic_store_explicit(&chunk->State, static_cast<STPChunk::STPChunkState>(state), memory_order::memory_order_relaxed);
+
+		//finish up
+		input.sync();
+		return input;
+	}
 }

@@ -109,7 +109,7 @@ TEST_CASE_METHOD(memorypool_test, "Memory pool functionality test", "[STPMemoryP
 		REQUIRE(empty(count));
 	}
 
-	SECTION("Memory free up") {
+	SECTION("Memory free") {
 		REQUIRE(empty());
 		REQUIRE(empty(count));
 
