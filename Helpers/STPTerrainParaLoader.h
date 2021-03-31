@@ -41,7 +41,7 @@ namespace SuperTerrainPlus {
 			"nearestDistance"
 		};
 
-		inline static const std::string Procedural2DINFChunksVariables[13] = {
+		inline static const std::string Procedural2DINFChunksVariables[15] = {
 			"heightmap2DSizeX",
 			"heightmap2DSizeZ",
 			"chunkSizeX",
@@ -54,6 +54,8 @@ namespace SuperTerrainPlus {
 			"mapOffsetX",
 			"mapOffsetY",
 			"mapOffsetZ",
+			"freeSlipX",
+			"freeSlipZ",
 			"chunkScale"
 		};
 

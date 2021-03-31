@@ -11,19 +11,8 @@ STPChunkProvider::STPChunkProvider(STPSettings::STPConfigurations* settings)
 }
 
 bool STPChunkProvider::computeChunk(STPChunk* const current_chunk, vec2 chunkPos) {
-	//determine whethwe we need to recompute the terrain or not
-	//Simplified using boolean algebra
-	/*bool recompute = false;
-	if (overwrite) {
-		recompute = true;
-	}
-	else if (!overwrite && current_chunk->Chunk_Completed) {
-		recompute = false;
-	}
-	else if (!current_chunk->Chunk_Completed) {
-		recompute = true;
-	}*/
 	using namespace STPCompute;
+
 	//first convert chunk world position to relative chunk position, then multiply by the map size, such that the generated map will be seamless
 	const float3 offset = make_float3(
 		//we substract the mapsize by 1 for the offset
@@ -88,17 +77,6 @@ STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage&
 	else {
 		//chunk found
 		//check if it has been completed
-		//if (!current_chunk->Chunk_Completed) {
-		//	//computation in progress (on other threads)
-		//	//result will be copied back to this chunk by that thread once finished
-		//	return false;
-		//}
-		//if (current_chunk->Chunk_Completed && !current_chunk->Memory_Updated) {
-		//	//we only need to update the cache if the map has been recomputed
-		//	//such that MapConverter() will only be called by MapComputer()
-		//	return false;
-		//}
-		//simplified with boolean algebra and invert it to true condition
 		if (!storage_unit->isOccupied() && storage_unit->getChunkState() == STPChunk::STPChunkState::Complete) {
 			//chunk is ready, we can return
 			return std::make_pair(true, storage_unit);
@@ -115,4 +93,8 @@ const STPSettings::STPChunkSettings* STPChunkProvider::getChunkSettings() const 
 
 bool STPChunkProvider::setHeightfieldErosionIteration(unsigned int iteration) {
 	return this->heightmap_gen.setErosionIterationCUDA(iteration);
+}
+
+bool STPChunkProvider::setHeightfieldLocalGlobalIndex(uint2 range, uint2 dimension) {
+	return this->heightmap_gen.setLocalGlobalIndexCUDA(range, dimension);
 }

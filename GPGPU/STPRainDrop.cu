@@ -17,20 +17,34 @@ __device__ STPRainDrop::~STPRainDrop() {
 
 }
 
-__device__ float3 STPRainDrop::calcHeightGradients(float* const heightmap, uint2 mapSize, float2 position) {
+__host__ STPRainDrop::STPFreeSlipManager::STPFreeSlipManager(float* heightmap, unsigned int* index, uint2 range, uint2 mapSize)
+	: Dimension(mapSize), FreeSlipRange(make_uint2(range.x * mapSize.x, range.y * mapSize.y)) {
+	this->Heightmap = heightmap;
+	this->Index = index;
+}
+
+__host__ STPRainDrop::STPFreeSlipManager::~STPFreeSlipManager() {
+
+}
+
+__device__ float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) {
+	return this->Heightmap[this->Index[global]];
+}
+
+__device__ float3 STPRainDrop::calcHeightGradients(STPFreeSlipManager& map) {
 	//result
 	float3 height_gradients;
 
-	const uint2 rounded_pos = make_uint2(static_cast<unsigned int>(position.x), static_cast<unsigned int>(position.y));
+	const uint2 rounded_pos = make_uint2(static_cast<unsigned int>(this->raindrop_pos.x), static_cast<unsigned int>(this->raindrop_pos.y));
 	//calculate drop's offset inside the cell (0,0) and (1,1)
-	const float2 cell_corner = make_float2(position.x - rounded_pos.x, position.y - rounded_pos.y);
+	const float2 cell_corner = make_float2(this->raindrop_pos.x - rounded_pos.x, this->raindrop_pos.y - rounded_pos.y);
 	//calculate the heights of the 4 nodes of the droplet's cell
-	const unsigned int nodebaseIndex = rounded_pos.y * mapSize.x + rounded_pos.x;//The position on the map of the local (0,0) cell
+	const unsigned int nodebaseIndex = rounded_pos.y * map.FreeSlipRange.x + rounded_pos.x;//The position on the map of the local (0,0) cell
 	const float4 heights = make_float4(
-		heightmap[nodebaseIndex], // (0,0)
-		heightmap[nodebaseIndex + 1], // (1,0)
-		heightmap[nodebaseIndex + mapSize.x], // (1,0)
-		heightmap[nodebaseIndex + mapSize.x + 1] // (1,1)
+		map[nodebaseIndex], // (0,0)
+		map[nodebaseIndex + 1], // (1,0)
+		map[nodebaseIndex + map.FreeSlipRange.x], // (1,0)
+		map[nodebaseIndex + map.FreeSlipRange.x + 1] // (1,1)
 	);
 
 	//calculate height with bilinear interpolation of the heights of the nodes of the cell
@@ -50,18 +64,18 @@ __device__ float STPRainDrop::getCurrentVolume() const {
 	return this->volume;
 }
 
-__device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* const settings, uint2 mapSize, float* heightmap) {
+__device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* const settings, STPFreeSlipManager& map) {
 	//Err, this algorithm is gonna be sick... But let's start!
 	//Rain drop is still alive, continue descending...
 	while (this->volume >= settings->minWaterVolume) {
 		//The position of droplet on the map index
-		unsigned int mapIndex = static_cast<unsigned int>(this->raindrop_pos.y) * mapSize.x + static_cast<unsigned int>(this->raindrop_pos.x);
+		unsigned int mapIndex = static_cast<unsigned int>(this->raindrop_pos.y) * map.FreeSlipRange.x + static_cast<unsigned int>(this->raindrop_pos.x);
 		//calculate the offset of the droplet inside cell (0,0) and cell (1,1)
 		float2 offset_cell = make_float2(this->raindrop_pos.x - static_cast<int>(this->raindrop_pos.x), this->raindrop_pos.y - static_cast<int>(this->raindrop_pos.y));
 		//check if the particle is not accelerating and is it surrounded by a lot of other particles
 
 		//calculate droplet's height and the direction of flow with bilinear interpolation of surrounding heights
-		const float3 height_gradients = STPRainDrop::calcHeightGradients(heightmap, mapSize, this->raindrop_pos);
+		const float3 height_gradients = STPRainDrop::calcHeightGradients(map);
 		
 		//update droplet's position and direction
 		this->raindrop_dir.x = this->raindrop_dir.x * settings->Inertia - height_gradients.y * (1.0f - settings->Inertia);
@@ -75,8 +89,8 @@ __device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* const
 
 		//check if the raindrop brushing range falls out of the map
 		if ((this->raindrop_dir.x == 0.0f && this->raindrop_dir.y == 0.0f) 
-			|| this->raindrop_pos.x < (settings->getErosionBrushRadius() * 1.0f) || this->raindrop_pos.x >= 1.0f * mapSize.x - settings->getErosionBrushRadius()
-			|| this->raindrop_pos.y < (settings->getErosionBrushRadius() * 1.0f) || this->raindrop_pos.y >= 1.0f * mapSize.y - settings->getErosionBrushRadius()) {
+			|| this->raindrop_pos.x < (settings->getErosionBrushRadius() * 1.0f) || this->raindrop_pos.x >= 1.0f * map.FreeSlipRange.x - settings->getErosionBrushRadius()
+			|| this->raindrop_pos.y < (settings->getErosionBrushRadius() * 1.0f) || this->raindrop_pos.y >= 1.0f * map.FreeSlipRange.y - settings->getErosionBrushRadius()) {
 			//ending the life of this poor raindrop
 			this->volume = 0.0f;
 			this->sediment = 0.0f;
@@ -84,7 +98,7 @@ __device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* const
 		}
 
 		//find the new height and calculate the delta height
-		const float deltaHeight = STPRainDrop::calcHeightGradients(heightmap, mapSize, this->raindrop_pos).x - height_gradients.x;
+		const float deltaHeight = STPRainDrop::calcHeightGradients(map).x - height_gradients.x;
 
 		//calculate droplet's sediment capacity (higher when moving fast down a slop and contains a lot of water)
 		const float sedimentCapacity = fmaxf(-deltaHeight * this->speed * this->volume * settings->SedimentCapacityFactor, settings->minSedimentCapacity);
@@ -97,10 +111,10 @@ __device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* const
 
 			//add the sediment to the four nodes of the current cell using bilinear interpolation
 			//deposition is not distributed over a radius (like erosion) so that it can fill small pits :)
-			heightmap[mapIndex] += depositAmount * (1.0f - offset_cell.x) * (1.0f - offset_cell.y);
-			heightmap[mapIndex + 1] += depositAmount * offset_cell.x * (1.0f - offset_cell.y);
-			heightmap[mapIndex + mapSize.x] += depositAmount * (1.0f - offset_cell.x) * offset_cell.y;
-			heightmap[mapIndex + mapSize.x + 1] += depositAmount * offset_cell.x *  offset_cell.y;
+			map[mapIndex] += depositAmount * (1.0f - offset_cell.x) * (1.0f - offset_cell.y);
+			map[mapIndex + 1] += depositAmount * offset_cell.x * (1.0f - offset_cell.y);
+			map[mapIndex + map.FreeSlipRange.x] += depositAmount * (1.0f - offset_cell.x) * offset_cell.y;
+			map[mapIndex + map.FreeSlipRange.x + 1] += depositAmount * offset_cell.x *  offset_cell.y;
 		}
 		else {
 			//erode a fraction of the droplet's current carry capacity
@@ -114,9 +128,9 @@ __device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* const
 
 				int erodeIndex = mapIndex + brush_index;
 				float weightederodeAmout = erodeAmout * brush_weight;
-				float deltaSediment = (heightmap[erodeIndex] < weightederodeAmout) ? heightmap[erodeIndex] : weightederodeAmout;
+				float deltaSediment = (map[erodeIndex] < weightederodeAmout) ? map[erodeIndex] : weightederodeAmout;
 				//erode the map
-				heightmap[erodeIndex] -= deltaSediment;
+				map[erodeIndex] -= deltaSediment;
 				this->sediment += deltaSediment;
 			}
 		}

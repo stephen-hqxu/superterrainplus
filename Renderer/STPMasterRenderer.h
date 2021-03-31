@@ -211,6 +211,8 @@ namespace SuperTerrainPlus {
 			assert(STPCompute::STPSimplexNoise::initialise());
 			this->terrain2d_inf = new STPProcedural2DINF(&config, reinterpret_cast<void*>(this->command->Command_Procedural2DINF), this->command_pool);
 			this->terrain2d_inf->getChunkProvider().setHeightfieldErosionIteration(std::stoul(this->engineSettings("iteration", "2DTerrainINF")));
+			const auto& slip = config.getChunkSettings().FreeSlipChunk;
+			this->terrain2d_inf->getChunkProvider().setHeightfieldLocalGlobalIndex(make_uint2(slip.x, slip.y), config.getSimplexNoiseSettings().Dimension);
 			this->terrain2d_inf->loadChunksAsync(this->Camera->getPosition());
 
 			//setting up ssbo

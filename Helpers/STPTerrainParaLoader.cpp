@@ -48,7 +48,11 @@ STPSettings::STPChunkSettings STPTerrainParaLoader::getProcedural2DINFChunksPara
 		stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[10])),
 		stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[11]))
 	);
-	chunks_options.ChunkScaling = stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[12]));
+	chunks_options.FreeSlipChunk = uvec2(
+		stoul(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[12])),
+		stoul(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[13]))
+	);
+	chunks_options.ChunkScaling = stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[14]));
 
 	return chunks_options;
 }

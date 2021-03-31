@@ -64,7 +64,7 @@ namespace SuperTerrainPlus {
 		~STPChunkStorage();
 
 		/**
-		 * @brief Add a new chunk to the storage.
+		 * @brief Atomically add a new chunk to the storage.
 		 * @param chunkPos new chunk world position, make sure the pointer is dynamic
 		 * @param chunk new chunk with data
 		 * @return True if the chunk has been added, false if chunk exists thus it won't be inserted
@@ -72,14 +72,14 @@ namespace SuperTerrainPlus {
 		bool addChunk(glm::vec2, STPChunk*);
 
 		/**
-		 * @brief Get the chunk by its world position
+		 * @brief Atomically get the chunk by its world position
 		 * @param chunkPos the chunk world position
 		 * @return The chunk with specified position, return null if chunk not found
 		*/
 		STPChunk* getChunk(glm::vec2);
 
 		/**
-		 * @brief Remove the chunk by its world position
+		 * @brief Atomically remove the chunk by its world position
 		 * @param chunkPos the chunk world position
 		 * @return True if the chunk with specified world position has removed, or false if not found. 
 		 * The chunk will be effectively deleted and memory is freed, and no longer be available inside the chunk
@@ -87,7 +87,7 @@ namespace SuperTerrainPlus {
 		bool removeChunk(glm::vec2);
 
 		/**
-		 * @brief Effectively clear the storage and free all used memory
+		 * @brief Atomically and effectively clear the storage and free all used memory
 		*/
 		void clearChunk();
 

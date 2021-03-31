@@ -52,11 +52,10 @@ __global__ void generateHeightmapKERNEL(STPSimplexNoise* const, float*, uint2, f
 
 /**
  * @brief Performing hydraulic erosion for the given heightmap terrain using CUDA parallel computing
- * @param height_storage Heightmap that is going to erode with raindrop
- * @param dimension The size of all maps, they must be the same
+ * @param height_storage The heightmap with global-local convertion management
  * @param rng The random number generator map sequence, independent for each rain drop
 */
-__global__ void performErosionKERNEL(float*, uint2, STPHeightfieldGenerator::curandRNG*);
+__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager, STPHeightfieldGenerator::curandRNG*);
 
 /**
  * @brief Generate the normal map for the height map within kernel
@@ -75,6 +74,15 @@ __global__ void generateNormalmapKERNEL(float* const, float*, uint2);
  * @return True if conversion was successful without errors
 */
 __global__ void floatToshortKERNEL(const float* const, unsigned short*, uint2, unsigned int);
+
+/**
+ * @brief Generate a new global to local index table
+ * @param output The generated table. Should be preallocated with size sizeof(unsigned int) * chunkRange.x * mapSize.x * chunkRange.y * mapSize.y
+ * @param rowCount The number of row in the global index table, which is equivalent to chunkRange.x * mapSize.x
+ * @param chunkRage The number of chunk (or locals)
+ * @param mapSize The dimension of the map
+*/
+__global__ void initGlobalLocalIndexKERNEL(unsigned int*, unsigned int, uint2, uint2);
 
 __host__ float* STPHeightfieldGenerator::STPHeightfieldAllocator::allocate(size_t count) {
 	float* mem = nullptr;
@@ -117,6 +125,9 @@ __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 	}
 	if (this->BiomeDictionary != nullptr) {
 		cudaFree(this->BiomeDictionary);
+	}
+	if (this->GlobalLocalIndex != nullptr) {
+		cudaFree(this->GlobalLocalIndex);
 	}
 }
 
@@ -224,8 +235,8 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 	//Flag: Erosion
 	if (flags[1]) {
 		//erode the heightmap, either from provided heightmap or generated previously
-		performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, 0, stream >> > (heightfield_d[0],
-			this->Noise_Settings.Dimension, this->RNG_Map);
+		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_d[0], this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
+		performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, 0, stream >> > (heightmap_slip, this->RNG_Map);
 	}
 
 	//Flag: Normalmap
@@ -322,7 +333,7 @@ __host__ bool STPHeightfieldGenerator::setErosionIterationCUDA(unsigned int rain
 	}
 	no_error &= cudaSuccess == cudaMalloc(&this->RNG_Map, sizeof(curandRNG) * raindrop_count);
 	//and send to kernel
-	curandInitKERNEL<<<this->numBlock_Erosion, this->numThreadperBlock_Erosion>>>(this->RNG_Map, this->Noise_Settings.Seed);
+	curandInitKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion >> > (this->RNG_Map, this->Noise_Settings.Seed);
 	no_error &= cudaSuccess == cudaDeviceSynchronize();
 	//leave the result on device, and update the raindrop count
 	this->NumRaindrop = raindrop_count;
@@ -332,6 +343,29 @@ __host__ bool STPHeightfieldGenerator::setErosionIterationCUDA(unsigned int rain
 
 __host__ unsigned int STPHeightfieldGenerator::getErosionIteration() const {
 	return this->NumRaindrop;
+}
+
+__host__ bool STPHeightfieldGenerator::setLocalGlobalIndexCUDA(uint2 range, uint2 dimension) {
+	const uint2 global_dimension = make_uint2(range.x * dimension.x, range.y * dimension.y);
+	//launch parameters
+	dim3 numBlock_Index = dim3(global_dimension.x / this->numThreadperBlock_Map.x, global_dimension.y / this->numThreadperBlock_Map.y);
+	bool no_error = true;
+
+	//make sure all previous takes are finished
+	no_error &= cudaSuccess == cudaDeviceSynchronize();
+	//allocation
+	if (this->GlobalLocalIndex != nullptr) {
+		no_error &= cudaSuccess == cudaFree(this->GlobalLocalIndex);
+	}
+	no_error &= cudaSuccess == cudaMalloc(&this->GlobalLocalIndex, sizeof(unsigned int) * global_dimension.x * global_dimension.y);
+
+	//compute
+	initGlobalLocalIndexKERNEL << <numBlock_Index, this->numThreadperBlock_Map >> > (this->GlobalLocalIndex, global_dimension.x, range, dimension);
+	no_error &= cudaSuccess == cudaDeviceSynchronize();
+	//store the information locally
+	this->FreeSlipChunk = range;
+
+	return no_error;
 }
 
 __device__ __inline__ float3 normalize3DKERNEL(float3 vec3) {
@@ -387,7 +421,7 @@ __global__ void generateHeightmapKERNEL(STPSimplexNoise* const noise_fun, float*
 	return;
 }
 
-__global__ void performErosionKERNEL(float* height_storage, uint2 dimension, STPHeightfieldGenerator::curandRNG* rng) {
+__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager heightmap_storage, STPHeightfieldGenerator::curandRNG* rng) {
 	//convert constant memory to usable class
 	SuperTerrainPlus::STPSettings::STPRainDropSettings* const settings = (SuperTerrainPlus::STPSettings::STPRainDropSettings* const)(reinterpret_cast<const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings));
 
@@ -398,16 +432,17 @@ __global__ void performErosionKERNEL(float* height_storage, uint2 dimension, STP
 	float2 initPos = make_float2(curand_uniform(&rng[index]), curand_uniform(&rng[index]));
 	//convert to (erode radius, dimension - erode radius - 1]
 	//range: dimension - 2 * erosion radius - 1
-	initPos.x *= dimension.x - 2.0f * settings->getErosionBrushRadius() - 1.0f;
+	//TODO Generate the raindrop at the central chunk only
+	initPos.x *= heightmap_storage.FreeSlipRange.x - 2.0f * settings->getErosionBrushRadius() - 1.0f;
 	initPos.x += settings->getErosionBrushRadius();
-	initPos.y *= dimension.y - 2.0f * settings->getErosionBrushRadius() - 1.0f;
+	initPos.y *= heightmap_storage.FreeSlipRange.y - 2.0f * settings->getErosionBrushRadius() - 1.0f;
 	initPos.y += settings->getErosionBrushRadius();
 
 	//spawn in the raindrop
 	STPRainDrop droplet(initPos, settings->initWaterVolume, settings->initSpeed);
 	//usually each droplet only does that once, rarely go beyond twice.
 	//Just adding in case...
-	droplet.Erode(settings, dimension, height_storage);
+	droplet.Erode(settings, heightmap_storage);
 }
 
 __global__ void generateNormalmapKERNEL(float* const heightmap, float* normal_storage, uint2 dimension) {
@@ -460,4 +495,17 @@ __global__ void floatToshortKERNEL(const float* const input, unsigned short* out
 	for (int i = 0; i < channel; i++) {
 		output[index * channel + i] = static_cast<unsigned short>(input[index * channel + i] * 65535u);
 	}
+}
+
+__global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int rowCount, uint2 chunkRange, uint2 mapSize) {
+	//current pixel
+	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
+		y = (blockIdx.y * blockDim.y) + threadIdx.y,
+		globalidx = x + y * rowCount;
+	//simple maths
+	const uint2 globalPos = make_uint2(globalidx - floorf(globalidx / rowCount) * rowCount, floorf(globalidx / rowCount));
+	const uint2 chunkPos = make_uint2(floorf(globalPos.x / mapSize.x), floorf(globalPos.y / mapSize.y));
+	const uint2 localPos = make_uint2(globalPos.x - chunkPos.x * mapSize.x, globalPos.y - chunkPos.y * mapSize.y);
+
+	output[globalidx] = (chunkPos.x + chunkRange.x * chunkPos.y) * mapSize.x * mapSize.y + (localPos.x + mapSize.x * localPos.y);
 }

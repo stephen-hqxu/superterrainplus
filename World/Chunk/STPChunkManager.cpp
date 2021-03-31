@@ -117,13 +117,13 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 
 	//async chunk loader
 	auto asyncChunkLoader = [this, &loading_chunks](std::list<std::unique_ptr<cudaArray_t[]>>& heightfield) -> int {
-		static std::queue<std::future<bool>, std::list<std::future<bool>>> loader;
+		std::queue<std::future<bool>, std::list<std::future<bool>>> loader;
 		//A functoin to load one chunk
 		//return true if chunk is loaded
-		auto chunk_loader = [this](const std::pair<int, vec2>& local_chunk, const cudaArray_t loading_dest[2]) -> bool {
+		auto chunk_loader = [this](vec2 local_chunk, const cudaArray_t loading_dest[2]) -> bool {
 			//Load the texture to the given array.
 			//If texture is not loaded the given array will be cleared automatically
-			return this->MapLoader(local_chunk.second, loading_dest);
+			return this->MapLoader(local_chunk, loading_dest);
 		};
 
 		//launching async loading
@@ -132,7 +132,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 		auto heightfield_node = heightfield.begin();
 		for (int threadID = 0; threadID < original_size; threadID++) {
 			//start loading
-			loader.emplace(this->compute_pool->enqueue_future(chunk_loader, *current_node, (*heightfield_node).get()));
+			loader.emplace(this->compute_pool->enqueue_future(chunk_loader, current_node->second, (*heightfield_node).get()));
 
 			heightfield_node++;
 			current_node++;
@@ -166,7 +166,6 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 
 	//texture storage
 	const int loading_size = loading_chunks.size();
-	static std::list<std::unique_ptr<cudaArray_t[]>> heightfield;
 	//map the texture, all opengl related work must be done on the main contexted thread
 	cudaGraphicsMapResources(2, this->heightfield_texture_res);
 	//get the mapped array on the main contexte thread
@@ -177,11 +176,11 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 		//map each texture
 		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[0]), this->heightfield_texture_res[0], node->first, 0);
 		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[1]), this->heightfield_texture_res[1], node->first, 0);
-		heightfield.push_back(std::move(heightfield_ptr));
+		this->heightfield_cuda.push_back(std::move(heightfield_ptr));
 		node++;
 	}
 	//start loading chunk
-	this->ChunkLoader = this->compute_pool->enqueue_future(asyncChunkLoader, std::ref(heightfield));
+	this->ChunkLoader = this->compute_pool->enqueue_future(asyncChunkLoader, std::ref(this->heightfield_cuda));
 	return true;
 }
 

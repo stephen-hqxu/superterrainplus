@@ -77,6 +77,14 @@ namespace SuperTerrainPlus {
 		*/
 		bool setHeightfieldErosionIteration(unsigned int);
 
+		/**
+		 * @brief Set and generate the local global index convertion lookup table
+		 * @param range The number of local unit (or chunk)
+		 * @param dimension The dimension of each local unit, a.k.a., map size
+		 * @return True if generation is succesful
+		*/
+		bool setHeightfieldLocalGlobalIndex(uint2, uint2);
+
 	};
 }
 #endif//_STP_CHUNK_PROVIDER_H_

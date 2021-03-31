@@ -50,6 +50,8 @@ namespace SuperTerrainPlus {
 
 		//async chunk loader
 		std::future<int> ChunkLoader;
+		//CUDA map mapped array storage
+		std::list<std::unique_ptr<cudaArray_t[]>> heightfield_cuda;
 
 		//for automatic chunk loading
 		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the currentCentralPos is different from this value

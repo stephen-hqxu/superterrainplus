@@ -23,7 +23,7 @@ STPChunkStorage::~STPChunkStorage() {
 
 bool STPChunkStorage::addChunk(vec2 chunkPos, STPChunk* chunk) {
 	unique_lock<shared_mutex> add_chunk(this->chunk_storage_lock);
-	return this->TerrainMap2D.emplace(chunkPos, std::unique_ptr<STPChunk>(chunk)).second;
+	return this->TerrainMap2D.emplace(chunkPos, chunk).second;
 }
 
 STPChunk* STPChunkStorage::getChunk(vec2 chunkPos) {

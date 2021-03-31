@@ -149,6 +149,24 @@ namespace SuperTerrainPlus {
 
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency
 			curandRNG* RNG_Map = nullptr;
+			/**
+			 * @brief Convert global index to global index, making data access outside the central chunk available
+			 * As shown the difference between local and global index
+			 *		 Local					 Global
+			 * 0 1 2 3 | 0 1 2 3	0  1  2  3  | 4  5  6  7
+			 * 4 5 6 7 | 4 5 6 7	8  9  10 11 | 12 13 14 15
+			 * -----------------	-------------------------
+			 * 0 1 2 3 | 0 1 2 3	16 17 18 19 | 20 21 22 23
+			 * 4 5 6 7 | 4 5 6 7	24 25 26 27 | 28 29 30 21
+			 *
+			 * Given that chunk should be arranged in a linear array (just an example)
+			 * Chunk 1 | Chunk 2
+			 * -----------------
+			 * Chunk 3 | Chunk 4
+			*/
+			unsigned int* GlobalLocalIndex = nullptr;
+			//Free slip range in the unit of chunk
+			uint2 FreeSlipChunk;
 			//Determine the number of raindrop to summon, the higher the more accurate but slower
 			//Each time this value changes, the rng needs to be re-sampled
 			unsigned int NumRaindrop = 0u;
@@ -225,6 +243,14 @@ namespace SuperTerrainPlus {
 			 * @return The number of raindrop to erode the terrain
 			*/
 			__host__ unsigned int getErosionIteration() const;
+
+			/**
+			 * @brief Generate the local global index lookup table
+			 * @param range Free slip range in the unit of chunk
+			 * @param dimension The size of each heightmap
+			 * @return True if generation is successful without errors
+			*/
+			__host__ bool setLocalGlobalIndexCUDA(uint2, uint2);
 
 		};
 
