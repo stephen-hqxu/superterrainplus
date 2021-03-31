@@ -4,9 +4,9 @@ using glm::vec2;
 
 using namespace SuperTerrainPlus;
 
-STPChunkProvider::STPChunkProvider(STPSettings::STPConfigurations* settings, STPThreadPool* const shared_threadpool)
-	: ChunkSettings(settings->getChunkSettings()), compute_pool(shared_threadpool)
-	, heightmap_gen(&settings->getSimplexNoiseSettings()), formatter(make_uint2(settings->getChunkSettings().MapSize.x, settings->getChunkSettings().MapSize.y)) {
+STPChunkProvider::STPChunkProvider(STPSettings::STPConfigurations* settings)
+	: ChunkSettings(settings->getChunkSettings())
+	, heightmap_gen(&settings->getSimplexNoiseSettings()) {
 
 }
 
@@ -23,42 +23,40 @@ bool STPChunkProvider::computeChunk(STPChunk* const current_chunk, vec2 chunkPos
 	else if (!current_chunk->Chunk_Completed) {
 		recompute = true;
 	}*/
+	using namespace STPCompute;
+	//first convert chunk world position to relative chunk position, then multiply by the map size, such that the generated map will be seamless
+	const float3 offset = make_float3(
+		//we substract the mapsize by 1 for the offset
+		//such that the first row of pixels in the next chunk will be the same as the last row in the previous
+		//to achieve seamless experience :)
+		static_cast<float>(this->ChunkSettings.MapSize.x - 1u) * chunkPos.x / (static_cast<float>(this->ChunkSettings.ChunkSize.x) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.x,
+		this->ChunkSettings.MapOffset.y,
+		static_cast<float>(this->ChunkSettings.MapSize.y - 1u) * chunkPos.y / (static_cast<float>(this->ChunkSettings.ChunkSize.y) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.z
+	);
+
+	STPHeightfieldGenerator::STPMapStorage maps;
+	maps.Heightmap32F.push_back(current_chunk->getRawMap(STPChunk::STPMapType::Heightmap));
+	maps.HeightmapOffset = offset;
+	maps.Normalmap32F = current_chunk->getRawMap(STPChunk::STPMapType::Normalmap);
+	const STPHeightfieldGenerator::STPGeneratorOperation op =
+		STPHeightfieldGenerator::HeightmapGeneration | STPHeightfieldGenerator::Erosion | 
+		STPHeightfieldGenerator::NormalmapGeneration | STPHeightfieldGenerator::Format;
+	maps.FormatHint = STPHeightfieldGenerator::FormatHeightmap | STPHeightfieldGenerator::FormatNormalmap;
+	maps.Heightmap16UI = current_chunk->getCacheMap(STPChunk::STPMapType::Heightmap);
+	maps.Normalmap16UI = current_chunk->getCacheMap(STPChunk::STPMapType::Normalmap);
 
 	//computing
-	bool result = this->heightmap_gen.generateHeightfieldCUDA(current_chunk->getRawMap(STPChunk::STPMapType::Heightmap), current_chunk->getRawMap(STPChunk::STPMapType::Normalmap),
-		//first convert chunk world position to relative chunk position, then multiply by the map size, such that the generated map will be seamless
-		make_float3(
-			//we substract the mapsize by 1 for the offset
-			//such that the first row of pixels in the next chunk will be the same as the last row in the previous
-			//to achieve seamless experience :)
-			static_cast<float>(this->ChunkSettings.MapSize.x - 1u) * chunkPos.x / (static_cast<float>(this->ChunkSettings.ChunkSize.x) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.x,
-			this->ChunkSettings.MapOffset.y,
-			static_cast<float>(this->ChunkSettings.MapSize.y - 1u) * chunkPos.y / (static_cast<float>(this->ChunkSettings.ChunkSize.y) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.z));
+	bool result = this->heightmap_gen.generateHeightfieldCUDA(maps, op);
 
 	if (result) {//computation was successful
-		current_chunk->markChunkState(STPChunk::STPChunkState::Erosion_Ready);
+		current_chunk->markChunkState(STPChunk::STPChunkState::Complete);
+		current_chunk->markOccupancy(false);
 
 		//now converting image format to 16bit
-		result &= this->formatChunk(current_chunk);
+		//result &= this->formatChunk(current_chunk);
 	}
 
 	return result;
-}
-
-bool STPChunkProvider::formatChunk(STPChunk* const current_chunk) {
-	if (current_chunk->getChunkState() != STPChunk::STPChunkState::Complete) {
-		bool status = true;
-		status &= this->formatter.floatToshortCUDA(current_chunk->getRawMap(STPChunk::STPMapType::Heightmap), current_chunk->getCacheMap(STPChunk::STPMapType::Heightmap), 1);
-		status &= this->formatter.floatToshortCUDA(current_chunk->getRawMap(STPChunk::STPMapType::Normalmap), current_chunk->getCacheMap(STPChunk::STPMapType::Normalmap), 4);
-
-		//update the status
-		current_chunk->markChunkState(STPChunk::STPChunkState::Complete);
-		current_chunk->markOccupancy(false);
-		return status;
-	}
-
-	//no computation was dispatched
-	return false;
 }
 
 STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage& source, vec2 chunkPos) {
@@ -71,12 +69,6 @@ STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage&
 		//chunk not found
 		//first we create an empty chunk, with default initial status
 
-		//map computatin launch warpper
-		//since we are only using the class object as function pointer, we are not modifying it
-		auto computer_warpper = [this](STPChunk* const current_chunk, vec2 chunkPos) -> bool {
-			return this->computeChunk(current_chunk, chunkPos);
-		};
-
 		//a new chunk
 		STPChunk* const current_chunk = new STPChunk(this->ChunkSettings.MapSize, true);
 		current_chunk->markOccupancy(true);
@@ -85,10 +77,13 @@ STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage&
 
 		//then dispatch compute in another thread, the results will be copied to the new chunk directly
 		//we are only passing the pointer to the chunk (not the entire container), and each thread only deals with one chunk, so shared_read lock is not requried
-		this->compute_pool->enqueue_void(computer_warpper, current_chunk, chunkPos);
+		if (this->computeChunk(current_chunk, chunkPos)) {
+			//computed, chunk can be used
+			return std::make_pair(true, current_chunk);
+		}
 
-		//the chunk is not found and it's now being computed
-		return std::make_pair(STPChunkReadyStatus::Not_Found, nullptr);
+		//the chunk is not found and it cannot be computed
+		throw std::runtime_error("Chunk generation failed");
 	}
 	else {
 		//chunk found
@@ -106,11 +101,11 @@ STPChunkProvider::STPChunkLoaded STPChunkProvider::requestChunk(STPChunkStorage&
 		//simplified with boolean algebra and invert it to true condition
 		if (!storage_unit->isOccupied() && storage_unit->getChunkState() == STPChunk::STPChunkState::Complete) {
 			//chunk is ready, we can return
-			return std::make_pair(STPChunkReadyStatus::Complete, storage_unit);
+			return std::make_pair(true, storage_unit);
 		}
 
 		//chunk is in used by other threads
-		return std::make_pair(STPChunkReadyStatus::In_Used, nullptr);
+		return std::make_pair(false, nullptr);
 	}
 }
 

@@ -113,9 +113,6 @@
     <ClInclude Include="GPGPU\STPRainDrop.cuh">
       <Filter>GPGPU</Filter>
     </ClInclude>
-    <ClInclude Include="GPGPU\STPImageConverter.cuh">
-      <Filter>GPGPU</Filter>
-    </ClInclude>
     <ClInclude Include="Helpers\STPTerrainParaLoader.h">
       <Filter>Helpers</Filter>
     </ClInclude>
@@ -300,9 +297,6 @@
       <Filter>GPGPU</Filter>
     </CudaCompile>
     <CudaCompile Include="GPGPU\STPRainDrop.cu">
-      <Filter>GPGPU</Filter>
-    </CudaCompile>
-    <CudaCompile Include="GPGPU\STPImageConverter.cu">
       <Filter>GPGPU</Filter>
     </CudaCompile>
   </ItemGroup>

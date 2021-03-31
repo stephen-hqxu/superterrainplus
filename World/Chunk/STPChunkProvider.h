@@ -4,14 +4,11 @@
 
 //System ADT
 #include <utility>
-//Multi-threading
-#include "../../Helpers/STPThreadPool.h"
 
 //Chunks
 #include "STPChunkStorage.h"
 //2D terrain compute engine
 #include "../../GPGPU/STPHeightfieldGenerator.cuh"
-#include "../../GPGPU/STPImageConverter.cuh"
 
 //Settings
 #include "../../Settings/STPConfigurations.hpp"
@@ -29,34 +26,17 @@ namespace SuperTerrainPlus {
 	class STPChunkProvider {
 	public:
 
-		/**
-		 * @brief STPChunkReadyStatus indicates the ready status when the chunk is requested
-		*/
-		enum class STPChunkReadyStatus: unsigned char {
-			//Chunk cannot be found in the provided storage unit, computation has been dispatched async, result will be automatically written back to the storage
-			Not_Found = 0x00,
-			//The nominated chunk is currently locked by the other thread, nothing will be done and return instantly
-			In_Used = 0x01,
-			//Chunk is ready and it will be returned now
-			Complete = 0x02
-		};
-
 		//The return value of the chunk request, if the status indicates that the chunk is not available, null will be returned for the chunk field
 		//Otherwise a pointer to the chunk, with respect to the provided chunk storage unit, will be returned
-		typedef std::pair<STPChunkReadyStatus, STPChunk*> STPChunkLoaded;
+		typedef std::pair<bool, STPChunk*> STPChunkLoaded;
 
 	private:
-
-		//thread pool
-		STPThreadPool* const compute_pool;
 
 		//Chunk settings
 		const STPSettings::STPChunkSettings ChunkSettings;
 
 		//Heightfield generator
 		STPCompute::STPHeightfieldGenerator heightmap_gen;
-		//formatter
-		const STPCompute::STPImageConverter formatter;
 
 		/**
 		 * @brief Dispatch compute for 2d terrain asynchornously, the results will be written back to chunk storage
@@ -66,24 +46,13 @@ namespace SuperTerrainPlus {
 		*/
 		bool computeChunk(STPChunk* const, glm::vec2);
 
-		/**
-		 * @brief Format the terrain image format, currently it will convert 32bit per channel to 16bit. 
-		 * Such that we can keep an original copy of the maps for further calculation.
-		 * Format will not happen if the current chunk is being used by other threads or it has been formatted already
-		 * @param current_chunk The maps for the chunk that needs to be converted
-		 * @return True if all maps are computed, and chunk lock will be released with updated chunk status. 
-		 * False if chunk is not completed or the memory is up-to-date.
-		*/
-		bool formatChunk(STPChunk* const);
-
 	public:
 
 		/**
 		 * @brief Init the chunk provider
 		 * @param settings Stores all settings for terrain generation
-		 * @param shared_threadpool The thread pool for multithreading computing and rendering. It can share the pool with the main program or separate from.
 		*/
-		STPChunkProvider(STPSettings::STPConfigurations*, STPThreadPool* const);
+		STPChunkProvider(STPSettings::STPConfigurations*);
 
 		~STPChunkProvider() = default;
 

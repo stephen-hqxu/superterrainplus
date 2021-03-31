@@ -59,13 +59,22 @@ __global__ void generateHeightmapKERNEL(STPSimplexNoise* const, float*, uint2, f
 __global__ void performErosionKERNEL(float*, uint2, STPHeightfieldGenerator::curandRNG*);
 
 /**
-* @brief Generate the normal map for the height map within kernel
-* @param heightmap - contains the height map that will be wused to generate the normal
-* @param normal_storage - normal map, will be used to store the output of the normal map
-* @param dimension - The width and height of both map
-* @return True if the normal map is successully generated without errors
+ * @brief Generate the normal map for the height map within kernel
+ * @param heightmap - contains the height map that will be wused to generate the normal
+ * @param normal_storage - normal map, will be used to store the output of the normal map
+ * @param dimension - The width and height of both map
+ * @return True if the normal map is successully generated without errors
 */
 __global__ void generateNormalmapKERNEL(float* const, float*, uint2);
+
+/**
+ * @brief Convert _32F format to _16
+ * @param input The input image, each color channel occupies 32 bit (float)
+ * @param output The output image, each color channel occupies 16 bit (unsigne short int).
+ * @param channel How many channel in the texture, the input and output channel will have the same number of channel
+ * @return True if conversion was successful without errors
+*/
+__global__ void floatToshortKERNEL(const float* const, unsigned short*, uint2, unsigned int);
 
 __host__ float* STPHeightfieldGenerator::STPHeightfieldAllocator::allocate(size_t count) {
 	float* mem = nullptr;
@@ -74,6 +83,16 @@ __host__ float* STPHeightfieldGenerator::STPHeightfieldAllocator::allocate(size_
 }
 
 __host__ void STPHeightfieldGenerator::STPHeightfieldAllocator::deallocate(size_t count, float* ptr) {
+	cudaFree(ptr);
+}
+
+__host__ unsigned short* STPHeightfieldGenerator::STPImageConverterAllocator::allocate(size_t count) {
+	unsigned short* mem = nullptr;
+	cudaMalloc(&mem, sizeof(unsigned short) * count);
+	return mem;
+}
+
+__host__ void STPHeightfieldGenerator::STPImageConverterAllocator::deallocate(size_t count, unsigned short* ptr) {
 	cudaFree(ptr);
 }
 
@@ -123,7 +142,7 @@ __host__ bool STPHeightfieldGenerator::useSettings(const STPSettings::STPHeightf
 	return cudaSuccess == cudaMemcpyToSymbol(HeightfieldSettings, stored_settings.get(), sizeof(STPSettings::STPHeightfieldSettings), 0ull, cudaMemcpyHostToDevice);
 }
 
-__host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap, float* normalmap, float3 offset) const {
+__host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& args, STPGeneratorOperation operation) const {
 	//check the availiability of the engine
 	if (this->RNG_Map == nullptr) {
 		return false;
@@ -132,48 +151,154 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(float* heightmap,
 	/*if (this->BiomeDictionary == nullptr) {
 		return false;
 	}*/
-	
+	if (operation == 0u) {
+		//no operation is specified, nothing can be done
+		return false;
+	}
+	static auto isFlagged = [](STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
+		return (op & flag) != 0u;
+	};
+
+	bool no_error = true;//check for error, true if all successful
 	//allocating spaces for texture, storing on device
 	//this is the size for a texture in one channel
 	const int num_pixel = this->Noise_Settings.Dimension.x * this->Noise_Settings.Dimension.y;
 	const int map_size = num_pixel * sizeof(float);
-	float* heightfield_d[2] = {nullptr};//heightmap and normalmap
+	const int map16ui_size = num_pixel * sizeof(unsigned short);
+	//heightmap and normalmap
+	float* heightfield_d[2] = {nullptr};
+	unsigned short* heightfield_formatted_d[2] = {nullptr};
+	//Retrieve all flags
+	const bool flags[4] = {
+		isFlagged(operation, STPHeightfieldGenerator::HeightmapGeneration),
+		isFlagged(operation, STPHeightfieldGenerator::Erosion),
+		isFlagged(operation, STPHeightfieldGenerator::NormalmapGeneration),
+		isFlagged(operation, STPHeightfieldGenerator::Format)
+	};
+	//The format flags
+	const bool format_flags[2] = {
+		isFlagged(args.FormatHint, STPHeightfieldGenerator::FormatHeightmap),
+		isFlagged(args.FormatHint, STPHeightfieldGenerator::FormatNormalmap)
+	};
 
-	bool no_error = true;//check for error, true if all successful
-	//regarding the size of the heightfields, heightmap has R32F format, while normalmap uses RGBA32F
-	//so there are 5 channels in total
+	//memory allocation
+	//FP32
 	{
-		std::unique_lock<std::mutex> lock(this->memorypool_lock);
-		heightfield_d[0] = this->MapCache_device.allocate(map_size);
-		heightfield_d[1] = this->MapCache_device.allocate(map_size * 4);
+		//regardlessly, we need device memory for heightmap
+		std::unique_lock<std::mutex> lock(this->MapCache32F_lock);
+		heightfield_d[0] = this->MapCache32F_device.allocate(map_size);
+		if (flags[2] || (flags[3] && format_flags[1])) {
+			//if normal map formation is enabled, we need the device memory for input as well
+			heightfield_d[1] = this->MapCache32F_device.allocate(map_size * 4);
+		}
+	}
+	//INT16
+	{
+		std::unique_lock<std::mutex> lock(this->MapCache16UI_lock);
+		if (flags[3]) {
+			if (format_flags[0]) {
+				heightfield_formatted_d[0] = this->MapCache16UI_device.allocate(map16ui_size);
+			}
+			if (format_flags[1]) {
+				heightfield_formatted_d[1] = this->MapCache16UI_device.allocate(map16ui_size * 4);
+			}
+		}
 	}
 
+	//setup phase
 	//creating stream so cpu thread can calculate all chunks altogether
 	cudaStream_t stream;
 	//we want the stream to not be blocked by default stream
 	no_error &= cudaSuccess == cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+	//Flag: HeightmapGeneration
+	if (flags[0]) {
+		//generate a new heightmap and store it to the output later
+		generateHeightmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_d[0],
+			this->Noise_Settings.Dimension, make_float2(1.0f * this->Noise_Settings.Dimension.x / 2.0f, 1.0f * this->Noise_Settings.Dimension.y / 2.0f), args.HeightmapOffset);
+	}
+	else {
+		//copy heightmap from input arguments to device for later use if not generated
+		no_error &= cudaSuccess == cudaMemcpyAsync(heightfield_d[0], *args.Heightmap32F.begin(), map_size, cudaMemcpyHostToDevice, stream);
+	}
 
-	//calculate heightmap
-	generateHeightmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_d[0],
-		this->Noise_Settings.Dimension, make_float2(1.0f * this->Noise_Settings.Dimension.x / 2.0f, 1.0f * this->Noise_Settings.Dimension.y / 2.0f), offset);
-	//performing erosion
-	performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, 0, stream >> > (heightfield_d[0], 
-		this->Noise_Settings.Dimension, this->RNG_Map);
-	//calculating normalmap
-	generateNormalmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (heightfield_d[0], heightfield_d[1],
-		this->Noise_Settings.Dimension);
+	//Flag: Erosion
+	if (flags[1]) {
+		//erode the heightmap, either from provided heightmap or generated previously
+		performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, 0, stream >> > (heightfield_d[0],
+			this->Noise_Settings.Dimension, this->RNG_Map);
+	}
+
+	//Flag: Normalmap
+	if (flags[2]) {
+		//generate normalmap from heightmap
+		generateNormalmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (heightfield_d[0], heightfield_d[1],
+			this->Noise_Settings.Dimension);
+	}
+
+	//Flag: Format - move STPImageConverter to here
+	if (flags[3]) {
+		if (format_flags[0]) {
+			//format heightmap
+			//heightmap will always be available
+			//format heightmap
+			floatToshortKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (heightfield_d[0], heightfield_formatted_d[0],
+				this->Noise_Settings.Dimension, 1);
+		}
+
+		if (format_flags[1]) {
+			//format normalmap
+			if (!flags[2]) {
+				//normalmap generation was not enabled? we need to copy from input
+				no_error &= cudaSuccess == cudaMemcpyAsync(heightfield_d[1], args.Normalmap32F, map16ui_size * 4, cudaMemcpyHostToDevice, stream);
+			}
+			//if normalmap is generated, it's already available in device memory
+			floatToshortKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (heightfield_d[1], heightfield_formatted_d[1],
+				this->Noise_Settings.Dimension, 4);
+		}
+		
+	}
 	
+	//Store the result accordingly
 	//copy the result back to the host
-	no_error &= cudaSuccess == cudaMemcpyAsync(heightmap, heightfield_d[0], map_size, cudaMemcpyDeviceToHost, stream);
-	no_error &= cudaSuccess == cudaMemcpyAsync(normalmap, heightfield_d[1], map_size * 4, cudaMemcpyDeviceToHost, stream);
-
-	//block the host thread 
+	//heightmap will always be available
+	no_error &= cudaSuccess == cudaMemcpyAsync(*args.Heightmap32F.begin(), heightfield_d[0], map_size, cudaMemcpyDeviceToHost, stream);
+	if (flags[2]) {
+		//if we have normalmap generated, also copy normalmap back to host
+		no_error &= cudaSuccess == cudaMemcpyAsync(args.Normalmap32F, heightfield_d[1], map_size * 4, cudaMemcpyDeviceToHost, stream);
+	}
+	//copy the formatted result if enabled
+	if (flags[3]) {
+		if (format_flags[0]) {
+			//copy heightmap
+			no_error &= cudaSuccess == cudaMemcpyAsync(args.Heightmap16UI, heightfield_formatted_d[0], map16ui_size, cudaMemcpyDeviceToHost, stream);
+		}
+		if (format_flags[1]) {
+			//copy normalmap
+			no_error &= cudaSuccess == cudaMemcpyAsync(args.Normalmap16UI, heightfield_formatted_d[1], map16ui_size * 4, cudaMemcpyDeviceToHost, stream);
+		}
+	}
+	//waiting for finish
 	no_error &= cudaSuccess == cudaStreamSynchronize(stream);
-	//clear up when the device is ready
+
+	//Finish up the rest, clear up when the device is ready
+	//nullptr means not allocated
 	{
-		std::unique_lock<std::mutex> lock(this->memorypool_lock);
-		this->MapCache_device.deallocate(map_size, heightfield_d[0]);
-		this->MapCache_device.deallocate(map_size * 4, heightfield_d[1]);
+		std::unique_lock<std::mutex> lock(this->MapCache32F_lock);
+		if (heightfield_d[0] != nullptr) {
+			this->MapCache32F_device.deallocate(map_size, heightfield_d[0]);
+		}
+		if (heightfield_d[1] != nullptr) {
+			this->MapCache32F_device.deallocate(map_size * 4, heightfield_d[1]);
+		}
+	}
+	{
+		std::unique_lock<std::mutex> lock(this->MapCache16UI_lock);
+		if (heightfield_formatted_d[0] != nullptr) {
+			this->MapCache16UI_device.deallocate(map16ui_size, heightfield_formatted_d[0]);
+		}
+		if (heightfield_formatted_d[1] != nullptr) {
+			this->MapCache16UI_device.deallocate(map16ui_size * 4, heightfield_formatted_d[1]);
+		}
 	}
 	no_error &= cudaSuccess == cudaStreamDestroy(stream);
 
@@ -323,4 +448,16 @@ __global__ void generateNormalmapKERNEL(float* const heightmap, float* normal_st
 	normal_storage[(x + y * dimension.x) * 4 + 3] = 1.0f;//A
 	
 	return;
+}
+
+__global__ void floatToshortKERNEL(const float* const input, unsigned short* output, uint2 dimension, unsigned int channel) {
+	//current working pixel
+	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
+		y = (blockIdx.y * blockDim.y) + threadIdx.y,
+		index = x + y * dimension.x;
+
+	//loop through all channels and output
+	for (int i = 0; i < channel; i++) {
+		output[index * channel + i] = static_cast<unsigned short>(input[index * channel + i] * 65535u);
+	}
 }

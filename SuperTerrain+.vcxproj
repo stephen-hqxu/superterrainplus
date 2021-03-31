@@ -37,7 +37,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GPGPU\STPHeightfieldGenerator.cuh" />
-    <ClInclude Include="GPGPU\STPImageConverter.cuh" />
     <ClInclude Include="GPGPU\STPPermutationsGenerator.cuh" />
     <ClInclude Include="GPGPU\STPRainDrop.cuh" />
     <ClInclude Include="GPGPU\STPSimplexNoise.cuh" />
@@ -112,7 +111,6 @@
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="GPGPU\STPHeightfieldGenerator.cu" />
-    <CudaCompile Include="GPGPU\STPImageConverter.cu" />
     <CudaCompile Include="GPGPU\STPPermutationsGenerator.cu" />
     <CudaCompile Include="GPGPU\STPRainDrop.cu" />
     <CudaCompile Include="GPGPU\STPSimplexNoise.cu" />

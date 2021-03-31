@@ -8,6 +8,8 @@
 #include "glad/glad.h"
 //CUDA
 #include "cuda_gl_interop.h"//used to upload to opengl texture in multithread
+//Multithreading
+#include "../../Helpers/STPThreadPool.h"
 
 //Chunks
 #include "STPChunkProvider.h"

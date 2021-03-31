@@ -4,6 +4,7 @@
 
 //System
 #include <mutex>
+#include <list>
 //CUDA
 //CUDA lib are included in the "Engine" section
 #include <curand_kernel.h>
@@ -33,6 +34,11 @@ namespace SuperTerrainPlus {
 		class STPHeightfieldGenerator {
 		public:
 
+			//STPGeneratorOperation controls the operations to perform during heightfield generation
+			typedef unsigned short STPGeneratorOperation;
+			//STPFormatGuide provides instruction to the formatter that which map should be formatted
+			typedef unsigned short STPFormatGuide;
+
 			//TODO You can change your preferred RNG here!
 			//Choosen generator for curand
 			typedef curandStatePhilox4_32_10 curandRNG;
@@ -40,6 +46,47 @@ namespace SuperTerrainPlus {
 			//A function that converts biome id to the index corresponded in biome table
 			//By default it's a 1-1 mapping, meaning biome id = index
 			typedef size_t(*STPBiomeInterpreter)(STPBiome::Sample);
+
+			//Generate a new heightmap with simplex noise and store the result in the provided memory space
+			constexpr static STPGeneratorOperation HeightmapGeneration = 1u << 0u;
+			//Erode the heightmap. If HeightmapGeneration flag is not enabled, an available heightmap needs to be provided for the operation
+			constexpr static STPGeneratorOperation Erosion = 1u << 1u;
+			//Generate normal map. If HeightmapGeneration flag is not enabled, an available heightmap needs to be provided for the operation
+			constexpr static STPGeneratorOperation NormalmapGeneration = 1u << 2u;
+			//Format the map from FP32 to INT16. Providing FormatHint flag in STPMapStorage to specify which map to format.
+			constexpr static STPGeneratorOperation Format = 1u << 3u;
+			//Enable format of heightmap, Format flag needs to be set to enable
+			constexpr static STPFormatGuide FormatHeightmap = 1u << 0u;
+			//Enable format of normalmap, Format flag needs to be set to enable
+			constexpr static STPFormatGuide FormatNormalmap = 1u << 1u;
+
+			/**
+			 * @brief STPMapStorage stores heightfield data for the generator
+			*/
+			struct STPMapStorage {
+			public:
+
+				//A float array that will be used to stored heightmap pixles, must be pre-allocated with at least width * height * sizeof(float), i.e., R32F format
+				//If generator is instructed to generate only a single heightmap, only one map is required
+				//If hydraulic erosion and/or normalmap generation is enabled, a list of maps of neighbour chunks are required for edge sync.
+				//The map pointers should be arranged in row major matrix, with defined neighbour dimension.
+				std::list<float*> Heightmap32F;
+				//The x vector specify the offset on x direction of the map and and z on y direction of the map, and the y vector specify the offset on the final result.
+				//The offset parameter will only be applied on the heightmap generation.
+				float3 HeightmapOffset = make_float3(0.0f, 0.0f, 0.0f);
+				//A float array that will be used to stored normnalmap pixles, will be used to store the output of the normal map.
+				//Must be pre-allocated with at least width* height * 4 byte per channel * 4, i.e., RGBA32F format.
+				float* Normalmap32F = nullptr;
+				//Instruct formatter that which map to format.
+				//If Format flag is not set for the generator, format operation will not happen regardlessly
+				STPFormatGuide FormatHint;
+				//A INT16 array that will be used to stored the heightmap after formation. Require Format flag set in the generator and FormatHeightmap set in FormatHint 
+				unsigned short* Heightmap16UI = nullptr;
+				//A INT16 array that will be used to stored the normalmap after formation. Require Format flag set in the generator and FormatHeightmap set in FormatHint
+				//Require either normalmap generation enabled or provided from the external
+				unsigned short* Normalmap16UI = nullptr;
+
+			};
 
 		private:
 
@@ -65,6 +112,28 @@ namespace SuperTerrainPlus {
 
 			};
 
+			/**
+			 * @brief Allocate memory for image converter output
+			*/
+			class STPImageConverterAllocator {
+			public:
+
+				/**
+				 * @brief Allocate memory on GPU
+				 * @param count The number of byte of unsigned int
+				 * @return The device pointer
+				*/
+				__host__ unsigned short* allocate(size_t);
+
+				/**
+				 * @brief Free up the GPU memory
+				 * @param count The number unsigned int to free
+				 * @param The device pointer to free
+				*/
+				__host__ void deallocate(size_t, unsigned short*);
+
+			};
+
 			//Launch parameter for texture
 			dim3 numThreadperBlock_Map, numBlock_Map;
 			//Launch parameter for hydraulic erosion
@@ -86,8 +155,10 @@ namespace SuperTerrainPlus {
 
 			STPBiome::STPBiome* BiomeDictionary = nullptr;
 			//Temp cache on device for heightmap computation
-			mutable std::mutex memorypool_lock;
-			mutable STPMemoryPool<float, STPHeightfieldAllocator> MapCache_device;
+			mutable std::mutex MapCache32F_lock;
+			mutable std::mutex MapCache16UI_lock;
+			mutable STPMemoryPool<float, STPHeightfieldAllocator> MapCache32F_device;
+			mutable STPMemoryPool<unsigned short, STPImageConverterAllocator> MapCache16UI_device;
 
 		public:
 
@@ -135,14 +206,11 @@ namespace SuperTerrainPlus {
 			 * The number of iteration must be set via setErosionIterationCUDA() so pre-computation can be done before launching the program.
 			 * Lastly it will generate the normal map for the height map, the normalmap is normalised within the range [0,1].
 			 * All four maps are kept in floating point pixel format.
-			 * @param heightmap A float array that will be used to stored heightmap pixles, must be pre-allocated with at least width * height * sizeof(float), i.e., R32F format
-			 * @param normalmap A float array that will be used to stored normnalmap pixles, will be used to store the output of the normal map, must be
-			 * pre allocated with at least width * height * 4 byte per channel * 4, i.e., RGBA32F format.
-			 * @param offset The x vector specify the offset on x direction of the map and and z on y direction of the map, and the y vector specify the offset on the final result.
-			 * The offset parameter will only be applied on the heightmap generation.
+			 * @param args The generator data, see STPMapStorage documentation for more details
+			 * @param operation Control what type of operation generator does
 			 * @return True if all operation are successful without any errors
 			*/
-			__host__ bool generateHeightfieldCUDA(float*, float*, float3 = make_float3(0.0f, 0.0f, 0.0f)) const;
+			__host__ bool generateHeightfieldCUDA(STPMapStorage&, STPGeneratorOperation) const;
 
 			/**
 			 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.

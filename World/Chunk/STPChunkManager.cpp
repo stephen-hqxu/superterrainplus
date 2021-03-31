@@ -8,7 +8,7 @@ using glm::value_ptr;
 using namespace SuperTerrainPlus;
 
 STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings, STPThreadPool* const shared_threadpool) : compute_pool(shared_threadpool)
-	, ChunkCache(), ChunkProvider(settings, shared_threadpool) {
+	, ChunkCache(), ChunkProvider(settings) {
 
 	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
 	const int chunk_num = static_cast<int>(chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y);
@@ -65,7 +65,7 @@ bool STPChunkManager::MapLoader(vec2 chunkPos, const cudaArray_t destination[2])
 	//ask provider if we can get the chunk
 	auto result = this->ChunkProvider.requestChunk(this->ChunkCache, chunkPos);
 
-	if (result.first == STPChunkProvider::STPChunkReadyStatus::Complete) {
+	if (result.first) {
 		//chunk is ready, we can start loading
 		STPChunk* const chunk = result.second;
 		cudaStream_t copy_stream;
