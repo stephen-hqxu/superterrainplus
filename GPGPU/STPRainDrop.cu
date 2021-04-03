@@ -18,7 +18,7 @@ __device__ STPRainDrop::~STPRainDrop() {
 }
 
 __host__ STPRainDrop::STPFreeSlipManager::STPFreeSlipManager(float* heightmap, unsigned int* index, uint2 range, uint2 mapSize)
-	: Dimension(mapSize), FreeSlipRange(make_uint2(range.x * mapSize.x, range.y * mapSize.y)) {
+	: Dimension(mapSize), FreeSlipChunk(range), FreeSlipRange(make_uint2(range.x * mapSize.x, range.y * mapSize.y)) {
 	this->Heightmap = heightmap;
 	this->Index = index;
 }

@@ -104,6 +104,16 @@ __host__ void STPHeightfieldGenerator::STPImageConverterAllocator::deallocate(si
 	cudaFree(ptr);
 }
 
+__host__ float* STPHeightfieldGenerator::STPHeightfieldHostAllocator::allocate(size_t count) {
+	float* mem = nullptr;
+	cudaMallocHost(&mem, sizeof(float) * count);
+	return mem;
+}
+
+__host__ void STPHeightfieldGenerator::STPHeightfieldHostAllocator::deallocate(size_t count, float* ptr) {
+	cudaFreeHost(ptr);
+}
+
 __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPSimplexNoiseSettings* const noise_settings) : simplex_h(noise_settings), Noise_Settings(*noise_settings) {
 	//allocating space
 	cudaMalloc(&this->simplex, sizeof(STPSimplexNoise));
@@ -135,10 +145,6 @@ __host__ bool STPHeightfieldGenerator::useSettings(const STPSettings::STPHeightf
 	//keep a local copy of the setting so device can have access to the pointer inside the class
 	static std::unique_ptr<const STPSettings::STPHeightfieldSettings> stored_settings;
 
-	if (settings == nullptr) {
-		//clear memory
-		stored_settings.reset();
-	}
 	//if memory address isn't the same
 	if (stored_settings.get() != settings) {
 		//validate memory
@@ -166,16 +172,16 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 		//no operation is specified, nothing can be done
 		return false;
 	}
-	static auto isFlagged = [](STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
+	auto isFlagged = [](STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
 		return (op & flag) != 0u;
 	};
 
 	bool no_error = true;//check for error, true if all successful
 	//allocating spaces for texture, storing on device
 	//this is the size for a texture in one channel
-	const int num_pixel = this->Noise_Settings.Dimension.x * this->Noise_Settings.Dimension.y;
-	const int map_size = num_pixel * sizeof(float);
-	const int map16ui_size = num_pixel * sizeof(unsigned short);
+	const unsigned int num_pixel = this->Noise_Settings.Dimension.x * this->Noise_Settings.Dimension.y;
+	const unsigned int map_size = num_pixel * sizeof(float);
+	const unsigned int map16ui_size = num_pixel * sizeof(unsigned short);
 	//heightmap and normalmap
 	float* heightfield_d[2] = {nullptr};
 	unsigned short* heightfield_formatted_d[2] = {nullptr};
@@ -204,9 +210,9 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 		}
 	}
 	//INT16
-	{
-		std::unique_lock<std::mutex> lock(this->MapCache16UI_lock);
-		if (flags[3]) {
+	if (flags[3]) {
+		{
+			std::unique_lock<std::mutex> lock(this->MapCache16UI_lock);
 			if (format_flags[0]) {
 				heightfield_formatted_d[0] = this->MapCache16UI_device.allocate(map16ui_size);
 			}
@@ -221,6 +227,7 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 	cudaStream_t stream;
 	//we want the stream to not be blocked by default stream
 	no_error &= cudaSuccess == cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+	
 	//Flag: HeightmapGeneration
 	if (flags[0]) {
 		//generate a new heightmap and store it to the output later
@@ -430,13 +437,14 @@ __global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager heightmap_s
 	//generating random location
 	//first we generate the number (0.0f, 1.0f]
 	float2 initPos = make_float2(curand_uniform(&rng[index]), curand_uniform(&rng[index]));
-	//convert to (erode radius, dimension - erode radius - 1]
+	//convert to (erode radius + base, dimension - erode radius - 1]
 	//range: dimension - 2 * erosion radius - 1
-	//TODO Generate the raindrop at the central chunk only
-	initPos.x *= heightmap_storage.FreeSlipRange.x - 2.0f * settings->getErosionBrushRadius() - 1.0f;
-	initPos.x += settings->getErosionBrushRadius();
-	initPos.y *= heightmap_storage.FreeSlipRange.y - 2.0f * settings->getErosionBrushRadius() - 1.0f;
-	initPos.y += settings->getErosionBrushRadius();
+	//Generate the raindrop at the central chunk only
+	//TODO precompute constant outside of device
+	initPos.x *= heightmap_storage.Dimension.x - 2.0f * settings->getErosionBrushRadius() - 1.0f;
+	initPos.x += settings->getErosionBrushRadius() + (floorf(heightmap_storage.FreeSlipChunk.x / 2) * heightmap_storage.Dimension.x);
+	initPos.y *= heightmap_storage.Dimension.y - 2.0f * settings->getErosionBrushRadius() - 1.0f;
+	initPos.y += settings->getErosionBrushRadius() + (floorf(heightmap_storage.FreeSlipChunk.y / 2) * heightmap_storage.Dimension.y);
 
 	//spawn in the raindrop
 	STPRainDrop droplet(initPos, settings->initWaterVolume, settings->initSpeed);

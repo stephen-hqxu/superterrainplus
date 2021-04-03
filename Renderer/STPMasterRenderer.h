@@ -130,8 +130,6 @@ namespace SuperTerrainPlus {
 			delete this->terrain2d_inf;
 			//delete thread pool
 			delete this->command_pool;
-			//clear settings
-			STPCompute::STPHeightfieldGenerator::useSettings();
 		}
 
 	public:

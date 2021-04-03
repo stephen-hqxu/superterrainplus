@@ -59,6 +59,8 @@ namespace SuperTerrainPlus {
 
 				//The dimension of each map
 				const uint2 Dimension;
+				//The range of free slip in the unit of chunk
+				const uint2 FreeSlipChunk;
 				//number of element in a global row and column in the free slip range
 				const uint2 FreeSlipRange;
 

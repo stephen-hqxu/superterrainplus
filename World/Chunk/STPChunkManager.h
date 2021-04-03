@@ -71,7 +71,7 @@ namespace SuperTerrainPlus {
 		 * For some reason if there is error generated during loading, false will be returned as well.
 		 * If destination is specified as nullptr, and chunk is fully prepared, true will eb returned, otherwise computation will be dispatched and false is returned
 		*/
-		bool MapLoader(glm::vec2, const cudaArray_t[2]);
+		bool loadMap(glm::vec2, const cudaArray_t[2]);
 
 	protected:
 

@@ -22,6 +22,11 @@ namespace SuperTerrainPlus {
 	 * STPChunkStorage is thread safe.
 	*/
 	class STPChunkStorage {
+	public:
+
+		//A pair indicate the status of in-place chunk addition
+		typedef std::pair<bool, STPChunk*> STPChunkConstructed;
+
 	private:
 
 		/**
@@ -70,6 +75,15 @@ namespace SuperTerrainPlus {
 		 * @return True if the chunk has been added, false if chunk exists thus it won't be inserted
 		*/
 		bool addChunk(glm::vec2, STPChunk*);
+
+		/**
+		 * @brief Atomically construct a new chunk in-place if not presented. Otherwise return the prsented chunk
+		 * @param chunkPos The world position of the chunk
+		 * @param mapSize The size of the map for the chunk
+		 * @return If chunk is not presented, it's constructed with provided arguments and return true and the new pointer
+		 * Otherwise, return false and the pointer to the original chunk
+		*/
+		STPChunkConstructed constructChunk(glm::vec2, glm::uvec2);
 
 		/**
 		 * @brief Atomically get the chunk by its world position

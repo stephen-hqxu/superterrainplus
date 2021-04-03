@@ -6,9 +6,9 @@ using glm::ivec2;
 using glm::vec3;
 
 using std::atomic_init;
-using std::atomic_load_explicit;
-using std::atomic_store_explicit;
-using std::memory_order;
+using std::atomic_load;
+using std::atomic_store;
+using std::atomic_compare_exchange_strong;
 using std::ostream;
 using std::istream;
 using std::ios_base;
@@ -31,7 +31,7 @@ STPChunk::STPChunk(uvec2 size, bool initialise) : PixelSize(size) {
 }
 
 STPChunk::~STPChunk() {
-	while (atomic_load_explicit<bool>(&this->inUsed, std::memory_order::memory_order_relaxed)) {
+	while (atomic_load<bool>(&this->inUsed)) {
 		//make sure the chunk is not in used, and all previous tasks are finished
 	}
 
@@ -54,19 +54,23 @@ T* STPChunk::getMap(STPMapType type, const std::unique_ptr<T[]>* map) {
 }
 
 bool STPChunk::isOccupied() const {
-	return atomic_load_explicit(&this->inUsed, memory_order::memory_order_relaxed);
+	return atomic_load(&this->inUsed);
 }
 
 void STPChunk::markOccupancy(bool val) {
-	atomic_store_explicit(&this->inUsed, val, memory_order::memory_order_relaxed);
+	atomic_store(&this->inUsed, val);
+}
+
+bool STPChunk::markOccupancy(bool expected, bool val) {
+	return atomic_compare_exchange_strong(&this->inUsed, &expected, val);
 }
 
 STPChunk::STPChunkState STPChunk::getChunkState() const {
-	return atomic_load_explicit(&this->State, memory_order::memory_order_relaxed);
+	return atomic_load(&this->State);
 }
 
 void STPChunk::markChunkState(STPChunkState state) {
-	atomic_store_explicit(&this->State, state, memory_order::memory_order_relaxed);
+	atomic_store(&this->State, state);
 }
 
 float* STPChunk::getRawMap(STPMapType type) {
@@ -127,7 +131,7 @@ namespace SuperTerrainPlus {
 
 		//main content
 		//write chunk state
-		const char state = static_cast<const char>(atomic_load_explicit(&chunk->State, memory_order::memory_order_relaxed));
+		const char state = static_cast<const char>(atomic_load(&chunk->State));
 		output.write(&state, sizeof(char));
 		//write pixel size, x and y
 		output.write(reinterpret_cast<const char*>(&chunk->PixelSize.x), sizeof(unsigned int));
@@ -177,7 +181,7 @@ namespace SuperTerrainPlus {
 		//read normalmap, 4 channels
 		input.read(reinterpret_cast<char*>(chunk->TerrainMap[1].get()), sizeof(float) * 4);
 		//chunk state
-		atomic_store_explicit(&chunk->State, static_cast<STPChunk::STPChunkState>(state), memory_order::memory_order_relaxed);
+		atomic_store(&chunk->State, static_cast<STPChunk::STPChunkState>(state));
 
 		//finish up
 		input.sync();

@@ -1,10 +1,12 @@
 #include "STPChunkStorage.h"
 
 using glm::vec2;
+using glm::uvec2;
 
 using std::shared_mutex;
 using std::shared_lock;
 using std::unique_lock;
+using std::make_pair;
 
 using namespace SuperTerrainPlus;
 
@@ -24,6 +26,19 @@ STPChunkStorage::~STPChunkStorage() {
 bool STPChunkStorage::addChunk(vec2 chunkPos, STPChunk* chunk) {
 	unique_lock<shared_mutex> add_chunk(this->chunk_storage_lock);
 	return this->TerrainMap2D.emplace(chunkPos, chunk).second;
+}
+
+STPChunkStorage::STPChunkConstructed STPChunkStorage::constructChunk(vec2 chunkPos, uvec2 mapSize) {
+	unique_lock<shared_mutex> construct_chunk(this->chunk_storage_lock);
+	auto found = this->TerrainMap2D.find(chunkPos);
+	if (found == this->TerrainMap2D.end()) {
+		//not found
+		STPChunk* chunk = new STPChunk(mapSize, true);
+		this->TerrainMap2D.emplace(chunkPos, chunk);
+		return make_pair(true, chunk);
+	}
+	//found
+	return make_pair(false, found->second.get());
 }
 
 STPChunk* STPChunkStorage::getChunk(vec2 chunkPos) {

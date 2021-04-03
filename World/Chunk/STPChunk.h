@@ -144,6 +144,15 @@ namespace SuperTerrainPlus {
 		void markOccupancy(bool);
 
 		/**
+		 * @brief Change the use status of this chunk in an atomic compare and swap operation
+		 * @param expected The expected value
+		 * @param val Value to copy to the container when expected matches contained value
+		 * @return True when expected matches contained value and new value is swapped in.
+		 * False otherwise.
+		*/
+		bool markOccupancy(bool, bool);
+
+		/**
 		 * @brief Atomically determine the current state of the chunk
 		 * @return The state code of the chunk
 		*/

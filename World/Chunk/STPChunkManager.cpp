@@ -59,15 +59,14 @@ STPChunkManager::~STPChunkManager() {
 	cudaFreeHost(this->quad_clear);
 }
 
-bool STPChunkManager::MapLoader(vec2 chunkPos, const cudaArray_t destination[2]) {
+bool STPChunkManager::loadMap(vec2 chunkPos, const cudaArray_t destination[2]) {
 	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
 
 	//ask provider if we can get the chunk
-	auto result = this->ChunkProvider.requestChunk(this->ChunkCache, chunkPos);
+	STPChunk* chunk = this->ChunkProvider.requestChunk(this->ChunkCache, chunkPos);
 
-	if (result.first) {
+	if (chunk != nullptr) {
 		//chunk is ready, we can start loading
-		STPChunk* const chunk = result.second;
 		cudaStream_t copy_stream;
 		//streaming copy
 		bool no_error = true;
@@ -123,13 +122,33 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 		auto chunk_loader = [this](vec2 local_chunk, const cudaArray_t loading_dest[2]) -> bool {
 			//Load the texture to the given array.
 			//If texture is not loaded the given array will be cleared automatically
-			return this->MapLoader(local_chunk, loading_dest);
+			return this->loadMap(local_chunk, loading_dest);
 		};
-
-		//launching async loading
+		
+		//EXPERIMENTAL FEATURE BEGINS
+		//a function to compute chunk to make sure its available when loading 
+		auto chunk_computer = [this](vec2 local_chunk) -> bool{
+			return this->ChunkProvider.checkChunk(this->ChunkCache, local_chunk);
+		};
+		//launching async computing
 		const int original_size = loading_chunks.size();
 		auto current_node = loading_chunks.begin();
 		auto heightfield_node = heightfield.begin();
+		for (auto& local : loading_chunks) {
+			loader.emplace(this->compute_pool->enqueue_future(chunk_computer, local.second));
+		}
+		//waiting for compute to finish before loading
+		for (int i = 0; i < original_size; i++) {
+			if (loader.front().get()) {
+				//it actually doesn't matter if it returns false
+			}
+
+			//delete
+			loader.pop();
+		}
+		//EXPERIMENTAL FEATURE ENDS
+
+		//launching async loading
 		for (int threadID = 0; threadID < original_size; threadID++) {
 			//start loading
 			loader.emplace(this->compute_pool->enqueue_future(chunk_loader, current_node->second, (*heightfield_node).get()));

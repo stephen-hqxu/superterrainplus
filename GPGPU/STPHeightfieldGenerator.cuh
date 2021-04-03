@@ -134,6 +134,28 @@ namespace SuperTerrainPlus {
 
 			};
 
+			/**
+			 * @brief Memory allocation for pinned memory
+			*/
+			class STPHeightfieldHostAllocator {
+			public:
+
+				/**
+				 * @brief Allocate page-locked memory on host
+				 * @param count The number of byte of float
+				 * @return The memory pointer
+				*/
+				__host__ float* allocate(size_t);
+
+				/**
+				 * @brief Free up the host pinned memory
+				 * @param count The number unsigned int to free
+				 * @param The hsot pinned pointer to free
+				*/
+				__host__ void deallocate(size_t, float*);
+
+			};
+
 			//Launch parameter for texture
 			dim3 numThreadperBlock_Map, numBlock_Map;
 			//Launch parameter for hydraulic erosion
@@ -172,11 +194,14 @@ namespace SuperTerrainPlus {
 			unsigned int NumRaindrop = 0u;
 
 			STPBiome::STPBiome* BiomeDictionary = nullptr;
+
 			//Temp cache on device for heightmap computation
 			mutable std::mutex MapCache32F_lock;
 			mutable std::mutex MapCache16UI_lock;
+			mutable std::mutex MapCachePinned_lock;
 			mutable STPMemoryPool<float, STPHeightfieldAllocator> MapCache32F_device;
 			mutable STPMemoryPool<unsigned short, STPImageConverterAllocator> MapCache16UI_device;
+			mutable STPMemoryPool<float, STPHeightfieldHostAllocator> MapCachePinned;
 
 		public:
 
@@ -200,10 +225,9 @@ namespace SuperTerrainPlus {
 			 * @brief Load the settings for heightfield generator, all subsequent computation will base on this settings. Settings are copied.
 			 * It needs to be called before launching any compute
 			 * @param settings The parameters of the generation algorithm. It should be on host side.
-			 * Providing no arguement or nullptr will clear all exisiting settings, making it undefined.
 			 * @return True if setting can be used
 			*/
-			__host__ static bool useSettings(const STPSettings::STPHeightfieldSettings* const = nullptr);
+			__host__ static bool useSettings(const STPSettings::STPHeightfieldSettings* const);
 
 			/**
 			 * @brief Define the biome dictionary for looking up biome settins according to the biome id. Each entry of biome will be copied to device

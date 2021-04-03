@@ -24,27 +24,47 @@ namespace SuperTerrainPlus {
 	 * @brief STPChunkProvider read chunks from chunk storage, and if the chunk is not available, it will return some status and dispatch compute async accordingly
 	*/
 	class STPChunkProvider {
-	public:
-
-		//The return value of the chunk request, if the status indicates that the chunk is not available, null will be returned for the chunk field
-		//Otherwise a pointer to the chunk, with respect to the provided chunk storage unit, will be returned
-		typedef std::pair<bool, STPChunk*> STPChunkLoaded;
-
 	private:
 
 		//Chunk settings
 		const STPSettings::STPChunkSettings ChunkSettings;
 
+		mutable std::mutex neighbour_lock;
+
 		//Heightfield generator
 		STPCompute::STPHeightfieldGenerator heightmap_gen;
 
 		/**
+		 * @brief Calculate the chunk offset such that the transition of each chunk is seamless
+		 * @param chunkPos The world position of the chunk
+		 * @return The chunk offset
+		*/
+		float3 calcChunkOffset(glm::vec2) const;
+
+		/**
 		 * @brief Dispatch compute for 2d terrain asynchornously, the results will be written back to chunk storage
 		 * @param current_chunk The maps for the chunk that needs to be loaded and computed
-		 * @param chunkPos The world position of this chunk, this acts as a key in the look up table
+		 * @param chunkPos The world position of this chunk
 		 * @return True if all maps are computed and returned back to data storage.
 		*/
-		bool computeChunk(STPChunk* const, glm::vec2);
+		bool computeFullChunk(STPChunk* const, glm::vec2);
+
+		/**
+		 * @brief Dispatch compute for heightmap, the heightmap result will be writen back to the storage
+		 * @param current_chunk The maps for the chunk
+		 * @param chunkPos The world position of the chunk
+		 * @return True if heightmap computation is finished without errors
+		*/
+		bool computeHeightmap(STPChunk* const, glm::vec2);
+
+		/**
+		 * @brief Dispatch compute for free-slip hydraulic erosion, normalmap compute and formatting, requires heightmap presenting in the chunk
+		 * @param current_chunk The central chunk for the computation
+		 * @param neighbour_chunks The maps of the chunks that require to be eroded with a free-slip manner, require the central chunk and neighbour chunks 
+		 * arranged in row-major flavour. The central chunk should also be included
+		 * @return True if computation is successful
+		*/
+		bool computeErosion(STPChunk* const, std::list<STPChunk*>&);
 
 	public:
 
@@ -57,12 +77,25 @@ namespace SuperTerrainPlus {
 		~STPChunkProvider() = default;
 
 		/**
-		 * @brief Request the texture maps in the given chunk storage if they can be found on library, otherwise compute will be dispatched
+		 * @brief For every neighbour of the current chunk, check if they exists in the storage.
+		 * If not found, heightmap compute will be launched.
+		 * Then, all neighbours will be checked again to see if any is in used.
+		 * If all neighbours are availble, and the center chunk is incomplete, lock all chunks and perform free-slip hydraulic erosion.
+		 * Otherwise do nothing and return true.
+		 * After this function call, the request chunk will be guaranteed to be completed and ready for rendering.
+		 * @param source The chunk storage unit
+		 * @param chunkPos The world position of the center chunk
+		 * @return True if the center chunk is complete, false if center chunk is incomplete and any of the neighbour chunks are in used.
+		*/
+		bool checkChunk(STPChunkStorage&, glm::vec2);
+
+		/**
+		 * @brief Request the texture maps in the given chunk storage if they can be found on library
 		 * @param source The location where to load chunks from
 		 * @param chunkPos The world position of this chunk, this acts as a key in the look up table
-		 * @return A pair of chunk ready status and the pointer to the chunk (respect to the provided chunk storage)
+		 * @return The pointer to the chunk if it's available and not in used, otherwise nullptr
 		*/
-		STPChunkLoaded requestChunk(STPChunkStorage&, glm::vec2);
+		STPChunk* requestChunk(STPChunkStorage&, glm::vec2);
 
 		/**
 		 * @brief Get the chunk settings
