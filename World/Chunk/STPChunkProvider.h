@@ -42,14 +42,6 @@ namespace SuperTerrainPlus {
 		float3 calcChunkOffset(glm::vec2) const;
 
 		/**
-		 * @brief Dispatch compute for 2d terrain asynchornously, the results will be written back to chunk storage
-		 * @param current_chunk The maps for the chunk that needs to be loaded and computed
-		 * @param chunkPos The world position of this chunk
-		 * @return True if all maps are computed and returned back to data storage.
-		*/
-		bool computeFullChunk(STPChunk* const, glm::vec2);
-
-		/**
 		 * @brief Dispatch compute for heightmap, the heightmap result will be writen back to the storage
 		 * @param current_chunk The maps for the chunk
 		 * @param chunkPos The world position of the chunk
@@ -109,14 +101,6 @@ namespace SuperTerrainPlus {
 		 * @return True if set
 		*/
 		bool setHeightfieldErosionIteration(unsigned int);
-
-		/**
-		 * @brief Set and generate the local global index convertion lookup table
-		 * @param range The number of local unit (or chunk)
-		 * @param dimension The dimension of each local unit, a.k.a., map size
-		 * @return True if generation is succesful
-		*/
-		bool setHeightfieldLocalGlobalIndex(uint2, uint2);
 
 	};
 }

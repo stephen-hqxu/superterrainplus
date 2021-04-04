@@ -8,7 +8,7 @@ using namespace SuperTerrainPlus;
 
 STPChunkProvider::STPChunkProvider(STPSettings::STPConfigurations* settings)
 	: ChunkSettings(settings->getChunkSettings())
-	, heightmap_gen(&settings->getSimplexNoiseSettings()) {
+	, heightmap_gen(&settings->getSimplexNoiseSettings(), &this->ChunkSettings) {
 
 }
 
@@ -22,31 +22,6 @@ float3 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
 		this->ChunkSettings.MapOffset.y,
 		static_cast<float>(this->ChunkSettings.MapSize.y - 1u) * chunkPos.y / (static_cast<float>(this->ChunkSettings.ChunkSize.y) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.z
 	);
-}
-
-bool STPChunkProvider::computeFullChunk(STPChunk* const current_chunk, vec2 chunkPos) {
-	using namespace STPCompute;
-	
-	STPHeightfieldGenerator::STPMapStorage maps;
-	maps.Heightmap32F.push_back(current_chunk->getRawMap(STPChunk::STPMapType::Heightmap));
-	maps.HeightmapOffset = this->calcChunkOffset(chunkPos);
-	maps.Normalmap32F = current_chunk->getRawMap(STPChunk::STPMapType::Normalmap);
-	const STPHeightfieldGenerator::STPGeneratorOperation op =
-		STPHeightfieldGenerator::HeightmapGeneration | STPHeightfieldGenerator::Erosion | 
-		STPHeightfieldGenerator::NormalmapGeneration | STPHeightfieldGenerator::Format;
-	maps.FormatHint = STPHeightfieldGenerator::FormatHeightmap | STPHeightfieldGenerator::FormatNormalmap;
-	maps.Heightmap16UI = current_chunk->getCacheMap(STPChunk::STPMapType::Heightmap);
-	maps.Normalmap16UI = current_chunk->getCacheMap(STPChunk::STPMapType::Normalmap);
-
-	//computing
-	bool result = this->heightmap_gen.generateHeightfieldCUDA(maps, op);
-
-	if (result) {//computation was successful
-		current_chunk->markChunkState(STPChunk::STPChunkState::Complete);
-		current_chunk->markOccupancy(false);
-	}
-
-	return result;
 }
 
 bool STPChunkProvider::computeHeightmap(STPChunk* const current_chunk, vec2 chunkPos) {
@@ -100,6 +75,7 @@ bool STPChunkProvider::computeErosion(STPChunk* const current_chunk, std::list<S
 
 bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos) {
 	//EXPERIMENTAL FEATURE
+	//TODO: This looks excessively complicated, simplification is needed
 	STPChunk* center = source.getChunk(chunkPos);
 	if (center != nullptr && center->getChunkState() == STPChunk::STPChunkState::Complete) {
 		//no need to continue if center chunk is available
@@ -168,44 +144,6 @@ STPChunk* STPChunkProvider::requestChunk(STPChunkStorage& source, vec2 chunkPos)
 		return nullptr;
 	}
 	throw std::runtime_error("Chunk chunk should have been computed but not found");
-
-	//ORIGINAL
-	////check if chunk exists
-	////lock the thread in shared state when writing
-	//STPChunk* storage_unit = nullptr;
-	//storage_unit = source.getChunk(chunkPos);
-
-	//if (storage_unit == nullptr) {
-	//	//chunk not found
-	//	//first we create an empty chunk, with default initial status
-
-	//	//a new chunk
-	//	STPChunk* const current_chunk = new STPChunk(this->ChunkSettings.MapSize, true);
-	//	current_chunk->markOccupancy(true);
-	//	//lock the thread while writing into the data structure
-	//	source.addChunk(chunkPos, current_chunk);//insertion is guarateed since we know chunk not found
-
-	//	//then dispatch compute in another thread, the results will be copied to the new chunk directly
-	//	//we are only passing the pointer to the chunk (not the entire container), and each thread only deals with one chunk, so shared_read lock is not requried
-	//	if (this->computeFullChunk(current_chunk, chunkPos)) {
-	//		//computed, chunk can be used
-	//		return make_pair(true, current_chunk);
-	//	}
-
-	//	//the chunk is not found and it cannot be computed
-	//	throw std::runtime_error("Chunk generation failed");
-	//}
-	//else {
-	//	//chunk found
-	//	//check if it has been completed
-	//	if (!storage_unit->isOccupied() && storage_unit->getChunkState() == STPChunk::STPChunkState::Complete) {
-	//		//chunk is ready, we can return
-	//		return make_pair(true, storage_unit);
-	//	}
-
-	//	//chunk is in used by other threads
-	//	return make_pair(false, nullptr);
-	//}
 }
 
 const STPSettings::STPChunkSettings* STPChunkProvider::getChunkSettings() const {
@@ -214,8 +152,4 @@ const STPSettings::STPChunkSettings* STPChunkProvider::getChunkSettings() const 
 
 bool STPChunkProvider::setHeightfieldErosionIteration(unsigned int iteration) {
 	return this->heightmap_gen.setErosionIterationCUDA(iteration);
-}
-
-bool STPChunkProvider::setHeightfieldLocalGlobalIndex(uint2 range, uint2 dimension) {
-	return this->heightmap_gen.setLocalGlobalIndexCUDA(range, dimension);
 }

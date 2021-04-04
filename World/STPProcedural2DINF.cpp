@@ -11,8 +11,8 @@ using glm::identity;
 
 using namespace SuperTerrainPlus;
 
-STPProcedural2DINF::STPProcedural2DINF(STPSettings::STPConfigurations* const settings, void* const procedural2dinf_cmd, STPThreadPool* const shared_threadpool)
-	: STPChunkManager(settings, shared_threadpool), command(procedural2dinf_cmd), RenderingSettings(settings->getMeshSettings()) {
+STPProcedural2DINF::STPProcedural2DINF(STPSettings::STPConfigurations* const settings, void* const procedural2dinf_cmd)
+	: STPChunkManager(settings), command(procedural2dinf_cmd), RenderingSettings(settings->getMeshSettings()) {
 	cout << "....Loading STPProcedural2DINF, An Infinite Terrain Renderer....";
 	if (this->compile2DTerrainShader()) {
 		cout << "Shader Loaded :)" << endl;

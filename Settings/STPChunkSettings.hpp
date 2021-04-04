@@ -42,7 +42,7 @@ namespace SuperTerrainPlus {
 			//Specify the (x,y,z) offset of the terrain heightmap, x and z specify the offset on x and y direction of the map, y specify the height offset of the final result
 			vec3 MapOffset;
 			//Specify the number of chunk that will be used as free slip chunk and allows data access outside the central chunk
-			//When both values are 1, there is no free slip chunk (only the center chunk)
+			//When both values are 1, it will effectively disable the neighbour chunk logic
 			uvec2 FreeSlipChunk;
 
 			/**

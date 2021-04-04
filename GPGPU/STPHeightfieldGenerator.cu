@@ -114,7 +114,8 @@ __host__ void STPHeightfieldGenerator::STPHeightfieldHostAllocator::deallocate(s
 	cudaFreeHost(ptr);
 }
 
-__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPSimplexNoiseSettings* const noise_settings) : simplex_h(noise_settings), Noise_Settings(*noise_settings) {
+__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings* noise_settings, const STPSettings::STPChunkSettings* chunk_settings) 
+	: simplex_h(noise_settings), Noise_Settings(*noise_settings), FreeSlipChunk(make_uint2(chunk_settings->FreeSlipChunk.x, chunk_settings->FreeSlipChunk.y)) {
 	//allocating space
 	cudaMalloc(&this->simplex, sizeof(STPSimplexNoise));
 	//copy data
@@ -125,6 +126,11 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(STPSettings::STPSimple
 	this->numBlock_Map = dim3(noise_settings->Dimension.x / numThreadperBlock_Map.x, noise_settings->Dimension.y / numThreadperBlock_Map.y);
 	this->numThreadperBlock_Erosion = 1024;
 	this->numBlock_Erosion = 0;//This will be set after user call the setErosionIterationCUDA() method
+
+	//set global local index
+	if (!this->setLocalGlobalIndexCUDA()) {
+		throw std::runtime_error("Heightfield generator initialisation failed::Could not initialise local global index table");
+	}
 }
 
 __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
@@ -182,9 +188,16 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 	const unsigned int num_pixel = this->Noise_Settings.Dimension.x * this->Noise_Settings.Dimension.y;
 	const unsigned int map_size = num_pixel * sizeof(float);
 	const unsigned int map16ui_size = num_pixel * sizeof(unsigned short);
-	//heightmap and normalmap
+	const unsigned int freeslip_chunk_total = this->FreeSlipChunk.x * this->FreeSlipChunk.y;
+	const unsigned int freeflip_pixel = freeslip_chunk_total * num_pixel;
+	const unsigned int central_index = static_cast<unsigned int>(floorf(1.0f * freeslip_chunk_total / 2.0f));
+	const unsigned int map_freeslip_size = freeflip_pixel * sizeof(float);
+	//heightmap and normalmap ptr
 	float* heightfield_d[2] = {nullptr};
+	float* heightfield_freeslip_h = nullptr;
+	float* heightfield_freeslip_d = nullptr;
 	unsigned short* heightfield_formatted_d[2] = {nullptr};
+
 	//Retrieve all flags
 	const bool flags[4] = {
 		isFlagged(operation, STPHeightfieldGenerator::HeightmapGeneration),
@@ -201,9 +214,15 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 	//memory allocation
 	//FP32
 	{
-		//regardlessly, we need device memory for heightmap
 		std::unique_lock<std::mutex> lock(this->MapCache32F_lock);
-		heightfield_d[0] = this->MapCache32F_device.allocate(map_size);
+		if (flags[1]) {
+			heightfield_freeslip_d = this->MapCache32F_device.allocate(map_freeslip_size);
+			//use the center location of the erosion memory as the central chunk heightmap
+			heightfield_d[0] = heightfield_freeslip_d + central_index * num_pixel;
+		}
+		else {
+			heightfield_d[0] = this->MapCache32F_device.allocate(map_size);
+		}
 		if (flags[2] || (flags[3] && format_flags[1])) {
 			//if normal map formation is enabled, we need the device memory for input as well
 			heightfield_d[1] = this->MapCache32F_device.allocate(map_size * 4);
@@ -221,12 +240,29 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 			}
 		}
 	}
+	//FP32 Host
+	if (flags[1]) {
+		{
+			std::unique_lock<std::mutex> lock(this->MapCachePinned_lock);
+			heightfield_freeslip_h = this->MapCachePinned.allocate(map_freeslip_size);
+		}
+	}
 
 	//setup phase
 	//creating stream so cpu thread can calculate all chunks altogether
 	cudaStream_t stream;
 	//we want the stream to not be blocked by default stream
 	no_error &= cudaSuccess == cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+	if (flags[1]) {
+		//pre copy free-slip chunks to device
+		//heightmap generation will overwrite the central chunk anyway
+		unsigned int base = 0u;
+		for (float* map : args.Heightmap32F) {
+			no_error &= cudaSuccess == cudaMemcpyAsync(heightfield_freeslip_h + base, map, map_size,cudaMemcpyHostToHost, stream);
+			base += num_pixel;
+		}
+		no_error &= cudaSuccess == cudaMemcpyAsync(heightfield_freeslip_d, heightfield_freeslip_h, map_freeslip_size, cudaMemcpyHostToDevice, stream);
+	}
 	
 	//Flag: HeightmapGeneration
 	if (flags[0]) {
@@ -234,15 +270,15 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 		generateHeightmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_d[0],
 			this->Noise_Settings.Dimension, make_float2(1.0f * this->Noise_Settings.Dimension.x / 2.0f, 1.0f * this->Noise_Settings.Dimension.y / 2.0f), args.HeightmapOffset);
 	}
-	else {
-		//copy heightmap from input arguments to device for later use if not generated
+	else if(!flags[1]) {
+		//copy heightmap from input arguments to device for later use if not generated nor going to be eroded
 		no_error &= cudaSuccess == cudaMemcpyAsync(heightfield_d[0], *args.Heightmap32F.begin(), map_size, cudaMemcpyHostToDevice, stream);
 	}
 
 	//Flag: Erosion
 	if (flags[1]) {
 		//erode the heightmap, either from provided heightmap or generated previously
-		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_d[0], this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
+		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d, this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
 		performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, 0, stream >> > (heightmap_slip, this->RNG_Map);
 	}
 
@@ -279,7 +315,18 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 	//Store the result accordingly
 	//copy the result back to the host
 	//heightmap will always be available
-	no_error &= cudaSuccess == cudaMemcpyAsync(*args.Heightmap32F.begin(), heightfield_d[0], map_size, cudaMemcpyDeviceToHost, stream);
+	if (flags[1]) {
+		//copy all free-slip chunks back
+		no_error &= cudaSuccess == cudaMemcpyAsync(heightfield_freeslip_h, heightfield_freeslip_d, map_freeslip_size, cudaMemcpyDeviceToHost, stream);
+		unsigned int base = 0u;
+		for (float* map : args.Heightmap32F) {
+			no_error &= cudaSuccess == cudaMemcpyAsync(map, heightfield_freeslip_h + base, map_size, cudaMemcpyHostToHost, stream);
+			base += num_pixel;
+		}
+	}
+	else {
+		no_error &= cudaSuccess == cudaMemcpyAsync(*args.Heightmap32F.begin(), heightfield_d[0], map_size, cudaMemcpyDeviceToHost, stream);
+	}
 	if (flags[2]) {
 		//if we have normalmap generated, also copy normalmap back to host
 		no_error &= cudaSuccess == cudaMemcpyAsync(args.Normalmap32F, heightfield_d[1], map_size * 4, cudaMemcpyDeviceToHost, stream);
@@ -302,20 +349,33 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 	//nullptr means not allocated
 	{
 		std::unique_lock<std::mutex> lock(this->MapCache32F_lock);
-		if (heightfield_d[0] != nullptr) {
+		if (flags[1]) {
+			this->MapCache32F_device.deallocate(map_freeslip_size, heightfield_freeslip_d);
+		}
+		else {
+			//hydraulic erosion uses a standalone heightmap so don't free it
+			//heightfield_d[0] will never be null
 			this->MapCache32F_device.deallocate(map_size, heightfield_d[0]);
 		}
 		if (heightfield_d[1] != nullptr) {
 			this->MapCache32F_device.deallocate(map_size * 4, heightfield_d[1]);
 		}
 	}
-	{
-		std::unique_lock<std::mutex> lock(this->MapCache16UI_lock);
-		if (heightfield_formatted_d[0] != nullptr) {
-			this->MapCache16UI_device.deallocate(map16ui_size, heightfield_formatted_d[0]);
+	if (flags[3]) {
+		{
+			std::unique_lock<std::mutex> lock(this->MapCache16UI_lock);
+			if (format_flags[0]) {
+				this->MapCache16UI_device.deallocate(map16ui_size, heightfield_formatted_d[0]);
+			}
+			if (format_flags[1]) {
+				this->MapCache16UI_device.deallocate(map16ui_size * 4, heightfield_formatted_d[1]);
+			}
 		}
-		if (heightfield_formatted_d[1] != nullptr) {
-			this->MapCache16UI_device.deallocate(map16ui_size * 4, heightfield_formatted_d[1]);
+	}
+	if (flags[1]) {
+		{
+			std::unique_lock<std::mutex> lock(this->MapCachePinned_lock);
+			this->MapCachePinned.deallocate(map_freeslip_size, heightfield_freeslip_h);
 		}
 	}
 	no_error &= cudaSuccess == cudaStreamDestroy(stream);
@@ -352,7 +412,11 @@ __host__ unsigned int STPHeightfieldGenerator::getErosionIteration() const {
 	return this->NumRaindrop;
 }
 
-__host__ bool STPHeightfieldGenerator::setLocalGlobalIndexCUDA(uint2 range, uint2 dimension) {
+__host__ bool STPHeightfieldGenerator::setLocalGlobalIndexCUDA() {
+	//TODO: Don't generate the table when FreeSlipChunk.xy are both 1, and in STPRainDrop don't use the table
+	const uint2& dimension = this->Noise_Settings.Dimension;
+	const uint2& range = this->FreeSlipChunk;
+
 	const uint2 global_dimension = make_uint2(range.x * dimension.x, range.y * dimension.y);
 	//launch parameters
 	dim3 numBlock_Index = dim3(global_dimension.x / this->numThreadperBlock_Map.x, global_dimension.y / this->numThreadperBlock_Map.y);
@@ -369,8 +433,6 @@ __host__ bool STPHeightfieldGenerator::setLocalGlobalIndexCUDA(uint2 range, uint
 	//compute
 	initGlobalLocalIndexKERNEL << <numBlock_Index, this->numThreadperBlock_Map >> > (this->GlobalLocalIndex, global_dimension.x, range, dimension);
 	no_error &= cudaSuccess == cudaDeviceSynchronize();
-	//store the information locally
-	this->FreeSlipChunk = range;
 
 	return no_error;
 }
@@ -440,7 +502,7 @@ __global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager heightmap_s
 	//convert to (erode radius + base, dimension - erode radius - 1]
 	//range: dimension - 2 * erosion radius - 1
 	//Generate the raindrop at the central chunk only
-	//TODO precompute constant outside of device
+	//TODO precompute constants outside of device
 	initPos.x *= heightmap_storage.Dimension.x - 2.0f * settings->getErosionBrushRadius() - 1.0f;
 	initPos.x += settings->getErosionBrushRadius() + (floorf(heightmap_storage.FreeSlipChunk.x / 2) * heightmap_storage.Dimension.x);
 	initPos.y *= heightmap_storage.Dimension.y - 2.0f * settings->getErosionBrushRadius() - 1.0f;

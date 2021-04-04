@@ -23,11 +23,6 @@ STPChunkStorage::~STPChunkStorage() {
 	this->clearChunk();
 }
 
-bool STPChunkStorage::addChunk(vec2 chunkPos, STPChunk* chunk) {
-	unique_lock<shared_mutex> add_chunk(this->chunk_storage_lock);
-	return this->TerrainMap2D.emplace(chunkPos, chunk).second;
-}
-
 STPChunkStorage::STPChunkConstructed STPChunkStorage::constructChunk(vec2 chunkPos, uvec2 mapSize) {
 	unique_lock<shared_mutex> construct_chunk(this->chunk_storage_lock);
 	auto found = this->TerrainMap2D.find(chunkPos);

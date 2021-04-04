@@ -61,10 +61,6 @@ void STPChunk::markOccupancy(bool val) {
 	atomic_store(&this->inUsed, val);
 }
 
-bool STPChunk::markOccupancy(bool expected, bool val) {
-	return atomic_compare_exchange_strong(&this->inUsed, &expected, val);
-}
-
 STPChunk::STPChunkState STPChunk::getChunkState() const {
 	return atomic_load(&this->State);
 }

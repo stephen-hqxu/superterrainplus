@@ -69,14 +69,6 @@ namespace SuperTerrainPlus {
 		~STPChunkStorage();
 
 		/**
-		 * @brief Atomically add a new chunk to the storage.
-		 * @param chunkPos new chunk world position, make sure the pointer is dynamic
-		 * @param chunk new chunk with data
-		 * @return True if the chunk has been added, false if chunk exists thus it won't be inserted
-		*/
-		bool addChunk(glm::vec2, STPChunk*);
-
-		/**
 		 * @brief Atomically construct a new chunk in-place if not presented. Otherwise return the prsented chunk
 		 * @param chunkPos The world position of the chunk
 		 * @param mapSize The size of the map for the chunk

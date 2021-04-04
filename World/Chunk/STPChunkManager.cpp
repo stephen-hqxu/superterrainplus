@@ -5,10 +5,15 @@ using glm::vec2;
 using glm::vec4;
 using glm::value_ptr;
 
+using std::list;
+using std::queue;
+using std::unique_ptr;
+using std::pair;
+using std::make_pair;
+
 using namespace SuperTerrainPlus;
 
-STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings, STPThreadPool* const shared_threadpool) : compute_pool(shared_threadpool)
-	, ChunkCache(), ChunkProvider(settings) {
+STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : ChunkCache(), ChunkProvider(settings) {
 
 	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
 	const int chunk_num = static_cast<int>(chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y);
@@ -40,6 +45,10 @@ STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings, STPTh
 	cudaMallocHost(&this->quad_clear, totaltexture_size * 4);
 	memset(this->mono_clear, 0xFF, totaltexture_size);
 	memset(this->quad_clear, 0xFF, totaltexture_size * 4);
+
+	//create thread pool
+	//TODO: multithreading is disabled for debugging, set it back to 5 later
+	this->compute_pool = std::unique_ptr<STPThreadPool>(new STPThreadPool(2u));
 }
 
 STPChunkManager::~STPChunkManager() {
@@ -115,8 +124,8 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 	}
 
 	//async chunk loader
-	auto asyncChunkLoader = [this, &loading_chunks](std::list<std::unique_ptr<cudaArray_t[]>>& heightfield) -> int {
-		std::queue<std::future<bool>, std::list<std::future<bool>>> loader;
+	auto asyncChunkLoader = [this, &loading_chunks](list<pair<vec2, unique_ptr<cudaArray_t[]>>>& chunk_data) -> int {
+		queue<std::future<bool>, list<std::future<bool>>> loading_status;
 		//A functoin to load one chunk
 		//return true if chunk is loaded
 		auto chunk_loader = [this](vec2 local_chunk, const cudaArray_t loading_dest[2]) -> bool {
@@ -131,75 +140,65 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 			return this->ChunkProvider.checkChunk(this->ChunkCache, local_chunk);
 		};
 		//launching async computing
-		const int original_size = loading_chunks.size();
-		auto current_node = loading_chunks.begin();
-		auto heightfield_node = heightfield.begin();
-		for (auto& local : loading_chunks) {
-			loader.emplace(this->compute_pool->enqueue_future(chunk_computer, local.second));
+		for (auto& local : chunk_data) {
+			loading_status.emplace(this->compute_pool->enqueue_future(chunk_computer, local.first));
 		}
 		//waiting for compute to finish before loading
-		for (int i = 0; i < original_size; i++) {
-			if (loader.front().get()) {
-				//it actually doesn't matter if it returns false
-			}
+		while (!loading_status.empty()) {
+			//it actually doesn't matter if it returns false
+			loading_status.front().get();
 
 			//delete
-			loader.pop();
+			loading_status.pop();
 		}
 		//EXPERIMENTAL FEATURE ENDS
 
 		//launching async loading
-		for (int threadID = 0; threadID < original_size; threadID++) {
+		for (auto it = chunk_data.begin(); it != chunk_data.end(); it++) {
 			//start loading
-			loader.emplace(this->compute_pool->enqueue_future(chunk_loader, current_node->second, (*heightfield_node).get()));
-
-			heightfield_node++;
-			current_node++;
+			loading_status.emplace(this->compute_pool->enqueue_future(chunk_loader, it->first, it->second.get()));
 		}
 
 		//waiting for loading
 		//get the result
-		current_node = loading_chunks.begin();
-		for (int i = 0; i < original_size; i++) {
-			if (loader.front().get()) {
+		for (auto it = loading_chunks.begin(); it != loading_chunks.end();) {
+			if (loading_status.front().get()) {
 				//loaded
 				//traversing the list while erasing it is quite good	
-				current_node = loading_chunks.erase(current_node);
+				it = loading_chunks.erase(it);
 				//the current_node will be pointing to the next node automatically
 			}
 			else {
 				//not yet loaded, computation has been dispatched, so we keep this chunk
-				current_node++;
+				it++;
 				//it won't go beyong the end pointer
 			}
 
-			//delete the mapped array
-			loader.pop();
+			//delete the future
+			loading_status.pop();
 		}
 
 		//release the mapping
-		heightfield.clear();
+		chunk_data.clear();
 		//deleted by smart ptr
 		return loading_chunks.size();
 	};
 
 	//texture storage
-	const int loading_size = loading_chunks.size();
 	//map the texture, all opengl related work must be done on the main contexted thread
 	cudaGraphicsMapResources(2, this->heightfield_texture_res);
 	//get the mapped array on the main contexte thread
 	auto node = loading_chunks.begin();
-	for (int i = 0; i < loading_size; i++) {
+	for (auto node = loading_chunks.begin(); node != loading_chunks.end(); node++) {
 		//allocating spaces for this chunk (2 tetxures per chunk)
-		std::unique_ptr<cudaArray_t[]> heightfield_ptr = std::unique_ptr<cudaArray_t[]>(new cudaArray_t[2]);
+		unique_ptr<cudaArray_t[]> heightfield_ptr(new cudaArray_t[2]);
 		//map each texture
 		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[0]), this->heightfield_texture_res[0], node->first, 0);
 		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[1]), this->heightfield_texture_res[1], node->first, 0);
-		this->heightfield_cuda.push_back(std::move(heightfield_ptr));
-		node++;
+		this->chunk_data.emplace_back(node->second, std::move(heightfield_ptr));
 	}
 	//start loading chunk
-	this->ChunkLoader = this->compute_pool->enqueue_future(asyncChunkLoader, std::ref(this->heightfield_cuda));
+	this->ChunkLoader = this->compute_pool->enqueue_future(asyncChunkLoader, std::ref(this->chunk_data));
 	return true;
 }
 

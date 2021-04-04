@@ -183,7 +183,7 @@ namespace SuperTerrainPlus {
 			cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
 
 			//starting thread pool
-			this->command_pool = new STPThreadPool(5u);
+			this->command_pool = new STPThreadPool(3u);
 			//loading terrain 2d inf parameters
 			STPSettings::STPConfigurations config = STPSettings::STPConfigurations();
 			std::future chunksPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFChunksParameters, std::ref(this->engineSettings["Generators"]));
@@ -207,10 +207,8 @@ namespace SuperTerrainPlus {
 			//setting terrain 2d inf
 			STPCompute::STPHeightfieldGenerator::useSettings(&config.getHeightfieldSettings());
 			assert(STPCompute::STPSimplexNoise::initialise());
-			this->terrain2d_inf = new STPProcedural2DINF(&config, reinterpret_cast<void*>(this->command->Command_Procedural2DINF), this->command_pool);
+			this->terrain2d_inf = new STPProcedural2DINF(&config, reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 			this->terrain2d_inf->getChunkProvider().setHeightfieldErosionIteration(std::stoul(this->engineSettings("iteration", "2DTerrainINF")));
-			const auto& slip = config.getChunkSettings().FreeSlipChunk;
-			this->terrain2d_inf->getChunkProvider().setHeightfieldLocalGlobalIndex(make_uint2(slip.x, slip.y), config.getSimplexNoiseSettings().Dimension);
 			this->terrain2d_inf->loadChunksAsync(this->Camera->getPosition());
 
 			//setting up ssbo

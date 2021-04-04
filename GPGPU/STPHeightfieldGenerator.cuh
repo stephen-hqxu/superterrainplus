@@ -15,6 +15,7 @@
 #include "../Helpers/STPMemoryPool.hpp"
 //Settings
 #include "../Settings/STPHeightfieldSettings.hpp"
+#include "../Settings/STPChunkSettings.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -66,10 +67,12 @@ namespace SuperTerrainPlus {
 			struct STPMapStorage {
 			public:
 
-				//A float array that will be used to stored heightmap pixles, must be pre-allocated with at least width * height * sizeof(float), i.e., R32F format
-				//If generator is instructed to generate only a single heightmap, only one map is required
-				//If hydraulic erosion and/or normalmap generation is enabled, a list of maps of neighbour chunks are required for edge sync.
-				//The map pointers should be arranged in row major matrix, with defined neighbour dimension.
+				//- A float array that will be used to stored heightmap pixles, must be pre-allocated with at least width * height * sizeof(float), i.e., R32F format
+				//- If generator is instructed to generate only a single heightmap, only one map is required
+				//- If hydraulic erosion and/or normalmap generation is enabled, a list of maps of neighbour chunks are required for edge sync, heightmap generation will 
+				//only affect the central chunk, for neighbour chunks it must be precomputed with heightmap to be able to perform free-slip hydraulic erosion,
+				//If free-slip hydraulic erosion is disabled, no neighbour chunks are required.
+				//- The map pointers should be arranged in row major matrix, with defined neighbour dimension.
 				std::list<float*> Heightmap32F;
 				//The x vector specify the offset on x direction of the map and and z on y direction of the map, and the y vector specify the offset on the final result.
 				//The offset parameter will only be applied on the heightmap generation.
@@ -188,7 +191,7 @@ namespace SuperTerrainPlus {
 			*/
 			unsigned int* GlobalLocalIndex = nullptr;
 			//Free slip range in the unit of chunk
-			uint2 FreeSlipChunk;
+			const uint2 FreeSlipChunk;
 			//Determine the number of raindrop to summon, the higher the more accurate but slower
 			//Each time this value changes, the rng needs to be re-sampled
 			unsigned int NumRaindrop = 0u;
@@ -203,13 +206,20 @@ namespace SuperTerrainPlus {
 			mutable STPMemoryPool<unsigned short, STPImageConverterAllocator> MapCache16UI_device;
 			mutable STPMemoryPool<float, STPHeightfieldHostAllocator> MapCachePinned;
 
+			/**
+			 * @brief Generate the local global index lookup table
+			 * @return True if generation is successful without errors
+			*/
+			__host__ bool setLocalGlobalIndexCUDA();
+
 		public:
 
 			/**
 			 * @brief Init the heightfield generator
 			 * @param noise_settings Stored all parameters for the heightmap random number generator, it will be deep copied to the class so dynamic memory is not required
+			 * @param chunk_settings Stored all parameters for the chunk
 			*/
-			__host__ STPHeightfieldGenerator(STPSettings::STPSimplexNoiseSettings* const);
+			__host__ STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings*, const STPSettings::STPChunkSettings*);
 
 			__host__ ~STPHeightfieldGenerator();
 
@@ -267,14 +277,6 @@ namespace SuperTerrainPlus {
 			 * @return The number of raindrop to erode the terrain
 			*/
 			__host__ unsigned int getErosionIteration() const;
-
-			/**
-			 * @brief Generate the local global index lookup table
-			 * @param range Free slip range in the unit of chunk
-			 * @param dimension The size of each heightmap
-			 * @return True if generation is successful without errors
-			*/
-			__host__ bool setLocalGlobalIndexCUDA(uint2, uint2);
 
 		};
 

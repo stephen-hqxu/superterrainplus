@@ -35,7 +35,7 @@ namespace SuperTerrainPlus {
 	private:
 
 		//thread pool
-		STPThreadPool* const compute_pool;
+		std::unique_ptr<STPThreadPool> compute_pool;
 
 		//chunk data
 		STPChunkStorage ChunkCache;
@@ -51,7 +51,7 @@ namespace SuperTerrainPlus {
 		//async chunk loader
 		std::future<int> ChunkLoader;
 		//CUDA map mapped array storage
-		std::list<std::unique_ptr<cudaArray_t[]>> heightfield_cuda;
+		std::list<std::pair<glm::vec2, std::unique_ptr<cudaArray_t[]>>> chunk_data;
 
 		//for automatic chunk loading
 		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the currentCentralPos is different from this value
@@ -82,9 +82,8 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief Init the chunk manager. Allocating spaces for opengl texture.
 		 * @param settings Stores all required settings for generation
-		 * @param shared_threadpool The thread pool for multithreading computing and rendering. It can share the pool with the main program or separate from.
 		*/
-		STPChunkManager(STPSettings::STPConfigurations*, STPThreadPool* const);
+		STPChunkManager(STPSettings::STPConfigurations*);
 
 		~STPChunkManager();
 
