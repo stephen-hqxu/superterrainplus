@@ -111,7 +111,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief Load the launch parameter for procedural infinite 2d terrain, stored in the ini file into STPHeightfieldLaunchPara
 		 * @param section The INI section that contains the launch parameter
-		 * @param mapSize The size of the heightfield maps that are going to be generated
+		 * @param slipRange The size of the free-slip range of the erosion
 		 * @return The launch parameter, if certain parameters are missing in the section, exception will be thrown
 		*/
 		static STPSettings::STPHeightfieldSettings getProcedural2DINFGeneratorParameters(SIMPLE::SISection&, glm::uvec2);

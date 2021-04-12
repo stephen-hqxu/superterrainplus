@@ -49,7 +49,7 @@ namespace SuperTerrainPlus {
 		unsigned short* mono_clear = nullptr, *quad_clear = nullptr;
 
 		//async chunk loader
-		std::future<int> ChunkLoader;
+		std::future<unsigned int> ChunkLoader;
 		//CUDA map mapped array storage
 		std::list<std::pair<glm::vec2, std::unique_ptr<cudaArray_t[]>>> chunk_data;
 

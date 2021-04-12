@@ -274,12 +274,13 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Init the erosion brush indices and weights, so each droplet can erode a certain range of terrain but not only the current pixel.
 			 * The erosion radius will be automatically updated to the parameter.
-			 * @param mapSize The size of the heightmap
+			 * @param slipRange The area in both direction where raindrop can slip freely. Usually this is the same as the size of the heightmap, or 
+			 * under free-slip hydraulic erosion, this is the free-slip range
 			 * @param erodeRadius Specify the radius of the brush. Determines the radius in which sediment is taken from therock layer.
 			 * The smaller radius is, the deeper and more distinct the ravines will be.
 			 * Raising the erosion radius also increases the computational time needed for each drop drastically.
 			*/
-			__host__ void setErosionBrushRadius(uint2 mapSize, unsigned int erodeRadius) {
+			__host__ void setErosionBrushRadius(uint2 slipRange, unsigned int erodeRadius) {
 				const int radius = static_cast<int>(erodeRadius);
 				//radius must be greater than 0
 				//Getting the storage on host
@@ -295,7 +296,7 @@ namespace SuperTerrainPlus {
 					for (int brushX = -radius; brushX <= radius; brushX++) {
 						sqrDst = 1.0f * brushX * brushX + brushY * brushY * 1.0f;
 						if (sqrDst < radius * radius) {//The brush lies within the erosion range
-							brushIndex.push_back(brushY * mapSize.x + brushX);
+							brushIndex.push_back(brushY * slipRange.x + brushX);
 							currentbrushWeight = 1 - sqrt(sqrDst) / radius;
 							weightSum += currentbrushWeight;
 							brushWeight.push_back(currentbrushWeight);

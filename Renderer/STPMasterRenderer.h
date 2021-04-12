@@ -194,7 +194,7 @@ namespace SuperTerrainPlus {
 			const auto& chunk_settings = config.getChunkSettings();
 			std::future noisePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getSimplex2DNoiseParameters, std::ref(this->engineSettings["Generators"]), chunk_settings.MapSize);
 			//not quite sure why heightfield_settings isn't got copied to the config, it just share the pointer
-			config.getHeightfieldSettings() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(this->engineSettings["2DTerrainINF"], chunk_settings.MapSize);
+			config.getHeightfieldSettings() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(this->engineSettings["2DTerrainINF"], chunk_settings.MapSize * chunk_settings.FreeSlipChunk);
 			config.getSimplexNoiseSettings() = noisePara_loader.get();
 
 			assert(config.validate());
@@ -205,7 +205,7 @@ namespace SuperTerrainPlus {
 			//setting up renderers
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer, this->command_pool);
 			//setting terrain 2d inf
-			STPCompute::STPHeightfieldGenerator::useSettings(&config.getHeightfieldSettings());
+			STPCompute::STPHeightfieldGenerator::InitGenerator(&config.getHeightfieldSettings());
 			assert(STPCompute::STPSimplexNoise::initialise());
 			this->terrain2d_inf = new STPProcedural2DINF(&config, reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 			this->terrain2d_inf->getChunkProvider().setHeightfieldErosionIteration(std::stoul(this->engineSettings("iteration", "2DTerrainINF")));

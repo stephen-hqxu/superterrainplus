@@ -54,17 +54,28 @@ __global__ void generateHeightmapKERNEL(STPSimplexNoise* const, float*, uint2, f
  * @brief Performing hydraulic erosion for the given heightmap terrain using CUDA parallel computing
  * @param height_storage The heightmap with global-local convertion management
  * @param rng The random number generator map sequence, independent for each rain drop
+ * @param boundary The raindrop spawn area. Defined as:
+ * x - base x,
+ * y - range x,
+ * z - base y,
+ * w - range y
 */
-__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager, STPHeightfieldGenerator::curandRNG*);
+__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager, STPHeightfieldGenerator::curandRNG*, const float4);
+
+/**
+ * @brief Fix the edge of the central chunk such that it's aligned with all neighbour chunks
+ * @param heightmap The heightmap with global-local converter
+ * @param central_boundary The index base and range defined as the central chunk
+*/
+__global__ void performPostErosionInterpolationKERNEL(STPRainDrop::STPFreeSlipManager, uint4);
 
 /**
  * @brief Generate the normal map for the height map within kernel
- * @param heightmap - contains the height map that will be wused to generate the normal
- * @param normal_storage - normal map, will be used to store the output of the normal map
- * @param dimension - The width and height of both map
+ * @param heightmap - contains the height map that will be used to generate the normalmap, with free-slip manager
+ * @param normalmap - normal map, will be used to store the output of the normal map
  * @return True if the normal map is successully generated without errors
 */
-__global__ void generateNormalmapKERNEL(float* const, float*, uint2);
+__global__ void generateNormalmapKERNEL(STPRainDrop::STPFreeSlipManager, float*);
 
 /**
  * @brief Convert _32F format to _16
@@ -84,33 +95,71 @@ __global__ void floatToshortKERNEL(const float* const, unsigned short*, uint2, u
 */
 __global__ void initGlobalLocalIndexKERNEL(unsigned int*, unsigned int, uint2, uint2);
 
-__host__ float* STPHeightfieldGenerator::STPHeightfieldAllocator::allocate(size_t count) {
-	float* mem = nullptr;
-	cudaMalloc(&mem, sizeof(float) * count);
+/*
+ * @brief Copy block of memory from device to host and split into chunks.
+ * Used by function operator()
+ * @param dest - The destination chunks
+ * @param host - Host pinned memory acts as buffer
+ * @param device - Device source memory
+ * @param block_size - The total size of the host and device memory, in byte.
+ * @param individual_size - The size of one chunk, in byte.
+ * @param element_count - The number of pixel in one chunk
+ * @param stream - Async CUDA stream
+*/
+template<typename T>
+__host__ bool blockcopy_d2h(std::list<T*>& dest, T* host, T* device, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
+	bool no_error = true;
+	no_error &= cudaSuccess == cudaMemcpyAsync(host, device, block_size, cudaMemcpyDeviceToHost, stream);
+	unsigned int base = 0u;
+	for (T* map : dest) {
+		no_error &= cudaSuccess == cudaMemcpyAsync(map, host + base, individual_size, cudaMemcpyHostToHost, stream);
+		base += element_count;
+	}
+
+	return no_error;
+}
+
+/*
+ * @brief Copy block of memory from host, split chunks into maps and then copy to device
+ * Used by function operator()
+ * @param host - Host pinned memory acts as buffer
+ * @param device - Device destination memory
+ * @param souce - The source chunks
+ * @param block_size - The total size of the host and device memory, in byte.
+ * @param individual_size - The size of one chunk, in byte.
+ * @param element_count - The number of pixel in one chunk
+ * @param stream - Async CUDA stream
+*/
+template<typename T>
+__host__ bool blockcopy_h2d(T* device, T* host, std::list<T*>& source, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
+	bool no_error = true;
+	unsigned int base = 0u;
+	for (T* map : source) {
+		no_error &= cudaSuccess == cudaMemcpyAsync(host + base, map, individual_size, cudaMemcpyHostToHost, stream);
+		base += element_count;
+	}
+	no_error &= cudaSuccess == cudaMemcpyAsync(device, host, block_size, cudaMemcpyHostToDevice, stream);
+
+	return no_error;
+}
+
+__host__ void* STPHeightfieldGenerator::STPHeightfieldAllocator::allocate(size_t count) {
+	void* mem = nullptr;
+	cudaMalloc(&mem, count);
 	return mem;
 }
 
-__host__ void STPHeightfieldGenerator::STPHeightfieldAllocator::deallocate(size_t count, float* ptr) {
+__host__ void STPHeightfieldGenerator::STPHeightfieldAllocator::deallocate(size_t count, void* ptr) {
 	cudaFree(ptr);
 }
 
-__host__ unsigned short* STPHeightfieldGenerator::STPImageConverterAllocator::allocate(size_t count) {
-	unsigned short* mem = nullptr;
-	cudaMalloc(&mem, sizeof(unsigned short) * count);
+__host__ void* STPHeightfieldGenerator::STPHeightfieldHostAllocator::allocate(size_t count) {
+	void* mem = nullptr;
+	cudaMallocHost(&mem, count);
 	return mem;
 }
 
-__host__ void STPHeightfieldGenerator::STPImageConverterAllocator::deallocate(size_t count, unsigned short* ptr) {
-	cudaFree(ptr);
-}
-
-__host__ float* STPHeightfieldGenerator::STPHeightfieldHostAllocator::allocate(size_t count) {
-	float* mem = nullptr;
-	cudaMallocHost(&mem, sizeof(float) * count);
-	return mem;
-}
-
-__host__ void STPHeightfieldGenerator::STPHeightfieldHostAllocator::deallocate(size_t count, float* ptr) {
+__host__ void STPHeightfieldGenerator::STPHeightfieldHostAllocator::deallocate(size_t count, void* ptr) {
 	cudaFreeHost(ptr);
 }
 
@@ -122,10 +171,11 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STP
 	cudaMemcpy(this->simplex, &simplex_h, sizeof(STPSimplexNoise), cudaMemcpyHostToDevice);
 
 	//kernel parameters
-	this->numThreadperBlock_Map = dim3(32, 32);
+	this->numThreadperBlock_Map = dim3(32u, 32u);
 	this->numBlock_Map = dim3(noise_settings->Dimension.x / numThreadperBlock_Map.x, noise_settings->Dimension.y / numThreadperBlock_Map.y);
-	this->numThreadperBlock_Erosion = 1024;
+	this->numThreadperBlock_Erosion = 1024u;
 	this->numBlock_Erosion = 0;//This will be set after user call the setErosionIterationCUDA() method
+	this->numBlock_FreeslipMap = dim3(0u, 0u);//will be set later
 
 	//set global local index
 	if (!this->setLocalGlobalIndexCUDA()) {
@@ -147,7 +197,7 @@ __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 	}
 }
 
-__host__ bool STPHeightfieldGenerator::useSettings(const STPSettings::STPHeightfieldSettings* const settings) {
+__host__ bool STPHeightfieldGenerator::InitGenerator(const STPSettings::STPHeightfieldSettings* const settings) {
 	//keep a local copy of the setting so device can have access to the pointer inside the class
 	static std::unique_ptr<const STPSettings::STPHeightfieldSettings> stored_settings;
 
@@ -165,7 +215,7 @@ __host__ bool STPHeightfieldGenerator::useSettings(const STPSettings::STPHeightf
 	return cudaSuccess == cudaMemcpyToSymbol(HeightfieldSettings, stored_settings.get(), sizeof(STPSettings::STPHeightfieldSettings), 0ull, cudaMemcpyHostToDevice);
 }
 
-__host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& args, STPGeneratorOperation operation) const {
+__host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperation operation) const {
 	//check the availiability of the engine
 	if (this->RNG_Map == nullptr) {
 		return false;
@@ -178,9 +228,6 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 		//no operation is specified, nothing can be done
 		return false;
 	}
-	auto isFlagged = [](STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
-		return (op & flag) != 0u;
-	};
 
 	bool no_error = true;//check for error, true if all successful
 	//allocating spaces for texture, storing on device
@@ -188,17 +235,23 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 	const unsigned int num_pixel = this->Noise_Settings.Dimension.x * this->Noise_Settings.Dimension.y;
 	const unsigned int map_size = num_pixel * sizeof(float);
 	const unsigned int map16ui_size = num_pixel * sizeof(unsigned short);
-	const unsigned int freeslip_chunk_total = this->FreeSlipChunk.x * this->FreeSlipChunk.y;
+	//if free-slip erosion is disabled, it should be one.
+	//if enabled, it should be the product of two dimension in free-slip chunk.
+	const unsigned int freeslip_chunk_total = args.Heightmap32F.size();
 	const unsigned int freeflip_pixel = freeslip_chunk_total * num_pixel;
-	const unsigned int central_index = static_cast<unsigned int>(floorf(1.0f * freeslip_chunk_total / 2.0f));
 	const unsigned int map_freeslip_size = freeflip_pixel * sizeof(float);
+	const unsigned int map16ui_freeslip_size = freeflip_pixel * sizeof(unsigned short);
+	const uint2 freeslip_dimension = make_uint2(this->Noise_Settings.Dimension.x * this->FreeSlipChunk.x, this->Noise_Settings.Dimension.y * this->FreeSlipChunk.y);
 	//heightmap and normalmap ptr
-	float* heightfield_d[2] = {nullptr};
-	float* heightfield_freeslip_h = nullptr;
-	float* heightfield_freeslip_d = nullptr;
-	unsigned short* heightfield_formatted_d[2] = {nullptr};
+	float* heightfield_freeslip_d[2] = { nullptr };
+	float* heightfield_freeslip_h[2] = { nullptr };
+	unsigned short* heightfield_formatted_d[2] = { nullptr };
+	unsigned short* heightfield_formatted_h[2] = { nullptr };
 
 	//Retrieve all flags
+	auto isFlagged = []__host__(STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
+		return (op & flag) != 0u;
+	};
 	const bool flags[4] = {
 		isFlagged(operation, STPHeightfieldGenerator::HeightmapGeneration),
 		isFlagged(operation, STPHeightfieldGenerator::Erosion),
@@ -212,39 +265,45 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 	};
 
 	//memory allocation
-	//FP32
+	//Device
 	{
-		std::unique_lock<std::mutex> lock(this->MapCache32F_lock);
-		if (flags[1]) {
-			heightfield_freeslip_d = this->MapCache32F_device.allocate(map_freeslip_size);
-			//use the center location of the erosion memory as the central chunk heightmap
-			heightfield_d[0] = heightfield_freeslip_d + central_index * num_pixel;
-		}
-		else {
-			heightfield_d[0] = this->MapCache32F_device.allocate(map_size);
-		}
+		std::unique_lock<std::mutex> lock(this->MapCacheDevice_lock);
+		//FP32
+		//we need heightmap for computation regardlessly
+		heightfield_freeslip_d[0] = reinterpret_cast<float*>(this->MapCacheDevice.allocate(map_freeslip_size));
+
 		if (flags[2] || (flags[3] && format_flags[1])) {
 			//if normal map formation is enabled, we need the device memory for input as well
-			heightfield_d[1] = this->MapCache32F_device.allocate(map_size * 4);
+			heightfield_freeslip_d[1] = reinterpret_cast<float*>(this->MapCacheDevice.allocate(map_freeslip_size * 4u));
 		}
-	}
-	//INT16
-	if (flags[3]) {
-		{
-			std::unique_lock<std::mutex> lock(this->MapCache16UI_lock);
+		//INT16
+		if (flags[3]) {
 			if (format_flags[0]) {
-				heightfield_formatted_d[0] = this->MapCache16UI_device.allocate(map16ui_size);
+				heightfield_formatted_d[0] = reinterpret_cast<unsigned short*>(this->MapCacheDevice.allocate(map16ui_freeslip_size));
 			}
 			if (format_flags[1]) {
-				heightfield_formatted_d[1] = this->MapCache16UI_device.allocate(map16ui_size * 4);
+				heightfield_formatted_d[1] = reinterpret_cast<unsigned short*>(this->MapCacheDevice.allocate(map16ui_freeslip_size * 4u));
 			}
 		}
 	}
-	//FP32 Host
-	if (flags[1]) {
-		{
-			std::unique_lock<std::mutex> lock(this->MapCachePinned_lock);
-			heightfield_freeslip_h = this->MapCachePinned.allocate(map_freeslip_size);
+	//Host
+	{
+		std::unique_lock<std::mutex> lock(this->MapCachePinned_lock);
+		//FP32
+		heightfield_freeslip_h[0] = reinterpret_cast<float*>(this->MapCachePinned.allocate(map_freeslip_size));
+
+		if (flags[2] || (flags[3] && format_flags[1])) {
+			heightfield_freeslip_h[1] = reinterpret_cast<float*>(this->MapCachePinned.allocate(map_freeslip_size * 4u));
+		}
+
+		//INT16
+		if (flags[3]) {
+			if (format_flags[0]) {
+				heightfield_formatted_h[0] = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size));
+			}
+			if (format_flags[1]) {
+				heightfield_formatted_h[1] = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size * 4u));
+			}
 		}
 	}
 
@@ -253,61 +312,70 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 	cudaStream_t stream;
 	//we want the stream to not be blocked by default stream
 	no_error &= cudaSuccess == cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
-	if (flags[1]) {
-		//pre copy free-slip chunks to device
-		//heightmap generation will overwrite the central chunk anyway
-		unsigned int base = 0u;
-		for (float* map : args.Heightmap32F) {
-			no_error &= cudaSuccess == cudaMemcpyAsync(heightfield_freeslip_h + base, map, map_size,cudaMemcpyHostToHost, stream);
-			base += num_pixel;
-		}
-		no_error &= cudaSuccess == cudaMemcpyAsync(heightfield_freeslip_d, heightfield_freeslip_h, map_freeslip_size, cudaMemcpyHostToDevice, stream);
-	}
 	
 	//Flag: HeightmapGeneration
 	if (flags[0]) {
 		//generate a new heightmap and store it to the output later
-		generateHeightmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_d[0],
+		generateHeightmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_freeslip_d[0],
 			this->Noise_Settings.Dimension, make_float2(1.0f * this->Noise_Settings.Dimension.x / 2.0f, 1.0f * this->Noise_Settings.Dimension.y / 2.0f), args.HeightmapOffset);
 	}
-	else if(!flags[1]) {
-		//copy heightmap from input arguments to device for later use if not generated nor going to be eroded
-		no_error &= cudaSuccess == cudaMemcpyAsync(heightfield_d[0], *args.Heightmap32F.begin(), map_size, cudaMemcpyHostToDevice, stream);
+	else {
+		//no generation, use existing
+		no_error &= blockcopy_h2d(heightfield_freeslip_d[0], heightfield_freeslip_h[0], args.Heightmap32F, map_freeslip_size, map_size, num_pixel, stream);
 	}
 
 	//Flag: Erosion
 	if (flags[1]) {
 		//erode the heightmap, either from provided heightmap or generated previously
-		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d, this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
-		performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, 0, stream >> > (heightmap_slip, this->RNG_Map);
+		const uint2& dimension = this->Noise_Settings.Dimension;
+		const uint2& free_slip_chunk = this->FreeSlipChunk;
+
+		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d[0], this->GlobalLocalIndex, free_slip_chunk, dimension);
+		//convert to (base, dimension - 1]
+		//range: dimension
+		//Generate the raindrop at the central chunk only
+		const float4 area = make_float4(
+			1.0f * dimension.x - 1.0f,
+			floorf(free_slip_chunk.x / 2.0f) * dimension.x,
+			1.0f * dimension.y - 1.0f,
+			floorf(free_slip_chunk.y / 2.0f) * dimension.y
+		);
+		performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, 0, stream >> > (heightmap_slip, this->RNG_Map, area);
+		const uint4 boundary_index = make_uint4(
+			area.y,
+			area.y + dimension.x - 1u,
+			area.w,
+			area.w + dimension.y - 1u
+		);
+		performPostErosionInterpolationKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, 0, stream >> > (heightmap_slip, boundary_index);
 	}
 
 	//Flag: Normalmap
 	if (flags[2]) {
 		//generate normalmap from heightmap
-		generateNormalmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (heightfield_d[0], heightfield_d[1],
-			this->Noise_Settings.Dimension);
+		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d[0], this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
+		generateNormalmapKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, 0, stream >> > (heightmap_slip, heightfield_freeslip_d[1]);
 	}
 
-	//Flag: Format - move STPImageConverter to here
+	//Flag: Format - moved STPImageConverter to here
 	if (flags[3]) {
 		if (format_flags[0]) {
 			//format heightmap
 			//heightmap will always be available
 			//format heightmap
-			floatToshortKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (heightfield_d[0], heightfield_formatted_d[0],
-				this->Noise_Settings.Dimension, 1);
+			floatToshortKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, 0, stream >> > (heightfield_freeslip_d[0], heightfield_formatted_d[0],
+				freeslip_dimension, 1);
 		}
 
 		if (format_flags[1]) {
 			//format normalmap
 			if (!flags[2]) {
 				//normalmap generation was not enabled? we need to copy from input
-				no_error &= cudaSuccess == cudaMemcpyAsync(heightfield_d[1], args.Normalmap32F, map16ui_size * 4, cudaMemcpyHostToDevice, stream);
+				no_error &= blockcopy_h2d(heightfield_freeslip_d[1], heightfield_freeslip_h[1], args.Normalmap32F, map_freeslip_size * 4u, map_size * 4u, num_pixel * 4u, stream);
 			}
 			//if normalmap is generated, it's already available in device memory
-			floatToshortKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (heightfield_d[1], heightfield_formatted_d[1],
-				this->Noise_Settings.Dimension, 4);
+			floatToshortKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, 0, stream >> > (heightfield_freeslip_d[1], heightfield_formatted_d[1],
+				freeslip_dimension, 4);
 		}
 		
 	}
@@ -315,31 +383,23 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 	//Store the result accordingly
 	//copy the result back to the host
 	//heightmap will always be available
-	if (flags[1]) {
-		//copy all free-slip chunks back
-		no_error &= cudaSuccess == cudaMemcpyAsync(heightfield_freeslip_h, heightfield_freeslip_d, map_freeslip_size, cudaMemcpyDeviceToHost, stream);
-		unsigned int base = 0u;
-		for (float* map : args.Heightmap32F) {
-			no_error &= cudaSuccess == cudaMemcpyAsync(map, heightfield_freeslip_h + base, map_size, cudaMemcpyHostToHost, stream);
-			base += num_pixel;
-		}
-	}
-	else {
-		no_error &= cudaSuccess == cudaMemcpyAsync(*args.Heightmap32F.begin(), heightfield_d[0], map_size, cudaMemcpyDeviceToHost, stream);
+	if (flags[0] || flags[1]) {
+		//copy all heightmap chunks back if heightmap has been modified
+		no_error &= blockcopy_d2h(args.Heightmap32F, heightfield_freeslip_h[0], heightfield_freeslip_d[0], map_freeslip_size, map_size, num_pixel, stream);
 	}
 	if (flags[2]) {
 		//if we have normalmap generated, also copy normalmap back to host
-		no_error &= cudaSuccess == cudaMemcpyAsync(args.Normalmap32F, heightfield_d[1], map_size * 4, cudaMemcpyDeviceToHost, stream);
+		no_error &= blockcopy_d2h(args.Normalmap32F, heightfield_freeslip_h[1], heightfield_freeslip_d[1], map_freeslip_size * 4u, map_size * 4u, num_pixel * 4u, stream);
 	}
 	//copy the formatted result if enabled
 	if (flags[3]) {
 		if (format_flags[0]) {
 			//copy heightmap
-			no_error &= cudaSuccess == cudaMemcpyAsync(args.Heightmap16UI, heightfield_formatted_d[0], map16ui_size, cudaMemcpyDeviceToHost, stream);
+			no_error &= blockcopy_d2h(args.Heightmap16UI, heightfield_formatted_h[0], heightfield_formatted_d[0], map16ui_freeslip_size, map16ui_size, num_pixel, stream);
 		}
 		if (format_flags[1]) {
 			//copy normalmap
-			no_error &= cudaSuccess == cudaMemcpyAsync(args.Normalmap16UI, heightfield_formatted_d[1], map16ui_size * 4, cudaMemcpyDeviceToHost, stream);
+			no_error &= blockcopy_d2h(args.Normalmap16UI, heightfield_formatted_h[1], heightfield_formatted_d[1], map16ui_freeslip_size * 4u, map16ui_size * 4u, num_pixel * 4u, stream);
 		}
 	}
 	//waiting for finish
@@ -348,34 +408,33 @@ __host__ bool STPHeightfieldGenerator::generateHeightfieldCUDA(STPMapStorage& ar
 	//Finish up the rest, clear up when the device is ready
 	//nullptr means not allocated
 	{
-		std::unique_lock<std::mutex> lock(this->MapCache32F_lock);
-		if (flags[1]) {
-			this->MapCache32F_device.deallocate(map_freeslip_size, heightfield_freeslip_d);
+		std::unique_lock<std::mutex> lock(this->MapCacheDevice_lock);
+		if (heightfield_freeslip_d[0] != nullptr) {
+			this->MapCacheDevice.deallocate(map_freeslip_size, heightfield_freeslip_d[0]);
 		}
-		else {
-			//hydraulic erosion uses a standalone heightmap so don't free it
-			//heightfield_d[0] will never be null
-			this->MapCache32F_device.deallocate(map_size, heightfield_d[0]);
+		if (heightfield_freeslip_d[1] != nullptr) {
+			this->MapCacheDevice.deallocate(map_freeslip_size * 4u, heightfield_freeslip_d[1]);
 		}
-		if (heightfield_d[1] != nullptr) {
-			this->MapCache32F_device.deallocate(map_size * 4, heightfield_d[1]);
+		if (heightfield_formatted_d[0] != nullptr) {
+			this->MapCacheDevice.deallocate(map16ui_freeslip_size, heightfield_formatted_d[0]);
 		}
-	}
-	if (flags[3]) {
-		{
-			std::unique_lock<std::mutex> lock(this->MapCache16UI_lock);
-			if (format_flags[0]) {
-				this->MapCache16UI_device.deallocate(map16ui_size, heightfield_formatted_d[0]);
-			}
-			if (format_flags[1]) {
-				this->MapCache16UI_device.deallocate(map16ui_size * 4, heightfield_formatted_d[1]);
-			}
+		if (heightfield_formatted_d[1] != nullptr) {
+			this->MapCacheDevice.deallocate(map16ui_freeslip_size * 4u, heightfield_formatted_d[1]);
 		}
 	}
-	if (flags[1]) {
-		{
-			std::unique_lock<std::mutex> lock(this->MapCachePinned_lock);
-			this->MapCachePinned.deallocate(map_freeslip_size, heightfield_freeslip_h);
+	{
+		std::unique_lock<std::mutex> lock(this->MapCachePinned_lock);
+		if (heightfield_freeslip_h[0] != nullptr) {
+			this->MapCachePinned.deallocate(map_freeslip_size, heightfield_freeslip_h[0]);
+		}
+		if (heightfield_freeslip_h[1] != nullptr) {
+			this->MapCachePinned.deallocate(map_freeslip_size * 4u, heightfield_freeslip_h[1]);
+		}
+		if (heightfield_formatted_h[0] != nullptr) {
+			this->MapCachePinned.deallocate(map16ui_freeslip_size, heightfield_formatted_h[0]);
+		}
+		if (heightfield_formatted_h[1] != nullptr) {
+			this->MapCachePinned.deallocate(map16ui_freeslip_size * 4u, heightfield_formatted_h[1]);
 		}
 	}
 	no_error &= cudaSuccess == cudaStreamDestroy(stream);
@@ -419,7 +478,7 @@ __host__ bool STPHeightfieldGenerator::setLocalGlobalIndexCUDA() {
 
 	const uint2 global_dimension = make_uint2(range.x * dimension.x, range.y * dimension.y);
 	//launch parameters
-	dim3 numBlock_Index = dim3(global_dimension.x / this->numThreadperBlock_Map.x, global_dimension.y / this->numThreadperBlock_Map.y);
+	this->numBlock_FreeslipMap = dim3(global_dimension.x / this->numThreadperBlock_Map.x, global_dimension.y / this->numThreadperBlock_Map.y);
 	bool no_error = true;
 
 	//make sure all previous takes are finished
@@ -431,7 +490,7 @@ __host__ bool STPHeightfieldGenerator::setLocalGlobalIndexCUDA() {
 	no_error &= cudaSuccess == cudaMalloc(&this->GlobalLocalIndex, sizeof(unsigned int) * global_dimension.x * global_dimension.y);
 
 	//compute
-	initGlobalLocalIndexKERNEL << <numBlock_Index, this->numThreadperBlock_Map >> > (this->GlobalLocalIndex, global_dimension.x, range, dimension);
+	initGlobalLocalIndexKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map >> > (this->GlobalLocalIndex, global_dimension.x, range, dimension);
 	no_error &= cudaSuccess == cudaDeviceSynchronize();
 
 	return no_error;
@@ -490,39 +549,95 @@ __global__ void generateHeightmapKERNEL(STPSimplexNoise* const noise_fun, float*
 	return;
 }
 
-__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager heightmap_storage, STPHeightfieldGenerator::curandRNG* rng) {
+__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager heightmap_storage, STPHeightfieldGenerator::curandRNG* rng, const float4 boundary) {
 	//convert constant memory to usable class
-	SuperTerrainPlus::STPSettings::STPRainDropSettings* const settings = (SuperTerrainPlus::STPSettings::STPRainDropSettings* const)(reinterpret_cast<const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings));
+	const SuperTerrainPlus::STPSettings::STPRainDropSettings* const settings = (const SuperTerrainPlus::STPSettings::STPRainDropSettings* const)(reinterpret_cast<const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings));
 
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
 	//generating random location
 	//first we generate the number (0.0f, 1.0f]
 	float2 initPos = make_float2(curand_uniform(&rng[index]), curand_uniform(&rng[index]));
-	//convert to (erode radius + base, dimension - erode radius - 1]
-	//range: dimension - 2 * erosion radius - 1
-	//Generate the raindrop at the central chunk only
-	//TODO precompute constants outside of device
-	initPos.x *= heightmap_storage.Dimension.x - 2.0f * settings->getErosionBrushRadius() - 1.0f;
-	initPos.x += settings->getErosionBrushRadius() + (floorf(heightmap_storage.FreeSlipChunk.x / 2) * heightmap_storage.Dimension.x);
-	initPos.y *= heightmap_storage.Dimension.y - 2.0f * settings->getErosionBrushRadius() - 1.0f;
-	initPos.y += settings->getErosionBrushRadius() + (floorf(heightmap_storage.FreeSlipChunk.y / 2) * heightmap_storage.Dimension.y);
+	//range convertion
+	initPos.x *= boundary.x;
+	initPos.x += boundary.y;
+	initPos.y *= boundary.z;
+	initPos.y += boundary.w;
 
 	//spawn in the raindrop
 	STPRainDrop droplet(initPos, settings->initWaterVolume, settings->initSpeed);
-	//usually each droplet only does that once, rarely go beyond twice.
-	//Just adding in case...
 	droplet.Erode(settings, heightmap_storage);
 }
 
-__global__ void generateNormalmapKERNEL(float* const heightmap, float* normal_storage, uint2 dimension) {
+__global__ void performPostErosionInterpolationKERNEL(STPRainDrop::STPFreeSlipManager heightmap, uint4 central_boundary) {
+	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
+		y = (blockIdx.y * blockDim.y) + threadIdx.y,
+		index = x + y * heightmap.FreeSlipRange.x;
+	auto edge_interpolate = [&heightmap]__device__(unsigned int pixel, bool horizontal) -> void {
+		float value = 0.0f;
+		//find mean value
+		value += horizontal ? heightmap[pixel] + heightmap[pixel + 1u] : heightmap[pixel] + heightmap[pixel + heightmap.FreeSlipRange.x];
+		value /= 2.0f;
+		//interpolation
+		heightmap[pixel] = value;
+		if (horizontal) {
+			heightmap[pixel + 1u] = value;
+		}
+		else {
+			heightmap[pixel + 1u * heightmap.FreeSlipRange.x] = value;
+		}
+	};
+	auto corner_interpolate = [&heightmap]__device__(unsigned int pixel) -> void {
+		float value = 0.0f;
+		const unsigned int rowCount = heightmap.FreeSlipRange.x;
+		//find mean in a 2x2 block, start from top-left pixel
+		value += heightmap[pixel] + heightmap[pixel + 1u] + heightmap[pixel + rowCount] + heightmap[pixel + 1u + rowCount];
+		value /= 4.0f;
+		//interpolate
+		heightmap[pixel] = value;
+		heightmap[pixel + 1u] = value;
+		heightmap[pixel + rowCount] = value;
+		heightmap[pixel + 1u + rowCount] = value;
+	};
+
+	//TODO: revise the interpolation algorithm, it's so complicated to eliminate data racing
+	//2x1(or 1x2) interpolation at the edge, 2x2 interpolation at the corner
+	//TODO: we actually don't need that many threads (sliprange.x * .y), only (dimension.x + .y) * 2 is required, cut down the number of thread
+	//2x2
+	if (x == central_boundary.x - 1u && y == central_boundary.z - 1u 
+		|| x == central_boundary.y && y == central_boundary.z - 1u
+		|| x == central_boundary.x - 1u && y == central_boundary.w
+		|| x == central_boundary.y && y == central_boundary.w) {
+		corner_interpolate(index);
+		return;
+	}
+	//make sure the corner rage is untouch by other threads
+	if (x == central_boundary.x && y == central_boundary.z - 1u
+		|| x == central_boundary.x - 1u && y == central_boundary.z
+		|| x == central_boundary.y && y == central_boundary.z
+		|| x == central_boundary.x && y == central_boundary.w) {
+		return;
+	}
+	//don't touch the pixel at the edge of the free slip map
+	//TODO
+	//2x1 or 1x2
+	if (x == central_boundary.x - 1u || x == central_boundary.y) {
+		edge_interpolate(index, true);
+	}
+	else if (y == central_boundary.z - 1u || y == central_boundary.w) {
+		edge_interpolate(index, false);
+	}
+}
+
+__global__ void generateNormalmapKERNEL(STPRainDrop::STPFreeSlipManager heightmap, float* normalmap) {
 	//convert constant memory to usable class
 	SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const settings = reinterpret_cast<SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
 
 	//the current working pixel
-	unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
+	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y;
 
+	const uint2& dimension = heightmap.FreeSlipRange;
 	//load the cells from heightmap, remember the height map only contains one color channel
 	//using Sobel fitering
 	float cell[8];
@@ -547,10 +662,11 @@ __global__ void generateNormalmapKERNEL(float* const heightmap, float* normal_st
 	normal.z = __saturatef((normal.z + 1.0f) / 2.0f);
 	
 	//copy to the output, RGBA32F
-	normal_storage[(x + y * dimension.x) * 4] = normal.x;//R
-	normal_storage[(x + y * dimension.x) * 4 + 1] = normal.y;//G
-	normal_storage[(x + y * dimension.x) * 4 + 2] = normal.z;//B
-	normal_storage[(x + y * dimension.x) * 4 + 3] = 1.0f;//A
+	const unsigned int index = heightmap(x + y * dimension.x);
+	normalmap[index * 4] = normal.x;//R
+	normalmap[index * 4 + 1] = normal.y;//G
+	normalmap[index * 4 + 2] = normal.z;//B
+	normalmap[index * 4 + 3] = 1.0f;//A
 	
 	return;
 }

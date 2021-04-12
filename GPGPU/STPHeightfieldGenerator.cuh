@@ -77,17 +77,20 @@ namespace SuperTerrainPlus {
 				//The x vector specify the offset on x direction of the map and and z on y direction of the map, and the y vector specify the offset on the final result.
 				//The offset parameter will only be applied on the heightmap generation.
 				float3 HeightmapOffset = make_float3(0.0f, 0.0f, 0.0f);
-				//A float array that will be used to stored normnalmap pixles, will be used to store the output of the normal map.
+				//A float array that will be used to stored normalmap pixles, will be used to store the output of the normal map.
 				//Must be pre-allocated with at least width* height * 4 byte per channel * 4, i.e., RGBA32F format.
-				float* Normalmap32F = nullptr;
+				//If freeslip chunk has enabled, it must contain freeslip_chunk.x * freeslip_chunk.y number of normalmaps
+				std::list<float*> Normalmap32F;
 				//Instruct formatter that which map to format.
 				//If Format flag is not set for the generator, format operation will not happen regardlessly
 				STPFormatGuide FormatHint;
 				//A INT16 array that will be used to stored the heightmap after formation. Require Format flag set in the generator and FormatHeightmap set in FormatHint 
-				unsigned short* Heightmap16UI = nullptr;
+				//The number of pointer provided should be the same as Heightmap32F
+				std::list<unsigned short*> Heightmap16UI;
 				//A INT16 array that will be used to stored the normalmap after formation. Require Format flag set in the generator and FormatHeightmap set in FormatHint
 				//Require either normalmap generation enabled or provided from the external
-				unsigned short* Normalmap16UI = nullptr;
+				//The number of pointer provided should be the same as Normalmap32F
+				std::list<unsigned short*> Normalmap16UI;
 
 			};
 
@@ -101,39 +104,17 @@ namespace SuperTerrainPlus {
 
 				/**
 				 * @brief Allocate memory on GPU
-				 * @param count The number of byte of float
+				 * @param count The number of byte to allocate
 				 * @return The device pointer
 				*/
-				__host__ float* allocate(size_t);
+				__host__ void* allocate(size_t);
 
 				/**
 				 * @brief Free up the GPU memory
-				 * @param count The number float to free
+				 * @param count The size to free
 				 * @param The device pointer to free
 				*/
-				__host__ void deallocate(size_t, float*);
-
-			};
-
-			/**
-			 * @brief Allocate memory for image converter output
-			*/
-			class STPImageConverterAllocator {
-			public:
-
-				/**
-				 * @brief Allocate memory on GPU
-				 * @param count The number of byte of unsigned int
-				 * @return The device pointer
-				*/
-				__host__ unsigned short* allocate(size_t);
-
-				/**
-				 * @brief Free up the GPU memory
-				 * @param count The number unsigned int to free
-				 * @param The device pointer to free
-				*/
-				__host__ void deallocate(size_t, unsigned short*);
+				__host__ void deallocate(size_t, void*);
 
 			};
 
@@ -145,22 +126,22 @@ namespace SuperTerrainPlus {
 
 				/**
 				 * @brief Allocate page-locked memory on host
-				 * @param count The number of byte of float
+				 * @param count The number of byte to allocate
 				 * @return The memory pointer
 				*/
-				__host__ float* allocate(size_t);
+				__host__ void* allocate(size_t);
 
 				/**
 				 * @brief Free up the host pinned memory
-				 * @param count The number unsigned int to free
-				 * @param The hsot pinned pointer to free
+				 * @param count The size to free
+				 * @param The host pinned pointer to free
 				*/
-				__host__ void deallocate(size_t, float*);
+				__host__ void deallocate(size_t, void*);
 
 			};
 
 			//Launch parameter for texture
-			dim3 numThreadperBlock_Map, numBlock_Map;
+			dim3 numThreadperBlock_Map, numBlock_Map, numBlock_FreeslipMap;
 			//Launch parameter for hydraulic erosion
 			int numThreadperBlock_Erosion, numBlock_Erosion;
 
@@ -199,12 +180,10 @@ namespace SuperTerrainPlus {
 			STPBiome::STPBiome* BiomeDictionary = nullptr;
 
 			//Temp cache on device for heightmap computation
-			mutable std::mutex MapCache32F_lock;
-			mutable std::mutex MapCache16UI_lock;
+			mutable std::mutex MapCacheDevice_lock;
 			mutable std::mutex MapCachePinned_lock;
-			mutable STPMemoryPool<float, STPHeightfieldAllocator> MapCache32F_device;
-			mutable STPMemoryPool<unsigned short, STPImageConverterAllocator> MapCache16UI_device;
-			mutable STPMemoryPool<float, STPHeightfieldHostAllocator> MapCachePinned;
+			mutable STPMemoryPool<void, STPHeightfieldAllocator> MapCacheDevice;
+			mutable STPMemoryPool<void, STPHeightfieldHostAllocator> MapCachePinned;
 
 			/**
 			 * @brief Generate the local global index lookup table
@@ -237,7 +216,7 @@ namespace SuperTerrainPlus {
 			 * @param settings The parameters of the generation algorithm. It should be on host side.
 			 * @return True if setting can be used
 			*/
-			__host__ static bool useSettings(const STPSettings::STPHeightfieldSettings* const);
+			__host__ static bool InitGenerator(const STPSettings::STPHeightfieldSettings* const);
 
 			/**
 			 * @brief Define the biome dictionary for looking up biome settins according to the biome id. Each entry of biome will be copied to device
@@ -262,7 +241,7 @@ namespace SuperTerrainPlus {
 			 * @param operation Control what type of operation generator does
 			 * @return True if all operation are successful without any errors
 			*/
-			__host__ bool generateHeightfieldCUDA(STPMapStorage&, STPGeneratorOperation) const;
+			__host__ bool operator()(STPMapStorage&, STPGeneratorOperation) const;
 
 			/**
 			 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.

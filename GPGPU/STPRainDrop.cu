@@ -28,7 +28,11 @@ __host__ STPRainDrop::STPFreeSlipManager::~STPFreeSlipManager() {
 }
 
 __device__ float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) {
-	return this->Heightmap[this->Index[global]];
+	return this->Heightmap[this->operator()(global)];
+}
+
+__device__ unsigned int STPRainDrop::STPFreeSlipManager::operator()(unsigned int global) const {
+	return this->Index[global];
 }
 
 __device__ float3 STPRainDrop::calcHeightGradients(STPFreeSlipManager& map) {
@@ -64,8 +68,7 @@ __device__ float STPRainDrop::getCurrentVolume() const {
 	return this->volume;
 }
 
-__device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* const settings, STPFreeSlipManager& map) {
-	//Err, this algorithm is gonna be sick... But let's start!
+__device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* __restrict__ const settings, STPFreeSlipManager& map) {
 	//Rain drop is still alive, continue descending...
 	while (this->volume >= settings->minWaterVolume) {
 		//The position of droplet on the map index

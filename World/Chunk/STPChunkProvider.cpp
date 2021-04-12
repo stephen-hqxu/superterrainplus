@@ -33,7 +33,7 @@ bool STPChunkProvider::computeHeightmap(STPChunk* const current_chunk, vec2 chun
 	const STPHeightfieldGenerator::STPGeneratorOperation op = STPHeightfieldGenerator::HeightmapGeneration;
 
 	//computing
-	bool result = this->heightmap_gen.generateHeightfieldCUDA(maps, op);
+	bool result = this->heightmap_gen(maps, op);
 
 	if (result) {//computation was successful
 		current_chunk->markChunkState(STPChunk::STPChunkState::Heightmap_Ready);
@@ -49,25 +49,25 @@ bool STPChunkProvider::computeErosion(STPChunk* const current_chunk, std::list<S
 	STPHeightfieldGenerator::STPMapStorage maps;
 	for (STPChunk* chk : neighbour_chunks) {
 		maps.Heightmap32F.push_back(chk->getRawMap(STPChunk::STPMapType::Heightmap));
+		maps.Normalmap32F.push_back(chk->getRawMap(STPChunk::STPMapType::Normalmap));
+		maps.Heightmap16UI.push_back(chk->getCacheMap(STPChunk::STPMapType::Heightmap));
+		maps.Normalmap16UI.push_back(chk->getCacheMap(STPChunk::STPMapType::Normalmap));
 	}
-	maps.Normalmap32F = current_chunk->getRawMap(STPChunk::STPMapType::Normalmap);
 	const STPHeightfieldGenerator::STPGeneratorOperation op =
 		STPHeightfieldGenerator::Erosion |
 		STPHeightfieldGenerator::NormalmapGeneration | STPHeightfieldGenerator::Format;
 	maps.FormatHint = STPHeightfieldGenerator::FormatHeightmap | STPHeightfieldGenerator::FormatNormalmap;
-	maps.Heightmap16UI = current_chunk->getCacheMap(STPChunk::STPMapType::Heightmap);
-	maps.Normalmap16UI = current_chunk->getCacheMap(STPChunk::STPMapType::Normalmap);
 
 	//computing
-	bool result = this->heightmap_gen.generateHeightfieldCUDA(maps, op);
+	bool result = this->heightmap_gen(maps, op);
 
 	if (result) {//computation was successful
+		//mark center chunk complete
+		current_chunk->markChunkState(STPChunk::STPChunkState::Complete);
 		//unlock all neighbours
 		for (STPChunk* chk : neighbour_chunks) {
 			chk->markOccupancy(false);
 		}
-		//mark center chunk complete
-		current_chunk->markChunkState(STPChunk::STPChunkState::Complete);
 	}
 
 	return result;
@@ -95,18 +95,15 @@ bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos) {
 		STPChunkStorage::STPChunkConstructed res = source.constructChunk(neighbourPos, chk_config->MapSize);
 		STPChunk* curr_neighbour = res.second;
 		if (res.first) {
+			curr_neighbour->markOccupancy(true);
 			//neighbour doesn't exist and has been added
 			if (!this->computeHeightmap(curr_neighbour, neighbourPos)) {
-				//if compute is OK -> canContinue = true, otherwise false
 				throw std::runtime_error("Heightmap computation failed");
 			}
 			//if continued, keep checking rest of the chunks
 		}
 		neighbour.push_back(curr_neighbour);
 		//if chunk is found, we can guarantee it's in-used empty or at least heightmap complete
-	}
-	if (!canContinue) {
-		return canContinue;
 	}
 
 	//The second pass: launch full compute
@@ -137,7 +134,7 @@ STPChunk* STPChunkProvider::requestChunk(STPChunkStorage& source, vec2 chunkPos)
 	//after calling checkChunk(), we can guarantee it's not null
 	STPChunk* chunk = source.getChunk(chunkPos);
 	if (chunk != nullptr) {
-		if (!chunk->isOccupied()) {
+		if (!chunk->isOccupied() && chunk->getChunkState() == STPChunk::STPChunkState::Complete) {
 			//since we wait for all threads to finish checkChunk(), such that occupancy status will not be changed here
 			return chunk;
 		}

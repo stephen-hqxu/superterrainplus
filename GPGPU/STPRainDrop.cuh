@@ -83,6 +83,13 @@ namespace SuperTerrainPlus {
 				*/
 				__device__ float& operator[](unsigned int);
 
+				/**
+				 * @brief Convert global index to local index
+				 * @param global Global index
+				 * @return Local index
+				*/
+				__device__ unsigned int operator()(unsigned int) const;
+
 			};
 
 		private:

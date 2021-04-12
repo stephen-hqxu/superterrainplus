@@ -47,7 +47,7 @@ STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : Chu
 	memset(this->quad_clear, 0xFF, totaltexture_size * 4);
 
 	//create thread pool
-	//TODO: multithreading is disabled for debugging, set it back to 5 later
+	//TODO: data racing identified, multithreading disabled for now. Change it back to 5u after it's fixed
 	this->compute_pool = std::unique_ptr<STPThreadPool>(new STPThreadPool(2u));
 }
 
@@ -124,7 +124,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 	}
 
 	//async chunk loader
-	auto asyncChunkLoader = [this, &loading_chunks](list<pair<vec2, unique_ptr<cudaArray_t[]>>>& chunk_data) -> int {
+	auto asyncChunkLoader = [this, &loading_chunks](list<pair<vec2, unique_ptr<cudaArray_t[]>>>& chunk_data) -> unsigned int {
 		queue<std::future<bool>, list<std::future<bool>>> loading_status;
 		//A functoin to load one chunk
 		//return true if chunk is loaded
@@ -239,10 +239,12 @@ bool STPChunkManager::loadChunksAsync(vec3 cameraPos) {
 int STPChunkManager::SyncloadChunks() {
 	//sync the chunk loading and make sure the chunk loader has finished before return
 	if (this->ChunkLoader.valid()) {
-		//unmap the chunk first
+		//wait for finish first
+		const unsigned int res = this->ChunkLoader.get();
+		//unmap the chunk
 		cudaGraphicsUnmapResources(2, this->heightfield_texture_res);
 
-		return this->ChunkLoader.get();
+		return static_cast<int>(res);
 	}
 	else {
 		//chunk loader hasn't started
