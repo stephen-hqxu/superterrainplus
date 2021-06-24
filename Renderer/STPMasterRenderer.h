@@ -180,7 +180,7 @@ namespace SuperTerrainPlus {
 			glPatchParameteri(GL_PATCH_VERTICES, 3);//barycentric coordinate system
 
 			cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
-			cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
+			cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
 
 			//starting thread pool
 			this->command_pool = new STPThreadPool(3u);

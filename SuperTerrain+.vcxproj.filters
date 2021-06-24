@@ -248,6 +248,9 @@
     <ClInclude Include="Helpers\STPSerialisationException.hpp">
       <Filter>Helpers</Filter>
     </ClInclude>
+    <ClInclude Include="GPGPU\STPDeviceErrorHandler.cuh">
+      <Filter>GPGPU</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GLSL\STPsky.frag">

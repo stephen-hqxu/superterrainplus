@@ -39,7 +39,7 @@ Those libraries are available in my public repo :+1:
 
 ## Language Built Upon
 - C++ 17
-- CUDA 11.0
+- CUDA 11.3
 - OpenGL 4.5
 
 ## Installation

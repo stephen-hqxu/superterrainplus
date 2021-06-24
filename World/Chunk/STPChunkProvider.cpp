@@ -119,11 +119,11 @@ bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos) {
 			for (STPChunk* curr_neighbour : neighbour) {
 				curr_neighbour->markOccupancy(true);
 			}
-			//send the list of neighbour chunks to GPU to perform free-slip hydraulic erosion
-			if (!this->computeErosion(source.getChunk(chunkPos), neighbour)) {
-				throw std::runtime_error("Hydraulic erosion simulation failed");
-			}
 		}
+	}
+	//send the list of neighbour chunks to GPU to perform free-slip hydraulic erosion
+	if (canContinue && !this->computeErosion(source.getChunk(chunkPos), neighbour)) {
+		throw std::runtime_error("Hydraulic erosion simulation failed");
 	}
 
 	return canContinue;

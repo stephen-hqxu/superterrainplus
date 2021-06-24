@@ -69,6 +69,17 @@ __device__ float STPRainDrop::getCurrentVolume() const {
 }
 
 __device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* __restrict__ const settings, STPFreeSlipManager& map) {
+	//Cache erosion brush to shared memory
+	//Erosion brush indices then weights
+	extern __shared__ unsigned char ErosionBrush[];
+	int* brushIndices = reinterpret_cast<int*>(ErosionBrush);
+	float* brushWeights = reinterpret_cast<float*>(ErosionBrush + sizeof(int) * settings->getErosionBrushSize());
+	if (threadIdx.x == 0u) {
+		memcpy(brushIndices, settings->ErosionBrushIndices, sizeof(int) * settings->getErosionBrushSize());
+		memcpy(brushWeights, settings->ErosionBrushWeights, sizeof(float) * settings->getErosionBrushSize());
+	}
+	__syncthreads();
+
 	//Rain drop is still alive, continue descending...
 	while (this->volume >= settings->minWaterVolume) {
 		//The position of droplet on the map index
@@ -126,11 +137,8 @@ __device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* __res
 
 			//use erode brush to erode from all nodes inside the droplet's erode radius
 			for (unsigned int brushPointIndex = 0u; brushPointIndex < settings->getErosionBrushSize(); brushPointIndex++) {
-				const int brush_index = __ldg(settings->ErosionBrushIndices + brushPointIndex);
-				const float brush_weight = __ldg(settings->ErosionBrushWeights + brushPointIndex);
-
-				int erodeIndex = mapIndex + brush_index;
-				float weightederodeAmout = erodeAmout * brush_weight;
+				int erodeIndex = mapIndex + brushIndices[brushPointIndex];
+				float weightederodeAmout = erodeAmout * brushWeights[brushPointIndex];
 				float deltaSediment = (map[erodeIndex] < weightederodeAmout) ? map[erodeIndex] : weightederodeAmout;
 				//erode the map
 				map[erodeIndex] -= deltaSediment;

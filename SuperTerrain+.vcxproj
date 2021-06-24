@@ -36,6 +36,7 @@
     <ClCompile Include="World\STPProcedural2DINF.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GPGPU\STPDeviceErrorHandler.cuh" />
     <ClInclude Include="GPGPU\STPHeightfieldGenerator.cuh" />
     <ClInclude Include="GPGPU\STPPermutationsGenerator.cuh" />
     <ClInclude Include="GPGPU\STPRainDrop.cuh" />
@@ -151,7 +152,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.0.props" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.3.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -247,6 +248,6 @@
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.0.targets" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.3.targets" />
   </ImportGroup>
 </Project>

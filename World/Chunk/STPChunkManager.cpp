@@ -14,7 +14,6 @@ using std::make_pair;
 using namespace SuperTerrainPlus;
 
 STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : ChunkCache(), ChunkProvider(settings) {
-
 	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
 	const int chunk_num = static_cast<int>(chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y);
 	const int totaltexture_size = chunk_num * static_cast<int>(chunk_settings->MapSize.x * chunk_settings->MapSize.y) * sizeof(unsigned short);//one channel
@@ -29,7 +28,7 @@ STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : Chu
 	glTextureParameteri(*(this->terrain_heightfield), GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	glTextureStorage3D(*(this->terrain_heightfield), 1, GL_R16, static_cast<int>(chunk_settings->MapSize.x), static_cast<int>(chunk_settings->MapSize.y), chunk_num);
-	cudaGraphicsGLRegisterImage(&(this->heightfield_texture_res[0]), *(this->terrain_heightfield), GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsNone);
+	cudaGraphicsGLRegisterImage(&(this->heightfield_texture_res[0]), *(this->terrain_heightfield), GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard);
 	//normal map is a bit unusual in term of color format
 	glTextureParameteri(*(this->terrain_heightfield + 1), GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTextureParameteri(*(this->terrain_heightfield + 1), GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -38,7 +37,7 @@ STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : Chu
 	glTextureParameteri(*(this->terrain_heightfield + 1), GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	glTextureStorage3D(*(this->terrain_heightfield + 1), 1, GL_RGBA16, static_cast<int>(chunk_settings->MapSize.x), static_cast<int>(chunk_settings->MapSize.y), chunk_num);
-	cudaGraphicsGLRegisterImage(&(this->heightfield_texture_res[1]), *(this->terrain_heightfield + 1), GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsNone);
+	cudaGraphicsGLRegisterImage(&(this->heightfield_texture_res[1]), *(this->terrain_heightfield + 1), GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard);
 
 	//init clear buffers that are used to clear texture when new rendered chunks are loaded (we need to clear the previous chunk data)
 	cudaMallocHost(&this->mono_clear, totaltexture_size);

@@ -142,8 +142,8 @@ namespace SuperTerrainPlus {
 
 			//Launch parameter for texture
 			dim3 numThreadperBlock_Map, numBlock_Map, numBlock_FreeslipMap;
-			//Launch parameter for hydraulic erosion
-			int numThreadperBlock_Erosion, numBlock_Erosion;
+			//Launch parameter for hydraulic erosion and interpolation
+			unsigned int numThreadperBlock_Erosion, numBlock_Erosion, numBlock_Interpolation;
 
 			/**
 			 * @brief Simplex noise generator, on device
@@ -156,7 +156,7 @@ namespace SuperTerrainPlus {
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency
 			curandRNG* RNG_Map = nullptr;
 			/**
-			 * @brief Convert global index to global index, making data access outside the central chunk available
+			 * @brief Convert global index to local index, making data access outside the central chunk available
 			 * As shown the difference between local and global index
 			 *		 Local					 Global
 			 * 0 1 2 3 | 0 1 2 3	0  1  2  3  | 4  5  6  7
@@ -171,6 +171,23 @@ namespace SuperTerrainPlus {
 			 * Chunk 3 | Chunk 4
 			*/
 			unsigned int* GlobalLocalIndex = nullptr;
+			/**
+			 * @brief Convert threadID to the coordinate on heightmap on freeslip chunks that need to be interpolated such that heightmap edges are seamless.
+			 * - If interpolation patch is an edge and it's aligned as a column (patch size is 2*(Chunksize.y - 2)), the coordinate points to the left and 
+			 * interpolation should be done from left to right.
+			 * - If interpolation patch is an edge and it's aligned as a row (patch size is (Chunksize.x - 2)*2), the coordinate points to the up and 
+			 * interpolation should be done from up to down.
+			 * - If interpolation patch is a corner (patch size is 2*2), the coordinate points to the upper-left and 
+			 * interpolation should be done from upper-left to bottom-right, row first.
+			 * - MSB of each component will be used as a flag, such that range of the value should not exceed the range of [0,2^(32)-1].
+			 * - MSB.x = 1 and MSB.y = 1: corner interpolation
+			 * - MSB.x = 1 and MSB.y = 0: interploation goes in x direction (left to right), it's a column edge interpolation
+			 * - MSB.x = 0 and MSB.y = 1: interploation goes in y direction (up to down), it's a row edge interpolation
+			 * - Any other MSB combinations will be marked as errors and program will crash for the sake of memory safety
+			*/
+			uint2* InterpolationIndex = nullptr;
+			//Total number of thread needed for all interpolation, note that the actual number of thread launched might be more than this number
+			unsigned int InterpolationThreadRequired;
 			//Free slip range in the unit of chunk
 			const uint2 FreeSlipChunk;
 			//Determine the number of raindrop to summon, the higher the more accurate but slower
@@ -186,10 +203,16 @@ namespace SuperTerrainPlus {
 			mutable STPMemoryPool<void, STPHeightfieldHostAllocator> MapCachePinned;
 
 			/**
-			 * @brief Generate the local global index lookup table
+			 * @brief Initialise the local global index lookup table
 			 * @return True if generation is successful without errors
 			*/
-			__host__ bool setLocalGlobalIndexCUDA();
+			__host__ bool initLocalGlobalIndexCUDA();
+
+			/**
+			 * @brief Initialise the interpolation index lookup table
+			 * @return True if generation is successful without errors
+			*/
+			__host__ bool initInterpolationIndexCUDA();
 
 		public:
 
