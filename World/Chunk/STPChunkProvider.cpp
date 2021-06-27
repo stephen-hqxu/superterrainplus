@@ -9,7 +9,7 @@ using namespace SuperTerrainPlus;
 STPChunkProvider::STPChunkProvider(STPSettings::STPConfigurations* settings)
 	: ChunkSettings(settings->getChunkSettings())
 	, heightmap_gen(&settings->getSimplexNoiseSettings(), &this->ChunkSettings) {
-
+	this->kernel_launch_pool = std::unique_ptr<STPThreadPool>(new STPThreadPool(5u));
 }
 
 float3 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
@@ -24,7 +24,7 @@ float3 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
 	);
 }
 
-bool STPChunkProvider::computeHeightmap(STPChunk* const current_chunk, vec2 chunkPos) {
+void STPChunkProvider::computeHeightmap(STPChunk* current_chunk, vec2 chunkPos) {
 	using namespace STPCompute;
 
 	STPHeightfieldGenerator::STPMapStorage maps;
@@ -32,18 +32,13 @@ bool STPChunkProvider::computeHeightmap(STPChunk* const current_chunk, vec2 chun
 	maps.HeightmapOffset = this->calcChunkOffset(chunkPos);
 	const STPHeightfieldGenerator::STPGeneratorOperation op = STPHeightfieldGenerator::HeightmapGeneration;
 
-	//computing
-	bool result = this->heightmap_gen(maps, op);
-
-	if (result) {//computation was successful
-		current_chunk->markChunkState(STPChunk::STPChunkState::Heightmap_Ready);
-		current_chunk->markOccupancy(false);
+	//computing, check success state
+	if (!this->heightmap_gen(maps, op)) {
+		throw std::runtime_error("Heightmap computation failed");
 	}
-
-	return result;
 }
 
-bool STPChunkProvider::computeErosion(STPChunk* const current_chunk, std::list<STPChunk*>& neighbour_chunks) {
+void STPChunkProvider::computeErosion(STPChunk* current_chunk, std::list<STPChunk*> neighbour_chunks) {
 	using namespace STPCompute;
 
 	STPHeightfieldGenerator::STPMapStorage maps;
@@ -58,24 +53,30 @@ bool STPChunkProvider::computeErosion(STPChunk* const current_chunk, std::list<S
 		STPHeightfieldGenerator::NormalmapGeneration | STPHeightfieldGenerator::Format;
 	maps.FormatHint = STPHeightfieldGenerator::FormatHeightmap | STPHeightfieldGenerator::FormatNormalmap;
 
-	//computing
-	bool result = this->heightmap_gen(maps, op);
-
-	if (result) {//computation was successful
-		//mark center chunk complete
-		current_chunk->markChunkState(STPChunk::STPChunkState::Complete);
-		//unlock all neighbours
-		for (STPChunk* chk : neighbour_chunks) {
-			chk->markOccupancy(false);
-		}
+	//computing and return success state
+	if (!this->heightmap_gen(maps, op)) {
+		throw std::runtime_error("Hydraulic erosion simulation failed");
 	}
-
-	return result;
 }
 
-bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos) {
-	//EXPERIMENTAL FEATURE
-	//TODO: This looks excessively complicated, simplification is needed
+bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos, std::function<bool(glm::vec2)> reload_callback) {
+	auto heightmap_computer = [this](STPChunk* chunk, vec2 position) -> void {
+		this->computeHeightmap(chunk, position);
+		//computation was successful
+		chunk->markChunkState(STPChunk::STPChunkState::Heightmap_Ready);
+		chunk->markOccupancy(false);
+	};
+	auto erosion_computer = [this](STPChunk* centre, std::list<STPChunk*> neighbours) -> void {
+		this->computeErosion(centre, neighbours);
+		//erosion was successful
+		//mark center chunk complete
+		centre->markChunkState(STPChunk::STPChunkState::Complete);
+		//unlock all neighbours
+		for (STPChunk* chk : neighbours) {
+			chk->markOccupancy(false);
+		}
+	};
+	//TODO: This looks excessively complicated, simplification is needed; also data is not coherent
 	STPChunk* center = source.getChunk(chunkPos);
 	if (center != nullptr && center->getChunkState() == STPChunk::STPChunkState::Complete) {
 		//no need to continue if center chunk is available
@@ -85,52 +86,52 @@ bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos) {
 	}
 	//reminder: central chunk is included in neighbours
 	const STPSettings::STPChunkSettings* chk_config = this->getChunkSettings();
-	const STPChunk::STPChunkPosCache neighbours = STPChunk::getRegion(chunkPos, chk_config->ChunkSize, chk_config->FreeSlipChunk, chk_config->ChunkScaling);
-	bool canContinue = true;
+	const STPChunk::STPChunkPosCache neighbour_position = STPChunk::getRegion(chunkPos, chk_config->ChunkSize, chk_config->FreeSlipChunk, chk_config->ChunkScaling);
 	
+	bool canContinue = true;
 	//The first pass: check if all neighbours are heightmap-complete
 	std::list<STPChunk*> neighbour;
-	for (vec2 neighbourPos : neighbours) {
+	for (vec2 neighbourPos : neighbour_position) {
 		//get current neighbour chunk
 		STPChunkStorage::STPChunkConstructed res = source.constructChunk(neighbourPos, chk_config->MapSize);
 		STPChunk* curr_neighbour = res.second;
 		if (res.first) {
-			curr_neighbour->markOccupancy(true);
 			//neighbour doesn't exist and has been added
-			if (!this->computeHeightmap(curr_neighbour, neighbourPos)) {
-				throw std::runtime_error("Heightmap computation failed");
-			}
-			//if continued, keep checking rest of the chunks
+			curr_neighbour->markOccupancy(true);
+			this->kernel_launch_pool->enqueue_void(heightmap_computer, curr_neighbour, neighbourPos);
+			//try to compute all heightmap, and when heightmap is computing, we don't need to wait
+			canContinue = false;
 		}
 		neighbour.push_back(curr_neighbour);
 		//if chunk is found, we can guarantee it's in-used empty or at least heightmap complete
 	}
+	if (!canContinue) {
+		//if heightmap is computing, we don't need to check for erosion because some chunks are in use
+		return false;
+	}
 
 	//The second pass: launch full compute
-	{
-		std::unique_lock<std::mutex> lock(this->neighbour_lock);
-		for (STPChunk* curr_neighbour : neighbour) {
-			if (curr_neighbour->isOccupied()) {
-				canContinue = false;
-				break;
-			}
+	for (STPChunk* chk : neighbour) {
+		//if any of the chunk is occupied, we cannot continue
+		if (chk->isOccupied()) {
+			return false;
 		}
-		if (canContinue) {
-			for (STPChunk* curr_neighbour : neighbour) {
-				curr_neighbour->markOccupancy(true);
-			}
-		}
+	}
+	//all chunks are available
+	for (STPChunk* chk : neighbour) {
+		chk->markOccupancy(true);
 	}
 	//send the list of neighbour chunks to GPU to perform free-slip hydraulic erosion
-	if (canContinue && !this->computeErosion(source.getChunk(chunkPos), neighbour)) {
-		throw std::runtime_error("Hydraulic erosion simulation failed");
+	this->kernel_launch_pool->enqueue_void(erosion_computer, source.getChunk(chunkPos), neighbour);
+	//trigger a chunk reload as some chunks have been added to render buffer already after neighbours are updated
+	for (vec2 position : neighbour_position) {
+		reload_callback(position);
 	}
 
-	return canContinue;
+	return true;
 }
 
 STPChunk* STPChunkProvider::requestChunk(STPChunkStorage& source, vec2 chunkPos) {
-	//EXPERIMENTAL FEATURE
 	//after calling checkChunk(), we can guarantee it's not null
 	STPChunk* chunk = source.getChunk(chunkPos);
 	if (chunk != nullptr) {

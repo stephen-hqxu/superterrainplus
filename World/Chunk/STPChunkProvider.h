@@ -2,9 +2,12 @@
 #ifndef _STP_CHUNK_PROVIDER_H_
 #define _STP_CHUNK_PROVIDER_H_
 
-//System ADT
+//System
 #include <utility>
+#include <functional>
 
+//Multithreading
+#include "../../Helpers/STPThreadPool.h"
 //Chunks
 #include "STPChunkStorage.h"
 //2D terrain compute engine
@@ -29,7 +32,8 @@ namespace SuperTerrainPlus {
 		//Chunk settings
 		const STPSettings::STPChunkSettings ChunkSettings;
 
-		mutable std::mutex neighbour_lock;
+		//thread pool
+		std::unique_ptr<STPThreadPool> kernel_launch_pool;
 
 		//Heightfield generator
 		STPCompute::STPHeightfieldGenerator heightmap_gen;
@@ -45,18 +49,16 @@ namespace SuperTerrainPlus {
 		 * @brief Dispatch compute for heightmap, the heightmap result will be writen back to the storage
 		 * @param current_chunk The maps for the chunk
 		 * @param chunkPos The world position of the chunk
-		 * @return True if heightmap computation is finished without errors
 		*/
-		bool computeHeightmap(STPChunk* const, glm::vec2);
+		void computeHeightmap(STPChunk*, glm::vec2);
 
 		/**
 		 * @brief Dispatch compute for free-slip hydraulic erosion, normalmap compute and formatting, requires heightmap presenting in the chunk
 		 * @param current_chunk The central chunk for the computation
 		 * @param neighbour_chunks The maps of the chunks that require to be eroded with a free-slip manner, require the central chunk and neighbour chunks 
 		 * arranged in row-major flavour. The central chunk should also be included
-		 * @return True if computation is successful
 		*/
-		bool computeErosion(STPChunk* const, std::list<STPChunk*>&);
+		void computeErosion(STPChunk*, std::list<STPChunk*>);
 
 	public:
 
@@ -77,9 +79,10 @@ namespace SuperTerrainPlus {
 		 * After this function call, the request chunk will be guaranteed to be completed and ready for rendering.
 		 * @param source The chunk storage unit
 		 * @param chunkPos The world position of the center chunk
+		 * @param reload_callback Used to trigget a chunk rendering reload in STPChunkManager
 		 * @return True if the center chunk is complete, false if center chunk is incomplete and any of the neighbour chunks are in used.
 		*/
-		bool checkChunk(STPChunkStorage&, glm::vec2);
+		bool checkChunk(STPChunkStorage&, glm::vec2, std::function<bool(glm::vec2)>);
 
 		/**
 		 * @brief Request the texture maps in the given chunk storage if they can be found on library

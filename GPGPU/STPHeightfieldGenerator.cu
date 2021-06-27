@@ -172,6 +172,15 @@ __host__ void STPHeightfieldGenerator::STPHeightfieldHostAllocator::deallocate(s
 	cudaFreeHost(ptr);
 }
 
+__host__ void* STPHeightfieldGenerator::STPHeightfieldNonblockingStreamAllocator::allocate(size_t count) {
+	cudaStream_t stream;
+	cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+	return reinterpret_cast<void*>(stream);
+}
+__host__ void STPHeightfieldGenerator::STPHeightfieldNonblockingStreamAllocator::deallocate(size_t count, void* stream) {
+	cudaStreamDestroy(reinterpret_cast<cudaStream_t>(stream));
+}
+
 __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings* noise_settings, const STPSettings::STPChunkSettings* chunk_settings) 
 	: simplex_h(noise_settings), Noise_Settings(*noise_settings), FreeSlipChunk(make_uint2(chunk_settings->FreeSlipChunk.x, chunk_settings->FreeSlipChunk.y)) {
 	//allocating space
@@ -327,9 +336,12 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 
 	//setup phase
 	//creating stream so cpu thread can calculate all chunks altogether
-	cudaStream_t stream;
+	cudaStream_t stream = nullptr;
 	//we want the stream to not be blocked by default stream
-	no_error &= cudaSuccess == cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+	{
+		std::unique_lock<std::mutex> stream_lock(this->StreamPool_lock);
+		stream = reinterpret_cast<cudaStream_t>(this->StreamPool.allocate(1ull));
+	}
 	
 	//Flag: HeightmapGeneration
 	if (flags[0]) {
@@ -404,8 +416,13 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 			no_error &= blockcopy_d2h(args.Normalmap16UI, heightfield_formatted_h[1], heightfield_formatted_d[1], map16ui_freeslip_size * 4u, map16ui_size * 4u, num_pixel * 4u, stream);
 		}
 	}
+
 	//waiting for finish
 	no_error &= cudaSuccess == cudaStreamSynchronize(stream);
+	{
+		std::unique_lock<std::mutex> stream_lock(this->StreamPool_lock);
+		this->StreamPool.deallocate(1ull, reinterpret_cast<void*>(stream));
+	}
 
 	//Finish up the rest, clear up when the device is ready
 	//nullptr means not allocated
@@ -439,7 +456,6 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 			this->MapCachePinned.deallocate(map16ui_freeslip_size * 4u, heightfield_formatted_h[1]);
 		}
 	}
-	no_error &= cudaSuccess == cudaStreamDestroy(stream);
 
 	return no_error;
 }
@@ -690,6 +706,7 @@ __global__ void generateNormalmapKERNEL(STPRainDrop::STPFreeSlipManager heightma
 	const uint2& dimension = heightmap.FreeSlipRange;
 	//load the cells from heightmap, remember the height map only contains one color channel
 	//using Sobel fitering
+	//TODO: precache heightmap into shared memory since each pixel is accessed upto 9 times.
 	float cell[8];
 	cell[0] = heightmap[clamp((x - 1), 0, dimension.x - 1) + clamp((y - 1), 0, dimension.y - 1) * dimension.x];
 	cell[1] = heightmap[x + clamp((y - 1), 0, dimension.y - 1) * dimension.x];
@@ -804,7 +821,7 @@ __global__ void initInterpolationIndexKERNEL(uint2* output, uint2 chunkRange, ui
 	//row edge interpolation
 	const unsigned int current_row_index = tid % maxIndex - maxIndex_column;
 	const unsigned int row_index = static_cast<unsigned int>(floorf(1.0f * current_row_index / (mapSize.x - 2u)));
-	output[tid].x = current_row_index % (mapSize.x - 2u) + row_index * (mapSize.x - 1u) + 1u;
+	output[tid].x = current_row_index % (mapSize.x - 2u) + row_index * mapSize.x + 1u;
 	output[tid].y = mapSize.y * (static_cast<unsigned int>(floorf(1.0f * tid / maxIndex)) + 1u) - 1u;
 	
 	//binary insertion for row edge: MSB.x = 0 and MSB.y = 1

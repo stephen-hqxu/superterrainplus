@@ -27,15 +27,19 @@ __host__ STPRainDrop::STPFreeSlipManager::~STPFreeSlipManager() {
 
 }
 
-__device__ float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) {
+__device__ __inline__ float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) {
 	return this->Heightmap[this->operator()(global)];
 }
 
-__device__ unsigned int STPRainDrop::STPFreeSlipManager::operator()(unsigned int global) const {
+__device__ __inline__ const float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) const {
+	return this->Heightmap[this->operator()(global)];
+}
+
+__device__ __inline__ unsigned int STPRainDrop::STPFreeSlipManager::operator()(unsigned int global) const {
 	return this->Index[global];
 }
 
-__device__ float3 STPRainDrop::calcHeightGradients(STPFreeSlipManager& map) {
+__device__ float3 STPRainDrop::calcHeightGradients(const STPFreeSlipManager& map) const {
 	//result
 	float3 height_gradients;
 
@@ -68,7 +72,7 @@ __device__ float STPRainDrop::getCurrentVolume() const {
 	return this->volume;
 }
 
-__device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* __restrict__ const settings, STPFreeSlipManager& map) {
+__device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* settings, STPFreeSlipManager& map) {
 	//Cache erosion brush to shared memory
 	//Erosion brush indices then weights
 	extern __shared__ unsigned char ErosionBrush[];

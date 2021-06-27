@@ -81,14 +81,21 @@ namespace SuperTerrainPlus {
 				 * @param global Global index
 				 * @return The pointer to the map pointed by the global index
 				*/
-				__device__ float& operator[](unsigned int);
+				__device__ __inline__ float& operator[](unsigned int);
+
+				/**
+				 * @brief Convert global index to local index and return the const reference value
+				 * @param global Global index
+				 * @return Constant reference to the map pointed by the global index
+				*/
+				__device__ __inline__ const float& operator[](unsigned int) const;
 
 				/**
 				 * @brief Convert global index to local index
 				 * @param global Global index
 				 * @return Local index
 				*/
-				__device__ unsigned int operator()(unsigned int) const;
+				__device__ __inline__ unsigned int operator()(unsigned int) const;
 
 			};
 
@@ -112,7 +119,7 @@ namespace SuperTerrainPlus {
 			 * @param map The heightmap with free slip configurations
 			 * @return Height and Gradients, will be defined in vec3 as (height, gradientX, gradientY);
 			*/
-			__device__ float3 calcHeightGradients(STPFreeSlipManager&);
+			__device__ float3 calcHeightGradients(const STPFreeSlipManager&) const;
 
 		public:
 
@@ -137,7 +144,7 @@ namespace SuperTerrainPlus {
 			 * @param map - The heightmap with free slip configurations
 			 * @param settings - The raindrop settings for erosion
 			*/
-			__device__ void Erode(const STPSettings::STPRainDropSettings* const, STPFreeSlipManager&);
+			__device__ void Erode(const STPSettings::STPRainDropSettings*, STPFreeSlipManager&);
 
 		};
 

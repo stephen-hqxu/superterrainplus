@@ -140,6 +140,27 @@ namespace SuperTerrainPlus {
 
 			};
 
+			/**
+			 * @brief CUDA nonblocking stream allocator
+			*/
+			class STPHeightfieldNonblockingStreamAllocator {
+			public:
+
+				/**
+				 * @brief Allocate nonblocking stream
+				 * @param count Useless argument, it will only allocate one stream at a time
+				 * @return The pointer to stream
+				*/
+				__host__ void* allocate(size_t);
+
+				/**
+				 * @brief Destroy the stream
+				 * @param count Useless argument, it will only destroy one stream
+				 * @param The stream to destroy
+				*/
+				__host__ void deallocate(size_t, void*);
+			};
+
 			//Launch parameter for texture
 			dim3 numThreadperBlock_Map, numBlock_Map, numBlock_FreeslipMap;
 			//Launch parameter for hydraulic erosion and interpolation
@@ -199,8 +220,10 @@ namespace SuperTerrainPlus {
 			//Temp cache on device for heightmap computation
 			mutable std::mutex MapCacheDevice_lock;
 			mutable std::mutex MapCachePinned_lock;
+			mutable std::mutex StreamPool_lock;
 			mutable STPMemoryPool<void, STPHeightfieldAllocator> MapCacheDevice;
 			mutable STPMemoryPool<void, STPHeightfieldHostAllocator> MapCachePinned;
+			mutable STPMemoryPool<void, STPHeightfieldNonblockingStreamAllocator> StreamPool;
 
 			/**
 			 * @brief Initialise the local global index lookup table

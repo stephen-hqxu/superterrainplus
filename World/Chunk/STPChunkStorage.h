@@ -5,8 +5,6 @@
 //System ADT
 #include  <memory>
 #include <unordered_map>
-//Thread safety
-#include <shared_mutex>
 //Chunks
 #include "STPChunk.h"
 
@@ -27,8 +25,6 @@ namespace SuperTerrainPlus {
 		//A pair indicate the status of in-place chunk addition
 		typedef std::pair<bool, STPChunk*> STPChunkConstructed;
 
-	private:
-
 		/**
 		 * @brief The hash function for the glm::vec2
 		*/
@@ -41,15 +37,15 @@ namespace SuperTerrainPlus {
 			*/
 			size_t operator()(const glm::vec2&) const;
 		};
+
+	private:
+
 		//Hash table that stores the chunks by world position
 		typedef std::unordered_map<glm::vec2, std::unique_ptr<STPChunk>, STPHashvec2> STPChunkCache;
 
 		//chunk storage
 		//the key will be the x,z world position of each chunk
 		STPChunkCache TerrainMap2D;
-		
-		//thread safety
-		mutable std::shared_mutex chunk_storage_lock;
 
 	public:
 
@@ -69,7 +65,7 @@ namespace SuperTerrainPlus {
 		~STPChunkStorage();
 
 		/**
-		 * @brief Atomically construct a new chunk in-place if not presented. Otherwise return the prsented chunk
+		 * @brief Construct a new chunk in-place if not presented. Otherwise return the prsented chunk
 		 * @param chunkPos The world position of the chunk
 		 * @param mapSize The size of the map for the chunk
 		 * @return If chunk is not presented, it's constructed with provided arguments and return true and the new pointer
@@ -78,14 +74,14 @@ namespace SuperTerrainPlus {
 		STPChunkConstructed constructChunk(glm::vec2, glm::uvec2);
 
 		/**
-		 * @brief Atomically get the chunk by its world position
+		 * @brief Get the chunk by its world position
 		 * @param chunkPos the chunk world position
 		 * @return The chunk with specified position, return null if chunk not found
 		*/
 		STPChunk* getChunk(glm::vec2);
 
 		/**
-		 * @brief Atomically remove the chunk by its world position
+		 * @brief Remove the chunk by its world position
 		 * @param chunkPos the chunk world position
 		 * @return True if the chunk with specified world position has removed, or false if not found. 
 		 * The chunk will be effectively deleted and memory is freed, and no longer be available inside the chunk
@@ -93,7 +89,7 @@ namespace SuperTerrainPlus {
 		bool removeChunk(glm::vec2);
 
 		/**
-		 * @brief Atomically and effectively clear the storage and free all used memory
+		 * @brief Effectively clear the storage and free all used memory
 		*/
 		void clearChunk();
 

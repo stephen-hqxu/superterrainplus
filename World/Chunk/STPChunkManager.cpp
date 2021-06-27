@@ -9,6 +9,7 @@ using std::list;
 using std::queue;
 using std::unique_ptr;
 using std::pair;
+using namespace std::placeholders;
 using std::make_pair;
 
 using namespace SuperTerrainPlus;
@@ -46,8 +47,7 @@ STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : Chu
 	memset(this->quad_clear, 0xFF, totaltexture_size * 4);
 
 	//create thread pool
-	//TODO: data racing identified, multithreading disabled for now. Change it back to 5u after it's fixed
-	this->compute_pool = std::unique_ptr<STPThreadPool>(new STPThreadPool(2u));
+	this->compute_pool = std::unique_ptr<STPThreadPool>(new STPThreadPool(5u));
 }
 
 STPChunkManager::~STPChunkManager() {
@@ -93,6 +93,11 @@ bool STPChunkManager::loadMap(vec2 chunkPos, const cudaArray_t destination[2]) {
 	}
 
 	//not ready yet
+	return false;
+}
+
+void STPChunkManager::clearMap(const cudaArray_t destination[2]) {
+	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
 	//clear unloaded chunk, so the engine won't display the chunk from previous rendered chunks
 	cudaStream_t clear_stream;
 	cudaStreamCreateWithFlags(&clear_stream, cudaStreamNonBlocking);
@@ -104,8 +109,6 @@ bool STPChunkManager::loadMap(vec2 chunkPos, const cudaArray_t destination[2]) {
 		static_cast<int>(chunk_settings->MapSize.y), cudaMemcpyHostToDevice, clear_stream);
 	cudaStreamSynchronize(clear_stream);
 	cudaStreamDestroy(clear_stream);
-
-	return false;
 }
 
 void STPChunkManager::generateMipmaps() {
@@ -124,78 +127,61 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 
 	//async chunk loader
 	auto asyncChunkLoader = [this, &loading_chunks](list<pair<vec2, unique_ptr<cudaArray_t[]>>>& chunk_data) -> unsigned int {
-		queue<std::future<bool>, list<std::future<bool>>> loading_status;
-		//A functoin to load one chunk
-		//return true if chunk is loaded
-		auto chunk_loader = [this](vec2 local_chunk, const cudaArray_t loading_dest[2]) -> bool {
-			//Load the texture to the given array.
-			//If texture is not loaded the given array will be cleared automatically
-			return this->loadMap(local_chunk, loading_dest);
-		};
+		//chunk future being loading and the chunk ID
+		list<std::pair<std::future<bool>, int>> loading_status;
 		
-		//EXPERIMENTAL FEATURE BEGINS
-		//a function to compute chunk to make sure its available when loading 
-		auto chunk_computer = [this](vec2 local_chunk) -> bool{
-			return this->ChunkProvider.checkChunk(this->ChunkCache, local_chunk);
-		};
-		//launching async computing
+		//make sure chunk is available, if not we need to compute it
 		for (auto& local : chunk_data) {
-			loading_status.emplace(this->compute_pool->enqueue_future(chunk_computer, local.first));
+			this->getChunkProvider().checkChunk(this->ChunkCache, local.first, std::bind(&STPChunkManager::reloadChunkAsync, this, _1));
 		}
-		//waiting for compute to finish before loading
-		while (!loading_status.empty()) {
-			//it actually doesn't matter if it returns false
-			loading_status.front().get();
-
-			//delete
-			loading_status.pop();
-		}
-		//EXPERIMENTAL FEATURE ENDS
 
 		//launching async loading
+		int i = 0;
 		for (auto it = chunk_data.begin(); it != chunk_data.end(); it++) {
-			//start loading
-			loading_status.emplace(this->compute_pool->enqueue_future(chunk_loader, it->first, it->second.get()));
+			//load the chunk into rendering buffer only when the chunk is no loaded yet
+			if (!loading_chunks[i].second) {
+				loading_status.emplace_back(this->compute_pool->enqueue_future(std::bind(&STPChunkManager::loadMap, this, _1, _2), it->first, it->second.get()), i);
+			}
+			i++;
 		}
 
 		//waiting for loading
 		//get the result
-		for (auto it = loading_chunks.begin(); it != loading_chunks.end();) {
-			if (loading_status.front().get()) {
+		unsigned int num_chunkLoaded = 0u;
+		for (auto it = loading_status.begin(); it != loading_status.end(); it = loading_status.erase(it)) {
+			auto& current_chunk = loading_chunks[it->second];
+			if (it->first.get()) {
 				//loaded
-				//traversing the list while erasing it is quite good	
-				it = loading_chunks.erase(it);
-				//the current_node will be pointing to the next node automatically
+				current_chunk.second = true;
+				num_chunkLoaded++;
 			}
-			else {
-				//not yet loaded, computation has been dispatched, so we keep this chunk
-				it++;
-				//it won't go beyong the end pointer
-			}
-
-			//delete the future
-			loading_status.pop();
+			//delete the future in the next iteration
 		}
 
-		//release the mapping
+		//mapped pointers will be released when SyncloadChunks() is called
 		chunk_data.clear();
-		//deleted by smart ptr
-		return loading_chunks.size();
+		return num_chunkLoaded;
 	};
 
 	//texture storage
 	//map the texture, all opengl related work must be done on the main contexted thread
 	cudaGraphicsMapResources(2, this->heightfield_texture_res);
 	//get the mapped array on the main contexte thread
-	auto node = loading_chunks.begin();
-	for (auto node = loading_chunks.begin(); node != loading_chunks.end(); node++) {
+	for (int i = 0; i < loading_chunks.size(); i++) {
+		auto node = loading_chunks[i];
 		//allocating spaces for this chunk (2 tetxures per chunk)
 		unique_ptr<cudaArray_t[]> heightfield_ptr(new cudaArray_t[2]);
 		//map each texture
-		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[0]), this->heightfield_texture_res[0], node->first, 0);
-		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[1]), this->heightfield_texture_res[1], node->first, 0);
-		this->chunk_data.emplace_back(node->second, std::move(heightfield_ptr));
+		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[0]), this->heightfield_texture_res[0], i, 0);
+		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[1]), this->heightfield_texture_res[1], i, 0);
+		//clear up the render buffer for every chunk
+		if (this->trigger_clearBuffer) {
+			this->clearMap(heightfield_ptr.get());
+		}
+
+		this->chunk_data.emplace_back(node.first, std::move(heightfield_ptr));
 	}
+	this->trigger_clearBuffer = false;
 	//start loading chunk
 	this->ChunkLoader = this->compute_pool->enqueue_future(asyncChunkLoader, std::ref(this->chunk_data));
 	return true;
@@ -212,7 +198,8 @@ bool STPChunkManager::loadChunksAsync(vec3 cameraPos) {
 	if (thisCentralPos != this->lastCentralPos) {
 		//changed
 		//recalculate loading chunks
-		this->loadingLocals.clear();
+		this->renderingLocals.clear();
+		this->renderingLocals_lookup.clear();
 		const auto allChunks = STPChunk::getRegion(
 			STPChunk::getChunkPosition(
 				cameraPos - chunk_settings->ChunkOffset,
@@ -225,14 +212,27 @@ bool STPChunkManager::loadChunksAsync(vec3 cameraPos) {
 		//we also need chunkID, which is just the index of the visible chunk from top-left to bottom-right
 		int chunkID = 0;
 		for (auto it = allChunks.begin(); it != allChunks.end(); it++) {
-			this->loadingLocals.push_back(std::pair<int, vec2>(chunkID, *it));
-			chunkID++;
+			this->renderingLocals.emplace_back(*it, false);
+			this->renderingLocals_lookup.emplace(*it, chunkID++);
 		}
 
 		this->lastCentralPos = thisCentralPos;
+		//clear up previous rendering buffer
+		this->trigger_clearBuffer = true;
 	}
 
-	return this->loadChunksAsync(this->loadingLocals);
+	return this->loadChunksAsync(this->renderingLocals);
+}
+
+bool STPChunkManager::reloadChunkAsync(vec2 chunkPos) {
+	auto it = this->renderingLocals_lookup.find(chunkPos);
+	if (it == this->renderingLocals_lookup.end()) {
+		//chunk position provided is not required to be rendered, or new rendering area has changed
+		return false;
+	}
+	//found, trigger a reload
+	this->renderingLocals[it->second].second = false;
+	return true;
 }
 
 int STPChunkManager::SyncloadChunks() {
@@ -241,7 +241,9 @@ int STPChunkManager::SyncloadChunks() {
 		//wait for finish first
 		const unsigned int res = this->ChunkLoader.get();
 		//unmap the chunk
-		cudaGraphicsUnmapResources(2, this->heightfield_texture_res);
+		if (cudaGraphicsUnmapResources(2, this->heightfield_texture_res) != cudaSuccess) {
+			throw std::runtime_error("CUDA resource cannot be released");
+		}
 
 		return static_cast<int>(res);
 	}
