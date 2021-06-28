@@ -257,7 +257,7 @@ namespace SuperTerrainPlus {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 			//update the view matrix and projection matrix
 			this->View = this->Camera->getViewMat();
-			this->Projection = perspective(radians(this->Camera->getZoomDeg()), (1.0f * this->SCR_SIZE[0]) / (this->SCR_SIZE[1] * 1.0f), 1.0f, 1000.0f);
+			this->Projection = perspective(radians(this->Camera->getZoomDeg()), (1.0f * this->SCR_SIZE[0]) / (this->SCR_SIZE[1] * 1.0f), 1.0f, 1500.0f);
 			this->updatePVmatrix();
 
 			//rendering sky

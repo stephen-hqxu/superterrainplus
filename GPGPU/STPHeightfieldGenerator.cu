@@ -3,7 +3,7 @@
 
 #include <memory>
 
-//TODO: remove constant mmeory as it's not very useful and static initialisation sucks
+//TODO: remove constant memory as it's not very useful and static initialisation sucks
 __constant__ unsigned char HeightfieldSettings[sizeof(SuperTerrainPlus::STPSettings::STPHeightfieldSettings)];
 static unsigned int ErosionBrushSize;
 
@@ -24,15 +24,6 @@ __device__ __inline__ float3 normalize3DKERNEL(float3);
  * @return The interpolated value
 */
 __device__ __inline__ float InvlerpKERNEL(float, float, float);
-
-/**
- * @brief Clamp the input value with the range
- * @param val The clamping value
- * @param lower The lowest possible value
- * @param upper The highest possible value
- * @return val if [lower, upper], lower if val < lower, upper if val > upper
-*/
-__device__ __forceinline__ int clamp(int, int, int);
 
 /**
  * @brief Init the curand generator for each thread
@@ -177,6 +168,7 @@ __host__ void* STPHeightfieldGenerator::STPHeightfieldNonblockingStreamAllocator
 	cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
 	return reinterpret_cast<void*>(stream);
 }
+
 __host__ void STPHeightfieldGenerator::STPHeightfieldNonblockingStreamAllocator::deallocate(size_t count, void* stream) {
 	cudaStreamDestroy(reinterpret_cast<cudaStream_t>(stream));
 }
@@ -368,7 +360,8 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	if (flags[2]) {
 		//generate normalmap from heightmap
 		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d[0], this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
-		generateNormalmapKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, 0, stream >> > (heightmap_slip, heightfield_freeslip_d[1]);
+		const unsigned int cacheSize = (this->numThreadperBlock_Map.x + 2u) * (this->numThreadperBlock_Map.y + 2u) * sizeof(float);
+		generateNormalmapKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, cacheSize, stream >> > (heightmap_slip, heightfield_freeslip_d[1]);
 	}
 
 	//Flag: Format - moved STPImageConverter to here
@@ -551,10 +544,6 @@ __device__ __inline__ float InvlerpKERNEL(float minVal, float maxVal, float valu
 	return __saturatef(fdividef(value - minVal, maxVal - minVal));
 }
 
-__device__ __forceinline__ int clamp(int val, int lower, int upper) {
-	return max(lower, min(val, upper));
-}
-
 __global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG* rng, unsigned long long seed) {
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
@@ -698,24 +687,55 @@ __global__ void performPostErosionInterpolationKERNEL(STPRainDrop::STPFreeSlipMa
 __global__ void generateNormalmapKERNEL(STPRainDrop::STPFreeSlipManager heightmap, float* normalmap) {
 	//convert constant memory to usable class
 	SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const settings = reinterpret_cast<SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
-
 	//the current working pixel
-	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
-		y = (blockIdx.y * blockDim.y) + threadIdx.y;
-
+	const unsigned int x_b = blockIdx.x * blockDim.x,
+		y_b = blockIdx.y * blockDim.y,
+		x = x_b + threadIdx.x,
+		y = y_b + threadIdx.y,
+		threadperblock = blockDim.x * blockDim.y;
 	const uint2& dimension = heightmap.FreeSlipRange;
+	auto clamp = []__device__(int val, int lower, int upper) -> int {
+		return max(lower, min(val, upper));
+	};
+
+	//Cache heightmap the current thread block needs since each pixel is accessed upto 9 times.
+	extern __shared__ float heightmapCache[];
+	//each thread needs to access a 3x3 matrix around the current pixel, so we need to take the edge into consideration
+	const uint2 cacheSize = make_uint2(blockDim.x + 2u, blockDim.y + 2u);
+	unsigned int iteration = 0u;
+	const unsigned int cacheSize_total = cacheSize.x * cacheSize.y;
+
+	//TODO: Verify after cache optimisation the result is consistent with that of before the optimisation
+	while (iteration < cacheSize_total) {
+		const unsigned int cacheIdx = (threadIdx.x + blockDim.x * threadIdx.y) + iteration;
+		const unsigned int x_w = x_b + static_cast<unsigned int>(fmodf(cacheIdx, cacheSize.x)),
+			y_w = static_cast<unsigned int>(y_b + floorf(1.0f * cacheIdx / cacheSize.x));
+		const unsigned int workerIdx = clamp((x_w - 1u), 0, dimension.x - 1u) + clamp((y_w - 1u), 0, dimension.x - 1u) * dimension.x;
+
+		if (cacheIdx < cacheSize_total) {
+			//make sure index don't get out of bound
+			//start caching from (x-1, y-1) until (x+1, y+1)
+			heightmapCache[cacheIdx] = heightmap[workerIdx];
+		}
+		//warp around to reuse some threads to finish all compute
+		iteration += threadperblock;
+	}
+	__syncthreads();
+
 	//load the cells from heightmap, remember the height map only contains one color channel
 	//using Sobel fitering
-	//TODO: precache heightmap into shared memory since each pixel is accessed upto 9 times.
+	//Cache index
+	const unsigned int x_c = threadIdx.x + 1u,
+		y_c = threadIdx.y + 1u;
 	float cell[8];
-	cell[0] = heightmap[clamp((x - 1), 0, dimension.x - 1) + clamp((y - 1), 0, dimension.y - 1) * dimension.x];
-	cell[1] = heightmap[x + clamp((y - 1), 0, dimension.y - 1) * dimension.x];
-	cell[2] = heightmap[clamp((x + 1), 0, dimension.x - 1) + clamp((y - 1), 0, dimension.y - 1) * dimension.x];
-	cell[3] = heightmap[clamp((x - 1), 0, dimension.x - 1) + y * dimension.x];
-	cell[4] = heightmap[clamp((x + 1), 0, dimension.x - 1) + y * dimension.x];
-	cell[5] = heightmap[clamp((x - 1), 0, dimension.x - 1) + clamp((y + 1), 0, dimension.y - 1) * dimension.x];
-	cell[6] = heightmap[x + clamp((y + 1), 0, dimension.y - 1) * dimension.x];
-	cell[7] = heightmap[clamp((x + 1), 0, dimension.x - 1) + clamp((y + 1), 0, dimension.y - 1) * dimension.x];
+	cell[0] = heightmapCache[(x_c - 1) + (y_c - 1) * cacheSize.x];
+	cell[1] = heightmapCache[x_c + (y_c - 1) * cacheSize.x];
+	cell[2] = heightmapCache[(x_c + 1) + (y_c - 1) * cacheSize.x];
+	cell[3] = heightmapCache[(x_c - 1) + y_c * cacheSize.x];
+	cell[4] = heightmapCache[(x_c + 1) + y_c * cacheSize.x];
+	cell[5] = heightmapCache[(x_c - 1) + (y_c + 1) * cacheSize.x];
+	cell[6] = heightmapCache[x_c + (y_c + 1) * cacheSize.x];
+	cell[7] = heightmapCache[(x_c + 1) + (y_c + 1) * cacheSize.x];
 	//apply the filtering kernel matrix
 	float3 normal;
 	normal.z = 1.0f / settings->Strength;

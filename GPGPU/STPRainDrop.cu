@@ -78,9 +78,18 @@ __device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* setti
 	extern __shared__ unsigned char ErosionBrush[];
 	int* brushIndices = reinterpret_cast<int*>(ErosionBrush);
 	float* brushWeights = reinterpret_cast<float*>(ErosionBrush + sizeof(int) * settings->getErosionBrushSize());
-	if (threadIdx.x == 0u) {
-		memcpy(brushIndices, settings->ErosionBrushIndices, sizeof(int) * settings->getErosionBrushSize());
-		memcpy(brushWeights, settings->ErosionBrushWeights, sizeof(float) * settings->getErosionBrushSize());
+	unsigned int iteration = 0u;
+	while (iteration < settings->getErosionBrushSize()) {
+		unsigned int idx = threadIdx.x + iteration;
+		if (idx < settings->getErosionBrushSize()) {
+			//check and make sure index is not out of bound
+			//otherwise we can utilise most threads and copy everything in parallel
+			brushIndices[idx] = settings->ErosionBrushIndices[idx];
+			brushWeights[idx] = settings->ErosionBrushWeights[idx];
+		}
+		//if erosion brush size is greater than number of thread in a block
+		//we need to warp around and reuse some threads to finish the rests
+		iteration += blockDim.x;
 	}
 	__syncthreads();
 

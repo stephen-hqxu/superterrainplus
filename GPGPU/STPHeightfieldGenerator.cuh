@@ -171,7 +171,7 @@ namespace SuperTerrainPlus {
 			*/
 			STPSimplexNoise* simplex = nullptr;
 			const STPSimplexNoise simplex_h;
-			//All parameters for the noise generator, stoed on host, passing value to device
+			//All parameters for the noise generator, stored on host, passing value to device
 			const STPSettings::STPSimplexNoiseSettings Noise_Settings;
 
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency

@@ -46,6 +46,7 @@ STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : Chu
 	memset(this->mono_clear, 0xFF, totaltexture_size);
 	memset(this->quad_clear, 0xFF, totaltexture_size * 4);
 
+	this->renderingLocals.reserve(chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y);
 	//create thread pool
 	this->compute_pool = std::unique_ptr<STPThreadPool>(new STPThreadPool(5u));
 }
@@ -114,7 +115,6 @@ void STPChunkManager::clearMap(const cudaArray_t destination[2]) {
 void STPChunkManager::generateMipmaps() {
 	glGenerateTextureMipmap(*(this->terrain_heightfield));
 	glGenerateTextureMipmap(*(this->terrain_heightfield + 1));
-	return;
 }
 
 bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
@@ -219,6 +219,10 @@ bool STPChunkManager::loadChunksAsync(vec3 cameraPos) {
 		this->lastCentralPos = thisCentralPos;
 		//clear up previous rendering buffer
 		this->trigger_clearBuffer = true;
+	}
+	else if (std::all_of(this->renderingLocals.cbegin(), this->renderingLocals.cend(), [](auto i) -> bool {return i.second;})) {
+		//if all chunks are loaded there is no need to do those complicated stuff
+		return false;
 	}
 
 	return this->loadChunksAsync(this->renderingLocals);

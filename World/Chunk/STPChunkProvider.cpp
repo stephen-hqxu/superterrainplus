@@ -76,7 +76,7 @@ bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos, std::f
 			chk->markOccupancy(false);
 		}
 	};
-	//TODO: This looks excessively complicated, simplification is needed; also data is not coherent
+	//TODO: Use a mapping apporach, and map device pointer to heightfield generator function so we don't need to copy intermediate value back to host.
 	STPChunk* center = source.getChunk(chunkPos);
 	if (center != nullptr && center->getChunkState() == STPChunk::STPChunkState::Complete) {
 		//no need to continue if center chunk is available

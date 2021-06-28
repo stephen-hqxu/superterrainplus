@@ -2,17 +2,23 @@
 #ifndef _STP_DEVICE_ERROR_HANDLER_CUH_
 #define _STP_DEVICE_ERROR_HANDLER_CUH_
 
-//System
-#include <iostream>
 //CUDA
 #include <cuda_runtime.h>
 
-//unfinished, need to refine the error handling later
-#define cudaCheckError(ans) {cudaAssert(ans, __FILE__, __LINE__)}
-__host__ inline void cudaAssert(cudaError_t cuda_code, const char* file, int line) {
-	if (cuda_code != cudaSuccess) {
-		std::cerr << "CUDA assert: " << cudaGetErrorString(cuda_code) << " in " << file << " at " << line << std::endl;
+/**
+ * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
+ * including perlin noise generated height map, hydrology processing and marching cube algorithm.
+ * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
+*/
+namespace SuperTerrainPlus {
+	/**
+	 * @brief GPGPU compute suites for Super Terrain + program, powered by CUDA
+	*/
+	namespace STPCompute {
+		__host__ inline void cudaAssert(cudaError_t cuda_code, const char* file, int line);
 	}
 }
+
+#define STPcudaCheckError(ans) {SuperTerrainPlus::STPCompute::cudaAssert(ans, __FILE__, __LINE__)}
 
 #endif//_STP_DEVICE_ERROR_HANDLER_CUH_
