@@ -28,7 +28,7 @@ __host__ STPRainDrop::STPFreeSlipManager::~STPFreeSlipManager() {
 }
 
 __device__ __inline__ float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) {
-	return this->Heightmap[this->operator()(global)];
+	return const_cast<float&>(const_cast<const STPRainDrop::STPFreeSlipManager*>(this)->operator[](global));
 }
 
 __device__ __inline__ const float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) const {

@@ -5,10 +5,11 @@ using glm::uvec2;
 using glm::ivec2;
 using glm::vec3;
 
+using std::unique_ptr;
+using std::make_unique;
 using std::atomic_init;
 using std::atomic_load;
 using std::atomic_store;
-using std::atomic_compare_exchange_strong;
 using std::ostream;
 using std::istream;
 using std::ios_base;
@@ -19,11 +20,11 @@ STPChunk::STPChunk(uvec2 size, bool initialise) : PixelSize(size) {
 	if (initialise) {
 		const int num_pixel = size.x * size.y;
 		//heightmap is RED format
-		this->TerrainMap[0] = std::unique_ptr<float[]>(new float[num_pixel]);
-		this->TerrainMap_cache[0] = std::unique_ptr<unsigned short[]>(new unsigned short[num_pixel]);
+		this->TerrainMap[0] = make_unique<float[]>(num_pixel);
+		this->TerrainMap_cache[0] = make_unique<unsigned short[]>(num_pixel);
 		//normal map is RGBA format
-		this->TerrainMap[1] = std::unique_ptr<float[]>(new float[num_pixel * 4]);
-		this->TerrainMap_cache[1] = std::unique_ptr<unsigned short[]>(new unsigned short[num_pixel * 4]);
+		this->TerrainMap[1] = make_unique<float[]>(num_pixel * 4);
+		this->TerrainMap_cache[1] = make_unique<unsigned short[]>(num_pixel * 4);
 	}
 
 	atomic_init<STPChunkState>(&this->State, STPChunkState::Empty);
@@ -39,7 +40,7 @@ STPChunk::~STPChunk() {
 }
 
 template<typename T>
-T* STPChunk::getMap(STPMapType type, const std::unique_ptr<T[]>* map) {
+T* STPChunk::getMap(STPMapType type, const unique_ptr<T[]>* map) {
 	switch (type) {
 	case STPMapType::Heightmap:
 		return map[0].get();
@@ -166,7 +167,7 @@ namespace SuperTerrainPlus {
 		char state;
 		input.read(&state, sizeof(char));
 		//read pixel size, x and y
-		glm::uvec2 pix_size;
+		uvec2 pix_size;
 		input.read(reinterpret_cast<char*>(&pix_size.x), sizeof(unsigned int));
 		input.read(reinterpret_cast<char*>(&pix_size.y), sizeof(unsigned int));
 		const unsigned int size = pix_size.x * pix_size.y;

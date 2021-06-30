@@ -7,8 +7,11 @@ using glm::value_ptr;
 
 using std::list;
 using std::queue;
+using std::bind;
 using std::unique_ptr;
+using std::make_unique;
 using std::pair;
+using std::future;
 using namespace std::placeholders;
 using std::make_pair;
 
@@ -41,14 +44,12 @@ STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : Chu
 	cudaGraphicsGLRegisterImage(&(this->heightfield_texture_res[1]), *(this->terrain_heightfield + 1), GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard);
 
 	//init clear buffers that are used to clear texture when new rendered chunks are loaded (we need to clear the previous chunk data)
-	cudaMallocHost(&this->mono_clear, totaltexture_size);
 	cudaMallocHost(&this->quad_clear, totaltexture_size * 4);
-	memset(this->mono_clear, 0xFF, totaltexture_size);
-	memset(this->quad_clear, 0xFF, totaltexture_size * 4);
+	memset(this->quad_clear, 0x88, totaltexture_size * 4);
 
 	this->renderingLocals.reserve(chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y);
 	//create thread pool
-	this->compute_pool = std::unique_ptr<STPThreadPool>(new STPThreadPool(5u));
+	this->compute_pool = make_unique<STPThreadPool>(4u);
 }
 
 STPChunkManager::~STPChunkManager() {
@@ -64,7 +65,6 @@ STPChunkManager::~STPChunkManager() {
 	glDeleteTextures(2, this->terrain_heightfield);
 
 	//delete clear buffer
-	cudaFreeHost(this->mono_clear);
 	cudaFreeHost(this->quad_clear);
 }
 
@@ -102,7 +102,7 @@ void STPChunkManager::clearMap(const cudaArray_t destination[2]) {
 	//clear unloaded chunk, so the engine won't display the chunk from previous rendered chunks
 	cudaStream_t clear_stream;
 	cudaStreamCreateWithFlags(&clear_stream, cudaStreamNonBlocking);
-	cudaMemcpy2DToArrayAsync(destination[0], 0, 0, this->mono_clear,
+	cudaMemcpy2DToArrayAsync(destination[0], 0, 0, this->quad_clear,
 		static_cast<int>(chunk_settings->MapSize.x) * sizeof(unsigned short), static_cast<int>(chunk_settings->MapSize.x) * sizeof(unsigned short),
 		static_cast<int>(chunk_settings->MapSize.y), cudaMemcpyHostToDevice, clear_stream);
 	cudaMemcpy2DToArrayAsync(destination[1], 0, 0, this->quad_clear,
@@ -128,11 +128,11 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 	//async chunk loader
 	auto asyncChunkLoader = [this, &loading_chunks](list<pair<vec2, unique_ptr<cudaArray_t[]>>>& chunk_data) -> unsigned int {
 		//chunk future being loading and the chunk ID
-		list<std::pair<std::future<bool>, int>> loading_status;
+		list<pair<future<bool>, int>> loading_status;
 		
 		//make sure chunk is available, if not we need to compute it
 		for (auto& local : chunk_data) {
-			this->getChunkProvider().checkChunk(this->ChunkCache, local.first, std::bind(&STPChunkManager::reloadChunkAsync, this, _1));
+			this->getChunkProvider().checkChunk(this->ChunkCache, local.first, bind(&STPChunkManager::reloadChunkAsync, this, _1));
 		}
 
 		//launching async loading
@@ -140,7 +140,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 		for (auto it = chunk_data.begin(); it != chunk_data.end(); it++) {
 			//load the chunk into rendering buffer only when the chunk is no loaded yet
 			if (!loading_chunks[i].second) {
-				loading_status.emplace_back(this->compute_pool->enqueue_future(std::bind(&STPChunkManager::loadMap, this, _1, _2), it->first, it->second.get()), i);
+				loading_status.emplace_back(this->compute_pool->enqueue_future(bind(&STPChunkManager::loadMap, this, _1, _2), it->first, it->second.get()), i);
 			}
 			i++;
 		}
@@ -170,7 +170,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 	for (int i = 0; i < loading_chunks.size(); i++) {
 		auto node = loading_chunks[i];
 		//allocating spaces for this chunk (2 tetxures per chunk)
-		unique_ptr<cudaArray_t[]> heightfield_ptr(new cudaArray_t[2]);
+		unique_ptr<cudaArray_t[]> heightfield_ptr = make_unique<cudaArray_t[]>(2);
 		//map each texture
 		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[0]), this->heightfield_texture_res[0], i, 0);
 		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[1]), this->heightfield_texture_res[1], i, 0);

@@ -43,9 +43,8 @@ namespace SuperTerrainPlus {
 
 		//registered buffer and texture
 		cudaGraphicsResource_t heightfield_texture_res[2];
-		//empty buffer (using cuda pinned memory) that is used to clear a chunk data
-		//momo_clear is R16, quad_clear is RGBA16
-		unsigned short* mono_clear = nullptr, *quad_clear = nullptr;
+		//empty buffer (using cuda pinned memory) that is used to clear a chunk data, quad_clear is RGBA16
+		unsigned short *quad_clear = nullptr;
 
 		//async chunk loader
 		std::future<unsigned int> ChunkLoader;

@@ -9,6 +9,12 @@ static unsigned int ErosionBrushSize;
 
 using namespace SuperTerrainPlus::STPCompute;
 
+using std::list;
+using std::mutex;
+using std::unique_lock;
+using std::unique_ptr;
+using std::make_unique;
+
 /**
  * @brief Find the unit vector of the input vector
  * @param vec3 - Vector input
@@ -107,7 +113,7 @@ __global__ void initInterpolationIndexKERNEL(uint2*, uint2, uint2, unsigned int,
  * @param stream - Async CUDA stream
 */
 template<typename T>
-__host__ bool blockcopy_d2h(std::list<T*>& dest, T* host, T* device, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
+__host__ bool blockcopy_d2h(list<T*>& dest, T* host, T* device, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
 	bool no_error = true;
 	no_error &= cudaSuccess == cudaMemcpyAsync(host, device, block_size, cudaMemcpyDeviceToHost, stream);
 	unsigned int base = 0u;
@@ -131,7 +137,7 @@ __host__ bool blockcopy_d2h(std::list<T*>& dest, T* host, T* device, size_t bloc
  * @param stream - Async CUDA stream
 */
 template<typename T>
-__host__ bool blockcopy_h2d(T* device, T* host, std::list<T*>& source, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
+__host__ bool blockcopy_h2d(T* device, T* host, list<T*>& source, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
 	bool no_error = true;
 	unsigned int base = 0u;
 	for (T* map : source) {
@@ -216,7 +222,7 @@ __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 
 __host__ bool STPHeightfieldGenerator::InitGenerator(const STPSettings::STPHeightfieldSettings* const settings) {
 	//keep a local copy of the setting so device can have access to the pointer inside the class
-	static std::unique_ptr<const STPSettings::STPHeightfieldSettings> stored_settings;
+	static unique_ptr<const STPSettings::STPHeightfieldSettings> stored_settings;
 
 	//if memory address isn't the same
 	if (stored_settings.get() != settings) {
@@ -226,7 +232,7 @@ __host__ bool STPHeightfieldGenerator::InitGenerator(const STPSettings::STPHeigh
 		}
 		//replace current settings
 		//deep copy the thing
-		stored_settings = std::unique_ptr<const STPSettings::STPHeightfieldSettings>(new STPSettings::STPHeightfieldSettings(*settings));
+		stored_settings = make_unique<const STPSettings::STPHeightfieldSettings>(*settings);
 	}
 
 	ErosionBrushSize = stored_settings->getErosionBrushSize();
@@ -286,7 +292,7 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	//memory allocation
 	//Device
 	{
-		std::unique_lock<std::mutex> lock(this->MapCacheDevice_lock);
+		unique_lock<mutex> lock(this->MapCacheDevice_lock);
 		//FP32
 		//we need heightmap for computation regardlessly
 		heightfield_freeslip_d[0] = reinterpret_cast<float*>(this->MapCacheDevice.allocate(map_freeslip_size));
@@ -307,7 +313,7 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	}
 	//Host
 	{
-		std::unique_lock<std::mutex> lock(this->MapCachePinned_lock);
+		unique_lock<mutex> lock(this->MapCachePinned_lock);
 		//FP32
 		heightfield_freeslip_h[0] = reinterpret_cast<float*>(this->MapCachePinned.allocate(map_freeslip_size));
 
@@ -331,7 +337,7 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	cudaStream_t stream = nullptr;
 	//we want the stream to not be blocked by default stream
 	{
-		std::unique_lock<std::mutex> stream_lock(this->StreamPool_lock);
+		unique_lock<mutex> stream_lock(this->StreamPool_lock);
 		stream = reinterpret_cast<cudaStream_t>(this->StreamPool.allocate(1ull));
 	}
 	
@@ -413,14 +419,14 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	//waiting for finish
 	no_error &= cudaSuccess == cudaStreamSynchronize(stream);
 	{
-		std::unique_lock<std::mutex> stream_lock(this->StreamPool_lock);
+		unique_lock<mutex> stream_lock(this->StreamPool_lock);
 		this->StreamPool.deallocate(1ull, reinterpret_cast<void*>(stream));
 	}
 
 	//Finish up the rest, clear up when the device is ready
 	//nullptr means not allocated
 	{
-		std::unique_lock<std::mutex> lock(this->MapCacheDevice_lock);
+		unique_lock<mutex> lock(this->MapCacheDevice_lock);
 		if (heightfield_freeslip_d[0] != nullptr) {
 			this->MapCacheDevice.deallocate(map_freeslip_size, heightfield_freeslip_d[0]);
 		}
@@ -435,7 +441,7 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		}
 	}
 	{
-		std::unique_lock<std::mutex> lock(this->MapCachePinned_lock);
+		unique_lock<mutex> lock(this->MapCachePinned_lock);
 		if (heightfield_freeslip_h[0] != nullptr) {
 			this->MapCachePinned.deallocate(map_freeslip_size, heightfield_freeslip_h[0]);
 		}

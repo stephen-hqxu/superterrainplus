@@ -6,7 +6,7 @@ using std::stof;
 using std::stoi;
 using std::stod;
 
-STPSettings::STPMeshSettings STPTerrainParaLoader::getProcedural2DINFRenderingParameters(SIMPLE::SISection& section) {
+STPSettings::STPMeshSettings STPTerrainParaLoader::getProcedural2DINFRenderingParameters(const SIMPLE::SISection& section) {
 	STPSettings::STPMeshSettings rendering_options;
 	STPSettings::STPMeshSettings::STPTessellationSettings tess_options;
 
@@ -23,7 +23,7 @@ STPSettings::STPMeshSettings STPTerrainParaLoader::getProcedural2DINFRenderingPa
 	return rendering_options;
 }
 
-STPSettings::STPChunkSettings STPTerrainParaLoader::getProcedural2DINFChunksParameters(SIMPLE::SISection& section) {
+STPSettings::STPChunkSettings STPTerrainParaLoader::getProcedural2DINFChunksParameters(const SIMPLE::SISection& section) {
 	STPSettings::STPChunkSettings chunks_options;
 
 	chunks_options.MapSize = uvec2(
@@ -57,7 +57,7 @@ STPSettings::STPChunkSettings STPTerrainParaLoader::getProcedural2DINFChunksPara
 	return chunks_options;
 }
 
-STPSettings::STPHeightfieldSettings STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(SIMPLE::SISection& section, glm::uvec2 slipRange) {
+STPSettings::STPHeightfieldSettings STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(const SIMPLE::SISection& section, glm::uvec2 slipRange) {
 	//get the default settings
 	STPSettings::STPHeightfieldSettings launch_options;
 	
@@ -84,7 +84,7 @@ STPSettings::STPHeightfieldSettings STPTerrainParaLoader::getProcedural2DINFGene
 	return launch_options;
 }
 
-STPSettings::STPSimplexNoiseSettings STPTerrainParaLoader::getSimplex2DNoiseParameters(SIMPLE::SISection& section, glm::uvec2 mapSize) {
+STPSettings::STPSimplexNoiseSettings STPTerrainParaLoader::getSimplex2DNoiseParameters(const SIMPLE::SISection& section, glm::uvec2 mapSize) {
 	auto noise_option = STPSettings::STPSimplexNoiseSettings();
 
 	noise_option.Seed = stoull(section(STPTerrainParaLoader::Simplex2DNoiseVariables[0]));

@@ -2,6 +2,9 @@
 
 using glm::vec2;
 using glm::uvec2;
+
+using std::unique_ptr;
+using std::make_unique;
 using std::make_pair;
 
 using namespace SuperTerrainPlus;
@@ -23,9 +26,10 @@ STPChunkStorage::STPChunkConstructed STPChunkStorage::constructChunk(vec2 chunkP
 	auto found = this->TerrainMap2D.find(chunkPos);
 	if (found == this->TerrainMap2D.end()) {
 		//not found
-		STPChunk* chunk = new STPChunk(mapSize, true);
-		this->TerrainMap2D.emplace(chunkPos, chunk);
-		return make_pair(true, chunk);
+		unique_ptr<STPChunk> chunk = make_unique<STPChunk>(mapSize, true);
+		STPChunk* new_chunk = chunk.get();
+		this->TerrainMap2D.emplace(chunkPos, std::move(chunk));
+		return make_pair(true, new_chunk);
 	}
 	//found
 	return make_pair(false, found->second.get());

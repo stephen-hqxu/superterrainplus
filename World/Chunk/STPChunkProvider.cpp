@@ -2,6 +2,8 @@
 
 using glm::vec2;
 
+using std::list;
+using std::make_unique;
 using std::make_pair;
 
 using namespace SuperTerrainPlus;
@@ -9,7 +11,7 @@ using namespace SuperTerrainPlus;
 STPChunkProvider::STPChunkProvider(STPSettings::STPConfigurations* settings)
 	: ChunkSettings(settings->getChunkSettings())
 	, heightmap_gen(&settings->getSimplexNoiseSettings(), &this->ChunkSettings) {
-	this->kernel_launch_pool = std::unique_ptr<STPThreadPool>(new STPThreadPool(5u));
+	this->kernel_launch_pool = make_unique<STPThreadPool>(4u);
 }
 
 float3 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
@@ -38,7 +40,7 @@ void STPChunkProvider::computeHeightmap(STPChunk* current_chunk, vec2 chunkPos) 
 	}
 }
 
-void STPChunkProvider::computeErosion(STPChunk* current_chunk, std::list<STPChunk*> neighbour_chunks) {
+void STPChunkProvider::computeErosion(STPChunk* current_chunk, list<STPChunk*> neighbour_chunks) {
 	using namespace STPCompute;
 
 	STPHeightfieldGenerator::STPMapStorage maps;
@@ -66,7 +68,7 @@ bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos, std::f
 		chunk->markChunkState(STPChunk::STPChunkState::Heightmap_Ready);
 		chunk->markOccupancy(false);
 	};
-	auto erosion_computer = [this](STPChunk* centre, std::list<STPChunk*> neighbours) -> void {
+	auto erosion_computer = [this](STPChunk* centre, list<STPChunk*> neighbours) -> void {
 		this->computeErosion(centre, neighbours);
 		//erosion was successful
 		//mark center chunk complete
@@ -90,7 +92,7 @@ bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos, std::f
 	
 	bool canContinue = true;
 	//The first pass: check if all neighbours are heightmap-complete
-	std::list<STPChunk*> neighbour;
+	list<STPChunk*> neighbour;
 	for (vec2 neighbourPos : neighbour_position) {
 		//get current neighbour chunk
 		STPChunkStorage::STPChunkConstructed res = source.constructChunk(neighbourPos, chk_config->MapSize);

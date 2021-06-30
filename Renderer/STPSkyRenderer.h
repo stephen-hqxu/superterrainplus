@@ -55,7 +55,7 @@ namespace SuperTerrainPlus {
 		*/
 		const bool compileShader() {
 			//error log
-			GLchar* log = new GLchar[1024];
+			GLchar log[1024];
 
 			this->skyShader.addShader(GL_VERTEX_SHADER, "./GLSL/STPsky.vert");
 			this->skyShader.addShader(GL_FRAGMENT_SHADER, "./GLSL/STPsky.frag");
@@ -64,14 +64,11 @@ namespace SuperTerrainPlus {
 				cerr << log << endl;
 				cerr << "--------------------------------------------------------------------------------" << endl;
 				//exit
-				delete[] log;
 				return false;
 			}
 			//texture
 			glProgramUniform1i(this->skyShader.getP(), this->getLoc("SkyMap"), 0);
 
-			//clear
-			delete[] log;
 			return true;
 		}
 
@@ -149,8 +146,8 @@ namespace SuperTerrainPlus {
 		 * @param sky_cmd The indrect rendering command for sky renderer
 		 * @param pool The thread pool for multi-threaded texture loading
 		*/
-		STPSkyRenderer(SIMPLE::SISection& day, SIMPLE::SISection& night, SIMPLE::SISection& globalPreset, DrawElementsIndirectCommand* const sky_cmd, STPThreadPool* const pool)
-			: rotaingSpeed(std::stof(globalPreset("rotationSpeed"))), cyclingSpeed(std::stof(globalPreset("DaytimeSpeed"))), command(reinterpret_cast<void*>(sky_cmd)), rendering_pool(pool) {
+		STPSkyRenderer(const SIMPLE::SISection& day, const SIMPLE::SISection& night, const SIMPLE::SISection& globalPreset, const DrawElementsIndirectCommand* sky_cmd, STPThreadPool* pool)
+			: rotaingSpeed(std::stof(globalPreset("rotationSpeed"))), cyclingSpeed(std::stof(globalPreset("DaytimeSpeed"))), command(reinterpret_cast<const void*>(sky_cmd)), rendering_pool(pool) {
 			cout << "....Loading STPSkyRenderer....";
 			
 			//get the filename from the ini file

@@ -34,7 +34,7 @@ namespace SuperTerrainPlus {
 		//Calculated chunk data
 		//Calculate the coordinate of the top-left corner of each chunk
 		//It will be used as the key pair to search the map from our hash table
-		glm::vec2* BaseChunkPosition = nullptr;
+		std::unique_ptr<glm::vec2[]> BaseChunkPosition;
 
 		//drawing command
 		const void* const command;

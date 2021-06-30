@@ -2,6 +2,8 @@
 
 using namespace SuperTerrainPlus::STPBiome;
 
+using std::make_unique;
+
 bool STPLayerCache::isPow2(unsigned long long val) {
 	return val && !(val & (val - 1ull));
 }
@@ -36,8 +38,8 @@ STPLayerCache::STPLayerCache(size_t capacity) {
 	
 	this->Mask = capacity - 1ull;
 	//allocate space for cache and clear the storage
-	this->Key = std::unique_ptr<unsigned long long[]>(new unsigned long long[capacity]);
-	this->Value = std::unique_ptr<Sample[]>(new Sample[capacity]);
+	this->Key = make_unique<unsigned long long[]>(capacity);
+	this->Value = make_unique<Sample[]>(capacity);
 	this->clearCache();
 
 }

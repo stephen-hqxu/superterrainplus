@@ -5,6 +5,8 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+using std::make_unique;
+
 using glm::vec2;
 using glm::mat4;
 using glm::identity;
@@ -29,7 +31,7 @@ STPProcedural2DINF::~STPProcedural2DINF() {
 const bool STPProcedural2DINF::compile2DTerrainShader() {
 	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider().getChunkSettings();
 	//log
-	GLchar* log = new GLchar[1024];
+	GLchar log[1024];
 	
 	this->Terrain2d_shader.addShader(GL_VERTEX_SHADER, "./GLSL/STPProcedural2DINF.vert");
 	this->Terrain2d_shader.addShader(GL_TESS_CONTROL_SHADER, "./GLSL/STPProcedural2DINF.tesc");
@@ -44,7 +46,6 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 		cerr << log << endl;
 		cerr << "-------------------------------------------------------------------------------" << endl;
 		//exit
-		delete[] log;
 		return false;
 	}
 	//binding sampler
@@ -64,8 +65,6 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 	glCreateProgramPipelines(1, &this->Terrain2d_pipeline);
 	glUseProgramStages(this->Terrain2d_pipeline, GL_ALL_SHADER_BITS, this->Terrain2d_shader.getP());
 	
-	//clerup
-	delete[] log;
 	return true;
 }
 
@@ -73,11 +72,11 @@ void STPProcedural2DINF::calcBaseChunkPosition() {
 	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider().getChunkSettings();
 	//allocate space
 	const unsigned int num_chunk = chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y;
-	this->BaseChunkPosition = new vec2[num_chunk];
+	this->BaseChunkPosition = make_unique<vec2[]>(num_chunk);
 
 	const auto rendered_chunks = STPChunk::getRegion(vec2(chunk_settings->ChunkOffset.x, chunk_settings->ChunkOffset.z),
 		chunk_settings->ChunkSize, chunk_settings->RenderedChunk);
-	std::copy(rendered_chunks.begin(), rendered_chunks.end(), this->BaseChunkPosition);
+	std::copy(rendered_chunks.begin(), rendered_chunks.end(), this->BaseChunkPosition.get());
 }
 
 void STPProcedural2DINF::loadPlane() {
@@ -98,7 +97,7 @@ void STPProcedural2DINF::loadPlane() {
 	glNamedBufferStorage(this->plane_vbo, sizeof(SglToolkit::SgTUtils::UNITPLANE_VERTICES), SglToolkit::SgTUtils::UNITPLANE_VERTICES, GL_NONE);
 	glNamedBufferStorage(this->plane_ebo, sizeof(SglToolkit::SgTUtils::UNITBOX_INDICES), SglToolkit::SgTUtils::UNITBOX_INDICES, GL_NONE);
 	glNamedBufferStorage(this->plane_basechunkposition, 
-		sizeof(vec2) * chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y, this->BaseChunkPosition, GL_NONE);
+		sizeof(vec2) * chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y, this->BaseChunkPosition.get(), GL_NONE);
 	//binding to vao
 	glVertexArrayVertexBuffer(this->plane_vao, 0, this->plane_vbo, 0, 14 * sizeof(int));
 	glVertexArrayElementBuffer(this->plane_vao, this->plane_ebo);
@@ -134,7 +133,6 @@ GLint STPProcedural2DINF::getLoc(const GLchar* const name) const {
 
 void STPProcedural2DINF::clearup() {
 	//clearup
-	delete[] this->BaseChunkPosition;
 	this->Terrain2d_shader.deleteShader();
 	glDeleteBuffers(1, &this->plane_vbo);
 	glDeleteBuffers(1, &this->plane_indirect);
