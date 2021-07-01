@@ -42,14 +42,14 @@ namespace SuperTerrainPlus {
 		STPChunkProvider ChunkProvider;
 
 		//registered buffer and texture
-		cudaGraphicsResource_t heightfield_texture_res[2];
+		cudaGraphicsResource_t heightfield_texture_res;
 		//empty buffer (using cuda pinned memory) that is used to clear a chunk data, quad_clear is RGBA16
 		unsigned short *quad_clear = nullptr;
 
 		//async chunk loader
 		std::future<unsigned int> ChunkLoader;
 		//CUDA map mapped array storage
-		std::list<std::pair<glm::vec2, std::unique_ptr<cudaArray_t[]>>> chunk_data;
+		std::list<std::pair<glm::vec2, cudaArray_t>> chunk_data;
 
 		//for automatic chunk loading
 		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the currentCentralPos is different from this value
@@ -73,19 +73,18 @@ namespace SuperTerrainPlus {
 		 * For some reason if there is error generated during loading, false will be returned as well.
 		 * If destination is specified as nullptr, and chunk is fully prepared, true will eb returned, otherwise computation will be dispatched and false is returned
 		*/
-		bool loadMap(glm::vec2, const cudaArray_t[2]);
+		bool loadRenderingBuffer(glm::vec2, const cudaArray_t);
 
 		/**
 		 * @brief Clear up the rendering buffer of the chunk map
 		 * @param destination The loaction to store all loaded maps, and it will be erased.
 		*/
-		void clearMap(const cudaArray_t[2]);
+		void clearRenderingBuffer(const cudaArray_t);
 
 	protected:
 
-		//Heightfield and normal map.
-		//Heightfield map will contain: 0 = heightmap, 1 = normalmap
-		GLuint terrain_heightfield[2] = {0u, 0u};
+		//Heightfield, heightmap and normalmap are integrated
+		GLuint terrain_heightfield = 0u;
 
 		/**
 		 * @brief Init the chunk manager. Allocating spaces for opengl texture.

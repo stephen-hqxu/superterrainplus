@@ -52,14 +52,10 @@ namespace SuperTerrainPlus {
 			constexpr static STPGeneratorOperation HeightmapGeneration = 1u << 0u;
 			//Erode the heightmap. If HeightmapGeneration flag is not enabled, an available heightmap needs to be provided for the operation
 			constexpr static STPGeneratorOperation Erosion = 1u << 1u;
-			//Generate normal map. If HeightmapGeneration flag is not enabled, an available heightmap needs to be provided for the operation
-			constexpr static STPGeneratorOperation NormalmapGeneration = 1u << 2u;
-			//Format the map from FP32 to INT16. Providing FormatHint flag in STPMapStorage to specify which map to format.
-			constexpr static STPGeneratorOperation Format = 1u << 3u;
-			//Enable format of heightmap, Format flag needs to be set to enable
-			constexpr static STPFormatGuide FormatHeightmap = 1u << 0u;
-			//Enable format of normalmap, Format flag needs to be set to enable
-			constexpr static STPFormatGuide FormatNormalmap = 1u << 1u;
+			//Generate normal map and integrate into heightfield. If HeightmapGeneration flag is not enabled, an available heightmap needs to be provided for the operation
+			//RGB channel will then contain normalmap and A channel contains heightmap
+			//Then format the heightfield map from FP32 to INT16.
+			constexpr static STPGeneratorOperation RenderingBufferGeneration = 1u << 2u;
 
 			/**
 			 * @brief STPMapStorage stores heightfield data for the generator
@@ -77,20 +73,9 @@ namespace SuperTerrainPlus {
 				//The x vector specify the offset on x direction of the map and and z on y direction of the map, and the y vector specify the offset on the final result.
 				//The offset parameter will only be applied on the heightmap generation.
 				float3 HeightmapOffset = make_float3(0.0f, 0.0f, 0.0f);
-				//A float array that will be used to stored normalmap pixles, will be used to store the output of the normal map.
-				//Must be pre-allocated with at least width* height * 4 byte per channel * 4, i.e., RGBA32F format.
-				//If freeslip chunk has enabled, it must contain freeslip_chunk.x * freeslip_chunk.y number of normalmaps
-				std::list<float*> Normalmap32F;
-				//Instruct formatter that which map to format.
-				//If Format flag is not set for the generator, format operation will not happen regardlessly
-				STPFormatGuide FormatHint;
-				//A INT16 array that will be used to stored the heightmap after formation. Require Format flag set in the generator and FormatHeightmap set in FormatHint 
-				//The number of pointer provided should be the same as Heightmap32F
-				std::list<unsigned short*> Heightmap16UI;
-				//A INT16 array that will be used to stored the normalmap after formation. Require Format flag set in the generator and FormatHeightmap set in FormatHint
-				//Require either normalmap generation enabled or provided from the external
-				//The number of pointer provided should be the same as Normalmap32F
-				std::list<unsigned short*> Normalmap16UI;
+				//A INT16 array that will be used to stored the heightmap and normalmap after formation. The final format will become RGBA.
+				//The number of pointer provided should be the same as the number of heightmap and normalmap.
+				std::list<unsigned short*> Heightfield16UI;
 
 			};
 

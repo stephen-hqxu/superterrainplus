@@ -39,40 +39,27 @@ namespace SuperTerrainPlus {
 			Complete = 0x03u
 		};
 
-		/**
-		 * @brief STPMapType specify the type of the chunk map
-		*/
-		enum class STPMapType : unsigned char {
-			//Heightmap contains data for the y-offset on mesh, usually contains only one channel
-			Heightmap = 0x00u,
-			//Normal contains the tangent space vector for mesh normal
-			Normalmap = 0x01u
-		};
-
 	private:
 
 		//The last 8 bytes of the text "SuperTerrain+STPChunk" in SHA-256
 		constexpr static unsigned long long IDENTIFIER = 0x72539f230fdbf627ull;
 		//Serialisation version number, 1 byte for major version, 1 byte for minor version
-		//current v1.0
-		constexpr static unsigned short SERIAL_VERSION = 0x0100u;
+		//current v1.1
+		constexpr static unsigned short SERIAL_VERSION = 0x0101u;
 
 		const glm::uvec2 PixelSize;//All maps must have the same size
 
-		std::unique_ptr<float[]> TerrainMap[2];
+		std::unique_ptr<float[]> Heightmap;
 		//Cache that OpenGL can use to render directly, it's converted from 32 bit internal texture to 16 bit.
 		//We need to keep the 32 bit copy for later chunk computations, e.g., chunk-chunk interpolation.
 		//Storing them separately can avoid re-converting format everytime the chunks get updated
-		std::unique_ptr<unsigned short[]> TerrainMap_cache[2];
+		//Rendering buffer contain RGB channel for normal map and A channel for heightmap
+		std::unique_ptr<unsigned short[]> TerrainRenderingBuffer;
 
 		//Flags
 		//Determine if there is another thread copied the current chunk for generation, meaning we can't use right now
 		std::atomic<bool> inUsed;
 		std::atomic<STPChunkState> State;
-
-		//A wrapper function to get map
-		template<typename T>
-		T* getMap(STPMapType, const std::unique_ptr<T[]>*);
 
 	public:
 
@@ -156,18 +143,16 @@ namespace SuperTerrainPlus {
 		void markChunkState(STPChunkState);
 
 		/**
-		 * @brief Return the reference to the 32bit raw map of this chunk
-		 * @param type The type of the map
-		 * @return The reference to the raw map
+		 * @brief Return the reference to the 32bit heightmap of this chunk
+		 * @return The reference to the heightmap
 		*/
-		float* getRawMap(STPMapType);
+		float* getHeightmap();
 
 		/**
 		 * @brief Return the reference to the 16bit integer map for rendering of this chunk
-		 * @param type The type of the map
 		 * @return The reference to the rendering map
 		*/
-		unsigned short* getCacheMap(STPMapType);
+		unsigned short* getRenderingBuffer();
 
 		/**
 		 * @brief Return the reference to the size of the pixels for all maps

@@ -30,7 +30,7 @@ void STPChunkProvider::computeHeightmap(STPChunk* current_chunk, vec2 chunkPos) 
 	using namespace STPCompute;
 
 	STPHeightfieldGenerator::STPMapStorage maps;
-	maps.Heightmap32F.push_back(current_chunk->getRawMap(STPChunk::STPMapType::Heightmap));
+	maps.Heightmap32F.push_back(current_chunk->getHeightmap());
 	maps.HeightmapOffset = this->calcChunkOffset(chunkPos);
 	const STPHeightfieldGenerator::STPGeneratorOperation op = STPHeightfieldGenerator::HeightmapGeneration;
 
@@ -45,15 +45,12 @@ void STPChunkProvider::computeErosion(STPChunk* current_chunk, list<STPChunk*> n
 
 	STPHeightfieldGenerator::STPMapStorage maps;
 	for (STPChunk* chk : neighbour_chunks) {
-		maps.Heightmap32F.push_back(chk->getRawMap(STPChunk::STPMapType::Heightmap));
-		maps.Normalmap32F.push_back(chk->getRawMap(STPChunk::STPMapType::Normalmap));
-		maps.Heightmap16UI.push_back(chk->getCacheMap(STPChunk::STPMapType::Heightmap));
-		maps.Normalmap16UI.push_back(chk->getCacheMap(STPChunk::STPMapType::Normalmap));
+		maps.Heightmap32F.push_back(chk->getHeightmap());
+		maps.Heightfield16UI.push_back(chk->getRenderingBuffer());
 	}
 	const STPHeightfieldGenerator::STPGeneratorOperation op =
 		STPHeightfieldGenerator::Erosion |
-		STPHeightfieldGenerator::NormalmapGeneration | STPHeightfieldGenerator::Format;
-	maps.FormatHint = STPHeightfieldGenerator::FormatHeightmap | STPHeightfieldGenerator::FormatNormalmap;
+		STPHeightfieldGenerator::RenderingBufferGeneration;
 
 	//computing and return success state
 	if (!this->heightmap_gen(maps, op)) {

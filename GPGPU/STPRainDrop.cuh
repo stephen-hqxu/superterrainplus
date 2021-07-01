@@ -81,21 +81,21 @@ namespace SuperTerrainPlus {
 				 * @param global Global index
 				 * @return The pointer to the map pointed by the global index
 				*/
-				__device__ __inline__ float& operator[](unsigned int);
+				__device__ float& operator[](unsigned int);
 
 				/**
 				 * @brief Convert global index to local index and return the const reference value
 				 * @param global Global index
 				 * @return Constant reference to the map pointed by the global index
 				*/
-				__device__ __inline__ const float& operator[](unsigned int) const;
+				__device__ const float& operator[](unsigned int) const;
 
 				/**
 				 * @brief Convert global index to local index
 				 * @param global Global index
 				 * @return Local index
 				*/
-				__device__ __inline__ unsigned int operator()(unsigned int) const;
+				__device__ unsigned int operator()(unsigned int) const;
 
 			};
 

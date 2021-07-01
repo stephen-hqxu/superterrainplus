@@ -23,25 +23,16 @@ STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : Chu
 	const int totaltexture_size = chunk_num * static_cast<int>(chunk_settings->MapSize.x * chunk_settings->MapSize.y) * sizeof(unsigned short);//one channel
 
 	//creating texture
-	glCreateTextures(GL_TEXTURE_2D_ARRAY, 2, this->terrain_heightfield);
-	//and allocating spaces for heightmap
-	glTextureParameteri(*(this->terrain_heightfield), GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(*(this->terrain_heightfield), GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(*(this->terrain_heightfield), GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(*(this->terrain_heightfield), GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTextureParameteri(*(this->terrain_heightfield), GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glTextureStorage3D(*(this->terrain_heightfield), 1, GL_R16, static_cast<int>(chunk_settings->MapSize.x), static_cast<int>(chunk_settings->MapSize.y), chunk_num);
-	cudaGraphicsGLRegisterImage(&(this->heightfield_texture_res[0]), *(this->terrain_heightfield), GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard);
-	//normal map is a bit unusual in term of color format
-	glTextureParameteri(*(this->terrain_heightfield + 1), GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(*(this->terrain_heightfield + 1), GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(*(this->terrain_heightfield + 1), GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(*(this->terrain_heightfield + 1), GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTextureParameteri(*(this->terrain_heightfield + 1), GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glTextureStorage3D(*(this->terrain_heightfield + 1), 1, GL_RGBA16, static_cast<int>(chunk_settings->MapSize.x), static_cast<int>(chunk_settings->MapSize.y), chunk_num);
-	cudaGraphicsGLRegisterImage(&(this->heightfield_texture_res[1]), *(this->terrain_heightfield + 1), GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard);
+	glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &this->terrain_heightfield);
+	//and allocating spaces for heightfield
+	glTextureParameteri(this->terrain_heightfield, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(this->terrain_heightfield, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(this->terrain_heightfield, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(this->terrain_heightfield, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTextureParameteri(this->terrain_heightfield, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//RGBA format
+	glTextureStorage3D(this->terrain_heightfield, 1, GL_RGBA16, static_cast<int>(chunk_settings->MapSize.x), static_cast<int>(chunk_settings->MapSize.y), chunk_num);
+	cudaGraphicsGLRegisterImage(&this->heightfield_texture_res, this->terrain_heightfield, GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard);
 
 	//init clear buffers that are used to clear texture when new rendered chunks are loaded (we need to clear the previous chunk data)
 	cudaMallocHost(&this->quad_clear, totaltexture_size * 4);
@@ -59,16 +50,15 @@ STPChunkManager::~STPChunkManager() {
 	}
 
 	//unregister resource
-	cudaGraphicsUnregisterResource(this->heightfield_texture_res[0]);
-	cudaGraphicsUnregisterResource(this->heightfield_texture_res[1]);
+	cudaGraphicsUnregisterResource(this->heightfield_texture_res);
 	//delete texture
-	glDeleteTextures(2, this->terrain_heightfield);
+	glDeleteTextures(1, &this->terrain_heightfield);
 
 	//delete clear buffer
 	cudaFreeHost(this->quad_clear);
 }
 
-bool STPChunkManager::loadMap(vec2 chunkPos, const cudaArray_t destination[2]) {
+bool STPChunkManager::loadRenderingBuffer(vec2 chunkPos, const cudaArray_t destination) {
 	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
 
 	//ask provider if we can get the chunk
@@ -81,10 +71,7 @@ bool STPChunkManager::loadMap(vec2 chunkPos, const cudaArray_t destination[2]) {
 		bool no_error = true;
 		no_error &= cudaSuccess == cudaStreamCreateWithFlags(&copy_stream, cudaStreamNonBlocking);
 		//host array does not have pitch so pitch = width
-		no_error &= cudaSuccess == cudaMemcpy2DToArrayAsync(destination[0], 0, 0, chunk->getCacheMap(STPChunk::STPMapType::Heightmap),
-			static_cast<int>(chunk->getSize().x) * sizeof(unsigned short), static_cast<int>(chunk->getSize().x) * sizeof(unsigned short),
-			static_cast<int>(chunk->getSize().y), cudaMemcpyHostToDevice, copy_stream);
-		no_error &= cudaSuccess == cudaMemcpy2DToArrayAsync(destination[1], 0, 0, chunk->getCacheMap(STPChunk::STPMapType::Normalmap),
+		no_error &= cudaSuccess == cudaMemcpy2DToArrayAsync(destination, 0, 0, chunk->getRenderingBuffer(),
 			static_cast<int>(chunk->getSize().x) * sizeof(unsigned short) * 4, static_cast<int>(chunk->getSize().x) * sizeof(unsigned short) * 4,
 			static_cast<int>(chunk->getSize().y), cudaMemcpyHostToDevice, copy_stream);
 		no_error &= cudaSuccess == cudaStreamSynchronize(copy_stream);
@@ -97,15 +84,12 @@ bool STPChunkManager::loadMap(vec2 chunkPos, const cudaArray_t destination[2]) {
 	return false;
 }
 
-void STPChunkManager::clearMap(const cudaArray_t destination[2]) {
+void STPChunkManager::clearRenderingBuffer(const cudaArray_t destination) {
 	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
 	//clear unloaded chunk, so the engine won't display the chunk from previous rendered chunks
 	cudaStream_t clear_stream;
 	cudaStreamCreateWithFlags(&clear_stream, cudaStreamNonBlocking);
-	cudaMemcpy2DToArrayAsync(destination[0], 0, 0, this->quad_clear,
-		static_cast<int>(chunk_settings->MapSize.x) * sizeof(unsigned short), static_cast<int>(chunk_settings->MapSize.x) * sizeof(unsigned short),
-		static_cast<int>(chunk_settings->MapSize.y), cudaMemcpyHostToDevice, clear_stream);
-	cudaMemcpy2DToArrayAsync(destination[1], 0, 0, this->quad_clear,
+	cudaMemcpy2DToArrayAsync(destination, 0, 0, this->quad_clear,
 		static_cast<int>(chunk_settings->MapSize.x) * sizeof(unsigned short) * 4, static_cast<int>(chunk_settings->MapSize.x) * sizeof(unsigned short) * 4,
 		static_cast<int>(chunk_settings->MapSize.y), cudaMemcpyHostToDevice, clear_stream);
 	cudaStreamSynchronize(clear_stream);
@@ -113,8 +97,7 @@ void STPChunkManager::clearMap(const cudaArray_t destination[2]) {
 }
 
 void STPChunkManager::generateMipmaps() {
-	glGenerateTextureMipmap(*(this->terrain_heightfield));
-	glGenerateTextureMipmap(*(this->terrain_heightfield + 1));
+	glGenerateTextureMipmap(this->terrain_heightfield);
 }
 
 bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
@@ -126,7 +109,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 	}
 
 	//async chunk loader
-	auto asyncChunkLoader = [this, &loading_chunks](list<pair<vec2, unique_ptr<cudaArray_t[]>>>& chunk_data) -> unsigned int {
+	auto asyncChunkLoader = [this, &loading_chunks](list<pair<vec2, cudaArray_t>>& chunk_data) -> unsigned int {
 		//chunk future being loading and the chunk ID
 		list<pair<future<bool>, int>> loading_status;
 		
@@ -140,7 +123,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 		for (auto it = chunk_data.begin(); it != chunk_data.end(); it++) {
 			//load the chunk into rendering buffer only when the chunk is no loaded yet
 			if (!loading_chunks[i].second) {
-				loading_status.emplace_back(this->compute_pool->enqueue_future(bind(&STPChunkManager::loadMap, this, _1, _2), it->first, it->second.get()), i);
+				loading_status.emplace_back(this->compute_pool->enqueue_future(bind(&STPChunkManager::loadRenderingBuffer, this, _1, _2), it->first, it->second), i);
 			}
 			i++;
 		}
@@ -165,21 +148,20 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 
 	//texture storage
 	//map the texture, all opengl related work must be done on the main contexted thread
-	cudaGraphicsMapResources(2, this->heightfield_texture_res);
+	cudaGraphicsMapResources(1, &this->heightfield_texture_res);
 	//get the mapped array on the main contexte thread
 	for (int i = 0; i < loading_chunks.size(); i++) {
 		auto node = loading_chunks[i];
 		//allocating spaces for this chunk (2 tetxures per chunk)
-		unique_ptr<cudaArray_t[]> heightfield_ptr = make_unique<cudaArray_t[]>(2);
+		cudaArray_t heightfield_ptr;
 		//map each texture
-		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[0]), this->heightfield_texture_res[0], i, 0);
-		cudaGraphicsSubResourceGetMappedArray(&(heightfield_ptr[1]), this->heightfield_texture_res[1], i, 0);
+		cudaGraphicsSubResourceGetMappedArray(&heightfield_ptr, this->heightfield_texture_res, i, 0);
 		//clear up the render buffer for every chunk
 		if (this->trigger_clearBuffer) {
-			this->clearMap(heightfield_ptr.get());
+			this->clearRenderingBuffer(heightfield_ptr);
 		}
 
-		this->chunk_data.emplace_back(node.first, std::move(heightfield_ptr));
+		this->chunk_data.emplace_back(node.first, heightfield_ptr);
 	}
 	this->trigger_clearBuffer = false;
 	//start loading chunk
@@ -245,7 +227,7 @@ int STPChunkManager::SyncloadChunks() {
 		//wait for finish first
 		const unsigned int res = this->ChunkLoader.get();
 		//unmap the chunk
-		if (cudaGraphicsUnmapResources(2, this->heightfield_texture_res) != cudaSuccess) {
+		if (cudaGraphicsUnmapResources(1, &this->heightfield_texture_res) != cudaSuccess) {
 			throw std::runtime_error("CUDA resource cannot be released");
 		}
 

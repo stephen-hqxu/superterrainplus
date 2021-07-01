@@ -36,8 +36,8 @@ out VertexTES{
 uniform vec3 cameraPos;
 uniform float altitude;
 
-//Maps
-layout (binding = 0) uniform sampler2DArray Heightmap;
+//Heightfield, RGB is normalmap, A is heightmap
+layout (binding = 0) uniform sampler2DArray Heightfield;
 
 //Functions
 vec2 toCartesian2D(vec2, vec2, vec2);
@@ -54,7 +54,7 @@ void main(){
 	tes_out.chunkID = tes_in[0].chunkID;//flat chunkID will be the same across the same patch
 
 	//displace the terrain, moving the vertices upward
-	terrain_vertices.xyz += normalize(tes_out.normal) * texture(Heightmap, vec3(tes_out.texCoord, uintBitsToFloat(tes_out.chunkID))).r * altitude;
+	terrain_vertices.xyz += normalize(tes_out.normal) * texture(Heightfield, vec3(tes_out.texCoord, uintBitsToFloat(tes_out.chunkID))).a * altitude;
 	gl_Position = terrain_vertices;
 }
 

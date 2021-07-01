@@ -27,15 +27,15 @@ __host__ STPRainDrop::STPFreeSlipManager::~STPFreeSlipManager() {
 
 }
 
-__device__ __inline__ float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) {
+__device__ float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) {
 	return const_cast<float&>(const_cast<const STPRainDrop::STPFreeSlipManager*>(this)->operator[](global));
 }
 
-__device__ __inline__ const float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) const {
+__device__ const float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) const {
 	return this->Heightmap[this->operator()(global)];
 }
 
-__device__ __inline__ unsigned int STPRainDrop::STPFreeSlipManager::operator()(unsigned int global) const {
+__device__ unsigned int STPRainDrop::STPFreeSlipManager::operator()(unsigned int global) const {
 	return this->Index[global];
 }
 

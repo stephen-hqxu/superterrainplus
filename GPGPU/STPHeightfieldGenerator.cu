@@ -66,21 +66,11 @@ __global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager, STPHeightf
 __global__ void performPostErosionInterpolationKERNEL(STPRainDrop::STPFreeSlipManager, const uint2*, unsigned int);
 
 /**
- * @brief Generate the normal map for the height map within kernel
+ * @brief Generate the normal map for the height map within kernel, and combine two maps into a rendering buffer
  * @param heightmap - contains the height map that will be used to generate the normalmap, with free-slip manager
- * @param normalmap - normal map, will be used to store the output of the normal map
- * @return True if the normal map is successully generated without errors
+ * @param heightfield - will be used to store the output of the normal map in RGB channel, heightmap will be copied to A channel
 */
-__global__ void generateNormalmapKERNEL(STPRainDrop::STPFreeSlipManager, float*);
-
-/**
- * @brief Convert _32F format to _16
- * @param input The input image, each color channel occupies 32 bit (float)
- * @param output The output image, each color channel occupies 16 bit (unsigne short int).
- * @param channel How many channel in the texture, the input and output channel will have the same number of channel
- * @return True if conversion was successful without errors
-*/
-__global__ void floatToshortKERNEL(const float* const, unsigned short*, uint2, unsigned int);
+__global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager, unsigned short*);
 
 /**
  * @brief Generate a new global to local index table
@@ -267,26 +257,18 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	const unsigned int map_freeslip_size = freeslip_pixel * sizeof(float);
 	const unsigned int map16ui_freeslip_size = freeslip_pixel * sizeof(unsigned short);
 	const uint2 freeslip_dimension = make_uint2(this->Noise_Settings.Dimension.x * this->FreeSlipChunk.x, this->Noise_Settings.Dimension.y * this->FreeSlipChunk.y);
-	//heightmap and normalmap ptr
-	float* heightfield_freeslip_d[2] = { nullptr };
-	float* heightfield_freeslip_h[2] = { nullptr };
-	unsigned short* heightfield_formatted_d[2] = { nullptr };
-	unsigned short* heightfield_formatted_h[2] = { nullptr };
+	//heightmap
+	float* heightfield_freeslip_d = nullptr, *heightfield_freeslip_h = nullptr;
+	unsigned short* heightfield_formatted_d = nullptr, *heightfield_formatted_h = nullptr;
 
 	//Retrieve all flags
 	auto isFlagged = []__host__(STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
 		return (op & flag) != 0u;
 	};
-	const bool flags[4] = {
+	const bool flags[3] = {
 		isFlagged(operation, STPHeightfieldGenerator::HeightmapGeneration),
 		isFlagged(operation, STPHeightfieldGenerator::Erosion),
-		isFlagged(operation, STPHeightfieldGenerator::NormalmapGeneration),
-		isFlagged(operation, STPHeightfieldGenerator::Format)
-	};
-	//The format flags
-	const bool format_flags[2] = {
-		isFlagged(args.FormatHint, STPHeightfieldGenerator::FormatHeightmap),
-		isFlagged(args.FormatHint, STPHeightfieldGenerator::FormatNormalmap)
+		isFlagged(operation, STPHeightfieldGenerator::RenderingBufferGeneration)
 	};
 
 	//memory allocation
@@ -295,40 +277,20 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		unique_lock<mutex> lock(this->MapCacheDevice_lock);
 		//FP32
 		//we need heightmap for computation regardlessly
-		heightfield_freeslip_d[0] = reinterpret_cast<float*>(this->MapCacheDevice.allocate(map_freeslip_size));
-
-		if (flags[2] || (flags[3] && format_flags[1])) {
-			//if normal map formation is enabled, we need the device memory for input as well
-			heightfield_freeslip_d[1] = reinterpret_cast<float*>(this->MapCacheDevice.allocate(map_freeslip_size * 4u));
-		}
+		heightfield_freeslip_d = reinterpret_cast<float*>(this->MapCacheDevice.allocate(map_freeslip_size));
 		//INT16
-		if (flags[3]) {
-			if (format_flags[0]) {
-				heightfield_formatted_d[0] = reinterpret_cast<unsigned short*>(this->MapCacheDevice.allocate(map16ui_freeslip_size));
-			}
-			if (format_flags[1]) {
-				heightfield_formatted_d[1] = reinterpret_cast<unsigned short*>(this->MapCacheDevice.allocate(map16ui_freeslip_size * 4u));
-			}
+		if (flags[2]) {
+			heightfield_formatted_d = reinterpret_cast<unsigned short*>(this->MapCacheDevice.allocate(map16ui_freeslip_size * 4u));
 		}
 	}
 	//Host
 	{
 		unique_lock<mutex> lock(this->MapCachePinned_lock);
 		//FP32
-		heightfield_freeslip_h[0] = reinterpret_cast<float*>(this->MapCachePinned.allocate(map_freeslip_size));
-
-		if (flags[2] || (flags[3] && format_flags[1])) {
-			heightfield_freeslip_h[1] = reinterpret_cast<float*>(this->MapCachePinned.allocate(map_freeslip_size * 4u));
-		}
-
+		heightfield_freeslip_h = reinterpret_cast<float*>(this->MapCachePinned.allocate(map_freeslip_size));
 		//INT16
-		if (flags[3]) {
-			if (format_flags[0]) {
-				heightfield_formatted_h[0] = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size));
-			}
-			if (format_flags[1]) {
-				heightfield_formatted_h[1] = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size * 4u));
-			}
+		if (flags[2]) {
+			heightfield_formatted_h = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size * 4u));
 		}
 	}
 
@@ -344,53 +306,30 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	//Flag: HeightmapGeneration
 	if (flags[0]) {
 		//generate a new heightmap and store it to the output later
-		generateHeightmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_freeslip_d[0],
+		generateHeightmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_freeslip_d,
 			this->Noise_Settings.Dimension, make_float2(1.0f * this->Noise_Settings.Dimension.x / 2.0f, 1.0f * this->Noise_Settings.Dimension.y / 2.0f), args.HeightmapOffset);
 	}
 	else {
 		//no generation, use existing
-		no_error &= blockcopy_h2d(heightfield_freeslip_d[0], heightfield_freeslip_h[0], args.Heightmap32F, map_freeslip_size, map_size, num_pixel, stream);
+		no_error &= blockcopy_h2d(heightfield_freeslip_d, heightfield_freeslip_h, args.Heightmap32F, map_freeslip_size, map_size, num_pixel, stream);
 	}
 
 	//Flag: Erosion
 	if (flags[1]) {
 		//erode the heightmap, either from provided heightmap or generated previously
-		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d[0], this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
+		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d, this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
 		const unsigned erosionBrushCache_size = ErosionBrushSize * (sizeof(int) + sizeof(float));
 		performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, erosionBrushCache_size, stream >> > (heightmap_slip, this->RNG_Map);
 		//perform post erosion interpolation using interpolation lookup table
 		performPostErosionInterpolationKERNEL << <this->numBlock_Interpolation, this->numThreadperBlock_Erosion, 0, stream >> > (heightmap_slip, this->InterpolationIndex, this->InterpolationThreadRequired);
 	}
 
-	//Flag: Normalmap
+	//Flag: RenderingBufferGeneration
 	if (flags[2]) {
-		//generate normalmap from heightmap
-		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d[0], this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
+		//generate normalmap from heightmap and format into rendering buffer
+		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d, this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
 		const unsigned int cacheSize = (this->numThreadperBlock_Map.x + 2u) * (this->numThreadperBlock_Map.y + 2u) * sizeof(float);
-		generateNormalmapKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, cacheSize, stream >> > (heightmap_slip, heightfield_freeslip_d[1]);
-	}
-
-	//Flag: Format - moved STPImageConverter to here
-	if (flags[3]) {
-		if (format_flags[0]) {
-			//format heightmap
-			//heightmap will always be available
-			//format heightmap
-			floatToshortKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, 0, stream >> > (heightfield_freeslip_d[0], heightfield_formatted_d[0],
-				freeslip_dimension, 1);
-		}
-
-		if (format_flags[1]) {
-			//format normalmap
-			if (!flags[2]) {
-				//normalmap generation was not enabled? we need to copy from input
-				no_error &= blockcopy_h2d(heightfield_freeslip_d[1], heightfield_freeslip_h[1], args.Normalmap32F, map_freeslip_size * 4u, map_size * 4u, num_pixel * 4u, stream);
-			}
-			//if normalmap is generated, it's already available in device memory
-			floatToshortKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, 0, stream >> > (heightfield_freeslip_d[1], heightfield_formatted_d[1],
-				freeslip_dimension, 4);
-		}
-		
+		generateRenderingBufferKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, cacheSize, stream >> > (heightmap_slip, heightfield_formatted_d);
 	}
 	
 	//Store the result accordingly
@@ -398,22 +337,12 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	//heightmap will always be available
 	if (flags[0] || flags[1]) {
 		//copy all heightmap chunks back if heightmap has been modified
-		no_error &= blockcopy_d2h(args.Heightmap32F, heightfield_freeslip_h[0], heightfield_freeslip_d[0], map_freeslip_size, map_size, num_pixel, stream);
+		no_error &= blockcopy_d2h(args.Heightmap32F, heightfield_freeslip_h, heightfield_freeslip_d, map_freeslip_size, map_size, num_pixel, stream);
 	}
+	//copy the rendering buffer result if enabled
 	if (flags[2]) {
-		//if we have normalmap generated, also copy normalmap back to host
-		no_error &= blockcopy_d2h(args.Normalmap32F, heightfield_freeslip_h[1], heightfield_freeslip_d[1], map_freeslip_size * 4u, map_size * 4u, num_pixel * 4u, stream);
-	}
-	//copy the formatted result if enabled
-	if (flags[3]) {
-		if (format_flags[0]) {
-			//copy heightmap
-			no_error &= blockcopy_d2h(args.Heightmap16UI, heightfield_formatted_h[0], heightfield_formatted_d[0], map16ui_freeslip_size, map16ui_size, num_pixel, stream);
-		}
-		if (format_flags[1]) {
-			//copy normalmap
-			no_error &= blockcopy_d2h(args.Normalmap16UI, heightfield_formatted_h[1], heightfield_formatted_d[1], map16ui_freeslip_size * 4u, map16ui_size * 4u, num_pixel * 4u, stream);
-		}
+		//copy heightfield
+		no_error &= blockcopy_d2h(args.Heightfield16UI, heightfield_formatted_h, heightfield_formatted_d, map16ui_freeslip_size * 4u, map16ui_size * 4u, num_pixel * 4u, stream);
 	}
 
 	//waiting for finish
@@ -427,32 +356,20 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	//nullptr means not allocated
 	{
 		unique_lock<mutex> lock(this->MapCacheDevice_lock);
-		if (heightfield_freeslip_d[0] != nullptr) {
-			this->MapCacheDevice.deallocate(map_freeslip_size, heightfield_freeslip_d[0]);
+		if (heightfield_freeslip_d != nullptr) {
+			this->MapCacheDevice.deallocate(map_freeslip_size, heightfield_freeslip_d);
 		}
-		if (heightfield_freeslip_d[1] != nullptr) {
-			this->MapCacheDevice.deallocate(map_freeslip_size * 4u, heightfield_freeslip_d[1]);
-		}
-		if (heightfield_formatted_d[0] != nullptr) {
-			this->MapCacheDevice.deallocate(map16ui_freeslip_size, heightfield_formatted_d[0]);
-		}
-		if (heightfield_formatted_d[1] != nullptr) {
-			this->MapCacheDevice.deallocate(map16ui_freeslip_size * 4u, heightfield_formatted_d[1]);
+		if (heightfield_formatted_d != nullptr) {
+			this->MapCacheDevice.deallocate(map16ui_freeslip_size * 4u, heightfield_formatted_d);
 		}
 	}
 	{
 		unique_lock<mutex> lock(this->MapCachePinned_lock);
-		if (heightfield_freeslip_h[0] != nullptr) {
-			this->MapCachePinned.deallocate(map_freeslip_size, heightfield_freeslip_h[0]);
+		if (heightfield_freeslip_h != nullptr) {
+			this->MapCachePinned.deallocate(map_freeslip_size, heightfield_freeslip_h);
 		}
-		if (heightfield_freeslip_h[1] != nullptr) {
-			this->MapCachePinned.deallocate(map_freeslip_size * 4u, heightfield_freeslip_h[1]);
-		}
-		if (heightfield_formatted_h[0] != nullptr) {
-			this->MapCachePinned.deallocate(map16ui_freeslip_size, heightfield_formatted_h[0]);
-		}
-		if (heightfield_formatted_h[1] != nullptr) {
-			this->MapCachePinned.deallocate(map16ui_freeslip_size * 4u, heightfield_formatted_h[1]);
+		if (heightfield_formatted_h != nullptr) {
+			this->MapCachePinned.deallocate(map16ui_freeslip_size * 4u, heightfield_formatted_h);
 		}
 	}
 
@@ -690,7 +607,7 @@ __global__ void performPostErosionInterpolationKERNEL(STPRainDrop::STPFreeSlipMa
 	assert("Invalid flag identifier");
 }
 
-__global__ void generateNormalmapKERNEL(STPRainDrop::STPFreeSlipManager heightmap, float* normalmap) {
+__global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager heightmap, unsigned short* heightfield) {
 	//convert constant memory to usable class
 	SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const settings = reinterpret_cast<SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
 	//the current working pixel
@@ -702,6 +619,9 @@ __global__ void generateNormalmapKERNEL(STPRainDrop::STPFreeSlipManager heightma
 	const uint2& dimension = heightmap.FreeSlipRange;
 	auto clamp = []__device__(int val, int lower, int upper) -> int {
 		return max(lower, min(val, upper));
+	};
+	auto float2short = []__device__(float input) -> unsigned short {
+		return static_cast<unsigned short>(input * 65535u);
 	};
 
 	//Cache heightmap the current thread block needs since each pixel is accessed upto 9 times.
@@ -756,24 +676,12 @@ __global__ void generateNormalmapKERNEL(STPRainDrop::STPFreeSlipManager heightma
 	
 	//copy to the output, RGBA32F
 	const unsigned int index = heightmap(x + y * dimension.x);
-	normalmap[index * 4] = normal.x;//R
-	normalmap[index * 4 + 1] = normal.y;//G
-	normalmap[index * 4 + 2] = normal.z;//B
-	normalmap[index * 4 + 3] = 1.0f;//A
+	heightfield[index * 4] = float2short(normal.x);//R
+	heightfield[index * 4 + 1] = float2short(normal.y);//G
+	heightfield[index * 4 + 2] = float2short(normal.z);//B
+	heightfield[index * 4 + 3] = float2short(heightmapCache[x_c + y_c * cacheSize.x]);//A
 	
 	return;
-}
-
-__global__ void floatToshortKERNEL(const float* const input, unsigned short* output, uint2 dimension, unsigned int channel) {
-	//current working pixel
-	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
-		y = (blockIdx.y * blockDim.y) + threadIdx.y,
-		index = x + y * dimension.x;
-
-	//loop through all channels and output
-	for (int i = 0; i < channel; i++) {
-		output[index * channel + i] = static_cast<unsigned short>(input[index * channel + i] * 65535u);
-	}
 }
 
 __global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int rowCount, uint2 chunkRange, uint2 mapSize) {

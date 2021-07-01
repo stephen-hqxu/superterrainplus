@@ -49,8 +49,8 @@ uniform TessLevel tessParameters;
 //2.0 is the default value, mesh will half its original LoD at 50% of tessllation distance
 uniform float shiftFactor;
 
-//Maps
-layout (binding = 0) uniform sampler2DArray Heightmap;
+//Heightfield, RGB is normalmap, A is heightmap
+layout (binding = 0) uniform sampler2DArray Heightfield;
 
 //Functions
 float[3] calcPatchDistance(vec3);
@@ -81,7 +81,7 @@ float[3] calcPatchDistance(vec3 origin){
 	//calculate distance from origin to each vertex
 	for(int i = 0; i < 3; i++){
 		//calculate the vertex position on the actual terrain
-		vec3 terrainVertexPos = gl_out[i].gl_Position.xyz + normalize(tcs_out[i].normal) * altitude * texture(Heightmap, vec3(tcs_out[i].texCoord, uintBitsToFloat(tcs_out[i].chunkID))).r;
+		vec3 terrainVertexPos = gl_out[i].gl_Position.xyz + normalize(tcs_out[i].normal) * altitude * texture(Heightfield, vec3(tcs_out[i].texCoord, uintBitsToFloat(tcs_out[i].chunkID))).a;
 		//calculate distance
 		patch_distance[i] = distance(origin, terrainVertexPos);
 	}

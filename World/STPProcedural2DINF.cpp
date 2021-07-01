@@ -49,8 +49,7 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 		return false;
 	}
 	//binding sampler
-	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Heightmap"), 0);
-	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Normalmap_Terrain"), 1);
+	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Heightfield"), 0);
 	//those parameters won't change, there is no need to resend them in rendering loop
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("rendered_chunk_num"), 1, value_ptr(chunk_settings->RenderedChunk));
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("chunk_dimension"), 1, value_ptr(chunk_settings->ChunkSize));
@@ -164,8 +163,7 @@ void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& proje
 	//render, sync textures to make sure they are all ready before loading
 	this->SyncloadChunks();
 	this->generateMipmaps();
-	glBindTextureUnit(0, *(this->terrain_heightfield));//heightmap
-	glBindTextureUnit(1, *(this->terrain_heightfield + 1));//normalmap
+	glBindTextureUnit(0, this->terrain_heightfield);//heightfield
 	//terrain surface texture isn't ready yet
 	//const unsigned int instance_count = this->CHUNK_SIZE.x * this->CHUNK_SIZE.y * this->RENDERED_CHUNK.x * this->RENDERED_CHUNK.y;
 	glBindVertexArray(this->plane_vao);

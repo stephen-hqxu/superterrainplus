@@ -43,8 +43,8 @@ out VertexGS{
 uniform mat4 Model;
 uniform vec3 cameraPos;
 
-//Textures
-layout (binding = 1) uniform sampler2DArray Normalmap_Terrain;//Terrain normal map
+//Heightfield, RGB is normalmap, A is heightmap
+layout (binding = 0) uniform sampler2DArray Heightfield;
 
 //Functions
 void emitFace(int);
@@ -88,7 +88,7 @@ void emitFace(int layer){
 
 			//We need to calculate TBN terrain normal->terrain texture normal
 			//calculate the terrain normal. We need to translate it from [0,1] to [-1,1] first then transform it to world space
-			terrain_normal = TBN_plane * (texture(Normalmap_Terrain, vec3(gs_in[i].texCoord, gs_in[i].chunkID)).rgb * 2.0f - 1.0f);
+			terrain_normal = TBN_plane * (texture(Heightfield, vec3(gs_in[i].texCoord, gs_in[i].chunkID)).rgb * 2.0f - 1.0f);
 			TBN_terrain = transpose(calcTerrainTBN(tangent_bitangent, terrain_normal));//world to tangent
 		}
 
