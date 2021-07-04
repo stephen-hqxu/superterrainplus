@@ -176,24 +176,21 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STP
 	//copy data
 	cudaMemcpy(this->simplex, &simplex_h, sizeof(STPSimplexNoise), cudaMemcpyHostToDevice);
 
+	//TODO: use CUDA API to dynamically determine launch configuration
 	//kernel parameters
 	this->numThreadperBlock_Map = dim3(32u, 32u);
 	this->numBlock_Map = dim3(noise_settings->Dimension.x / numThreadperBlock_Map.x, noise_settings->Dimension.y / numThreadperBlock_Map.y);
 	this->numThreadperBlock_Erosion = 1024u;
-	this->numBlock_Erosion = 0;//This will be set after user call the setErosionIterationCUDA() method
-	this->numBlock_FreeslipMap = dim3(0u, 0u);//will be set later
+	this->numThreadperBlock_Interpolation = 1024u;
 
 	//set global local index
-	if (!this->initLocalGlobalIndexCUDA()) {
-		throw std::runtime_error("Heightfield generator initialisation failed::Could not initialise local global index table");
-	}
+	this->initLocalGlobalIndexCUDA();
 	//set interpolation index
-	if (!this->initInterpolationIndexCUDA()) {
-		throw std::runtime_error("Heightfield generator initialisation failed::Could not initialise interpolation index table");
-	}
+	this->initInterpolationIndexCUDA();
 }
 
 __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
+	//TODO: maybe use a smart ptr with custom deleter?
 	cudaFree(this->simplex);
 	//check if the rng has been init
 	if (this->RNG_Map != nullptr) {
@@ -249,14 +246,13 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	//this is the size for a texture in one channel
 	const unsigned int num_pixel = this->Noise_Settings.Dimension.x * this->Noise_Settings.Dimension.y;
 	const unsigned int map_size = num_pixel * sizeof(float);
-	const unsigned int map16ui_size = num_pixel * sizeof(unsigned short);
+	const unsigned int map16ui_size = num_pixel * sizeof(unsigned short) * 4u;
 	//if free-slip erosion is disabled, it should be one.
 	//if enabled, it should be the product of two dimension in free-slip chunk.
 	const unsigned int freeslip_chunk_total = args.Heightmap32F.size();
 	const unsigned int freeslip_pixel = freeslip_chunk_total * num_pixel;
 	const unsigned int map_freeslip_size = freeslip_pixel * sizeof(float);
-	const unsigned int map16ui_freeslip_size = freeslip_pixel * sizeof(unsigned short);
-	const uint2 freeslip_dimension = make_uint2(this->Noise_Settings.Dimension.x * this->FreeSlipChunk.x, this->Noise_Settings.Dimension.y * this->FreeSlipChunk.y);
+	const unsigned int map16ui_freeslip_size = freeslip_pixel * sizeof(unsigned short) * 4u;
 	//heightmap
 	float* heightfield_freeslip_d = nullptr, *heightfield_freeslip_h = nullptr;
 	unsigned short* heightfield_formatted_d = nullptr, *heightfield_formatted_h = nullptr;
@@ -265,7 +261,7 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	auto isFlagged = []__host__(STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
 		return (op & flag) != 0u;
 	};
-	const bool flags[3] = {
+	const bool flag[3] = {
 		isFlagged(operation, STPHeightfieldGenerator::HeightmapGeneration),
 		isFlagged(operation, STPHeightfieldGenerator::Erosion),
 		isFlagged(operation, STPHeightfieldGenerator::RenderingBufferGeneration)
@@ -279,8 +275,8 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		//we need heightmap for computation regardlessly
 		heightfield_freeslip_d = reinterpret_cast<float*>(this->MapCacheDevice.allocate(map_freeslip_size));
 		//INT16
-		if (flags[2]) {
-			heightfield_formatted_d = reinterpret_cast<unsigned short*>(this->MapCacheDevice.allocate(map16ui_freeslip_size * 4u));
+		if (flag[2]) {
+			heightfield_formatted_d = reinterpret_cast<unsigned short*>(this->MapCacheDevice.allocate(map16ui_freeslip_size));
 		}
 	}
 	//Host
@@ -289,8 +285,8 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		//FP32
 		heightfield_freeslip_h = reinterpret_cast<float*>(this->MapCachePinned.allocate(map_freeslip_size));
 		//INT16
-		if (flags[2]) {
-			heightfield_formatted_h = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size * 4u));
+		if (flag[2]) {
+			heightfield_formatted_h = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size));
 		}
 	}
 
@@ -304,7 +300,7 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	}
 	
 	//Flag: HeightmapGeneration
-	if (flags[0]) {
+	if (flag[0]) {
 		//generate a new heightmap and store it to the output later
 		generateHeightmapKERNEL << <this->numBlock_Map, this->numThreadperBlock_Map, 0, stream >> > (this->simplex, heightfield_freeslip_d,
 			this->Noise_Settings.Dimension, make_float2(1.0f * this->Noise_Settings.Dimension.x / 2.0f, 1.0f * this->Noise_Settings.Dimension.y / 2.0f), args.HeightmapOffset);
@@ -314,35 +310,41 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		no_error &= blockcopy_h2d(heightfield_freeslip_d, heightfield_freeslip_h, args.Heightmap32F, map_freeslip_size, map_size, num_pixel, stream);
 	}
 
-	//Flag: Erosion
-	if (flags[1]) {
-		//erode the heightmap, either from provided heightmap or generated previously
+	if (flag[1] || flag[2]) {
 		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d, this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
-		const unsigned erosionBrushCache_size = ErosionBrushSize * (sizeof(int) + sizeof(float));
-		performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, erosionBrushCache_size, stream >> > (heightmap_slip, this->RNG_Map);
-		//perform post erosion interpolation using interpolation lookup table
-		performPostErosionInterpolationKERNEL << <this->numBlock_Interpolation, this->numThreadperBlock_Erosion, 0, stream >> > (heightmap_slip, this->InterpolationIndex, this->InterpolationThreadRequired);
-	}
 
-	//Flag: RenderingBufferGeneration
-	if (flags[2]) {
-		//generate normalmap from heightmap and format into rendering buffer
-		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d, this->GlobalLocalIndex, this->FreeSlipChunk, this->Noise_Settings.Dimension);
-		const unsigned int cacheSize = (this->numThreadperBlock_Map.x + 2u) * (this->numThreadperBlock_Map.y + 2u) * sizeof(float);
-		generateRenderingBufferKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, cacheSize, stream >> > (heightmap_slip, heightfield_formatted_d);
+		//Flag: Erosion
+		if (flag[1]) {
+			//erode the heightmap, either from provided heightmap or generated previously
+			const unsigned erosionBrushCache_size = ErosionBrushSize * (sizeof(int) + sizeof(float));
+			performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, erosionBrushCache_size, stream >> > (heightmap_slip, this->RNG_Map);
+			//check if free slip has been enabled
+			if (this->InterpolationThreadRequired > 0u) {
+				//perform post erosion interpolation using interpolation lookup table
+				performPostErosionInterpolationKERNEL << <this->numBlock_Interpolation, this->numThreadperBlock_Interpolation, 0, stream >> > (heightmap_slip, this->InterpolationIndex, this->InterpolationThreadRequired);
+			}
+		}
+
+		//Flag: RenderingBufferGeneration
+		if (flag[2]) {
+			//generate normalmap from heightmap and format into rendering buffer
+			const unsigned int cacheSize = (this->numThreadperBlock_Map.x + 2u) * (this->numThreadperBlock_Map.y + 2u) * sizeof(float);
+			generateRenderingBufferKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map, cacheSize, stream >> > (heightmap_slip, heightfield_formatted_d);
+		}
 	}
+	
 	
 	//Store the result accordingly
 	//copy the result back to the host
 	//heightmap will always be available
-	if (flags[0] || flags[1]) {
+	if (flag[0] || flag[1]) {
 		//copy all heightmap chunks back if heightmap has been modified
 		no_error &= blockcopy_d2h(args.Heightmap32F, heightfield_freeslip_h, heightfield_freeslip_d, map_freeslip_size, map_size, num_pixel, stream);
 	}
 	//copy the rendering buffer result if enabled
-	if (flags[2]) {
+	if (flag[2]) {
 		//copy heightfield
-		no_error &= blockcopy_d2h(args.Heightfield16UI, heightfield_formatted_h, heightfield_formatted_d, map16ui_freeslip_size * 4u, map16ui_size * 4u, num_pixel * 4u, stream);
+		no_error &= blockcopy_d2h(args.Heightfield16UI, heightfield_formatted_h, heightfield_formatted_d, map16ui_freeslip_size, map16ui_size, num_pixel * 4u, stream);
 	}
 
 	//waiting for finish
@@ -360,7 +362,7 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 			this->MapCacheDevice.deallocate(map_freeslip_size, heightfield_freeslip_d);
 		}
 		if (heightfield_formatted_d != nullptr) {
-			this->MapCacheDevice.deallocate(map16ui_freeslip_size * 4u, heightfield_formatted_d);
+			this->MapCacheDevice.deallocate(map16ui_freeslip_size, heightfield_formatted_d);
 		}
 	}
 	{
@@ -369,7 +371,7 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 			this->MapCachePinned.deallocate(map_freeslip_size, heightfield_freeslip_h);
 		}
 		if (heightfield_formatted_h != nullptr) {
-			this->MapCachePinned.deallocate(map16ui_freeslip_size * 4u, heightfield_formatted_h);
+			this->MapCachePinned.deallocate(map16ui_freeslip_size, heightfield_formatted_h);
 		}
 	}
 
@@ -405,34 +407,41 @@ __host__ unsigned int STPHeightfieldGenerator::getErosionIteration() const {
 	return this->NumRaindrop;
 }
 
-__host__ bool STPHeightfieldGenerator::initLocalGlobalIndexCUDA() {
-	//TODO: Don't generate the table when FreeSlipChunk.xy are both 1, and in STPRainDrop don't use the table
+__host__ void STPHeightfieldGenerator::initLocalGlobalIndexCUDA() {
 	const uint2& dimension = this->Noise_Settings.Dimension;
 	const uint2& range = this->FreeSlipChunk;
-
 	const uint2 global_dimension = make_uint2(range.x * dimension.x, range.y * dimension.y);
 	//launch parameters
 	this->numBlock_FreeslipMap = dim3(global_dimension.x / this->numThreadperBlock_Map.x, global_dimension.y / this->numThreadperBlock_Map.y);
-	bool no_error = true;
+	//Don't generate the table when FreeSlipChunk.xy are both 1, and in STPRainDrop don't use the table
+	if (range.x == 1u && range.y == 1u) {
+		this->GlobalLocalIndex = nullptr;
+		return;
+	}
 
+	bool no_error = true;
 	//make sure all previous takes are finished
 	no_error &= cudaSuccess == cudaDeviceSynchronize();
 	//allocation
-	if (this->GlobalLocalIndex != nullptr) {
-		no_error &= cudaSuccess == cudaFree(this->GlobalLocalIndex);
-	}
 	no_error &= cudaSuccess == cudaMalloc(&this->GlobalLocalIndex, sizeof(unsigned int) * global_dimension.x * global_dimension.y);
-
 	//compute
 	initGlobalLocalIndexKERNEL << <this->numBlock_FreeslipMap, this->numThreadperBlock_Map >> > (this->GlobalLocalIndex, global_dimension.x, range, dimension);
 	no_error &= cudaSuccess == cudaDeviceSynchronize();
 
-	return no_error;
+	if (!no_error) {
+		throw std::runtime_error("Heightfield generator initialisation failed::Could not initialise local global index table");
+	}
 }
 
-__host__ bool STPHeightfieldGenerator::initInterpolationIndexCUDA() {
+__host__ void STPHeightfieldGenerator::initInterpolationIndexCUDA() {
 	const uint2& dimension = this->Noise_Settings.Dimension;
 	const uint2& range = this->FreeSlipChunk;
+	//Disable interpolation when freeslip erosion is not enabled
+	if (range.x == 1u && range.y == 1u) {
+		this->InterpolationThreadRequired = 0u;
+		return;
+	}
+
 	//Number of thread that covers edge interpolation
 	const unsigned int threadEdge = (dimension.x - 2u) * (range.x * (range.x - 1u)) + (dimension.y - 2u) * (range.y * (range.y - 1u));
 	//Number of thread that covers corner interpolation
@@ -440,21 +449,19 @@ __host__ bool STPHeightfieldGenerator::initInterpolationIndexCUDA() {
 	//Total number of thread needed for all interpolation, note that the actual number of thread launched might be more than this number
 	this->InterpolationThreadRequired = threadEdge + threadCorner;
 	//launch parameters
-	this->numBlock_Interpolation = static_cast<unsigned int>(ceilf(1.0f * this->InterpolationThreadRequired / this->numThreadperBlock_Erosion));
+	this->numBlock_Interpolation = static_cast<unsigned int>(ceilf(1.0f * this->InterpolationThreadRequired / this->numThreadperBlock_Interpolation));
 	bool no_error = true;
 
 	no_error &= cudaSuccess == cudaDeviceSynchronize();
 	//allocation
-	if (this->InterpolationIndex != nullptr) {
-		no_error &= cudaSuccess == cudaFree(this->InterpolationIndex);
-	}
 	no_error &= cudaSuccess == cudaMalloc(&this->InterpolationIndex, sizeof(uint2) * this->InterpolationThreadRequired);
-
 	//compute
-	initInterpolationIndexKERNEL << <this->numBlock_Interpolation, this->numThreadperBlock_Erosion >> > (this->InterpolationIndex, range, dimension, threadEdge, this->InterpolationThreadRequired);
+	initInterpolationIndexKERNEL << <this->numBlock_Interpolation, this->numThreadperBlock_Interpolation >> > (this->InterpolationIndex, range, dimension, threadEdge, this->InterpolationThreadRequired);
 	no_error &= cudaSuccess == cudaDeviceSynchronize();
 
-	return no_error;
+	if (!no_error) {
+		throw std::runtime_error("Heightfield generator initialisation failed::Could not initialise interpolation index table");
+	}
 }
 
 __device__ __inline__ float3 normalize3DKERNEL(float3 vec3) {

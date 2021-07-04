@@ -68,7 +68,8 @@ namespace SuperTerrainPlus {
 				 * @brief Init the free slip manager.
 				 * The center chunk will be determined automatically
 				 * @param heightmap The heightmap array, all chunks should be arranged in a linear array
-				 * @param index The lookup table to convert global index to local index
+				 * @param index The lookup table to convert global index to local index.
+				 * If nullptr is provided (meaning no lookup table), global index will be used directly to reference heightmap.
 				 * @param range Free slip range in the unit of chunk
 				 * @param mapSize The size of the each heightmap
 				*/

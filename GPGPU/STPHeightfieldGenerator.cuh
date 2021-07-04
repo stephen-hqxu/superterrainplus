@@ -37,8 +37,6 @@ namespace SuperTerrainPlus {
 
 			//STPGeneratorOperation controls the operations to perform during heightfield generation
 			typedef unsigned short STPGeneratorOperation;
-			//STPFormatGuide provides instruction to the formatter that which map should be formatted
-			typedef unsigned short STPFormatGuide;
 
 			//TODO You can change your preferred RNG here!
 			//Choosen generator for curand
@@ -149,7 +147,7 @@ namespace SuperTerrainPlus {
 			//Launch parameter for texture
 			dim3 numThreadperBlock_Map, numBlock_Map, numBlock_FreeslipMap;
 			//Launch parameter for hydraulic erosion and interpolation
-			unsigned int numThreadperBlock_Erosion, numBlock_Erosion, numBlock_Interpolation;
+			unsigned int numThreadperBlock_Erosion, numBlock_Erosion, numThreadperBlock_Interpolation, numBlock_Interpolation;
 
 			/**
 			 * @brief Simplex noise generator, on device
@@ -212,15 +210,13 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Initialise the local global index lookup table
-			 * @return True if generation is successful without errors
 			*/
-			__host__ bool initLocalGlobalIndexCUDA();
+			__host__ void initLocalGlobalIndexCUDA();
 
 			/**
 			 * @brief Initialise the interpolation index lookup table
-			 * @return True if generation is successful without errors
 			*/
-			__host__ bool initInterpolationIndexCUDA();
+			__host__ void initInterpolationIndexCUDA();
 
 		public:
 

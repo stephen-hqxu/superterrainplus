@@ -36,7 +36,7 @@ __device__ const float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int
 }
 
 __device__ unsigned int STPRainDrop::STPFreeSlipManager::operator()(unsigned int global) const {
-	return this->Index[global];
+	return this->Index == nullptr ? global : this->Index[global];
 }
 
 __device__ float3 STPRainDrop::calcHeightGradients(const STPFreeSlipManager& map) const {
