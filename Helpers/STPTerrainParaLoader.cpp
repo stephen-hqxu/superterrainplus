@@ -6,7 +6,7 @@ using std::stof;
 using std::stoi;
 using std::stod;
 
-STPSettings::STPMeshSettings STPTerrainParaLoader::getProcedural2DINFRenderingParameters(SIMPLE::SISection& section) {
+STPSettings::STPMeshSettings STPTerrainParaLoader::getProcedural2DINFRenderingParameters(const SIMPLE::SISection& section) {
 	STPSettings::STPMeshSettings rendering_options;
 	STPSettings::STPMeshSettings::STPTessellationSettings tess_options;
 
@@ -23,7 +23,7 @@ STPSettings::STPMeshSettings STPTerrainParaLoader::getProcedural2DINFRenderingPa
 	return rendering_options;
 }
 
-STPSettings::STPChunkSettings STPTerrainParaLoader::getProcedural2DINFChunksParameters(SIMPLE::SISection& section) {
+STPSettings::STPChunkSettings STPTerrainParaLoader::getProcedural2DINFChunksParameters(const SIMPLE::SISection& section) {
 	STPSettings::STPChunkSettings chunks_options;
 
 	chunks_options.MapSize = uvec2(
@@ -48,12 +48,16 @@ STPSettings::STPChunkSettings STPTerrainParaLoader::getProcedural2DINFChunksPara
 		stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[10])),
 		stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[11]))
 	);
-	chunks_options.ChunkScaling = stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[12]));
+	chunks_options.FreeSlipChunk = uvec2(
+		stoul(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[12])),
+		stoul(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[13]))
+	);
+	chunks_options.ChunkScaling = stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[14]));
 
 	return chunks_options;
 }
 
-STPSettings::STPHeightfieldSettings STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(SIMPLE::SISection& section, glm::uvec2 mapSize) {
+STPSettings::STPHeightfieldSettings STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(const SIMPLE::SISection& section, glm::uvec2 slipRange) {
 	//get the default settings
 	STPSettings::STPHeightfieldSettings launch_options;
 	
@@ -63,7 +67,7 @@ STPSettings::STPHeightfieldSettings STPTerrainParaLoader::getProcedural2DINFGene
 	launch_options.Persistence = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[2]));
 	launch_options.Lacunarity = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[3]));
 	launch_options.Strength = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[4]));
-	launch_options.setErosionBrushRadius(make_uint2(mapSize.x, mapSize.y), stoul(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[5])));
+	launch_options.setErosionBrushRadius(make_uint2(slipRange.x, slipRange.y), stoul(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[5])));
 	launch_options.Inertia = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[6]));
 	launch_options.SedimentCapacityFactor = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[7]));
 	launch_options.minSedimentCapacity = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[8]));
@@ -80,7 +84,7 @@ STPSettings::STPHeightfieldSettings STPTerrainParaLoader::getProcedural2DINFGene
 	return launch_options;
 }
 
-STPSettings::STPSimplexNoiseSettings STPTerrainParaLoader::getSimplex2DNoiseParameters(SIMPLE::SISection& section, glm::uvec2 mapSize) {
+STPSettings::STPSimplexNoiseSettings STPTerrainParaLoader::getSimplex2DNoiseParameters(const SIMPLE::SISection& section, glm::uvec2 mapSize) {
 	auto noise_option = STPSettings::STPSimplexNoiseSettings();
 
 	noise_option.Seed = stoull(section(STPTerrainParaLoader::Simplex2DNoiseVariables[0]));

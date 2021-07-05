@@ -5,8 +5,6 @@
 //System ADT
 #include  <memory>
 #include <unordered_map>
-//Thread safety
-#include <shared_mutex>
 //Chunks
 #include "STPChunk.h"
 
@@ -22,7 +20,10 @@ namespace SuperTerrainPlus {
 	 * STPChunkStorage is thread safe.
 	*/
 	class STPChunkStorage {
-	private:
+	public:
+
+		//A pair indicate the status of in-place chunk addition
+		typedef std::pair<bool, STPChunk*> STPChunkConstructed;
 
 		/**
 		 * @brief The hash function for the glm::vec2
@@ -36,15 +37,15 @@ namespace SuperTerrainPlus {
 			*/
 			size_t operator()(const glm::vec2&) const;
 		};
+
+	private:
+
 		//Hash table that stores the chunks by world position
 		typedef std::unordered_map<glm::vec2, std::unique_ptr<STPChunk>, STPHashvec2> STPChunkCache;
 
 		//chunk storage
 		//the key will be the x,z world position of each chunk
 		STPChunkCache TerrainMap2D;
-		
-		//thread safety
-		mutable std::shared_mutex chunk_storage_lock;
 
 	public:
 
@@ -64,12 +65,13 @@ namespace SuperTerrainPlus {
 		~STPChunkStorage();
 
 		/**
-		 * @brief Add a new chunk to the storage.
-		 * @param chunkPos new chunk world position, make sure the pointer is dynamic
-		 * @param chunk new chunk with data
-		 * @return True if the chunk has been added, false if chunk exists thus it won't be inserted
+		 * @brief Construct a new chunk in-place if not presented. Otherwise return the prsented chunk
+		 * @param chunkPos The world position of the chunk
+		 * @param mapSize The size of the map for the chunk
+		 * @return If chunk is not presented, it's constructed with provided arguments and return true and the new pointer
+		 * Otherwise, return false and the pointer to the original chunk
 		*/
-		bool addChunk(glm::vec2, STPChunk*);
+		STPChunkConstructed constructChunk(glm::vec2, glm::uvec2);
 
 		/**
 		 * @brief Get the chunk by its world position

@@ -15,6 +15,7 @@
 #include "../Helpers/STPMemoryPool.hpp"
 //Settings
 #include "../Settings/STPHeightfieldSettings.hpp"
+#include "../Settings/STPChunkSettings.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -36,8 +37,6 @@ namespace SuperTerrainPlus {
 
 			//STPGeneratorOperation controls the operations to perform during heightfield generation
 			typedef unsigned short STPGeneratorOperation;
-			//STPFormatGuide provides instruction to the formatter that which map should be formatted
-			typedef unsigned short STPFormatGuide;
 
 			//TODO You can change your preferred RNG here!
 			//Choosen generator for curand
@@ -51,14 +50,10 @@ namespace SuperTerrainPlus {
 			constexpr static STPGeneratorOperation HeightmapGeneration = 1u << 0u;
 			//Erode the heightmap. If HeightmapGeneration flag is not enabled, an available heightmap needs to be provided for the operation
 			constexpr static STPGeneratorOperation Erosion = 1u << 1u;
-			//Generate normal map. If HeightmapGeneration flag is not enabled, an available heightmap needs to be provided for the operation
-			constexpr static STPGeneratorOperation NormalmapGeneration = 1u << 2u;
-			//Format the map from FP32 to INT16. Providing FormatHint flag in STPMapStorage to specify which map to format.
-			constexpr static STPGeneratorOperation Format = 1u << 3u;
-			//Enable format of heightmap, Format flag needs to be set to enable
-			constexpr static STPFormatGuide FormatHeightmap = 1u << 0u;
-			//Enable format of normalmap, Format flag needs to be set to enable
-			constexpr static STPFormatGuide FormatNormalmap = 1u << 1u;
+			//Generate normal map and integrate into heightfield. If HeightmapGeneration flag is not enabled, an available heightmap needs to be provided for the operation
+			//RGB channel will then contain normalmap and A channel contains heightmap
+			//Then format the heightfield map from FP32 to INT16.
+			constexpr static STPGeneratorOperation RenderingBufferGeneration = 1u << 2u;
 
 			/**
 			 * @brief STPMapStorage stores heightfield data for the generator
@@ -66,25 +61,19 @@ namespace SuperTerrainPlus {
 			struct STPMapStorage {
 			public:
 
-				//A float array that will be used to stored heightmap pixles, must be pre-allocated with at least width * height * sizeof(float), i.e., R32F format
-				//If generator is instructed to generate only a single heightmap, only one map is required
-				//If hydraulic erosion and/or normalmap generation is enabled, a list of maps of neighbour chunks are required for edge sync.
-				//The map pointers should be arranged in row major matrix, with defined neighbour dimension.
+				//- A float array that will be used to stored heightmap pixles, must be pre-allocated with at least width * height * sizeof(float), i.e., R32F format
+				//- If generator is instructed to generate only a single heightmap, only one map is required
+				//- If hydraulic erosion and/or normalmap generation is enabled, a list of maps of neighbour chunks are required for edge sync, heightmap generation will 
+				//only affect the central chunk, for neighbour chunks it must be precomputed with heightmap to be able to perform free-slip hydraulic erosion,
+				//If free-slip hydraulic erosion is disabled, no neighbour chunks are required.
+				//- The map pointers should be arranged in row major matrix, with defined neighbour dimension.
 				std::list<float*> Heightmap32F;
 				//The x vector specify the offset on x direction of the map and and z on y direction of the map, and the y vector specify the offset on the final result.
 				//The offset parameter will only be applied on the heightmap generation.
 				float3 HeightmapOffset = make_float3(0.0f, 0.0f, 0.0f);
-				//A float array that will be used to stored normnalmap pixles, will be used to store the output of the normal map.
-				//Must be pre-allocated with at least width* height * 4 byte per channel * 4, i.e., RGBA32F format.
-				float* Normalmap32F = nullptr;
-				//Instruct formatter that which map to format.
-				//If Format flag is not set for the generator, format operation will not happen regardlessly
-				STPFormatGuide FormatHint;
-				//A INT16 array that will be used to stored the heightmap after formation. Require Format flag set in the generator and FormatHeightmap set in FormatHint 
-				unsigned short* Heightmap16UI = nullptr;
-				//A INT16 array that will be used to stored the normalmap after formation. Require Format flag set in the generator and FormatHeightmap set in FormatHint
-				//Require either normalmap generation enabled or provided from the external
-				unsigned short* Normalmap16UI = nullptr;
+				//A INT16 array that will be used to stored the heightmap and normalmap after formation. The final format will become RGBA.
+				//The number of pointer provided should be the same as the number of heightmap and normalmap.
+				std::list<unsigned short*> Heightfield16UI;
 
 			};
 
@@ -98,75 +87,145 @@ namespace SuperTerrainPlus {
 
 				/**
 				 * @brief Allocate memory on GPU
-				 * @param count The number of byte of float
+				 * @param count The number of byte to allocate
 				 * @return The device pointer
 				*/
-				__host__ float* allocate(size_t);
+				__host__ void* allocate(size_t);
 
 				/**
 				 * @brief Free up the GPU memory
-				 * @param count The number float to free
+				 * @param count The size to free
 				 * @param The device pointer to free
 				*/
-				__host__ void deallocate(size_t, float*);
+				__host__ void deallocate(size_t, void*);
 
 			};
 
 			/**
-			 * @brief Allocate memory for image converter output
+			 * @brief Memory allocation for pinned memory
 			*/
-			class STPImageConverterAllocator {
+			class STPHeightfieldHostAllocator {
 			public:
 
 				/**
-				 * @brief Allocate memory on GPU
-				 * @param count The number of byte of unsigned int
-				 * @return The device pointer
+				 * @brief Allocate page-locked memory on host
+				 * @param count The number of byte to allocate
+				 * @return The memory pointer
 				*/
-				__host__ unsigned short* allocate(size_t);
+				__host__ void* allocate(size_t);
 
 				/**
-				 * @brief Free up the GPU memory
-				 * @param count The number unsigned int to free
-				 * @param The device pointer to free
+				 * @brief Free up the host pinned memory
+				 * @param count The size to free
+				 * @param The host pinned pointer to free
 				*/
-				__host__ void deallocate(size_t, unsigned short*);
+				__host__ void deallocate(size_t, void*);
 
 			};
 
+			/**
+			 * @brief CUDA nonblocking stream allocator
+			*/
+			class STPHeightfieldNonblockingStreamAllocator {
+			public:
+
+				/**
+				 * @brief Allocate nonblocking stream
+				 * @param count Useless argument, it will only allocate one stream at a time
+				 * @return The pointer to stream
+				*/
+				__host__ void* allocate(size_t);
+
+				/**
+				 * @brief Destroy the stream
+				 * @param count Useless argument, it will only destroy one stream
+				 * @param The stream to destroy
+				*/
+				__host__ void deallocate(size_t, void*);
+			};
+
 			//Launch parameter for texture
-			dim3 numThreadperBlock_Map, numBlock_Map;
-			//Launch parameter for hydraulic erosion
-			int numThreadperBlock_Erosion, numBlock_Erosion;
+			dim3 numThreadperBlock_Map, numBlock_Map, numBlock_FreeslipMap;
+			//Launch parameter for hydraulic erosion and interpolation
+			unsigned int numThreadperBlock_Erosion, numBlock_Erosion, numThreadperBlock_Interpolation, numBlock_Interpolation;
 
 			/**
 			 * @brief Simplex noise generator, on device
 			*/
 			STPSimplexNoise* simplex = nullptr;
 			const STPSimplexNoise simplex_h;
-			//All parameters for the noise generator, stoed on host, passing value to device
+			//All parameters for the noise generator, stored on host, passing value to device
 			const STPSettings::STPSimplexNoiseSettings Noise_Settings;
 
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency
 			curandRNG* RNG_Map = nullptr;
+			/**
+			 * @brief Convert global index to local index, making data access outside the central chunk available
+			 * As shown the difference between local and global index
+			 *		 Local					 Global
+			 * 0 1 2 3 | 0 1 2 3	0  1  2  3  | 4  5  6  7
+			 * 4 5 6 7 | 4 5 6 7	8  9  10 11 | 12 13 14 15
+			 * -----------------	-------------------------
+			 * 0 1 2 3 | 0 1 2 3	16 17 18 19 | 20 21 22 23
+			 * 4 5 6 7 | 4 5 6 7	24 25 26 27 | 28 29 30 21
+			 *
+			 * Given that chunk should be arranged in a linear array (just an example)
+			 * Chunk 1 | Chunk 2
+			 * -----------------
+			 * Chunk 3 | Chunk 4
+			*/
+			unsigned int* GlobalLocalIndex = nullptr;
+			/**
+			 * @brief Convert threadID to the coordinate on heightmap on freeslip chunks that need to be interpolated such that heightmap edges are seamless.
+			 * - If interpolation patch is an edge and it's aligned as a column (patch size is 2*(Chunksize.y - 2)), the coordinate points to the left and 
+			 * interpolation should be done from left to right.
+			 * - If interpolation patch is an edge and it's aligned as a row (patch size is (Chunksize.x - 2)*2), the coordinate points to the up and 
+			 * interpolation should be done from up to down.
+			 * - If interpolation patch is a corner (patch size is 2*2), the coordinate points to the upper-left and 
+			 * interpolation should be done from upper-left to bottom-right, row first.
+			 * - MSB of each component will be used as a flag, such that range of the value should not exceed the range of [0,2^(32)-1].
+			 * - MSB.x = 1 and MSB.y = 1: corner interpolation
+			 * - MSB.x = 1 and MSB.y = 0: interploation goes in x direction (left to right), it's a column edge interpolation
+			 * - MSB.x = 0 and MSB.y = 1: interploation goes in y direction (up to down), it's a row edge interpolation
+			 * - Any other MSB combinations will be marked as errors and program will crash for the sake of memory safety
+			*/
+			uint2* InterpolationIndex = nullptr;
+			//Total number of thread needed for all interpolation, note that the actual number of thread launched might be more than this number
+			unsigned int InterpolationThreadRequired;
+			//Free slip range in the unit of chunk
+			const uint2 FreeSlipChunk;
 			//Determine the number of raindrop to summon, the higher the more accurate but slower
 			//Each time this value changes, the rng needs to be re-sampled
 			unsigned int NumRaindrop = 0u;
 
 			STPBiome::STPBiome* BiomeDictionary = nullptr;
+
 			//Temp cache on device for heightmap computation
-			mutable std::mutex MapCache32F_lock;
-			mutable std::mutex MapCache16UI_lock;
-			mutable STPMemoryPool<float, STPHeightfieldAllocator> MapCache32F_device;
-			mutable STPMemoryPool<unsigned short, STPImageConverterAllocator> MapCache16UI_device;
+			mutable std::mutex MapCacheDevice_lock;
+			mutable std::mutex MapCachePinned_lock;
+			mutable std::mutex StreamPool_lock;
+			mutable STPMemoryPool<void, STPHeightfieldAllocator> MapCacheDevice;
+			mutable STPMemoryPool<void, STPHeightfieldHostAllocator> MapCachePinned;
+			mutable STPMemoryPool<void, STPHeightfieldNonblockingStreamAllocator> StreamPool;
+
+			/**
+			 * @brief Initialise the local global index lookup table
+			*/
+			__host__ void initLocalGlobalIndexCUDA();
+
+			/**
+			 * @brief Initialise the interpolation index lookup table
+			*/
+			__host__ void initInterpolationIndexCUDA();
 
 		public:
 
 			/**
 			 * @brief Init the heightfield generator
 			 * @param noise_settings Stored all parameters for the heightmap random number generator, it will be deep copied to the class so dynamic memory is not required
+			 * @param chunk_settings Stored all parameters for the chunk
 			*/
-			__host__ STPHeightfieldGenerator(STPSettings::STPSimplexNoiseSettings* const);
+			__host__ STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings*, const STPSettings::STPChunkSettings*);
 
 			__host__ ~STPHeightfieldGenerator();
 
@@ -182,10 +241,9 @@ namespace SuperTerrainPlus {
 			 * @brief Load the settings for heightfield generator, all subsequent computation will base on this settings. Settings are copied.
 			 * It needs to be called before launching any compute
 			 * @param settings The parameters of the generation algorithm. It should be on host side.
-			 * Providing no arguement or nullptr will clear all exisiting settings, making it undefined.
 			 * @return True if setting can be used
 			*/
-			__host__ static bool useSettings(const STPSettings::STPHeightfieldSettings* const = nullptr);
+			__host__ static bool InitGenerator(const STPSettings::STPHeightfieldSettings* const);
 
 			/**
 			 * @brief Define the biome dictionary for looking up biome settins according to the biome id. Each entry of biome will be copied to device
@@ -210,7 +268,7 @@ namespace SuperTerrainPlus {
 			 * @param operation Control what type of operation generator does
 			 * @return True if all operation are successful without any errors
 			*/
-			__host__ bool generateHeightfieldCUDA(STPMapStorage&, STPGeneratorOperation) const;
+			__host__ bool operator()(STPMapStorage&, STPGeneratorOperation) const;
 
 			/**
 			 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.

@@ -24,7 +24,7 @@ namespace SuperTerrainPlus {
 		 * @param terrain2d_unitplane_count specify the number of unit plane for the procedural 2d infinite terrain renderer.
 		 * The value is equavalent to CHUNK_SIZE.x * CHUNK_SIZE.y * RENDERED_CHUNK.x * RENDERED_CHUNK.y;
 		*/
-		STPRendererCommander(STPThreadPool* const pool, unsigned int terrain2d_unitplane_count) {
+		STPRendererCommander(STPThreadPool* pool, unsigned int terrain2d_unitplane_count) {
 			//Initialise rendering command in multi-thread
 			//Sky renderer
 			std::future<DrawElementsIndirectCommand*> skycmd_generator = pool->enqueue_future([]() -> DrawElementsIndirectCommand* {

@@ -43,10 +43,12 @@ namespace SuperTerrainPlus {
 	class STPMemoryPool {
 	private:
 
+		typedef std::queue<T*, std::list<T*>> memory_bucket;
+
 		//memory that is allcated but not in-use
 		size_t availiable = 0ull;
 		//The memory pool, similar to a multimap, but I need to keep FIFO rule
-		std::unordered_map<size_t, std::queue<T*>> memory;
+		std::unordered_map<size_t, memory_bucket> memory;
 		//The allocator to create new memory block for that type
 		A allocator;
 
@@ -59,7 +61,7 @@ namespace SuperTerrainPlus {
 		template<typename Ite>
 		void free(Ite& it) {
 			if (it != this->memory.end()) {
-				std::queue<T*>& block = it->second;
+				memory_bucket& block = it->second;
 				while (!block.empty()) {
 					//clear up the memory with this size
 					this->free(it->first, block.front());
@@ -134,7 +136,7 @@ namespace SuperTerrainPlus {
 		template<typename... Arg>
 		T* allocate(size_t size, Arg&&... arg) {
 			//find available memory with this size
-			std::queue<T*>& block = this->memory[size];
+			memory_bucket& block = this->memory[size];
 			if (block.empty()) {
 				//if there is no available memory, allocate some new memory
 				return this->allocator.allocate(size, std::forward<Arg>(arg)...);
@@ -156,7 +158,7 @@ namespace SuperTerrainPlus {
 		*/
 		template<typename... Arg>
 		void preallocate(size_t size, size_t count, Arg&&... arg) {
-			std::queue<T*>& block = this->memory[size];
+			memory_bucket& block = this->memory[size];
 
 			for (size_t i = 0ull; i < count; i++) {
 				block.push(this->allocator.allocate(size, std::forward<Arg>(arg)...));
@@ -171,7 +173,7 @@ namespace SuperTerrainPlus {
 		*/
 		void deallocate(size_t size, T* ptr) {
 			//simply push back to our memory pool
-			//if entry with this size not exist, if will create one itself
+			//if entry with this size not exist, it will create one itself
 			this->memory[size].push(ptr);
 			this->availiable++;
 		}
@@ -182,7 +184,7 @@ namespace SuperTerrainPlus {
 		*/
 		void shrink_to_fit() {
 			for (auto it = this->memory.begin(); it != this->memory.end();) {
-				std::queue<T*>& block = it->second;
+				memory_bucket& block = it->second;
 				if (block.empty()) {
 					it = this->memory.erase(it);
 				}

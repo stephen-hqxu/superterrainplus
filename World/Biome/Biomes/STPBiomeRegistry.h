@@ -200,8 +200,7 @@ namespace STPDemo {
 				return;
 			}
 
-			//assigning configuration to biomes, id, name, etc.
-			//TODO
+			//TODO assigning configuration to biomes, id, name, etc.
 
 			//add all biomes to registry
 			static auto reg_insert = [](const STPBiome& biome) -> void {

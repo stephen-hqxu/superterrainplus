@@ -34,7 +34,7 @@ namespace SuperTerrainPlus {
 		//Calculated chunk data
 		//Calculate the coordinate of the top-left corner of each chunk
 		//It will be used as the key pair to search the map from our hash table
-		glm::vec2* BaseChunkPosition = nullptr;
+		std::unique_ptr<glm::vec2[]> BaseChunkPosition;
 
 		//drawing command
 		const void* const command;
@@ -80,9 +80,8 @@ namespace SuperTerrainPlus {
 		 * @brief Init the chunk manager
 		 * @param settings Stored all parameters for the heightmap calculation launch, settings are copied later so no need to keep the object alive
 		 * @param procedural2dinf_cmd The indirect rendering command for prodecural 2d inf terrain renderer
-		 * @param shared_threadpool The thread pool for multithreading computing and rendering. It can share the pool with the main program or separate from.
 		*/
-		STPProcedural2DINF(STPSettings::STPConfigurations*, void* const, STPThreadPool* const);
+		STPProcedural2DINF(STPSettings::STPConfigurations*, void* const);
 
 		STPProcedural2DINF(const STPProcedural2DINF&) = delete;
 

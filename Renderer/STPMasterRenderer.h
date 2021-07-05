@@ -130,8 +130,6 @@ namespace SuperTerrainPlus {
 			delete this->terrain2d_inf;
 			//delete thread pool
 			delete this->command_pool;
-			//clear settings
-			STPCompute::STPHeightfieldGenerator::useSettings();
 		}
 
 	public:
@@ -182,10 +180,10 @@ namespace SuperTerrainPlus {
 			glPatchParameteri(GL_PATCH_VERTICES, 3);//barycentric coordinate system
 
 			cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
-			cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
+			cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
 
 			//starting thread pool
-			this->command_pool = new STPThreadPool(5u);
+			this->command_pool = new STPThreadPool(3u);
 			//loading terrain 2d inf parameters
 			STPSettings::STPConfigurations config = STPSettings::STPConfigurations();
 			std::future chunksPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFChunksParameters, std::ref(this->engineSettings["Generators"]));
@@ -196,7 +194,7 @@ namespace SuperTerrainPlus {
 			const auto& chunk_settings = config.getChunkSettings();
 			std::future noisePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getSimplex2DNoiseParameters, std::ref(this->engineSettings["Generators"]), chunk_settings.MapSize);
 			//not quite sure why heightfield_settings isn't got copied to the config, it just share the pointer
-			config.getHeightfieldSettings() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(this->engineSettings["2DTerrainINF"], chunk_settings.MapSize);
+			config.getHeightfieldSettings() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(this->engineSettings["2DTerrainINF"], chunk_settings.MapSize * chunk_settings.FreeSlipChunk);
 			config.getSimplexNoiseSettings() = noisePara_loader.get();
 
 			assert(config.validate());
@@ -207,9 +205,9 @@ namespace SuperTerrainPlus {
 			//setting up renderers
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer, this->command_pool);
 			//setting terrain 2d inf
-			STPCompute::STPHeightfieldGenerator::useSettings(&config.getHeightfieldSettings());
+			STPCompute::STPHeightfieldGenerator::InitGenerator(&config.getHeightfieldSettings());
 			assert(STPCompute::STPSimplexNoise::initialise());
-			this->terrain2d_inf = new STPProcedural2DINF(&config, reinterpret_cast<void*>(this->command->Command_Procedural2DINF), this->command_pool);
+			this->terrain2d_inf = new STPProcedural2DINF(&config, reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 			this->terrain2d_inf->getChunkProvider().setHeightfieldErosionIteration(std::stoul(this->engineSettings("iteration", "2DTerrainINF")));
 			this->terrain2d_inf->loadChunksAsync(this->Camera->getPosition());
 
@@ -259,7 +257,7 @@ namespace SuperTerrainPlus {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 			//update the view matrix and projection matrix
 			this->View = this->Camera->getViewMat();
-			this->Projection = perspective(radians(this->Camera->getZoomDeg()), (1.0f * this->SCR_SIZE[0]) / (this->SCR_SIZE[1] * 1.0f), 1.0f, 1000.0f);
+			this->Projection = perspective(radians(this->Camera->getZoomDeg()), (1.0f * this->SCR_SIZE[0]) / (this->SCR_SIZE[1] * 1.0f), 1.0f, 1500.0f);
 			this->updatePVmatrix();
 
 			//rendering sky

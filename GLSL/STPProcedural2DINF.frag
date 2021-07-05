@@ -35,10 +35,10 @@ in VertexGS{
 //Output
 layout (location = 0) out vec4 FragColor;
 
-//Texture
-layout (binding = 1) uniform sampler2DArray Normalmap_Terrain;
+//Heightfield, RGB is normalmap, A is heightmap
+layout (binding = 0) uniform sampler2DArray Heightfield;
 
 void main(){
 	//for demo to test if everything works, we display the normal map for now
-	FragColor = texture(Normalmap_Terrain, vec3(fs_in.texCoord, uintBitsToFloat(fs_in.chunkID)));
+	FragColor = vec4(texture(Heightfield, vec3(fs_in.texCoord, uintBitsToFloat(fs_in.chunkID))).rgb, 1.0f);
 }

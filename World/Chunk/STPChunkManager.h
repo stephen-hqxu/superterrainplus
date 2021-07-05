@@ -8,8 +8,6 @@
 #include "glad/glad.h"
 //CUDA
 #include "cuda_gl_interop.h"//used to upload to opengl texture in multithread
-//Multithreading
-#include "../../Helpers/STPThreadPool.h"
 
 //Chunks
 #include "STPChunkProvider.h"
@@ -30,12 +28,13 @@ namespace SuperTerrainPlus {
 	public:
 
 		//List that stored rendered chunks' ID and world position
-		typedef std::list<std::pair<int, glm::vec2>> STPLocalChunks;
+		typedef std::vector<std::pair<glm::vec2, bool>> STPLocalChunks;
+		typedef std::unordered_map<glm::vec2, int, STPChunkStorage::STPHashvec2> STPLocalChunksTable;
 
 	private:
 
 		//thread pool
-		STPThreadPool* const compute_pool;
+		std::unique_ptr<STPThreadPool> compute_pool;
 
 		//chunk data
 		STPChunkStorage ChunkCache;
@@ -43,18 +42,23 @@ namespace SuperTerrainPlus {
 		STPChunkProvider ChunkProvider;
 
 		//registered buffer and texture
-		cudaGraphicsResource_t heightfield_texture_res[2];
-		//empty buffer (using cuda pinned memory) that is used to clear a chunk data
-		//momo_clear is R16, quad_clear is RGBA16
-		unsigned short* mono_clear = nullptr, *quad_clear = nullptr;
+		cudaGraphicsResource_t heightfield_texture_res;
+		//empty buffer (using cuda pinned memory) that is used to clear a chunk data, quad_clear is RGBA16
+		unsigned short *quad_clear = nullptr;
 
 		//async chunk loader
-		std::future<int> ChunkLoader;
+		std::future<unsigned int> ChunkLoader;
+		//CUDA map mapped array storage
+		std::list<std::pair<glm::vec2, cudaArray_t>> chunk_data;
 
 		//for automatic chunk loading
 		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the currentCentralPos is different from this value
 		glm::vec2 lastCentralPos = glm::vec2(std::numeric_limits<float>::min());//the last world position of the central chunk of the entire visible chunks
-		STPLocalChunks loadingLocals;//determine which chunks to render
+		//Whenever camera changes location, all previous rendering buffers are dumpped
+		bool trigger_clearBuffer = false;
+		//determine which chunks to render and whether it's loaded, index of element denotes chunk local ID
+		STPLocalChunks renderingLocals;
+		STPLocalChunksTable renderingLocals_lookup;
 
 		/**
 		 * @brief Load the four texture maps onto the cache if they can be found on library, otherwise compute will be dispatched
@@ -69,20 +73,24 @@ namespace SuperTerrainPlus {
 		 * For some reason if there is error generated during loading, false will be returned as well.
 		 * If destination is specified as nullptr, and chunk is fully prepared, true will eb returned, otherwise computation will be dispatched and false is returned
 		*/
-		bool MapLoader(glm::vec2, const cudaArray_t[2]);
+		bool loadRenderingBuffer(glm::vec2, const cudaArray_t);
+
+		/**
+		 * @brief Clear up the rendering buffer of the chunk map
+		 * @param destination The loaction to store all loaded maps, and it will be erased.
+		*/
+		void clearRenderingBuffer(const cudaArray_t);
 
 	protected:
 
-		//Heightfield and normal map.
-		//Heightfield map will contain: 0 = heightmap, 1 = normalmap
-		GLuint terrain_heightfield[2] = {0u, 0u};
+		//Heightfield, heightmap and normalmap are integrated
+		GLuint terrain_heightfield = 0u;
 
 		/**
 		 * @brief Init the chunk manager. Allocating spaces for opengl texture.
 		 * @param settings Stores all required settings for generation
-		 * @param shared_threadpool The thread pool for multithreading computing and rendering. It can share the pool with the main program or separate from.
 		*/
-		STPChunkManager(STPSettings::STPConfigurations*, STPThreadPool* const);
+		STPChunkManager(STPSettings::STPConfigurations*);
 
 		~STPChunkManager();
 
@@ -126,13 +134,25 @@ namespace SuperTerrainPlus {
 		 * It will handle whether the central chunk has been changed compare to last time it was called, and determine whether or not to reload or continue waiting for loading 
 		 * for the current chunk.
 		 * If previous worker has yet finished, function will be blocked until the previous returned, then it will be proceed.
+		 * @param cameraPos The world position of the camera
+		 * @return True if loading worker has been dispatched, false if there is no chunks specified in the list.
 		*/
 		bool loadChunksAsync(glm::vec3);
 
 		/**
+		 * @brief Change the rendering chunk status to force reload that will trigger a chunk texture reload onto rendering buffer
+		 * Only when chunk position is being rendered, if chunk position is not in the rendering range, command is ignored.
+		 * It will insert current chunk into reloading queue and chunk will not be reloaded until the next rendering loop.
+		 * When the rendering chunks are changed, all un-processed queries are discarded as all new rendering chunks are reloaded regardlessly.
+		 * @param chunkPos The world position of the chunk required for reloading
+		 * @return True if query has been submitted successfully, false if chunk is not in the rendering range or the same query has been submitted before.
+		*/
+		bool reloadChunkAsync(glm::vec2);
+
+		/**
 		 * @brief Sync the loadChunksAsync() to make sure the work has finished before this function returns. 
 		 * This function will be called automatically by the renderer before rendering.
-		 * @return The number of chunk that hasn't been updated. If all chunks have been loaded without issues, 0 will be returned.
+		 * @return The number of chunk that has been reloaded in the last call to loadChunksAsync(). If all chunks have been loaded without issues, 0 will be returned.
 		 * If no loadChunksAsync() worker has been dispatched, -1 will be returned.
 		*/
 		int SyncloadChunks();

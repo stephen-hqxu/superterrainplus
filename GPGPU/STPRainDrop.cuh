@@ -37,6 +37,69 @@ namespace SuperTerrainPlus {
 		 * - Water behaves differently in a stagnant pool
 		*/
 		class STPRainDrop {
+		public:
+
+			/**
+			 * @brief STPFreeSlipManager provides a center chunk for erosion and some neighbour chunks that hold data access out of the center chunk.
+			 * It will the convert global index to local index, such that rain drop can "free slip" out of the center chunk.
+			*/
+			struct STPFreeSlipManager {
+			private:
+
+				friend class STPRainDrop;
+
+				//A matrix of heightmap, it should be arranged in row major order.
+				//The number of heightmap should be equal to the product or x and y defiend in FreeSlipRange
+				//The size of the heightmap should be equal to FreeSlipRange.x * FreeSlipRange.y * Dimension.x * Dimension.y * sizeof(float)
+				float* Heightmap;
+				//A table that is responsible for conversion from global index to local index
+				const unsigned int* Index;
+
+			public:
+
+				//The dimension of each map
+				const uint2 Dimension;
+				//The range of free slip in the unit of chunk
+				const uint2 FreeSlipChunk;
+				//number of element in a global row and column in the free slip range
+				const uint2 FreeSlipRange;
+
+				/**
+				 * @brief Init the free slip manager.
+				 * The center chunk will be determined automatically
+				 * @param heightmap The heightmap array, all chunks should be arranged in a linear array
+				 * @param index The lookup table to convert global index to local index.
+				 * If nullptr is provided (meaning no lookup table), global index will be used directly to reference heightmap.
+				 * @param range Free slip range in the unit of chunk
+				 * @param mapSize The size of the each heightmap
+				*/
+				__host__ STPFreeSlipManager(float*, unsigned int*, uint2, uint2);
+
+				__host__ ~STPFreeSlipManager();
+
+				/**
+				 * @brief Convert global index to local index and return the reference value.
+				 * @param global Global index
+				 * @return The pointer to the map pointed by the global index
+				*/
+				__device__ float& operator[](unsigned int);
+
+				/**
+				 * @brief Convert global index to local index and return the const reference value
+				 * @param global Global index
+				 * @return Constant reference to the map pointed by the global index
+				*/
+				__device__ const float& operator[](unsigned int) const;
+
+				/**
+				 * @brief Convert global index to local index
+				 * @param global Global index
+				 * @return Local index
+				*/
+				__device__ unsigned int operator()(unsigned int) const;
+
+			};
+
 		private:
 
 			//The current position of the raindrop
@@ -54,12 +117,10 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Calculate the current height of the water drop and the direction of acceleration
-			 * @param heightmap - The heightmap
-			 * @param mapSize - The size of the heightmap
-			 * @param position - The current position of the water drop
+			 * @param map The heightmap with free slip configurations
 			 * @return Height and Gradients, will be defined in vec3 as (height, gradientX, gradientY);
 			*/
-			__device__ static float3 calcHeightGradients(float* const, uint2, float2);
+			__device__ float3 calcHeightGradients(const STPFreeSlipManager&) const;
 
 		public:
 
@@ -81,11 +142,10 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Performing hydraulic erosion algorithm to descend the raindrop downhill once, water drop will bring sediment but lose water each time this method is called
-			 * @param mapSize - The size of three maps, all three maps must have the same size
-			 * @param heightmap - The heightmap data, should be precomputed
+			 * @param map - The heightmap with free slip configurations
 			 * @param settings - The raindrop settings for erosion
 			*/
-			__device__ void Erode(const STPSettings::STPRainDropSettings* const, uint2, float*);
+			__device__ void Erode(const STPSettings::STPRainDropSettings*, STPFreeSlipManager&);
 
 		};
 

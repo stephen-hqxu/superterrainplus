@@ -83,6 +83,7 @@ namespace SuperTerrainPlus {
 			//The ascendant layer will be executed before this layer, like a singly linked list
 			//usually there is only one ascendant, but if there is a merge point in the chain, there will be multiple, depended on the actual implementation
 			//Basically it's {asc*, asc*...}
+			//TODO: Use shared_ptr instead
 			std::vector<STPLayer*> Ascendant;
 
 			//Count the number of layer that references this layer

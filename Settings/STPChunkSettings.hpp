@@ -41,6 +41,9 @@ namespace SuperTerrainPlus {
 			float ChunkScaling;
 			//Specify the (x,y,z) offset of the terrain heightmap, x and z specify the offset on x and y direction of the map, y specify the height offset of the final result
 			vec3 MapOffset;
+			//Specify the number of chunk that will be used as free slip chunk and allows data access outside the central chunk
+			//When both values are 1, it will effectively disable the neighbour chunk logic
+			uvec2 FreeSlipChunk;
 
 			/**
 			 * @brief Init STPChunksPara with defualt values
@@ -53,12 +56,15 @@ namespace SuperTerrainPlus {
 				this->ChunkOffset = vec3(0.0f);
 				this->ChunkScaling = 1.0f;
 				this->MapOffset = vec3(0.0f);
+				this->FreeSlipChunk = uvec2(0u);
 			}
 
 			~STPChunkSettings() = default;
 
 			bool validate() const override {
-				return ChunkScaling > 0.0f;
+				return this->ChunkScaling > 0.0f
+					&& this->FreeSlipChunk.x >= 1u
+					&& this->FreeSlipChunk.y >= 1u;
 			}
 		};
 	}

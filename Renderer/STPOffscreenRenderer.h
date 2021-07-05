@@ -35,7 +35,7 @@ namespace SuperTerrainPlus {
 		*/
 		const bool compileShader() {
 			//log
-			GLchar* log = new GLchar[1024];
+			GLchar log[1024];
 
 			this->quadShader.addShader(GL_VERTEX_SHADER, "./GLSL/STPquad.vert");
 			this->quadShader.addShader(GL_FRAGMENT_SHADER, "./GLSL/STPquad.frag");
@@ -44,14 +44,11 @@ namespace SuperTerrainPlus {
 				cerr << log << endl;
 				cerr << "-------------------------------------------------------------------------------------" << endl;
 				//exit
-				delete[] log;
 				return false;
 			}
 			//linking textures
 			glProgramUniform1i(this->quadShader.getP(), this->getLoc("screen"), 0);
 
-			//clearup
-			delete[] log;
 			return true;
 		}
 
@@ -96,7 +93,7 @@ namespace SuperTerrainPlus {
 		 * @brief Init the offscreen renderer
 		 * @param quad_cmd The indrect rendering command for quad renderer
 		*/
-		STPOffscreenRenderer(DrawArraysIndirectCommand* const quad_cmd) : command(reinterpret_cast<void*>(quad_cmd)) {
+		STPOffscreenRenderer(const DrawArraysIndirectCommand* quad_cmd) : command(reinterpret_cast<const void*>(quad_cmd)) {
 			cout << "....Loading STPQuadRenderer....";
 			if (this->compileShader()) {
 				cout << "Shader loaded :)" << endl;

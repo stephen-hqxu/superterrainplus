@@ -41,7 +41,7 @@ namespace SuperTerrainPlus {
 			"nearestDistance"
 		};
 
-		inline static const std::string Procedural2DINFChunksVariables[13] = {
+		inline static const std::string Procedural2DINFChunksVariables[15] = {
 			"heightmap2DSizeX",
 			"heightmap2DSizeZ",
 			"chunkSizeX",
@@ -54,6 +54,8 @@ namespace SuperTerrainPlus {
 			"mapOffsetX",
 			"mapOffsetY",
 			"mapOffsetZ",
+			"freeSlipX",
+			"freeSlipZ",
 			"chunkScale"
 		};
 
@@ -97,22 +99,22 @@ namespace SuperTerrainPlus {
 		 * @param section The INI section that contains the 2d terrain rendering parameters
 		 * @return The terrain rendering parameters, if certain parameters are missing in the section, exception will be thrown
 		*/
-		static STPSettings::STPMeshSettings getProcedural2DINFRenderingParameters(SIMPLE::SISection&);
+		static STPSettings::STPMeshSettings getProcedural2DINFRenderingParameters(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load the chunk settings and rendering parameters for procedural infinite 2d terrain
 		 * @param section The INI section that contains the 2d terrian rendering parameters
 		 * @return The chunk manager rendering parameters, if certain parameters are missing in the section, exception will be thrown
 		*/
-		static STPSettings::STPChunkSettings getProcedural2DINFChunksParameters(SIMPLE::SISection&);
+		static STPSettings::STPChunkSettings getProcedural2DINFChunksParameters(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load the launch parameter for procedural infinite 2d terrain, stored in the ini file into STPHeightfieldLaunchPara
 		 * @param section The INI section that contains the launch parameter
-		 * @param mapSize The size of the heightfield maps that are going to be generated
+		 * @param slipRange The size of the free-slip range of the erosion
 		 * @return The launch parameter, if certain parameters are missing in the section, exception will be thrown
 		*/
-		static STPSettings::STPHeightfieldSettings getProcedural2DINFGeneratorParameters(SIMPLE::SISection&, glm::uvec2);
+		static STPSettings::STPHeightfieldSettings getProcedural2DINFGeneratorParameters(const SIMPLE::SISection&, glm::uvec2);
 
 		/**
 		 * @brief Load the simplex noise 2d parameter, stored in the ini file into STPSimplexNoise2DPara
@@ -120,7 +122,7 @@ namespace SuperTerrainPlus {
 		 * @param mapSize The size of the noise map that will be gernerated
 		 * @return The noise parameter,, if certain parameters are missing in the section, exception will eb thrown
 		*/
-		static STPSettings::STPSimplexNoiseSettings getSimplex2DNoiseParameters(SIMPLE::SISection&, glm::uvec2);
+		static STPSettings::STPSimplexNoiseSettings getSimplex2DNoiseParameters(const SIMPLE::SISection&, glm::uvec2);
 
 	};
 }

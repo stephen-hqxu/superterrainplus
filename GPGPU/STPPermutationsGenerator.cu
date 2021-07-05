@@ -37,7 +37,7 @@ __host__ STPPermutationsGenerator::STPPermutationsGenerator(unsigned long long s
 	//generate the gradient table
 	//we are going to distribute the gradient evenly in a circle
 	const double step = 360.0 / this->GRADIENT2D_SIZE * 1.0;//in degree
-	std::unique_ptr<double[]> GRADIENT2D_HOST(new double[this->GRADIENT2D_SIZE * 2]);//2D so we *2
+	std::unique_ptr<double[]> GRADIENT2D_HOST = std::make_unique<double[]>(this->GRADIENT2D_SIZE * 2);//2D so we *2
 	int counter = 0;
 	for (double angle = 0.0; angle < 360.0; angle += step) {//in degree
 		GRADIENT2D_HOST[counter * 2] = cos(STPPermutationsGenerator::PI * (angle + offset) / 180.0);

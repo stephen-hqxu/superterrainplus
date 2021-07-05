@@ -27,8 +27,7 @@ namespace SuperTerrainPlus {
 			//Settings for this biome
 			STPSettings::STPBiomeSettings BiomeSettings;
 
-			//Textures for this biome
-			//TODO: TBN
+			//TODO: Textures for this biome
 
 		public:
 

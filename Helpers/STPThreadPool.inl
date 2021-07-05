@@ -45,9 +45,7 @@ void SuperTerrainPlus::STPThreadPool::enqueue_void(F&& function, Args&& ... args
 	//start sending work
 	{
 		std::unique_lock<std::shared_mutex> lock(this->task_queue_locker);
-		this->task.emplace([new_task]() -> void {
-			new_task();
-			});
+		this->task.emplace(new_task);
 	}
 
 	this->condition.notify_one();
