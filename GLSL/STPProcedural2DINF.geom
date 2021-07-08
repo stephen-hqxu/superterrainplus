@@ -23,7 +23,6 @@ in VertexTES{
 	vec3 normal;
 	vec3 tangent;
 	vec3 bitangent;
-	flat unsigned int chunkID;
 } gs_in[];
 //Output
 out gl_PerVertex
@@ -36,7 +35,6 @@ out VertexGS{
 	vec4 position_world;
 	vec4 position_clip;
 	vec2 texCoord;
-	flat unsigned int chunkID;
 } gs_out;
 
 //Uniforms
@@ -44,7 +42,7 @@ uniform mat4 Model;
 uniform vec3 cameraPos;
 
 //Heightfield, RGB is normalmap, A is heightmap
-layout (binding = 0) uniform sampler2DArray Heightfield;
+layout (binding = 0) uniform sampler2D Heightfield;
 
 //Functions
 void emitFace(int);
@@ -88,7 +86,7 @@ void emitFace(int layer){
 
 			//We need to calculate TBN terrain normal->terrain texture normal
 			//calculate the terrain normal. We need to translate it from [0,1] to [-1,1] first then transform it to world space
-			terrain_normal = TBN_plane * (texture(Heightfield, vec3(gs_in[i].texCoord, gs_in[i].chunkID)).rgb * 2.0f - 1.0f);
+			terrain_normal = TBN_plane * (texture(Heightfield, gs_in[i].texCoord).rgb * 2.0f - 1.0f);
 			TBN_terrain = transpose(calcTerrainTBN(tangent_bitangent, terrain_normal));//world to tangent
 		}
 
@@ -98,7 +96,6 @@ void emitFace(int layer){
 		gl_Position = Projection * View * gl_Position;
 		gs_out.position_clip = gl_Position;
 		gs_out.texCoord = gs_in[i].texCoord;
-		gs_out.chunkID = gs_in[i].chunkID;
 		gl_Layer = layer;
 
 		EmitVertex();

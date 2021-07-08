@@ -25,12 +25,9 @@ unsigned int STPChunkProvider::calculateMaxConcurrency(uvec2 rendered_range, uve
 float3 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
 	//first convert chunk world position to relative chunk position, then multiply by the map size, such that the generated map will be seamless
 	return make_float3(
-		//we substract the mapsize by 1 for the offset
-		//such that the first row of pixels in the next chunk will be the same as the last row in the previous
-		//to achieve seamless experience :)
-		static_cast<float>(this->ChunkSettings.MapSize.x - 1u) * chunkPos.x / (static_cast<float>(this->ChunkSettings.ChunkSize.x) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.x,
+		static_cast<float>(this->ChunkSettings.MapSize.x) * chunkPos.x / (static_cast<float>(this->ChunkSettings.ChunkSize.x) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.x,
 		this->ChunkSettings.MapOffset.y,
-		static_cast<float>(this->ChunkSettings.MapSize.y - 1u) * chunkPos.y / (static_cast<float>(this->ChunkSettings.ChunkSize.y) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.z
+		static_cast<float>(this->ChunkSettings.MapSize.y) * chunkPos.y / (static_cast<float>(this->ChunkSettings.ChunkSize.y) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.z
 	);
 }
 
@@ -66,7 +63,7 @@ void STPChunkProvider::computeErosion(STPChunk* current_chunk, list<STPChunk*> n
 	}
 }
 
-bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos, std::function<bool(glm::vec2)> reload_callback) {
+bool STPChunkProvider::checkChunk(vec2 chunkPos, std::function<bool(glm::vec2)> reload_callback) {
 	auto heightmap_computer = [this](STPChunk* chunk, vec2 position) -> void {
 		this->computeHeightmap(chunk, position);
 		//computation was successful
@@ -84,7 +81,7 @@ bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos, std::f
 		}
 	};
 
-	STPChunk* center = source.getChunk(chunkPos);
+	STPChunk* center = this->ChunkCache.getChunk(chunkPos);
 	if (center != nullptr && center->getChunkState() == STPChunk::STPChunkState::Complete) {
 		//no need to continue if center chunk is available
 		//since the center chunk might be used as a neighbour chunk later, we only return bool instead of a pointer
@@ -100,7 +97,7 @@ bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos, std::f
 	list<STPChunk*> neighbour;
 	for (vec2 neighbourPos : neighbour_position) {
 		//get current neighbour chunk
-		STPChunkStorage::STPChunkConstructed res = source.constructChunk(neighbourPos, chk_config->MapSize);
+		STPChunkStorage::STPChunkConstructed res = this->ChunkCache.constructChunk(neighbourPos, chk_config->MapSize);
 		STPChunk* curr_neighbour = res.second;
 		if (res.first) {
 			//neighbour doesn't exist and has been added
@@ -129,7 +126,7 @@ bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos, std::f
 		chk->markOccupancy(true);
 	}
 	//send the list of neighbour chunks to GPU to perform free-slip hydraulic erosion
-	this->kernel_launch_pool->enqueue_void(erosion_computer, source.getChunk(chunkPos), neighbour);
+	this->kernel_launch_pool->enqueue_void(erosion_computer, this->ChunkCache.getChunk(chunkPos), neighbour);
 	//trigger a chunk reload as some chunks have been added to render buffer already after neighbours are updated
 	for (vec2 position : neighbour_position) {
 		reload_callback(position);
@@ -138,9 +135,9 @@ bool STPChunkProvider::checkChunk(STPChunkStorage& source, vec2 chunkPos, std::f
 	return true;
 }
 
-STPChunk* STPChunkProvider::requestChunk(STPChunkStorage& source, vec2 chunkPos) {
+STPChunk* STPChunkProvider::requestChunk(vec2 chunkPos) {
 	//after calling checkChunk(), we can guarantee it's not null
-	STPChunk* chunk = source.getChunk(chunkPos);
+	STPChunk* chunk = this->ChunkCache.getChunk(chunkPos);
 	if (chunk != nullptr) {
 		if (!chunk->isOccupied() && chunk->getChunkState() == STPChunk::STPChunkState::Complete) {
 			//since we wait for all threads to finish checkChunk(), such that occupancy status will not be changed here

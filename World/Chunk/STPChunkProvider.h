@@ -31,6 +31,8 @@ namespace SuperTerrainPlus {
 
 		//Chunk settings
 		const STPSettings::STPChunkSettings ChunkSettings;
+		//chunk data
+		STPChunkStorage ChunkCache;
 		//thread pool
 		std::unique_ptr<STPThreadPool> kernel_launch_pool;
 		//Heightfield generator
@@ -83,20 +85,18 @@ namespace SuperTerrainPlus {
 		 * If all neighbours are availble, and the center chunk is incomplete, lock all chunks and perform free-slip hydraulic erosion.
 		 * Otherwise do nothing and return true.
 		 * After this function call, the request chunk will be guaranteed to be completed and ready for rendering.
-		 * @param source The chunk storage unit
 		 * @param chunkPos The world position of the center chunk
 		 * @param reload_callback Used to trigget a chunk rendering reload in STPChunkManager
 		 * @return True if the center chunk is complete, false if center chunk is incomplete and any of the neighbour chunks are in used.
 		*/
-		bool checkChunk(STPChunkStorage&, glm::vec2, std::function<bool(glm::vec2)>);
+		bool checkChunk(glm::vec2, std::function<bool(glm::vec2)>);
 
 		/**
 		 * @brief Request the texture maps in the given chunk storage if they can be found on library
-		 * @param source The location where to load chunks from
 		 * @param chunkPos The world position of this chunk, this acts as a key in the look up table
 		 * @return The pointer to the chunk if it's available and not in used, otherwise nullptr
 		*/
-		STPChunk* requestChunk(STPChunkStorage&, glm::vec2);
+		STPChunk* requestChunk(glm::vec2);
 
 		/**
 		 * @brief Get the chunk settings

@@ -16,7 +16,6 @@ in VertexTCS{
 	vec3 normal;
 	vec3 tangent;
 	vec3 bitangent;
-	flat unsigned int chunkID;
 } tes_in[];
 //Output
 out gl_PerVertex {
@@ -29,7 +28,6 @@ out VertexTES{
 	vec3 normal;
 	vec3 tangent;
 	vec3 bitangent;
-	flat unsigned int chunkID;
 } tes_out;
 
 //Uniforms
@@ -37,7 +35,7 @@ uniform vec3 cameraPos;
 uniform float altitude;
 
 //Heightfield, RGB is normalmap, A is heightmap
-layout (binding = 0) uniform sampler2DArray Heightfield;
+layout (binding = 0) uniform sampler2D Heightfield;
 
 //Functions
 vec2 toCartesian2D(vec2, vec2, vec2);
@@ -51,10 +49,9 @@ void main(){
 	tes_out.normal = toCartesian3D(tes_in[0].normal, tes_in[1].normal, tes_in[2].normal);
 	tes_out.tangent = toCartesian3D(tes_in[0].tangent, tes_in[1].tangent, tes_in[2].tangent);
 	tes_out.bitangent = toCartesian3D(tes_in[0].bitangent, tes_in[1].bitangent, tes_in[2].bitangent);
-	tes_out.chunkID = tes_in[0].chunkID;//flat chunkID will be the same across the same patch
 
 	//displace the terrain, moving the vertices upward
-	terrain_vertices.xyz += normalize(tes_out.normal) * texture(Heightfield, vec3(tes_out.texCoord, uintBitsToFloat(tes_out.chunkID))).a * altitude;
+	terrain_vertices.xyz += normalize(tes_out.normal) * texture(Heightfield, tes_out.texCoord).a * altitude;
 	gl_Position = terrain_vertices;
 }
 

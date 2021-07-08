@@ -23,7 +23,6 @@ in VertexVS{
 	vec3 normal;
 	vec3 tangent;
 	vec3 bitangent;
-	flat unsigned int chunkID;//chunkID defines the index of heightmap in "Heightmap" sampler array
 } tcs_in[];
 
 //Output
@@ -38,7 +37,6 @@ out VertexTCS{
 	vec3 normal;
 	vec3 tangent;
 	vec3 bitangent;
-	flat unsigned int chunkID;
 } tcs_out[];
 
 //Uniforms
@@ -50,7 +48,7 @@ uniform TessLevel tessParameters;
 uniform float shiftFactor;
 
 //Heightfield, RGB is normalmap, A is heightmap
-layout (binding = 0) uniform sampler2DArray Heightfield;
+layout (binding = 0) uniform sampler2D Heightfield;
 
 //Functions
 float[3] calcPatchDistance(vec3);
@@ -64,7 +62,6 @@ void main(){
 	tcs_out[gl_InvocationID].normal = tcs_in[gl_InvocationID].normal;
 	tcs_out[gl_InvocationID].tangent = tcs_in[gl_InvocationID].tangent;
 	tcs_out[gl_InvocationID].bitangent = tcs_in[gl_InvocationID].bitangent;
-	tcs_out[gl_InvocationID].chunkID = tcs_in[gl_InvocationID].chunkID;
 	
 	if(gl_InvocationID == 0){//tessllation settings are shared across all local invocations, so only need to set it once
 		float[3] camera_terrain_distance = calcPatchDistance(cameraPos);
@@ -81,7 +78,7 @@ float[3] calcPatchDistance(vec3 origin){
 	//calculate distance from origin to each vertex
 	for(int i = 0; i < 3; i++){
 		//calculate the vertex position on the actual terrain
-		vec3 terrainVertexPos = gl_out[i].gl_Position.xyz + normalize(tcs_out[i].normal) * altitude * texture(Heightfield, vec3(tcs_out[i].texCoord, uintBitsToFloat(tcs_out[i].chunkID))).a;
+		vec3 terrainVertexPos = gl_out[i].gl_Position.xyz + normalize(tcs_out[i].normal) * altitude * texture(Heightfield, tcs_out[i].texCoord).a;
 		//calculate distance
 		patch_distance[i] = distance(origin, terrainVertexPos);
 	}

@@ -33,11 +33,12 @@ namespace SuperTerrainPlus {
 
 	private:
 
+		//cuda stream
+		cudaStream_t buffering_stream;
+
 		//thread pool
 		std::unique_ptr<STPThreadPool> compute_pool;
 
-		//chunk data
-		STPChunkStorage ChunkCache;
 		//chunk data provider
 		STPChunkProvider ChunkProvider;
 
@@ -48,8 +49,6 @@ namespace SuperTerrainPlus {
 
 		//async chunk loader
 		std::future<unsigned int> ChunkLoader;
-		//CUDA map mapped array storage
-		std::list<std::pair<glm::vec2, cudaArray_t>> chunk_data;
 
 		//for automatic chunk loading
 		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the currentCentralPos is different from this value
@@ -61,25 +60,20 @@ namespace SuperTerrainPlus {
 		STPLocalChunksTable renderingLocals_lookup;
 
 		/**
-		 * @brief Load the four texture maps onto the cache if they can be found on library, otherwise compute will be dispatched
-		 * @param chunkPos The world position of this chunk, this acts as a key in the look up table
-		 * @param destination The location to store all four loaded maps. The loading will start from the pointer given. This should be mapped by CUDA, thus it's a device memory
-		 * Meaning if ones wish to loading array of texture, pointer offset must be pre-given to the function.
-		 * If parameter is not specified, nullptr will be the default value, meaning MapLoader() will only check if map is ready; if so true is returned without any loading; 
-		 * if not compute will be dispatched.
-		 * @return True if all maps can be found in the data storage. 
-		 * False if not and compute will be dispatched asynchornously, and results will be written back to the hash table, 
-		 * so the cache pointer does not need to be preserved if this function returns.
-		 * For some reason if there is error generated during loading, false will be returned as well.
-		 * If destination is specified as nullptr, and chunk is fully prepared, true will eb returned, otherwise computation will be dispatched and false is returned
+		 * @brief Transfer rendering buffer on host side to device (OpenGL) rendering buffer
+		 * @param buffer Rendering buffer on device side, a mapped OpenGL pointer.
+		 * Rendering buffer is continuous, function will determine pointer offset and only chunk specified in the "image" argument will be updated.
+		 * @param chunkPos World position of the chunk that will be used to update render buffer
+		 * @param chunkID Local chunk ID that specified which chunk in rendering buffer will be overwritten.
+		 * @return True if all operations are successfully performed
 		*/
-		bool loadRenderingBuffer(glm::vec2, const cudaArray_t);
+		bool renderingBufferSubData(cudaArray_t, glm::vec2, unsigned int);
 
 		/**
 		 * @brief Clear up the rendering buffer of the chunk map
 		 * @param destination The loaction to store all loaded maps, and it will be erased.
 		*/
-		void clearRenderingBuffer(const cudaArray_t);
+		void clearRenderingBuffer(cudaArray_t);
 
 	protected:
 

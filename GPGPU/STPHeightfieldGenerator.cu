@@ -57,30 +57,11 @@ __global__ void generateHeightmapKERNEL(STPSimplexNoise* const, float*, uint2, f
 __global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager, STPHeightfieldGenerator::curandRNG*);
 
 /**
- * @brief Fix the edge of the central chunk such that it's aligned with all neighbour chunks
- * @param heightmap The heightmap with global-local converter
- * @param interpolation_table The index base and range defined as the central chunk
- * @param threadSum The number thread required for interpolation, it equals to the size of the interpolation table. The actual number of thread 
- * launched is usually greater than this number
-*/
-__global__ void performPostErosionInterpolationKERNEL(STPRainDrop::STPFreeSlipManager, const uint2*, unsigned int);
-
-/**
  * @brief Generate the normal map for the height map within kernel, and combine two maps into a rendering buffer
  * @param heightmap - contains the height map that will be used to generate the normalmap, with free-slip manager
  * @param heightfield - will be used to store the output of the normal map in RGB channel, heightmap will be copied to A channel
 */
 __global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager, unsigned short*);
-
-/**
- * @brief Submit rendering cache to OpenGL rendering buffer, only provided chunk will be copied
- * @param glBuffer OpenGL rendering buffer, contains rendering buffer of all chunks
- * @param subCache An array of pointers to chunks that needs to be submitted
- * @param bufferOffset The offset on OpenGL buffer for each pointers to submit
- * @param dimension The size of texture on each chunk
- * 
-*/
-__global__ void submitRenderingBufferKERNEL(cudaSurfaceObject_t, unsigned short**, uint2*, uint2);
 
 /**
  * @brief Generate a new global to local index table
@@ -90,16 +71,6 @@ __global__ void submitRenderingBufferKERNEL(cudaSurfaceObject_t, unsigned short*
  * @param mapSize The dimension of the map
 */
 __global__ void initGlobalLocalIndexKERNEL(unsigned int*, unsigned int, uint2, uint2);
-
-/**
- * @brief Generate a new interpolation index table
- * @param output The generated table which contains index
- * @param chunkRange The number of chunk, it usually is the free slip range
- * @param mapSize The dimension of each map in the chunk
- * @param threadEdge Number of thread that covers edge interpolation
- * @param threadSum Number of thread in total that should be used for interpolation
-*/
-__global__ void initInterpolationIndexKERNEL(uint2*, uint2, uint2, unsigned int, unsigned int);
 
 /*
  * @brief Copy block of memory from device to host and split into chunks.
@@ -172,16 +143,12 @@ __host__ void STPHeightfieldGenerator::STPHeightfieldNonblockingStreamAllocator:
 __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings* noise_settings, const STPSettings::STPChunkSettings* chunk_settings, unsigned int hint_level_of_concurrency)
 	: simplex_h(noise_settings), Noise_Settings(*noise_settings), FreeSlipChunk(make_uint2(chunk_settings->FreeSlipChunk.x, chunk_settings->FreeSlipChunk.y)) {
 	const unsigned int num_pixel = chunk_settings->MapSize.x * chunk_settings->MapSize.y,
-		num_rendered_chunk = chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y,
 		num_freeslip_chunk = chunk_settings->FreeSlipChunk.x * chunk_settings->FreeSlipChunk.y;
 
 	//allocating space
 	cudaMalloc(&this->simplex, sizeof(STPSimplexNoise));
 	//copy data
 	cudaMemcpy(this->simplex, &simplex_h, sizeof(STPSimplexNoise), cudaMemcpyHostToDevice);
-	//allocating rendering buffer array
-	cudaMallocManaged(&this->RenderingBuffer, sizeof(unsigned short*) * num_rendered_chunk, cudaMemAttachGlobal);
-	cudaMallocManaged(&this->RenderingBufferOffset, sizeof(uint2) * num_rendered_chunk, cudaMemAttachGlobal);
 	//create memory pool
 	cudaMemPoolProps pool_props = { };
 	pool_props.allocType = cudaMemAllocationTypePinned;
@@ -189,35 +156,24 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STP
 	pool_props.location.type = cudaMemLocationTypeDevice;
 	pool_props.handleTypes = cudaMemHandleTypeNone;
 	cudaMemPoolCreate(&this->MapCacheDevice, &pool_props);
-	cudaMemPoolCreate(&this->RenderCacheDevice, &pool_props);
 	//TODO: smartly determine the average memory pool size
-	cuuint64_t release_thres;
-	release_thres = (sizeof(float) + sizeof(unsigned short) * 4u) * num_freeslip_chunk * num_pixel * hint_level_of_concurrency;
+	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short) * 4u) * num_freeslip_chunk * num_pixel * hint_level_of_concurrency;
 	cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres);
-	release_thres = sizeof(unsigned short) * 4u * num_rendered_chunk * num_pixel;
-	cudaMemPoolSetAttribute(this->RenderCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres);
 
 	//TODO: use CUDA API to dynamically determine launch configuration
 	//kernel parameters
 	this->numThreadperBlock_Map = dim3(32u, 32u);
 	this->numBlock_Map = dim3(noise_settings->Dimension.x / numThreadperBlock_Map.x, noise_settings->Dimension.y / numThreadperBlock_Map.y);
 	this->numThreadperBlock_Erosion = 1024u;
-	this->numThreadperBlock_Interpolation = 1024u;
-	this->numThreadperBlock_Rendering = dim3(32u, 32u);
 
 	//set global local index
 	this->initLocalGlobalIndexCUDA();
-	//set interpolation index
-	this->initInterpolationIndexCUDA();
 }
 
 __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 	//TODO: maybe use a smart ptr with custom deleter?
 	cudaFree(this->simplex);
-	cudaFree(this->RenderingBuffer);
-	cudaFree(this->RenderingBufferOffset);
 	cudaMemPoolDestroy(this->MapCacheDevice);
-	cudaMemPoolDestroy(this->RenderCacheDevice);
 	//check if the rng has been init
 	if (this->RNG_Map != nullptr) {
 		cudaFree(this->RNG_Map);
@@ -227,9 +183,6 @@ __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 	}
 	if (this->GlobalLocalIndex != nullptr) {
 		cudaFree(this->GlobalLocalIndex);
-	}
-	if (this->InterpolationIndex != nullptr) {
-		cudaFree(this->InterpolationIndex);
 	}
 }
 
@@ -341,11 +294,6 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 			//erode the heightmap, either from provided heightmap or generated previously
 			const unsigned erosionBrushCache_size = ErosionBrushSize * (sizeof(int) + sizeof(float));
 			performErosionKERNEL << <this->numBlock_Erosion, this->numThreadperBlock_Erosion, erosionBrushCache_size, stream >> > (heightmap_slip, this->RNG_Map);
-			//check if free slip has been enabled
-			if (this->InterpolationThreadRequired > 0u) {
-				//perform post erosion interpolation using interpolation lookup table
-				performPostErosionInterpolationKERNEL << <this->numBlock_Interpolation, this->numThreadperBlock_Interpolation, 0, stream >> > (heightmap_slip, this->InterpolationIndex, this->InterpolationThreadRequired);
-			}
 		}
 
 		//Flag: RenderingBufferGeneration
@@ -394,60 +342,6 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		}
 	}
 
-	return no_error;
-}
-
-__host__ bool STPHeightfieldGenerator::renderingBufferSubDataCUDA(cudaArray_t buffer, STPRenderingImage& image, uvec2 rendered_chunk) const {
-	if (image.empty()) {
-		//no need to continue if there's nothing we need to load
-		return true;
-	}
-	
-	auto calcBufferOffset = [&rendered_chunk]__host__(unsigned int chunkID, const uint2& dimension, const uint2& buffer_dimension) -> uint2 {
-		//calculate global offset, basically
-		const uvec2 chunkIdx(chunkID % rendered_chunk.x, static_cast<unsigned int>(floorf(1.0f * chunkID / rendered_chunk.y)));
-		return make_uint2(dimension.x * chunkIdx.x, dimension.y * chunkIdx.y);
-	};
-	bool no_error = true;
-	const uint2& dimension = this->Noise_Settings.Dimension;
-	const uint2 buffer_dimension = make_uint2(dimension.x * rendered_chunk.x, dimension.y * rendered_chunk.y);
-	const unsigned int single_buffer_size = sizeof(unsigned short) * 4u * dimension.x * dimension.y;
-	cudaStream_t stream;
-
-	{
-		unique_lock<mutex> lock(this->StreamPool_lock);
-		stream = reinterpret_cast<cudaStream_t>(this->StreamPool.allocate(1ull));
-	}
-	//create surface
-	cudaResourceDesc rendbufDesc = { };
-	cudaSurfaceObject_t rendbuf;
-	rendbufDesc.resType = cudaResourceTypeArray;
-	rendbufDesc.res.array.array = buffer;
-	no_error &= cudaSuccess == cudaCreateSurfaceObject(&rendbuf, &rendbufDesc);
-	//calculate launch configurations
-	dim3 numBlock_rendering = dim3(dimension.x / this->numThreadperBlock_Rendering.x, dimension.y / this->numThreadperBlock_Rendering.y, image.size());
-	//copy image to device memory, since rendering buffer is organised with global index system but image is in local index (and sparsely)
-	unsigned int num_chunk = 0;
-	for (auto img : image) {
-		no_error &= cudaSuccess == cudaMallocFromPoolAsync(this->RenderingBuffer + num_chunk, single_buffer_size, this->RenderCacheDevice, stream);
-		no_error &= cudaSuccess == cudaMemcpyAsync(this->RenderingBuffer[num_chunk], img.first, single_buffer_size, cudaMemcpyHostToDevice, stream);
-		this->RenderingBufferOffset[num_chunk] = calcBufferOffset(img.second, dimension, buffer_dimension);
-		num_chunk++;
-	}
-
-	//launch
-	submitRenderingBufferKERNEL << <numBlock_rendering, this->numThreadperBlock_Rendering, 0, stream >> > (rendbuf, this->RenderingBuffer, this->RenderingBufferOffset, dimension);
-
-	//finish up
-	for (unsigned int i = 0u; i < num_chunk; i++) {
-		no_error &= cudaSuccess == cudaFreeAsync(this->RenderingBuffer[i], stream);
-	}
-	no_error &= cudaSuccess == cudaStreamSynchronize(stream);
-	{
-		unique_lock<mutex> stream_lock(this->StreamPool_lock);
-		this->StreamPool.deallocate(1ull, reinterpret_cast<void*>(stream));
-	}
-	no_error &= cudaSuccess == cudaDestroySurfaceObject(rendbuf);
 	return no_error;
 }
 
@@ -503,37 +397,6 @@ __host__ void STPHeightfieldGenerator::initLocalGlobalIndexCUDA() {
 
 	if (!no_error) {
 		throw std::runtime_error("Heightfield generator initialisation failed::Could not initialise local global index table");
-	}
-}
-
-__host__ void STPHeightfieldGenerator::initInterpolationIndexCUDA() {
-	const uint2& dimension = this->Noise_Settings.Dimension;
-	const uint2& range = this->FreeSlipChunk;
-	//Disable interpolation when freeslip erosion is not enabled
-	if (range.x == 1u && range.y == 1u) {
-		this->InterpolationThreadRequired = 0u;
-		return;
-	}
-
-	//Number of thread that covers edge interpolation
-	const unsigned int threadEdge = (dimension.x - 2u) * (range.x * (range.x - 1u)) + (dimension.y - 2u) * (range.y * (range.y - 1u));
-	//Number of thread that covers corner interpolation
-	const unsigned int threadCorner = (range.x - 1u) * (range.y - 1u);
-	//Total number of thread needed for all interpolation, note that the actual number of thread launched might be more than this number
-	this->InterpolationThreadRequired = threadEdge + threadCorner;
-	//launch parameters
-	this->numBlock_Interpolation = static_cast<unsigned int>(ceilf(1.0f * this->InterpolationThreadRequired / this->numThreadperBlock_Interpolation));
-	bool no_error = true;
-
-	no_error &= cudaSuccess == cudaDeviceSynchronize();
-	//allocation
-	no_error &= cudaSuccess == cudaMalloc(&this->InterpolationIndex, sizeof(uint2) * this->InterpolationThreadRequired);
-	//compute
-	initInterpolationIndexKERNEL << <this->numBlock_Interpolation, this->numThreadperBlock_Interpolation >> > (this->InterpolationIndex, range, dimension, threadEdge, this->InterpolationThreadRequired);
-	no_error &= cudaSuccess == cudaDeviceSynchronize();
-
-	if (!no_error) {
-		throw std::runtime_error("Heightfield generator initialisation failed::Could not initialise interpolation index table");
 	}
 }
 
@@ -625,68 +488,6 @@ __global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager heightmap_s
 	droplet.Erode(settings, heightmap_storage);
 }
 
-__global__ void performPostErosionInterpolationKERNEL(STPRainDrop::STPFreeSlipManager heightmap, const uint2* interpolation_table, unsigned int threadSum) {
-	//current working thread, 1D
-	const unsigned int tid = (blockIdx.x * blockDim.x) + threadIdx.x;
-	//retrieve the MSB value and set MSB of the original value back to zero
-	auto decodeMSB = []__device__(unsigned int& value) -> bool {
-		constexpr unsigned int shifted = static_cast<unsigned int>(sizeof(value) * CHAR_BIT - 1u);
-		const bool msb = ((value >> shifted) & 0b1u) == 1u;
-		value = value & ~(1u << shifted);
-		return msb;
-	};
-
-	//kill the worker if it's more than enough
-	if (tid >= threadSum) {
-		return;
-	}
-
-	//read the coordinate to interpolate
-	uint2 location = interpolation_table[tid];
-	//decode
-	const bool flag[2] = { decodeMSB(location.x), decodeMSB(location.y) };
-
-	float interpolated;
-	const unsigned int rowCount = heightmap.FreeSlipRange.x;
-	const unsigned int index = location.x + rowCount * location.y;
-	if (flag[0] && flag[1]) {
-		//corner interpolation
-		//find mean in a 2x2 block, start from the top-left pixel
-		interpolated = heightmap[index] + heightmap[index + 1u] + heightmap[index + rowCount] + heightmap[index + rowCount + 1u];
-		interpolated /= 4.0f;
-		//assigning interpolated value
-		heightmap[index] = interpolated;
-		heightmap[index + 1u] = interpolated;
-		heightmap[index + rowCount] = interpolated;
-		heightmap[index + rowCount + 1u] = interpolated;
-		return;
-	}
-
-	if (flag[0] && !flag[1]) {
-		//column edge interpolation
-		//find mean for pixels from left to right
-		interpolated = heightmap[index] + heightmap[index + 1u];
-		interpolated /= 2.0f;
-		//assigning values
-		heightmap[index] = interpolated;
-		heightmap[index + 1u] = interpolated;
-		return;
-	}
-	if (!flag[0] && flag[1]) {
-		//row edge interpolation
-		//find mean for pixels from up to down
-		interpolated = heightmap[index] + heightmap[index + rowCount];
-		interpolated /= 2.0f;
-		//assigning values
-		heightmap[index] = interpolated;
-		heightmap[index + rowCount] = interpolated;
-		return;
-	}
-
-	//otherwise it's an error
-	assert("Invalid flag identifier");
-}
-
 __global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager heightmap, unsigned short* heightfield) {
 	//convert constant memory to usable class
 	SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const settings = reinterpret_cast<SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
@@ -764,20 +565,6 @@ __global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager he
 	return;
 }
 
-__global__ void submitRenderingBufferKERNEL(cudaSurfaceObject_t glBuffer, unsigned short** subCache, uint2* bufferOffset, uint2 dimension) {
-	//working pixel
-	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
-		y = (blockIdx.y * blockDim.y) + threadIdx.y,
-		z = blockIdx.z;
-	const int2 coord = make_int2(bufferOffset[z].x + x, bufferOffset[z].y + y);
-	const unsigned int rowCount = y * dimension.x;
-
-	surf2Dwrite(subCache[z][x * 4 + rowCount], glBuffer, coord.x, coord.y, cudaBoundaryModeZero);
-	surf2Dwrite(subCache[z][x * 4 + 1 + rowCount], glBuffer, coord.x + 1, coord.y, cudaBoundaryModeZero);
-	surf2Dwrite(subCache[z][x * 4 + 2 + rowCount], glBuffer, coord.x + 2, coord.y, cudaBoundaryModeZero);
-	surf2Dwrite(subCache[z][x * 4 + 3 + rowCount], glBuffer, coord.x + 3, coord.y, cudaBoundaryModeZero);
-}
-
 __global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int rowCount, uint2 chunkRange, uint2 mapSize) {
 	//current pixel
 	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
@@ -789,70 +576,4 @@ __global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int ro
 	const uint2 localPos = make_uint2(globalPos.x - chunkPos.x * mapSize.x, globalPos.y - chunkPos.y * mapSize.y);
 
 	output[globalidx] = (chunkPos.x + chunkRange.x * chunkPos.y) * mapSize.x * mapSize.y + (localPos.x + mapSize.x * localPos.y);
-}
-
-__global__ void initInterpolationIndexKERNEL(uint2* output, uint2 chunkRange, uint2 mapSize, unsigned int threadEdge, unsigned int threadSum) {
-	//pre-compute constant values
-	//An iteration contains (chunkRange.x - 1) column edges and (chunkRange.x) row edges.
-	//In a complete chunk there will always be (chunkRange.y - 1) complete iterations plus an incomplete iteration with (chunkRange.x - 1) column edges
-	//The max index can reach for column edge per iteration
-	__shared__ unsigned int maxIndex_column;
-	//Sum of maxIndex_column and maxIndex_row
-	__shared__ unsigned int maxIndex;
-	if (threadIdx.x == 0u) {
-		maxIndex_column = (mapSize.y - 2u) * (chunkRange.x - 1u);
-		//The max index can reach for row edge per iteration
-		const unsigned int maxIndex_row = (mapSize.x - 2u) * (chunkRange.x);
-		maxIndex = maxIndex_column + maxIndex_row;
-	}
-	__syncthreads();
-
-	//current thread id, it's a 1D launch config
-	const unsigned int tid = (blockIdx.x * blockDim.x) + threadIdx.x;
-	//We will encode MSB to tell what type of interpolation it's
-	auto setMSB = []__device__(unsigned int value, bool bit) -> unsigned int {
-		constexpr unsigned int flag = 1u << static_cast<unsigned int>(sizeof(value) * CHAR_BIT - 1u);
-		return bit ? value | flag : value & ~flag;
-	};
-	
-	//checking for index out of bound
-	if (tid >= threadSum) {
-		return;
-	}
-
-	//the power of maths, again
-	if (tid >= threadEdge) {
-		//corner interpolation
-		const unsigned int corner_index = tid - threadEdge;
-		output[tid].x = mapSize.x * (corner_index % (chunkRange.x - 1u) + 1u) - 1u;
-		output[tid].y = mapSize.y * (static_cast<unsigned int>(floorf(1.0f * corner_index / (chunkRange.x - 1u))) + 1u) - 1u;
-
-		//binary insertion for corner: MSB.x = MSB.y = 1
-		output[tid].x = setMSB(output[tid].x, true);
-		output[tid].y = setMSB(output[tid].y, true);
-		return;
-	}
-
-	//edge interpolation
-	if (tid % maxIndex < maxIndex_column) {
-		//column edge interpolation
-		const unsigned int column_index = tid % (chunkRange.x - 1u);
-		output[tid].x = mapSize.x - 1u + (column_index * mapSize.x);
-		output[tid].y = (static_cast<unsigned int>(floorf(1.0f * (tid % maxIndex) / (chunkRange.x - 1u))) + 1u)
-			+ mapSize.y * static_cast<unsigned int>(floorf(1.0f * tid / maxIndex));
-
-		//binary insertion for column edge: MSB.x = 1 and MSB.y = 0
-		output[tid].x = setMSB(output[tid].x, true);
-		output[tid].y = setMSB(output[tid].y, false);
-		return;
-	}
-	//row edge interpolation
-	const unsigned int current_row_index = tid % maxIndex - maxIndex_column;
-	const unsigned int row_index = static_cast<unsigned int>(floorf(1.0f * current_row_index / (mapSize.x - 2u)));
-	output[tid].x = current_row_index % (mapSize.x - 2u) + row_index * mapSize.x + 1u;
-	output[tid].y = mapSize.y * (static_cast<unsigned int>(floorf(1.0f * tid / maxIndex)) + 1u) - 1u;
-	
-	//binary insertion for row edge: MSB.x = 0 and MSB.y = 1
-	output[tid].x = setMSB(output[tid].x, false);
-	output[tid].y = setMSB(output[tid].y, true);
 }

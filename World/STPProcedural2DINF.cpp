@@ -7,6 +7,7 @@ using std::endl;
 
 using std::make_unique;
 
+using glm::ivec2;
 using glm::vec2;
 using glm::mat4;
 using glm::identity;
@@ -19,7 +20,6 @@ STPProcedural2DINF::STPProcedural2DINF(STPSettings::STPConfigurations* const set
 	if (this->compile2DTerrainShader()) {
 		cout << "Shader Loaded :)" << endl;
 	}
-	this->calcBaseChunkPosition();
 	this->loadPlane();
 	cout << "....Done...." << endl;
 }
@@ -51,8 +51,10 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 	//binding sampler
 	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Heightfield"), 0);
 	//those parameters won't change, there is no need to resend them in rendering loop
+	const vec2 base_chunk_position = this->calcBaseChunkPosition();
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("rendered_chunk_num"), 1, value_ptr(chunk_settings->RenderedChunk));
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("chunk_dimension"), 1, value_ptr(chunk_settings->ChunkSize));
+	glProgramUniform2fv(this->Terrain2d_shader.getP(), this->getLoc("base_chunk_position"), 1, value_ptr(base_chunk_position));
 	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MAX_TESS_LEVEL"), this->RenderingSettings.TessSettings.MaxTessLevel);
 	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MIN_TESS_LEVEL"), this->RenderingSettings.TessSettings.MinTessLevel);
 	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.FURTHEST_TESS_DISTANCE"), this->RenderingSettings.TessSettings.FurthestTessDistance);
@@ -67,15 +69,11 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 	return true;
 }
 
-void STPProcedural2DINF::calcBaseChunkPosition() {
+vec2 STPProcedural2DINF::calcBaseChunkPosition() {
 	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider().getChunkSettings();
-	//allocate space
-	const unsigned int num_chunk = chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y;
-	this->BaseChunkPosition = make_unique<vec2[]>(num_chunk);
-
-	const auto rendered_chunks = STPChunk::getRegion(vec2(chunk_settings->ChunkOffset.x, chunk_settings->ChunkOffset.z),
-		chunk_settings->ChunkSize, chunk_settings->RenderedChunk);
-	std::copy(rendered_chunks.begin(), rendered_chunks.end(), this->BaseChunkPosition.get());
+	//calculate offset
+	const ivec2 chunk_offset(-glm::floor(vec2(chunk_settings->RenderedChunk) / 2.0f));
+	return STPChunk::offsetChunk(vec2(chunk_settings->ChunkOffset.x, chunk_settings->ChunkOffset.z), chunk_settings->ChunkSize, chunk_offset);
 }
 
 void STPProcedural2DINF::loadPlane() {
@@ -85,7 +83,6 @@ void STPProcedural2DINF::loadPlane() {
 	glCreateBuffers(1, &this->plane_indirect);
 	glCreateVertexArrays(1, &this->plane_vao);
 	glCreateBuffers(1, &this->plane_ebo);
-	glCreateBuffers(1, &this->plane_basechunkposition);
 
 	//create indirect buffer
 	//the size is just sizeof(DrawElementsIndirectCommand), that type contains 5 unsigned int
@@ -95,12 +92,9 @@ void STPProcedural2DINF::loadPlane() {
 	//sending data
 	glNamedBufferStorage(this->plane_vbo, sizeof(SglToolkit::SgTUtils::UNITPLANE_VERTICES), SglToolkit::SgTUtils::UNITPLANE_VERTICES, GL_NONE);
 	glNamedBufferStorage(this->plane_ebo, sizeof(SglToolkit::SgTUtils::UNITBOX_INDICES), SglToolkit::SgTUtils::UNITBOX_INDICES, GL_NONE);
-	glNamedBufferStorage(this->plane_basechunkposition, 
-		sizeof(vec2) * chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y, this->BaseChunkPosition.get(), GL_NONE);
 	//binding to vao
 	glVertexArrayVertexBuffer(this->plane_vao, 0, this->plane_vbo, 0, 14 * sizeof(int));
 	glVertexArrayElementBuffer(this->plane_vao, this->plane_ebo);
-	glVertexArrayVertexBuffer(this->plane_vao, 1, this->plane_basechunkposition, 0, sizeof(vec2));
 	//attributing
 	for (int i = 0; i < 6; i++) {
 		glEnableVertexArrayAttrib(this->plane_vao, i);
@@ -111,17 +105,10 @@ void STPProcedural2DINF::loadPlane() {
 	glVertexArrayAttribFormat(this->plane_vao, 2, 3, GL_INT, GL_FALSE, sizeof(int) * 5);//normal
 	glVertexArrayAttribFormat(this->plane_vao, 3, 3, GL_INT, GL_FALSE, sizeof(int) * 8);//tangent
 	glVertexArrayAttribFormat(this->plane_vao, 4, 3, GL_INT, GL_FALSE, sizeof(int) * 11);//bitangent
-	//Binding block 1
-	glVertexArrayAttribFormat(this->plane_vao, 5, 2, GL_FLOAT, GL_FALSE, 0);//base chunk position
-	//Block 0
+	//Block 0 binding
 	for (int i = 0; i < 5; i++) {
 		glVertexArrayAttribBinding(this->plane_vao, i, 0);
 	}
-	//Block 1
-	glVertexArrayAttribBinding(this->plane_vao, 5, 1);
-	//we send new chunk data per chunk.
-	//our rendering call is based on unit plane so we update the attribute every chunk_size.x*y call
-	glVertexArrayBindingDivisor(this->plane_vao, 1, chunk_settings->ChunkSize.x * chunk_settings->ChunkSize.y);
 	
 	return;
 }
@@ -137,7 +124,6 @@ void STPProcedural2DINF::clearup() {
 	glDeleteBuffers(1, &this->plane_indirect);
 	glDeleteVertexArrays(1, &this->plane_vao);
 	glDeleteBuffers(1, &this->plane_ebo);
-	glDeleteBuffers(1, &this->plane_basechunkposition);
 	glDeleteProgramPipelines(1, &this->Terrain2d_pipeline);
 }
 

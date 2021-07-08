@@ -31,15 +31,10 @@ namespace SuperTerrainPlus {
 	class STPProcedural2DINF final : public STPChunkManager {
 	private:
 
-		//Calculated chunk data
-		//Calculate the coordinate of the top-left corner of each chunk
-		//It will be used as the key pair to search the map from our hash table
-		std::unique_ptr<glm::vec2[]> BaseChunkPosition;
-
 		//drawing command
 		const void* const command;
 		//Chunk storage
-		GLuint plane_vbo, plane_vao, plane_ebo, plane_basechunkposition, plane_indirect;
+		GLuint plane_vbo, plane_vao, plane_ebo, plane_indirect;
 		SglToolkit::SgTShaderProc Terrain2d_shader;
 		GLuint Terrain2d_pipeline;
 
@@ -53,9 +48,10 @@ namespace SuperTerrainPlus {
 		const bool compile2DTerrainShader();
 
 		/**
-		 * @brief Calculate the base chunk position (the coordinate of top-left corner) for each chunk
+		 * @brief Calculate the base chunk position (the coordinate of top-left corner) for the most top-left corner chunk
+		 * @return The base chunk position
 		*/
-		void calcBaseChunkPosition();
+		glm::vec2 calcBaseChunkPosition();
 
 		/**
 		 * @brief Load the unit plane

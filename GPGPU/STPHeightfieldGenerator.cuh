@@ -42,9 +42,6 @@ namespace SuperTerrainPlus {
 			//Choosen generator for curand
 			typedef curandStatePhilox4_32_10 curandRNG;
 
-			//Store chunk image that needs to be loaded into rendering buffer, and their respective local chunk ID
-			typedef std::list<std::pair<unsigned short*, unsigned int>> STPRenderingImage;
-
 			//A function that converts biome id to the index corresponded in biome table
 			//By default it's a 1-1 mapping, meaning biome id = index
 			typedef size_t(*STPBiomeInterpreter)(STPBiome::Sample);
@@ -126,12 +123,9 @@ namespace SuperTerrainPlus {
 			};
 
 			//Launch parameter for texture
-			dim3 numThreadperBlock_Map, numBlock_Map, numBlock_FreeslipMap, numThreadperBlock_Rendering;
-			//Launch parameter for hydraulic erosion and interpolation
-			unsigned int numThreadperBlock_Erosion, numBlock_Erosion, numThreadperBlock_Interpolation, numBlock_Interpolation;
-			//An array of device pointers to rendering buffer on device, managed memory
-			unsigned short** RenderingBuffer;
-			uint2* RenderingBufferOffset;
+			dim3 numThreadperBlock_Map, numBlock_Map, numBlock_FreeslipMap;
+			//Launch parameter for hydraulic erosion
+			unsigned int numThreadperBlock_Erosion, numBlock_Erosion;
 
 			/**
 			 * @brief Simplex noise generator, on device
@@ -159,23 +153,6 @@ namespace SuperTerrainPlus {
 			 * Chunk 3 | Chunk 4
 			*/
 			unsigned int* GlobalLocalIndex = nullptr;
-			/**
-			 * @brief Convert threadID to the coordinate on heightmap on freeslip chunks that need to be interpolated such that heightmap edges are seamless.
-			 * - If interpolation patch is an edge and it's aligned as a column (patch size is 2*(Chunksize.y - 2)), the coordinate points to the left and 
-			 * interpolation should be done from left to right.
-			 * - If interpolation patch is an edge and it's aligned as a row (patch size is (Chunksize.x - 2)*2), the coordinate points to the up and 
-			 * interpolation should be done from up to down.
-			 * - If interpolation patch is a corner (patch size is 2*2), the coordinate points to the upper-left and 
-			 * interpolation should be done from upper-left to bottom-right, row first.
-			 * - MSB of each component will be used as a flag, such that range of the value should not exceed the range of [0,2^(32)-1].
-			 * - MSB.x = 1 and MSB.y = 1: corner interpolation
-			 * - MSB.x = 1 and MSB.y = 0: interploation goes in x direction (left to right), it's a column edge interpolation
-			 * - MSB.x = 0 and MSB.y = 1: interploation goes in y direction (up to down), it's a row edge interpolation
-			 * - Any other MSB combinations will be marked as errors and program will crash for the sake of memory safety
-			*/
-			uint2* InterpolationIndex = nullptr;
-			//Total number of thread needed for all interpolation, note that the actual number of thread launched might be more than this number
-			unsigned int InterpolationThreadRequired;
 			//Free slip range in the unit of chunk
 			const uint2 FreeSlipChunk;
 			//Determine the number of raindrop to summon, the higher the more accurate but slower
@@ -188,7 +165,6 @@ namespace SuperTerrainPlus {
 			mutable std::mutex MapCachePinned_lock;
 			mutable std::mutex StreamPool_lock;
 			mutable cudaMemPool_t MapCacheDevice;
-			mutable cudaMemPool_t RenderCacheDevice;
 			mutable STPMemoryPool<void, STPHeightfieldHostAllocator> MapCachePinned;
 			mutable STPMemoryPool<void, STPHeightfieldNonblockingStreamAllocator> StreamPool;
 
@@ -196,11 +172,6 @@ namespace SuperTerrainPlus {
 			 * @brief Initialise the local global index lookup table
 			*/
 			__host__ void initLocalGlobalIndexCUDA();
-
-			/**
-			 * @brief Initialise the interpolation index lookup table
-			*/
-			__host__ void initInterpolationIndexCUDA();
 
 		public:
 
@@ -255,17 +226,6 @@ namespace SuperTerrainPlus {
 			 * @return True if all operations are successful without any errors
 			*/
 			__host__ bool operator()(STPMapStorage&, STPGeneratorOperation) const;
-
-			/**
-			 * @brief Transfer rendering buffer on host side to device (OpenGL) rendering buffer
-			 * @param buffer Rendering buffer on device side, a mapped OpenGL pointer.
-			 * Rendering buffer is continuous, function will determine pointer offset and only chunk specified in the "image" argument will be updated.
-			 * @param image Chunk buffer needs to be transferred, and the relative local chunk ID.
-			 * Chunk ID specify which chunk in rendering buffer will be overwritten.
-			 * @param rendered_chunk The number of chunk presented on the rendering buffer
-			 * @return True if all operations are successfully performed
-			*/
-			__host__ bool renderingBufferSubDataCUDA(cudaArray_t, STPRenderingImage&, glm::uvec2) const;
 
 			/**
 			 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.
