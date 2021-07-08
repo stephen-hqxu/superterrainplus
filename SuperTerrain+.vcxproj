@@ -111,7 +111,6 @@
     <None Include="World\Biome\STPLayer.inl" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="GPGPU\STPDeviceErrorHandler.cu" />
     <CudaCompile Include="GPGPU\STPHeightfieldGenerator.cu" />
     <CudaCompile Include="GPGPU\STPPermutationsGenerator.cu" />
     <CudaCompile Include="GPGPU\STPRainDrop.cu" />

@@ -31,12 +31,18 @@ namespace SuperTerrainPlus {
 
 		//Chunk settings
 		const STPSettings::STPChunkSettings ChunkSettings;
-
 		//thread pool
 		std::unique_ptr<STPThreadPool> kernel_launch_pool;
-
 		//Heightfield generator
 		STPCompute::STPHeightfieldGenerator heightmap_gen;
+		const unsigned int concurrency_level;
+
+		/**
+		 * @brief Calculate the maximum number of chunk that can be computed in parallel without triggering chunk overlap and data race
+		 * @param rendered_range The number of chunk to be rendered
+		 * @param freeslip_rance The numebr of chunk that will be used as neighbour
+		*/
+		static unsigned int calculateMaxConcurrency(glm::uvec2, glm::uvec2);
 
 		/**
 		 * @brief Calculate the chunk offset such that the transition of each chunk is seamless

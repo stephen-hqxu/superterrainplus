@@ -302,8 +302,5 @@
     <CudaCompile Include="GPGPU\STPRainDrop.cu">
       <Filter>GPGPU</Filter>
     </CudaCompile>
-    <CudaCompile Include="GPGPU\STPDeviceErrorHandler.cu">
-      <Filter>GPGPU</Filter>
-    </CudaCompile>
   </ItemGroup>
 </Project>

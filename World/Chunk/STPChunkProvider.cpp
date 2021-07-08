@@ -9,9 +9,17 @@ using std::make_pair;
 using namespace SuperTerrainPlus;
 
 STPChunkProvider::STPChunkProvider(STPSettings::STPConfigurations* settings)
-	: ChunkSettings(settings->getChunkSettings())
-	, heightmap_gen(&settings->getSimplexNoiseSettings(), &this->ChunkSettings) {
-	this->kernel_launch_pool = make_unique<STPThreadPool>(4u);
+	: ChunkSettings(settings->getChunkSettings()), concurrency_level(STPChunkProvider::calculateMaxConcurrency(this->ChunkSettings.RenderedChunk, this->ChunkSettings.FreeSlipChunk))
+	, heightmap_gen(&settings->getSimplexNoiseSettings(), &this->ChunkSettings, this->concurrency_level) {
+	this->kernel_launch_pool = make_unique<STPThreadPool>(5u);
+}
+
+unsigned int STPChunkProvider::calculateMaxConcurrency(uvec2 rendered_range, uvec2 freeslip_range) {
+	using glm::floor;
+	const vec2 rr = vec2(rendered_range),
+		fr = vec2(freeslip_range);
+	const uvec2 max_used = uvec2(floor((rr + floor(fr / 2.0f) * 2.0f) / fr));
+	return max_used.x * max_used.y;
 }
 
 float3 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {

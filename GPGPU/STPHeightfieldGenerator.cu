@@ -73,6 +73,16 @@ __global__ void performPostErosionInterpolationKERNEL(STPRainDrop::STPFreeSlipMa
 __global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager, unsigned short*);
 
 /**
+ * @brief Submit rendering cache to OpenGL rendering buffer, only provided chunk will be copied
+ * @param glBuffer OpenGL rendering buffer, contains rendering buffer of all chunks
+ * @param subCache An array of pointers to chunks that needs to be submitted
+ * @param bufferOffset The offset on OpenGL buffer for each pointers to submit
+ * @param dimension The size of texture on each chunk
+ * 
+*/
+__global__ void submitRenderingBufferKERNEL(cudaSurfaceObject_t, unsigned short**, uint2*, uint2);
+
+/**
  * @brief Generate a new global to local index table
  * @param output The generated table. Should be preallocated with size sizeof(unsigned int) * chunkRange.x * mapSize.x * chunkRange.y * mapSize.y
  * @param rowCount The number of row in the global index table, which is equivalent to chunkRange.x * mapSize.x
@@ -139,16 +149,6 @@ __host__ bool blockcopy_h2d(T* device, T* host, list<T*>& source, size_t block_s
 	return no_error;
 }
 
-__host__ void* STPHeightfieldGenerator::STPHeightfieldAllocator::allocate(size_t count) {
-	void* mem = nullptr;
-	cudaMalloc(&mem, count);
-	return mem;
-}
-
-__host__ void STPHeightfieldGenerator::STPHeightfieldAllocator::deallocate(size_t count, void* ptr) {
-	cudaFree(ptr);
-}
-
 __host__ void* STPHeightfieldGenerator::STPHeightfieldHostAllocator::allocate(size_t count) {
 	void* mem = nullptr;
 	cudaMallocHost(&mem, count);
@@ -169,12 +169,33 @@ __host__ void STPHeightfieldGenerator::STPHeightfieldNonblockingStreamAllocator:
 	cudaStreamDestroy(reinterpret_cast<cudaStream_t>(stream));
 }
 
-__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings* noise_settings, const STPSettings::STPChunkSettings* chunk_settings) 
+__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings* noise_settings, const STPSettings::STPChunkSettings* chunk_settings, unsigned int hint_level_of_concurrency)
 	: simplex_h(noise_settings), Noise_Settings(*noise_settings), FreeSlipChunk(make_uint2(chunk_settings->FreeSlipChunk.x, chunk_settings->FreeSlipChunk.y)) {
+	const unsigned int num_pixel = chunk_settings->MapSize.x * chunk_settings->MapSize.y,
+		num_rendered_chunk = chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y,
+		num_freeslip_chunk = chunk_settings->FreeSlipChunk.x * chunk_settings->FreeSlipChunk.y;
+
 	//allocating space
 	cudaMalloc(&this->simplex, sizeof(STPSimplexNoise));
 	//copy data
 	cudaMemcpy(this->simplex, &simplex_h, sizeof(STPSimplexNoise), cudaMemcpyHostToDevice);
+	//allocating rendering buffer array
+	cudaMallocManaged(&this->RenderingBuffer, sizeof(unsigned short*) * num_rendered_chunk, cudaMemAttachGlobal);
+	cudaMallocManaged(&this->RenderingBufferOffset, sizeof(uint2) * num_rendered_chunk, cudaMemAttachGlobal);
+	//create memory pool
+	cudaMemPoolProps pool_props = { };
+	pool_props.allocType = cudaMemAllocationTypePinned;
+	pool_props.location.id = 0;
+	pool_props.location.type = cudaMemLocationTypeDevice;
+	pool_props.handleTypes = cudaMemHandleTypeNone;
+	cudaMemPoolCreate(&this->MapCacheDevice, &pool_props);
+	cudaMemPoolCreate(&this->RenderCacheDevice, &pool_props);
+	//TODO: smartly determine the average memory pool size
+	cuuint64_t release_thres;
+	release_thres = (sizeof(float) + sizeof(unsigned short) * 4u) * num_freeslip_chunk * num_pixel * hint_level_of_concurrency;
+	cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres);
+	release_thres = sizeof(unsigned short) * 4u * num_rendered_chunk * num_pixel;
+	cudaMemPoolSetAttribute(this->RenderCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres);
 
 	//TODO: use CUDA API to dynamically determine launch configuration
 	//kernel parameters
@@ -182,6 +203,7 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STP
 	this->numBlock_Map = dim3(noise_settings->Dimension.x / numThreadperBlock_Map.x, noise_settings->Dimension.y / numThreadperBlock_Map.y);
 	this->numThreadperBlock_Erosion = 1024u;
 	this->numThreadperBlock_Interpolation = 1024u;
+	this->numThreadperBlock_Rendering = dim3(32u, 32u);
 
 	//set global local index
 	this->initLocalGlobalIndexCUDA();
@@ -192,6 +214,10 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STP
 __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 	//TODO: maybe use a smart ptr with custom deleter?
 	cudaFree(this->simplex);
+	cudaFree(this->RenderingBuffer);
+	cudaFree(this->RenderingBufferOffset);
+	cudaMemPoolDestroy(this->MapCacheDevice);
+	cudaMemPoolDestroy(this->RenderCacheDevice);
 	//check if the rng has been init
 	if (this->RNG_Map != nullptr) {
 		cudaFree(this->RNG_Map);
@@ -267,17 +293,23 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		isFlagged(operation, STPHeightfieldGenerator::RenderingBufferGeneration)
 	};
 
+	no_error &= cudaSuccess == cudaSetDevice(0);
+	//setup phase
+	//creating stream so cpu thread can calculate all chunks altogether
+	cudaStream_t stream = nullptr;
+	//we want the stream to not be blocked by default stream
+	{
+		unique_lock<mutex> stream_lock(this->StreamPool_lock);
+		stream = reinterpret_cast<cudaStream_t>(this->StreamPool.allocate(1ull));
+	}
 	//memory allocation
 	//Device
-	{
-		unique_lock<mutex> lock(this->MapCacheDevice_lock);
-		//FP32
-		//we need heightmap for computation regardlessly
-		heightfield_freeslip_d = reinterpret_cast<float*>(this->MapCacheDevice.allocate(map_freeslip_size));
-		//INT16
-		if (flag[2]) {
-			heightfield_formatted_d = reinterpret_cast<unsigned short*>(this->MapCacheDevice.allocate(map16ui_freeslip_size));
-		}
+	//FP32
+	//we need heightmap for computation regardlessly
+	no_error &= cudaSuccess == cudaMallocFromPoolAsync(&heightfield_freeslip_d, map_freeslip_size, this->MapCacheDevice, stream);
+	//INT16
+	if (flag[2]) {
+		no_error &= cudaSuccess == cudaMallocFromPoolAsync(&heightfield_formatted_d, map16ui_freeslip_size, this->MapCacheDevice, stream);
 	}
 	//Host
 	{
@@ -288,15 +320,6 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		if (flag[2]) {
 			heightfield_formatted_h = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size));
 		}
-	}
-
-	//setup phase
-	//creating stream so cpu thread can calculate all chunks altogether
-	cudaStream_t stream = nullptr;
-	//we want the stream to not be blocked by default stream
-	{
-		unique_lock<mutex> stream_lock(this->StreamPool_lock);
-		stream = reinterpret_cast<cudaStream_t>(this->StreamPool.allocate(1ull));
 	}
 	
 	//Flag: HeightmapGeneration
@@ -333,7 +356,6 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		}
 	}
 	
-	
 	//Store the result accordingly
 	//copy the result back to the host
 	//heightmap will always be available
@@ -347,6 +369,14 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		no_error &= blockcopy_d2h(args.Heightfield16UI, heightfield_formatted_h, heightfield_formatted_d, map16ui_freeslip_size, map16ui_size, num_pixel * 4u, stream);
 	}
 
+	//Finish up the rest, clear up when the device is ready
+	//nullptr means not allocated
+	if (heightfield_freeslip_d != nullptr) {
+		no_error &= cudaSuccess == cudaFreeAsync(heightfield_freeslip_d, stream);
+	}
+	if (heightfield_formatted_d != nullptr) {
+		no_error &= cudaSuccess == cudaFreeAsync(heightfield_formatted_d, stream);
+	}
 	//waiting for finish
 	no_error &= cudaSuccess == cudaStreamSynchronize(stream);
 	{
@@ -354,17 +384,6 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		this->StreamPool.deallocate(1ull, reinterpret_cast<void*>(stream));
 	}
 
-	//Finish up the rest, clear up when the device is ready
-	//nullptr means not allocated
-	{
-		unique_lock<mutex> lock(this->MapCacheDevice_lock);
-		if (heightfield_freeslip_d != nullptr) {
-			this->MapCacheDevice.deallocate(map_freeslip_size, heightfield_freeslip_d);
-		}
-		if (heightfield_formatted_d != nullptr) {
-			this->MapCacheDevice.deallocate(map16ui_freeslip_size, heightfield_formatted_d);
-		}
-	}
 	{
 		unique_lock<mutex> lock(this->MapCachePinned_lock);
 		if (heightfield_freeslip_h != nullptr) {
@@ -375,6 +394,60 @@ __host__ bool STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		}
 	}
 
+	return no_error;
+}
+
+__host__ bool STPHeightfieldGenerator::renderingBufferSubDataCUDA(cudaArray_t buffer, STPRenderingImage& image, uvec2 rendered_chunk) const {
+	if (image.empty()) {
+		//no need to continue if there's nothing we need to load
+		return true;
+	}
+	
+	auto calcBufferOffset = [&rendered_chunk]__host__(unsigned int chunkID, const uint2& dimension, const uint2& buffer_dimension) -> uint2 {
+		//calculate global offset, basically
+		const uvec2 chunkIdx(chunkID % rendered_chunk.x, static_cast<unsigned int>(floorf(1.0f * chunkID / rendered_chunk.y)));
+		return make_uint2(dimension.x * chunkIdx.x, dimension.y * chunkIdx.y);
+	};
+	bool no_error = true;
+	const uint2& dimension = this->Noise_Settings.Dimension;
+	const uint2 buffer_dimension = make_uint2(dimension.x * rendered_chunk.x, dimension.y * rendered_chunk.y);
+	const unsigned int single_buffer_size = sizeof(unsigned short) * 4u * dimension.x * dimension.y;
+	cudaStream_t stream;
+
+	{
+		unique_lock<mutex> lock(this->StreamPool_lock);
+		stream = reinterpret_cast<cudaStream_t>(this->StreamPool.allocate(1ull));
+	}
+	//create surface
+	cudaResourceDesc rendbufDesc = { };
+	cudaSurfaceObject_t rendbuf;
+	rendbufDesc.resType = cudaResourceTypeArray;
+	rendbufDesc.res.array.array = buffer;
+	no_error &= cudaSuccess == cudaCreateSurfaceObject(&rendbuf, &rendbufDesc);
+	//calculate launch configurations
+	dim3 numBlock_rendering = dim3(dimension.x / this->numThreadperBlock_Rendering.x, dimension.y / this->numThreadperBlock_Rendering.y, image.size());
+	//copy image to device memory, since rendering buffer is organised with global index system but image is in local index (and sparsely)
+	unsigned int num_chunk = 0;
+	for (auto img : image) {
+		no_error &= cudaSuccess == cudaMallocFromPoolAsync(this->RenderingBuffer + num_chunk, single_buffer_size, this->RenderCacheDevice, stream);
+		no_error &= cudaSuccess == cudaMemcpyAsync(this->RenderingBuffer[num_chunk], img.first, single_buffer_size, cudaMemcpyHostToDevice, stream);
+		this->RenderingBufferOffset[num_chunk] = calcBufferOffset(img.second, dimension, buffer_dimension);
+		num_chunk++;
+	}
+
+	//launch
+	submitRenderingBufferKERNEL << <numBlock_rendering, this->numThreadperBlock_Rendering, 0, stream >> > (rendbuf, this->RenderingBuffer, this->RenderingBufferOffset, dimension);
+
+	//finish up
+	for (unsigned int i = 0u; i < num_chunk; i++) {
+		no_error &= cudaSuccess == cudaFreeAsync(this->RenderingBuffer[i], stream);
+	}
+	no_error &= cudaSuccess == cudaStreamSynchronize(stream);
+	{
+		unique_lock<mutex> stream_lock(this->StreamPool_lock);
+		this->StreamPool.deallocate(1ull, reinterpret_cast<void*>(stream));
+	}
+	no_error &= cudaSuccess == cudaDestroySurfaceObject(rendbuf);
 	return no_error;
 }
 
@@ -630,7 +703,7 @@ __global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager he
 	auto float2short = []__device__(float input) -> unsigned short {
 		return static_cast<unsigned short>(input * 65535u);
 	};
-
+	 
 	//Cache heightmap the current thread block needs since each pixel is accessed upto 9 times.
 	extern __shared__ float heightmapCache[];
 	//each thread needs to access a 3x3 matrix around the current pixel, so we need to take the edge into consideration
@@ -643,7 +716,7 @@ __global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager he
 		const unsigned int cacheIdx = (threadIdx.x + blockDim.x * threadIdx.y) + iteration;
 		const unsigned int x_w = x_b + static_cast<unsigned int>(fmodf(cacheIdx, cacheSize.x)),
 			y_w = static_cast<unsigned int>(y_b + floorf(1.0f * cacheIdx / cacheSize.x));
-		const unsigned int workerIdx = clamp((x_w - 1u), 0, dimension.x - 1u) + clamp((y_w - 1u), 0, dimension.x - 1u) * dimension.x;
+		const unsigned int workerIdx = clamp((x_w - 1u), 0, dimension.x - 1u) + clamp((y_w - 1u), 0, dimension.y - 1u) * dimension.x;
 
 		if (cacheIdx < cacheSize_total) {
 			//make sure index don't get out of bound
@@ -689,6 +762,20 @@ __global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager he
 	heightfield[index * 4 + 3] = float2short(heightmapCache[x_c + y_c * cacheSize.x]);//A
 	
 	return;
+}
+
+__global__ void submitRenderingBufferKERNEL(cudaSurfaceObject_t glBuffer, unsigned short** subCache, uint2* bufferOffset, uint2 dimension) {
+	//working pixel
+	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
+		y = (blockIdx.y * blockDim.y) + threadIdx.y,
+		z = blockIdx.z;
+	const int2 coord = make_int2(bufferOffset[z].x + x, bufferOffset[z].y + y);
+	const unsigned int rowCount = y * dimension.x;
+
+	surf2Dwrite(subCache[z][x * 4 + rowCount], glBuffer, coord.x, coord.y, cudaBoundaryModeZero);
+	surf2Dwrite(subCache[z][x * 4 + 1 + rowCount], glBuffer, coord.x + 1, coord.y, cudaBoundaryModeZero);
+	surf2Dwrite(subCache[z][x * 4 + 2 + rowCount], glBuffer, coord.x + 2, coord.y, cudaBoundaryModeZero);
+	surf2Dwrite(subCache[z][x * 4 + 3 + rowCount], glBuffer, coord.x + 3, coord.y, cudaBoundaryModeZero);
 }
 
 __global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int rowCount, uint2 chunkRange, uint2 mapSize) {

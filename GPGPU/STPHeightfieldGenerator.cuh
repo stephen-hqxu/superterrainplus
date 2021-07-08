@@ -42,6 +42,9 @@ namespace SuperTerrainPlus {
 			//Choosen generator for curand
 			typedef curandStatePhilox4_32_10 curandRNG;
 
+			//Store chunk image that needs to be loaded into rendering buffer, and their respective local chunk ID
+			typedef std::list<std::pair<unsigned short*, unsigned int>> STPRenderingImage;
+
 			//A function that converts biome id to the index corresponded in biome table
 			//By default it's a 1-1 mapping, meaning biome id = index
 			typedef size_t(*STPBiomeInterpreter)(STPBiome::Sample);
@@ -78,28 +81,6 @@ namespace SuperTerrainPlus {
 			};
 
 		private:
-
-			/**
-			 * @brief Memory allocation of tempoary computing cache for heightfield generator
-			*/
-			class STPHeightfieldAllocator {
-			public:
-
-				/**
-				 * @brief Allocate memory on GPU
-				 * @param count The number of byte to allocate
-				 * @return The device pointer
-				*/
-				__host__ void* allocate(size_t);
-
-				/**
-				 * @brief Free up the GPU memory
-				 * @param count The size to free
-				 * @param The device pointer to free
-				*/
-				__host__ void deallocate(size_t, void*);
-
-			};
 
 			/**
 			 * @brief Memory allocation for pinned memory
@@ -145,9 +126,12 @@ namespace SuperTerrainPlus {
 			};
 
 			//Launch parameter for texture
-			dim3 numThreadperBlock_Map, numBlock_Map, numBlock_FreeslipMap;
+			dim3 numThreadperBlock_Map, numBlock_Map, numBlock_FreeslipMap, numThreadperBlock_Rendering;
 			//Launch parameter for hydraulic erosion and interpolation
 			unsigned int numThreadperBlock_Erosion, numBlock_Erosion, numThreadperBlock_Interpolation, numBlock_Interpolation;
+			//An array of device pointers to rendering buffer on device, managed memory
+			unsigned short** RenderingBuffer;
+			uint2* RenderingBufferOffset;
 
 			/**
 			 * @brief Simplex noise generator, on device
@@ -201,10 +185,10 @@ namespace SuperTerrainPlus {
 			STPBiome::STPBiome* BiomeDictionary = nullptr;
 
 			//Temp cache on device for heightmap computation
-			mutable std::mutex MapCacheDevice_lock;
 			mutable std::mutex MapCachePinned_lock;
 			mutable std::mutex StreamPool_lock;
-			mutable STPMemoryPool<void, STPHeightfieldAllocator> MapCacheDevice;
+			mutable cudaMemPool_t MapCacheDevice;
+			mutable cudaMemPool_t RenderCacheDevice;
 			mutable STPMemoryPool<void, STPHeightfieldHostAllocator> MapCachePinned;
 			mutable STPMemoryPool<void, STPHeightfieldNonblockingStreamAllocator> StreamPool;
 
@@ -224,8 +208,10 @@ namespace SuperTerrainPlus {
 			 * @brief Init the heightfield generator
 			 * @param noise_settings Stored all parameters for the heightmap random number generator, it will be deep copied to the class so dynamic memory is not required
 			 * @param chunk_settings Stored all parameters for the chunk
+			 * @param hint_level_of_concurrency The average numebr of thread that will be used to issue commands to this class.
+			 * It's used to assume the size of memory pool to allocate.
 			*/
-			__host__ STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings*, const STPSettings::STPChunkSettings*);
+			__host__ STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings*, const STPSettings::STPChunkSettings*, unsigned int);
 
 			__host__ ~STPHeightfieldGenerator();
 
@@ -266,9 +252,20 @@ namespace SuperTerrainPlus {
 			 * All four maps are kept in floating point pixel format.
 			 * @param args The generator data, see STPMapStorage documentation for more details
 			 * @param operation Control what type of operation generator does
-			 * @return True if all operation are successful without any errors
+			 * @return True if all operations are successful without any errors
 			*/
 			__host__ bool operator()(STPMapStorage&, STPGeneratorOperation) const;
+
+			/**
+			 * @brief Transfer rendering buffer on host side to device (OpenGL) rendering buffer
+			 * @param buffer Rendering buffer on device side, a mapped OpenGL pointer.
+			 * Rendering buffer is continuous, function will determine pointer offset and only chunk specified in the "image" argument will be updated.
+			 * @param image Chunk buffer needs to be transferred, and the relative local chunk ID.
+			 * Chunk ID specify which chunk in rendering buffer will be overwritten.
+			 * @param rendered_chunk The number of chunk presented on the rendering buffer
+			 * @return True if all operations are successfully performed
+			*/
+			__host__ bool renderingBufferSubDataCUDA(cudaArray_t, STPRenderingImage&, glm::uvec2) const;
 
 			/**
 			 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.
