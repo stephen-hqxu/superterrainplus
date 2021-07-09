@@ -52,12 +52,6 @@ namespace SuperTerrainPlus {
 			__host__ ~STPSimplexNoise();
 
 			/**
-			 * @brief Initialise simplex noise generator glbally
-			 * @return True if init is successful
-			*/
-			__host__ static bool initialise();
-
-			/**
 			 * @brief Generate 2D simplex noise
 			 * @param x X intput
 			 * @param y Y input

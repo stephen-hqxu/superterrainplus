@@ -107,9 +107,8 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief Set the number of iteration each heightfield generation will use
 		 * @param iteration the number of iteration
-		 * @return True if set
 		*/
-		bool setHeightfieldErosionIteration(unsigned int);
+		void setHeightfieldErosionIteration(unsigned int);
 
 	};
 }

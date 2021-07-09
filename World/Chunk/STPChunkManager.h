@@ -65,7 +65,7 @@ namespace SuperTerrainPlus {
 		 * Rendering buffer is continuous, function will determine pointer offset and only chunk specified in the "image" argument will be updated.
 		 * @param chunkPos World position of the chunk that will be used to update render buffer
 		 * @param chunkID Local chunk ID that specified which chunk in rendering buffer will be overwritten.
-		 * @return True if all operations are successfully performed
+		 * @return True if request has been submitted, false if given chunk is not available
 		*/
 		bool renderingBufferSubData(cudaArray_t, glm::vec2, unsigned int);
 

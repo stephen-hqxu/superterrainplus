@@ -1,12 +1,13 @@
 #pragma warning(disable : 4267)//implicit conversion may lose data wwarning (actually it won't)
 #include "STPChunkManager.h"
 
+#include "../../GPGPU/STPDeviceErrorHandler.cuh"
+
 using glm::ivec2;
 using glm::vec2;
 using glm::vec4;
 using glm::value_ptr;
 
-using std::list;
 using std::queue;
 using std::bind;
 using std::unique_ptr;
@@ -33,17 +34,17 @@ STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : Chu
 	glTextureParameteri(this->terrain_heightfield, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	//RGBA format
 	glTextureStorage2D(this->terrain_heightfield, 1, GL_RGBA16, buffer_size.x, buffer_size.y);
-	cudaGraphicsGLRegisterImage(&this->heightfield_texture_res, this->terrain_heightfield, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsWriteDiscard);
+	STPcudaCheckErr(cudaGraphicsGLRegisterImage(&this->heightfield_texture_res, this->terrain_heightfield, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsWriteDiscard));
 
 	//init clear buffers that are used to clear texture when new rendered chunks are loaded (we need to clear the previous chunk data)
-	cudaMallocHost(&this->quad_clear, totaltexture_size);
+	STPcudaCheckErr(cudaMallocHost(&this->quad_clear, totaltexture_size));
 	memset(this->quad_clear, 0x88, totaltexture_size);
 
 	this->renderingLocals.reserve(chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y);
 	//create thread pool
 	this->compute_pool = make_unique<STPThreadPool>(1u);
 	//create stream
-	cudaStreamCreateWithFlags(&this->buffering_stream, cudaStreamNonBlocking);
+	STPcudaCheckErr(cudaStreamCreateWithFlags(&this->buffering_stream, cudaStreamNonBlocking));
 }
 
 STPChunkManager::~STPChunkManager() {
@@ -52,16 +53,16 @@ STPChunkManager::~STPChunkManager() {
 		this->ChunkLoader.get();
 	}
 	//wait until stream has finished
-	cudaStreamSynchronize(this->buffering_stream);
-	cudaStreamDestroy(this->buffering_stream);
+	STPcudaCheckErr(cudaStreamSynchronize(this->buffering_stream));
+	STPcudaCheckErr(cudaStreamDestroy(this->buffering_stream));
 
 	//unregister resource
-	cudaGraphicsUnregisterResource(this->heightfield_texture_res);
+	STPcudaCheckErr(cudaGraphicsUnregisterResource(this->heightfield_texture_res));
 	//delete texture
 	glDeleteTextures(1, &this->terrain_heightfield);
 
 	//delete clear buffer
-	cudaFreeHost(this->quad_clear);
+	STPcudaCheckErr(cudaFreeHost(this->quad_clear));
 }
 
 bool STPChunkManager::renderingBufferSubData(cudaArray_t buffer, vec2 chunkPos, unsigned int chunkID) {
@@ -82,9 +83,11 @@ bool STPChunkManager::renderingBufferSubData(cudaArray_t buffer, vec2 chunkPos, 
 		return uvec2(dimension.x * chunkIdx.x, dimension.y * chunkIdx.y);
 	};
 	const uvec2 buffer_offset = calcBufferOffset(chunkID, dimension);
-	return cudaSuccess == cudaMemcpy2DToArrayAsync(buffer, buffer_offset.x * sizeof(unsigned short) * 4, buffer_offset.y, chunk->getRenderingBuffer(),
+	STPcudaCheckErr(cudaMemcpy2DToArrayAsync(buffer, buffer_offset.x * sizeof(unsigned short) * 4, buffer_offset.y, chunk->getRenderingBuffer(),
 		dimension.x * sizeof(unsigned short) * 4, dimension.x * sizeof(unsigned short) * 4,
-		dimension.y, cudaMemcpyHostToDevice, this->buffering_stream);
+		dimension.y, cudaMemcpyHostToDevice, this->buffering_stream));
+
+	return true;
 }
 
 void STPChunkManager::clearRenderingBuffer(cudaArray_t destination) {
@@ -92,10 +95,10 @@ void STPChunkManager::clearRenderingBuffer(cudaArray_t destination) {
 	const ivec2 buffer_size(chunk_settings->RenderedChunk * chunk_settings->MapSize);
 
 	//clear unloaded chunk, so the engine won't display the chunk from previous rendered chunks
-	cudaMemcpy2DToArrayAsync(destination, 0, 0, this->quad_clear,
+	STPcudaCheckErr(cudaMemcpy2DToArrayAsync(destination, 0, 0, this->quad_clear,
 		buffer_size.x * sizeof(unsigned short) * 4, buffer_size.x * sizeof(unsigned short) * 4,
-		buffer_size.y, cudaMemcpyHostToDevice, this->buffering_stream);
-	cudaStreamSynchronize(this->buffering_stream);
+		buffer_size.y, cudaMemcpyHostToDevice, this->buffering_stream));
+	STPcudaCheckErr(cudaStreamSynchronize(this->buffering_stream));
 }
 
 void STPChunkManager::generateMipmaps() {
@@ -134,17 +137,17 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 			}
 		}
 		//wait until everything is finished
-		cudaStreamSynchronize(this->buffering_stream);
+		STPcudaCheckErr(cudaStreamSynchronize(this->buffering_stream));
 		
 		return num_chunkLoaded;
 	};
 
 	//texture storage
 	//map the texture, all opengl related work must be done on the main contexted thread
-	cudaGraphicsMapResources(1, &this->heightfield_texture_res);
+	STPcudaCheckErr(cudaGraphicsMapResources(1, &this->heightfield_texture_res));
 	cudaArray_t heightfield_ptr;
 	//we only have one texture, so index is always zero
-	cudaGraphicsSubResourceGetMappedArray(&heightfield_ptr, this->heightfield_texture_res, 0, 0);
+	STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&heightfield_ptr, this->heightfield_texture_res, 0, 0));
 	//clear up the render buffer for every chunk
 	if (this->trigger_clearBuffer) {
 		this->clearRenderingBuffer(heightfield_ptr);
@@ -214,10 +217,7 @@ int STPChunkManager::SyncloadChunks() {
 		//wait for finish first
 		const unsigned int res = this->ChunkLoader.get();
 		//unmap the chunk
-		if (cudaGraphicsUnmapResources(1, &this->heightfield_texture_res) != cudaSuccess) {
-			throw std::runtime_error("CUDA resource cannot be released");
-		}
-
+		STPcudaCheckErr(cudaGraphicsUnmapResources(1, &this->heightfield_texture_res));
 		return static_cast<int>(res);
 	}
 	else {

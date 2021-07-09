@@ -1,6 +1,7 @@
 #include "STPPermutationsGenerator.cuh"
-#include <stdexcept>
 #include <memory>
+
+#include "STPDeviceErrorHandler.cuh"
 
 using std::copy;
 using std::begin;
@@ -31,8 +32,8 @@ __host__ STPPermutationsGenerator::STPPermutationsGenerator(unsigned long long s
 	copy(PERMUTATIONS_HOST, PERMUTATIONS_HOST + 256, PERMUTATIONS_HOST + 256);
 		
 	//now copy the host table to the device
-	cudaMalloc(&this->PERMUTATIONS, sizeof(unsigned char) * 512);
-	cudaMemcpy(this->PERMUTATIONS, PERMUTATIONS_HOST, sizeof(unsigned char) * 512, cudaMemcpyHostToDevice);
+	STPcudaCheckErr(cudaMalloc(&this->PERMUTATIONS, sizeof(unsigned char) * 512));
+	STPcudaCheckErr(cudaMemcpy(this->PERMUTATIONS, PERMUTATIONS_HOST, sizeof(unsigned char) * 512, cudaMemcpyHostToDevice));
 
 	//generate the gradient table
 	//we are going to distribute the gradient evenly in a circle
@@ -48,18 +49,18 @@ __host__ STPPermutationsGenerator::STPPermutationsGenerator(unsigned long long s
 
 	shuffle(GRADIENT2D_HOST.get(), GRADIENT2D_HOST.get() + this->GRADIENT2D_SIZE * 2, rng);
 	//copy the host gradient to device
-	cudaMalloc(&this->GRADIENT2D, sizeof(double) * this->GRADIENT2D_SIZE * 2);
-	cudaMemcpy(this->GRADIENT2D, GRADIENT2D_HOST.get(), sizeof(double) * this->GRADIENT2D_SIZE * 2, cudaMemcpyHostToDevice);
+	STPcudaCheckErr(cudaMalloc(&this->GRADIENT2D, sizeof(double) * this->GRADIENT2D_SIZE * 2));
+	STPcudaCheckErr(cudaMemcpy(this->GRADIENT2D, GRADIENT2D_HOST.get(), sizeof(double) * this->GRADIENT2D_SIZE * 2, cudaMemcpyHostToDevice));
 	//finishing up
 }
 
 __host__ STPPermutationsGenerator::~STPPermutationsGenerator() {
 	if (this->GRADIENT2D != nullptr) {
-		cudaFree(this->GRADIENT2D);
+		STPcudaCheckErr(cudaFree(this->GRADIENT2D));
 		this->GRADIENT2D = nullptr;
 	}
 	if (this->PERMUTATIONS != nullptr) {
-		cudaFree(this->PERMUTATIONS);
+		STPcudaCheckErr(cudaFree(this->PERMUTATIONS));
 		this->PERMUTATIONS = nullptr;
 	}
 }

@@ -4,7 +4,7 @@
 
 //System
 #include <mutex>
-#include <list>
+#include <vector>
 //CUDA
 //CUDA lib are included in the "Engine" section
 #include <curand_kernel.h>
@@ -67,13 +67,13 @@ namespace SuperTerrainPlus {
 				//only affect the central chunk, for neighbour chunks it must be precomputed with heightmap to be able to perform free-slip hydraulic erosion,
 				//If free-slip hydraulic erosion is disabled, no neighbour chunks are required.
 				//- The map pointers should be arranged in row major matrix, with defined neighbour dimension.
-				std::list<float*> Heightmap32F;
+				std::vector<float*> Heightmap32F;
 				//The x vector specify the offset on x direction of the map and and z on y direction of the map, and the y vector specify the offset on the final result.
 				//The offset parameter will only be applied on the heightmap generation.
 				float3 HeightmapOffset = make_float3(0.0f, 0.0f, 0.0f);
 				//A INT16 array that will be used to stored the heightmap and normalmap after formation. The final format will become RGBA.
 				//The number of pointer provided should be the same as the number of heightmap and normalmap.
-				std::list<unsigned short*> Heightfield16UI;
+				std::vector<unsigned short*> Heightfield16UI;
 
 			};
 
@@ -121,11 +121,6 @@ namespace SuperTerrainPlus {
 				*/
 				__host__ void deallocate(size_t, void*);
 			};
-
-			//Launch parameter for texture
-			dim3 numThreadperBlock_Map, numBlock_Map, numBlock_FreeslipMap;
-			//Launch parameter for hydraulic erosion
-			unsigned int numThreadperBlock_Erosion, numBlock_Erosion;
 
 			/**
 			 * @brief Simplex noise generator, on device
@@ -225,15 +220,14 @@ namespace SuperTerrainPlus {
 			 * @param operation Control what type of operation generator does
 			 * @return True if all operations are successful without any errors
 			*/
-			__host__ bool operator()(STPMapStorage&, STPGeneratorOperation) const;
+			__host__ void operator()(STPMapStorage&, STPGeneratorOperation) const;
 
 			/**
 			 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.
 			 * Determine the number of raindrop to summon, the higher the more accurate but slower
 			 * @param raindrop_count The number of raindrop (number ofc iteration) for the erosion algorithm
-			 * @return True if successsfully updated the count and no error was generated during calculation
 			*/
-			__host__ bool setErosionIterationCUDA(unsigned int);
+			__host__ void setErosionIterationCUDA(unsigned int);
 
 			/**
 			 * @brief Get the number of iteration for hydraulic erosion

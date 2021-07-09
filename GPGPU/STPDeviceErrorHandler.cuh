@@ -17,11 +17,15 @@ __host__ inline void STPcudaAssert(cudaError_t cuda_code, const char* __restrict
 		err_str << file << ":" << line << "\nError: " << cudaGetErrorString(cuda_code) << endl;
 		cerr << err_str.str();
 
-#ifdef STP_EXIT_ON_ERROR
+#ifndef STP_CONTINUE_ON_ERROR
+#ifdef STP_EXCEPTION_ON_ERROR
+#include <stdexcept>
+#include <exception>
+		throw std::runtime_error(err_str.str());
+#else
 		exit(EXIT_FAILURE);
-#elif defined STP_EXCEPTION_ON_ERROR//STP_EXIT_ON_ERROR
-		throw err_str.str();
-#endif//STP_EXCEPTION_ON_ERROR
+#endif //STP_EXCEPTION_ON_ERROR
+#endif //STP_CONTINUE_ON_ERROR
 	}
 }
 

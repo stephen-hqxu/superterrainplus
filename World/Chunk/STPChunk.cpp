@@ -74,14 +74,15 @@ vec2 STPChunk::offsetChunk(vec2 chunkPos, uvec2 chunkSize, ivec2 offset, float s
 	return chunkPos + vec2(scaling * static_cast<int>(chunkSize.x) * offset.x, scaling * static_cast<int>(chunkSize.y) * offset.y);
 }
 
-STPChunk::STPChunkPosCache STPChunk::getRegion(vec2 centerPos, uvec2 chunkSize, uvec2 regionSize, float scaling) noexcept {
+STPChunk::STPChunkPositionCache STPChunk::getRegion(vec2 centerPos, uvec2 chunkSize, uvec2 regionSize, float scaling) noexcept {
 	const unsigned int num_chunk = regionSize.x * regionSize.y;
 	//We need to calculate the starting unit plane, i.e., the unit plane of the top-left corner of the entire rendered terrain
 	//We don't need y, all the plane will be aligned at the same height, so it contains x and z position
 	//Base position is negative since we want the camera locates above the center of the entire rendered plane
 	const vec2 base_position = STPChunk::offsetChunk(centerPos, chunkSize, ivec2(-glm::floor(regionSize.x / 2.0f), -glm::floor(regionSize.y / 2.0f)), scaling);
 
-	STPChunkPosCache results;
+	STPChunkPositionCache results;
+	results.reserve(num_chunk);
 	//get the result
 	for (unsigned int i = 0u; i < num_chunk; i++) {
 		//Calculate the position for each chunk

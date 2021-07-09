@@ -35,13 +35,18 @@ void STPChunkProvider::computeHeightmap(STPChunk* current_chunk, vec2 chunkPos) 
 	using namespace STPCompute;
 
 	STPHeightfieldGenerator::STPMapStorage maps;
+	maps.Heightmap32F.reserve(1ull);
 	maps.Heightmap32F.push_back(current_chunk->getHeightmap());
 	maps.HeightmapOffset = this->calcChunkOffset(chunkPos);
 	const STPHeightfieldGenerator::STPGeneratorOperation op = STPHeightfieldGenerator::HeightmapGeneration;
 
 	//computing, check success state
-	if (!this->heightmap_gen(maps, op)) {
-		throw std::runtime_error("Heightmap computation failed");
+	try {
+		this->heightmap_gen(maps, op);
+	}
+	catch (const std::exception& e) {
+		std::cerr << e.what() << std::endl;
+		exit(-1);
 	}
 }
 
@@ -49,6 +54,8 @@ void STPChunkProvider::computeErosion(STPChunk* current_chunk, list<STPChunk*> n
 	using namespace STPCompute;
 
 	STPHeightfieldGenerator::STPMapStorage maps;
+	maps.Heightmap32F.reserve(neighbour_chunks.size());
+	maps.Heightfield16UI.reserve(neighbour_chunks.size());
 	for (STPChunk* chk : neighbour_chunks) {
 		maps.Heightmap32F.push_back(chk->getHeightmap());
 		maps.Heightfield16UI.push_back(chk->getRenderingBuffer());
@@ -58,8 +65,12 @@ void STPChunkProvider::computeErosion(STPChunk* current_chunk, list<STPChunk*> n
 		STPHeightfieldGenerator::RenderingBufferGeneration;
 
 	//computing and return success state
-	if (!this->heightmap_gen(maps, op)) {
-		throw std::runtime_error("Hydraulic erosion simulation failed");
+	try {
+		this->heightmap_gen(maps, op);
+	}
+	catch (const std::exception& e) {
+		std::cerr << e.what() << std::endl;
+		exit(-1);
 	}
 }
 
@@ -90,7 +101,7 @@ bool STPChunkProvider::checkChunk(vec2 chunkPos, std::function<bool(glm::vec2)> 
 	}
 	//reminder: central chunk is included in neighbours
 	const STPSettings::STPChunkSettings* chk_config = this->getChunkSettings();
-	const STPChunk::STPChunkPosCache neighbour_position = STPChunk::getRegion(chunkPos, chk_config->ChunkSize, chk_config->FreeSlipChunk, chk_config->ChunkScaling);
+	const STPChunk::STPChunkPositionCache neighbour_position = STPChunk::getRegion(chunkPos, chk_config->ChunkSize, chk_config->FreeSlipChunk, chk_config->ChunkScaling);
 	
 	bool canContinue = true;
 	//The first pass: check if all neighbours are heightmap-complete
@@ -152,6 +163,6 @@ const STPSettings::STPChunkSettings* STPChunkProvider::getChunkSettings() const 
 	return &(this->ChunkSettings);
 }
 
-bool STPChunkProvider::setHeightfieldErosionIteration(unsigned int iteration) {
-	return this->heightmap_gen.setErosionIterationCUDA(iteration);
+void STPChunkProvider::setHeightfieldErosionIteration(unsigned int iteration) {
+	this->heightmap_gen.setErosionIterationCUDA(iteration);
 }

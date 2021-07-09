@@ -3,7 +3,7 @@
 #define _STP_CHUNK_H_
 
 //System
-#include <list>
+#include <vector>
 #include <iostream>
 #include <memory>
 //Threading
@@ -81,7 +81,7 @@ namespace SuperTerrainPlus {
 		~STPChunk();
 
 		//A chunk position cache that stores a list of chunk world position
-		typedef std::list<glm::vec2> STPChunkPosCache;
+		typedef std::vector<glm::vec2> STPChunkPositionCache;
 
 		/**
 		 * @brief Get the chunk position in world where the camera is located
@@ -110,7 +110,7 @@ namespace SuperTerrainPlus {
 		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
 		 * @return Chunk positions in world coordinate (x,z), aligning from top-left to bottom right
 		*/
-		static STPChunkPosCache getRegion(glm::vec2, glm::uvec2, glm::uvec2, float = 1.0f) noexcept;
+		static STPChunkPositionCache getRegion(glm::vec2, glm::uvec2, glm::uvec2, float = 1.0f) noexcept;
 
 		//serialise
 		friend std::ostream& operator<<(std::ostream&, const STPChunk* const);
