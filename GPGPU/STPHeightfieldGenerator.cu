@@ -90,12 +90,11 @@ __global__ void initGlobalLocalIndexKERNEL(unsigned int*, unsigned int, uint2, u
  * @param stream - Async CUDA stream
 */
 template<typename T>
-__host__ void blockcopy_d2h(const vector<T*>& dest, T* host, T* device, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
+__host__ void blockcopy_d2h(vector<T*>& dest, T* host, T* device, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
 	STPcudaCheckErr(cudaMemcpyAsync(host, device, block_size, cudaMemcpyDeviceToHost, stream));
-	unsigned int base = 0u;
 	for (T* map : dest) {
-		STPcudaCheckErr(cudaMemcpyAsync(map, host + base, individual_size, cudaMemcpyHostToHost, stream));
-		base += element_count;
+		STPcudaCheckErr(cudaMemcpyAsync(map, host, individual_size, cudaMemcpyHostToHost, stream));
+		host += element_count;
 	}
 }
 
@@ -113,17 +112,16 @@ __host__ void blockcopy_d2h(const vector<T*>& dest, T* host, T* device, size_t b
 template<typename T>
 __host__ void blockcopy_h2d(T* device, T* host, const vector<T*>& source, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
 	unsigned int base = 0u;
-	for (T* map : source) {
+	for (const T* map : source) {
 		STPcudaCheckErr(cudaMemcpyAsync(host + base, map, individual_size, cudaMemcpyHostToHost, stream));
 		base += element_count;
 	}
 	STPcudaCheckErr(cudaMemcpyAsync(device, host, block_size, cudaMemcpyHostToDevice, stream));
-
 }
 
 __host__ void* STPHeightfieldGenerator::STPHeightfieldHostAllocator::allocate(size_t count) {
 	void* mem = nullptr;
-	STPcudaCheckErr(cudaMallocHost(&mem, count));
+	STPcudaCheckErr(cudaMallocHost(&mem, count, cudaHostAllocMapped));
 	return mem;
 }
 
@@ -163,6 +161,8 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STP
 
 	//set global local index
 	this->initLocalGlobalIndexCUDA();
+	//init edge table
+	this->initEdgeArrangementTable();
 }
 
 __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
@@ -318,6 +318,16 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 			Dimblocksize = dim3(32, blocksize / 32);
 			Dimgridsize = dim3((freeslip_dimension.x + Dimblocksize.x - 1) / Dimblocksize.x, (freeslip_dimension.y + Dimblocksize.y - 1) / Dimblocksize.y);
 
+			if (freeslip_chunk_total > 1u) {
+				//no need to do copy if freeslip is not enabled
+				try {
+					//this is the way to make sure normalmap is seamless, since the border is already in-sync with other chunks
+					this->copyNeighbourEdgeOnly(heightfield_formatted_d, args.Heightfield16UI, num_pixel, stream);
+				}
+				catch (...) {
+					exp = std::current_exception();
+				}
+			}
 			//generate normalmap from heightmap and format into rendering buffer
 			const unsigned int cacheSize = (Dimblocksize.x + 2u) * (Dimblocksize.y + 2u) * sizeof(float);
 			generateRenderingBufferKERNEL << <Dimgridsize, Dimblocksize, cacheSize, stream >> > (heightmap_slip, heightfield_formatted_d);
@@ -402,6 +412,110 @@ __host__ unsigned int STPHeightfieldGenerator::getErosionIteration() const {
 	return this->NumRaindrop;
 }
 
+__host__ void STPHeightfieldGenerator::copyNeighbourEdgeOnly(unsigned short* device, const vector<unsigned short*>& source, size_t element_count, cudaStream_t stream) const {
+	typedef STPHeightfieldGenerator::STPEdgeArrangement STPEA;
+	const uint2& dimension = this->Noise_Settings.Dimension;
+	const unsigned int one_pixel_size = 4u * sizeof(unsigned short);
+	const unsigned int pitch = dimension.x * one_pixel_size;
+	const unsigned int horizontal_stripe_size = this->Noise_Settings.Dimension.x * one_pixel_size;
+	//we want to cut down the number of copy of column major matrix due to concern about cache
+	/**
+	* Out copy pattern:				It's more efficient than:
+	 ---------------------			+-------------------+
+	 |                   |			|                   |
+	 |                   |			|                   |
+	 |                   |			|                   |
+	 |                   |			|                   |
+	 ---------------------			+-------------------+
+	*/
+	//address offset of those situations, eliminate overlap of pixels
+	const unsigned int right_vertical_wholerow = (dimension.x - 1u) * 4u,
+		left_vertical_skipfirstrow = right_vertical_wholerow + 4u,
+		right_vertical_skipfirstrow = left_vertical_skipfirstrow + right_vertical_wholerow,
+		bottom_horizontal = dimension.x * 4u * (dimension.y - 1u);
+
+	for (int i = 0; i < source.size(); i++) {
+		auto perform_copy = [device, stream, map = source[i], &pitch]__host__(size_t start, size_t width_byte, size_t height) -> void {
+			STPcudaCheckErr(cudaMemcpy2DAsync(device + start, pitch, map + start, pitch, width_byte, height, cudaMemcpyHostToDevice, stream));
+		};
+
+		switch (this->EdgeArrangementTable[i]) {
+		case STPEA::TOP_LEFT_CORNER:
+			//------------
+			//|
+			//|
+			//|
+			//|
+			perform_copy(0u, horizontal_stripe_size, 1u);
+			perform_copy(left_vertical_skipfirstrow, one_pixel_size, dimension.y - 1u);
+			break;
+		case STPEA::TOP_RIGHT_CORNER:
+			//-------------
+			//            |
+			//            |
+			//            |
+			//            |
+			perform_copy(0u, horizontal_stripe_size, 1u);
+			perform_copy(right_vertical_skipfirstrow, one_pixel_size, dimension.y - 1u);
+			break;
+		case STPEA::BOTTOM_LEFT_CORNER:
+			//|
+			//|
+			//|
+			//|
+			//-------------
+			perform_copy(bottom_horizontal, horizontal_stripe_size, 1u);
+			perform_copy(0u, one_pixel_size, dimension.y - 1u);
+			break;
+		case STPEA::BOTTOM_RIGHT_CORNER:
+			//             |
+			//             |
+			//             |
+			//             |
+			//--------------
+			perform_copy(bottom_horizontal, horizontal_stripe_size, 1u);
+			perform_copy(right_vertical_wholerow, one_pixel_size, dimension.y - 1u);
+			break;
+		case STPEA::TOP_HORIZONTAL_STRIP:
+			//--------------
+			//
+			//
+			//
+			//
+			perform_copy(0u, horizontal_stripe_size, 1u);
+			break;
+		case STPEA::BOTTOM_HORIZONTAL_STRIP:
+			//
+			//
+			//
+			//
+			//--------------
+			perform_copy(bottom_horizontal, horizontal_stripe_size, 1u);
+			break;
+		case STPEA::LEFT_VERTICAL_STRIP:
+			//|
+			//|
+			//|
+			//|
+			//|
+			perform_copy(0u, one_pixel_size, dimension.y);
+			break;
+		case STPEA::RIGHT_VERTICAL_STRIP:
+			//             |
+			//             |
+			//             |
+			//             |
+			//             |
+			perform_copy(right_vertical_wholerow, one_pixel_size, dimension.y);
+			break;
+		default:
+			//skip every non-edge chunk
+			break;
+		}
+		device += element_count * 4u;
+	}
+}
+
 __host__ void STPHeightfieldGenerator::initLocalGlobalIndexCUDA() {
 	const uint2& dimension = this->Noise_Settings.Dimension;
 	const uint2& range = this->FreeSlipChunk;
@@ -427,6 +541,62 @@ __host__ void STPHeightfieldGenerator::initLocalGlobalIndexCUDA() {
 	initGlobalLocalIndexKERNEL << <Dimgridsize, Dimblocksize >> > (this->GlobalLocalIndex, global_dimension.x, range, global_dimension, dimension);
 	STPcudaCheckErr(cudaGetLastError());
 	STPcudaCheckErr(cudaDeviceSynchronize());
+}
+
+__host__ void STPHeightfieldGenerator::initEdgeArrangementTable() {
+	typedef STPHeightfieldGenerator::STPEdgeArrangement STPEA;
+	const unsigned int num_chunk = this->FreeSlipChunk.x * this->FreeSlipChunk.y;
+	if (num_chunk == 1u) {
+		//if freeslip logic is not turned on, there's no need to do copy
+		//since edge is calculated by neighbour chunks, but without freeslip there's no "other" chunks
+		//so the chunk itself needs to compute the border during rendering buffer generation
+		return;
+	}
+
+	//allocate space
+	this->EdgeArrangementTable = make_unique<STPEA[]>(num_chunk);
+	for (unsigned int chunkID = 0u; chunkID < num_chunk; chunkID++) {
+		STPEA& current_entry = this->EdgeArrangementTable[chunkID];
+		const uint2 chunkCoord = make_uint2(chunkID % this->FreeSlipChunk.x, static_cast<unsigned int>(floorf(1.0f * chunkID / this->FreeSlipChunk.x)));
+
+		//some basic boolean logic to determine our "frame"
+		if (chunkCoord.x == 0u) {
+			if (chunkCoord.y == 0u) {
+				current_entry = STPEA::TOP_LEFT_CORNER;
+				continue;
+			}
+			if (chunkCoord.y ==  this->FreeSlipChunk.y - 1u) {
+				current_entry = STPEA::BOTTOM_LEFT_CORNER;
+				continue;
+			}
+			current_entry = STPEA::LEFT_VERTICAL_STRIP;
+			continue;
+		}
+		if (chunkCoord.x == this->FreeSlipChunk.x - 1u) {
+			if (chunkCoord.y == 0u) {
+				current_entry = STPEA::TOP_RIGHT_CORNER;
+				continue;
+			}
+			if (chunkCoord.y == this->FreeSlipChunk.y - 1u) {
+				current_entry = STPEA::BOTTOM_RIGHT_CORNER;
+				continue;
+			}
+			current_entry = STPEA::RIGHT_VERTICAL_STRIP;
+			continue;
+		}
+
+		if (chunkCoord.y == 0u) {
+			current_entry = STPEA::TOP_HORIZONTAL_STRIP;
+			continue;
+		}
+		if (chunkCoord.y == this->FreeSlipChunk.y - 1u) {
+			current_entry = STPEA::BOTTOM_HORIZONTAL_STRIP;
+			continue;
+		}
+
+		//we can safely ignore edge that's not an edge chunk
+		current_entry = STPEA::NOT_AN_EDGE;
+	}
 }
 
 __device__ __inline__ float3 normalize3DKERNEL(float3 vec3) {
@@ -560,7 +730,7 @@ __global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager he
 	while (iteration < cacheSize_total) {
 		const unsigned int cacheIdx = (threadIdx.x + blockDim.x * threadIdx.y) + iteration;
 		const unsigned int x_w = x_b + static_cast<unsigned int>(fmodf(cacheIdx, cacheSize.x)),
-			y_w = static_cast<unsigned int>(y_b + floorf(1.0f * cacheIdx / cacheSize.x));
+			y_w = y_b + static_cast<unsigned int>(floorf(1.0f * cacheIdx / cacheSize.x));
 		const unsigned int workerIdx = clamp((x_w - 1u), 0, dimension.x - 1u) + clamp((y_w - 1u), 0, dimension.y - 1u) * dimension.x;
 
 		if (cacheIdx < cacheSize_total) {
@@ -573,6 +743,11 @@ __global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager he
 	}
 	__syncthreads();
 
+	if ((heightmap.FreeSlipChunk.x * heightmap.FreeSlipChunk.y) > 1 && (x == 0 || y == 0 || x == heightmap.FreeSlipRange.x - 1 || y == heightmap.FreeSlipRange.y - 1)) {
+		//if freeslip is not turned on, we need to calculate the edge pixel for this chunk
+		//otherwise, do not touch the border pixel since border pixel is calculated seamlessly by other chunks
+		return;
+	}
 	//load the cells from heightmap, remember the height map only contains one color channel
 	//using Sobel fitering
 	//Cache index

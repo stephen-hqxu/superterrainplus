@@ -80,6 +80,21 @@ namespace SuperTerrainPlus {
 		private:
 
 			/**
+			 * @brief STPEdgeArrangement specifies the edge arrangement type when performing edge copy operations
+			*/
+			enum class STPEdgeArrangement : unsigned char {
+				TOP_LEFT_CORNER = 0x00u,
+				TOP_RIGHT_CORNER = 0x01u,
+				BOTTOM_LEFT_CORNER = 0x02u,
+				BOTTOM_RIGHT_CORNER = 0x03u,
+				TOP_HORIZONTAL_STRIP = 0x10u,
+				BOTTOM_HORIZONTAL_STRIP = 0x11u,
+				LEFT_VERTICAL_STRIP = 0x12u,
+				RIGHT_VERTICAL_STRIP = 0x13u,
+				NOT_AN_EDGE = 0xffu
+			};
+
+			/**
 			 * @brief Memory allocation for pinned memory
 			*/
 			class STPHeightfieldHostAllocator {
@@ -148,6 +163,8 @@ namespace SuperTerrainPlus {
 			 * Chunk 3 | Chunk 4
 			*/
 			unsigned int* GlobalLocalIndex = nullptr;
+			//A lookup table that, given a chunkID, determine the edge type of this chunk within the neighbour chunk logic
+			std::unique_ptr<STPEdgeArrangement[]> EdgeArrangementTable;
 			//Free slip range in the unit of chunk
 			const uint2 FreeSlipChunk;
 			//Determine the number of raindrop to summon, the higher the more accurate but slower
@@ -167,6 +184,20 @@ namespace SuperTerrainPlus {
 			 * @brief Initialise the local global index lookup table
 			*/
 			__host__ void initLocalGlobalIndexCUDA();
+
+			/**
+			 * @brief Initialise edge arrangement lookup table
+			*/
+			__host__ void initEdgeArrangementTable();
+
+			/**
+			 * @brief Copy the border of the texture using neighbour logic. Used mainly for rendering buffer edge synchronisation
+			 * @param device - Device destination memory
+			 * @param souce - The source chunks
+			 * @param element_count - The number of pixel in one chunk
+			 * @param stream - Async CUDA stream
+			*/
+			__host__ void copyNeighbourEdgeOnly(unsigned short*, const std::vector<unsigned short*>&, size_t, cudaStream_t) const;
 
 		public:
 
