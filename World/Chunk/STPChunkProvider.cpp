@@ -10,7 +10,7 @@ using namespace SuperTerrainPlus;
 
 STPChunkProvider::STPChunkProvider(STPSettings::STPConfigurations* settings)
 	: ChunkSettings(settings->getChunkSettings()), concurrency_level(STPChunkProvider::calculateMaxConcurrency(this->ChunkSettings.RenderedChunk, this->ChunkSettings.FreeSlipChunk))
-	, heightmap_gen(&settings->getSimplexNoiseSettings(), &this->ChunkSettings, this->concurrency_level) {
+	, heightmap_gen(settings->getSimplexNoiseSettings(), this->ChunkSettings, settings->getHeightfieldSettings(), this->concurrency_level) {
 	this->kernel_launch_pool = make_unique<STPThreadPool>(5u);
 }
 
@@ -50,7 +50,7 @@ void STPChunkProvider::computeHeightmap(STPChunk* current_chunk, vec2 chunkPos) 
 	}
 }
 
-void STPChunkProvider::computeErosion(STPChunk* current_chunk, list<STPChunk*> neighbour_chunks) {
+void STPChunkProvider::computeErosion(STPChunk* current_chunk, list<STPChunk*>& neighbour_chunks) {
 	using namespace STPCompute;
 
 	STPHeightfieldGenerator::STPMapStorage maps;
@@ -161,8 +161,4 @@ STPChunk* STPChunkProvider::requestChunk(vec2 chunkPos) {
 
 const STPSettings::STPChunkSettings* STPChunkProvider::getChunkSettings() const {
 	return &(this->ChunkSettings);
-}
-
-void STPChunkProvider::setHeightfieldErosionIteration(unsigned int iteration) {
-	this->heightmap_gen.setErosionIterationCUDA(iteration);
 }

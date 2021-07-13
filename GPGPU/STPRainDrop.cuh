@@ -73,7 +73,7 @@ namespace SuperTerrainPlus {
 				 * @param range Free slip range in the unit of chunk
 				 * @param mapSize The size of the each heightmap
 				*/
-				__host__ STPFreeSlipManager(float*, unsigned int*, uint2, uint2);
+				__host__ STPFreeSlipManager(float*, const unsigned int*, uint2, uint2);
 
 				__host__ ~STPFreeSlipManager();
 

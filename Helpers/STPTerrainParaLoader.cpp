@@ -79,6 +79,7 @@ STPSettings::STPHeightfieldSettings STPTerrainParaLoader::getProcedural2DINFGene
 	launch_options.DepositSpeed = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[14]));
 	launch_options.EvaporateSpeed = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[15]));
 	launch_options.Gravity = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[16]));
+	launch_options.RainDropCount = stoul(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[17]));
 
 	//return the value
 	return launch_options;

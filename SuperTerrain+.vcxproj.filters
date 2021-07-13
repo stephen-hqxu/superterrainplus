@@ -302,5 +302,8 @@
     <CudaCompile Include="GPGPU\STPRainDrop.cu">
       <Filter>GPGPU</Filter>
     </CudaCompile>
+    <CudaCompile Include="Settings\STPRainDropSettings.cu">
+      <Filter>Settings</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>

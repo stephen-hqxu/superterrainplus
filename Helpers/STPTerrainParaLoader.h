@@ -63,7 +63,7 @@ namespace SuperTerrainPlus {
 		 * @brief The variable names for all heightfield generator parameters.
 		 * The one in SISection must match the following name, case-sensitive, order doesn't matter.
 		*/
-		inline static const std::string Procedural2DINFGeneratorVariables[17] = {
+		inline static const std::string Procedural2DINFGeneratorVariables[18] = {
 			"scale",
 			"octave",
 			"persistence",
@@ -80,7 +80,8 @@ namespace SuperTerrainPlus {
 			"erode_speed",
 			"deposit_speed",
 			"evaporate_speed",
-			"gravity"
+			"gravity",
+			"iteration"
 		};
 
 		/**

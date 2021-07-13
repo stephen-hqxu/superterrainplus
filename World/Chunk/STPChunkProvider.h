@@ -66,7 +66,7 @@ namespace SuperTerrainPlus {
 		 * @param neighbour_chunks The maps of the chunks that require to be eroded with a free-slip manner, require the central chunk and neighbour chunks 
 		 * arranged in row-major flavour. The central chunk should also be included
 		*/
-		void computeErosion(STPChunk*, std::list<STPChunk*>);
+		void computeErosion(STPChunk*, std::list<STPChunk*>&);
 
 	public:
 
@@ -103,12 +103,6 @@ namespace SuperTerrainPlus {
 		 * @return The chunk settings
 		*/
 		const STPSettings::STPChunkSettings* getChunkSettings() const;
-		
-		/**
-		 * @brief Set the number of iteration each heightfield generation will use
-		 * @param iteration the number of iteration
-		*/
-		void setHeightfieldErosionIteration(unsigned int);
 
 	};
 }

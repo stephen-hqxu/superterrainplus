@@ -6,10 +6,6 @@
 
 #include <memory>
 
-//TODO: remove constant memory as it's not very useful and static initialisation sucks
-__constant__ unsigned char HeightfieldSettings[sizeof(SuperTerrainPlus::STPSettings::STPHeightfieldSettings)];
-static unsigned int ErosionBrushSize;
-
 using namespace SuperTerrainPlus::STPCompute;
 
 using std::vector;
@@ -17,6 +13,18 @@ using std::mutex;
 using std::unique_lock;
 using std::unique_ptr;
 using std::make_unique;
+
+enum class STPHeightfieldGenerator::STPEdgeArrangement : unsigned char {
+	TOP_LEFT_CORNER = 0x00u,
+	TOP_RIGHT_CORNER = 0x01u,
+	BOTTOM_LEFT_CORNER = 0x02u,
+	BOTTOM_RIGHT_CORNER = 0x03u,
+	TOP_HORIZONTAL_STRIP = 0x10u,
+	BOTTOM_HORIZONTAL_STRIP = 0x11u,
+	LEFT_VERTICAL_STRIP = 0x12u,
+	RIGHT_VERTICAL_STRIP = 0x13u,
+	NOT_AN_EDGE = 0xffu
+};
 
 /**
  * @brief Find the unit vector of the input vector
@@ -46,27 +54,29 @@ __global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG*, unsigned l
 /**
  * @brief Generate our epic height map using simplex noise function within the CUDA kernel
  * @param noise_fun - The heightfield generator that's going to use
+ * @param heightfield_settings - The settings to use to generate heightmap
  * @param height_storage - The pointer to a location where the heightmap will be stored
  * @param dimension - The width and height of the generated heightmap
  * @param half_dimension - Precomputed dimension/2 so the kernel don't need to repeatly compute that
  * @param offset - Controlling the offset on x, y and height offset on z
 */
-__global__ void generateHeightmapKERNEL(STPSimplexNoise* const, float*, uint2, float2, float3);
+__global__ void generateHeightmapKERNEL(const STPSimplexNoise*, const SuperTerrainPlus::STPSettings::STPHeightfieldSettings*, float*, uint2, float2, float3);
 
 /**
  * @brief Performing hydraulic erosion for the given heightmap terrain using CUDA parallel computing
  * @param height_storage The heightmap with global-local convertion management
+ * @param heightfield_settings - The settings to use to generate heightmap
  * @param rng The random number generator map sequence, independent for each rain drop
- * @param raindrop_count The expected number of raindrop
 */
-__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager, STPHeightfieldGenerator::curandRNG*, unsigned int);
+__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager, const SuperTerrainPlus::STPSettings::STPHeightfieldSettings*, STPHeightfieldGenerator::curandRNG*);
 
 /**
  * @brief Generate the normal map for the height map within kernel, and combine two maps into a rendering buffer
  * @param heightmap - contains the height map that will be used to generate the normalmap, with free-slip manager
+ * @param strength - The strenghth of the generated normal map
  * @param heightfield - will be used to store the output of the normal map in RGB channel, heightmap will be copied to A channel
 */
-__global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager, unsigned short*);
+__global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager, float, unsigned short*);
 
 /**
  * @brief Generate a new global to local index table
@@ -139,15 +149,18 @@ __host__ void STPHeightfieldGenerator::STPHeightfieldNonblockingStreamAllocator:
 	STPcudaCheckErr(cudaStreamDestroy(reinterpret_cast<cudaStream_t>(stream)));
 }
 
-__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings* noise_settings, const STPSettings::STPChunkSettings* chunk_settings, unsigned int hint_level_of_concurrency)
-	: simplex_h(noise_settings), Noise_Settings(*noise_settings), FreeSlipChunk(make_uint2(chunk_settings->FreeSlipChunk.x, chunk_settings->FreeSlipChunk.y)) {
-	const unsigned int num_pixel = chunk_settings->MapSize.x * chunk_settings->MapSize.y,
-		num_freeslip_chunk = chunk_settings->FreeSlipChunk.x * chunk_settings->FreeSlipChunk.y;
+__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings& noise_settings, const STPSettings::STPChunkSettings& chunk_settings, const STPSettings::STPHeightfieldSettings& heightfield_settings, unsigned int hint_level_of_concurrency)
+	: simplex_h(&noise_settings), Noise_Settings(noise_settings), FreeSlipChunk(make_uint2(chunk_settings.FreeSlipChunk.x, chunk_settings.FreeSlipChunk.y)), Heightfield_Settings_h(heightfield_settings) {
+	const unsigned int num_pixel = chunk_settings.MapSize.x * chunk_settings.MapSize.y,
+		num_freeslip_chunk = chunk_settings.FreeSlipChunk.x * chunk_settings.FreeSlipChunk.y;
 
 	//allocating space
-	STPcudaCheckErr(cudaMalloc(&this->simplex, sizeof(STPSimplexNoise)));
+	this->Heightfield_Settings_h.makeDeviceAvailable();
+	STPcudaCheckErr(cudaMalloc(&this->simplex_d, sizeof(STPSimplexNoise)));
+	STPcudaCheckErr(cudaMalloc(&this->Heightfield_Settings_d, sizeof(STPSettings::STPHeightfieldSettings)));
 	//copy data
-	STPcudaCheckErr(cudaMemcpy(this->simplex, &simplex_h, sizeof(STPSimplexNoise), cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMemcpy(this->simplex_d, &this->simplex_h, sizeof(STPSimplexNoise), cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMemcpy(this->Heightfield_Settings_d, &this->Heightfield_Settings_h, sizeof(STPSettings::STPHeightfieldSettings), cudaMemcpyHostToDevice));
 	//create memory pool
 	cudaMemPoolProps pool_props = { };
 	pool_props.allocType = cudaMemAllocationTypePinned;
@@ -159,6 +172,8 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STP
 	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short) * 4u) * num_freeslip_chunk * num_pixel * hint_level_of_concurrency;
 	STPcudaCheckErr(cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres));
 
+	//init erosion
+	this->setErosionIterationCUDA();
 	//set global local index
 	this->initLocalGlobalIndexCUDA();
 	//init edge table
@@ -167,7 +182,8 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STP
 
 __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 	//TODO: maybe use a smart ptr with custom deleter?
-	STPcudaCheckErr(cudaFree(this->simplex));
+	STPcudaCheckErr(cudaFree(this->simplex_d));
+	STPcudaCheckErr(cudaFree(this->Heightfield_Settings_d));
 	STPcudaCheckErr(cudaMemPoolDestroy(this->MapCacheDevice));
 	//check if the rng has been init
 	if (this->RNG_Map != nullptr) {
@@ -179,26 +195,6 @@ __host__ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 	if (this->GlobalLocalIndex != nullptr) {
 		STPcudaCheckErr(cudaFree(this->GlobalLocalIndex));
 	}
-}
-
-__host__ bool STPHeightfieldGenerator::InitGenerator(const STPSettings::STPHeightfieldSettings* const settings) {
-	//keep a local copy of the setting so device can have access to the pointer inside the class
-	static unique_ptr<const STPSettings::STPHeightfieldSettings> stored_settings;
-
-	//if memory address isn't the same
-	if (stored_settings.get() != settings) {
-		//validate memory
-		if (!settings->validate()) {
-			return false;
-		}
-		//replace current settings
-		//deep copy the thing
-		stored_settings = make_unique<const STPSettings::STPHeightfieldSettings>(*settings);
-	}
-
-	ErosionBrushSize = stored_settings->getErosionBrushSize();
-	STPcudaCheckErr(cudaMemcpyToSymbol(HeightfieldSettings, stored_settings.get(), sizeof(STPSettings::STPHeightfieldSettings), 0ull, cudaMemcpyHostToDevice));
-	return true;
 }
 
 __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperation operation) const {
@@ -280,7 +276,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		Dimgridsize = dim3((this->Noise_Settings.Dimension.x + Dimblocksize.x - 1) / Dimblocksize.x, (this->Noise_Settings.Dimension.y + Dimblocksize.y - 1) / Dimblocksize.y);
 
 		//generate a new heightmap and store it to the output later
-		generateHeightmapKERNEL << <Dimgridsize, Dimblocksize, 0, stream >> > (this->simplex, heightfield_freeslip_d,
+		generateHeightmapKERNEL << <Dimgridsize, Dimblocksize, 0, stream >> > (this->simplex_d, this->Heightfield_Settings_d, heightfield_freeslip_d,
 			this->Noise_Settings.Dimension, make_float2(1.0f * this->Noise_Settings.Dimension.x / 2.0f, 1.0f * this->Noise_Settings.Dimension.y / 2.0f), args.HeightmapOffset);
 		STPcudaCheckErr(cudaGetLastError());
 	}
@@ -300,12 +296,12 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 
 		//Flag: Erosion
 		if (flag[1]) {
-			const unsigned erosionBrushCache_size = ErosionBrushSize * (sizeof(int) + sizeof(float));
+			const unsigned erosionBrushCache_size = this->Heightfield_Settings_h.getErosionBrushSize() * (sizeof(int) + sizeof(float));
 			STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &performErosionKERNEL, erosionBrushCache_size));
-			gridsize = (this->NumRaindrop + blocksize - 1) / blocksize;
+			gridsize = (this->Heightfield_Settings_h.RainDropCount + blocksize - 1) / blocksize;
 
 			//erode the heightmap, either from provided heightmap or generated previously
-			performErosionKERNEL << <gridsize, blocksize, erosionBrushCache_size, stream >> > (heightmap_slip, this->RNG_Map, this->NumRaindrop);
+			performErosionKERNEL << <gridsize, blocksize, erosionBrushCache_size, stream >> > (heightmap_slip, this->Heightfield_Settings_d, this->RNG_Map);
 			STPcudaCheckErr(cudaGetLastError());
 		}
 
@@ -330,7 +326,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 			}
 			//generate normalmap from heightmap and format into rendering buffer
 			const unsigned int cacheSize = (Dimblocksize.x + 2u) * (Dimblocksize.y + 2u) * sizeof(float);
-			generateRenderingBufferKERNEL << <Dimgridsize, Dimblocksize, cacheSize, stream >> > (heightmap_slip, heightfield_formatted_d);
+			generateRenderingBufferKERNEL << <Dimgridsize, Dimblocksize, cacheSize, stream >> > (heightmap_slip, this->Heightfield_Settings_h.Strength, heightfield_formatted_d);
 			STPcudaCheckErr(cudaGetLastError());
 		}
 	}
@@ -383,11 +379,12 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	}
 }
 
-__host__ void STPHeightfieldGenerator::setErosionIterationCUDA(unsigned int raindrop_count) {
+__host__ void STPHeightfieldGenerator::setErosionIterationCUDA() {
+	const unsigned int raindrop_count = this->Heightfield_Settings_h.RainDropCount;
 	//determine launch parameters
 	int Mingridsize, gridsize, blocksize;
 	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &curandInitKERNEL));
-	gridsize = (raindrop_count + blocksize - 1) / blocksize;
+	gridsize = (this->Heightfield_Settings_h.RainDropCount + blocksize - 1) / blocksize;
 
 	//make sure all previous takes are finished
 	STPcudaCheckErr(cudaDeviceSynchronize());
@@ -404,12 +401,6 @@ __host__ void STPHeightfieldGenerator::setErosionIterationCUDA(unsigned int rain
 	curandInitKERNEL << <gridsize, blocksize >> > (this->RNG_Map, this->Noise_Settings.Seed, raindrop_count);
 	STPcudaCheckErr(cudaGetLastError());
 	STPcudaCheckErr(cudaDeviceSynchronize());
-	//leave the result on device, and update the raindrop count
-	this->NumRaindrop = raindrop_count;
-}
-
-__host__ unsigned int STPHeightfieldGenerator::getErosionIteration() const {
-	return this->NumRaindrop;
 }
 
 __host__ void STPHeightfieldGenerator::copyNeighbourEdgeOnly(unsigned short* device, const vector<unsigned short*>& source, size_t element_count, cudaStream_t stream) const {
@@ -620,7 +611,7 @@ __global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG* rng, unsign
 	curand_init(seed, static_cast<unsigned long long>(index), 0, &rng[index]);
 }
 
-__global__ void generateHeightmapKERNEL(STPSimplexNoise* const noise_fun, float* height_storage,
+__global__ void generateHeightmapKERNEL(const STPSimplexNoise* noise_fun, const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* heightfield_settings, float* height_storage,
 	uint2 dimension, float2 half_dimension, float3 offset) {
 	//the current working pixel
 	unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
@@ -629,22 +620,20 @@ __global__ void generateHeightmapKERNEL(STPSimplexNoise* const noise_fun, float*
 		return;
 	}
 
-	//convert constant memory to usable class
-	const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const settings = reinterpret_cast<const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
 	float amplitude = 1.0f, frequency = 1.0f, noiseheight = 0.0f;
 	float min = 0.0f, max = 0.0f;//The min and max indicates the range of the multi-phased simplex function, not the range of the output texture
 	//multiple phases of noise
-	for (int i = 0; i < settings->Octave; i++) {
-		float sampleX = ((1.0 * x - half_dimension.x) + offset.x) / settings->Scale * frequency, //subtract the half width and height can make the scaling focus at the center
-			sampleY = ((1.0 * y - half_dimension.y) + offset.z) / settings->Scale * frequency;//since the y is inverted we want to filp it over
+	for (int i = 0; i < heightfield_settings->Octave; i++) {
+		float sampleX = ((1.0 * x - half_dimension.x) + offset.x) / heightfield_settings->Scale * frequency, //subtract the half width and height can make the scaling focus at the center
+			sampleY = ((1.0 * y - half_dimension.y) + offset.z) / heightfield_settings->Scale * frequency;//since the y is inverted we want to filp it over
 		noiseheight += noise_fun->simplex2D(sampleX, sampleY) * amplitude;
 
 		//calculate the min and max
 		min -= 1.0f * amplitude;
 		max += 1.0f * amplitude;
 		//scale the parameters
-		amplitude *= settings->Persistence;
-		frequency *= settings->Lacunarity;
+		amplitude *= heightfield_settings->Persistence;
+		frequency *= heightfield_settings->Lacunarity;
 	}
 	
 	//interpolate and clamp the value within [0,1], was [min,max]
@@ -655,15 +644,13 @@ __global__ void generateHeightmapKERNEL(STPSimplexNoise* const noise_fun, float*
 	return;
 }
 
-__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager heightmap_storage, STPHeightfieldGenerator::curandRNG* rng, unsigned int raindrop_count) {
+__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager heightmap_storage, const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* heightfield_settings, STPHeightfieldGenerator::curandRNG* rng) {
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
-	if (index >= raindrop_count) {
+	if (index >= heightfield_settings->RainDropCount) {
 		return;
 	}
 
-	//convert constant memory to usable class
-	const SuperTerrainPlus::STPSettings::STPRainDropSettings* const settings = (const SuperTerrainPlus::STPSettings::STPRainDropSettings* const)(reinterpret_cast<const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings));
 	//convert to (base, dimension - 1]
 	//range: dimension
 	//Generate the raindrop at the central chunk only
@@ -694,11 +681,11 @@ __global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager heightmap_s
 	initPos.y += area.w;
 
 	//spawn in the raindrop
-	STPRainDrop droplet(initPos, settings->initWaterVolume, settings->initSpeed);
-	droplet.Erode(settings, heightmap_storage);
+	STPRainDrop droplet(initPos, heightfield_settings->initWaterVolume, heightfield_settings->initSpeed);
+	droplet.Erode((const SuperTerrainPlus::STPSettings::STPRainDropSettings*)heightfield_settings, heightmap_storage);
 }
 
-__global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager heightmap, unsigned short* heightfield) {
+__global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager heightmap, float strength, unsigned short* heightfield) {
 	//the current working pixel
 	const unsigned int x_b = blockIdx.x * blockDim.x,
 		y_b = blockIdx.y * blockDim.y,
@@ -709,8 +696,6 @@ __global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager he
 		return;
 	}
 
-	//convert constant memory to usable class
-	SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const settings = reinterpret_cast<SuperTerrainPlus::STPSettings::STPHeightfieldSettings* const>(HeightfieldSettings);
 	const uint2& dimension = heightmap.FreeSlipRange;
 	auto clamp = []__device__(int val, int lower, int upper) -> int {
 		return max(lower, min(val, upper));
@@ -764,7 +749,7 @@ __global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager he
 	cell[7] = heightmapCache[(x_c + 1) + (y_c + 1) * cacheSize.x];
 	//apply the filtering kernel matrix
 	float3 normal;
-	normal.z = 1.0f / settings->Strength;
+	normal.z = 1.0f / strength;
 	normal.x = cell[0] + 2 * cell[3] + cell[5] - (cell[2] + 2 * cell[4] + cell[7]);
 	normal.y = cell[0] + 2 * cell[1] + cell[2] - (cell[5] + 2 * cell[6] + cell[7]);
 	//normalize

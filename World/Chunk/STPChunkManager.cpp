@@ -19,7 +19,7 @@ using std::make_pair;
 
 using namespace SuperTerrainPlus;
 
-STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : ChunkProvider(settings) {
+STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : ChunkProvider(settings), trigger_clearBuffer(false) {
 	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
 	const ivec2 buffer_size(chunk_settings->RenderedChunk * chunk_settings->MapSize);
 	const int totaltexture_size = buffer_size.x * buffer_size.y * sizeof(unsigned short) * 4;//4 channel
@@ -133,6 +133,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 			//load chunk into rendering buffer
 			if (this->renderingBufferSubData(chunk_data, current_chunk.first, i)) {
 				//loaded
+				current_chunk.second = true;
 				num_chunkLoaded++;
 			}
 		}

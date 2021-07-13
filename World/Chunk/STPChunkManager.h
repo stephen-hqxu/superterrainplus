@@ -27,7 +27,7 @@ namespace SuperTerrainPlus {
 	class STPChunkManager {
 	public:
 
-		//List that stored rendered chunks' ID and world position
+		//Vector that stored rendered chunk world position and loading status (True is loaded, false otherwise)
 		typedef std::vector<std::pair<glm::vec2, bool>> STPLocalChunks;
 		typedef std::unordered_map<glm::vec2, int, STPChunkStorage::STPHashvec2> STPLocalChunksTable;
 
@@ -54,7 +54,7 @@ namespace SuperTerrainPlus {
 		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the currentCentralPos is different from this value
 		glm::vec2 lastCentralPos = glm::vec2(std::numeric_limits<float>::min());//the last world position of the central chunk of the entire visible chunks
 		//Whenever camera changes location, all previous rendering buffers are dumpped
-		bool trigger_clearBuffer = false;
+		bool trigger_clearBuffer;
 		//determine which chunks to render and whether it's loaded, index of element denotes chunk local ID
 		STPLocalChunks renderingLocals;
 		STPLocalChunksTable renderingLocals_lookup;

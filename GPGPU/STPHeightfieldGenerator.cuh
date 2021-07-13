@@ -82,17 +82,7 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief STPEdgeArrangement specifies the edge arrangement type when performing edge copy operations
 			*/
-			enum class STPEdgeArrangement : unsigned char {
-				TOP_LEFT_CORNER = 0x00u,
-				TOP_RIGHT_CORNER = 0x01u,
-				BOTTOM_LEFT_CORNER = 0x02u,
-				BOTTOM_RIGHT_CORNER = 0x03u,
-				TOP_HORIZONTAL_STRIP = 0x10u,
-				BOTTOM_HORIZONTAL_STRIP = 0x11u,
-				LEFT_VERTICAL_STRIP = 0x12u,
-				RIGHT_VERTICAL_STRIP = 0x13u,
-				NOT_AN_EDGE = 0xffu
-			};
+			enum class STPEdgeArrangement : unsigned char;
 
 			/**
 			 * @brief Memory allocation for pinned memory
@@ -137,13 +127,14 @@ namespace SuperTerrainPlus {
 				__host__ void deallocate(size_t, void*);
 			};
 
-			/**
-			 * @brief Simplex noise generator, on device
-			*/
-			STPSimplexNoise* simplex = nullptr;
+			//Simplex noise generator
 			const STPSimplexNoise simplex_h;
-			//All parameters for the noise generator, stored on host, passing value to device
+			STPSimplexNoise* simplex_d = nullptr;
+			//all parameters for the noise generator, stored on host, passing value to device
 			const STPSettings::STPSimplexNoiseSettings Noise_Settings;
+			//heightfield generation parameters
+			const STPSettings::STPHeightfieldSettings Heightfield_Settings_h;
+			STPSettings::STPHeightfieldSettings *Heightfield_Settings_d;
 
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency
 			curandRNG* RNG_Map = nullptr;
@@ -167,9 +158,6 @@ namespace SuperTerrainPlus {
 			std::unique_ptr<STPEdgeArrangement[]> EdgeArrangementTable;
 			//Free slip range in the unit of chunk
 			const uint2 FreeSlipChunk;
-			//Determine the number of raindrop to summon, the higher the more accurate but slower
-			//Each time this value changes, the rng needs to be re-sampled
-			unsigned int NumRaindrop = 0u;
 
 			STPBiome::STPBiome* BiomeDictionary = nullptr;
 
@@ -179,6 +167,12 @@ namespace SuperTerrainPlus {
 			mutable cudaMemPool_t MapCacheDevice;
 			mutable STPMemoryPool<void, STPHeightfieldHostAllocator> MapCachePinned;
 			mutable STPMemoryPool<void, STPHeightfieldNonblockingStreamAllocator> StreamPool;
+
+			/**
+			 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.
+			 * Determine the number of raindrop to summon, the higher the more accurate but slower
+			*/
+			__host__ void setErosionIterationCUDA();
 
 			/**
 			 * @brief Initialise the local global index lookup table
@@ -205,10 +199,11 @@ namespace SuperTerrainPlus {
 			 * @brief Init the heightfield generator
 			 * @param noise_settings Stored all parameters for the heightmap random number generator, it will be deep copied to the class so dynamic memory is not required
 			 * @param chunk_settings Stored all parameters for the chunk
+			 * @param heightfield_settings Stored all parameters for heightfield generation
 			 * @param hint_level_of_concurrency The average numebr of thread that will be used to issue commands to this class.
 			 * It's used to assume the size of memory pool to allocate.
 			*/
-			__host__ STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings*, const STPSettings::STPChunkSettings*, unsigned int);
+			__host__ STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings&, const STPSettings::STPChunkSettings&, const STPSettings::STPHeightfieldSettings&, unsigned int);
 
 			__host__ ~STPHeightfieldGenerator();
 
@@ -219,14 +214,6 @@ namespace SuperTerrainPlus {
 			__host__ STPHeightfieldGenerator& operator=(const STPHeightfieldGenerator&) = delete;
 
 			__host__ STPHeightfieldGenerator& operator=(STPHeightfieldGenerator&&) = delete;
-
-			/**
-			 * @brief Load the settings for heightfield generator, all subsequent computation will base on this settings. Settings are copied.
-			 * It needs to be called before launching any compute
-			 * @param settings The parameters of the generation algorithm. It should be on host side.
-			 * @return True if setting can be used
-			*/
-			__host__ static bool InitGenerator(const STPSettings::STPHeightfieldSettings* const);
 
 			/**
 			 * @brief Define the biome dictionary for looking up biome settins according to the biome id. Each entry of biome will be copied to device
@@ -252,19 +239,6 @@ namespace SuperTerrainPlus {
 			 * @return True if all operations are successful without any errors
 			*/
 			__host__ void operator()(STPMapStorage&, STPGeneratorOperation) const;
-
-			/**
-			 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.
-			 * Determine the number of raindrop to summon, the higher the more accurate but slower
-			 * @param raindrop_count The number of raindrop (number ofc iteration) for the erosion algorithm
-			*/
-			__host__ void setErosionIterationCUDA(unsigned int);
-
-			/**
-			 * @brief Get the number of iteration for hydraulic erosion
-			 * @return The number of raindrop to erode the terrain
-			*/
-			__host__ unsigned int getErosionIteration() const;
 
 		};
 
