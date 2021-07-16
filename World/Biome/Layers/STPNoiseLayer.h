@@ -9,13 +9,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPNoiseLayer generates random value on non-ocean biomes, this will be mainly used for river network generation
 	*/
-	class STPNoiseLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPNoiseLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
 		STPNoiseLayer(Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(global_seed, salt, parent) {

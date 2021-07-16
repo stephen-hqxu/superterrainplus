@@ -66,6 +66,7 @@ namespace SuperTerrainPlus {
 
 		SglToolkit::SgTCamera*& Camera;
 		SIMPLE::SIStorage& engineSettings;
+		SIMPLE::SIStorage& biomeSettings;
 		int SCR_SIZE[2] = {0,0};//array of 2 int, width and height
 
 		//genereal renderers
@@ -140,7 +141,7 @@ namespace SuperTerrainPlus {
 		 * @param windowSize The size of the window frame
 		 * @param ini The ini setting file for the engine
 		*/
-		STPMasterRenderer(SglToolkit::SgTCamera*& camera, const int windowSize[2], SIMPLE::SIStorage& ini) : Camera(camera), engineSettings(ini) {
+		STPMasterRenderer(SglToolkit::SgTCamera*& camera, const int windowSize[2], SIMPLE::SIStorage& ini, SIMPLE::SIStorage& biome) : Camera(camera), engineSettings(ini), biomeSettings(biome) {
 			this->SCR_SIZE[0] = windowSize[0];
 			this->SCR_SIZE[1] = windowSize[1];
 		}
@@ -188,6 +189,7 @@ namespace SuperTerrainPlus {
 			STPSettings::STPConfigurations config = STPSettings::STPConfigurations();
 			std::future chunksPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFChunksParameters, std::ref(this->engineSettings["Generators"]));
 			std::future renderPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFRenderingParameters, std::ref(this->engineSettings["2DTerrainINF"]));
+			std::future biomePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::loadBiomeParameters, std::ref(this->biomeSettings));
 			config.getChunkSettings() = chunksPara_loader.get();
 			config.getMeshSettings() = renderPara_loader.get();
 			
@@ -196,6 +198,7 @@ namespace SuperTerrainPlus {
 			//not quite sure why heightfield_settings isn't got copied to the config, it just share the pointer
 			config.getHeightfieldSettings() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(this->engineSettings["2DTerrainINF"], chunk_settings.MapSize * chunk_settings.FreeSlipChunk);
 			config.getSimplexNoiseSettings() = noisePara_loader.get();
+			biomePara_loader.get();
 
 			assert(config.validate());
 			const unsigned int unitplane_count = chunk_settings.ChunkSize.x * chunk_settings.ChunkSize.y * chunk_settings.RenderedChunk.x * chunk_settings.RenderedChunk.y;

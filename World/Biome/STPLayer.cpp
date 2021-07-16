@@ -1,6 +1,6 @@
 #include "STPLayer.h"
 
-using namespace SuperTerrainPlus::STPBiome;
+using namespace SuperTerrainPlus::STPDiversity;
 
 STPLayer::STPLocalRNG::STPLocalRNG(Seed local_seed) : LocalSeed(local_seed) {
 

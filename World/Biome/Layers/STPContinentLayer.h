@@ -9,13 +9,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPContinentLayer is the first layer of the biome generation chain, it generates land and ocean section
 	*/
-	class STPContinentLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPContinentLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
 		STPContinentLayer(Seed global_seed, Seed salt) : STPLayer(global_seed, salt) {

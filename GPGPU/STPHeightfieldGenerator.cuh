@@ -44,7 +44,7 @@ namespace SuperTerrainPlus {
 
 			//A function that converts biome id to the index corresponded in biome table
 			//By default it's a 1-1 mapping, meaning biome id = index
-			typedef size_t(*STPBiomeInterpreter)(STPBiome::Sample);
+			typedef size_t(*STPBiomeInterpreter)(STPDiversity::Sample);
 
 			//Generate a new heightmap with simplex noise and store the result in the provided memory space
 			constexpr static STPGeneratorOperation HeightmapGeneration = 1u << 0u;
@@ -159,7 +159,7 @@ namespace SuperTerrainPlus {
 			//Free slip range in the unit of chunk
 			const uint2 FreeSlipChunk;
 
-			STPBiome::STPBiome* BiomeDictionary = nullptr;
+			STPDiversity::STPBiome* BiomeDictionary = nullptr;
 
 			//Temp cache on device for heightmap computation
 			mutable std::mutex MapCachePinned_lock;
@@ -220,10 +220,9 @@ namespace SuperTerrainPlus {
 			 * @tparam Ite The iterator to the original container with all biomes
 			 * @param begin The beginning of the container with biomes
 			 * @param end The end of the container with biomes
-			 * @return True if copy was successful
 			*/
 			template<typename Ite>
-			__host__ bool defineDictionary(Ite, Ite);
+			__host__ void defineDictionary(Ite, Ite);
 
 			/**
 			 * @brief Generate the terrain heightfield maps, each heightfield contains four maps, being heightmap and normalmap.

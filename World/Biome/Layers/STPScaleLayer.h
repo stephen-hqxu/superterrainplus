@@ -8,13 +8,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPScaleLayer scales the current layer and randomly choose the neighboring cell to fill the new cells
 	*/
-	class STPScaleLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPScaleLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
 		/**

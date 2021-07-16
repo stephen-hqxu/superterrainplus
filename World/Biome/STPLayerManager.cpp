@@ -1,7 +1,7 @@
 #pragma once
 #include "STPLayerManager.h"
 
-using namespace SuperTerrainPlus::STPBiome;
+using namespace SuperTerrainPlus::STPDiversity;
 
 STPLayer* STPLayerManager::start() {
 	return this->Vertex.back().get();

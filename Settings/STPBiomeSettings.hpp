@@ -27,7 +27,7 @@ namespace SuperTerrainPlus {
 
 			//Identification and texture control
 			//The id of this biome, for convention id equals the index of the biome registry, but it's free to choose the value of the id
-			STPBiome::Sample ID;
+			STPDiversity::Sample ID;
 			//The name of this biome
 			std::string Name;
 			//The temperature of this biome

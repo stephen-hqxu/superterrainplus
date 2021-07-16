@@ -19,9 +19,11 @@ using namespace SuperTerrainPlus;
 STPChunk::STPChunk(uvec2 size, bool initialise) : PixelSize(size) {
 	if (initialise) {
 		const int num_pixel = size.x * size.y;
-		//heightmap is R format
+		//heightmap is R32F format
 		this->Heightmap = make_unique<float[]>(num_pixel);
-		//rendering buffer is RGBA format, contains heightmap and normalmap
+		//biomemap is R16UI format
+		this->Biomemap = make_unique<STPDiversity::Sample[]>(num_pixel);
+		//rendering buffer is RGBA16 format, contains heightmap and normalmap
 		this->TerrainRenderingBuffer = make_unique<unsigned short[]>(num_pixel * 4);
 	}
 
@@ -59,6 +61,10 @@ float* STPChunk::getHeightmap() {
 
 unsigned short* STPChunk::getRenderingBuffer() {
 	return this->TerrainRenderingBuffer.get();
+}
+
+STPDiversity::Sample* STPChunk::getBiomemap() {
+	return this->Biomemap.get();
 }
 
 const uvec2& STPChunk::getSize() const {

@@ -18,9 +18,9 @@
 */
 namespace SuperTerrainPlus {
 	/**
-	 * @brief STPBiome is a series of biome generation algorithm that allows user to define their own implementations
+	 * @brief STPDiversity is a series of biome generation algorithm that allows user to define their own implementations
 	*/
-	namespace STPBiome {
+	namespace STPDiversity {
 		/**
 		 * @brief STPLayerCache is a smart caching system that stores computed layer sample and read directly from when available
 		*/

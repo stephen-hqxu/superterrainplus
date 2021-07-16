@@ -12,6 +12,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 
 #include "../../Helpers/STPSerialisationException.hpp"
+#include "../Biome/STPBiome_def.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -50,6 +51,7 @@ namespace SuperTerrainPlus {
 		const glm::uvec2 PixelSize;//All maps must have the same size
 
 		std::unique_ptr<float[]> Heightmap;
+		std::unique_ptr<STPDiversity::Sample[]> Biomemap;
 		//Cache that OpenGL can use to render directly, it's converted from 32 bit internal texture to 16 bit.
 		//We need to keep the 32 bit copy for later chunk computations, e.g., chunk-chunk interpolation.
 		//Storing them separately can avoid re-converting format everytime the chunks get updated
@@ -153,6 +155,12 @@ namespace SuperTerrainPlus {
 		 * @return The reference to the rendering map
 		*/
 		unsigned short* getRenderingBuffer();
+
+		/**
+		 * @brief Return the reference to the biomemap of this chunk
+		 * @return The reference to the biomemap
+		*/
+		STPDiversity::Sample* getBiomemap();
 
 		/**
 		 * @brief Return the reference to the size of the pixels for all maps

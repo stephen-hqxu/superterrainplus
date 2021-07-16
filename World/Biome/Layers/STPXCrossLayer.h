@@ -9,13 +9,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPXCrossLayer is an extended version of regular layer, it takes in a X cross coordinate and then sample
 	*/
-	class STPXCrossLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPXCrossLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
 		/**

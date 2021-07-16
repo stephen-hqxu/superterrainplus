@@ -1,7 +1,11 @@
 #include "STPTerrainParaLoader.h"
 
+//Biome Registry, just a demo program
+#include "../World/Biome/Biomes/STPBiomeRegistry.h"
+
 using namespace SuperTerrainPlus;
 
+using std::string;
 using std::stof;
 using std::stoi;
 using std::stod;
@@ -9,6 +13,68 @@ using std::stod;
 using glm::uvec2;
 using glm::vec2;
 using glm::vec3;
+
+const string STPTerrainParaLoader::Procedural2DINFRenderingVariables[6] = {
+	"altitude",
+	"LoDfactor",
+	"minTess",
+	"maxTess",
+	"furthestDistance",
+	"nearestDistance"
+};
+
+const string STPTerrainParaLoader::Procedural2DINFChunksVariables[14] = {
+	"heightmap2DSizeX",
+	"heightmap2DSizeZ",
+	"chunkSizeX",
+	"chunkSizeZ",
+	"renderedSizeX",
+	"renderedSizeZ",
+	"chunkOffsetX",
+	"chunkOffsetY",
+	"chunkOffsetZ",
+	"mapOffsetX",
+	"mapOffsetZ",
+	"freeSlipX",
+	"freeSlipZ",
+	"chunkScale"
+};
+
+const string STPTerrainParaLoader::Procedural2DINFGeneratorVariables[18] = {
+	"scale",
+	"octave",
+	"persistence",
+	"lacunarity",
+	"strength",
+	"brush_radius",
+	"inertia",
+	"sediment_capacity_factor",
+	"min_sediment_capacity",
+	"init_water_volume",
+	"min_water_volume",
+	"friction",
+	"init_speed",
+	"erode_speed",
+	"deposit_speed",
+	"evaporate_speed",
+	"gravity",
+	"iteration"
+};
+
+const string STPTerrainParaLoader::Simplex2DNoiseVariables[3] = {
+	"seed",
+	"distribution",
+	"offset"
+};
+
+const string STPTerrainParaLoader::BiomeVariables[6]{
+	"name",
+	"id",
+	"temperature",
+	"precipitation",
+	"depth",
+	"variation"
+};
 
 STPSettings::STPMeshSettings STPTerrainParaLoader::getProcedural2DINFRenderingParameters(const SIMPLE::SISection& section) {
 	STPSettings::STPMeshSettings rendering_options;
@@ -97,4 +163,33 @@ STPSettings::STPSimplexNoiseSettings STPTerrainParaLoader::getSimplex2DNoisePara
 	noise_option.Dimension = make_uint2(mapSize.x, mapSize.y);
 
 	return noise_option;
+}
+
+void STPTerrainParaLoader::loadBiomeParameters(const SIMPLE::SIStorage& biomeini) {
+	using namespace STPDiversity;
+	typedef STPDemo::STPBiomeRegistry BR;
+	auto load = [&biomeini](STPBiome& biome, string name) -> void {
+		STPSettings::STPBiomeSettings props;
+		const SIMPLE::SISection& curr_biome = biomeini[name];
+
+		//assigning props
+		props.Name = curr_biome(STPTerrainParaLoader::BiomeVariables[0]);
+		props.ID = static_cast<STPDiversity::Sample>(stoul(curr_biome(STPTerrainParaLoader::BiomeVariables[1])));
+		props.Temperature = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[2]));
+		props.Precipitation = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[3]));
+		props.Depth = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[4]));
+		props.Variation = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[5]));
+
+		//modify biome settings
+		biome.updateProperties(props);
+	};
+
+	//start loading
+	load(BR::OCEAN, "ocean");
+	load(BR::PLAINS, "plains");
+	load(BR::DESERT, "desert");
+	load(BR::FOREST, "forest");
+
+	//finally register all biomes
+	BR::registerBiomes();
 }

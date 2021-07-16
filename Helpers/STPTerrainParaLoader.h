@@ -5,7 +5,7 @@
 //System
 #include <string>
 //INI loader
-#include "SIMPLE1.0/SISection.h"
+#include "SIMPLE1.0/SIStorage.h"
 //GLM
 #include "glm/vec2.hpp"
 //Settings
@@ -32,65 +32,11 @@ namespace SuperTerrainPlus {
 
 		~STPTerrainParaLoader() = default;
 
-		inline static const std::string Procedural2DINFRenderingVariables[6] = {
-			"altitude",
-			"LoDfactor",
-			"minTess",
-			"maxTess",
-			"furthestDistance",
-			"nearestDistance"
-		};
-
-		inline static const std::string Procedural2DINFChunksVariables[14] = {
-			"heightmap2DSizeX",
-			"heightmap2DSizeZ",
-			"chunkSizeX",
-			"chunkSizeZ",
-			"renderedSizeX",
-			"renderedSizeZ",
-			"chunkOffsetX",
-			"chunkOffsetY",
-			"chunkOffsetZ",
-			"mapOffsetX",
-			"mapOffsetZ",
-			"freeSlipX",
-			"freeSlipZ",
-			"chunkScale"
-		};
-
-		/**
-		 * @brief The variable names for all heightfield generator parameters.
-		 * The one in SISection must match the following name, case-sensitive, order doesn't matter.
-		*/
-		inline static const std::string Procedural2DINFGeneratorVariables[18] = {
-			"scale",
-			"octave",
-			"persistence",
-			"lacunarity",
-			"strength",
-			"brush_radius",
-			"inertia",
-			"sediment_capacity_factor",
-			"min_sediment_capacity",
-			"init_water_volume",
-			"min_water_volume",
-			"friction",
-			"init_speed",
-			"erode_speed",
-			"deposit_speed",
-			"evaporate_speed",
-			"gravity",
-			"iteration"
-		};
-
-		/**
-		 * @brief Stores all simplex noise parameter names (for 2d noise only)
-		*/
-		inline static const std::string Simplex2DNoiseVariables[3] = {
-			"seed",
-			"distribution",
-			"offset"
-		};
+		static const std::string Procedural2DINFRenderingVariables[6];
+		static const std::string Procedural2DINFChunksVariables[14];
+		static const std::string Procedural2DINFGeneratorVariables[18];
+		static const std::string Simplex2DNoiseVariables[3];
+		static const std::string BiomeVariables[6];
 
 	public:
 
@@ -123,6 +69,12 @@ namespace SuperTerrainPlus {
 		 * @return The noise parameter,, if certain parameters are missing in the section, exception will eb thrown
 		*/
 		static STPSettings::STPSimplexNoiseSettings getSimplex2DNoiseParameters(const SIMPLE::SISection&, glm::uvec2);
+
+		/**
+		 * @brief Load all biome parameters into STPBiomeRegistry
+		 * @param biomeini The INI file for the biome config
+		*/
+		static void loadBiomeParameters(const SIMPLE::SIStorage&);
 
 	};
 }

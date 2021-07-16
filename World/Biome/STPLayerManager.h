@@ -14,9 +14,9 @@
 */
 namespace SuperTerrainPlus {
 	/**
-	 * @brief STPBiome is a series of biome generation algorithm that allows user to define their own implementations
+	 * @brief STPDiversity is a series of biome generation algorithm that allows user to define their own implementations
 	*/
-	namespace STPBiome {
+	namespace STPDiversity {
 
 		/**
 		 * @brief STPLayerManager is a graph structured class that manages all STPLayers as nodes.

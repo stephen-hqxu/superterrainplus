@@ -9,8 +9,8 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPOceanTemperatureLayer generates different temperature region for ocean biomes and smooth the transition as much as possible
@@ -21,7 +21,7 @@ namespace STPDemo {
 		/**
 		 * @brief STPOceanNoise setups warm and frozen ocean first with RNG
 		*/
-		class STPOceanNoise : public SuperTerrainPlus::STPBiome::STPLayer {
+		class STPOceanNoise : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
 			STPOceanNoise(Seed global_seed, Seed salt) : STPLayer(global_seed, salt) {
@@ -117,7 +117,7 @@ namespace STPDemo {
 		/**
 		 * @brief STPOceanTransition smooths out the temp of the ocean when it meets land
 		*/
-		class STPOceanTransition : public SuperTerrainPlus::STPBiome::STPLayer {
+		class STPOceanTransition : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
 			STPOceanTransition(Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(global_seed, salt, parent) {
@@ -159,7 +159,7 @@ namespace STPDemo {
 		/**
 		 * @brief STPOceanMix mixes ocean temp layers with the original land
 		*/
-		class STPOceanMix : public SuperTerrainPlus::STPBiome::STPLayer {
+		class STPOceanMix : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
 			STPOceanMix(Seed global_seed, Seed salt, STPLayer* land, STPLayer* ocean) : STPLayer(global_seed, salt, land, ocean) {

@@ -13,8 +13,8 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Sample;
-	using SuperTerrainPlus::STPBiome::STPBiome;
+	using SuperTerrainPlus::STPDiversity::Sample;
+	using SuperTerrainPlus::STPDiversity::STPBiome;
 	using SuperTerrainPlus::STPSettings::STPBiomeSettings;
 
 	/**
@@ -199,8 +199,6 @@ namespace STPDemo {
 				//do not re-initialise those biomes
 				return;
 			}
-
-			//TODO assigning configuration to biomes, id, name, etc.
 
 			//add all biomes to registry
 			static auto reg_insert = [](const STPBiome& biome) -> void {

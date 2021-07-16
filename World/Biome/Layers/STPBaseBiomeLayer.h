@@ -11,13 +11,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPBaseBiomeLayer starts to add biomes based on the climate, and interprete temperature and precipitation to the actual biome
 	*/
-	class STPBaseBiomeLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPBaseBiomeLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	private:
 
 		typedef const std::vector<Sample> BiomeList;

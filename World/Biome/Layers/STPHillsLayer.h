@@ -9,13 +9,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPHillsLayer generates hills that are located at the central of some biomes from the noise function
 	*/
-	class STPHillsLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPHillsLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	private:
 
 		//Chance of having a hill

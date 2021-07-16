@@ -1,6 +1,6 @@
 #include "STPLayerCache.h"
 
-using namespace SuperTerrainPlus::STPBiome;
+using namespace SuperTerrainPlus::STPDiversity;
 
 using std::make_unique;
 

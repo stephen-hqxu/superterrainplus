@@ -9,8 +9,8 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPClimateLayer starts to populate the map with climate (temperature and precipitation/humidity) for later generation.
@@ -34,7 +34,7 @@ namespace STPDemo {
 		/**
 		 * @brief STPClimateSingle adds only cold or dry climate
 		*/
-		class STPClimateSingle : public SuperTerrainPlus::STPBiome::STPLayer {
+		class STPClimateSingle : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
 			STPClimateSingle(Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(global_seed, salt, parent) {
