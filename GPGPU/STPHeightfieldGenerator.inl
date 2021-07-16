@@ -3,6 +3,7 @@
 //DO NOT INCLUDE THIS HEADER MANUALLY, IT'S AUTOMATICALLY MANAGED
 #ifdef _STP_HEIGHTFIELD_GENERATOR_CUH_
 
+//TODO: redo this. What if biome ids are interleaved?
 template<typename Ite>
 __host__ bool SuperTerrainPlus::STPCompute::STPHeightfieldGenerator::defineDictionary(Ite begin, Ite end) {
 	//Type check
@@ -21,7 +22,7 @@ __host__ bool SuperTerrainPlus::STPCompute::STPHeightfieldGenerator::defineDicti
 	//copy all biomes to device in order
 	unsigned int loc = 0u;
 	for (const auto& it = begin; it != end; it++) {
-		success &= cudaSuccess == cudaMemcpyAsync(this->BiomeDictionary[loc], *it, sizeof(SuperTerrainPlus::STPBiome::STPBiome), cudaMemcpyHostToDevice, copy_stream);
+		success &= cudaSuccess == cudaMemcpyAsync(this->BiomeDictionary + loc, *it, sizeof(SuperTerrainPlus::STPBiome::STPBiome), cudaMemcpyHostToDevice, copy_stream);
 		loc++;
 	}
 

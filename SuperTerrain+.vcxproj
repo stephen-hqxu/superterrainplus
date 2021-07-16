@@ -31,6 +31,7 @@
     <ClCompile Include="World\Biome\STPBiomeFactory.cpp" />
     <ClCompile Include="World\Biome\STPLayer.cpp" />
     <ClCompile Include="World\Biome\STPLayerCache.cpp" />
+    <ClCompile Include="World\Biome\STPLayerManager.cpp" />
     <ClCompile Include="World\Biome\STPSeedMixer.cpp" />
     <ClCompile Include="World\Chunk\STPChunk.cpp" />
     <ClCompile Include="World\Chunk\STPChunkManager.cpp" />
@@ -88,6 +89,7 @@
     <ClInclude Include="World\Biome\STPBiome_def.h" />
     <ClInclude Include="World\Biome\STPLayer.h" />
     <ClInclude Include="World\Biome\STPLayerCache.h" />
+    <ClInclude Include="World\Biome\STPLayerManager.h" />
     <ClInclude Include="World\Biome\STPSeedMixer.h" />
     <ClInclude Include="World\Chunk\STPChunk.h" />
     <ClInclude Include="World\Chunk\STPChunkManager.h" />
@@ -112,6 +114,7 @@
     <None Include="LICENSE" />
     <None Include="README.md" />
     <None Include="World\Biome\STPLayer.inl" />
+    <None Include="World\Biome\STPLayerManager.inl" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="GPGPU\STPHeightfieldGenerator.cu" />

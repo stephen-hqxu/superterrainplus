@@ -38,24 +38,6 @@ Sample STPLayer::STPLocalRNG::choose(Sample var1, Sample var2, Sample var3, Samp
 	return i == 0 ? var1 : i == 1 ? var2 : i == 2 ? var3 : var4;
 }
 
-STPLayer::~STPLayer() {
-	for (unsigned int i = 0; i < this->Ascendant.size(); i++) {
-		STPLayer* parent = this->Ascendant[i];
-
-		//tell the parent that the child is going to be deleted
-		parent->ReferenceCount--;
-		if (parent->ReferenceCount == 0u) {
-			//delete its ascendants recursively (if any)
-			//the parent has no more reference, delete
-			delete parent;
-		}
-	}
-	this->Ascendant.clear();
-
-	//delete the cache (if any)
-	//automatically
-}
-
 Seed STPLayer::genLayerSeed(Seed global_seed, Seed salt) {
 	Seed midSalt = STPSeedMixer::mixSeed(salt, salt);
 	midSalt = STPSeedMixer::mixSeed(midSalt, midSalt);
@@ -72,12 +54,6 @@ Seed STPLayer::genLocalSeed(int x, int z) const {
 	local_seed = STPSeedMixer::mixSeed(local_seed, x);
 	local_seed = STPSeedMixer::mixSeed(local_seed, z);
 	return local_seed;
-}
-
-void STPLayer::destroy(STPLayer* layer) {
-	//we explicitly define a function to delete the pointer
-	//since the layer is created usign create() but not new, it may cause confusion to other programmers if we force them to use delete() function.
-	delete layer;
 }
 
 size_t STPLayer::cacheSize() const {

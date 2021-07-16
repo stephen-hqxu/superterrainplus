@@ -81,6 +81,9 @@
     <ClCompile Include="World\Biome\STPBiomeFactory.cpp">
       <Filter>World\Biome</Filter>
     </ClCompile>
+    <ClCompile Include="World\Biome\STPLayerManager.cpp">
+      <Filter>World\Biome</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GPGPU\STPPermutationsGenerator.cuh">
@@ -251,6 +254,9 @@
     <ClInclude Include="GPGPU\STPDeviceErrorHandler.cuh">
       <Filter>GPGPU</Filter>
     </ClInclude>
+    <ClInclude Include="World\Biome\STPLayerManager.h">
+      <Filter>World\Biome</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GLSL\STPsky.frag">
@@ -287,6 +293,9 @@
     <None Include="README.md" />
     <None Include="GPGPU\STPHeightfieldGenerator.inl">
       <Filter>GPGPU</Filter>
+    </None>
+    <None Include="World\Biome\STPLayerManager.inl">
+      <Filter>World\Biome</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

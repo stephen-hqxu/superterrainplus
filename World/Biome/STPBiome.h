@@ -60,7 +60,7 @@ namespace SuperTerrainPlus {
 			 * @brief Get the name of this biome
 			 * @return The biome name
 			*/
-			string getName() const;
+			std::string getName() const;
 
 			/**
 			 * @brief Get the temperature of this biome

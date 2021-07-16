@@ -58,9 +58,9 @@ __global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG*, unsigned l
  * @param height_storage - The pointer to a location where the heightmap will be stored
  * @param dimension - The width and height of the generated heightmap
  * @param half_dimension - Precomputed dimension/2 so the kernel don't need to repeatly compute that
- * @param offset - Controlling the offset on x, y and height offset on z
+ * @param offset - Controlling the offset on x, y directions
 */
-__global__ void generateHeightmapKERNEL(const STPSimplexNoise*, const SuperTerrainPlus::STPSettings::STPHeightfieldSettings*, float*, uint2, float2, float3);
+__global__ void generateHeightmapKERNEL(const STPSimplexNoise*, const SuperTerrainPlus::STPSettings::STPHeightfieldSettings*, float*, uint2, float2, float2);
 
 /**
  * @brief Performing hydraulic erosion for the given heightmap terrain using CUDA parallel computing
@@ -612,7 +612,7 @@ __global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG* rng, unsign
 }
 
 __global__ void generateHeightmapKERNEL(const STPSimplexNoise* noise_fun, const SuperTerrainPlus::STPSettings::STPHeightfieldSettings* heightfield_settings, float* height_storage,
-	uint2 dimension, float2 half_dimension, float3 offset) {
+	uint2 dimension, float2 half_dimension, float2 offset) {
 	//the current working pixel
 	unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -625,7 +625,7 @@ __global__ void generateHeightmapKERNEL(const STPSimplexNoise* noise_fun, const 
 	//multiple phases of noise
 	for (int i = 0; i < heightfield_settings->Octave; i++) {
 		float sampleX = ((1.0 * x - half_dimension.x) + offset.x) / heightfield_settings->Scale * frequency, //subtract the half width and height can make the scaling focus at the center
-			sampleY = ((1.0 * y - half_dimension.y) + offset.z) / heightfield_settings->Scale * frequency;//since the y is inverted we want to filp it over
+			sampleY = ((1.0 * y - half_dimension.y) + offset.y) / heightfield_settings->Scale * frequency;//since the y is inverted we want to filp it over
 		noiseheight += noise_fun->simplex2D(sampleX, sampleY) * amplitude;
 
 		//calculate the min and max
@@ -637,7 +637,7 @@ __global__ void generateHeightmapKERNEL(const STPSimplexNoise* noise_fun, const 
 	}
 	
 	//interpolate and clamp the value within [0,1], was [min,max]
-	noiseheight = InvlerpKERNEL(min, max, noiseheight + offset.y);
+	noiseheight = InvlerpKERNEL(min, max, noiseheight);
 	//finally, output the texture
 	height_storage[x + y * dimension.x] = noiseheight;//we have only allocated R32F format;
 	

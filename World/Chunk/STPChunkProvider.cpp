@@ -1,6 +1,7 @@
 #include "STPChunkProvider.h"
 
 using glm::vec2;
+using glm::uvec2;
 
 using std::list;
 using std::make_unique;
@@ -22,12 +23,11 @@ unsigned int STPChunkProvider::calculateMaxConcurrency(uvec2 rendered_range, uve
 	return max_used.x * max_used.y;
 }
 
-float3 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
+float2 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
 	//first convert chunk world position to relative chunk position, then multiply by the map size, such that the generated map will be seamless
-	return make_float3(
+	return make_float2(
 		static_cast<float>(this->ChunkSettings.MapSize.x) * chunkPos.x / (static_cast<float>(this->ChunkSettings.ChunkSize.x) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.x,
-		this->ChunkSettings.MapOffset.y,
-		static_cast<float>(this->ChunkSettings.MapSize.y) * chunkPos.y / (static_cast<float>(this->ChunkSettings.ChunkSize.y) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.z
+		static_cast<float>(this->ChunkSettings.MapSize.y) * chunkPos.y / (static_cast<float>(this->ChunkSettings.ChunkSize.y) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.y
 	);
 }
 

@@ -6,6 +6,10 @@ using std::stof;
 using std::stoi;
 using std::stod;
 
+using glm::uvec2;
+using glm::vec2;
+using glm::vec3;
+
 STPSettings::STPMeshSettings STPTerrainParaLoader::getProcedural2DINFRenderingParameters(const SIMPLE::SISection& section) {
 	STPSettings::STPMeshSettings rendering_options;
 	STPSettings::STPMeshSettings::STPTessellationSettings tess_options;
@@ -43,16 +47,15 @@ STPSettings::STPChunkSettings STPTerrainParaLoader::getProcedural2DINFChunksPara
 		stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[7])),
 		stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[8]))
 	);
-	chunks_options.MapOffset = vec3(
+	chunks_options.MapOffset = vec2(
 		stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[9])),
-		stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[10])),
-		stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[11]))
+		stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[10]))
 	);
 	chunks_options.FreeSlipChunk = uvec2(
-		stoul(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[12])),
-		stoul(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[13]))
+		stoul(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[11])),
+		stoul(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[12]))
 	);
-	chunks_options.ChunkScaling = stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[14]));
+	chunks_options.ChunkScaling = stof(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[13]));
 
 	return chunks_options;
 }

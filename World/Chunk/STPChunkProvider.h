@@ -51,7 +51,7 @@ namespace SuperTerrainPlus {
 		 * @param chunkPos The world position of the chunk
 		 * @return The chunk offset
 		*/
-		float3 calcChunkOffset(glm::vec2) const;
+		float2 calcChunkOffset(glm::vec2) const;
 
 		/**
 		 * @brief Dispatch compute for heightmap, the heightmap result will be writen back to the storage

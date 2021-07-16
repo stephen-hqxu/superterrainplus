@@ -28,6 +28,8 @@ namespace SuperTerrainPlus {
 		class STPLayer {
 		public:
 
+			friend class STPLayerManager;
+
 			/**
 			 * @brief STPLocalRNG is a random number generator for each local seed (a seed that is deterministic on world coordinate)
 			*/
@@ -86,9 +88,6 @@ namespace SuperTerrainPlus {
 			//TODO: Use shared_ptr instead
 			std::vector<STPLayer*> Ascendant;
 
-			//Count the number of layer that references this layer
-			unsigned short ReferenceCount;
-
 			//layer cache for dynamic programming
 			std::unique_ptr<STPLayerCache> Cache;
 
@@ -114,7 +113,8 @@ namespace SuperTerrainPlus {
 			template <class... Asc>
 			STPLayer(Seed, Seed, Asc*...);
 
-			virtual ~STPLayer();
+			//Layer deletion is handled by STPLayerManager
+			virtual ~STPLayer() = default;
 
 			/**
 			 * @brief Generate a unique seed for this coordinate in this layer
@@ -145,26 +145,6 @@ namespace SuperTerrainPlus {
 			STPLayer& operator=(const STPLayer&) = delete;
 
 			STPLayer& operator=(STPLayer&&) = delete;
-
-			/**
-			 * @brief Create a layer instance
-			 * @tparam L A layer instance
-			 * @tparam C Cache size for this layer, it should be in the power of 2
-			 * @tparam Arg A list of arguments for the child layer class
-			 * @param global_seed The global seed is the seed that used to generate the entire world, a.k.a., world seed.
-			 * @param salt The salt is a random number that used to mix the global to generate local and layer seed, such that each layer should use
-			 * different salt value
-			 * @param args All other arguments for the created layer to be used in their constructor.
-			 * @return A pointer new layer instance with the type of the specified child layer. The pointer needs to be freed with destroy() function
-			*/
-			template <class L, size_t C = 0ull, class... Arg>
-			static STPLayer* create(Seed, Seed, Arg&&...);
-
-			/**
-			 * @brief Free the memory of this layer where it's created with create() function
-			 * @param layer The layer that needs to be freed
-			*/
-			static void destroy(STPLayer*);
 
 			/**
 			 * @brief Query the cache size on this layer cache

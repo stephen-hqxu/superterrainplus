@@ -2,6 +2,8 @@
 
 using namespace SuperTerrainPlus::STPBiome;
 
+using std::string;
+
 STPBiome::STPBiome() {
 
 }

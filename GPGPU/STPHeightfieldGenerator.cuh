@@ -68,9 +68,9 @@ namespace SuperTerrainPlus {
 				//If free-slip hydraulic erosion is disabled, no neighbour chunks are required.
 				//- The map pointers should be arranged in row major matrix, with defined neighbour dimension.
 				std::vector<float*> Heightmap32F;
-				//The x vector specify the offset on x direction of the map and and z on y direction of the map, and the y vector specify the offset on the final result.
+				//The x vector specify the offset on x direction of the map and and z on y direction of the map.
 				//The offset parameter will only be applied on the heightmap generation.
-				float3 HeightmapOffset = make_float3(0.0f, 0.0f, 0.0f);
+				float2 HeightmapOffset = make_float2(0.0f, 0.0f);
 				//A INT16 array that will be used to stored the heightmap and normalmap after formation. The final format will become RGBA.
 				//The number of pointer provided should be the same as the number of heightmap and normalmap.
 				std::vector<unsigned short*> Heightfield16UI;
