@@ -84,6 +84,9 @@
     <ClCompile Include="World\Biome\Layers\STPAllLayers.cpp">
       <Filter>World\Biome\Layers</Filter>
     </ClCompile>
+    <ClCompile Include="World\Biome\STPBiomeFactory.cpp">
+      <Filter>World\Biome</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GPGPU\STPPermutationsGenerator.cuh">
@@ -230,7 +233,7 @@
     <ClInclude Include="World\Biome\Layers\STPRiverErodeLayer.h">
       <Filter>World\Biome\Layers</Filter>
     </ClInclude>
-    <ClInclude Include="World\Biome\STPBiomeFactory.hpp">
+    <ClInclude Include="World\Biome\STPBiomeFactory.h">
       <Filter>World\Biome</Filter>
     </ClInclude>
     <ClInclude Include="Helpers\STPMemoryPool.hpp">

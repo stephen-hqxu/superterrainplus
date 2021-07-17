@@ -2,7 +2,7 @@
 #ifndef _STP_LAYERS_ALL_HPP_
 #define _STP_LAYERS_ALL_HPP_
 
-#include "../STPLayerManager.h"
+#include "../STPBiomeFactory.h"
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
@@ -14,26 +14,23 @@ namespace STPDemo {
 	/**
 	 * @brief STPLayerChainBuilder is an example biome layer chain builder
 	*/
-	class STPLayerChainBuilder {
+	class STPLayerChainBuilder : public SuperTerrainPlus::STPDiversity::STPBiomeFactory {
 	private:
 
 		const Seed GlobalSeed;
+
+		SuperTerrainPlus::STPDiversity::STPLayerManager* supply() const override;
 
 	public:
 
 		/**
 		 * @brief Init the chain build
+		 * @param dimension The biome map dimension in 2D
 		 * @param global The global seed for generation
 		*/
-		STPLayerChainBuilder(Seed);
+		STPLayerChainBuilder(glm::uvec2, Seed);
 
 		~STPLayerChainBuilder() = default;
-
-		/**
-		 * @brief Build a biome layer chain
-		 * @return A new biome layer chain
-		*/
-		SuperTerrainPlus::STPDiversity::STPLayerManager* operator()() const;
 
 	};
 

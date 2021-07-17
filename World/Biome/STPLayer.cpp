@@ -76,11 +76,11 @@ Sample STPLayer::sample_cached(int x, int y, int z) {
 	return this->sample(x, y, z);
 }
 
-STPLayer* const STPLayer::getAscendant(unsigned int index) const {
+STPLayer* STPLayer::getAscendant(unsigned int index) const {
 	return this->getAscendantCount() != 0 && index < this->getAscendantCount() ? this->Ascendant[index] : nullptr;
 }
 
-STPLayer* const STPLayer::getAscendant() const {
+STPLayer* STPLayer::getAscendant() const {
 	return this->getAscendant(0);
 }
 

@@ -179,7 +179,7 @@ namespace SuperTerrainPlus {
 			 * @return The ascendants at that index - the parent layers, who will be executed before this layer.
 			 * Return null if index out of bound or no ascendant
 			*/
-			STPLayer* const getAscendant(unsigned int) const;
+			STPLayer* getAscendant(unsigned int) const;
 
 			/**
 			 * @brief Get the first parent layer
@@ -187,7 +187,7 @@ namespace SuperTerrainPlus {
 			 * There might be more than one ascendant in case there is a merge in the execution chain.
 			 * Return null if there is no ascendant
 			*/
-			STPLayer* const getAscendant() const;
+			STPLayer* getAscendant() const;
 
 			/**
 			 * @brief Get the number of ascendant in this layer, if there are more than one, it's a merging layer

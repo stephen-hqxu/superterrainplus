@@ -39,11 +39,13 @@
 
 using namespace STPDemo;
 
-STPLayerChainBuilder::STPLayerChainBuilder(Seed global) : GlobalSeed(global) {
+using glm::uvec2;
+
+STPLayerChainBuilder::STPLayerChainBuilder(uvec2 dimension, Seed global) : GlobalSeed(global), STPBiomeFactory(dimension) {
 
 }
 
-SuperTerrainPlus::STPDiversity::STPLayerManager* STPLayerChainBuilder::operator()() const {
+SuperTerrainPlus::STPDiversity::STPLayerManager* STPLayerChainBuilder::supply() const {
 	using namespace SuperTerrainPlus::STPDiversity;
 	//create a new manager, don't worry about deletion because our engine will manage it pretty well
 	STPLayerManager* chain = new STPLayerManager();

@@ -58,7 +58,7 @@ namespace SuperTerrainPlus {
 			 * @param salt The salt is a random number that used to mix the global to generate local and layer seed, such that each layer should use
 			 * different salt value
 			 * @param args All other arguments for the created layer to be used in their constructor.
-			 * @return A pointer new layer instance with the type of the specified child layer. The pointer needs to be freed with destroy() function
+			 * @return A pointer new layer instance with the type of the specified child layer. The pointer is owned by the current manager and will be freed automatically.
 			*/
 			template <class L, size_t C = 0ull, class... Arg>
 			STPLayer* create(Seed, Seed, Arg&&...);
