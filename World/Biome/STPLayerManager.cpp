@@ -3,6 +3,10 @@
 
 using namespace SuperTerrainPlus::STPDiversity;
 
+void STPLayerManager::STPLayerRecycler::operator()(STPLayer* ptr) const {
+	delete ptr;
+}
+
 STPLayer* STPLayerManager::start() {
 	return this->Vertex.back().get();
 }

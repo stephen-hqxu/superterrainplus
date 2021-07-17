@@ -76,19 +76,19 @@ namespace STPDemo {
 			//interpretation, compared to vanilla minecraft, special climate has been removed, every biomes have the equal chance of spawning
 			if (climate == STPBiomeRegistry::PLAINS.getID()) {
 				//dry and hot biome
-				return this->DRY_BIOMES[rng.nextVal(this->DRY_BIOMES.size())];
+				return this->DRY_BIOMES[rng.nextVal(static_cast<Sample>(this->DRY_BIOMES.size()))];
 			}
 			if (climate == STPBiomeRegistry::DESERT.getID()) {
 				//temperate biome
-				return this->TEMPERATE_BIOMES[rng.nextVal(this->TEMPERATE_BIOMES.size())];
+				return this->TEMPERATE_BIOMES[rng.nextVal(static_cast<Sample>(this->TEMPERATE_BIOMES.size()))];
 			}
 			if (climate == STPBiomeRegistry::MOUNTAIN.getID()) {
 				//cool biome
-				return this->COOL_BIOMES[rng.nextVal(this->COOL_BIOMES.size())];
+				return this->COOL_BIOMES[rng.nextVal(static_cast<Sample>(this->COOL_BIOMES.size()))];
 			}
 			if (climate == STPBiomeRegistry::FOREST.getID()) {
 				//snowy and cold biome
-				return this->SNOWY_BIOMES[rng.nextVal(this->SNOWY_BIOMES.size())];
+				return this->SNOWY_BIOMES[rng.nextVal(static_cast<Sample>(this->SNOWY_BIOMES.size()))];
 			}
 
 			//this usually won't happen, but just in case

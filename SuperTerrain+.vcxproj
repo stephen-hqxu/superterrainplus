@@ -28,7 +28,6 @@
       <FileType>Document</FileType>
     </CudaCompile>
     <ClCompile Include="World\Biome\STPBiome.cpp" />
-    <ClCompile Include="World\Biome\STPBiomeFactory.cpp" />
     <ClCompile Include="World\Biome\STPLayer.cpp" />
     <ClCompile Include="World\Biome\STPLayerCache.cpp" />
     <ClCompile Include="World\Biome\STPLayerManager.cpp" />
@@ -64,6 +63,7 @@
     <ClInclude Include="Settings\STPSettings.hpp" />
     <ClInclude Include="Settings\STPSimplexNoiseSettings.hpp" />
     <ClInclude Include="World\Biome\Biomes\STPBiomeRegistry.h" />
+    <ClInclude Include="World\Biome\Layers\STPAllLayers.h" />
     <ClInclude Include="World\Biome\Layers\STPBaseBiomeLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPClimateLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPContinentLayer.h" />
@@ -74,7 +74,7 @@
     <ClInclude Include="World\Biome\Layers\STPHillsLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPIslandLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPLandLayer.h" />
-    <ClInclude Include="World\Biome\Layers\STPLayers_all.hpp" />
+    <ClCompile Include="World\Biome\Layers\STPAllLayers.cpp" />
     <ClInclude Include="World\Biome\Layers\STPNoiseLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPNoiseToRiverLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPOceanTemperatureLayer.h" />
@@ -85,8 +85,8 @@
     <ClInclude Include="World\Biome\Layers\STPVoronoiLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPXCrossLayer.h" />
     <ClInclude Include="World\Biome\STPBiome.h" />
-    <ClInclude Include="World\Biome\STPBiomeFactory.h" />
-    <ClInclude Include="World\Biome\STPBiome_def.h" />
+    <ClInclude Include="World\Biome\STPBiomeFactory.hpp" />
+    <ClInclude Include="World\Biome\STPBiomeDefine.h" />
     <ClInclude Include="World\Biome\STPLayer.h" />
     <ClInclude Include="World\Biome\STPLayerCache.h" />
     <ClInclude Include="World\Biome\STPLayerManager.h" />

@@ -24,10 +24,21 @@ namespace SuperTerrainPlus {
 		*/
 		class STPLayerManager {
 		private:
+			
+			/**
+			 * @brief STPLayerRecycler is a private deleter for STPLayer.
+			 * Since STPLayerManager is friend of STPLayer and STPLayerRecycler is friend of STPLayerManager, such that STPLayerRecycler can access deleter of STPLayer
+			*/
+			struct STPLayerRecycler {
+			public:
+
+				void operator()(STPLayer*) const;
+
+			};
 
 			//An array pointers to every layer.
 			//STPLayerManager owns the pointer to each layer so vertices can be deleted with ease
-			std::vector<std::unique_ptr<STPLayer>> Vertex;
+			std::vector<std::unique_ptr<STPLayer, STPLayerRecycler>> Vertex;
 
 		public:
 

@@ -1,6 +1,5 @@
 #pragma once
-#ifndef _STP_LAYERS_ALL_HPP_
-#define _STP_LAYERS_ALL_HPP_
+#include "STPAllLayers.h"
 
 //All layers are for demo purposes, developers are free to implement their own version with the interface
 
@@ -38,4 +37,19 @@
 #include "STPScaleLayer.h"
 #include "STPSmoothScaleLayer.h"
 
-#endif//_STP_LAYERS_ALL_HPP_
+using namespace STPDemo;
+
+STPLayerChainBuilder::STPLayerChainBuilder(Seed global) : GlobalSeed(global) {
+
+}
+
+SuperTerrainPlus::STPDiversity::STPLayerManager* STPLayerChainBuilder::operator()() const {
+	using namespace SuperTerrainPlus::STPDiversity;
+	//create a new manager, don't worry about deletion because our engine will manage it pretty well
+	STPLayerManager* chain = new STPLayerManager();
+
+	//building layer chain
+	//we use a hand-made random salt
+
+	return chain;
+}

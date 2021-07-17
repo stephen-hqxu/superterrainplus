@@ -2,7 +2,7 @@
 #ifndef _STP_BIOME_SETTINGS_HPP_
 #define _STP_BIOME_SETTINGS_HPP_
 
-#include "../World/Biome/STPBiome_def.h"
+#include "../World/Biome/STPBiomeDefine.h"
 #include "STPSettings.hpp"
 //String
 #include <string>

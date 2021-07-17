@@ -78,11 +78,11 @@
     <ClCompile Include="World\Biome\STPSeedMixer.cpp">
       <Filter>World\Biome</Filter>
     </ClCompile>
-    <ClCompile Include="World\Biome\STPBiomeFactory.cpp">
-      <Filter>World\Biome</Filter>
-    </ClCompile>
     <ClCompile Include="World\Biome\STPLayerManager.cpp">
       <Filter>World\Biome</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Biome\Layers\STPAllLayers.cpp">
+      <Filter>World\Biome\Layers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -167,7 +167,7 @@
     <ClInclude Include="World\Biome\STPBiome.h">
       <Filter>World\Biome</Filter>
     </ClInclude>
-    <ClInclude Include="World\Biome\STPBiome_def.h">
+    <ClInclude Include="World\Biome\STPBiomeDefine.h">
       <Filter>World\Biome</Filter>
     </ClInclude>
     <ClInclude Include="World\Biome\STPLayer.h">
@@ -192,9 +192,6 @@
       <Filter>World\Biome\Layers</Filter>
     </ClInclude>
     <ClInclude Include="World\Biome\Layers\STPLandLayer.h">
-      <Filter>World\Biome\Layers</Filter>
-    </ClInclude>
-    <ClInclude Include="World\Biome\Layers\STPLayers_all.hpp">
       <Filter>World\Biome\Layers</Filter>
     </ClInclude>
     <ClInclude Include="World\Biome\Layers\STPScaleLayer.h">
@@ -233,7 +230,7 @@
     <ClInclude Include="World\Biome\Layers\STPRiverErodeLayer.h">
       <Filter>World\Biome\Layers</Filter>
     </ClInclude>
-    <ClInclude Include="World\Biome\STPBiomeFactory.h">
+    <ClInclude Include="World\Biome\STPBiomeFactory.hpp">
       <Filter>World\Biome</Filter>
     </ClInclude>
     <ClInclude Include="Helpers\STPMemoryPool.hpp">
@@ -256,6 +253,9 @@
     </ClInclude>
     <ClInclude Include="World\Biome\STPLayerManager.h">
       <Filter>World\Biome</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPAllLayers.h">
+      <Filter>World\Biome\Layers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
