@@ -21,9 +21,9 @@ using std::make_pair;
 
 using namespace SuperTerrainPlus;
 
-STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : ChunkProvider(settings), trigger_clearBuffer(false) {
-	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
-	const ivec2 buffer_size(chunk_settings->RenderedChunk * chunk_settings->MapSize);
+STPChunkManager::STPChunkManager(STPChunkProvider& provider) : ChunkProvider(provider), trigger_clearBuffer(false) {
+	const STPSettings::STPChunkSettings& chunk_settings = this->ChunkProvider.getChunkSettings();
+	const ivec2 buffer_size(chunk_settings.RenderedChunk * chunk_settings.MapSize);
 	const int totaltexture_size = buffer_size.x * buffer_size.y * sizeof(unsigned short) * 4;//4 channel
 
 	//creating texture
@@ -42,7 +42,7 @@ STPChunkManager::STPChunkManager(STPSettings::STPConfigurations* settings) : Chu
 	STPcudaCheckErr(cudaMallocHost(&this->quad_clear, totaltexture_size));
 	memset(this->quad_clear, 0x88, totaltexture_size);
 
-	this->renderingLocals.reserve(chunk_settings->RenderedChunk.x * chunk_settings->RenderedChunk.y);
+	this->renderingLocals.reserve(chunk_settings.RenderedChunk.x * chunk_settings.RenderedChunk.y);
 	//create thread pool
 	this->compute_pool = make_unique<STPThreadPool>(1u);
 	//create stream
@@ -68,7 +68,7 @@ STPChunkManager::~STPChunkManager() {
 }
 
 bool STPChunkManager::renderingBufferSubData(cudaArray_t buffer, vec2 chunkPos, unsigned int chunkID) {
-	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
+	const STPSettings::STPChunkSettings& chunk_settings = this->ChunkProvider.getChunkSettings();
 	//ask provider if we can get the chunk
 	STPChunk* chunk = this->ChunkProvider.requestChunk(chunkPos);
 	if (chunk == nullptr) {
@@ -77,8 +77,8 @@ bool STPChunkManager::renderingBufferSubData(cudaArray_t buffer, vec2 chunkPos, 
 	}
 
 	//chunk is ready, copy to rendering buffer
-	const uvec2& rendered_chunk = this->getChunkProvider().getChunkSettings()->RenderedChunk,
-		& dimension = this->getChunkProvider().getChunkSettings()->MapSize;
+	const uvec2& rendered_chunk = chunk_settings.RenderedChunk,
+		& dimension = chunk_settings.MapSize;
 	auto calcBufferOffset = [&rendered_chunk](unsigned int chunkID, const uvec2& dimension) -> uvec2 {
 		//calculate global offset, basically
 		const uvec2 chunkIdx(chunkID % rendered_chunk.x, static_cast<unsigned int>(floorf(1.0f * chunkID / rendered_chunk.x)));
@@ -93,8 +93,8 @@ bool STPChunkManager::renderingBufferSubData(cudaArray_t buffer, vec2 chunkPos, 
 }
 
 void STPChunkManager::clearRenderingBuffer(cudaArray_t destination) {
-	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
-	const ivec2 buffer_size(chunk_settings->RenderedChunk * chunk_settings->MapSize);
+	const STPSettings::STPChunkSettings& chunk_settings = this->ChunkProvider.getChunkSettings();
+	const ivec2 buffer_size(chunk_settings.RenderedChunk * chunk_settings.MapSize);
 
 	//clear unloaded chunk, so the engine won't display the chunk from previous rendered chunks
 	STPcudaCheckErr(cudaMemcpy2DToArrayAsync(destination, 0, 0, this->quad_clear,
@@ -163,13 +163,13 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 }
 
 bool STPChunkManager::loadChunksAsync(vec3 cameraPos) {
-	const STPSettings::STPChunkSettings* chunk_settings = this->ChunkProvider.getChunkSettings();
+	const STPSettings::STPChunkSettings& chunk_settings = this->ChunkProvider.getChunkSettings();
 	//waiting for the previous worker to finish(if any)
 	this->SyncloadChunks();
 	//make sure there isn't any worker accessing the loading_chunks, otherwise undefined behaviour warning
 
 	//check if the central position has changed or not
-	const vec2 thisCentralPos = STPChunk::getChunkPosition(cameraPos - chunk_settings->ChunkOffset, chunk_settings->ChunkSize, chunk_settings->ChunkScaling);
+	const vec2 thisCentralPos = STPChunk::getChunkPosition(cameraPos - chunk_settings.ChunkOffset, chunk_settings.ChunkSize, chunk_settings.ChunkScaling);
 	if (thisCentralPos != this->lastCentralPos) {
 		//changed
 		//recalculate loading chunks
@@ -177,12 +177,12 @@ bool STPChunkManager::loadChunksAsync(vec3 cameraPos) {
 		this->renderingLocals_lookup.clear();
 		const auto allChunks = STPChunk::getRegion(
 			STPChunk::getChunkPosition(
-				cameraPos - chunk_settings->ChunkOffset,
-				chunk_settings->ChunkSize,
-				chunk_settings->ChunkScaling),
-			chunk_settings->ChunkSize,
-			chunk_settings->RenderedChunk,
-			chunk_settings->ChunkScaling);
+				cameraPos - chunk_settings.ChunkOffset,
+				chunk_settings.ChunkSize,
+				chunk_settings.ChunkScaling),
+			chunk_settings.ChunkSize,
+			chunk_settings.RenderedChunk,
+			chunk_settings.ChunkScaling);
 		
 		//we also need chunkID, which is just the index of the visible chunk from top-left to bottom-right
 		int chunkID = 0;
@@ -231,5 +231,9 @@ int STPChunkManager::SyncloadChunks() {
 
 STPChunkProvider& STPChunkManager::getChunkProvider() {
 	return this->ChunkProvider;
+}
+
+GLuint STPChunkManager::getCurrentRenderingBuffer() const {
+	return this->terrain_heightfield;
 }
 #pragma warning(default : 4267)

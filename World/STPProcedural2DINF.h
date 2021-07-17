@@ -28,7 +28,7 @@ namespace SuperTerrainPlus {
 	 * STPProcedural2DINF also auto-manages the rendering of the chunks and LoD of the rendered chunks.
 	 * Overall, this is an amazing class for rendering endless procedural terrain.
 	*/
-	class STPProcedural2DINF final : public STPChunkManager {
+	class STPProcedural2DINF {
 	private:
 
 		//drawing command
@@ -39,7 +39,10 @@ namespace SuperTerrainPlus {
 		GLuint Terrain2d_pipeline;
 
 		//terrain rendering settings
-		const STPSettings::STPMeshSettings RenderingSettings;
+		const STPSettings::STPMeshSettings& MeshSettings;
+
+		//chunk manager for this renderer
+		STPChunkManager& ChunkManager;
 
 		/**
 		 * @brief Compile the 2D terrain shader
@@ -74,10 +77,11 @@ namespace SuperTerrainPlus {
 
 		/**
 		 * @brief Init the chunk manager
-		 * @param settings Stored all parameters for the heightmap calculation launch, settings are copied later so no need to keep the object alive
+		 * @param mesh_settings Stored all parameters for the heightmap calculation launch, settings are linked to this renderer so lifetime must be guaranteed.
+		 * @param manager Chunk manager to be linked with this renderer
 		 * @param procedural2dinf_cmd The indirect rendering command for prodecural 2d inf terrain renderer
 		*/
-		STPProcedural2DINF(STPSettings::STPConfigurations*, void* const);
+		STPProcedural2DINF(const STPSettings::STPMeshSettings&, STPChunkManager&, void*);
 
 		STPProcedural2DINF(const STPProcedural2DINF&) = delete;
 
@@ -93,7 +97,7 @@ namespace SuperTerrainPlus {
 		 * @brief Get the 2d infinite terrain program
 		 * @return The program reference
 		*/
-		GLuint getTerrain2DINFProgram();
+		GLuint getTerrain2DINFProgram() const;
 
 		/**
 		 * @brief Render the procedural infinite 2D terrain
@@ -101,7 +105,7 @@ namespace SuperTerrainPlus {
 		 * @param projection - The camera projection matrix
 		 * @param position - The camera position
 		*/
-		void renderVisibleChunks(const glm::mat4&, const glm::mat4&, const glm::vec3&);
+		void renderVisibleChunks(const glm::mat4&, const glm::mat4&, const glm::vec3&) const;
 
 	};
 }

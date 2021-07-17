@@ -24,6 +24,7 @@
     <ClCompile Include="Helpers\STPStart.cpp" />
     <ClCompile Include="Helpers\STPTextureStorage.cpp" />
     <ClCompile Include="Helpers\STPThreadPool.cpp" />
+    <ClCompile Include="World\STPWorldManager.cpp" />
     <CudaCompile Include="Settings\STPRainDropSettings.cu">
       <FileType>Document</FileType>
     </CudaCompile>
@@ -97,6 +98,7 @@
     <ClInclude Include="World\Chunk\STPChunkProvider.h" />
     <ClInclude Include="World\Chunk\STPChunkStorage.h" />
     <ClInclude Include="World\STPProcedural2DINF.h" />
+    <ClInclude Include="World\STPWorldManager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GLSL\STPProcedural2DINF.frag" />

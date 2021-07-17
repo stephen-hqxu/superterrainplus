@@ -44,7 +44,7 @@ using glm::value_ptr;
 #include "STPSkyRenderer.h"
 #include "STPOffscreenRenderer.h"
 #include "STPRendererCommander.h"
-#include "../World/STPProcedural2DINF.h"
+#include "../World/STPWorldManager.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -74,7 +74,7 @@ namespace SuperTerrainPlus {
 		STPOffscreenRenderer* screen = nullptr;
 		STPRendererCommander* command = nullptr;
 		//terrain renderers
-		STPProcedural2DINF* terrain2d_inf = nullptr;
+		STPWorldManager world_manager;
 		//thread pool
 		STPThreadPool* command_pool = nullptr;
 
@@ -128,7 +128,6 @@ namespace SuperTerrainPlus {
 			delete this->command;
 			//delete renderers
 			delete this->sky;
-			delete this->terrain2d_inf;
 			//delete thread pool
 			delete this->command_pool;
 		}
@@ -207,9 +206,14 @@ namespace SuperTerrainPlus {
 			this->command = new STPRendererCommander(this->command_pool, unitplane_count);
 			//setting up renderers
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer, this->command_pool);
-			//setting terrain 2d inf
-			this->terrain2d_inf = new STPProcedural2DINF(&config, reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
-			this->terrain2d_inf->loadChunksAsync(this->Camera->getPosition());
+			//setting world manager
+			this->world_manager.attachSettings(&config);
+			this->world_manager.linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
+			if (!this->world_manager) {
+				//do not proceed if it fails
+				exit(-1);
+			}
+			const_cast<STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
 
 			//setting up ssbo
 			this->setPVmatrix();
@@ -250,7 +254,7 @@ namespace SuperTerrainPlus {
 		*/
 		void draw(const double& frametime) {
 			//start loading terrain 2d inf async
-			this->terrain2d_inf->loadChunksAsync(this->Camera->getPosition());
+			const_cast<STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
 
 			//clear the default framebuffer
 			glClearColor(121.0f / 255.0f, 151.0f / 255.0f, 52.0f / 255.0f, 1.0f);
@@ -269,7 +273,7 @@ namespace SuperTerrainPlus {
 			//terrain renderer, choose whichever terrain renderer you like
 			glDepthFunc(GL_LESS);
 			glEnable(GL_CULL_FACE);
-			this->terrain2d_inf->renderVisibleChunks(this->View, this->Projection, this->Camera->getPosition());
+			this->world_manager.getChunkRenderer()->renderVisibleChunks(this->View, this->Projection, this->Camera->getPosition());
 		}
 
 		/**

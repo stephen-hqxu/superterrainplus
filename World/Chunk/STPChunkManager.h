@@ -40,8 +40,10 @@ namespace SuperTerrainPlus {
 		std::unique_ptr<STPThreadPool> compute_pool;
 
 		//chunk data provider
-		STPChunkProvider ChunkProvider;
+		STPChunkProvider& ChunkProvider;
 
+		//Heightfield, heightmap and normalmap are integrated
+		GLuint terrain_heightfield;
 		//registered buffer and texture
 		cudaGraphicsResource_t heightfield_texture_res;
 		//empty buffer (using cuda pinned memory) that is used to clear a chunk data, quad_clear is RGBA16
@@ -75,16 +77,13 @@ namespace SuperTerrainPlus {
 		*/
 		void clearRenderingBuffer(cudaArray_t);
 
-	protected:
-
-		//Heightfield, heightmap and normalmap are integrated
-		GLuint terrain_heightfield = 0u;
+	public:
 
 		/**
 		 * @brief Init the chunk manager. Allocating spaces for opengl texture.
-		 * @param settings Stores all required settings for generation
+		 * @param provider The chunk provider link with this chunk manager
 		*/
-		STPChunkManager(STPSettings::STPConfigurations*);
+		STPChunkManager(STPChunkProvider&);
 
 		~STPChunkManager();
 
@@ -100,8 +99,6 @@ namespace SuperTerrainPlus {
 		 * @brief Generate texture mipmap for 2 terrain texture
 		*/
 		void generateMipmaps();
-
-	public:
 
 		/**
 		 * @brief Load the texture for chunks that are specified in the STPLocalChunks. The program will check if the maps are available for this chunk, and if so, texture will be loaded to the internal buffer
@@ -156,6 +153,13 @@ namespace SuperTerrainPlus {
 		 * @return The pointer to the chunk provider
 		*/
 		STPChunkProvider& getChunkProvider();
+
+		/**
+		 * @brief Get the current OpenGL rendering buffer.
+		 * it's the rendering buffer for this frame.
+		 * @return The current rendering buffer
+		*/
+		GLuint getCurrentRenderingBuffer() const;
 
 	};
 }

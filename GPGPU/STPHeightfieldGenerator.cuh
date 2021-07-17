@@ -68,7 +68,7 @@ namespace SuperTerrainPlus {
 				//For biomemap generation, only one biomemap is required.
 				//For multi-biome heightmap generation, due to the need for biome interpolation, the number of biomemap should be the same as that in Heightmap32F.
 				//See documentation of Heightmap32F for more details
-				std::vector<STPDiversity::Sample> Biomemap;
+				std::vector<STPDiversity::Sample*> Biomemap;
 				//- A float array that will be used to stored heightmap pixles, must be pre-allocated with at least width * height * sizeof(float), i.e., R32F format
 				//- If generator is instructed to generate only a single heightmap, only one map is required
 				//- If hydraulic erosion and/or normalmap generation is enabled, a list of maps of neighbour chunks are required for edge sync, heightmap generation will 
@@ -151,14 +151,14 @@ namespace SuperTerrainPlus {
 			using unique_ptr_d = std::unique_ptr<T, STPDeviceDeleter<T>>;
 
 			//Simplex noise generator
-			const STPSimplexNoise simplex_h;
+			const STPSimplexNoise& simplex_h;
 			unique_ptr_d<STPSimplexNoise> simplex_d;
 			//biome generator, host only
 			std::unique_ptr<STPDiversity::STPBiomeFactory> biome;
 			//all parameters for the noise generator, stored on host, passing value to device
-			const STPSettings::STPSimplexNoiseSettings Noise_Settings;
+			const STPSettings::STPSimplexNoiseSettings& Noise_Settings;
 			//heightfield generation parameters
-			const STPSettings::STPHeightfieldSettings Heightfield_Settings_h;
+			const STPSettings::STPHeightfieldSettings& Heightfield_Settings_h;
 			unique_ptr_d<STPSettings::STPHeightfieldSettings> Heightfield_Settings_d;
 
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency
@@ -223,9 +223,9 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Init the heightfield generator
-			 * @param noise_settings Stored all parameters for the heightmap random number generator, it will be deep copied to the class so dynamic memory is not required
-			 * @param chunk_settings Stored all parameters for the chunk
-			 * @param heightfield_settings Stored all parameters for heightfield generation
+			 * @param noise_settings All parameters for the heightmap random number generator, it's linked with the current generator so lifetime should be guaranteed
+			 * @param chunk_settings All parameters for the chunk to be linked with this generator
+			 * @param heightfield_settings All parameters for heightfield generation to be linked with this generator
 			 * @param hint_level_of_concurrency The average numebr of thread that will be used to issue commands to this class.
 			 * It's used to assume the size of memory pool to allocate.
 			*/

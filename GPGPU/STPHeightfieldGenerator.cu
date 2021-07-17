@@ -160,7 +160,6 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STP
 		num_freeslip_chunk = chunk_settings.FreeSlipChunk.x * chunk_settings.FreeSlipChunk.y;
 
 	//allocating space
-	this->Heightfield_Settings_h.makeDeviceAvailable();
 	//simplex noise generator
 	STPSimplexNoise* simplex_cache;
 	STPcudaCheckErr(cudaMalloc(&simplex_cache, sizeof(STPSimplexNoise)));
@@ -201,9 +200,12 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	if (this->RNG_Map == nullptr) {
 		return;
 	}
-	//check the availability of biome dictionary
-	/*if (this->BiomeDictionary == nullptr) {
-		return false;
+	//check the availability of biome stuff
+	/*if (!this->BiomeDictionary) {
+		return;
+	}
+	if (!this->biome) {
+		return;
 	}*/
 	if (operation == 0u) {
 		//no operation is specified, nothing can be done
@@ -267,6 +269,11 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		if (flag[3]) {
 			heightfield_formatted_h = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size));
 		}
+	}
+
+	//Flag: BiomemapGeneration
+	if (flag[0]) {
+		//TODO: generate biome map, on host.
 	}
 	
 	//Flag: HeightmapGeneration
