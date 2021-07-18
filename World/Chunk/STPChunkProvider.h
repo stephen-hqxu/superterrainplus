@@ -11,6 +11,7 @@
 //Chunks
 #include "STPChunkStorage.h"
 //2D terrain compute engine
+#include "../Biome/STPBiomeFactory.h"
 #include "../../GPGPU/STPHeightfieldGenerator.cuh"
 
 //Settings
@@ -35,6 +36,8 @@ namespace SuperTerrainPlus {
 		STPChunkStorage& ChunkStorage;
 		//thread pool
 		std::unique_ptr<STPThreadPool> kernel_launch_pool;
+		//Biomemap generator
+		STPDiversity::STPBiomeFactory& generateBiome;
 		//Heightfield generator
 		STPCompute::STPHeightfieldGenerator& generateHeightfield;
 
@@ -73,9 +76,10 @@ namespace SuperTerrainPlus {
 		 * @brief Init the chunk provider.
 		 * @param chunk_settings All settings about chunk to be linked with this provider
 		 * @param storage The storage unit to link with
+		 * @param biome_factory The biomemap factory/generator to link with
 		 * @param heightfield_generator The heightfield generator to link with
 		*/
-		STPChunkProvider(const STPSettings::STPChunkSettings&, STPChunkStorage&, STPCompute::STPHeightfieldGenerator&);
+		STPChunkProvider(const STPSettings::STPChunkSettings&, STPChunkStorage&, STPDiversity::STPBiomeFactory&, STPCompute::STPHeightfieldGenerator&);
 
 		~STPChunkProvider() = default;
 

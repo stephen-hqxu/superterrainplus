@@ -48,7 +48,7 @@ uniform TessLevel tessParameters;
 uniform float shiftFactor;
 
 //Heightfield, RGB is normalmap, A is heightmap
-layout (binding = 0) uniform sampler2D Heightfield;
+layout (binding = 1) uniform sampler2D Heightfield;
 
 //Functions
 float[3] calcPatchDistance(vec3);

@@ -37,11 +37,10 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 			this->WorldSettings->getSimplexNoiseSettings(),
 			chunk_settings,
 			this->WorldSettings->getHeightfieldSettings(),
-			*this->BiomeFactory,
 			STPChunkProvider::calculateMaxConcurrency(chunk_settings.RenderedChunk, chunk_settings.FreeSlipChunk));
 		this->ChunkStorage = make_unique<STPChunkStorage>();
 		//create provider using generator and storage unit
-		this->ChunkProvider = make_unique<STPChunkProvider>(chunk_settings, *this->ChunkStorage, *this->ChunkGenerator);
+		this->ChunkProvider = make_unique<STPChunkProvider>(chunk_settings, *this->ChunkStorage, *this->BiomeFactory, *this->ChunkGenerator);
 		//create manager using provider
 		this->ChunkManager = make_unique<STPChunkManager>(*this->ChunkProvider);
 		//create renderer using manager

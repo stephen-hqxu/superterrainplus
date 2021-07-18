@@ -34,8 +34,10 @@ in VertexGS{
 //Output
 layout (location = 0) out vec4 FragColor;
 
+//Biomemap
+layout (binding = 0) uniform usampler2D Biomemap;
 //Heightfield, RGB is normalmap, A is heightmap
-layout (binding = 0) uniform sampler2D Heightfield;
+layout (binding = 1) uniform sampler2D Heightfield;
 
 void main(){
 	//for demo to test if everything works, we display the normal map for now

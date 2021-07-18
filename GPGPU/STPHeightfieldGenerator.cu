@@ -155,10 +155,9 @@ void STPHeightfieldGenerator::STPDeviceDeleter<T>::operator()(T* ptr) const {
 }
 
 __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings& noise_settings, 
-	const STPSettings::STPChunkSettings& chunk_settings, const STPSettings::STPHeightfieldSettings& heightfield_settings, 
-	STPDiversity::STPBiomeFactory& factory, unsigned int hint_level_of_concurrency)
+	const STPSettings::STPChunkSettings& chunk_settings, const STPSettings::STPHeightfieldSettings& heightfield_settings, unsigned int hint_level_of_concurrency)
 	: simplex_h(&noise_settings), Noise_Settings(noise_settings), FreeSlipChunk(make_uint2(chunk_settings.FreeSlipChunk.x, chunk_settings.FreeSlipChunk.y)), 
-	Heightfield_Settings_h(heightfield_settings), biome(factory) {
+	Heightfield_Settings_h(heightfield_settings) {
 	const unsigned int num_pixel = chunk_settings.MapSize.x * chunk_settings.MapSize.y,
 		num_freeslip_chunk = chunk_settings.FreeSlipChunk.x * chunk_settings.FreeSlipChunk.y;
 
@@ -235,8 +234,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	auto isFlagged = []__host__(STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
 		return (op & flag) != 0u;
 	};
-	const bool flag[4] = {
-		isFlagged(operation, STPHeightfieldGenerator::BiomemapGeneration),
+	const bool flag[3] = {
 		isFlagged(operation, STPHeightfieldGenerator::HeightmapGeneration),
 		isFlagged(operation, STPHeightfieldGenerator::Erosion),
 		isFlagged(operation, STPHeightfieldGenerator::RenderingBufferGeneration)
@@ -257,7 +255,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	//we need heightmap for computation regardlessly
 	STPcudaCheckErr(cudaMallocFromPoolAsync(&heightfield_freeslip_d, map_freeslip_size, this->MapCacheDevice, stream));
 	//INT16
-	if (flag[3]) {
+	if (flag[2]) {
 		STPcudaCheckErr(cudaMallocFromPoolAsync(&heightfield_formatted_d, map16ui_freeslip_size, this->MapCacheDevice, stream));
 	}
 	//Host
@@ -266,21 +264,13 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		//FP32
 		heightfield_freeslip_h = reinterpret_cast<float*>(this->MapCachePinned.allocate(map_freeslip_size));
 		//INT16
-		if (flag[3]) {
+		if (flag[2]) {
 			heightfield_formatted_h = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size));
 		}
 	}
-
-	//Flag: BiomemapGeneration
-	if (flag[0]) {
-		auto& offset = args.HeightmapOffset;
-		//generate biomemap on host, we always generate one map
-		//since biomemap is discrete, we need to round the pixel
-		this->biome(args.Biomemap.front(), glm::ivec3(static_cast<int>(roundf(offset.x)), 1, static_cast<int>(roundf(offset.y))));
-	}
 	
 	//Flag: HeightmapGeneration
-	if (flag[1]) {
+	if (flag[0]) {
 		STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &generateHeightmapKERNEL));
 		Dimblocksize = dim3(32, blocksize / 32);
 		Dimgridsize = dim3((this->Noise_Settings.Dimension.x + Dimblocksize.x - 1) / Dimblocksize.x, (this->Noise_Settings.Dimension.y + Dimblocksize.y - 1) / Dimblocksize.y);
@@ -301,11 +291,11 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		
 	}
 
-	if (flag[2] || flag[3]) {
+	if (flag[1] || flag[2]) {
 		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d, this->GlobalLocalIndex.get(), this->FreeSlipChunk, this->Noise_Settings.Dimension);
 
 		//Flag: Erosion
-		if (flag[2]) {
+		if (flag[1]) {
 			const unsigned erosionBrushCache_size = this->Heightfield_Settings_h.getErosionBrushSize() * (sizeof(int) + sizeof(float));
 			STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &performErosionKERNEL, erosionBrushCache_size));
 			gridsize = (this->Heightfield_Settings_h.RainDropCount + blocksize - 1) / blocksize;
@@ -316,7 +306,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		}
 
 		//Flag: RenderingBufferGeneration
-		if (flag[3]) {
+		if (flag[2]) {
 			auto det_cacheSize = []__host__ __device__(int blockSize) -> size_t {
 				return (blockSize + 2u) * sizeof(float);
 			};
@@ -345,12 +335,12 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	//copy the result back to the host
 	//heightmap will always be available
 	try {
-		if (flag[1] || flag[2]) {
+		if (flag[0] || flag[1]) {
 			//copy all heightmap chunks back if heightmap has been modified
 			blockcopy_d2h(args.Heightmap32F, heightfield_freeslip_h, heightfield_freeslip_d, map_freeslip_size, map_size, num_pixel, stream);
 		}
 		//copy the rendering buffer result if enabled
-		if (flag[3]) {
+		if (flag[2]) {
 			//copy heightfield
 			blockcopy_d2h(args.Heightfield16UI, heightfield_formatted_h, heightfield_formatted_d, map16ui_freeslip_size, map16ui_size, num_pixel * 4u, stream);
 		}
