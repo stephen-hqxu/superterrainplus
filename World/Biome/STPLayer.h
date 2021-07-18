@@ -163,15 +163,14 @@ namespace SuperTerrainPlus {
 			virtual Sample sample(int, int, int) = 0;
 
 			/**
-			 * @brief @link sample()
-			 * It will first read from the layer cache with the given world coordinate as key, if the cache exists, return the value directly, otherwise
+			 * @brief It will first read from the layer cache with the given world coordinate as key, if the cache exists, retrieve the value directly. Otherwise
 			 * the layer sample function will be called. The result is then stored into the cache and returned.
 			 * @param x The x coordinate on the terrain
 			 * @param y The y coordinate on the terrain
 			 * @param z The z coordinate on the terrain
 			 * @return The cached value
 			*/
-			Sample sample_cached(int, int, int);
+			Sample retrieve(int, int, int);
 
 			/**
 			 * @brief Get the parent layer with specified index

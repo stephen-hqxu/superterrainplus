@@ -126,7 +126,7 @@ namespace STPDemo {
 
 			Sample sample(int x, int y, int z) override {
 				//get the value from previous layer
-				const Sample val = this->getAscendant()->sample_cached(x, y, z);
+				const Sample val = this->getAscendant()->retrieve(x, y, z);
 				//don't touch it if it's land
 				if (!STPBiomeRegistry::isOcean(val)) {
 					return val;
@@ -135,7 +135,7 @@ namespace STPDemo {
 				//testing for neighbors and check for lands
 				for (int rx = -8; rx <= 8; rx += 4) {
 					for (int rz = -8; rz <= 8; rz += 4) {
-						const int shift_xz = this->getAscendant()->sample_cached(x + rx, y, z + rz);
+						const int shift_xz = this->getAscendant()->retrieve(x + rx, y, z + rz);
 						if (STPBiomeRegistry::isOcean(shift_xz)) {
 							//we need to find neighbor who is land
 							continue;
@@ -169,14 +169,14 @@ namespace STPDemo {
 
 			Sample sample(int x, int y, int z) override {
 				//get the land value from the land layer
-				const Sample land = this->getAscendant(0)->sample_cached(x, y, z);
+				const Sample land = this->getAscendant(0)->retrieve(x, y, z);
 				//don't touch it if it's land
 				if (!STPBiomeRegistry::isOcean(land)) {
 					return land;
 				}
 
 				//otherwise return the respective ocean section
-				return this->getAscendant(1)->sample_cached(x, y, z);
+				return this->getAscendant(1)->retrieve(x, y, z);
 			}
 
 		};

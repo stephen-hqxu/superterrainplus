@@ -153,8 +153,10 @@ namespace SuperTerrainPlus {
 			//Simplex noise generator
 			const STPSimplexNoise& simplex_h;
 			unique_ptr_d<STPSimplexNoise> simplex_d;
-			//biome generator, host only
-			std::unique_ptr<STPDiversity::STPBiomeFactory> biome;
+			//biome generator linked with external
+			STPDiversity::STPBiomeFactory& biome;
+			STPDiversity::STPBiome* Biome_Dictionary_h;
+			unique_ptr_d<STPDiversity::STPBiome> Biome_Dictionary_d;
 			//all parameters for the noise generator, stored on host, passing value to device
 			const STPSettings::STPSimplexNoiseSettings& Noise_Settings;
 			//heightfield generation parameters
@@ -184,8 +186,6 @@ namespace SuperTerrainPlus {
 			std::unique_ptr<STPEdgeArrangement[]> EdgeArrangementTable;
 			//Free slip range in the unit of chunk
 			const uint2 FreeSlipChunk;
-
-			unique_ptr_d<STPDiversity::STPBiome> BiomeDictionary;
 
 			//Temp cache on device for heightmap computation
 			mutable std::mutex MapCachePinned_lock;
@@ -226,10 +226,12 @@ namespace SuperTerrainPlus {
 			 * @param noise_settings All parameters for the heightmap random number generator, it's linked with the current generator so lifetime should be guaranteed
 			 * @param chunk_settings All parameters for the chunk to be linked with this generator
 			 * @param heightfield_settings All parameters for heightfield generation to be linked with this generator
+			 * @param factory The biome factory to be linked with this heightfield generator
 			 * @param hint_level_of_concurrency The average numebr of thread that will be used to issue commands to this class.
 			 * It's used to assume the size of memory pool to allocate.
 			*/
-			__host__ STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings&, const STPSettings::STPChunkSettings&, const STPSettings::STPHeightfieldSettings&, unsigned int);
+			__host__ STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings&, const STPSettings::STPChunkSettings&, 
+				const STPSettings::STPHeightfieldSettings&, STPDiversity::STPBiomeFactory&, unsigned int);
 
 			__host__ ~STPHeightfieldGenerator();
 
@@ -240,22 +242,6 @@ namespace SuperTerrainPlus {
 			__host__ STPHeightfieldGenerator& operator=(const STPHeightfieldGenerator&) = delete;
 
 			__host__ STPHeightfieldGenerator& operator=(STPHeightfieldGenerator&&) = delete;
-
-			/**
-			 * @brief Link a biome dictionary for looking up biome settins according to the biome id. Each entry of biome will be copied to device
-			 * @tparam Ite The iterator to the original container with all biomes
-			 * @param begin The beginning of the container with biomes
-			 * @param end The end of the container with biomes
-			*/
-			template<typename Ite>
-			__host__ void linkDictionary(Ite, Ite);
-
-			/**
-			 * @brief Link a biome factory and provide a biomemap generation standard
-			 * @param arg... Arguments to construct the biome map in-place
-			*/
-			template<class Fac, typename... Arg>
-			__host__ void linkBiomeFactory(Arg&&...);
 
 			/**
 			 * @brief Generate the terrain heightfield maps, each heightfield contains four maps, being heightmap and normalmap.
@@ -276,5 +262,4 @@ namespace SuperTerrainPlus {
 
 	}
 }
-#include "STPHeightfieldGenerator.inl"
 #endif//_STP_HEIGHTFIELD_GENERATOR_CUH_

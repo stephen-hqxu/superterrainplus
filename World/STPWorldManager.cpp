@@ -1,5 +1,8 @@
 #include "STPWorldManager.h"
 
+#include <exception>
+
+using std::invalid_argument;
 using std::make_unique;
 
 using namespace SuperTerrainPlus;
@@ -18,6 +21,15 @@ void STPWorldManager::attachSettings(STPSettings::STPConfigurations* settings) {
 }
 
 void STPWorldManager::linkProgram(void* indirect_cmd) {
+	this->linkStatus = false;
+	//error checking
+	if (!this->WorldSettings) {
+		throw invalid_argument("World settings not attached.");
+	}
+	if (!this->BiomeFactory) {
+		throw invalid_argument("Biome factory not attached.");
+	}
+
 	try {
 		const STPSettings::STPChunkSettings& chunk_settings = this->WorldSettings->getChunkSettings();
 		//create generator and storage unit first
@@ -25,6 +37,7 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 			this->WorldSettings->getSimplexNoiseSettings(),
 			chunk_settings,
 			this->WorldSettings->getHeightfieldSettings(),
+			*this->BiomeFactory,
 			STPChunkProvider::calculateMaxConcurrency(chunk_settings.RenderedChunk, chunk_settings.FreeSlipChunk));
 		this->ChunkStorage = make_unique<STPChunkStorage>();
 		//create provider using generator and storage unit
@@ -36,7 +49,6 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 	}
 	catch (std::exception e) {
 		std::cerr << e.what() << std::endl;
-		this->linkStatus = false;
 	}
 	this->linkStatus = true;
 }
@@ -51,6 +63,10 @@ const STPSettings::STPConfigurations* STPWorldManager::getWorldSettings() const 
 
 const STPCompute::STPHeightfieldGenerator* STPWorldManager::getChunkGenerator() const {
 	return this->ChunkGenerator.get();
+}
+
+const STPDiversity::STPBiomeFactory* STPWorldManager::getBiomeFactory() const {
+	return this->BiomeFactory.get();
 }
 
 const STPChunkStorage* STPWorldManager::getChunkStorage() const {

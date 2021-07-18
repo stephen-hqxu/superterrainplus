@@ -113,11 +113,11 @@
     <ClInclude Include="Helpers\STPThreadPool.inl">
       <FileType>Document</FileType>
     </ClInclude>
-    <None Include="GPGPU\STPHeightfieldGenerator.inl" />
     <None Include="LICENSE" />
     <None Include="README.md" />
     <None Include="World\Biome\STPLayer.inl" />
     <None Include="World\Biome\STPLayerManager.inl" />
+    <None Include="World\STPWorldManager.inl" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="GPGPU\STPHeightfieldGenerator.cu" />

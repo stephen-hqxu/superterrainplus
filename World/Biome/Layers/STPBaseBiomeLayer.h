@@ -66,7 +66,7 @@ namespace STPDemo {
 			//get the local rng
 			STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 			//get the climate for this local coordinate
-			const Sample climate = this->getAscendant()->sample_cached(x, y, z);
+			const Sample climate = this->getAscendant()->retrieve(x, y, z);
 
 			//if it's ocean, we should leave it untouched
 			if (STPBiomeRegistry::isOcean(climate)) {

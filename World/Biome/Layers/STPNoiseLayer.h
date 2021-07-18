@@ -29,7 +29,7 @@ namespace STPDemo {
 			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 
 			//value from the previous layer
-			const Sample val = this->getAscendant()->sample_cached(x, y, z);
+			const Sample val = this->getAscendant()->retrieve(x, y, z);
 			//leaving ocean untouched, given a random noise value for the river generation layer
 			return STPBiomeRegistry::isShallowOcean(val) ? val : rng.nextVal(29999) + 2;
 		}

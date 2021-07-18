@@ -50,18 +50,15 @@ namespace SuperTerrainPlus {
 			~STPLayerManager() = default;
 
 			/**
-			 * @brief Create a layer instance
+			 * @brief Construct a new layer instance and add to the layer chain structure and let the current layer manager manage this layer.
 			 * @tparam L A layer instance
 			 * @tparam C Cache size for this layer, it should be in the power of 2
 			 * @tparam Arg A list of arguments for the child layer class
-			 * @param global_seed The global seed is the seed that used to generate the entire world, a.k.a., world seed.
-			 * @param salt The salt is a random number that used to mix the global to generate local and layer seed, such that each layer should use
-			 * different salt value
 			 * @param args All other arguments for the created layer to be used in their constructor.
 			 * @return A pointer new layer instance with the type of the specified child layer. The pointer is owned by the current manager and will be freed automatically.
 			*/
 			template <class L, size_t C = 0ull, class... Arg>
-			STPLayer* create(Seed, Seed, Arg&&...);
+			STPLayer* insert(Arg&&...);
 
 			/**
 			 * @brief Get the pointer to layer where the layer structure start.

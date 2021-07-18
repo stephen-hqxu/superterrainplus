@@ -17,11 +17,11 @@ namespace STPDemo {
 	class STPLayerChainBuilder : public SuperTerrainPlus::STPDiversity::STPBiomeFactory {
 	private:
 
-		const Seed GlobalSeed;
-
 		SuperTerrainPlus::STPDiversity::STPLayerManager* supply() const override;
 
 	public:
+
+		const Seed GlobalSeed;
 
 		/**
 		 * @brief Init the chain build

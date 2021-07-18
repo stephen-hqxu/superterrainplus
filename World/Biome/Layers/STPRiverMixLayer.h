@@ -25,8 +25,8 @@ namespace STPDemo {
 
 		Sample sample(int x, int y, int z) override {
 			//get the parent values
-			const Sample land_val = this->getAscendant(0)->sample_cached(x, y, z);
-			const Sample river_val = this->getAscendant(1)->sample_cached(x, y, z);
+			const Sample land_val = this->getAscendant(0)->retrieve(x, y, z);
+			const Sample river_val = this->getAscendant(1)->retrieve(x, y, z);
 
 			//if the land section points to an ocean, don't touch
 			//(you can't have river inside the ocean right?)

@@ -113,7 +113,7 @@ namespace STPDemo {
 				(index & 2u) == 0u ? lmn[1] : lmn[1] + 1,
 				(index & 1u) == 0u ? lmn[2] : lmn[2] + 1
 			};
-			return this->getAscendant()->sample_cached(xyz[0], this->is3D ? xyz[1] : 0, xyz[2]);
+			return this->getAscendant()->retrieve(xyz[0], this->is3D ? xyz[1] : 0, xyz[2]);
 		}
 
 	};

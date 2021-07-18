@@ -154,8 +154,11 @@ void STPHeightfieldGenerator::STPDeviceDeleter<T>::operator()(T* ptr) const {
 	STPcudaCheckErr(cudaFree(ptr));
 }
 
-__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings& noise_settings, const STPSettings::STPChunkSettings& chunk_settings, const STPSettings::STPHeightfieldSettings& heightfield_settings, unsigned int hint_level_of_concurrency)
-	: simplex_h(&noise_settings), Noise_Settings(noise_settings), FreeSlipChunk(make_uint2(chunk_settings.FreeSlipChunk.x, chunk_settings.FreeSlipChunk.y)), Heightfield_Settings_h(heightfield_settings) {
+__host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings& noise_settings, 
+	const STPSettings::STPChunkSettings& chunk_settings, const STPSettings::STPHeightfieldSettings& heightfield_settings, 
+	STPDiversity::STPBiomeFactory& factory, unsigned int hint_level_of_concurrency)
+	: simplex_h(&noise_settings), Noise_Settings(noise_settings), FreeSlipChunk(make_uint2(chunk_settings.FreeSlipChunk.x, chunk_settings.FreeSlipChunk.y)), 
+	Heightfield_Settings_h(heightfield_settings), biome(factory) {
 	const unsigned int num_pixel = chunk_settings.MapSize.x * chunk_settings.MapSize.y,
 		num_freeslip_chunk = chunk_settings.FreeSlipChunk.x * chunk_settings.FreeSlipChunk.y;
 
@@ -201,10 +204,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		return;
 	}
 	//check the availability of biome stuff
-	/*if (!this->BiomeDictionary) {
-		return;
-	}
-	if (!this->biome) {
+	/*if (!this->BiomeDictionary_d) {
 		return;
 	}*/
 	if (operation == 0u) {
@@ -273,7 +273,10 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 
 	//Flag: BiomemapGeneration
 	if (flag[0]) {
-		//TODO: generate biome map, on host.
+		auto& offset = args.HeightmapOffset;
+		//generate biomemap on host, we always generate one map
+		//since biomemap is discrete, we need to round the pixel
+		this->biome(args.Biomemap.front(), glm::ivec3(static_cast<int>(roundf(offset.x)), 1, static_cast<int>(roundf(offset.y))));
 	}
 	
 	//Flag: HeightmapGeneration

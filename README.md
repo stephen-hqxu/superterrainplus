@@ -30,7 +30,7 @@ Those libraries are available in my public repo :+1:
 
 > Supported compute capability >= 6.1. Intel/AMD not available.
 
-- RAM: 1GB
+- RAM: 2GB
 - OS: Windows 10/Linux
 
 ## Prerequisites

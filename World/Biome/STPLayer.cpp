@@ -1,5 +1,7 @@
 #include "STPLayer.h"
 
+#include "functional"
+
 using namespace SuperTerrainPlus::STPDiversity;
 
 STPLayer::STPLocalRNG::STPLocalRNG(Seed local_seed) : LocalSeed(local_seed) {
@@ -65,15 +67,15 @@ STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) const {
 	return STPLayer::STPLocalRNG(local_seed);
 }
 
-Sample STPLayer::sample_cached(int x, int y, int z) {
+Sample STPLayer::retrieve(int x, int y, int z) {
+	using namespace std::placeholders;
+	auto sampler = std::bind(&STPLayer::sample, this, _1, _2, _3);
 	//pass the layer sampling function to cache, so it will compute it when necessary
 	if (this->Cache) {
-		return this->Cache->cache(x, y, z, [this](int x, int y, int z) -> Sample {
-			return this->sample(x, y, z);
-			});
+		return this->Cache->cache(x, y, z, sampler);
 	}
 	//there is no cache assigned
-	return this->sample(x, y, z);
+	return sampler(x, y, z);
 }
 
 STPLayer* STPLayer::getAscendant(unsigned int index) const {

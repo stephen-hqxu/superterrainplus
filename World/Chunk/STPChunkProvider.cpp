@@ -11,7 +11,7 @@ using namespace SuperTerrainPlus;
 
 STPChunkProvider::STPChunkProvider(const STPSettings::STPChunkSettings& chunk_settings, STPChunkStorage& storage, STPCompute::STPHeightfieldGenerator& heightfield_generator)
 	: ChunkSettings(chunk_settings), ChunkStorage(storage), generateHeightfield(heightfield_generator) {
-	this->kernel_launch_pool = make_unique<STPThreadPool>(5u);
+	this->kernel_launch_pool = make_unique<STPThreadPool>(6u);
 }
 
 unsigned int STPChunkProvider::calculateMaxConcurrency(uvec2 rendered_range, uvec2 freeslip_range) {
@@ -34,10 +34,14 @@ void STPChunkProvider::computeHeightmap(STPChunk* current_chunk, vec2 chunkPos) 
 	using namespace STPCompute;
 
 	STPHeightfieldGenerator::STPMapStorage maps;
+	maps.Biomemap.reserve(1ull);
 	maps.Heightmap32F.reserve(1ull);
+	maps.Biomemap.push_back(current_chunk->getBiomemap());
 	maps.Heightmap32F.push_back(current_chunk->getHeightmap());
 	maps.HeightmapOffset = this->calcChunkOffset(chunkPos);
-	const STPHeightfieldGenerator::STPGeneratorOperation op = STPHeightfieldGenerator::HeightmapGeneration;
+	const STPHeightfieldGenerator::STPGeneratorOperation op = 
+		STPHeightfieldGenerator::BiomemapGeneration | 
+		STPHeightfieldGenerator::HeightmapGeneration;
 
 	//computing, check success state
 	try {

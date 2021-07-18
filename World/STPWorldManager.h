@@ -4,8 +4,6 @@
 
 //World
 #include "STPProcedural2DINF.h"
-//Generator
-#include "../GPGPU/STPHeightfieldGenerator.cuh"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -24,9 +22,12 @@ namespace SuperTerrainPlus {
 		bool linkStatus;
 
 		//All stuff below are trival, no documentation is needed
+		//settings
 		std::unique_ptr<STPSettings::STPConfigurations> WorldSettings;
-
+		//generators
 		std::unique_ptr<STPCompute::STPHeightfieldGenerator> ChunkGenerator;
+		std::unique_ptr<STPDiversity::STPBiomeFactory> BiomeFactory;
+		//world management agents
 		std::unique_ptr<STPChunkStorage> ChunkStorage;
 		std::unique_ptr<STPChunkProvider> ChunkProvider;
 		std::unique_ptr<STPChunkManager> ChunkManager;
@@ -56,6 +57,14 @@ namespace SuperTerrainPlus {
 		void attachSettings(STPSettings::STPConfigurations*);
 
 		/**
+		 * @brief Attach the biome factory with this world manager
+		 * @tparam ...Arg Argument to create a concrete instance of biome factory
+		 * @param arg... Parameter set to create a concrete instance of biome factory
+		*/
+		template<class Fac, typename... Arg>
+		void attachBiomeFactory(Arg&&...);
+
+		/**
 		 * @brief Link all pipeline stages together
 		 * @param indirect_cmd The indrect rendering command for renderer
 		*/
@@ -78,6 +87,12 @@ namespace SuperTerrainPlus {
 		 * @return The heightfield generator managed by the current world manager. If world manager is not linked, nullptr is returned.
 		*/
 		const STPCompute::STPHeightfieldGenerator* getChunkGenerator() const;
+
+		/**
+		 * @brief Get the biome factory
+		 * @return The biome factory managed by the current world manager. If no biome factory is attached, nullptr is returned
+		*/
+		const STPDiversity::STPBiomeFactory* getBiomeFactory() const;
 
 		/**
 		 * @brief Get the chunk storage
@@ -106,4 +121,5 @@ namespace SuperTerrainPlus {
 	};
 
 }
+#include "STPWorldManager.inl"
 #endif//_STP_WORLD_MANAGER_H_

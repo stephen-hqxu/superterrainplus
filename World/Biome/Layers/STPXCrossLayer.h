@@ -32,11 +32,11 @@ namespace STPDemo {
 			//sample in a X cross
 			STPLayer* const asc = this->getAscendant();
 			return this->sample(
-				asc->sample_cached(x, y, z),
-				asc->sample_cached(x + 1, y, z - 1),
-				asc->sample_cached(x + 1, y, z + 1),
-				asc->sample_cached(x - 1, y, z + 1),
-				asc->sample_cached(x - 1, y, z - 1),
+				asc->retrieve(x, y, z),
+				asc->retrieve(x + 1, y, z - 1),
+				asc->retrieve(x + 1, y, z + 1),
+				asc->retrieve(x - 1, y, z + 1),
+				asc->retrieve(x - 1, y, z - 1),
 				this->genLocalSeed(x, z)
 			);
 		}

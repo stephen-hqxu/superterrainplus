@@ -45,6 +45,7 @@ using glm::value_ptr;
 #include "STPOffscreenRenderer.h"
 #include "STPRendererCommander.h"
 #include "../World/STPWorldManager.h"
+#include "../World/Biome/Layers/STPAllLayers.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -208,13 +209,14 @@ namespace SuperTerrainPlus {
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer, this->command_pool);
 			//setting world manager
 			this->world_manager.attachSettings(&config);
+			this->world_manager.attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_settings.MapSize, config.getSimplexNoiseSettings().Seed);
 			this->world_manager.linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 			if (!this->world_manager) {
 				//do not proceed if it fails
 				exit(-1);
 			}
-			const_cast<STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
 
+			const_cast<STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
 			//setting up ssbo
 			this->setPVmatrix();
 		}

@@ -300,11 +300,11 @@
     </None>
     <None Include="LICENSE" />
     <None Include="README.md" />
-    <None Include="GPGPU\STPHeightfieldGenerator.inl">
-      <Filter>GPGPU</Filter>
-    </None>
     <None Include="World\Biome\STPLayerManager.inl">
       <Filter>World\Biome</Filter>
+    </None>
+    <None Include="World\STPWorldManager.inl">
+      <Filter>World</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

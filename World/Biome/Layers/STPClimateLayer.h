@@ -43,7 +43,7 @@ namespace STPDemo {
 
 			Sample sample(int x, int y, int z) override {
 				//get the sample from the previous layer
-				const Sample val = this->getAscendant()->sample_cached(x, y, z);
+				const Sample val = this->getAscendant()->retrieve(x, y, z);
 				//set the local seed
 				const Seed local_seed = this->genLocalSeed(x, z);
 				//get the local rng
