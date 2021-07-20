@@ -2,10 +2,8 @@
 #ifndef _STP_PERMUTATIONS_GENERATOR_CUH_
 #define _STP_PERMUTATIONS_GENERATOR_CUH_
 
-//CUDA
-#include <cuda.h>
+//CUDA Runtime
 #include <cuda_runtime.h>
-#include <device_launch_parameters.h>
 //System
 #include <random>
 

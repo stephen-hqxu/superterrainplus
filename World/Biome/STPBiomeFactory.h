@@ -78,7 +78,7 @@ namespace SuperTerrainPlus {
 
 			//make sure the thread stopped before deleting factory
 			//stop all waiting workers and waiting for current worker to finish.
-			~STPBiomeFactory() = default;
+			virtual ~STPBiomeFactory() = default;
 
 			/**
 			 * @brief Generate a biome map using the biome chain implementation

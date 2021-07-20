@@ -34,7 +34,7 @@ Those libraries are available in my public repo :+1:
 - OS: Windows 10/Linux
 
 ## Prerequisites
-- Windows 10: Visual Studio 2019 with CUDA 11.2 Toolkit
+- Windows 10: Visual Studio 2019 with CUDA 11.2 Toolkit, Compatible NVRTC (Nvidia Runtime Compiler)
 - Linux: Not yet supported
 
 ## Language Built Upon

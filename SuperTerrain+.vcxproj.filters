@@ -90,6 +90,12 @@
     <ClCompile Include="World\STPWorldManager.cpp">
       <Filter>World</Filter>
     </ClCompile>
+    <ClCompile Include="GPGPU\STPDiversityGenerator.cpp">
+      <Filter>GPGPU</Filter>
+    </ClCompile>
+    <ClCompile Include="GPGPU\STPDeviceErrorHandler.cpp">
+      <Filter>GPGPU</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GPGPU\STPPermutationsGenerator.cuh">
@@ -254,7 +260,7 @@
     <ClInclude Include="Helpers\STPSerialisationException.hpp">
       <Filter>Helpers</Filter>
     </ClInclude>
-    <ClInclude Include="GPGPU\STPDeviceErrorHandler.cuh">
+    <ClInclude Include="GPGPU\STPDeviceErrorHandler.h">
       <Filter>GPGPU</Filter>
     </ClInclude>
     <ClInclude Include="World\Biome\STPLayerManager.h">
@@ -265,6 +271,9 @@
     </ClInclude>
     <ClInclude Include="World\STPWorldManager.h">
       <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="GPGPU\STPDiversityGenerator.h">
+      <Filter>GPGPU</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

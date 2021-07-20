@@ -2,6 +2,9 @@
 #pragma warning(disable:26495)//Alarm for un-init variables
 #include "STPRainDrop.cuh"
 
+//CUDA Device Parameters
+#include <device_launch_parameters.h>
+
 using namespace SuperTerrainPlus::STPCompute;
 
 __device__ STPRainDrop::STPRainDrop(float2 position, float WaterVolume, float MovementSpeed) {

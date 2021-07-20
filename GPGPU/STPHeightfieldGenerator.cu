@@ -2,9 +2,11 @@
 #include "STPHeightfieldGenerator.cuh"
 
 #define STP_EXCEPTION_ON_ERROR
-#include "STPDeviceErrorHandler.cuh"
+#include "STPDeviceErrorHandler.h"
 
 #include <memory>
+//CUDA Device Parameters
+#include <device_launch_parameters.h>
 
 using namespace SuperTerrainPlus::STPCompute;
 

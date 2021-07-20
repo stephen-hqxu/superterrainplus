@@ -44,11 +44,11 @@ namespace SuperTerrainPlus {
 
 		STPWorldManager(const STPWorldManager&) = delete;
 
-		STPWorldManager(const STPWorldManager&&) = delete;
+		STPWorldManager(STPWorldManager&&) = delete;
 
-		const STPWorldManager operator=(const STPWorldManager&) = delete;
+		STPWorldManager& operator=(const STPWorldManager&) = delete;
 
-		const STPWorldManager operator=(const STPWorldManager&&) = delete;
+		STPWorldManager& operator=(STPWorldManager&&) = delete;
 
 		/**
 		 * @brief Attach world settings to the current world manager.

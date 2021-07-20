@@ -1,7 +1,7 @@
 #pragma once
 #include "STPSimplexNoise.cuh"
 
-#include "STPDeviceErrorHandler.cuh"
+#include "STPDeviceErrorHandler.h"
 
 using namespace SuperTerrainPlus::STPCompute;
 

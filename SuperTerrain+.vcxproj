@@ -20,6 +20,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\include\glad\glad.c" />
+    <ClCompile Include="GPGPU\STPDeviceErrorHandler.cpp" />
+    <ClCompile Include="GPGPU\STPDiversityGenerator.cpp" />
     <ClCompile Include="Helpers\STPTerrainParaLoader.cpp" />
     <ClCompile Include="Helpers\STPStart.cpp" />
     <ClCompile Include="Helpers\STPTextureStorage.cpp" />
@@ -41,7 +43,8 @@
     <ClCompile Include="World\STPProcedural2DINF.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GPGPU\STPDeviceErrorHandler.cuh" />
+    <ClInclude Include="GPGPU\STPDeviceErrorHandler.h" />
+    <ClInclude Include="GPGPU\STPDiversityGenerator.h" />
     <ClInclude Include="GPGPU\STPHeightfieldGenerator.cuh" />
     <ClInclude Include="GPGPU\STPPermutationsGenerator.cuh" />
     <ClInclude Include="GPGPU\STPRainDrop.cuh" />
