@@ -4,10 +4,7 @@
 
 #define STP_EXCEPTION_ON_ERROR
 #include "STPDeviceErrorHandler.h"
-#include <cassert>
-
-//This is the error identifier returned by NVRTC which indicates header cannot found
-#define STP_HEADER_NOT_FOUND_IDENTIFIER "catastrophic error: cannot open source file "
+#include <stdexcept>
 
 using std::vector;
 using std::list;
@@ -19,6 +16,36 @@ using std::unique_ptr;
 using std::make_unique;
 
 using namespace SuperTerrainPlus::STPCompute;
+
+STPDiversityGenerator::STPSourceInformation::STPSourceArgument& STPDiversityGenerator::STPSourceInformation::STPSourceArgument::addArg(const char arg[]) {
+	//inserting a string literal will not cause undefined behaviour
+	//string is a better choice but CUDA API only takes char array, so for simplicity store string literal.
+	this->emplace_back(arg);
+	return *this;
+}
+
+STPDiversityGenerator::STPLinkerInformation::STPDataJitOption& STPDiversityGenerator::STPLinkerInformation::STPDataJitOption::setDataOption(CUjit_option flag, void* value) {
+	this->DataOptionFlag.emplace_back(flag);
+	this->DataOptionFlagValue.emplace_back(value);
+	return *this;
+}
+
+STPDiversityGenerator::STPLinkerInformation& STPDiversityGenerator::STPLinkerInformation::setLinkerOption(CUjit_option flag, void* value) {
+	this->OptionFlag.emplace_back(flag);
+	this->OptionFlagValue.emplace_back(value);
+	return *this;
+}
+
+STPDiversityGenerator::STPLinkerInformation& STPDiversityGenerator::STPLinkerInformation::setModuleLoadOption(CUjit_option flag, void* value) {
+	this->ModuleOptionFlag.emplace_back(flag);
+	this->ModuleOptionFlagValue.emplace_back(value);
+	return *this;
+}
+
+STPDiversityGenerator::STPLinkerInformation::STPDataJitOption& STPDiversityGenerator::STPLinkerInformation::getDataOption(string source_name) {
+	//it will insert a new entry automatically if source_name is not found
+	return this->DataOption[source_name];
+}
 
 STPDiversityGenerator::STPDiversityGenerator() : ModuleLoadingStatus(false) {
 
@@ -44,14 +71,13 @@ bool STPDiversityGenerator::detachHeader(string header_name) {
 	return this->ExternalHeader.erase(header_name) == 1ull;
 }
 
-unique_ptr<char[]> STPDiversityGenerator::compileSource(string source_name, const string& source_code,
-	const STPStringArgument& option, const STPStringArgument& name_expressions, const STPStringArgument& extern_header) {
+STPDiversityGenerator::STPGeneratorLog STPDiversityGenerator::compileSource(string source_name, const string& source_code, const STPSourceInformation& source_info) {
 	nvrtcProgram program;
 	vector<const char*> external_header;
 	vector<const char*> external_header_code;
 
 	//search each external header in our database
-	for (auto header_name = extern_header.begin(); header_name != extern_header.end(); header_name++) {
+	for (auto header_name = source_info.ExternalHeader.begin(); header_name != source_info.ExternalHeader.end(); header_name++) {
 		const auto header_code = this->ExternalHeader.find(*header_name);
 		if (header_code != this->ExternalHeader.end()) {
 			//code is found, add source of header
@@ -65,16 +91,16 @@ unique_ptr<char[]> STPDiversityGenerator::compileSource(string source_name, cons
 	STPcudaCheckErr(nvrtcCreateProgram(&program, source_code.c_str(), source_name.c_str(), static_cast<int>(external_header.size()), external_header_code.data(), external_header.data()));
 
 	//add name expression
-	for (int i = 0; i < name_expressions.size(); i++) {
-		STPcudaCheckErr(nvrtcAddNameExpression(program, name_expressions[i]));
+	for (int i = 0; i < source_info.NameExpression.size(); i++) {
+		STPcudaCheckErr(nvrtcAddNameExpression(program, source_info.NameExpression[i]));
 	}
 	//compile program
-	STPcudaCheckErr(nvrtcCompileProgram(program, static_cast<int>(option.size()), option.data()));
+	STPcudaCheckErr(nvrtcCompileProgram(program, static_cast<int>(source_info.Option.size()), source_info.Option.data()));
 
 	//error message
 	size_t logSize;
 	STPcudaCheckErr(nvrtcGetProgramLogSize(program, &logSize));
-	unique_ptr<char[]> log = make_unique<char[]>(logSize);
+	STPGeneratorLog log = make_unique<char[]>(logSize);
 	STPcudaCheckErr(nvrtcGetProgramLog(program, log.get()));
 
 	//finally add the program to our database
@@ -87,15 +113,13 @@ bool STPDiversityGenerator::discardSource(string source_name) {
 	return this->ComplicationDatabase.erase(source_name) == 1ull;
 }
 
-unique_ptr<char[]> STPDiversityGenerator::linkProgram(const STPJitFlag& option_flag, const STPJitFlagValue& option_value, const STPDataArgument& data_option) {
+void STPDiversityGenerator::linkProgram(STPLinkerInformation& linker_info) {
 	CUlinkState linker;
+	//we can make sure the number of option flag is the same as that of value
 	//create a linker
-	//make sure the number of flag is the same as that of value
-	assert(option_flag.size() == option_value.size());
-	STPcudaCheckErr(cuLinkCreate(static_cast<int>(option_flag.size()), const_cast<CUjit_option*>(option_flag.data()), const_cast<void**>(option_value.data()), &linker));
+	STPcudaCheckErr(cuLinkCreate(static_cast<int>(linker_info.OptionFlag.size()), linker_info.OptionFlag.data(), linker_info.OptionFlagValue.data(), &linker));
 
 	//for each entry, add compiled data to the linker
-	list<unique_ptr<char[]>> source_ptx;
 	for (auto compiled = this->ComplicationDatabase.cbegin(); compiled != this->ComplicationDatabase.cend(); compiled++) {
 		nvrtcProgram curr_program = compiled->second;
 		//get assembly code
@@ -104,22 +128,19 @@ unique_ptr<char[]> STPDiversityGenerator::linkProgram(const STPJitFlag& option_f
 		unique_ptr<char[]> ptx = make_unique<char[]>(ptxSize);
 		STPcudaCheckErr(nvrtcGetPTX(curr_program, ptx.get()));
 		//add this code to linker
+		
 		//retrieve individual linker option (if any)
-		const auto& curr_option = data_option.find(compiled->first);
-		if (curr_option == data_option.end()) {
+		auto curr_option = linker_info.DataOption.find(compiled->first);
+		if (curr_option == linker_info.DataOption.end()) {
 			//no individual flag for this file
 			STPcudaCheckErr(cuLinkAddData(linker, CU_JIT_INPUT_PTX, ptx.get(), ptxSize, compiled->first.c_str(), 0, nullptr, nullptr));
 		}
 		else {
 			//flag exists
-			const auto& individual_option = curr_option->second;
-			assert(individual_option.first.size() == individual_option.second.size());
+			auto& individual_option = curr_option->second;
 			STPcudaCheckErr(cuLinkAddData(linker, CU_JIT_INPUT_PTX, ptx.get(), ptxSize, compiled->first.c_str(), 
-				static_cast<int>(individual_option.first.size()), const_cast<CUjit_option*>(individual_option.first.data()), const_cast<void**>(individual_option.second.data())));
+				static_cast<int>(individual_option.DataOptionFlag.size()), individual_option.DataOptionFlag.data(), individual_option.DataOptionFlagValue.data()));
 		}
-
-		//we need to retain the data until linking is completed
-		source_ptx.emplace_back(std::move(ptx));
 	}
 
 	//linking
@@ -127,13 +148,35 @@ unique_ptr<char[]> STPDiversityGenerator::linkProgram(const STPJitFlag& option_f
 	void* program_cubin;
 	STPcudaCheckErr(cuLinkComplete(linker, &program_cubin, &cubinSize));
 	//create module
-	STPcudaCheckErr(cuModuleLoadData(&this->GeneratorProgram, program_cubin));
+	if (this->ModuleLoadingStatus) {
+		//unload previously loaded module
+		STPcudaCheckErr(cuModuleUnload(this->GeneratorProgram));
+	}
+	STPcudaCheckErr(cuModuleLoadDataEx(&this->GeneratorProgram, program_cubin, 
+		static_cast<int>(linker_info.ModuleOptionFlag.size()), linker_info.ModuleOptionFlag.data(), linker_info.ModuleOptionFlagValue.data()));
 	this->ModuleLoadingStatus = true;
 
 	//finally
 	STPcudaCheckErr(cuLinkDestroy(linker));
+}
 
-	return nullptr;
+bool STPDiversityGenerator::retrieveSourceLoweredName(string source_name, STPLoweredName& expression) const {
+	auto complication = this->ComplicationDatabase.find(source_name);
+	if (complication == this->ComplicationDatabase.cend()) {
+		//source not found
+		return false;
+	}
+	nvrtcProgram program = complication->second;
+	//get lowered name for each expression
+	for (auto& expr : expression) {
+		STPcudaCheckErr(nvrtcGetLoweredName(program, expr.first.c_str(), &expr.second));
+	}
+
+	return true;
+}
+
+CUmodule STPDiversityGenerator::getGeneratorModule() const {
+	return this->GeneratorProgram;
 }
 
 #pragma warning(default:26812)

@@ -9,6 +9,7 @@
 #include <string>
 #include <memory>
 //CUDA Runtime Compiler
+#include <cuda_runtime.h>
 #include <cuda.h>
 #include <nvrtc.h>
 #include <vector_types.h>
@@ -27,10 +28,142 @@ namespace SuperTerrainPlus {
 	namespace STPCompute {
 
 		/**
-		 * @brief STPDiversityGenerator provides a programmable multi-biome heightmap generation interface and
+		 * @brief STPDiversityGenerator provides a runtime-programmable multi-biome heightmap generation interface and
 		 * allows users to develop their biome-specific algorithms and parameters sets.
 		*/
 		class STPDiversityGenerator {
+		protected:
+
+			//Log message from the generator compiler and linker
+			typedef std::unique_ptr<char[]> STPGeneratorLog;
+			//Store multiple string arguments that can be recognised by CUDA functions
+			typedef std::vector<const char*> STPStringArgument;
+			//CUDA JIT flag for driver module
+			typedef std::vector<CUjit_option> STPJitFlag;
+			//CUDA JIT flag value
+			typedef std::vector<void*> STPJitFlagValue;
+			//Contains lowered name for a source program
+			//Key: original name, Value: lowered name
+			typedef std::unordered_map<std::string, const char*> STPLoweredName;
+
+			/**
+			 * @brief Parameter sets for source complication
+			*/
+			struct STPSourceInformation {
+			public:
+
+				friend class STPDiversityGenerator;
+
+				/**
+				 * @brief A helper argument setter for easy configuration
+				*/
+				struct STPSourceArgument : private STPStringArgument {
+				public:
+
+					friend class STPDiversityGenerator;
+
+				public:
+
+					/**
+					 * @brief Add one argument
+					 * @param arg The added argument
+					 * @return The current argument object for easy chained function call
+					*/
+					STPSourceArgument& addArg(const char[]);
+
+				};
+
+				//The compiler flag to compile this program.
+				//Provide empty vector means no option should be included
+				STPSourceArgument Option;
+				//- Due to the auto-mangling nature of CUDA, any global scope __device__ variable and __global__ function name
+				//will be mangled after complication.If one wishes to obtain the address of such pointers, mangled named must be used.
+				//- By providing name expressions, generator can guarantee to retrieve the mangled name after complication provided name expression has been provided here.
+				//- Providew empty vector if no name expression is needed
+				STPSourceArgument NameExpression;
+				//Include name of any included external header in this source code.
+				//Content of the header will be imported from the database, provided it has been attached by attachHeader().
+				//Provide empty vector indicates no external header should be added to complication.
+				STPSourceArgument ExternalHeader;
+
+			};
+
+			/**
+			 * @brief Parameter sets for linker
+			*/
+			struct STPLinkerInformation {
+			public:
+
+				friend class STPDiversityGenerator;
+
+				/**
+				 * @brief Parameter sets for individual data in the linker
+				*/
+				struct STPDataJitOption {
+				public:
+
+					friend class STPDiversityGenerator;
+
+				private:
+
+					//Individual override flag for some optional source files
+					STPJitFlag DataOptionFlag;
+					//Individual override respective flag value for some optional source files
+					STPJitFlagValue DataOptionFlagValue;
+
+				public:
+
+					/**
+					 * @brief Emplace a new flag with value set for one data source
+					 * @param flag Flag for this data
+					 * @param value Value for this flag
+					 * @return The current object for easy chained function call
+					*/
+					STPDataJitOption& setDataOption(CUjit_option, void*);
+
+				};
+
+			private:
+
+				//The assembler and linker flag
+				STPJitFlag OptionFlag;
+				//The respective values for the flag
+				STPJitFlagValue OptionFlagValue;
+				//Given individual option for optional source files.
+				//It will override the global option set for that file.
+				std::unordered_map<std::string, STPDataJitOption> DataOption;
+				//The generator program module flag
+				STPJitFlag ModuleOptionFlag;
+				//The generator program module flag value
+				STPJitFlagValue ModuleOptionFlagValue;
+
+			public:
+
+				/**
+				 * @brief Emplace a new linker option and value
+				 * @param flag The flag for the linker
+				 * @param value The value for this flag
+				 * @return The current object for easy chained function call
+				*/
+				STPLinkerInformation& setLinkerOption(CUjit_option, void*);
+
+				/**
+				 * @brief Emplace a new module loading option and value
+				 * @param flag The flag for the module loader
+				 * @param value The value for this flag
+				 * @return The current object for easy chained function call
+				*/
+				STPLinkerInformation& setModuleLoadOption(CUjit_option, void*);
+
+				/**
+				 * @brief Get the data option for one source file
+				 * @param source_name The name of the source file to get.
+				 * If this source has yet had any options added, a new entry will be inserted.
+				 * @return The data option for this source file
+				*/
+				STPDataJitOption& getDataOption(std::string);
+			};
+
 		private:
 
 			//Store included files
@@ -48,20 +181,8 @@ namespace SuperTerrainPlus {
 			//A complete program of diversity generator
 			CUmodule GeneratorProgram;
 			bool ModuleLoadingStatus;
-			//Indicate the global function address we need to call when generation is requested
-			CUfunction Entry;
 
 		protected:
-
-			//Store multiple string arguments that can be recognised by CUDA functions
-			typedef std::vector<const char*> STPStringArgument;
-			//CUDA JIT flag for driver module
-			typedef std::vector<CUjit_option> STPJitFlag;
-			//CUDA JIT flag value
-			typedef std::vector<void*> STPJitFlagValue;
-			//Individual override flag for some optional source files
-			//Key: source filename, Value: pair of argument and respective value
-			typedef std::unordered_map<std::string, std::pair<STPJitFlag, STPJitFlagValue>> STPDataArgument;
 
 			/**
 			 * @brief Init a new STPDiversityGenerator
@@ -98,19 +219,10 @@ namespace SuperTerrainPlus {
 			 * @brief Given a piece of source code, compile it and attach the compiled result to generator's database.
 			 * @param source_name The name of the source file
 			 * @param source_code The actual code of the source
-			 * @param option The compiler flag to compile this program.
-			 * Provide empty vector means no option should be included
-			 * @param name_expression Due to the auto-mangling nature of CUDA, any global scope __device__ variable and __global__ function name
-			 * will be mangled after complication. If one wishes to obtain the address of such pointers, mangled named must be used.
-			 * By providing name expressions, generator can guarantee to retrieve the mangled name after complication provided name expression 
-			 * has been provided here.
-			 * Providew empty vector if no name expression is needed
-			 * @param extern_header Include name of any included external header in this source code.
-			 * Content of the header will be imported from the database, provided it has been attached by attachHeader().
-			 * Provide empty vector indicates no external header should be added to complication.
+			 * @param source_info The information for the compiler.
 			 * @return The log of the compiler
 			*/
-			std::unique_ptr<char[]> compileSource(std::string, const std::string&, const STPStringArgument&, const STPStringArgument&, const STPStringArgument&);
+			STPGeneratorLog compileSource(std::string, const std::string&, const STPSourceInformation&);
 
 			/**
 			 * @brief Discard previously compiled source file.
@@ -122,12 +234,28 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Link all previously compiled source file into a complete program.
-			 * @param option_flag The assembler and linker flag
-			 * @param option_value The respective values for the flag
-			 * @param data_option Given individual option for optional source files.
-			 * It will override the global option set for that file.
+			 * If there has been a program currently associated with this generator, it will be destroied and the new one will be loaded.
+			 * @param linker_info The information for the linker
 			*/
-			std::unique_ptr<char[]> linkProgram(const STPJitFlag&, const STPJitFlagValue&, const STPDataArgument&);
+			void linkProgram(STPLinkerInformation&);
+
+			/**
+			 * @brief Retrieve mangled name for each name that has been added to name expression when the source was compiled.
+			 * Only name expression that has been added prior to complication can be retrieved, otherwise exception is thrown
+			 * @param source_name The name of the source that was used compiled and added to the database
+			 * @param expression Given each key as the original name, value will be overwriten as the lowered name.
+			 * Retrieved lowered name pointer is valid as long as the generator is not destroied and source is not discarded.
+			 * @return If compiled source is not found, return false and nothing will be writen
+			 * Otherwise true is returned.
+			*/
+			bool retrieveSourceLoweredName(std::string, STPLoweredName&) const;
+
+			/**
+			 * @brief Get the complete generator program module.
+			 * @return The generator module.
+			 * If the program is not yet linked, or module has been unloaded, the returned result is undefined.
+			*/
+			CUmodule getGeneratorModule() const;
 
 		public:
 
@@ -138,8 +266,9 @@ namespace SuperTerrainPlus {
 			 * @param heightmap The result of generated heightmap that will be stored
 			 * @param biomemap The biomemap, which is an array of biomeID, the meaning of biomeID is however implementation-specific
 			 * @param offset The offset of maps in world coordinate
+			 * @param stream The stream currently being used
 			*/
-			virtual void operator()(float*, const STPDiversity::Sample*, float2) = 0;
+			virtual void operator()(float*, const STPDiversity::Sample*, float2, cudaStream_t) = 0;
 
 		};
 	}
