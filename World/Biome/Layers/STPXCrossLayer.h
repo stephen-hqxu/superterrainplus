@@ -9,13 +9,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPXCrossLayer is an extended version of regular layer, it takes in a X cross coordinate and then sample
 	*/
-	class STPXCrossLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPXCrossLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
 		/**
@@ -32,11 +32,11 @@ namespace STPDemo {
 			//sample in a X cross
 			STPLayer* const asc = this->getAscendant();
 			return this->sample(
-				asc->sample_cached(x, y, z),
-				asc->sample_cached(x + 1, y, z - 1),
-				asc->sample_cached(x + 1, y, z + 1),
-				asc->sample_cached(x - 1, y, z + 1),
-				asc->sample_cached(x - 1, y, z - 1),
+				asc->retrieve(x, y, z),
+				asc->retrieve(x + 1, y, z - 1),
+				asc->retrieve(x + 1, y, z + 1),
+				asc->retrieve(x - 1, y, z + 1),
+				asc->retrieve(x - 1, y, z - 1),
 				this->genLocalSeed(x, z)
 			);
 		}

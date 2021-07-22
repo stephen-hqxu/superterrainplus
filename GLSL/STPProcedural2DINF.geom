@@ -42,7 +42,7 @@ uniform mat4 Model;
 uniform vec3 cameraPos;
 
 //Heightfield, RGB is normalmap, A is heightmap
-layout (binding = 0) uniform sampler2D Heightfield;
+layout (binding = 1) uniform sampler2D Heightfield;
 
 //Functions
 void emitFace(int);

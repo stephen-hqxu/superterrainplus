@@ -11,13 +11,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPBaseBiomeLayer starts to add biomes based on the climate, and interprete temperature and precipitation to the actual biome
 	*/
-	class STPBaseBiomeLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPBaseBiomeLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	private:
 
 		typedef const std::vector<Sample> BiomeList;
@@ -66,7 +66,7 @@ namespace STPDemo {
 			//get the local rng
 			STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 			//get the climate for this local coordinate
-			const Sample climate = this->getAscendant()->sample_cached(x, y, z);
+			const Sample climate = this->getAscendant()->retrieve(x, y, z);
 
 			//if it's ocean, we should leave it untouched
 			if (STPBiomeRegistry::isOcean(climate)) {
@@ -76,19 +76,19 @@ namespace STPDemo {
 			//interpretation, compared to vanilla minecraft, special climate has been removed, every biomes have the equal chance of spawning
 			if (climate == STPBiomeRegistry::PLAINS.getID()) {
 				//dry and hot biome
-				return this->DRY_BIOMES[rng.nextVal(this->DRY_BIOMES.size())];
+				return this->DRY_BIOMES[rng.nextVal(static_cast<Sample>(this->DRY_BIOMES.size()))];
 			}
 			if (climate == STPBiomeRegistry::DESERT.getID()) {
 				//temperate biome
-				return this->TEMPERATE_BIOMES[rng.nextVal(this->TEMPERATE_BIOMES.size())];
+				return this->TEMPERATE_BIOMES[rng.nextVal(static_cast<Sample>(this->TEMPERATE_BIOMES.size()))];
 			}
 			if (climate == STPBiomeRegistry::MOUNTAIN.getID()) {
 				//cool biome
-				return this->COOL_BIOMES[rng.nextVal(this->COOL_BIOMES.size())];
+				return this->COOL_BIOMES[rng.nextVal(static_cast<Sample>(this->COOL_BIOMES.size()))];
 			}
 			if (climate == STPBiomeRegistry::FOREST.getID()) {
 				//snowy and cold biome
-				return this->SNOWY_BIOMES[rng.nextVal(this->SNOWY_BIOMES.size())];
+				return this->SNOWY_BIOMES[rng.nextVal(static_cast<Sample>(this->SNOWY_BIOMES.size()))];
 			}
 
 			//this usually won't happen, but just in case

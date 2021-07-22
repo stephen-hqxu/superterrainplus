@@ -11,6 +11,7 @@
 //Chunks
 #include "STPChunkStorage.h"
 //2D terrain compute engine
+#include "../Biome/STPBiomeFactory.h"
 #include "../../GPGPU/STPHeightfieldGenerator.cuh"
 
 //Settings
@@ -30,28 +31,22 @@ namespace SuperTerrainPlus {
 	private:
 
 		//Chunk settings
-		const STPSettings::STPChunkSettings ChunkSettings;
+		const STPSettings::STPChunkSettings& ChunkSettings;
 		//chunk data
-		STPChunkStorage ChunkCache;
+		STPChunkStorage& ChunkStorage;
 		//thread pool
 		std::unique_ptr<STPThreadPool> kernel_launch_pool;
+		//Biomemap generator
+		STPDiversity::STPBiomeFactory& generateBiome;
 		//Heightfield generator
-		STPCompute::STPHeightfieldGenerator heightmap_gen;
-		const unsigned int concurrency_level;
-
-		/**
-		 * @brief Calculate the maximum number of chunk that can be computed in parallel without triggering chunk overlap and data race
-		 * @param rendered_range The number of chunk to be rendered
-		 * @param freeslip_rance The numebr of chunk that will be used as neighbour
-		*/
-		static unsigned int calculateMaxConcurrency(glm::uvec2, glm::uvec2);
+		STPCompute::STPHeightfieldGenerator& generateHeightfield;
 
 		/**
 		 * @brief Calculate the chunk offset such that the transition of each chunk is seamless
 		 * @param chunkPos The world position of the chunk
 		 * @return The chunk offset
 		*/
-		float3 calcChunkOffset(glm::vec2) const;
+		float2 calcChunkOffset(glm::vec2) const;
 
 		/**
 		 * @brief Dispatch compute for heightmap, the heightmap result will be writen back to the storage
@@ -71,10 +66,20 @@ namespace SuperTerrainPlus {
 	public:
 
 		/**
-		 * @brief Init the chunk provider
-		 * @param settings Stores all settings for terrain generation
+		 * @brief Calculate the maximum number of chunk that can be computed in parallel without triggering chunk overlap and data race
+		 * @param rendered_range The number of chunk to be rendered
+		 * @param freeslip_range The numebr of chunk that will be used as neighbour
 		*/
-		STPChunkProvider(STPSettings::STPConfigurations*);
+		static unsigned int calculateMaxConcurrency(glm::uvec2, glm::uvec2);
+
+		/**
+		 * @brief Init the chunk provider.
+		 * @param chunk_settings All settings about chunk to be linked with this provider
+		 * @param storage The storage unit to link with
+		 * @param biome_factory The biomemap factory/generator to link with
+		 * @param heightfield_generator The heightfield generator to link with
+		*/
+		STPChunkProvider(const STPSettings::STPChunkSettings&, STPChunkStorage&, STPDiversity::STPBiomeFactory&, STPCompute::STPHeightfieldGenerator&);
 
 		~STPChunkProvider() = default;
 
@@ -102,7 +107,7 @@ namespace SuperTerrainPlus {
 		 * @brief Get the chunk settings
 		 * @return The chunk settings
 		*/
-		const STPSettings::STPChunkSettings* getChunkSettings() const;
+		const STPSettings::STPChunkSettings& getChunkSettings() const;
 
 	};
 }

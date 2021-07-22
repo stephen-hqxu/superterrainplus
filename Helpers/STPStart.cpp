@@ -13,6 +13,7 @@ namespace SuperTerrainPlus {
 	SglToolkit::SgTCamera* Camera = nullptr;
 	STPMasterRenderer* engine = nullptr;
 	SIMPLE::SIParser* engineINILoader = nullptr;
+	SIMPLE::SIParser* BiomeINILoader = nullptr;
 	//Constants
 	const SglToolkit::SgTCamera::SgTRange zoomLimit(20.0f, 100.0f);
 	const int WINDOW_SIZE[2] = {1600, 900};
@@ -103,8 +104,9 @@ int main() {
 	GLFWimage* icon = new GLFWimage();
 	unsigned char* image = stbi_load("./Resource/opengl.png", &icon->width, &icon->height, nullptr, 0);
 	icon->pixels = image;
-	//loading engine INI
+	//loading INI
 	engineINILoader = new SIMPLE::SIParser("./Engine.ini");
+	BiomeINILoader = new SIMPLE::SIParser("./Biome.ini");
 	//Init
 	if (!InitGLFW(frame, icon)) {
 		glfwTerminate();
@@ -118,7 +120,7 @@ int main() {
 	Camera = dynamic_cast<SglToolkit::SgTCamera*>(new SglToolkit::SgTSpectatorCamera(90.0f, 0.0f, 
 		std::stof((engineINILoader->get())("movementSpeed")), std::stof((engineINILoader->get())("mouseSensitivity")), 
 		60.0f, SglToolkit::SgTvec3(0.0f, 20.0f, 0.0f)));//facing towards positive-x
-	engine = new STPMasterRenderer(Camera, WINDOW_SIZE, engineINILoader->get());
+	engine = new STPMasterRenderer(Camera, WINDOW_SIZE, engineINILoader->get(), BiomeINILoader->get());
 
 	//welcome
 	cout << "Super Terrain Plus: The ultimate terrain engine demo program" << endl;
@@ -153,6 +155,7 @@ int main() {
 	delete engine;
 	delete Camera;
 	delete engineINILoader;
+	delete BiomeINILoader;
 	
 	cout << "Done... Program now exit." << endl;
 	glfwTerminate();

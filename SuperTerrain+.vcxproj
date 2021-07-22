@@ -20,10 +20,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\include\glad\glad.c" />
+    <ClCompile Include="GPGPU\STPDeviceErrorHandler.cpp" />
+    <ClCompile Include="GPGPU\STPDiversityGenerator.cpp" />
     <ClCompile Include="Helpers\STPTerrainParaLoader.cpp" />
     <ClCompile Include="Helpers\STPStart.cpp" />
     <ClCompile Include="Helpers\STPTextureStorage.cpp" />
     <ClCompile Include="Helpers\STPThreadPool.cpp" />
+    <ClCompile Include="World\STPWorldManager.cpp" />
     <CudaCompile Include="Settings\STPRainDropSettings.cu">
       <FileType>Document</FileType>
     </CudaCompile>
@@ -31,6 +34,7 @@
     <ClCompile Include="World\Biome\STPBiomeFactory.cpp" />
     <ClCompile Include="World\Biome\STPLayer.cpp" />
     <ClCompile Include="World\Biome\STPLayerCache.cpp" />
+    <ClCompile Include="World\Biome\STPLayerManager.cpp" />
     <ClCompile Include="World\Biome\STPSeedMixer.cpp" />
     <ClCompile Include="World\Chunk\STPChunk.cpp" />
     <ClCompile Include="World\Chunk\STPChunkManager.cpp" />
@@ -39,7 +43,8 @@
     <ClCompile Include="World\STPProcedural2DINF.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GPGPU\STPDeviceErrorHandler.cuh" />
+    <ClInclude Include="GPGPU\STPDeviceErrorHandler.h" />
+    <ClInclude Include="GPGPU\STPDiversityGenerator.h" />
     <ClInclude Include="GPGPU\STPHeightfieldGenerator.cuh" />
     <ClInclude Include="GPGPU\STPPermutationsGenerator.cuh" />
     <ClInclude Include="GPGPU\STPRainDrop.cuh" />
@@ -63,6 +68,7 @@
     <ClInclude Include="Settings\STPSettings.hpp" />
     <ClInclude Include="Settings\STPSimplexNoiseSettings.hpp" />
     <ClInclude Include="World\Biome\Biomes\STPBiomeRegistry.h" />
+    <ClInclude Include="World\Biome\Layers\STPAllLayers.h" />
     <ClInclude Include="World\Biome\Layers\STPBaseBiomeLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPClimateLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPContinentLayer.h" />
@@ -73,7 +79,7 @@
     <ClInclude Include="World\Biome\Layers\STPHillsLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPIslandLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPLandLayer.h" />
-    <ClInclude Include="World\Biome\Layers\STPLayers_all.hpp" />
+    <ClCompile Include="World\Biome\Layers\STPAllLayers.cpp" />
     <ClInclude Include="World\Biome\Layers\STPNoiseLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPNoiseToRiverLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPOceanTemperatureLayer.h" />
@@ -85,15 +91,17 @@
     <ClInclude Include="World\Biome\Layers\STPXCrossLayer.h" />
     <ClInclude Include="World\Biome\STPBiome.h" />
     <ClInclude Include="World\Biome\STPBiomeFactory.h" />
-    <ClInclude Include="World\Biome\STPBiome_def.h" />
+    <ClInclude Include="World\Biome\STPBiomeDefine.h" />
     <ClInclude Include="World\Biome\STPLayer.h" />
     <ClInclude Include="World\Biome\STPLayerCache.h" />
+    <ClInclude Include="World\Biome\STPLayerManager.h" />
     <ClInclude Include="World\Biome\STPSeedMixer.h" />
     <ClInclude Include="World\Chunk\STPChunk.h" />
     <ClInclude Include="World\Chunk\STPChunkManager.h" />
     <ClInclude Include="World\Chunk\STPChunkProvider.h" />
     <ClInclude Include="World\Chunk\STPChunkStorage.h" />
     <ClInclude Include="World\STPProcedural2DINF.h" />
+    <ClInclude Include="World\STPWorldManager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GLSL\STPProcedural2DINF.frag" />
@@ -108,10 +116,11 @@
     <ClInclude Include="Helpers\STPThreadPool.inl">
       <FileType>Document</FileType>
     </ClInclude>
-    <None Include="GPGPU\STPHeightfieldGenerator.inl" />
     <None Include="LICENSE" />
     <None Include="README.md" />
     <None Include="World\Biome\STPLayer.inl" />
+    <None Include="World\Biome\STPLayerManager.inl" />
+    <None Include="World\STPWorldManager.inl" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="GPGPU\STPHeightfieldGenerator.cu" />

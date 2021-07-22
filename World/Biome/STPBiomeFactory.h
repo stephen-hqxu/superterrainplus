@@ -1,17 +1,15 @@
 #pragma once
-#ifndef _STP_BIOME_FACTORY_H_
-#define _STP_BIOME_FACTORY_H_
+#ifndef _STP_BIOME_FACTORY_HPP_
+#define _STP_BIOME_FACTORY_HPP_
 
-//Hand made memory pool
-#include "../../Helpers/STPMemoryPool.hpp"
 //System
-#include <shared_mutex>
+#include <queue>
+#include <mutex>
 //GLM
 #include "glm/vec2.hpp"
 #include "glm/vec3.hpp"
 //Biome
-#include "STPBiome.h"
-#include "STPLayer.h"
+#include "STPLayerManager.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -20,113 +18,77 @@
 */
 namespace SuperTerrainPlus {
 	/**
-	 * @brief STPBiome is a series of biome generation algorithm that allows user to define their own implementations
+	 * @brief STPDiversity is a series of biome generation algorithm that allows user to define their own implementations
 	*/
-	namespace STPBiome {
+	namespace STPDiversity {
 
 		/**
-		 * @brief STPBiomeFactory provides definition for biome layers and biome lookup table
+		 * @brief STPBiomeFactory provides a safe environment for multi-threaded biome map generation.
 		*/
 		class STPBiomeFactory {
 		private:
 
-			//Generate biome layer
-			typedef STPLayer* (*STPManufacturer)();
+			typedef std::unique_ptr<STPLayerManager> STPLayerManager_t;
+			//Basically it behaves like a memory pool.
+			//Whenever operator() is called, we search for an empty production line, and use that to generate biome.
+			//If no available production line can be found, ask more production line from the manufacturer.
+			std::queue<STPLayerManager_t, std::list<STPLayerManager_t>> LayerProductionLine;
+			mutable std::mutex ProductionLock;
 
 			/**
-			 * @brief STPBiomeAllocator is the memory allcator for layers
+			 * @brief A layer supplier, which provides the algorithm for layer chain generation.
+			 * @return A new layer production line.
+			 * Note that the returning pointer should be allocated using `new`, all remaining memory management is carried out automatically.
 			*/
-			class STPBiomeAllocator {
-			public:
-
-				/**
-				 * @brief Allocate memory for biome layer chain and construct in place
-				 * @prarm size Amount of memory
-				 * @param manufacturer The function to construct memory
-				 * @return The new layer memory
-				*/
-				STPLayer* allocate(size_t, STPManufacturer);
-
-				/**
-				 * @brief Free up the biome layer memory
-				 * @param size Amount of memory to free
-				 * @param layer The pointer to the biome layer that needs to be freed
-				*/
-				void deallocate(size_t size, STPLayer*);
-
-			};
-
-			//Cache pool for layers, such that it can be used in multi-threading
-			STPMemoryPool<STPLayer, STPBiomeAllocator> layer_cache;
-			mutable std::shared_mutex cache_lock;
-
-			STPManufacturer manufacturer = nullptr;
-
-		public:
-
-			//Specify the dimension of the generated biome map, in 3 dimension
-			const glm::uvec3 BiomeDimension;
+			virtual STPLayerManager* supply() const = 0;
 
 			/**
-			 * @brief Init the biome factory
-			 * @param dimension The dimension of the biome map.
+			 * @brief Request a production line.
+			 * If no available production line is presented, a new production line is asked from layer supplier, and returned.
+			 * @return Requested production line.
+			*/
+			STPLayerManager_t requestProductionLine();
+
+			/**
+			 * @brief Return the production back to idling queue.
+			 * Any attemp to use the production line after returned will result in undefined behaviour
+			 * @param line Production line to be returned
+			*/
+			void returnProductionLine(STPLayerManager_t&);
+
+		protected:
+
+			/**
+			 * @brief Init biome factory with internal cache memory pool that can be used for multi-threading, each thread will be automatically allocaed one cache
+			 * @param dimension The dimension of the biome map
 			 * If the y component of the dimension is one, a 2D biome map will be generated
 			*/
 			STPBiomeFactory(glm::uvec3);
 
 			/**
 			 * @brief Init biome factory with internal cache memory pool that can be used for multi-threading, each thread will be automatically allocaed one cache
-			 * @param dimension The dimension of the biome map
-			 * If the y component of the dimension is one, a 2D biome map will be generated
-			 * @param manufacturer The biome layer chain generator function
-			*/
-			STPBiomeFactory(glm::uvec3, STPManufacturer);
-
-			/**
-			 * @brief Init the biome factory
 			 * @param dimension The dimension of the biome map, this will init a 2D biome map generator, with x and z component only
 			*/
 			STPBiomeFactory(glm::uvec2);
 
-			/**
-			 * @brief Init biome factory with internal cache memory pool that can be used for multi-threading, each thread will be automatically allocaed one cache
-			 * @param dimension The dimension of the biome map, this will init a 2D biome map generator, with x and z component only
-			 * @param manufacturer The biome layer chain generator function
-			*/
-			STPBiomeFactory(glm::uvec2, STPManufacturer);
+		public:
 
-			~STPBiomeFactory();
+			//Specify the dimension of the generated biome map, in 3 dimension
+			const glm::uvec3 BiomeDimension;
 
-			/**
-			 * @brief Get the number of cache in the internal cache pool
-			 * @return The number of cache. If no cache is initialsed or it has been depleted by execution, return 0
-			*/
-			size_t size() const;
+			//make sure the thread stopped before deleting factory
+			//stop all waiting workers and waiting for current worker to finish.
+			virtual ~STPBiomeFactory() = default;
 
 			/**
 			 * @brief Generate a biome map using the biome chain implementation
-			 * @param chain The biome chain implementation, it should be the returned value from "manufacture" 
+			 * @param biomemap The output where biome map will be stored, must be preallocated with enough space
 			 * @param offset The offset of the biome map, that is equavalent to the world coordinate.
-			 * @return The biome id map, it needs to be freed maunally
 			*/
-			const Sample* generate(STPLayer* const, glm::ivec3) const;
-			
-			/**
-			 * @brief Generate a biome map using the internal stored biome chain with cache.
-			 * To avoid spin-locking, it's recommended to call this method from a non-executing thread.
-			 * @param offset The offset of the biome map, that is equavalent to the world coordinate.
-			 * @return The biome id map, it needs to be freed maunally
-			*/
-			const Sample* generate(glm::ivec3);
-
-			/**
-			 * @brief Free up the storage of a biome map generated
-			 * @param map The biome map to free
-			*/
-			static void dump(Sample*);
+			void operator()(Sample*, glm::ivec3);
 
 		};
 
 	}
 }
-#endif//_STP_BIOME_FACTORY_H_
+#endif//_STP_BIOME_FACTORY_HPP_

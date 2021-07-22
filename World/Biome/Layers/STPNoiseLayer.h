@@ -9,13 +9,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPNoiseLayer generates random value on non-ocean biomes, this will be mainly used for river network generation
 	*/
-	class STPNoiseLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPNoiseLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
 		STPNoiseLayer(Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(global_seed, salt, parent) {
@@ -29,7 +29,7 @@ namespace STPDemo {
 			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 
 			//value from the previous layer
-			const Sample val = this->getAscendant()->sample_cached(x, y, z);
+			const Sample val = this->getAscendant()->retrieve(x, y, z);
 			//leaving ocean untouched, given a random noise value for the river generation layer
 			return STPBiomeRegistry::isShallowOcean(val) ? val : rng.nextVal(29999) + 2;
 		}

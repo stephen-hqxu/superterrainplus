@@ -9,13 +9,14 @@ using std::make_unique;
 
 using glm::ivec2;
 using glm::vec2;
+using glm::vec3;
 using glm::mat4;
 using glm::identity;
 
 using namespace SuperTerrainPlus;
 
-STPProcedural2DINF::STPProcedural2DINF(STPSettings::STPConfigurations* const settings, void* const procedural2dinf_cmd)
-	: STPChunkManager(settings), command(procedural2dinf_cmd), RenderingSettings(settings->getMeshSettings()) {
+STPProcedural2DINF::STPProcedural2DINF(const STPSettings::STPMeshSettings& mesh_settings, STPChunkManager& manager, void* procedural2dinf_cmd)
+	: ChunkManager(manager), command(procedural2dinf_cmd), MeshSettings(mesh_settings) {
 	cout << "....Loading STPProcedural2DINF, An Infinite Terrain Renderer....";
 	if (this->compile2DTerrainShader()) {
 		cout << "Shader Loaded :)" << endl;
@@ -29,7 +30,7 @@ STPProcedural2DINF::~STPProcedural2DINF() {
 }
 
 const bool STPProcedural2DINF::compile2DTerrainShader() {
-	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider().getChunkSettings();
+	const STPSettings::STPChunkSettings& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSettings();
 	//log
 	GLchar log[1024];
 	
@@ -49,18 +50,19 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 		return false;
 	}
 	//binding sampler
-	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Heightfield"), 0);
+	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Biomemap"), 0);
+	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Heightfield"), 1);
 	//those parameters won't change, there is no need to resend them in rendering loop
 	const vec2 base_chunk_position = this->calcBaseChunkPosition();
-	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("rendered_chunk_num"), 1, value_ptr(chunk_settings->RenderedChunk));
-	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("chunk_dimension"), 1, value_ptr(chunk_settings->ChunkSize));
+	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("rendered_chunk_num"), 1, value_ptr(chunk_settings.RenderedChunk));
+	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("chunk_dimension"), 1, value_ptr(chunk_settings.ChunkSize));
 	glProgramUniform2fv(this->Terrain2d_shader.getP(), this->getLoc("base_chunk_position"), 1, value_ptr(base_chunk_position));
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MAX_TESS_LEVEL"), this->RenderingSettings.TessSettings.MaxTessLevel);
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MIN_TESS_LEVEL"), this->RenderingSettings.TessSettings.MinTessLevel);
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.FURTHEST_TESS_DISTANCE"), this->RenderingSettings.TessSettings.FurthestTessDistance);
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.NEAREST_TESS_DISTANCE"), this->RenderingSettings.TessSettings.NearestTessDistance);
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("altitude"), this->RenderingSettings.Altitude);
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("shiftFactor"), this->RenderingSettings.LoDShiftFactor);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MAX_TESS_LEVEL"), this->MeshSettings.TessSettings.MaxTessLevel);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MIN_TESS_LEVEL"), this->MeshSettings.TessSettings.MinTessLevel);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.FURTHEST_TESS_DISTANCE"), this->MeshSettings.TessSettings.FurthestTessDistance);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.NEAREST_TESS_DISTANCE"), this->MeshSettings.TessSettings.NearestTessDistance);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("altitude"), this->MeshSettings.Altitude);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("shiftFactor"), this->MeshSettings.LoDShiftFactor);
 
 	//create pipeline
 	glCreateProgramPipelines(1, &this->Terrain2d_pipeline);
@@ -70,14 +72,13 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 }
 
 vec2 STPProcedural2DINF::calcBaseChunkPosition() {
-	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider().getChunkSettings();
+	const STPSettings::STPChunkSettings& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSettings();
 	//calculate offset
-	const ivec2 chunk_offset(-glm::floor(vec2(chunk_settings->RenderedChunk) / 2.0f));
-	return STPChunk::offsetChunk(vec2(chunk_settings->ChunkOffset.x, chunk_settings->ChunkOffset.z), chunk_settings->ChunkSize, chunk_offset);
+	const ivec2 chunk_offset(-glm::floor(vec2(chunk_settings.RenderedChunk) / 2.0f));
+	return STPChunk::offsetChunk(vec2(chunk_settings.ChunkOffset.x, chunk_settings.ChunkOffset.z), chunk_settings.ChunkSize, chunk_offset);
 }
 
 void STPProcedural2DINF::loadPlane() {
-	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider().getChunkSettings();
 	//create buffers
 	glCreateBuffers(1, &this->plane_vbo);
 	glCreateBuffers(1, &this->plane_indirect);
@@ -127,29 +128,30 @@ void STPProcedural2DINF::clearup() {
 	glDeleteProgramPipelines(1, &this->Terrain2d_pipeline);
 }
 
-GLuint STPProcedural2DINF::getTerrain2DINFProgram() {
+GLuint STPProcedural2DINF::getTerrain2DINFProgram() const {
 	return this->Terrain2d_shader.getP();
 }
 
-void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& projection, const vec3& position) {
-	const STPSettings::STPChunkSettings* chunk_settings = this->getChunkProvider().getChunkSettings();
+void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& projection, const vec3& position) const {
+	const STPSettings::STPChunkSettings& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSettings();
 	mat4 model = identity<mat4>();
 	//move the terrain center to the camera
 	vec2 chunk_center_position = STPChunk::getChunkPosition(
-		position - chunk_settings->ChunkOffset, chunk_settings->ChunkSize, chunk_settings->ChunkScaling);
+		position - chunk_settings.ChunkOffset, chunk_settings.ChunkSize, chunk_settings.ChunkScaling);
 	model = glm::translate(model, 
-		vec3(chunk_center_position.x, chunk_settings->ChunkOffset.y, chunk_center_position.y));
+		vec3(chunk_center_position.x, chunk_settings.ChunkOffset.y, chunk_center_position.y));
 	model = glm::scale(model, 
-		vec3(chunk_settings->ChunkScaling, 1.0f, chunk_settings->ChunkScaling));
+		vec3(chunk_settings.ChunkScaling, 1.0f, chunk_settings.ChunkScaling));
 
 	//sending informations for every loop, uniforms that remain constant have been sent
 	glProgramUniform3fv(this->Terrain2d_shader.getP(), this->getLoc("cameraPos"), 1, value_ptr(position));
 	glProgramUniformMatrix4fv(this->Terrain2d_shader.getP(), this->getLoc("Model"), 1, GL_FALSE, value_ptr(model));
 	
 	//render, sync textures to make sure they are all ready before loading
-	this->SyncloadChunks();
-	this->generateMipmaps();
-	glBindTextureUnit(0, this->terrain_heightfield);//heightfield
+	this->ChunkManager.SyncloadChunks();
+	this->ChunkManager.generateMipmaps();
+	glBindTextureUnit(0, this->ChunkManager.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::BIOME));//biomemap
+	glBindTextureUnit(1, this->ChunkManager.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::HEIGHTFIELD));//heightfield
 	//terrain surface texture isn't ready yet
 	//const unsigned int instance_count = this->CHUNK_SIZE.x * this->CHUNK_SIZE.y * this->RENDERED_CHUNK.x * this->RENDERED_CHUNK.y;
 	glBindVertexArray(this->plane_vao);

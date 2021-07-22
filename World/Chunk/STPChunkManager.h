@@ -31,6 +31,16 @@ namespace SuperTerrainPlus {
 		typedef std::vector<std::pair<glm::vec2, bool>> STPLocalChunks;
 		typedef std::unordered_map<glm::vec2, int, STPChunkStorage::STPHashvec2> STPLocalChunksTable;
 
+		/**
+		 * @brief STPRenderingBufferType specifies the type of rendering buffer to retrieve
+		*/
+		enum class STPRenderingBufferType : unsigned char {
+			//Biomemap
+			BIOME = 0x00u,
+			//Heightmap and normalmap
+			HEIGHTFIELD = 0x01u
+		};
+
 	private:
 
 		//cuda stream
@@ -40,10 +50,14 @@ namespace SuperTerrainPlus {
 		std::unique_ptr<STPThreadPool> compute_pool;
 
 		//chunk data provider
-		STPChunkProvider ChunkProvider;
+		STPChunkProvider& ChunkProvider;
 
+		//Heightfield
+		//index 0: R16UI biome map
+		//index 1: RGBA16 with normal map in RGB and heightmap in A
+		GLuint terrain_heightfield[2];
 		//registered buffer and texture
-		cudaGraphicsResource_t heightfield_texture_res;
+		cudaGraphicsResource_t heightfield_texture_res[2];
 		//empty buffer (using cuda pinned memory) that is used to clear a chunk data, quad_clear is RGBA16
 		unsigned short *quad_clear = nullptr;
 
@@ -60,31 +74,29 @@ namespace SuperTerrainPlus {
 		STPLocalChunksTable renderingLocals_lookup;
 
 		/**
-		 * @brief Transfer rendering buffer on host side to device (OpenGL) rendering buffer
+		 * @brief Transfer rendering buffer on host side to device (OpenGL) rendering buffer by local chunk.
 		 * @param buffer Rendering buffer on device side, a mapped OpenGL pointer.
 		 * Rendering buffer is continuous, function will determine pointer offset and only chunk specified in the "image" argument will be updated.
 		 * @param chunkPos World position of the chunk that will be used to update render buffer
 		 * @param chunkID Local chunk ID that specified which chunk in rendering buffer will be overwritten.
 		 * @return True if request has been submitted, false if given chunk is not available
 		*/
-		bool renderingBufferSubData(cudaArray_t, glm::vec2, unsigned int);
+		bool renderingBufferChunkSubData(cudaArray_t[2], glm::vec2, unsigned int);
 
 		/**
 		 * @brief Clear up the rendering buffer of the chunk map
 		 * @param destination The loaction to store all loaded maps, and it will be erased.
+		 * @param pixel_size The size of one pixel in byte
 		*/
-		void clearRenderingBuffer(cudaArray_t);
+		void clearRenderingBuffer(cudaArray_t, size_t);
 
-	protected:
-
-		//Heightfield, heightmap and normalmap are integrated
-		GLuint terrain_heightfield = 0u;
+	public:
 
 		/**
 		 * @brief Init the chunk manager. Allocating spaces for opengl texture.
-		 * @param settings Stores all required settings for generation
+		 * @param provider The chunk provider link with this chunk manager
 		*/
-		STPChunkManager(STPSettings::STPConfigurations*);
+		STPChunkManager(STPChunkProvider&);
 
 		~STPChunkManager();
 
@@ -100,8 +112,6 @@ namespace SuperTerrainPlus {
 		 * @brief Generate texture mipmap for 2 terrain texture
 		*/
 		void generateMipmaps();
-
-	public:
 
 		/**
 		 * @brief Load the texture for chunks that are specified in the STPLocalChunks. The program will check if the maps are available for this chunk, and if so, texture will be loaded to the internal buffer
@@ -156,6 +166,14 @@ namespace SuperTerrainPlus {
 		 * @return The pointer to the chunk provider
 		*/
 		STPChunkProvider& getChunkProvider();
+
+		/**
+		 * @brief Get the current OpenGL rendering buffer.
+		 * it's the rendering buffer for this frame.
+		 * @type The type of rendering buffer to retrieve
+		 * @return The current rendering buffer
+		*/
+		GLuint getCurrentRenderingBuffer(STPRenderingBufferType) const;
 
 	};
 }

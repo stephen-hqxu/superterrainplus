@@ -78,8 +78,23 @@
     <ClCompile Include="World\Biome\STPSeedMixer.cpp">
       <Filter>World\Biome</Filter>
     </ClCompile>
+    <ClCompile Include="World\Biome\STPLayerManager.cpp">
+      <Filter>World\Biome</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Biome\Layers\STPAllLayers.cpp">
+      <Filter>World\Biome\Layers</Filter>
+    </ClCompile>
     <ClCompile Include="World\Biome\STPBiomeFactory.cpp">
       <Filter>World\Biome</Filter>
+    </ClCompile>
+    <ClCompile Include="World\STPWorldManager.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="GPGPU\STPDiversityGenerator.cpp">
+      <Filter>GPGPU</Filter>
+    </ClCompile>
+    <ClCompile Include="GPGPU\STPDeviceErrorHandler.cpp">
+      <Filter>GPGPU</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -164,7 +179,7 @@
     <ClInclude Include="World\Biome\STPBiome.h">
       <Filter>World\Biome</Filter>
     </ClInclude>
-    <ClInclude Include="World\Biome\STPBiome_def.h">
+    <ClInclude Include="World\Biome\STPBiomeDefine.h">
       <Filter>World\Biome</Filter>
     </ClInclude>
     <ClInclude Include="World\Biome\STPLayer.h">
@@ -189,9 +204,6 @@
       <Filter>World\Biome\Layers</Filter>
     </ClInclude>
     <ClInclude Include="World\Biome\Layers\STPLandLayer.h">
-      <Filter>World\Biome\Layers</Filter>
-    </ClInclude>
-    <ClInclude Include="World\Biome\Layers\STPLayers_all.hpp">
       <Filter>World\Biome\Layers</Filter>
     </ClInclude>
     <ClInclude Include="World\Biome\Layers\STPScaleLayer.h">
@@ -248,7 +260,19 @@
     <ClInclude Include="Helpers\STPSerialisationException.hpp">
       <Filter>Helpers</Filter>
     </ClInclude>
-    <ClInclude Include="GPGPU\STPDeviceErrorHandler.cuh">
+    <ClInclude Include="GPGPU\STPDeviceErrorHandler.h">
+      <Filter>GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\STPLayerManager.h">
+      <Filter>World\Biome</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Layers\STPAllLayers.h">
+      <Filter>World\Biome\Layers</Filter>
+    </ClInclude>
+    <ClInclude Include="World\STPWorldManager.h">
+      <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="GPGPU\STPDiversityGenerator.h">
       <Filter>GPGPU</Filter>
     </ClInclude>
   </ItemGroup>
@@ -285,8 +309,11 @@
     </None>
     <None Include="LICENSE" />
     <None Include="README.md" />
-    <None Include="GPGPU\STPHeightfieldGenerator.inl">
-      <Filter>GPGPU</Filter>
+    <None Include="World\Biome\STPLayerManager.inl">
+      <Filter>World\Biome</Filter>
+    </None>
+    <None Include="World\STPWorldManager.inl">
+      <Filter>World</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

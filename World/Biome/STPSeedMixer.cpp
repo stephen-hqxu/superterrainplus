@@ -1,6 +1,6 @@
 #include "STPSeedMixer.h"
 
-using namespace SuperTerrainPlus::STPBiome;
+using namespace SuperTerrainPlus::STPDiversity;
 
 STPSeedMixer::STPSeedMixer() {
 

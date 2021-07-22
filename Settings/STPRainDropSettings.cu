@@ -1,6 +1,8 @@
 #pragma once
 #include "STPRainDropSettings.hpp"
 
+#include "../GPGPU/STPDeviceErrorHandler.h"
+
 #include <algorithm>
 
 using namespace SuperTerrainPlus::STPSettings;
@@ -36,27 +38,27 @@ __host__ void STPRainDropSettings::makeDeviceAvailable() const {
 	//copy the host result to device, since memcpy cannot operate iterator
 	int* brushIndex_pinned = nullptr;
 	float* brushWeight_pinned = nullptr;
-	cudaMallocHost(&brushIndex_pinned, sizeof(int) * this->ErosionBrushIndicesCache.size());
-	cudaMallocHost(&brushWeight_pinned, sizeof(float) * this->ErosionBrushWeightsCache.size());
+	STPcudaCheckErr(cudaMallocHost(&brushIndex_pinned, sizeof(int) * this->ErosionBrushIndicesCache.size()));
+	STPcudaCheckErr(cudaMallocHost(&brushWeight_pinned, sizeof(float) * this->ErosionBrushWeightsCache.size()));
 	std::copy(this->ErosionBrushIndicesCache.cbegin(), this->ErosionBrushIndicesCache.cend(), brushIndex_pinned);
 	std::copy(this->ErosionBrushWeightsCache.cbegin(), this->ErosionBrushWeightsCache.cend(), brushWeight_pinned);
 
-	cudaMalloc(&this->ErosionBrushIndices, sizeof(int) * this->ErosionBrushIndicesCache.size());
-	cudaMalloc(&this->ErosionBrushWeights, sizeof(float) * this->ErosionBrushWeightsCache.size());
-	cudaMemcpy(this->ErosionBrushIndices, brushIndex_pinned, sizeof(int) * this->ErosionBrushIndicesCache.size(), cudaMemcpyHostToDevice);
-	cudaMemcpy(this->ErosionBrushWeights, brushWeight_pinned, sizeof(float) * this->ErosionBrushWeightsCache.size(), cudaMemcpyHostToDevice);
+	STPcudaCheckErr(cudaMalloc(&this->ErosionBrushIndices, sizeof(int) * this->ErosionBrushIndicesCache.size()));
+	STPcudaCheckErr(cudaMalloc(&this->ErosionBrushWeights, sizeof(float) * this->ErosionBrushWeightsCache.size()));
+	STPcudaCheckErr(cudaMemcpy(this->ErosionBrushIndices, brushIndex_pinned, sizeof(int) * this->ErosionBrushIndicesCache.size(), cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMemcpy(this->ErosionBrushWeights, brushWeight_pinned, sizeof(float) * this->ErosionBrushWeightsCache.size(), cudaMemcpyHostToDevice));
 	//free the cache
-	cudaFreeHost(brushIndex_pinned);
-	cudaFreeHost(brushWeight_pinned);
+	STPcudaCheckErr(cudaFreeHost(brushIndex_pinned));
+	STPcudaCheckErr(cudaFreeHost(brushWeight_pinned));
 }
 
 __host__ void STPRainDropSettings::omitDeviceAvailable() const {
 	if (this->ErosionBrushIndices != nullptr) {
-		cudaFree(this->ErosionBrushIndices);
+		STPcudaCheckErr(cudaFree(this->ErosionBrushIndices));
 		this->ErosionBrushIndices = nullptr;
 	}
 	if (this->ErosionBrushWeights != nullptr) {
-		cudaFree(this->ErosionBrushWeights);
+		STPcudaCheckErr(cudaFree(this->ErosionBrushWeights));
 		this->ErosionBrushWeights = nullptr;
 	}
 }

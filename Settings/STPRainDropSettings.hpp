@@ -3,9 +3,7 @@
 #define _STP_RAIN_DROP_SETTINGS_HPP_
 
 #include "STPSettings.hpp"
-//CUDA function flags
-#include <cuda_runtime_api.h>
-//Runtime
+//CUDA Runtime
 #include <cuda_runtime.h>
 //System ADT
 #include <vector>

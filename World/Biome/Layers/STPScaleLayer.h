@@ -8,13 +8,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPScaleLayer scales the current layer and randomly choose the neighboring cell to fill the new cells
 	*/
-	class STPScaleLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPScaleLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
 		/**
@@ -32,7 +32,7 @@ namespace STPDemo {
 		//The scaling type for this layer
 		const STPScaleType Type;
 
-		Sample sample(int center, int e, int s, int se, const STPLayer::STPLocalRNG& rng) {
+		Sample sample(Sample center, Sample e, Sample s, Sample se, const STPLayer::STPLocalRNG& rng) {
 			//choose randomly between each cell
 			const Sample ret = rng.choose(center, e, s, se);
 
@@ -76,7 +76,7 @@ namespace STPDemo {
 
 		Sample sample(int x, int y, int z) override {
 			//get the sample of the neighbor cell
-			const Sample i = this->getAscendant()->sample_cached(x >> 1, y, z >> 1);
+			const Sample i = this->getAscendant()->retrieve(x >> 1, y, z >> 1);
 			const int xb = x & 1, zb = z & 1;
 			//reset local seed
 			const Seed local_seed = this->genLocalSeed(x & -2, z & -2);
@@ -89,21 +89,21 @@ namespace STPDemo {
 			}
 
 			//otherwise, we need to randomly choose between neighboring values
-			const Sample l = this->getAscendant()->sample_cached(x >> 1, y, (z + 1) >> 1);
+			const Sample l = this->getAscendant()->retrieve(x >> 1, y, (z + 1) >> 1);
 			const Sample m = rng.choose(i, l);
 
 			if (xb == 0) {
 				return m;
 			}
 
-			const Sample n = this->getAscendant()->sample_cached((x + 1) >> 1, y, z >> 1);
+			const Sample n = this->getAscendant()->retrieve((x + 1) >> 1, y, z >> 1);
 			const Sample o = rng.choose(i, n);
 
 			if (zb == 0) {
 				return o;
 			}
 
-			const Sample p = this->getAscendant()->sample_cached((x + 1) >> 1, y, (z + 1) >> 1);
+			const Sample p = this->getAscendant()->retrieve((x + 1) >> 1, y, (z + 1) >> 1);
 			return this->sample(i, n, l, p, rng);
 
 		}

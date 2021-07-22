@@ -3,7 +3,7 @@
 #define _STP_BIOME_H_
 
 //Biome define
-#include "STPBiome_def.h"
+#include "STPBiomeDefine.h"
 //Settings
 #include "../../Settings/STPBiomeSettings.hpp"
 
@@ -14,9 +14,9 @@
 */
 namespace SuperTerrainPlus {
 	/**
-	 * @brief STPBiome is a series of biome generation algorithm that allows user to define their own implementations
+	 * @brief STPDiversity is a series of biome generation algorithm that allows user to define their own implementations
 	*/
-	namespace STPBiome {
+	namespace STPDiversity {
 		/**
 		 * @brief STPBiome provides an abstract base class for each biome definition, including generation settings (altitude, variations) and
 		 * texturing (based on climate, etc.).
@@ -60,7 +60,7 @@ namespace SuperTerrainPlus {
 			 * @brief Get the name of this biome
 			 * @return The biome name
 			*/
-			string getName() const;
+			std::string getName() const;
 
 			/**
 			 * @brief Get the temperature of this biome

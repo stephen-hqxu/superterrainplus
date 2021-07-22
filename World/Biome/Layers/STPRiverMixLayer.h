@@ -9,13 +9,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPRiverMixLayer mixes land portion with river noise, this is a merging layer
 	*/
-	class STPRiverMixLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPRiverMixLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
 		STPRiverMixLayer(Seed global_seed, Seed salt, STPLayer* parent_land, STPLayer* parent_river) : STPLayer(global_seed, salt, parent_land, parent_river) {
@@ -25,8 +25,8 @@ namespace STPDemo {
 
 		Sample sample(int x, int y, int z) override {
 			//get the parent values
-			const Sample land_val = this->getAscendant(0)->sample_cached(x, y, z);
-			const Sample river_val = this->getAscendant(1)->sample_cached(x, y, z);
+			const Sample land_val = this->getAscendant(0)->retrieve(x, y, z);
+			const Sample river_val = this->getAscendant(1)->retrieve(x, y, z);
 
 			//if the land section points to an ocean, don't touch
 			//(you can't have river inside the ocean right?)

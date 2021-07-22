@@ -3,7 +3,7 @@
 #define _STP_SEED_MIXER_H_
 
 //Biome define
-#include "STPBiome_def.h"
+#include "STPBiomeDefine.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -12,9 +12,9 @@
 */
 namespace SuperTerrainPlus {
 	/**
-	 * @brief STPBiome is a series of biome generation algorithm that allows user to define their own implementations
+	 * @brief STPDiversity is a series of biome generation algorithm that allows user to define their own implementations
 	*/
-	namespace STPBiome {
+	namespace STPDiversity {
 		/**
 		 * @brief STPSeedMixer mixes two seeds together to form a new seed
 		*/

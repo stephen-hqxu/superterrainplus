@@ -42,10 +42,6 @@ namespace SuperTerrainPlus {
 			//Choosen generator for curand
 			typedef curandStatePhilox4_32_10 curandRNG;
 
-			//A function that converts biome id to the index corresponded in biome table
-			//By default it's a 1-1 mapping, meaning biome id = index
-			typedef size_t(*STPBiomeInterpreter)(STPBiome::Sample);
-
 			//Generate a new heightmap with simplex noise and store the result in the provided memory space
 			constexpr static STPGeneratorOperation HeightmapGeneration = 1u << 0u;
 			//Erode the heightmap. If HeightmapGeneration flag is not enabled, an available heightmap needs to be provided for the operation
@@ -61,6 +57,11 @@ namespace SuperTerrainPlus {
 			struct STPMapStorage {
 			public:
 
+				//- A Sample array (sample is implementation defined, usually it's uint16) where biomemap is located.
+				//- If biome interpolation if enabled, the number of biomemap should be the same as that in Heightmap32F.
+				//See documentation of Heightmap32F for more details
+				//- Only one biomemap should be provided if heightmap generation is enabled
+				std::vector<STPDiversity::Sample*> Biomemap;
 				//- A float array that will be used to stored heightmap pixles, must be pre-allocated with at least width * height * sizeof(float), i.e., R32F format
 				//- If generator is instructed to generate only a single heightmap, only one map is required
 				//- If hydraulic erosion and/or normalmap generation is enabled, a list of maps of neighbour chunks are required for edge sync, heightmap generation will 
@@ -68,9 +69,9 @@ namespace SuperTerrainPlus {
 				//If free-slip hydraulic erosion is disabled, no neighbour chunks are required.
 				//- The map pointers should be arranged in row major matrix, with defined neighbour dimension.
 				std::vector<float*> Heightmap32F;
-				//The x vector specify the offset on x direction of the map and and z on y direction of the map, and the y vector specify the offset on the final result.
+				//The x vector specify the offset on x direction of the map and and z on y direction of the map.
 				//The offset parameter will only be applied on the heightmap generation.
-				float3 HeightmapOffset = make_float3(0.0f, 0.0f, 0.0f);
+				float2 HeightmapOffset = make_float2(0.0f, 0.0f);
 				//A INT16 array that will be used to stored the heightmap and normalmap after formation. The final format will become RGBA.
 				//The number of pointer provided should be the same as the number of heightmap and normalmap.
 				std::vector<unsigned short*> Heightfield16UI;
@@ -127,17 +128,35 @@ namespace SuperTerrainPlus {
 				__host__ void deallocate(size_t, void*);
 			};
 
+			/**
+			 * @brief A custom deleter for device memory
+			 * @tparam T Type of the variable
+			*/
+			template<typename T>
+			struct STPDeviceDeleter {
+			public:
+
+				void operator()(T*) const;
+
+			};
+			//An alias of unique_ptr with cudaFree as deleter
+			template<typename T>
+			using unique_ptr_d = std::unique_ptr<T, STPDeviceDeleter<T>>;
+
 			//Simplex noise generator
-			const STPSimplexNoise simplex_h;
-			STPSimplexNoise* simplex_d = nullptr;
+			const STPSimplexNoise& simplex_h;
+			unique_ptr_d<STPSimplexNoise> simplex_d;
+			//biome dictionary linked with external
+			STPDiversity::STPBiome* Biome_Dictionary_h;
+			unique_ptr_d<STPDiversity::STPBiome> Biome_Dictionary_d;
 			//all parameters for the noise generator, stored on host, passing value to device
-			const STPSettings::STPSimplexNoiseSettings Noise_Settings;
+			const STPSettings::STPSimplexNoiseSettings& Noise_Settings;
 			//heightfield generation parameters
-			const STPSettings::STPHeightfieldSettings Heightfield_Settings_h;
-			STPSettings::STPHeightfieldSettings *Heightfield_Settings_d;
+			const STPSettings::STPHeightfieldSettings& Heightfield_Settings_h;
+			unique_ptr_d<STPSettings::STPHeightfieldSettings> Heightfield_Settings_d;
 
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency
-			curandRNG* RNG_Map = nullptr;
+			unique_ptr_d<curandRNG> RNG_Map;
 			/**
 			 * @brief Convert global index to local index, making data access outside the central chunk available
 			 * As shown the difference between local and global index
@@ -153,13 +172,12 @@ namespace SuperTerrainPlus {
 			 * -----------------
 			 * Chunk 3 | Chunk 4
 			*/
-			unsigned int* GlobalLocalIndex = nullptr;
+			//Btw don't use `unsigned int[]` here since we are dealing with device memory
+			unique_ptr_d<unsigned int> GlobalLocalIndex;
 			//A lookup table that, given a chunkID, determine the edge type of this chunk within the neighbour chunk logic
 			std::unique_ptr<STPEdgeArrangement[]> EdgeArrangementTable;
 			//Free slip range in the unit of chunk
 			const uint2 FreeSlipChunk;
-
-			STPBiome::STPBiome* BiomeDictionary = nullptr;
 
 			//Temp cache on device for heightmap computation
 			mutable std::mutex MapCachePinned_lock;
@@ -197,13 +215,14 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Init the heightfield generator
-			 * @param noise_settings Stored all parameters for the heightmap random number generator, it will be deep copied to the class so dynamic memory is not required
-			 * @param chunk_settings Stored all parameters for the chunk
-			 * @param heightfield_settings Stored all parameters for heightfield generation
+			 * @param noise_settings All parameters for the heightmap random number generator, it's linked with the current generator so lifetime should be guaranteed
+			 * @param chunk_settings All parameters for the chunk to be linked with this generator
+			 * @param heightfield_settings All parameters for heightfield generation to be linked with this generator
 			 * @param hint_level_of_concurrency The average numebr of thread that will be used to issue commands to this class.
 			 * It's used to assume the size of memory pool to allocate.
 			*/
-			__host__ STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings&, const STPSettings::STPChunkSettings&, const STPSettings::STPHeightfieldSettings&, unsigned int);
+			__host__ STPHeightfieldGenerator(const STPSettings::STPSimplexNoiseSettings&, const STPSettings::STPChunkSettings&, 
+				const STPSettings::STPHeightfieldSettings&, unsigned int);
 
 			__host__ ~STPHeightfieldGenerator();
 
@@ -214,16 +233,6 @@ namespace SuperTerrainPlus {
 			__host__ STPHeightfieldGenerator& operator=(const STPHeightfieldGenerator&) = delete;
 
 			__host__ STPHeightfieldGenerator& operator=(STPHeightfieldGenerator&&) = delete;
-
-			/**
-			 * @brief Define the biome dictionary for looking up biome settins according to the biome id. Each entry of biome will be copied to device
-			 * @tparam Ite The iterator to the original container with all biomes
-			 * @param begin The beginning of the container with biomes
-			 * @param end The end of the container with biomes
-			 * @return True if copy was successful
-			*/
-			template<typename Ite>
-			__host__ bool defineDictionary(Ite, Ite);
 
 			/**
 			 * @brief Generate the terrain heightfield maps, each heightfield contains four maps, being heightmap and normalmap.
@@ -244,5 +253,4 @@ namespace SuperTerrainPlus {
 
 	}
 }
-#include "STPHeightfieldGenerator.inl"
 #endif//_STP_HEIGHTFIELD_GENERATOR_CUH_

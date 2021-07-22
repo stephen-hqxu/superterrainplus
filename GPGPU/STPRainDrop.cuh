@@ -2,10 +2,8 @@
 #ifndef _STP_RAINDROP_CUH_
 #define _STP_RAINDROP_CUH_
 
-//CUDA
-#include <cuda.h>
+//CUDA Runtime
 #include <cuda_runtime.h>
-#include <device_launch_parameters.h>
 //ADT
 #include <list>
 //Settings

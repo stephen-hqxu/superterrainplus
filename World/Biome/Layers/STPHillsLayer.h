@@ -9,13 +9,13 @@
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
 namespace STPDemo {
-	using SuperTerrainPlus::STPBiome::Seed;
-	using SuperTerrainPlus::STPBiome::Sample;
+	using SuperTerrainPlus::STPDiversity::Seed;
+	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPHillsLayer generates hills that are located at the central of some biomes from the noise function
 	*/
-	class STPHillsLayer : public SuperTerrainPlus::STPBiome::STPLayer {
+	class STPHillsLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	private:
 
 		//Chance of having a hill
@@ -34,8 +34,8 @@ namespace STPDemo {
 			//get the local rng
 			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 			//get the parent samples
-			const Sample land_val = this->getAscendant(0)->sample_cached(x, y, z);
-			const Sample noise_val = this->getAscendant(1)->sample_cached(x, y, z);
+			const Sample land_val = this->getAscendant(0)->retrieve(x, y, z);
+			const Sample noise_val = this->getAscendant(1)->retrieve(x, y, z);
 			
 			//chance of having a hill
 			const Sample is_hill = (noise_val - 2) % STPHillsLayer::HILLS_CHANCE;
@@ -101,16 +101,16 @@ namespace STPDemo {
 				//make sure the hill is strictly at the center of the biome, not on the edge
 				if (l != land_val) {
 					unsigned char m = 0x00u;
-					if (land_val ==	this->getAscendant(0)->sample_cached(x, y, z - 1)) {
+					if (land_val ==	this->getAscendant(0)->retrieve(x, y, z - 1)) {
 						m++;
 					}
-					if (land_val == this->getAscendant(0)->sample_cached(x + 1, y, z)) {
+					if (land_val == this->getAscendant(0)->retrieve(x + 1, y, z)) {
 						m++;
 					}
-					if (land_val == this->getAscendant(0)->sample_cached(x - 1, y, z)) {
+					if (land_val == this->getAscendant(0)->retrieve(x - 1, y, z)) {
 						m++;
 					}
-					if (land_val == this->getAscendant(0)->sample_cached(x, y, z + 1)) {
+					if (land_val == this->getAscendant(0)->retrieve(x, y, z + 1)) {
 						m++;
 					}
 					if (m >= 0x03u) {

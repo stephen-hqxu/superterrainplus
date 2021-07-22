@@ -26,7 +26,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;SIMPLE.lib;SglToolkit.lib;cudart.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;SIMPLE.lib;SglToolkit.lib;cudart.lib;cuda.lib;nvrtc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CudaCompile>
       <CudaRuntime>Shared</CudaRuntime>

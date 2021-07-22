@@ -2,11 +2,10 @@
 #ifndef _STP_BIOME_SETTINGS_HPP_
 #define _STP_BIOME_SETTINGS_HPP_
 
-#include "../World/Biome/STPBiome_def.h"
+#include "../World/Biome/STPBiomeDefine.h"
 #include "STPSettings.hpp"
 //String
 #include <string>
-using std::string;
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -28,9 +27,9 @@ namespace SuperTerrainPlus {
 
 			//Identification and texture control
 			//The id of this biome, for convention id equals the index of the biome registry, but it's free to choose the value of the id
-			STPBiome::Sample ID;
+			STPDiversity::Sample ID;
 			//The name of this biome
-			string Name;
+			std::string Name;
 			//The temperature of this biome
 			float Temperature;
 			//The amount of rainfall in this biome

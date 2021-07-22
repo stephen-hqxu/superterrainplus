@@ -35,7 +35,7 @@ uniform vec3 cameraPos;
 uniform float altitude;
 
 //Heightfield, RGB is normalmap, A is heightmap
-layout (binding = 0) uniform sampler2D Heightfield;
+layout (binding = 1) uniform sampler2D Heightfield;
 
 //Functions
 vec2 toCartesian2D(vec2, vec2, vec2);

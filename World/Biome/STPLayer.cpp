@@ -1,6 +1,8 @@
 #include "STPLayer.h"
 
-using namespace SuperTerrainPlus::STPBiome;
+#include "functional"
+
+using namespace SuperTerrainPlus::STPDiversity;
 
 STPLayer::STPLocalRNG::STPLocalRNG(Seed local_seed) : LocalSeed(local_seed) {
 
@@ -38,24 +40,6 @@ Sample STPLayer::STPLocalRNG::choose(Sample var1, Sample var2, Sample var3, Samp
 	return i == 0 ? var1 : i == 1 ? var2 : i == 2 ? var3 : var4;
 }
 
-STPLayer::~STPLayer() {
-	for (unsigned int i = 0; i < this->Ascendant.size(); i++) {
-		STPLayer* parent = this->Ascendant[i];
-
-		//tell the parent that the child is going to be deleted
-		parent->ReferenceCount--;
-		if (parent->ReferenceCount == 0u) {
-			//delete its ascendants recursively (if any)
-			//the parent has no more reference, delete
-			delete parent;
-		}
-	}
-	this->Ascendant.clear();
-
-	//delete the cache (if any)
-	//automatically
-}
-
 Seed STPLayer::genLayerSeed(Seed global_seed, Seed salt) {
 	Seed midSalt = STPSeedMixer::mixSeed(salt, salt);
 	midSalt = STPSeedMixer::mixSeed(midSalt, midSalt);
@@ -74,12 +58,6 @@ Seed STPLayer::genLocalSeed(int x, int z) const {
 	return local_seed;
 }
 
-void STPLayer::destroy(STPLayer* layer) {
-	//we explicitly define a function to delete the pointer
-	//since the layer is created usign create() but not new, it may cause confusion to other programmers if we force them to use delete() function.
-	delete layer;
-}
-
 size_t STPLayer::cacheSize() const {
 	//check for nullptr
 	return this->Cache ? this->Cache->getCapacity() : 0ull ;
@@ -89,22 +67,22 @@ STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) const {
 	return STPLayer::STPLocalRNG(local_seed);
 }
 
-Sample STPLayer::sample_cached(int x, int y, int z) {
+Sample STPLayer::retrieve(int x, int y, int z) {
+	using namespace std::placeholders;
+	auto sampler = std::bind(&STPLayer::sample, this, _1, _2, _3);
 	//pass the layer sampling function to cache, so it will compute it when necessary
 	if (this->Cache) {
-		return this->Cache->cache(x, y, z, [this](int x, int y, int z) -> Sample {
-			return this->sample(x, y, z);
-			});
+		return this->Cache->cache(x, y, z, sampler);
 	}
 	//there is no cache assigned
-	return this->sample(x, y, z);
+	return sampler(x, y, z);
 }
 
-STPLayer* const STPLayer::getAscendant(unsigned int index) const {
+STPLayer* STPLayer::getAscendant(unsigned int index) const {
 	return this->getAscendantCount() != 0 && index < this->getAscendantCount() ? this->Ascendant[index] : nullptr;
 }
 
-STPLayer* const STPLayer::getAscendant() const {
+STPLayer* STPLayer::getAscendant() const {
 	return this->getAscendant(0);
 }
 

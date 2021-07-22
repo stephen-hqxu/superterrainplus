@@ -44,7 +44,8 @@ using glm::value_ptr;
 #include "STPSkyRenderer.h"
 #include "STPOffscreenRenderer.h"
 #include "STPRendererCommander.h"
-#include "../World/STPProcedural2DINF.h"
+#include "../World/STPWorldManager.h"
+#include "../World/Biome/Layers/STPAllLayers.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -66,6 +67,7 @@ namespace SuperTerrainPlus {
 
 		SglToolkit::SgTCamera*& Camera;
 		SIMPLE::SIStorage& engineSettings;
+		SIMPLE::SIStorage& biomeSettings;
 		int SCR_SIZE[2] = {0,0};//array of 2 int, width and height
 
 		//genereal renderers
@@ -73,7 +75,7 @@ namespace SuperTerrainPlus {
 		STPOffscreenRenderer* screen = nullptr;
 		STPRendererCommander* command = nullptr;
 		//terrain renderers
-		STPProcedural2DINF* terrain2d_inf = nullptr;
+		STPWorldManager world_manager;
 		//thread pool
 		STPThreadPool* command_pool = nullptr;
 
@@ -127,7 +129,6 @@ namespace SuperTerrainPlus {
 			delete this->command;
 			//delete renderers
 			delete this->sky;
-			delete this->terrain2d_inf;
 			//delete thread pool
 			delete this->command_pool;
 		}
@@ -140,7 +141,7 @@ namespace SuperTerrainPlus {
 		 * @param windowSize The size of the window frame
 		 * @param ini The ini setting file for the engine
 		*/
-		STPMasterRenderer(SglToolkit::SgTCamera*& camera, const int windowSize[2], SIMPLE::SIStorage& ini) : Camera(camera), engineSettings(ini) {
+		STPMasterRenderer(SglToolkit::SgTCamera*& camera, const int windowSize[2], SIMPLE::SIStorage& ini, SIMPLE::SIStorage& biome) : Camera(camera), engineSettings(ini), biomeSettings(biome) {
 			this->SCR_SIZE[0] = windowSize[0];
 			this->SCR_SIZE[1] = windowSize[1];
 		}
@@ -188,6 +189,7 @@ namespace SuperTerrainPlus {
 			STPSettings::STPConfigurations config = STPSettings::STPConfigurations();
 			std::future chunksPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFChunksParameters, std::ref(this->engineSettings["Generators"]));
 			std::future renderPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFRenderingParameters, std::ref(this->engineSettings["2DTerrainINF"]));
+			std::future biomePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::loadBiomeParameters, std::ref(this->biomeSettings));
 			config.getChunkSettings() = chunksPara_loader.get();
 			config.getMeshSettings() = renderPara_loader.get();
 			
@@ -196,6 +198,7 @@ namespace SuperTerrainPlus {
 			//not quite sure why heightfield_settings isn't got copied to the config, it just share the pointer
 			config.getHeightfieldSettings() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(this->engineSettings["2DTerrainINF"], chunk_settings.MapSize * chunk_settings.FreeSlipChunk);
 			config.getSimplexNoiseSettings() = noisePara_loader.get();
+			biomePara_loader.get();
 
 			assert(config.validate());
 			const unsigned int unitplane_count = chunk_settings.ChunkSize.x * chunk_settings.ChunkSize.y * chunk_settings.RenderedChunk.x * chunk_settings.RenderedChunk.y;
@@ -204,10 +207,16 @@ namespace SuperTerrainPlus {
 			this->command = new STPRendererCommander(this->command_pool, unitplane_count);
 			//setting up renderers
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer, this->command_pool);
-			//setting terrain 2d inf
-			this->terrain2d_inf = new STPProcedural2DINF(&config, reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
-			this->terrain2d_inf->loadChunksAsync(this->Camera->getPosition());
+			//setting world manager
+			this->world_manager.attachSettings(&config);
+			this->world_manager.attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_settings.MapSize, config.getSimplexNoiseSettings().Seed);
+			this->world_manager.linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
+			if (!this->world_manager) {
+				//do not proceed if it fails
+				exit(-1);
+			}
 
+			const_cast<STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
 			//setting up ssbo
 			this->setPVmatrix();
 		}
@@ -247,7 +256,7 @@ namespace SuperTerrainPlus {
 		*/
 		void draw(const double& frametime) {
 			//start loading terrain 2d inf async
-			this->terrain2d_inf->loadChunksAsync(this->Camera->getPosition());
+			const_cast<STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
 
 			//clear the default framebuffer
 			glClearColor(121.0f / 255.0f, 151.0f / 255.0f, 52.0f / 255.0f, 1.0f);
@@ -266,7 +275,7 @@ namespace SuperTerrainPlus {
 			//terrain renderer, choose whichever terrain renderer you like
 			glDepthFunc(GL_LESS);
 			glEnable(GL_CULL_FACE);
-			this->terrain2d_inf->renderVisibleChunks(this->View, this->Projection, this->Camera->getPosition());
+			this->world_manager.getChunkRenderer()->renderVisibleChunks(this->View, this->Projection, this->Camera->getPosition());
 		}
 
 		/**
