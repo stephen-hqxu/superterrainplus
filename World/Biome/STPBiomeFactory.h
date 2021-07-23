@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_BIOME_FACTORY_HPP_
-#define _STP_BIOME_FACTORY_HPP_
+#ifndef _STP_BIOME_FACTORY_H_
+#define _STP_BIOME_FACTORY_H_
 
 //System
 #include <queue>
@@ -91,4 +91,4 @@ namespace SuperTerrainPlus {
 
 	}
 }
-#endif//_STP_BIOME_FACTORY_HPP_
+#endif//_STP_BIOME_FACTORY_H_

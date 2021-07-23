@@ -16,7 +16,7 @@
 #endif
 
 template<typename Err>
-void STPcudaAssert(Err, unsigned int, const char* __restrict, int);
+void STPcudaAssert(Err, unsigned int, const char* __restrict, const char* __restrict, int);
 
-#define STPcudaCheckErr(ans) STPcudaAssert(ans, STP_ERROR_SEVERITY, __FILE__, __LINE__);
+#define STPcudaCheckErr(ans) STPcudaAssert(ans, STP_ERROR_SEVERITY, __FILE__, __FUNCTION__, __LINE__);
 #endif//_STP_DEVICE_ERROR_HANDLER_H_

@@ -90,7 +90,7 @@
     <ClCompile Include="World\STPWorldManager.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="GPGPU\STPDiversityGenerator.cpp">
+    <ClCompile Include="GPGPU\STPDiversityGeneratorRTC.cpp">
       <Filter>GPGPU</Filter>
     </ClCompile>
     <ClCompile Include="GPGPU\STPDeviceErrorHandler.cpp">
@@ -272,7 +272,10 @@
     <ClInclude Include="World\STPWorldManager.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="GPGPU\STPDiversityGenerator.h">
+    <ClInclude Include="GPGPU\STPDiversityGeneratorRTC.h">
+      <Filter>GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="GPGPU\STPDiversityGenerator.hpp">
       <Filter>GPGPU</Filter>
     </ClInclude>
   </ItemGroup>

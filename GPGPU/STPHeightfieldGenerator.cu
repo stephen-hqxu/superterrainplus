@@ -204,10 +204,6 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	if (this->RNG_Map == nullptr) {
 		return;
 	}
-	//check the availability of biome stuff
-	/*if (!this->BiomeDictionary_d) {
-		return;
-	}*/
 	if (operation == 0u) {
 		//no operation is specified, nothing can be done
 		return;

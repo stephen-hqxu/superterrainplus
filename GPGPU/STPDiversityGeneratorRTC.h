@@ -1,7 +1,9 @@
 #pragma once
-#ifndef _STP_DIVERSITY_GENERATOR_H_
-#define _STP_DIVERSITY_GENERATOR_H_
+#ifndef _STP_DIVERSITY_GENERATOR_RTC_H_
+#define _STP_DIVERSITY_GENERATOR_RTC_H_
 
+//Base Generator
+#include "STPDiversityGenerator.hpp"
 //System
 #include <unordered_map>
 #include <list>
@@ -9,12 +11,8 @@
 #include <string>
 #include <memory>
 //CUDA Runtime Compiler
-#include <cuda_runtime.h>
 #include <cuda.h>
 #include <nvrtc.h>
-#include <vector_types.h>
-//Biome Defines
-#include "../World/Biome/STPBiomeDefine.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -28,10 +26,10 @@ namespace SuperTerrainPlus {
 	namespace STPCompute {
 
 		/**
-		 * @brief STPDiversityGenerator provides a runtime-programmable multi-biome heightmap generation interface and
+		 * @brief STPDiversityGeneratorRTC provides a runtime-programmable multi-biome heightmap generation interface and
 		 * allows users to develop their biome-specific algorithms and parameters sets.
 		*/
-		class STPDiversityGenerator {
+		class STPDiversityGeneratorRTC : public STPDiversityGenerator {
 		protected:
 
 			//Log message from the generator compiler and linker
@@ -52,7 +50,7 @@ namespace SuperTerrainPlus {
 			struct STPSourceInformation {
 			public:
 
-				friend class STPDiversityGenerator;
+				friend class STPDiversityGeneratorRTC;
 
 				/**
 				 * @brief A helper argument setter for easy configuration
@@ -60,7 +58,7 @@ namespace SuperTerrainPlus {
 				struct STPSourceArgument : private STPStringArgument {
 				public:
 
-					friend class STPDiversityGenerator;
+					friend class STPDiversityGeneratorRTC;
 
 				public:
 
@@ -94,7 +92,7 @@ namespace SuperTerrainPlus {
 			struct STPLinkerInformation {
 			public:
 
-				friend class STPDiversityGenerator;
+				friend class STPDiversityGeneratorRTC;
 
 				/**
 				 * @brief Parameter sets for individual data in the linker
@@ -102,7 +100,7 @@ namespace SuperTerrainPlus {
 				struct STPDataJitOption {
 				public:
 
-					friend class STPDiversityGenerator;
+					friend class STPDiversityGeneratorRTC;
 
 				private:
 
@@ -175,7 +173,11 @@ namespace SuperTerrainPlus {
 
 			//All external header used within the runtime script that cannot be found directly under the script's directory nor the include directory set during complication
 			//This can be useful for in-place code, i.e., code is a hard-coded string in the executable
+			//Key: header include name, Value: header code
 			STPIncluded ExternalHeader;
+			//All precompiled static library that will be linked with the main generator program
+			//Key: archive name, Value: the filename of the archive
+			STPIncluded ExternalArchive;
 			//All source files compiled in PTX format.
 			STPCompiled ComplicationDatabase;
 			//A complete program of diversity generator
@@ -187,15 +189,15 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Init a new STPDiversityGenerator
 			*/
-			STPDiversityGenerator();
+			STPDiversityGeneratorRTC();
 
-			STPDiversityGenerator(const STPDiversityGenerator&) = delete;
+			STPDiversityGeneratorRTC(const STPDiversityGeneratorRTC&) = delete;
 
-			STPDiversityGenerator(STPDiversityGenerator&&) = delete;
+			STPDiversityGeneratorRTC(STPDiversityGeneratorRTC&&) = delete;
 
-			STPDiversityGenerator& operator=(const STPDiversityGenerator&) = delete;
+			STPDiversityGeneratorRTC& operator=(const STPDiversityGeneratorRTC&) = delete;
 
-			STPDiversityGenerator& operator=(STPDiversityGenerator&&) = delete;
+			STPDiversityGeneratorRTC& operator=(STPDiversityGeneratorRTC&&) = delete;
 
 			/**
 			 * @brief Attach an external header into this runtime compiler database.
@@ -214,6 +216,22 @@ namespace SuperTerrainPlus {
 			 * @return Only return false if header is not found.
 			*/
 			bool detachHeader(std::string);
+
+			/**
+			 * @brief Attach an external archive into the linker database.
+			 * Archive will be linked with the program
+			 * @param archive_name The archive name used to identify this archive
+			 * @param archive_filename The path to the archive
+			 * @return Only return false if archive name is duplicate
+			*/
+			bool attachArchive(std::string, std::string);
+
+			/**
+			 * @brief Detach an external archive that has been previously attached to this linker database
+			 * @param archive_name The name of the archive
+			 * @return Only return false if archive is not found
+			*/
+			bool detachArchive(std::string);
 
 			/**
 			 * @brief Given a piece of source code, compile it and attach the compiled result to generator's database.
@@ -236,8 +254,11 @@ namespace SuperTerrainPlus {
 			 * @brief Link all previously compiled source file into a complete program.
 			 * If there has been a program currently associated with this generator, it will be destroied and the new one will be loaded.
 			 * @param linker_info The information for the linker
+			 * @input_type The input type to be used.
+			 * By using a low-level type, compile speed is faster.
+			 * By using a high-level type, more compiler and linker options are available.
 			*/
-			void linkProgram(STPLinkerInformation&);
+			void linkProgram(STPLinkerInformation&, CUjitInputType);
 
 			/**
 			 * @brief Retrieve mangled name for each name that has been added to name expression when the source was compiled.
@@ -259,18 +280,9 @@ namespace SuperTerrainPlus {
 
 		public:
 
-			virtual ~STPDiversityGenerator();
-
-			/**
-			 * @brief Generate a biome-specific heightmaps
-			 * @param heightmap The result of generated heightmap that will be stored
-			 * @param biomemap The biomemap, which is an array of biomeID, the meaning of biomeID is however implementation-specific
-			 * @param offset The offset of maps in world coordinate
-			 * @param stream The stream currently being used
-			*/
-			virtual void operator()(float*, const STPDiversity::Sample*, float2, cudaStream_t) = 0;
+			virtual ~STPDiversityGeneratorRTC();
 
 		};
 	}
 }
-#endif//_STP_DIVERSITY_GENERATOR_H_
+#endif//_STP_DIVERSITY_GENERATOR_RTC_H_

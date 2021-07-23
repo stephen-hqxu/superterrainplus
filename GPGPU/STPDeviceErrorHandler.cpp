@@ -31,31 +31,31 @@ void programDecision(stringstream& msg, unsigned int error_level) {
 }
 
 //explicit instantiation
-template<> void STPcudaAssert<cudaError_t>(cudaError_t cuda_code, unsigned int error_level, const char* __restrict file, int line) {
+template<> void STPcudaAssert<cudaError_t>(cudaError_t cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
 	//CUDA Runtime API
 	if (cuda_code != cudaSuccess) {
 		stringstream err_str;
-		err_str << file << ":" << line << "\nCUDA Runtime API: " << cudaGetErrorString(cuda_code) << endl;
+		err_str << file << "(" << function << "):" << line << "\nCUDA Runtime API: " << cudaGetErrorString(cuda_code) << endl;
 		programDecision(err_str, error_level);
 	}
 }
 
-template<> void STPcudaAssert<nvrtcResult>(nvrtcResult cuda_code, unsigned int error_level, const char* __restrict file, int line) {
+template<> void STPcudaAssert<nvrtcResult>(nvrtcResult cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
 	//CUDA Runtime Compilication
 	if (cuda_code != NVRTC_SUCCESS) {
 		stringstream err_str;
-		err_str << file << ":" << line << "\nCUDA Runtime Compiler: " << nvrtcGetErrorString(cuda_code) << endl;
+		err_str << file << "(" << function << "):" << line << "\nCUDA Runtime Compiler: " << nvrtcGetErrorString(cuda_code) << endl;
 		programDecision(err_str, error_level);
 	}
 }
 
-template<> void STPcudaAssert<CUresult>(CUresult cuda_code, unsigned int error_level, const char* __restrict file, int line) {
+template<> void STPcudaAssert<CUresult>(CUresult cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
 	//CUDA Driver API
 	if (cuda_code != CUDA_SUCCESS) {
 		stringstream err_str;
 		const char* str;
 		cuGetErrorString(cuda_code, &str);
-		err_str << file << ":" << line << "\nCUDA Driver API: " << str << endl;
+		err_str << file << "(" << function << "):" << line << "\nCUDA Driver API: " << str << endl;
 		programDecision(err_str, error_level);
 	}
 	

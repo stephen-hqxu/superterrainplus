@@ -11,7 +11,7 @@
 //Engine
 #include "STPSimplexNoise.cuh"
 #include "STPRainDrop.cuh"
-#include "../World/Biome/STPBiome.h"
+#include "STPDiversityGenerator.hpp"
 #include "../Helpers/STPMemoryPool.hpp"
 //Settings
 #include "../Settings/STPHeightfieldSettings.hpp"
@@ -146,9 +146,8 @@ namespace SuperTerrainPlus {
 			//Simplex noise generator
 			const STPSimplexNoise& simplex_h;
 			unique_ptr_d<STPSimplexNoise> simplex_d;
-			//biome dictionary linked with external
-			STPDiversity::STPBiome* Biome_Dictionary_h;
-			unique_ptr_d<STPDiversity::STPBiome> Biome_Dictionary_d;
+			//TODO: multi-biome heightmap generator linked with external
+			//const STPDiversityGenerator& generateHeightmap;
 			//all parameters for the noise generator, stored on host, passing value to device
 			const STPSettings::STPSimplexNoiseSettings& Noise_Settings;
 			//heightfield generation parameters
