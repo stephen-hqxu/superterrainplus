@@ -6,7 +6,6 @@
 #include "STPChunkSettings.hpp"
 #include "STPHeightfieldSettings.hpp"
 #include "STPMeshSettings.hpp"
-#include "STPSimplexNoiseSettings.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -23,13 +22,12 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPConfigurations stores configurations each settings of Super Terrain +
 		*/
-		class STPConfigurations : public STPSettings {
+		class STPConfigurations : public STPSetting {
 		private:
 
 			STPChunkSettings ChunkSettings;
 			STPHeightfieldSettings HeightfieldSettings;
 			STPMeshSettings MeshSettings;
-			STPSimplexNoiseSettings SimplexSettings;
 
 		public:
 
@@ -43,8 +41,7 @@ namespace SuperTerrainPlus {
 			bool validate() const override {
 				return this->ChunkSettings.validate()
 					&& this->HeightfieldSettings.validate()
-					&& this->MeshSettings.validate()
-					&& this->SimplexSettings.validate();
+					&& this->MeshSettings.validate();
 			}
 
 			//------------------Get settings-------------------//
@@ -59,10 +56,6 @@ namespace SuperTerrainPlus {
 
 			STPMeshSettings& getMeshSettings() {
 				return this->MeshSettings;
-			}
-
-			STPSimplexNoiseSettings& getSimplexNoiseSettings() {
-				return this->SimplexSettings;
 			}
 
 		};

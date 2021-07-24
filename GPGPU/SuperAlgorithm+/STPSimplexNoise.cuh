@@ -5,7 +5,7 @@
 //Helpers and Tools
 #include "STPPermutationsGenerator.cuh"
 //Settings
-#include "../Settings/STPSimplexNoiseSettings.hpp"
+#include "STPSimplexNoiseSettings.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques

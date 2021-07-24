@@ -40,11 +40,8 @@ const string STPTerrainParaLoader::Procedural2DINFChunksVariables[14] = {
 	"chunkScale"
 };
 
-const string STPTerrainParaLoader::Procedural2DINFGeneratorVariables[18] = {
-	"scale",
-	"octave",
-	"persistence",
-	"lacunarity",
+const string STPTerrainParaLoader::Procedural2DINFGeneratorVariables[15] = {
+	"seed",
 	"strength",
 	"brush_radius",
 	"inertia",
@@ -67,11 +64,15 @@ const string STPTerrainParaLoader::Simplex2DNoiseVariables[3] = {
 	"offset"
 };
 
-const string STPTerrainParaLoader::BiomeVariables[6]{
+const string STPTerrainParaLoader::BiomeVariables[10]{
 	"name",
 	"id",
 	"temperature",
 	"precipitation",
+	"scale",
+	"octave",
+	"persistence",
+	"lacunarity",
 	"depth",
 	"variation"
 };
@@ -131,36 +132,32 @@ STPSettings::STPHeightfieldSettings STPTerrainParaLoader::getProcedural2DINFGene
 	STPSettings::STPHeightfieldSettings launch_options;
 	
 	//set the parameter one by one, enjoy :)
-	launch_options.Scale = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[0]));
-	launch_options.Octave = stoul(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[1]));
-	launch_options.Persistence = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[2]));
-	launch_options.Lacunarity = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[3]));
-	launch_options.Strength = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[4]));
-	launch_options.setErosionBrushRadius(make_uint2(slipRange.x, slipRange.y), stoul(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[5])));
-	launch_options.Inertia = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[6]));
-	launch_options.SedimentCapacityFactor = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[7]));
-	launch_options.minSedimentCapacity = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[8]));
-	launch_options.initWaterVolume = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[9]));
-	launch_options.minWaterVolume = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[10]));
-	launch_options.Friction = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[11]));
-	launch_options.initSpeed = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[12]));
-	launch_options.ErodeSpeed = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[13]));
-	launch_options.DepositSpeed = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[14]));
-	launch_options.EvaporateSpeed = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[15]));
-	launch_options.Gravity = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[16]));
-	launch_options.RainDropCount = stoul(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[17]));
+	launch_options.Seed = stoull(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[0]));
+	launch_options.Strength = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[1]));
+	launch_options.setErosionBrushRadius(make_uint2(slipRange.x, slipRange.y), stoul(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[2])));
+	launch_options.Inertia = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[3]));
+	launch_options.SedimentCapacityFactor = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[4]));
+	launch_options.minSedimentCapacity = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[5]));
+	launch_options.initWaterVolume = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[6]));
+	launch_options.minWaterVolume = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[7]));
+	launch_options.Friction = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[8]));
+	launch_options.initSpeed = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[9]));
+	launch_options.ErodeSpeed = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[10]));
+	launch_options.DepositSpeed = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[11]));
+	launch_options.EvaporateSpeed = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[12]));
+	launch_options.Gravity = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[13]));
+	launch_options.RainDropCount = stoul(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[14]));
 
 	//return the value
 	return launch_options;
 }
 
-STPSettings::STPSimplexNoiseSettings STPTerrainParaLoader::getSimplex2DNoiseParameters(const SIMPLE::SISection& section, glm::uvec2 mapSize) {
+STPSettings::STPSimplexNoiseSettings STPTerrainParaLoader::getSimplex2DNoiseParameters(const SIMPLE::SISection& section) {
 	auto noise_option = STPSettings::STPSimplexNoiseSettings();
 
 	noise_option.Seed = stoull(section(STPTerrainParaLoader::Simplex2DNoiseVariables[0]));
 	noise_option.Distribution = stoul(section(STPTerrainParaLoader::Simplex2DNoiseVariables[1]));
 	noise_option.Offset = stod(section(STPTerrainParaLoader::Simplex2DNoiseVariables[2]));
-	noise_option.Dimension = make_uint2(mapSize.x, mapSize.y);
 
 	return noise_option;
 }
@@ -168,8 +165,8 @@ STPSettings::STPSimplexNoiseSettings STPTerrainParaLoader::getSimplex2DNoisePara
 void STPTerrainParaLoader::loadBiomeParameters(const SIMPLE::SIStorage& biomeini) {
 	using namespace STPDiversity;
 	typedef STPDemo::STPBiomeRegistry BR;
-	auto load = [&biomeini](STPBiome& biome, string name) -> void {
-		STPSettings::STPBiomeSettings props;
+	auto load = [&biomeini](STPDemo::STPBiome& biome, string name) -> void {
+		STPDemo::STPBiomeSettings props;
 		const SIMPLE::SISection& curr_biome = biomeini[name];
 
 		//assigning props
@@ -177,8 +174,12 @@ void STPTerrainParaLoader::loadBiomeParameters(const SIMPLE::SIStorage& biomeini
 		props.ID = static_cast<STPDiversity::Sample>(stoul(curr_biome(STPTerrainParaLoader::BiomeVariables[1])));
 		props.Temperature = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[2]));
 		props.Precipitation = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[3]));
-		props.Depth = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[4]));
-		props.Variation = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[5]));
+		props.Scale = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[4]));
+		props.Octave = static_cast<unsigned int>(stoull(curr_biome(STPTerrainParaLoader::BiomeVariables[5])));
+		props.Persistence = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[6]));
+		props.Lacunarity = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[7]));
+		props.Depth = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[8]));
+		props.Variation = stof(curr_biome(STPTerrainParaLoader::BiomeVariables[9]));
 
 		//modify biome settings
 		biome.updateProperties(props);

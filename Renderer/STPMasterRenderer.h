@@ -46,6 +46,7 @@ using glm::value_ptr;
 #include "STPRendererCommander.h"
 #include "../World/STPWorldManager.h"
 #include "../World/Biome/Layers/STPAllLayers.h"
+#include "../World/Biome/Biomes/STPBiomefieldGenerator.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -194,10 +195,10 @@ namespace SuperTerrainPlus {
 			config.getMeshSettings() = renderPara_loader.get();
 			
 			const auto& chunk_settings = config.getChunkSettings();
-			std::future noisePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getSimplex2DNoiseParameters, std::ref(this->engineSettings["Generators"]), chunk_settings.MapSize);
+			std::future noisePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getSimplex2DNoiseParameters, std::ref(this->biomeSettings["simplex"]));
 			//not quite sure why heightfield_settings isn't got copied to the config, it just share the pointer
 			config.getHeightfieldSettings() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(this->engineSettings["2DTerrainINF"], chunk_settings.MapSize * chunk_settings.FreeSlipChunk);
-			config.getSimplexNoiseSettings() = noisePara_loader.get();
+			STPSettings::STPSimplexNoiseSettings simplex = noisePara_loader.get();
 			biomePara_loader.get();
 
 			assert(config.validate());
@@ -209,7 +210,8 @@ namespace SuperTerrainPlus {
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer, this->command_pool);
 			//setting world manager
 			this->world_manager.attachSettings(&config);
-			this->world_manager.attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_settings.MapSize, config.getSimplexNoiseSettings().Seed);
+			this->world_manager.attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_settings.MapSize, simplex.Seed);
+			this->world_manager.attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(simplex, chunk_settings.MapSize);
 			this->world_manager.linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 			if (!this->world_manager) {
 				//do not proceed if it fails

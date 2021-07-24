@@ -2,7 +2,7 @@
 #ifndef _STP_RAIN_DROP_SETTINGS_HPP_
 #define _STP_RAIN_DROP_SETTINGS_HPP_
 
-#include "STPSettings.hpp"
+#include "STPSetting.hpp"
 //CUDA Runtime
 #include <cuda_runtime.h>
 //System ADT
@@ -25,7 +25,7 @@ namespace SuperTerrainPlus {
 		 * Copy and move operation on this class is unsafe if device memory has been made available, and only shallow copy is performed.
 		 * To make device memory available across all copies, only call makeAvailable() function on the object that has been copied.
 		*/
-		struct STPRainDropSettings: public STPSettings {
+		struct STPRainDropSettings: public STPSetting {
 		private:
 
 			//Determine the radius of the droplet that can brush out sediment

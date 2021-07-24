@@ -6,7 +6,7 @@
 #include <map>
 #include <type_traits>
 //Biome
-#include "../STPBiome.h"
+#include "STPBiome.h"
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
@@ -14,8 +14,6 @@
 */
 namespace STPDemo {
 	using SuperTerrainPlus::STPDiversity::Sample;
-	using SuperTerrainPlus::STPDiversity::STPBiome;
-	using SuperTerrainPlus::STPSettings::STPBiomeSettings;
 
 	/**
 	 * @brief STPBiomeRegistry contains all registered biome. Each biome is assigned to an unique sampling id, which uniquely identify different biome

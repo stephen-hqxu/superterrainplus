@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_SETTINGS_HPP_
-#define _STP_SETTINGS_HPP_
+#ifndef _STP_SETTING_HPP_
+#define _STP_SETTING_HPP_
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -17,15 +17,15 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief A base class for each Super Terrain + settings
 		*/
-		struct STPSettings {
+		struct STPSetting {
 		protected:
 
 			/**
 			 * @brief Init settings
 			*/
-			STPSettings() = default;
+			STPSetting() = default;
 
-			~STPSettings() = default;
+			~STPSetting() = default;
 
 		public:
 
@@ -39,4 +39,4 @@ namespace SuperTerrainPlus {
 	}
 
 }
-#endif//_STP_SETTINGS_HPP_
+#endif//_STP_SETTING_HPP_

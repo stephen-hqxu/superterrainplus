@@ -2,7 +2,7 @@
 #ifndef _STP_SIMPLEX_NOISE_SETTINGS_HPP_
 #define _STP_SIMPLEX_NOISE_SETTINGS_HPP_
 
-#include "STPSettings.hpp"
+#include "../../Settings/STPSetting.hpp"
 //CUDA vector
 #include <vector_functions.h>
 
@@ -21,7 +21,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPSimplexNoiseSettings specifies the simplex noise generator parameter for the simplex noise functions
 		*/
-		struct STPSimplexNoiseSettings: public STPSettings {
+		struct STPSimplexNoiseSettings: public STPSetting {
 		public:
 
 			//Determine the seed used for the RNG
@@ -32,18 +32,15 @@ namespace SuperTerrainPlus {
 			//Determine the offset of the angle for the gradient table, in degree
 			//This will generally rotate the terrain
 			double Offset;
-			//The resolution of the generated noise map
-			uint2 Dimension;
 
 			/**
 			 * @brief Init the simplex noise settings with default values
 			*/
-			STPSimplexNoiseSettings() : STPSettings() {
+			STPSimplexNoiseSettings() : STPSetting() {
 				//Loading default value
 				this->Seed = 0u;
 				this->Distribution = 8u;
 				this->Offset = 45.0;
-				this->Dimension = make_uint2(0u, 0u);
 			}
 
 			~STPSimplexNoiseSettings() = default;

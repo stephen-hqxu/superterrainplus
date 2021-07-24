@@ -10,6 +10,7 @@
 #include "glm/vec2.hpp"
 //Settings
 #include "../Settings/STPConfigurations.hpp"
+#include "../GPGPU/SuperAlgorithm+/STPSimplexNoiseSettings.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -34,9 +35,9 @@ namespace SuperTerrainPlus {
 
 		static const std::string Procedural2DINFRenderingVariables[6];
 		static const std::string Procedural2DINFChunksVariables[14];
-		static const std::string Procedural2DINFGeneratorVariables[18];
+		static const std::string Procedural2DINFGeneratorVariables[15];
 		static const std::string Simplex2DNoiseVariables[3];
-		static const std::string BiomeVariables[6];
+		static const std::string BiomeVariables[10];
 
 	public:
 
@@ -65,10 +66,9 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief Load the simplex noise 2d parameter, stored in the ini file into STPSimplexNoise2DPara
 		 * @param section The INI section that contains the launch parameter
-		 * @param mapSize The size of the noise map that will be gernerated
 		 * @return The noise parameter,, if certain parameters are missing in the section, exception will eb thrown
 		*/
-		static STPSettings::STPSimplexNoiseSettings getSimplex2DNoiseParameters(const SIMPLE::SISection&, glm::uvec2);
+		static STPSettings::STPSimplexNoiseSettings getSimplex2DNoiseParameters(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load all biome parameters into STPBiomeRegistry

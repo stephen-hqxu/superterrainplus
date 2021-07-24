@@ -22,16 +22,9 @@ namespace SuperTerrainPlus {
 		struct STPHeightfieldSettings: public STPRainDropSettings {
 		public:
 
-			//Heightmap Parameters
-			//Determine the zooming of the noise map
-			float Scale;
-			//Control how many heightmap will be conbined
-			unsigned int Octave;
-			//Control how the amplitude will be changed in each octave. Range (0,1)
-			float Persistence;
-			//Control how the frequency will be changed in each octave.
-			float Lacunarity;
-
+			//Heightfield Generator Parameters
+			//the seed used for any random opertaion during generation
+			unsigned long long Seed;
 			//Normalmap Parameters
 			//Control the strength of z component of the normal map, the greater, the more the normal pointing towards the surface
 			float Strength;
@@ -42,10 +35,6 @@ namespace SuperTerrainPlus {
 			 * @brief Init STPHeightfieldSettings with defaults
 			*/
 			STPHeightfieldSettings() : STPRainDropSettings() {
-				this->Scale = 1.0f;
-				this->Octave = 1;
-				this->Persistence = 1.0f;
-				this->Lacunarity = 1.0f;
 				this->Strength = 1.0f;
 			}
 
@@ -57,10 +46,6 @@ namespace SuperTerrainPlus {
 				};
 				//check the raindrop parameter plus also heightmap parameter
 				return this->STPRainDropSettings::validate()
-					&& this->Scale > 0.0f
-					&& this->Octave != 0u
-					&& checkRange(this->Persistence, 0.0f, 1.0f)
-					&& this->Lacunarity >= 1.0f
 					&& this->Strength > 0.0f;
 			}
 		};

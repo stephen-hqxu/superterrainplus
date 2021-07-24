@@ -27,6 +27,7 @@ namespace SuperTerrainPlus {
 		//generators
 		std::unique_ptr<STPCompute::STPHeightfieldGenerator> ChunkGenerator;
 		std::unique_ptr<STPDiversity::STPBiomeFactory> BiomeFactory;
+		std::unique_ptr<STPCompute::STPDiversityGenerator> DiversityGenerator;
 		//world management agents
 		std::unique_ptr<STPChunkStorage> ChunkStorage;
 		std::unique_ptr<STPChunkProvider> ChunkProvider;
@@ -58,11 +59,21 @@ namespace SuperTerrainPlus {
 
 		/**
 		 * @brief Attach the biome factory with this world manager
+		 * @tpara Fac The instance of biome factory
 		 * @tparam ...Arg Argument to create a concrete instance of biome factory
 		 * @param arg... Parameter set to create a concrete instance of biome factory
 		*/
 		template<class Fac, typename... Arg>
 		void attachBiomeFactory(Arg&&...);
+
+		/**
+		 * @brief Attach the multi-biome heightfield generator
+		 * @tparam Div The instance of the generator
+		 * @tparam ...Arg Argument to create a concrete instance of diversity generator
+		 * @param arg... Parameters to create a concrete instance of diversity generator
+		*/
+		template<class Div, typename... Arg>
+		void attachDiversityGenerator(Arg&&...);
 
 		/**
 		 * @brief Link all pipeline stages together

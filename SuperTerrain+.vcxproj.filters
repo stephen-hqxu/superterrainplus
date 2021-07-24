@@ -34,6 +34,9 @@
     <Filter Include="World\Biome\Layers">
       <UniqueIdentifier>{2353ec15-8391-43e3-a1ac-96226e081e23}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GPGPU\SuperAlgorithm+">
+      <UniqueIdentifier>{56133246-7fa7-4fe8-a2d7-4c911e1ef37c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Helpers\STPStart.cpp">
@@ -66,9 +69,6 @@
     <ClCompile Include="World\Chunk\STPChunkProvider.cpp">
       <Filter>World\Chunk</Filter>
     </ClCompile>
-    <ClCompile Include="World\Biome\STPBiome.cpp">
-      <Filter>World\Biome</Filter>
-    </ClCompile>
     <ClCompile Include="World\Biome\STPLayer.cpp">
       <Filter>World\Biome</Filter>
     </ClCompile>
@@ -96,11 +96,14 @@
     <ClCompile Include="GPGPU\STPDeviceErrorHandler.cpp">
       <Filter>GPGPU</Filter>
     </ClCompile>
+    <ClCompile Include="World\Biome\Biomes\STPBiome.cpp">
+      <Filter>World\Biome\Biomes</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Biome\Biomes\STPBiomefieldGenerator.cpp">
+      <Filter>World\Biome\Biomes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GPGPU\STPPermutationsGenerator.cuh">
-      <Filter>GPGPU</Filter>
-    </ClInclude>
     <ClInclude Include="GPGPU\STPHeightfieldGenerator.cuh">
       <Filter>GPGPU</Filter>
     </ClInclude>
@@ -155,10 +158,7 @@
     <ClInclude Include="Settings\STPRainDropSettings.hpp">
       <Filter>Settings</Filter>
     </ClInclude>
-    <ClInclude Include="Settings\STPSettings.hpp">
-      <Filter>Settings</Filter>
-    </ClInclude>
-    <ClInclude Include="Settings\STPSimplexNoiseSettings.hpp">
+    <ClInclude Include="Settings\STPSetting.hpp">
       <Filter>Settings</Filter>
     </ClInclude>
     <ClInclude Include="Settings\STPHeightfieldSettings.hpp">
@@ -169,15 +169,6 @@
     </ClInclude>
     <ClInclude Include="Settings\STPConfigurations.hpp">
       <Filter>Settings</Filter>
-    </ClInclude>
-    <ClInclude Include="GPGPU\STPSimplexNoise.cuh">
-      <Filter>GPGPU</Filter>
-    </ClInclude>
-    <ClInclude Include="Settings\STPBiomeSettings.hpp">
-      <Filter>Settings</Filter>
-    </ClInclude>
-    <ClInclude Include="World\Biome\STPBiome.h">
-      <Filter>World\Biome</Filter>
     </ClInclude>
     <ClInclude Include="World\Biome\STPBiomeDefine.h">
       <Filter>World\Biome</Filter>
@@ -278,6 +269,27 @@
     <ClInclude Include="GPGPU\STPDiversityGenerator.hpp">
       <Filter>GPGPU</Filter>
     </ClInclude>
+    <ClInclude Include="World\Biome\Biomes\STPBiomefieldGenerator.h">
+      <Filter>World\Biome\Biomes</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Biomes\STPBiomeSettings.hpp">
+      <Filter>World\Biome\Biomes</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Biomes\STPBiome.h">
+      <Filter>World\Biome\Biomes</Filter>
+    </ClInclude>
+    <ClInclude Include="GPGPU\SuperAlgorithm+\STPPermutationsGenerator.cuh">
+      <Filter>GPGPU\SuperAlgorithm+</Filter>
+    </ClInclude>
+    <ClInclude Include="GPGPU\SuperAlgorithm+\STPSimplexNoise.cuh">
+      <Filter>GPGPU\SuperAlgorithm+</Filter>
+    </ClInclude>
+    <ClInclude Include="GPGPU\SuperAlgorithm+\STPSimplexNoiseSettings.hpp">
+      <Filter>GPGPU\SuperAlgorithm+</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Biome\Biomes\STPMultiHeightGenerator.cuh">
+      <Filter>World\Biome\Biomes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GLSL\STPsky.frag">
@@ -320,12 +332,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="GPGPU\STPSimplexNoise.cu">
-      <Filter>GPGPU</Filter>
-    </CudaCompile>
-    <CudaCompile Include="GPGPU\STPPermutationsGenerator.cu">
-      <Filter>GPGPU</Filter>
-    </CudaCompile>
     <CudaCompile Include="GPGPU\STPHeightfieldGenerator.cu">
       <Filter>GPGPU</Filter>
     </CudaCompile>
@@ -334,6 +340,15 @@
     </CudaCompile>
     <CudaCompile Include="Settings\STPRainDropSettings.cu">
       <Filter>Settings</Filter>
+    </CudaCompile>
+    <CudaCompile Include="GPGPU\SuperAlgorithm+\STPPermutationsGenerator.cu">
+      <Filter>GPGPU\SuperAlgorithm+</Filter>
+    </CudaCompile>
+    <CudaCompile Include="GPGPU\SuperAlgorithm+\STPSimplexNoise.cu">
+      <Filter>GPGPU\SuperAlgorithm+</Filter>
+    </CudaCompile>
+    <CudaCompile Include="World\Biome\Biomes\STPMultiHeightGenerator.cu">
+      <Filter>World\Biome\Biomes</Filter>
     </CudaCompile>
   </ItemGroup>
 </Project>

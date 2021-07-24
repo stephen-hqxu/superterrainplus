@@ -26,11 +26,16 @@
     <ClCompile Include="Helpers\STPStart.cpp" />
     <ClCompile Include="Helpers\STPTextureStorage.cpp" />
     <ClCompile Include="Helpers\STPThreadPool.cpp" />
+    <ClCompile Include="World\Biome\Biomes\STPBiome.cpp" />
+    <ClCompile Include="World\Biome\Biomes\STPBiomefieldGenerator.cpp">
+      <FileType>Document</FileType>
+    </ClCompile>
     <ClCompile Include="World\STPWorldManager.cpp" />
+    <CudaCompile Include="GPGPU\SuperAlgorithm+\STPPermutationsGenerator.cu" />
+    <CudaCompile Include="GPGPU\SuperAlgorithm+\STPSimplexNoise.cu" />
     <CudaCompile Include="Settings\STPRainDropSettings.cu">
       <FileType>Document</FileType>
     </CudaCompile>
-    <ClCompile Include="World\Biome\STPBiome.cpp" />
     <ClCompile Include="World\Biome\STPBiomeFactory.cpp" />
     <ClCompile Include="World\Biome\STPLayer.cpp" />
     <ClCompile Include="World\Biome\STPLayerCache.cpp" />
@@ -41,15 +46,17 @@
     <ClCompile Include="World\Chunk\STPChunkProvider.cpp" />
     <ClCompile Include="World\Chunk\STPChunkStorage.cpp" />
     <ClCompile Include="World\STPProcedural2DINF.cpp" />
+    <CudaCompile Include="World\Biome\Biomes\STPMultiHeightGenerator.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GPGPU\STPDeviceErrorHandler.h" />
     <ClInclude Include="GPGPU\STPDiversityGenerator.hpp" />
     <ClInclude Include="GPGPU\STPDiversityGeneratorRTC.h" />
     <ClInclude Include="GPGPU\STPHeightfieldGenerator.cuh" />
-    <ClInclude Include="GPGPU\STPPermutationsGenerator.cuh" />
     <ClInclude Include="GPGPU\STPRainDrop.cuh" />
-    <ClInclude Include="GPGPU\STPSimplexNoise.cuh" />
+    <ClInclude Include="GPGPU\SuperAlgorithm+\STPPermutationsGenerator.cuh" />
+    <ClInclude Include="GPGPU\SuperAlgorithm+\STPSimplexNoise.cuh" />
+    <ClInclude Include="GPGPU\SuperAlgorithm+\STPSimplexNoiseSettings.hpp" />
     <ClInclude Include="Helpers\STPMemoryPool.hpp" />
     <ClInclude Include="Helpers\STPSerialisationException.hpp" />
     <ClInclude Include="Helpers\STPTerrainParaLoader.h" />
@@ -60,15 +67,17 @@
     <ClInclude Include="Renderer\STPOffscreenRenderer.h" />
     <ClInclude Include="Renderer\STPRendererCommander.h" />
     <ClInclude Include="Renderer\STPSkyRenderer.h" />
-    <ClInclude Include="Settings\STPBiomeSettings.hpp" />
     <ClInclude Include="Settings\STPChunkSettings.hpp" />
     <ClInclude Include="Settings\STPConfigurations.hpp" />
     <ClInclude Include="Settings\STPHeightfieldSettings.hpp" />
     <ClInclude Include="Settings\STPMeshSettings.hpp" />
     <ClInclude Include="Settings\STPRainDropSettings.hpp" />
-    <ClInclude Include="Settings\STPSettings.hpp" />
-    <ClInclude Include="Settings\STPSimplexNoiseSettings.hpp" />
+    <ClInclude Include="Settings\STPSetting.hpp" />
+    <ClInclude Include="World\Biome\Biomes\STPBiome.h" />
+    <ClInclude Include="World\Biome\Biomes\STPBiomefieldGenerator.h" />
     <ClInclude Include="World\Biome\Biomes\STPBiomeRegistry.h" />
+    <ClInclude Include="World\Biome\Biomes\STPBiomeSettings.hpp" />
+    <ClInclude Include="World\Biome\Biomes\STPMultiHeightGenerator.cuh" />
     <ClInclude Include="World\Biome\Layers\STPAllLayers.h" />
     <ClInclude Include="World\Biome\Layers\STPBaseBiomeLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPClimateLayer.h" />
@@ -90,7 +99,6 @@
     <ClInclude Include="World\Biome\Layers\STPSmoothScaleLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPVoronoiLayer.h" />
     <ClInclude Include="World\Biome\Layers\STPXCrossLayer.h" />
-    <ClInclude Include="World\Biome\STPBiome.h" />
     <ClInclude Include="World\Biome\STPBiomeFactory.h" />
     <ClInclude Include="World\Biome\STPBiomeDefine.h" />
     <ClInclude Include="World\Biome\STPLayer.h" />
@@ -125,9 +133,7 @@
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="GPGPU\STPHeightfieldGenerator.cu" />
-    <CudaCompile Include="GPGPU\STPPermutationsGenerator.cu" />
     <CudaCompile Include="GPGPU\STPRainDrop.cu" />
-    <CudaCompile Include="GPGPU\STPSimplexNoise.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

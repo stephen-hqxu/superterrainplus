@@ -2,7 +2,7 @@
 #ifndef _STP_MESH_SETTINGS_HPP_
 #define _STP_MESH_SETTINGS_HPP_
 
-#include "STPSettings.hpp"
+#include "STPSetting.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -19,14 +19,14 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPMeshSettings stores parameters for rendering terrain mesh
 		*/
-		struct STPMeshSettings: public STPSettings {
+		struct STPMeshSettings: public STPSetting {
 		public:
 
 			/**
 			 * @brief STPTessellationSettings controls the range of the tessellation levels, as well as the min and max distance
 			 * where tessellation will become min and max
 			*/
-			struct STPTessellationSettings : public STPSettings {
+			struct STPTessellationSettings : public STPSetting {
 			public:
 
 				/**

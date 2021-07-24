@@ -1,6 +1,6 @@
 #include "STPBiome.h"
 
-using namespace SuperTerrainPlus::STPDiversity;
+using namespace STPDemo;
 
 using std::string;
 
@@ -8,7 +8,7 @@ STPBiome::STPBiome() {
 
 }
 
-STPBiome::STPBiome(const STPSettings::STPBiomeSettings& props) {
+STPBiome::STPBiome(const STPBiomeSettings& props) {
 	this->updateProperties(props);
 }
 
@@ -16,9 +16,13 @@ STPBiome::~STPBiome() {
 
 }
 
-void STPBiome::updateProperties(const STPSettings::STPBiomeSettings& props) {
+void STPBiome::updateProperties(const STPBiomeSettings& props) {
 	//copy the settings
 	this->BiomeSettings = props;
+}
+
+const STPBiomeSettings& STPBiome::getProperties() const {
+	return this->BiomeSettings;
 }
 
 Sample STPBiome::getID() const {

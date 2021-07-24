@@ -254,7 +254,7 @@ namespace SuperTerrainPlus {
 			 * @brief Link all previously compiled source file into a complete program.
 			 * If there has been a program currently associated with this generator, it will be destroied and the new one will be loaded.
 			 * @param linker_info The information for the linker
-			 * @input_type The input type to be used.
+			 * @param input_type The input type to be used. Currently only CU_JIT_INPUT_LIBRARY is supported
 			 * By using a low-level type, compile speed is faster.
 			 * By using a high-level type, more compiler and linker options are available.
 			*/

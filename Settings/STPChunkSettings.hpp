@@ -2,7 +2,7 @@
 #ifndef _STP_CHUNK_SETTINGS_HPP_
 #define _STP_CHUNK_SETTINGS_HPP_
 
-#include "STPSettings.hpp"
+#include "STPSetting.hpp"
 //GLM
 #include "glm/vec2.hpp"
 #include "glm/vec3.hpp"
@@ -22,7 +22,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPChunkSettings stores settings for each generated chunk. It will be mainly used by 2d terrain generator
 		*/
-		struct STPChunkSettings: public STPSettings {
+		struct STPChunkSettings: public STPSetting {
 		public:
 
 			//Determine the the X*Y number of unit planes, greater chunk size will give more chunk details
@@ -46,7 +46,7 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Init STPChunksPara with defualt values
 			*/
-			STPChunkSettings(): STPSettings() {
+			STPChunkSettings(): STPSetting() {
 				//fill with defaults
 				this->ChunkSize = glm::uvec2(0u);
 				this->MapSize = glm::uvec2(0u);

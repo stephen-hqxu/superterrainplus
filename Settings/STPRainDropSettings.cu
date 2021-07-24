@@ -7,7 +7,7 @@
 
 using namespace SuperTerrainPlus::STPSettings;
 
-__host__ STPRainDropSettings::STPRainDropSettings() : STPSettings() {
+__host__ STPRainDropSettings::STPRainDropSettings() : STPSetting() {
 	this->ErosionBrushRadius = 0u;
 	this->BrushSize = 0u;
 	this->RainDropCount = 0u;

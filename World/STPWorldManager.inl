@@ -11,4 +11,13 @@ inline void SuperTerrainPlus::STPWorldManager::attachBiomeFactory(Arg&&... arg) 
 	this->BiomeFactory = std::unique_ptr<STPBiomeFactory>(factory);
 }
 
+template<class Div, typename... Arg>
+inline void SuperTerrainPlus::STPWorldManager::attachDiversityGenerator(Arg&&... arg) {
+	using namespace STPCompute;
+	//create an instance of diversity generator
+	STPDiversityGenerator* diversity = dynamic_cast<STPDiversityGenerator*>(new Div(std::forward<Arg>(arg)...));
+	//assign
+	this->DiversityGenerator = std::unique_ptr<STPDiversityGenerator>(diversity);
+}
+
 #endif//_STP_WORLD_MANAGER_H_

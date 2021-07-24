@@ -29,9 +29,9 @@ namespace SuperTerrainPlus {
 			*/
 			STPDiversityGenerator() = default;
 
-			virtual ~STPDiversityGenerator() = default;
-
 		public:
+
+			virtual ~STPDiversityGenerator() = default;
 
 			/**
 			 * @brief Generate a biome-specific heightmaps
