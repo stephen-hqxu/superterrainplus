@@ -14,6 +14,9 @@ using std::make_pair;
 using std::string;
 using std::unique_ptr;
 using std::make_unique;
+using std::rethrow_exception;
+using std::current_exception;
+using std::exception_ptr;
 
 using namespace SuperTerrainPlus::STPCompute;
 
@@ -79,10 +82,11 @@ bool STPDiversityGeneratorRTC::detachArchive(string archive_name) {
 	return this->ExternalArchive.erase(archive_name) == 1ull;
 }
 
-STPDiversityGeneratorRTC::STPGeneratorLog STPDiversityGeneratorRTC::compileSource(string source_name, const string& source_code, const STPSourceInformation& source_info) {
+string STPDiversityGeneratorRTC::compileSource(string source_name, const string& source_code, const STPSourceInformation& source_info) {
 	nvrtcProgram program;
 	vector<const char*> external_header;
 	vector<const char*> external_header_code;
+	exception_ptr exptr;
 
 	//search each external header in our database
 	for (auto header_name = source_info.ExternalHeader.begin(); header_name != source_info.ExternalHeader.end(); header_name++) {
@@ -94,26 +98,38 @@ STPDiversityGeneratorRTC::STPGeneratorLog STPDiversityGeneratorRTC::compileSourc
 		}
 		//if not found, simply skip this header name
 	}
-	//external_header and external_header_code should have the same size
-	//create the program
-	STPcudaCheckErr(nvrtcCreateProgram(&program, source_code.c_str(), source_name.c_str(), static_cast<int>(external_header.size()), external_header_code.data(), external_header.data()));
+	try {
+		//external_header and external_header_code should have the same size
+		//create the program
+		STPcudaCheckErr(nvrtcCreateProgram(&program, source_code.c_str(), source_name.c_str(), static_cast<int>(external_header.size()), external_header_code.data(), external_header.data()));
 
-	//add name expression
-	for (int i = 0; i < source_info.NameExpression.size(); i++) {
-		STPcudaCheckErr(nvrtcAddNameExpression(program, source_info.NameExpression[i]));
+		//add name expression
+		for (int i = 0; i < source_info.NameExpression.size(); i++) {
+			STPcudaCheckErr(nvrtcAddNameExpression(program, source_info.NameExpression[i]));
+		}
+		//compile program
+		STPcudaCheckErr(nvrtcCompileProgram(program, static_cast<int>(source_info.Option.size()), source_info.Option.data()));
 	}
-	//compile program
-	STPcudaCheckErr(nvrtcCompileProgram(program, static_cast<int>(source_info.Option.size()), source_info.Option.data()));
-
-	//error message
+	catch (...) {
+		//we store the exception (if any)
+		exptr = current_exception();
+	}
+	//and get the error message, even if exception appears
 	size_t logSize;
 	STPcudaCheckErr(nvrtcGetProgramLogSize(program, &logSize));
-	STPGeneratorLog log = make_unique<char[]>(logSize);
-	STPcudaCheckErr(nvrtcGetProgramLog(program, log.get()));
+	string log;
+	//reserve only increase container size but does not actually give increase the array size, so we need to fill with resize()
+	log.resize(logSize);
+	STPcudaCheckErr(nvrtcGetProgramLog(program, log.data()));
 
-	//finally add the program to our database
+	if (exptr) {
+		//destroy the broken program
+		STPcudaCheckErr(nvrtcDestroyProgram(&program));
+		throw log;
+	}
+	//if no error appears add the program to our database
 	this->ComplicationDatabase.emplace(source_name, program);
-
+	//return any non-error log
 	return log;
 }
 
@@ -123,62 +139,96 @@ bool STPDiversityGeneratorRTC::discardSource(string source_name) {
 
 void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CUjitInputType input_type) {
 	CUlinkState linker;
-	//we can make sure the number of option flag is the same as that of value
-	//create a linker
-	STPcudaCheckErr(cuLinkCreate(static_cast<int>(linker_info.OptionFlag.size()), linker_info.OptionFlag.data(), linker_info.OptionFlagValue.data(), &linker));
+	exception_ptr exptr;
+	void* program_cubin = nullptr;
 
-	//for each entry, add compiled data to the linker
-	for (auto compiled = this->ComplicationDatabase.cbegin(); compiled != this->ComplicationDatabase.cend(); compiled++) {
-		nvrtcProgram curr_program = compiled->second;
-		//get assembly code
-		size_t codeSize;
-		STPcudaCheckErr(nvrtcGetPTXSize(curr_program, &codeSize));
-		unique_ptr<char[]> code = make_unique<char[]>(codeSize);
-		STPcudaCheckErr(nvrtcGetPTX(curr_program, code.get()));
-		//add this code to linker
-		
-		//retrieve individual linker option (if any)
-		auto curr_option = linker_info.DataOption.find(compiled->first);
-		if (curr_option == linker_info.DataOption.end()) {
-			//no individual flag for this file
-			STPcudaCheckErr(cuLinkAddData(linker, input_type, code.get(), codeSize, compiled->first.c_str(), 0, nullptr, nullptr));
+	try {
+		//we can make sure the number of option flag is the same as that of value
+		//create a linker
+		STPcudaCheckErr(cuLinkCreate(static_cast<int>(linker_info.OptionFlag.size()), linker_info.OptionFlag.data(), linker_info.OptionFlagValue.data(), &linker));
+
+		//for each entry, add compiled data to the linker
+		for (auto compiled = this->ComplicationDatabase.cbegin(); compiled != this->ComplicationDatabase.cend(); compiled++) {
+			nvrtcProgram curr_program = compiled->second;
+			//get assembly code
+			size_t codeSize;
+			unique_ptr<char[]> code;
+			switch (input_type) {
+			case CU_JIT_INPUT_CUBIN:
+				STPcudaCheckErr(nvrtcGetCUBINSize(curr_program, &codeSize));
+				code = make_unique<char[]>(codeSize);
+				STPcudaCheckErr(nvrtcGetCUBIN(curr_program, code.get()));
+				break;
+			case CU_JIT_INPUT_PTX:
+				STPcudaCheckErr(nvrtcGetPTXSize(curr_program, &codeSize));
+				code = make_unique<char[]>(codeSize);
+				STPcudaCheckErr(nvrtcGetPTX(curr_program, code.get()));
+				break;
+			default:
+				throw std::invalid_argument("unsupported input type");
+				break;
+			}
+
+			//add this code to linker
+			//retrieve individual linker option (if any)
+			auto curr_option = linker_info.DataOption.find(compiled->first);
+			if (curr_option == linker_info.DataOption.end()) {
+				//no individual flag for this file
+				STPcudaCheckErr(cuLinkAddData(linker, input_type, code.get(), codeSize, compiled->first.c_str(), 0, nullptr, nullptr));
+			}
+			else {
+				//flag exists
+				auto& individual_option = curr_option->second;
+				STPcudaCheckErr(cuLinkAddData(linker, input_type, code.get(), codeSize, compiled->first.c_str(),
+					static_cast<int>(individual_option.DataOptionFlag.size()), individual_option.DataOptionFlag.data(), individual_option.DataOptionFlagValue.data()));
+			}
 		}
-		else {
-			//flag exists
-			auto& individual_option = curr_option->second;
-			STPcudaCheckErr(cuLinkAddData(linker, input_type, code.get(), codeSize, compiled->first.c_str(),
-				static_cast<int>(individual_option.DataOptionFlag.size()), individual_option.DataOptionFlag.data(), individual_option.DataOptionFlagValue.data()));
+
+		//for each archive, add to the linker
+		for (auto archive = this->ExternalArchive.cbegin(); archive != this->ExternalArchive.cend(); archive++) {
+			auto curr_option = linker_info.DataOption.find(archive->first);
+			if (curr_option == linker_info.DataOption.end()) {
+				STPcudaCheckErr(cuLinkAddFile(linker, CU_JIT_INPUT_LIBRARY, archive->second.c_str(), 0, nullptr, nullptr));
+			}
+			else {
+				auto& archive_option = curr_option->second;
+				STPcudaCheckErr(cuLinkAddFile(linker, CU_JIT_INPUT_LIBRARY, archive->second.c_str(),
+					static_cast<int>(archive_option.DataOptionFlag.size()), archive_option.DataOptionFlag.data(), archive_option.DataOptionFlagValue.data()));
+			}
 		}
+
+		//linking
+		size_t cubinSize;
+		STPcudaCheckErr(cuLinkComplete(linker, &program_cubin, &cubinSize));
+	}
+	catch (...) {
+		exptr = current_exception();
+		goto cleanUp;
+	}
+	
+	//if linking is okay...
+	try {
+		//create module
+		if (this->ModuleLoadingStatus) {
+			//unload previously loaded module
+			STPcudaCheckErr(cuModuleUnload(this->GeneratorProgram));
+		}
+		STPcudaCheckErr(cuModuleLoadDataEx(&this->GeneratorProgram, program_cubin,
+			static_cast<int>(linker_info.ModuleOptionFlag.size()), linker_info.ModuleOptionFlag.data(), linker_info.ModuleOptionFlagValue.data()));
+		this->ModuleLoadingStatus = true;
+	}
+	catch (...) {
+		exptr = current_exception();
 	}
 
-	//for each archive, add to the linker
-	for (auto archive = this->ExternalArchive.cbegin(); archive != this->ExternalArchive.cend(); archive++) {
-		auto curr_option = linker_info.DataOption.find(archive->first);
-		if (curr_option == linker_info.DataOption.end()) {
-			STPcudaCheckErr(cuLinkAddFile(linker, CU_JIT_INPUT_LIBRARY, archive->second.c_str(), 0, nullptr, nullptr));
-		}
-		else {
-			auto& archive_option = curr_option->second;
-			STPcudaCheckErr(cuLinkAddFile(linker, CU_JIT_INPUT_LIBRARY, archive->second.c_str(),
-				static_cast<int>(archive_option.DataOptionFlag.size()), archive_option.DataOptionFlag.data(), archive_option.DataOptionFlagValue.data()));
-		}
-	}
-
-	//linking
-	size_t cubinSize;
-	void* program_cubin;
-	STPcudaCheckErr(cuLinkComplete(linker, &program_cubin, &cubinSize));
-	//create module
-	if (this->ModuleLoadingStatus) {
-		//unload previously loaded module
-		STPcudaCheckErr(cuModuleUnload(this->GeneratorProgram));
-	}
-	STPcudaCheckErr(cuModuleLoadDataEx(&this->GeneratorProgram, program_cubin, 
-		static_cast<int>(linker_info.ModuleOptionFlag.size()), linker_info.ModuleOptionFlag.data(), linker_info.ModuleOptionFlagValue.data()));
-	this->ModuleLoadingStatus = true;
-
-	//finally
+	//delete the link regardlessly
+	cleanUp:
 	STPcudaCheckErr(cuLinkDestroy(linker));
+	if (exptr) {
+		//throw any module exception
+		rethrow_exception(exptr);
+	}
+	
 }
 
 bool STPDiversityGeneratorRTC::retrieveSourceLoweredName(string source_name, STPLoweredName& expression) const {
@@ -188,9 +238,14 @@ bool STPDiversityGeneratorRTC::retrieveSourceLoweredName(string source_name, STP
 		return false;
 	}
 	nvrtcProgram program = complication->second;
-	//get lowered name for each expression
-	for (auto& expr : expression) {
-		STPcudaCheckErr(nvrtcGetLoweredName(program, expr.first.c_str(), &expr.second));
+	try {
+		//get lowered name for each expression
+		for (auto& expr : expression) {
+			STPcudaCheckErr(nvrtcGetLoweredName(program, expr.first.c_str(), &expr.second));
+		}
+	}
+	catch (...) {
+		rethrow_exception(current_exception());
 	}
 
 	return true;

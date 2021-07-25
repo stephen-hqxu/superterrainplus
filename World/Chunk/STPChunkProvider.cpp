@@ -44,7 +44,7 @@ void STPChunkProvider::computeHeightmap(STPChunk* current_chunk, vec2 chunkPos) 
 	STPHeightfieldGenerator::STPMapStorage maps;
 	maps.Biomemap.reserve(1ull);
 	maps.Heightmap32F.reserve(1ull);
-	maps.Biomemap.push_back(current_chunk->getBiomemap());
+	maps.Biomemap.push_back(const_cast<const STPDiversity::Sample*>(current_chunk->getBiomemap()));
 	maps.Heightmap32F.push_back(current_chunk->getHeightmap());
 	maps.HeightmapOffset = offset;
 	const STPHeightfieldGenerator::STPGeneratorOperation op = STPHeightfieldGenerator::HeightmapGeneration;

@@ -4,6 +4,7 @@
 #define STP_EXCEPTION_ON_ERROR
 #include "STPDeviceErrorHandler.h"
 
+#include <type_traits>
 #include <memory>
 //CUDA Device Parameters
 #include <device_launch_parameters.h>
@@ -101,8 +102,9 @@ __host__ void blockcopy_d2h(vector<T*>& dest, T* host, T* device, size_t block_s
  * @param element_count - The number of pixel in one chunk
  * @param stream - Async CUDA stream
 */
-template<typename T>
-__host__ void blockcopy_h2d(T* device, T* host, const vector<T*>& source, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
+template<class Vec, typename T>
+__host__ void blockcopy_h2d(T* device, T* host, const Vec& source, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
+	static_assert(std::is_same<Vec, vector<T*>>::value || std::is_same<Vec, vector<const T*>>::value, "Type 'Vec' must be vector<T*> or vector<const T*>");
 	unsigned int base = 0u;
 	for (const T* map : source) {
 		STPcudaCheckErr(cudaMemcpyAsync(host + base, map, individual_size, cudaMemcpyHostToHost, stream));
@@ -189,9 +191,10 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	dim3 Dimgridsize, Dimblocksize;
 	//allocating spaces for texture, storing on device
 	//this is the size for a texture in one channel
-	const unsigned int num_pixel = this->MapSize.x * this->MapSize.y;
-	const unsigned int map_size = num_pixel * sizeof(float);
-	const unsigned int map16ui_size = num_pixel * sizeof(unsigned short) * 4u;
+	const unsigned int num_pixel = this->MapSize.x * this->MapSize.y,
+		map_size = num_pixel * sizeof(float),
+		map16ui_size = num_pixel * sizeof(unsigned short) * 4u,
+		mapbiome_size = num_pixel * sizeof(STPDiversity::Sample);
 	//if free-slip erosion is disabled, it should be one.
 	//if enabled, it should be the product of two dimension in free-slip chunk.
 	const unsigned int freeslip_chunk_total = args.Heightmap32F.size();
@@ -202,6 +205,9 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	//heightmap
 	float* heightfield_freeslip_d = nullptr, *heightfield_freeslip_h = nullptr;
 	unsigned short* heightfield_formatted_d = nullptr, *heightfield_formatted_h = nullptr;
+	//biomemap
+	STPDiversity::Sample* biomefield_freeslip_d = nullptr, *biomefield_freeslip_h = nullptr;
+	const unsigned int mapbiome_freeslip_size = freeslip_pixel * sizeof(STPDiversity::Sample);
 
 	//Retrieve all flags
 	auto isFlagged = []__host__(STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
@@ -231,6 +237,11 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	if (flag[2]) {
 		STPcudaCheckErr(cudaMallocFromPoolAsync(&heightfield_formatted_d, map16ui_freeslip_size, this->MapCacheDevice, stream));
 	}
+	//Sample
+	if (flag[0]) {
+		//we need biomemap in order to generate heightmap
+		STPcudaCheckErr(cudaMallocFromPoolAsync(&biomefield_freeslip_d, mapbiome_freeslip_size, this->MapCacheDevice, stream));
+	}
 	//Host
 	{
 		unique_lock<mutex> lock(this->MapCachePinned_lock);
@@ -240,13 +251,24 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		if (flag[2]) {
 			heightfield_formatted_h = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size));
 		}
+		//Sample
+		if (flag[0]) {
+			biomefield_freeslip_h = reinterpret_cast<STPDiversity::Sample*>(this->MapCachePinned.allocate(mapbiome_freeslip_size));
+		}
 	}
 	
 	//Flag: HeightmapGeneration
 	if (flag[0]) {
 		//generate a new heightmap using diversity generator and store it to the output later
-		//TODO: copy biome map to device
-		this->generateHeightmap(heightfield_freeslip_d, nullptr, args.HeightmapOffset, stream);
+		//copy biome map to device
+		try {
+			blockcopy_h2d(biomefield_freeslip_d, biomefield_freeslip_h, args.Biomemap, mapbiome_freeslip_size, mapbiome_size, num_pixel, stream);
+		}
+		catch (...) {
+			exp = std::current_exception();
+			goto freeUp;
+		}
+		this->generateHeightmap(heightfield_freeslip_d, biomefield_freeslip_d, args.HeightmapOffset, stream);
 	}
 	else {
 		//no generation, use existing
@@ -255,6 +277,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		}
 		catch (...) {
 			exp = std::current_exception();
+			goto freeUp;
 		}
 		
 	}
@@ -290,6 +313,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 				}
 				catch (...) {
 					exp = std::current_exception();
+					goto freeUp;
 				}
 			}
 			//generate normalmap from heightmap and format into rendering buffer
@@ -317,13 +341,17 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		exp = std::current_exception();
 	}
 
-	//Finish up the rest, clear up when the device is ready
+	//Finish up the rest, clear up all allocations
+	freeUp:
 	//nullptr means not allocated
 	if (heightfield_freeslip_d != nullptr) {
 		STPcudaCheckErr(cudaFreeAsync(heightfield_freeslip_d, stream));
 	}
 	if (heightfield_formatted_d != nullptr) {
 		STPcudaCheckErr(cudaFreeAsync(heightfield_formatted_d, stream));
+	}
+	if (biomefield_freeslip_d != nullptr) {
+		STPcudaCheckErr(cudaFreeAsync(biomefield_freeslip_d, stream));
 	}
 	//waiting for finish
 	STPcudaCheckErr(cudaStreamSynchronize(stream));
@@ -339,6 +367,9 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		}
 		if (heightfield_formatted_h != nullptr) {
 			this->MapCachePinned.deallocate(map16ui_freeslip_size, heightfield_formatted_h);
+		}
+		if (biomefield_freeslip_h != nullptr) {
+			this->MapCachePinned.deallocate(mapbiome_freeslip_size, biomefield_freeslip_h);
 		}
 	}
 

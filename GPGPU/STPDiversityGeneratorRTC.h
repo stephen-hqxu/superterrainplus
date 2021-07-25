@@ -32,8 +32,6 @@ namespace SuperTerrainPlus {
 		class STPDiversityGeneratorRTC : public STPDiversityGenerator {
 		protected:
 
-			//Log message from the generator compiler and linker
-			typedef std::unique_ptr<char[]> STPGeneratorLog;
 			//Store multiple string arguments that can be recognised by CUDA functions
 			typedef std::vector<const char*> STPStringArgument;
 			//CUDA JIT flag for driver module
@@ -238,9 +236,10 @@ namespace SuperTerrainPlus {
 			 * @param source_name The name of the source file
 			 * @param source_code The actual code of the source
 			 * @param source_info The information for the compiler.
-			 * @return The log of the compiler
+			 * @return log The log output from the compiler.
+			 * If exception is thrown before complication, no log will be generated
 			*/
-			STPGeneratorLog compileSource(std::string, const std::string&, const STPSourceInformation&);
+			std::string compileSource(std::string, const std::string&, const STPSourceInformation&);
 
 			/**
 			 * @brief Discard previously compiled source file.
@@ -253,8 +252,9 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Link all previously compiled source file into a complete program.
 			 * If there has been a program currently associated with this generator, it will be destroied and the new one will be loaded.
+			 * If linking error occurs, the existing module will not be modified
 			 * @param linker_info The information for the linker
-			 * @param input_type The input type to be used. Currently only CU_JIT_INPUT_LIBRARY is supported
+			 * @param input_type The input type to be used. Currently only CU_JIT_INPUT_PTX, CU_JIT_INPUT_CUBIN is supported
 			 * By using a low-level type, compile speed is faster.
 			 * By using a high-level type, more compiler and linker options are available.
 			*/
