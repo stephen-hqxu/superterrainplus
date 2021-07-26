@@ -1,8 +1,13 @@
-#Compiled files shouldn't be added
-x64/
-#Research paper shouldn't be added either
+#Compilication results
+build/
+out/
+#External libraries will be provided separately
+external/
+
+#Resources shouldn't be added either
 Resource/
-#Save folder
+#Local map save folder
 Saved/
 
+#Visual Studio files
 .vs/
