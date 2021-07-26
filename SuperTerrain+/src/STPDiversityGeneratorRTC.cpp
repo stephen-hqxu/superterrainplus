@@ -3,7 +3,7 @@
 #include <GPGPU/STPDiversityGeneratorRTC.h>
 
 #define STP_EXCEPTION_ON_ERROR
-#include <GPGPU/STPDeviceErrorHandler.h>
+#include <STPDeviceErrorHandler.h>
 #include <stdexcept>
 
 using std::vector;

@@ -2,7 +2,7 @@
 #include <GPGPU/STPHeightfieldGenerator.cuh>
 
 #define STP_EXCEPTION_ON_ERROR
-#include <GPGPU/STPDeviceErrorHandler.h>
+#include <STPDeviceErrorHandler.h>
 
 #include <type_traits>
 #include <memory>

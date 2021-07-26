@@ -1,8 +1,8 @@
-#include <GPGPU/SuperAlgorithm+/STPPermutationsGenerator.cuh>
+#include "STPPermutationsGenerator.cuh"
 #include <memory>
 #include <stdexcept>
 
-#include <GPGPU/STPDeviceErrorHandler.h>
+#include <STPDeviceErrorHandler.h>
 
 static constexpr double PI = 3.14159265358979323846;
 //Initial table, will be shuffled later

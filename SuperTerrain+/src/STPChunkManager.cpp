@@ -1,7 +1,7 @@
 #pragma warning(disable : 4267)//implicit conversion may lose data wwarning (actually it won't)
 #include <World/Chunk/STPChunkManager.h>
 
-#include <GPGPU/STPDeviceErrorHandler.h>
+#include <STPDeviceErrorHandler.h>
 
 using glm::uvec2;
 using glm::ivec2;

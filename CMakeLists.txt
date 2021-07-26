@@ -14,9 +14,6 @@ include(OptionList)
 # setup compilers
 include(SetupEnvironment)
 
+set(STP_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/external)
 # add main STP engine
 add_subdirectory(SuperTerrain+)
-
-# copy dll to output folder
-file(GLOB STP_DLL_DEPENDENCIES ${CMAKE_SOURCE_DIR}/external/dll)
-file(COPY ${STP_DLL_DEPENDENCIES} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})

@@ -3,7 +3,7 @@
 #define _STP_MULTIHEIGHT_GENERATOR_CUH_
 
 //Simplex Noise
-#include "../../../GPGPU/SuperAlgorithm+/STPSimplexNoise.cuh"
+#include <STPSimplexNoise.cuh>
 #include "STPBiomeSettings.hpp"
 //CUDA
 #include "cuda_runtime.h"

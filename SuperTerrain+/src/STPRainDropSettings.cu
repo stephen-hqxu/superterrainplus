@@ -1,7 +1,7 @@
 #pragma once
 #include <Settings/STPRainDropSettings.hpp>
 
-#include <GPGPU/STPDeviceErrorHandler.h>
+#include <STPDeviceErrorHandler.h>
 
 #include <algorithm>
 

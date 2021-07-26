@@ -1,7 +1,7 @@
 #pragma once
-#include <GPGPU/SuperAlgorithm+/STPSimplexNoise.cuh>
+#include "STPSimplexNoise.cuh"
 
-#include <GPGPU/STPDeviceErrorHandler.h>
+#include <STPDeviceErrorHandler.h>
 
 using namespace SuperTerrainPlus::STPCompute;
 

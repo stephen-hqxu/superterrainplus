@@ -1,19 +1,24 @@
 set(STP_MAIN_ENGINE "SuperTerrain+")
+set(STP_ERROR_ENGINE "SuperError+")
+set(STP_ALGORITHM_ENGINE "SuperAlgorithm+")
 # add SuperTerrain+ source codes to target
 add_subdirectory(src)
+# add SuperError+ source code
+add_subdirectory(${STP_ERROR_ENGINE})
+# Add SuperAlgorithm+
+add_subdirectory(${STP_ALGORITHM_ENGINE})
 
-# target setup
-target_link_directories(${STP_MAIN_ENGINE}
-PRIVATE ${CMAKE_SOURCE_DIR}/external/lib
-)
+# dependencies
 target_include_directories(${STP_MAIN_ENGINE}
-PRIVATE ${CMAKE_SOURCE_DIR}/external/include
-PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+PRIVATE ${STP_EXTERNAL_DIR}/include
+PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/${STP_ERROR_ENGINE} ${CMAKE_CURRENT_SOURCE_DIR}/${STP_ALGORITHM_ENGINE}
+)
+target_include_directories(${STP_ALGORITHM_ENGINE}
+PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/${STP_ERROR_ENGINE} ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# link lib
+# link error handling engine target
 target_link_libraries(${STP_MAIN_ENGINE}
-PRIVATE CUDA::cudart CUDA::cuda_driver CUDA::nvrtc opengl32.lib glfw3.lib SglToolkit.lib SIMPLE.lib
+# TODO: After we split demo and the actual program, we don't need to link SuperAlgorithm+, this is a library left for developer
+PRIVATE ${STP_ERROR_ENGINE} ${STP_ALGORITHM_ENGINE}
 )
-
-# TODO: copy GLSL code to output

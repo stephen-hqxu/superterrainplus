@@ -2,7 +2,7 @@
 #ifndef _STP_SIMPLEX_NOISE_SETTINGS_HPP_
 #define _STP_SIMPLEX_NOISE_SETTINGS_HPP_
 
-#include "../../Settings/STPSetting.hpp"
+#include <Settings/STPSetting.hpp>
 //CUDA vector
 #include <vector_functions.h>
 

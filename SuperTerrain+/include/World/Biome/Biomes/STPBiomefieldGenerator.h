@@ -5,7 +5,7 @@
 #include <glm/vec2.hpp>
 //Multi-biome Heightfield Generator
 #include "../../../GPGPU/STPDiversityGenerator.hpp"
-#include "../../../GPGPU/SuperAlgorithm+/STPSimplexNoise.cuh"
+#include <STPSimplexNoise.cuh>
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.

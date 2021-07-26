@@ -4,7 +4,7 @@
 //CUDA
 #include <device_launch_parameters.h>
 //Error Handling
-#include <GPGPU/STPDeviceErrorHandler.h>
+#include <STPDeviceErrorHandler.h>
 
 using namespace SuperTerrainPlus::STPCompute;
 using namespace STPDemo;

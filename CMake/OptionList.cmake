@@ -4,3 +4,4 @@ set(STP_CUDA_ARCH "75" CACHE STRING "Target GPU architecture for CUDA code gener
 option(STP_CUDA_VERBOSE_PTX "Use nvcc compiler flag --ptxas-options=-v for detailed PTX output" OFF)
 # Others
 option(STP_ENGINE_BUILD_SHARED "Build shared library instead of static for SuperTerrain+ main engine" OFF)
+option(STP_USE_AVX2 "Enable AVX2 instruction sets on vector operations" ON)
