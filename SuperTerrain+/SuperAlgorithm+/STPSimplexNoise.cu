@@ -1,5 +1,5 @@
 #pragma once
-#include "STPSimplexNoise.cuh"
+#include <STPSimplexNoise.cuh>
 
 #include <STPDeviceErrorHandler.h>
 

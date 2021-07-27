@@ -5,5 +5,5 @@ STPSimplexNoise.cu
 
 # link CUDA library
 target_link_libraries(${STP_ALGORITHM_ENGINE}
-PRIVATE CUDA::cudart
+PUBLIC CUDA::cudart
 )

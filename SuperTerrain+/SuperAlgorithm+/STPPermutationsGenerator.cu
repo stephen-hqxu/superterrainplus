@@ -1,4 +1,4 @@
-#include "STPPermutationsGenerator.cuh"
+#include <STPPermutationsGenerator.cuh>
 #include <memory>
 #include <stdexcept>
 

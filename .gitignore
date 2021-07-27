@@ -2,12 +2,10 @@
 build/
 out/
 #External libraries will be provided separately
-external/
+External/
 
-#Resources shouldn't be added either
-Resource/
-#Local map save folder
-Saved/
+#Research papers
+Research/
 
 #Visual Studio files
 .vs/

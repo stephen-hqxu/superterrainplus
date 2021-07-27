@@ -14,6 +14,8 @@ include(OptionList)
 # setup compilers
 include(SetupEnvironment)
 
-set(STP_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/external)
+set(STP_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/External)
 # add main STP engine
 add_subdirectory(SuperTerrain+)
+# add demo program to show how STP engine works
+add_subdirectory(SuperDemo+)
