@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_PERMUTATIONS_GENERATOR_CUH_
-#define _STP_PERMUTATIONS_GENERATOR_CUH_
+#ifndef _STP_PERMUTATION_GENERATOR_CUH_
+#define _STP_PERMUTATION_GENERATOR_CUH_
 
 //CUDA Runtime
 #include <cuda_runtime.h>
@@ -21,7 +21,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief Generate a random permutaion and gradient table for simplex noise generator
 		*/
-		class STPPermutationsGenerator {
+		class STPPermutationGenerator {
 		private:
 
 			//TODO Choose your prefered rng here!!!
@@ -29,7 +29,7 @@ namespace SuperTerrainPlus {
 
 			//Generated permutation table, it will be shuffled by rng
 			//stored on device
-			unsigned char* PERMUTATIONS = nullptr;
+			unsigned char* PERMUTATION = nullptr;
 
 			//Gradient table for simplex noise 2D, the modular of the offset will equal to 1.0
 			double* GRADIENT2D = nullptr;
@@ -45,19 +45,19 @@ namespace SuperTerrainPlus {
 			 * @param distribution Set how many gradient stretch will have, default is 8, each of them will be 45 degree apart
 			 * @param offset Set the offset of the angle for the gradient table, in degree
 			*/
-			__host__ STPPermutationsGenerator(unsigned long long, unsigned int = 8u, double = 0.0);
+			__host__ STPPermutationGenerator(unsigned long long, unsigned int = 8u, double = 0.0);
 
 			//Copy permutation generator, deep copy for generated gradient and permutation will be performed.
-			__host__ STPPermutationsGenerator(const STPPermutationsGenerator&) = delete;
+			__host__ STPPermutationGenerator(const STPPermutationGenerator&) = delete;
 
-			__host__ STPPermutationsGenerator(STPPermutationsGenerator&&) = delete;
+			__host__ STPPermutationGenerator(STPPermutationGenerator&&) = delete;
 
 			//Copy the permutation to the destination class, deep copy for generated gradient and permutation will be performed.
-			__host__ STPPermutationsGenerator& operator=(const STPPermutationsGenerator&) = delete;
+			__host__ STPPermutationGenerator& operator=(const STPPermutationGenerator&) = delete;
 
-			__host__ STPPermutationsGenerator& operator=(STPPermutationsGenerator&&) = delete;
+			__host__ STPPermutationGenerator& operator=(STPPermutationGenerator&&) = delete;
 
-			__host__ ~STPPermutationsGenerator();
+			__host__ ~STPPermutationGenerator();
 
 			/**
 			 * @brief Return the randomly generated permutation element from the class generated table.
@@ -83,4 +83,4 @@ namespace SuperTerrainPlus {
 		};
 	}
 }
-#endif//_STP_PERMUTATIONS_GENERATOR_CUH_
+#endif//_STP_PERMUTATION_GENERATOR_CUH_

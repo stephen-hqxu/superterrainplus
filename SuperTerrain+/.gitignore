@@ -1,2 +1,2 @@
 # exclude CMake configure file output
-CoreInterface/STPDefine.h
+CoreInterface/STPCoreDefine.h

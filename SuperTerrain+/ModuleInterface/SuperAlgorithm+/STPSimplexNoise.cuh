@@ -3,7 +3,7 @@
 #define _STP_SIMPLEX_NOISE_CUH_
 
 //Helpers and Tools
-#include "STPPermutationsGenerator.cuh"
+#include "STPPermutationGenerator.cuh"
 //Settings
 #include "STPSimplexNoiseSetting.hpp"
 
@@ -32,7 +32,7 @@ namespace SuperTerrainPlus {
 		 * - Simplex noise has a well-defined and continuous gradient (almost) everywhere that can be computed quite cheaply.
 		 * - Simplex noise is easy to implement in hardware.
 		*/
-		class STPSimplexNoise : private STPPermutationsGenerator{
+		class STPSimplexNoise : private STPPermutationGenerator {
 		public:
 
 			/**

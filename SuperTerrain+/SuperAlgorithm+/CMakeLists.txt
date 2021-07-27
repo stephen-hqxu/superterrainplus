@@ -1,5 +1,5 @@
 add_library(${STP_ALGORITHM_ENGINE} STATIC
-STPPermutationsGenerator.cu
+STPPermutationGenerator.cu
 STPSimplexNoise.cu
 )
 

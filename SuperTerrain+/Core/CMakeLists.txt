@@ -22,10 +22,6 @@ if(${STP_ENGINE_BUILD_SHARED})
 	set_target_properties(${STP_MAIN_ENGINE} PROPERTIES DEFINE_SYMBOL SUPERTERRAINPLUS_EXPORTS)
 else()
 	add_library(${STP_MAIN_ENGINE} STATIC ${MAIN_ENGINE_SOURCE})
-	# inhibit dll export definition
-	target_compile_definitions(${STP_MAIN_ENGINE}
-	PRIVATE SUPERTERRAINPLUS_USE_STATIC
-	)
 endif()
 
 # glad.c contains API entries to OpenGL functions

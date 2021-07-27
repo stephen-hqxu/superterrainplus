@@ -14,11 +14,18 @@ World/STPWorldManager.cpp
 World/Biomes/STPMultiHeightGenerator.cu
 )
 
+if(MSVC)
+	# set VS debuging directory
+	set_target_properties(${STP_DEMO_PROGRAM} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>)
+endif()
+
 target_link_directories(${STP_DEMO_PROGRAM}
 PRIVATE ${STP_EXTERNAL_DIR}/lib
 )
+# core and modular engines are included automatically since target include is public
+# cuda related static libraries are also added by public target
 target_include_directories(${STP_DEMO_PROGRAM}
-PRIVATE ${CMAKE_SOURCE_DIR}/SuperTerrain+/CoreInterface ${CMAKE_SOURCE_DIR}/SuperTerrain+/ModuleInterface
+PRIVATE ${STP_EXTERNAL_DIR}/include
 )
 
 target_link_libraries(${STP_DEMO_PROGRAM}
@@ -32,6 +39,14 @@ TARGET ${STP_DEMO_PROGRAM} POST_BUILD
 COMMAND ${CMAKE_COMMAND} -E copy_directory
 ${CMAKE_CURRENT_SOURCE_DIR}/GLSL
 $<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>/GLSL
+)
+
+# copy resource
+add_custom_command(
+TARGET ${STP_DEMO_PROGRAM} POST_BUILD      
+COMMAND ${CMAKE_COMMAND} -E copy_directory
+${CMAKE_CURRENT_SOURCE_DIR}/Resource
+$<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>/Resource
 )
 
 # copy dll

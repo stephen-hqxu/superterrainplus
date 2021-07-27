@@ -38,7 +38,7 @@ __host__ static void initialise() {
 __device__ __forceinline__ double dot2D(double, double, double, double);
 
 __host__ STPSimplexNoise::STPSimplexNoise(const STPEnvironment::STPSimplexNoiseSetting* const noise_settings)
-	: STPPermutationsGenerator(noise_settings->Seed, noise_settings->Distribution, noise_settings->Offset) {
+	: STPPermutationGenerator(noise_settings->Seed, noise_settings->Distribution, noise_settings->Offset) {
 	initialise();
 }
 

@@ -1,4 +1,4 @@
-#include <STPPermutationsGenerator.cuh>
+#include <STPPermutationGenerator.cuh>
 #include <memory>
 #include <stdexcept>
 
@@ -42,7 +42,7 @@ using std::shuffle;
 
 using namespace SuperTerrainPlus::STPCompute;
 
-__host__ STPPermutationsGenerator::STPPermutationsGenerator(unsigned long long seed, unsigned int distribution, double offset) : GRADIENT2D_SIZE(distribution) {
+__host__ STPPermutationGenerator::STPPermutationGenerator(unsigned long long seed, unsigned int distribution, double offset) : GRADIENT2D_SIZE(distribution) {
 	if (distribution == 0u) {
 		throw std::invalid_argument("Distribution must be greater than 0");
 	}
@@ -55,17 +55,17 @@ __host__ STPPermutationsGenerator::STPPermutationsGenerator(unsigned long long s
 	//I was thinking about unified memory but we don't need the memory on host after the init process
 	//so using pure device memory will be faster to access than unified one
 	//allocation
-	unsigned char PERMUTATIONS_HOST[512];
+	unsigned char PERMUTATION_HOST[512];
 	//copy one... copy first
-	copy(begin(INIT_TABLE), end(INIT_TABLE), PERMUTATIONS_HOST);
+	copy(begin(INIT_TABLE), end(INIT_TABLE), PERMUTATION_HOST);
 	//shuffle first, the two copy must be the same
-	shuffle(PERMUTATIONS_HOST, PERMUTATIONS_HOST + 256, rng);
+	shuffle(PERMUTATION_HOST, PERMUTATION_HOST + 256, rng);
 	//copy this the shuffled result
-	copy(PERMUTATIONS_HOST, PERMUTATIONS_HOST + 256, PERMUTATIONS_HOST + 256);
+	copy(PERMUTATION_HOST, PERMUTATION_HOST + 256, PERMUTATION_HOST + 256);
 		
 	//now copy the host table to the device
-	STPcudaCheckErr(cudaMalloc(&this->PERMUTATIONS, sizeof(unsigned char) * 512));
-	STPcudaCheckErr(cudaMemcpy(this->PERMUTATIONS, PERMUTATIONS_HOST, sizeof(unsigned char) * 512, cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMalloc(&this->PERMUTATION, sizeof(unsigned char) * 512));
+	STPcudaCheckErr(cudaMemcpy(this->PERMUTATION, PERMUTATION_HOST, sizeof(unsigned char) * 512, cudaMemcpyHostToDevice));
 
 	//generate the gradient table
 	//we are going to distribute the gradient evenly in a circle
@@ -86,27 +86,27 @@ __host__ STPPermutationsGenerator::STPPermutationsGenerator(unsigned long long s
 	//finishing up
 }
 
-__host__ STPPermutationsGenerator::~STPPermutationsGenerator() {
+__host__ STPPermutationGenerator::~STPPermutationGenerator() {
 	if (this->GRADIENT2D != nullptr) {
 		STPcudaCheckErr(cudaFree(this->GRADIENT2D));
 		this->GRADIENT2D = nullptr;
 	}
-	if (this->PERMUTATIONS != nullptr) {
-		STPcudaCheckErr(cudaFree(this->PERMUTATIONS));
-		this->PERMUTATIONS = nullptr;
+	if (this->PERMUTATION != nullptr) {
+		STPcudaCheckErr(cudaFree(this->PERMUTATION));
+		this->PERMUTATION = nullptr;
 	}
 }
 
-__device__ int STPPermutationsGenerator::perm(int index) const {
+__device__ int STPPermutationGenerator::perm(int index) const {
 	//device memory can be accessed in device directly
-	return static_cast<int>(this->PERMUTATIONS[index]);
+	return static_cast<int>(this->PERMUTATION[index]);
 }
 
-__device__ double STPPermutationsGenerator::grad2D(int index, int component) const {
+__device__ double STPPermutationGenerator::grad2D(int index, int component) const {
 	//convert two int bits to one double bit
 	return this->GRADIENT2D[index * 2 + component];
 }
 
-__device__ unsigned int STPPermutationsGenerator::grad2D_size() const {
+__device__ unsigned int STPPermutationGenerator::grad2D_size() const {
 	return this->GRADIENT2D_SIZE;
 }
