@@ -1,13 +1,13 @@
 #pragma once
-#include <Settings/STPRainDropSettings.hpp>
+#include <Environment/STPRainDropSetting.hpp>
 
 #include <SuperError+/STPDeviceErrorHandler.h>
 
 #include <algorithm>
 
-using namespace SuperTerrainPlus::STPSettings;
+using namespace SuperTerrainPlus::STPEnvironment;
 
-__host__ STPRainDropSettings::STPRainDropSettings() : STPSetting() {
+__host__ STPRainDropSetting::STPRainDropSetting() : STPSetting() {
 	this->ErosionBrushRadius = 0u;
 	this->BrushSize = 0u;
 	this->RainDropCount = 0u;
@@ -26,11 +26,11 @@ __host__ STPRainDropSettings::STPRainDropSettings() : STPSetting() {
 	this->ErosionBrushWeights = nullptr;
 }
 
-__host__ STPRainDropSettings::~STPRainDropSettings() {
+__host__ STPRainDropSetting::~STPRainDropSetting() {
 	this->omitDeviceAvailable();
 }
 
-__host__ void STPRainDropSettings::makeDeviceAvailable() const {
+__host__ void STPRainDropSetting::makeDeviceAvailable() const {
 	//Now copy host data to device (store in this struct)
 	//check if it has been initialised before, and if so we need to reallocate memory
 	this->omitDeviceAvailable();
@@ -52,7 +52,7 @@ __host__ void STPRainDropSettings::makeDeviceAvailable() const {
 	STPcudaCheckErr(cudaFreeHost(brushWeight_pinned));
 }
 
-__host__ void STPRainDropSettings::omitDeviceAvailable() const {
+__host__ void STPRainDropSetting::omitDeviceAvailable() const {
 	if (this->ErosionBrushIndices != nullptr) {
 		STPcudaCheckErr(cudaFree(this->ErosionBrushIndices));
 		this->ErosionBrushIndices = nullptr;
@@ -63,7 +63,7 @@ __host__ void STPRainDropSettings::omitDeviceAvailable() const {
 	}
 }
 
-__host__ bool STPRainDropSettings::validate() const {
+__host__ bool STPRainDropSetting::validate() const {
 	static auto checkRange = []__host__(float value, float lower, float upper) -> bool {
 		return value >= lower && value <= upper;
 	};
@@ -81,7 +81,7 @@ __host__ bool STPRainDropSettings::validate() const {
 		&& this->Gravity > 0.0f;
 }
 
-__host__ void STPRainDropSettings::setErosionBrushRadius(uint2 slipRange, unsigned int erodeRadius) {
+__host__ void STPRainDropSetting::setErosionBrushRadius(uint2 slipRange, unsigned int erodeRadius) {
 	const int radius = static_cast<int>(erodeRadius);
 	//radius must be greater than 0
 	double weightSum = 0.0f;
@@ -109,10 +109,10 @@ __host__ void STPRainDropSettings::setErosionBrushRadius(uint2 slipRange, unsign
 	this->BrushSize = static_cast<unsigned int>(this->ErosionBrushIndicesCache.size());
 }
 
-__host__ __device__ unsigned int STPRainDropSettings::getErosionBrushRadius() const {
+__host__ __device__ unsigned int STPRainDropSetting::getErosionBrushRadius() const {
 	return this->ErosionBrushRadius;
 }
 
-__host__ __device__ unsigned int STPRainDropSettings::getErosionBrushSize() const {
+__host__ __device__ unsigned int STPRainDropSetting::getErosionBrushSize() const {
 	return this->BrushSize;
 }

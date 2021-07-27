@@ -5,7 +5,7 @@
 //CUDA Runtime
 #include <cuda_runtime.h>
 //Biome Defines
-#include "../World/Biome/STPBiomeDefine.h"
+#include "../World/Diversity/STPBiomeDefine.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques

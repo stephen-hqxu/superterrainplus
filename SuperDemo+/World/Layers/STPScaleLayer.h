@@ -1,7 +1,7 @@
 #pragma once
 #ifdef _STP_LAYERS_ALL_HPP_
 
-#include <World/Biome/STPLayer.h>
+#include <World/Diversity/STPLayer.h>
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.

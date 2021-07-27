@@ -77,9 +77,9 @@ const string STPTerrainParaLoader::BiomeVariables[10]{
 	"variation"
 };
 
-STPSettings::STPMeshSettings STPTerrainParaLoader::getProcedural2DINFRenderingParameters(const SIMPLE::SISection& section) {
-	STPSettings::STPMeshSettings rendering_options;
-	STPSettings::STPMeshSettings::STPTessellationSettings tess_options;
+STPEnvironment::STPMeshSetting STPTerrainParaLoader::getProcedural2DINFRenderingParameter(const SIMPLE::SISection& section) {
+	STPEnvironment::STPMeshSetting rendering_options;
+	STPEnvironment::STPMeshSetting::STPTessellationSetting tess_options;
 
 	rendering_options.Altitude = stof(section(STPTerrainParaLoader::Procedural2DINFRenderingVariables[0]));
 	rendering_options.LoDShiftFactor = stof(section(STPTerrainParaLoader::Procedural2DINFRenderingVariables[1]));
@@ -89,13 +89,13 @@ STPSettings::STPMeshSettings STPTerrainParaLoader::getProcedural2DINFRenderingPa
 	tess_options.FurthestTessDistance = stof(section(STPTerrainParaLoader::Procedural2DINFRenderingVariables[4]));
 	tess_options.NearestTessDistance = stof(section(STPTerrainParaLoader::Procedural2DINFRenderingVariables[5]));
 
-	rendering_options.TessSettings = tess_options;
+	rendering_options.TessSetting = tess_options;
 
 	return rendering_options;
 }
 
-STPSettings::STPChunkSettings STPTerrainParaLoader::getProcedural2DINFChunksParameters(const SIMPLE::SISection& section) {
-	STPSettings::STPChunkSettings chunks_options;
+STPEnvironment::STPChunkSetting STPTerrainParaLoader::getProcedural2DINFChunksParameter(const SIMPLE::SISection& section) {
+	STPEnvironment::STPChunkSetting chunks_options;
 
 	chunks_options.MapSize = uvec2(
 		stoul(section(STPTerrainParaLoader::Procedural2DINFChunksVariables[0])),
@@ -127,9 +127,9 @@ STPSettings::STPChunkSettings STPTerrainParaLoader::getProcedural2DINFChunksPara
 	return chunks_options;
 }
 
-STPSettings::STPHeightfieldSettings STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(const SIMPLE::SISection& section, glm::uvec2 slipRange) {
+STPEnvironment::STPHeightfieldSetting STPTerrainParaLoader::getProcedural2DINFGeneratorParameter(const SIMPLE::SISection& section, glm::uvec2 slipRange) {
 	//get the default settings
-	STPSettings::STPHeightfieldSettings launch_options;
+	STPEnvironment::STPHeightfieldSetting launch_options;
 	
 	//set the parameter one by one, enjoy :)
 	launch_options.Seed = stoull(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[0]));
@@ -152,8 +152,8 @@ STPSettings::STPHeightfieldSettings STPTerrainParaLoader::getProcedural2DINFGene
 	return launch_options;
 }
 
-STPSettings::STPSimplexNoiseSettings STPTerrainParaLoader::getSimplex2DNoiseParameters(const SIMPLE::SISection& section) {
-	auto noise_option = STPSettings::STPSimplexNoiseSettings();
+STPEnvironment::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplex2DNoiseParameter(const SIMPLE::SISection& section) {
+	auto noise_option = STPEnvironment::STPSimplexNoiseSetting();
 
 	noise_option.Seed = stoull(section(STPTerrainParaLoader::Simplex2DNoiseVariables[0]));
 	noise_option.Distribution = stoul(section(STPTerrainParaLoader::Simplex2DNoiseVariables[1]));

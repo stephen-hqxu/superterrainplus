@@ -11,19 +11,19 @@ STPWorldManager::STPWorldManager() {
 	this->linkStatus = false;
 }
 
-void STPWorldManager::attachSettings(STPSettings::STPConfigurations* settings) {
+void STPWorldManager::attachSetting(STPEnvironment::STPConfiguration* settings) {
 	//make sure device memory is cleared otherwise it will result in undefined bebaviour
-	settings->getHeightfieldSettings().omitDeviceAvailable();
+	settings->getHeightfieldSetting().omitDeviceAvailable();
 	//copy
-	this->WorldSettings = make_unique<STPSettings::STPConfigurations>(*settings);
+	this->WorldSetting = make_unique<STPEnvironment::STPConfiguration>(*settings);
 	//and make managed copy device available
-	this->WorldSettings->getHeightfieldSettings().makeDeviceAvailable();
+	this->WorldSetting->getHeightfieldSetting().makeDeviceAvailable();
 }
 
 void STPWorldManager::linkProgram(void* indirect_cmd) {
 	this->linkStatus = false;
 	//error checking
-	if (!this->WorldSettings) {
+	if (!this->WorldSetting) {
 		throw invalid_argument("World settings not attached.");
 	}
 	if (!this->BiomeFactory) {
@@ -31,11 +31,11 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 	}
 
 	try {
-		const STPSettings::STPChunkSettings& chunk_settings = this->WorldSettings->getChunkSettings();
+		const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldSetting->getChunkSetting();
 		//create generator and storage unit first
 		this->ChunkGenerator = make_unique<STPCompute::STPHeightfieldGenerator>(
 			chunk_settings,
-			this->WorldSettings->getHeightfieldSettings(),
+			this->WorldSetting->getHeightfieldSetting(),
 			*this->DiversityGenerator,
 			STPChunkProvider::calculateMaxConcurrency(chunk_settings.RenderedChunk, chunk_settings.FreeSlipChunk));
 		this->ChunkStorage = make_unique<STPChunkStorage>();
@@ -44,7 +44,7 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 		//create manager using provider
 		this->ChunkManager = make_unique<STPChunkManager>(*this->ChunkProvider);
 		//create renderer using manager
-		this->WorldRenderer = make_unique<STPProcedural2DINF>(this->WorldSettings->getMeshSettings(), *this->ChunkManager, indirect_cmd);
+		this->WorldRenderer = make_unique<STPProcedural2DINF>(this->WorldSetting->getMeshSetting(), *this->ChunkManager, indirect_cmd);
 	}
 	catch (std::exception e) {
 		std::cerr << e.what() << std::endl;
@@ -56,8 +56,8 @@ STPWorldManager::operator bool() const {
 	return this->linkStatus;
 }
 
-const STPSettings::STPConfigurations* STPWorldManager::getWorldSettings() const {
-	return this->WorldSettings.get();
+const STPEnvironment::STPConfiguration* STPWorldManager::getWorldSetting() const {
+	return this->WorldSetting.get();
 }
 
 const STPCompute::STPHeightfieldGenerator* STPWorldManager::getChunkGenerator() const {

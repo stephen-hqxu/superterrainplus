@@ -7,15 +7,15 @@
 #include <functional>
 
 //Multithreading
-#include "../../Helpers/STPThreadPool.h"
+#include "../../Utility/STPThreadPool.h"
 //Chunks
 #include "STPChunkStorage.h"
 //2D terrain compute engine
-#include "../Biome/STPBiomeFactory.h"
+#include "../Diversity/STPBiomeFactory.h"
 #include "../../GPGPU/STPHeightfieldGenerator.cuh"
 
 //Settings
-#include "../../Settings/STPConfigurations.hpp"
+#include "../../Environment/STPConfiguration.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -31,7 +31,7 @@ namespace SuperTerrainPlus {
 	private:
 
 		//Chunk settings
-		const STPSettings::STPChunkSettings& ChunkSettings;
+		const STPEnvironment::STPChunkSetting& ChunkSetting;
 		//chunk data
 		STPChunkStorage& ChunkStorage;
 		//thread pool
@@ -79,7 +79,7 @@ namespace SuperTerrainPlus {
 		 * @param biome_factory The biomemap factory/generator to link with
 		 * @param heightfield_generator The heightfield generator to link with
 		*/
-		STPChunkProvider(const STPSettings::STPChunkSettings&, STPChunkStorage&, STPDiversity::STPBiomeFactory&, STPCompute::STPHeightfieldGenerator&);
+		STPChunkProvider(const STPEnvironment::STPChunkSetting&, STPChunkStorage&, STPDiversity::STPBiomeFactory&, STPCompute::STPHeightfieldGenerator&);
 
 		~STPChunkProvider() = default;
 
@@ -107,7 +107,7 @@ namespace SuperTerrainPlus {
 		 * @brief Get the chunk settings
 		 * @return The chunk settings
 		*/
-		const STPSettings::STPChunkSettings& getChunkSettings() const;
+		const STPEnvironment::STPChunkSetting& getChunkSetting() const;
 
 	};
 }

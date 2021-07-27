@@ -1,6 +1,4 @@
-# TODO: add shared library option
-add_library(${STP_MAIN_ENGINE} STATIC
-# main engine src
+set(MAIN_ENGINE_SOURCE
 STPBiomeFactory.cpp
 STPChunk.cpp
 STPChunkManager.cpp
@@ -15,8 +13,20 @@ STPThreadPool.cpp
 
 STPHeightfieldGenerator.cu
 STPRainDrop.cu
-STPRainDropSettings.cu
+STPRainDropSetting.cu
 )
+
+if(${STP_ENGINE_BUILD_SHARED})
+	add_library(${STP_MAIN_ENGINE} SHARED ${MAIN_ENGINE_SOURCE})
+	# set export preprocessor
+	set_target_properties(${STP_MAIN_ENGINE} PROPERTIES DEFINE_SYMBOL SUPERTERRAINPLUS_EXPORTS)
+else()
+	add_library(${STP_MAIN_ENGINE} STATIC ${MAIN_ENGINE_SOURCE})
+	# inhibit dll export definition
+	target_compile_definitions(${STP_MAIN_ENGINE}
+	PRIVATE SUPERTERRAINPLUS_USE_STATIC
+	)
+endif()
 
 # glad.c contains API entries to OpenGL functions
 target_sources(

@@ -11,9 +11,9 @@ using std::make_pair;
 
 using namespace SuperTerrainPlus;
 
-STPChunkProvider::STPChunkProvider(const STPSettings::STPChunkSettings& chunk_settings, STPChunkStorage& storage, 
+STPChunkProvider::STPChunkProvider(const STPEnvironment::STPChunkSetting& chunk_settings, STPChunkStorage& storage,
 	STPDiversity::STPBiomeFactory& biome_factory, STPCompute::STPHeightfieldGenerator& heightfield_generator)
-	: ChunkSettings(chunk_settings), ChunkStorage(storage), generateBiome(biome_factory), generateHeightfield(heightfield_generator) {
+	: ChunkSetting(chunk_settings), ChunkStorage(storage), generateBiome(biome_factory), generateHeightfield(heightfield_generator) {
 	this->kernel_launch_pool = make_unique<STPThreadPool>(5u);
 }
 
@@ -28,8 +28,8 @@ unsigned int STPChunkProvider::calculateMaxConcurrency(uvec2 rendered_range, uve
 float2 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
 	//first convert chunk world position to relative chunk position, then multiply by the map size, such that the generated map will be seamless
 	return make_float2(
-		static_cast<float>(this->ChunkSettings.MapSize.x) * chunkPos.x / (static_cast<float>(this->ChunkSettings.ChunkSize.x) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.x,
-		static_cast<float>(this->ChunkSettings.MapSize.y) * chunkPos.y / (static_cast<float>(this->ChunkSettings.ChunkSize.y) * this->ChunkSettings.ChunkScaling) + this->ChunkSettings.MapOffset.y
+		static_cast<float>(this->ChunkSetting.MapSize.x) * chunkPos.x / (static_cast<float>(this->ChunkSetting.ChunkSize.x) * this->ChunkSetting.ChunkScaling) + this->ChunkSetting.MapOffset.x,
+		static_cast<float>(this->ChunkSetting.MapSize.y) * chunkPos.y / (static_cast<float>(this->ChunkSetting.ChunkSize.y) * this->ChunkSetting.ChunkScaling) + this->ChunkSetting.MapOffset.y
 	);
 }
 
@@ -109,7 +109,7 @@ bool STPChunkProvider::checkChunk(vec2 chunkPos, std::function<bool(glm::vec2)> 
 		return true;
 	}
 	//reminder: central chunk is included in neighbours
-	const STPSettings::STPChunkSettings& chk_config = this->getChunkSettings();
+	const STPEnvironment::STPChunkSetting& chk_config = this->getChunkSetting();
 	const STPChunk::STPChunkPositionCache neighbour_position = STPChunk::getRegion(chunkPos, chk_config.ChunkSize, chk_config.FreeSlipChunk, chk_config.ChunkScaling);
 	
 	bool canContinue = true;
@@ -168,6 +168,6 @@ STPChunk* STPChunkProvider::requestChunk(vec2 chunkPos) {
 	throw std::runtime_error("Chunk chunk should have been computed but not found");
 }
 
-const STPSettings::STPChunkSettings& STPChunkProvider::getChunkSettings() const {
-	return this->ChunkSettings;
+const STPEnvironment::STPChunkSetting& STPChunkProvider::getChunkSetting() const {
+	return this->ChunkSetting;
 }

@@ -9,8 +9,8 @@
 //GLM
 #include "glm/vec2.hpp"
 //Settings
-#include <Settings/STPConfigurations.hpp>
-#include <SuperAlgorithm+/STPSimplexNoiseSettings.hpp>
+#include <Environment/STPConfiguration.hpp>
+#include <SuperAlgorithm+/STPSimplexNoiseSetting.hpp>
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -46,14 +46,14 @@ namespace SuperTerrainPlus {
 		 * @param section The INI section that contains the 2d terrain rendering parameters
 		 * @return The terrain rendering parameters, if certain parameters are missing in the section, exception will be thrown
 		*/
-		static STPSettings::STPMeshSettings getProcedural2DINFRenderingParameters(const SIMPLE::SISection&);
+		static STPEnvironment::STPMeshSetting getProcedural2DINFRenderingParameter(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load the chunk settings and rendering parameters for procedural infinite 2d terrain
 		 * @param section The INI section that contains the 2d terrian rendering parameters
 		 * @return The chunk manager rendering parameters, if certain parameters are missing in the section, exception will be thrown
 		*/
-		static STPSettings::STPChunkSettings getProcedural2DINFChunksParameters(const SIMPLE::SISection&);
+		static STPEnvironment::STPChunkSetting getProcedural2DINFChunksParameter(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load the launch parameter for procedural infinite 2d terrain, stored in the ini file into STPHeightfieldLaunchPara
@@ -61,14 +61,14 @@ namespace SuperTerrainPlus {
 		 * @param slipRange The size of the free-slip range of the erosion
 		 * @return The launch parameter, if certain parameters are missing in the section, exception will be thrown
 		*/
-		static STPSettings::STPHeightfieldSettings getProcedural2DINFGeneratorParameters(const SIMPLE::SISection&, glm::uvec2);
+		static STPEnvironment::STPHeightfieldSetting getProcedural2DINFGeneratorParameter(const SIMPLE::SISection&, glm::uvec2);
 
 		/**
 		 * @brief Load the simplex noise 2d parameter, stored in the ini file into STPSimplexNoise2DPara
 		 * @param section The INI section that contains the launch parameter
 		 * @return The noise parameter,, if certain parameters are missing in the section, exception will eb thrown
 		*/
-		static STPSettings::STPSimplexNoiseSettings getSimplex2DNoiseParameters(const SIMPLE::SISection&);
+		static STPEnvironment::STPSimplexNoiseSetting getSimplex2DNoiseParameter(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load all biome parameters into STPBiomeRegistry

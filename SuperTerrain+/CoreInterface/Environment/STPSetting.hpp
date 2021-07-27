@@ -10,9 +10,9 @@
 namespace SuperTerrainPlus {
 
 	/**
-	 * @brief STPSettings contains all configurations for each generators, like heightmap, normalmap, biomes, texture, etc.
+	 * @brief STPEnvironment contains all configurations for each generators, like heightmap, normalmap, biomes, texture, etc.
 	*/
-	namespace STPSettings {
+	namespace STPEnvironment {
 
 		/**
 		 * @brief A base class for each Super Terrain + settings

@@ -7,7 +7,7 @@
 //ADT
 #include <list>
 //Settings
-#include "../Settings/STPRainDropSettings.hpp"
+#include "../Environment/STPRainDropSetting.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -143,7 +143,7 @@ namespace SuperTerrainPlus {
 			 * @param map - The heightmap with free slip configurations
 			 * @param settings - The raindrop settings for erosion
 			*/
-			__device__ void Erode(const STPSettings::STPRainDropSettings*, STPFreeSlipManager&);
+			__device__ void Erode(const STPEnvironment::STPRainDropSetting*, STPFreeSlipManager&);
 
 		};
 

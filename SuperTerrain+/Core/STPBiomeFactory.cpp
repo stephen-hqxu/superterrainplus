@@ -1,4 +1,4 @@
-#include <World/Biome/STPBiomeFactory.h>
+#include <World/Diversity/STPBiomeFactory.h>
 
 using glm::uvec2;
 using glm::uvec3;

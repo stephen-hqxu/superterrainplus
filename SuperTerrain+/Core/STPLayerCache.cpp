@@ -1,4 +1,4 @@
-#include <World/Biome/STPLayerCache.h>
+#include <World/Diversity/STPLayerCache.h>
 
 using namespace SuperTerrainPlus::STPDiversity;
 

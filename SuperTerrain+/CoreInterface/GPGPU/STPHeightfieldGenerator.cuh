@@ -9,12 +9,11 @@
 //CUDA lib are included in the "Engine" section
 #include <curand_kernel.h>
 //Engine
-#include "STPRainDrop.cuh"
 #include "STPDiversityGenerator.hpp"
-#include "../Helpers/STPMemoryPool.hpp"
+#include "../Utility/STPMemoryPool.hpp"
 //Settings
-#include "../Settings/STPHeightfieldSettings.hpp"
-#include "../Settings/STPChunkSettings.hpp"
+#include "../Environment/STPHeightfieldSetting.hpp"
+#include "../Environment/STPChunkSetting.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -145,8 +144,8 @@ namespace SuperTerrainPlus {
 			//multi-biome heightmap generator linked with external
 			const STPDiversityGenerator& generateHeightmap;
 			//heightfield generation parameters
-			const STPSettings::STPHeightfieldSettings& Heightfield_Settings_h;
-			unique_ptr_d<STPSettings::STPHeightfieldSettings> Heightfield_Settings_d;
+			const STPEnvironment::STPHeightfieldSetting& Heightfield_Setting_h;
+			unique_ptr_d<STPEnvironment::STPHeightfieldSetting> Heightfield_Setting_d;
 
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency
 			unique_ptr_d<curandRNG> RNG_Map;
@@ -217,7 +216,7 @@ namespace SuperTerrainPlus {
 			 * @param hint_level_of_concurrency The average numebr of thread that will be used to issue commands to this class.
 			 * It's used to assume the size of memory pool to allocate.
 			*/
-			__host__ STPHeightfieldGenerator(const STPSettings::STPChunkSettings&, const STPSettings::STPHeightfieldSettings&, 
+			__host__ STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting&, const STPEnvironment::STPHeightfieldSetting&,
 				const STPDiversityGenerator&, unsigned int);
 
 			__host__ ~STPHeightfieldGenerator();

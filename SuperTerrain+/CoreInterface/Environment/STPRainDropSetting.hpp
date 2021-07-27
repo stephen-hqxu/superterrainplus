@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_RAIN_DROP_SETTINGS_HPP_
-#define _STP_RAIN_DROP_SETTINGS_HPP_
+#ifndef _STP_RAIN_DROP_SETTING_HPP_
+#define _STP_RAIN_DROP_SETTING_HPP_
 
 #include "STPSetting.hpp"
 //CUDA Runtime
@@ -16,16 +16,16 @@
 namespace SuperTerrainPlus {
 
 	/**
-	 * @brief STPSettings contains all configurations for each generators, like heightmap, normalmap, biomes, texture, etc.
+	 * @brief STPEnvironment contains all configurations for each generators, like heightmap, normalmap, biomes, texture, etc.
 	*/
-	namespace STPSettings {
+	namespace STPEnvironment {
 
 		/**
-		 * @brief STPRainDropPara stores all calculation parameters for the rain drops.
+		 * @brief STPRainDropSetting stores all calculation parameters for the rain drops.
 		 * Copy and move operation on this class is unsafe if device memory has been made available, and only shallow copy is performed.
 		 * To make device memory available across all copies, only call makeAvailable() function on the object that has been copied.
 		*/
-		struct STPRainDropSettings: public STPSetting {
+		struct STPRainDropSetting: public STPSetting {
 		private:
 
 			//Determine the radius of the droplet that can brush out sediment
@@ -77,9 +77,9 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Init STPRainDropSettings with default values.
 			*/
-			__host__ STPRainDropSettings();
+			__host__ STPRainDropSetting();
 
-			__host__ ~STPRainDropSettings();
+			__host__ ~STPRainDropSetting();
 
 			/**
 			 * @brief Transfer host compute buffer to device so it can be accessed from GPU.
@@ -124,4 +124,4 @@ namespace SuperTerrainPlus {
 	}
 
 }
-#endif//_STP_RAIN_DROP_SETTINGS_HPP_
+#endif//_STP_RAIN_DROP_SETTING_HPP_

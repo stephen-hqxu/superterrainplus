@@ -23,7 +23,7 @@ namespace STPDemo {
 	private:
 
 		//all parameters for the noise generator, stored on host, passing value to device
-		SuperTerrainPlus::STPSettings::STPSimplexNoiseSettings Noise_Settings;
+		SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting Noise_Setting;
 		SuperTerrainPlus::STPCompute::STPSimplexNoise SimplexNoise;
 		//The size of the generated heightmap
 		const uint2 MapSize;
@@ -35,7 +35,7 @@ namespace STPDemo {
 		 * @param simplex_setting The settings for the simplex noise generator
 		 * @param dimension The size of the generated heightmap
 		*/
-		STPBiomefieldGenerator(SuperTerrainPlus::STPSettings::STPSimplexNoiseSettings&, glm::uvec2);
+		STPBiomefieldGenerator(SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&, glm::uvec2);
 
 		~STPBiomefieldGenerator() = default;
 

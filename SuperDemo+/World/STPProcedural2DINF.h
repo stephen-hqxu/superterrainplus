@@ -39,7 +39,7 @@ namespace SuperTerrainPlus {
 		GLuint Terrain2d_pipeline;
 
 		//terrain rendering settings
-		const STPSettings::STPMeshSettings& MeshSettings;
+		const STPEnvironment::STPMeshSetting& MeshSetting;
 
 		//chunk manager for this renderer
 		STPChunkManager& ChunkManager;
@@ -81,7 +81,7 @@ namespace SuperTerrainPlus {
 		 * @param manager Chunk manager to be linked with this renderer
 		 * @param procedural2dinf_cmd The indirect rendering command for prodecural 2d inf terrain renderer
 		*/
-		STPProcedural2DINF(const STPSettings::STPMeshSettings&, STPChunkManager&, void*);
+		STPProcedural2DINF(const STPEnvironment::STPMeshSetting&, STPChunkManager&, void*);
 
 		STPProcedural2DINF(const STPProcedural2DINF&) = delete;
 

@@ -18,4 +18,11 @@ set(STP_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/External)
 # add main STP engine
 add_subdirectory(SuperTerrain+)
 # add demo program to show how STP engine works
-add_subdirectory(SuperDemo+)
+if(${STP_BUILD_DEMO})
+	add_subdirectory(SuperDemo+)
+endif()
+# add unit test program
+if(${STP_BUILD_TEST})
+	# test is WIP
+	# add_subdirectory(SuperTest+)
+endif()

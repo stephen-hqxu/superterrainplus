@@ -23,7 +23,7 @@ namespace SuperTerrainPlus {
 
 		//All stuff below are trival, no documentation is needed
 		//settings
-		std::unique_ptr<STPSettings::STPConfigurations> WorldSettings;
+		std::unique_ptr<STPEnvironment::STPConfiguration> WorldSetting;
 		//generators
 		std::unique_ptr<STPCompute::STPHeightfieldGenerator> ChunkGenerator;
 		std::unique_ptr<STPDiversity::STPBiomeFactory> BiomeFactory;
@@ -55,7 +55,7 @@ namespace SuperTerrainPlus {
 		 * @brief Attach world settings to the current world manager.
 		 * @param settings All world settings, it will be copied under the object
 		*/
-		void attachSettings(STPSettings::STPConfigurations*);
+		void attachSetting(STPEnvironment::STPConfiguration*);
 
 		/**
 		 * @brief Attach the biome factory with this world manager
@@ -91,7 +91,7 @@ namespace SuperTerrainPlus {
 		 * @brief Get the world settings 
 		 * @return The world settings managed by the current world manager. If world manager is not linked, nullptr is returned.
 		*/
-		const STPSettings::STPConfigurations* getWorldSettings() const;
+		const STPEnvironment::STPConfiguration* getWorldSetting() const;
 
 		/**
 		 * @brief Get the chunk generator.

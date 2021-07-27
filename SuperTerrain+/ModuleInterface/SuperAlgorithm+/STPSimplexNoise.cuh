@@ -5,7 +5,7 @@
 //Helpers and Tools
 #include "STPPermutationsGenerator.cuh"
 //Settings
-#include "STPSimplexNoiseSettings.hpp"
+#include "STPSimplexNoiseSetting.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -39,7 +39,7 @@ namespace SuperTerrainPlus {
 			 * @brief Init the simplex noise generator.
 			 * @param noise_settings Provide the settings for simplex noise
 			*/
-			__host__ STPSimplexNoise(const STPSettings::STPSimplexNoiseSettings* const);
+			__host__ STPSimplexNoise(const STPEnvironment::STPSimplexNoiseSetting* const);
 
 			__host__ STPSimplexNoise(const STPSimplexNoise&) = delete;
 

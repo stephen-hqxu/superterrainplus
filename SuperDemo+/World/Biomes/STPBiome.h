@@ -3,7 +3,7 @@
 #define _STP_BIOME_H_
 
 //Biome define
-#include <World/Biome/STPBiomeDefine.h>
+#include <World/Diversity/STPBiomeDefine.h>
 //Settings
 #include "STPBiomeSettings.hpp"
 

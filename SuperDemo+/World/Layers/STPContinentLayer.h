@@ -1,7 +1,7 @@
 #pragma once
 #ifdef _STP_LAYERS_ALL_HPP_
 
-#include <World/Biome/STPLayer.h>
+#include <World/Diversity/STPLayer.h>
 #include "../Biomes/STPBiomeRegistry.h"
 
 /**

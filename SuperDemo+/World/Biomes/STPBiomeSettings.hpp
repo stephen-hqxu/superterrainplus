@@ -2,8 +2,8 @@
 #ifndef _STP_BIOME_SETTINGS_HPP_
 #define _STP_BIOME_SETTINGS_HPP_
 
-#include <World/Biome/STPBiomeDefine.h>
-#include <Settings/STPSetting.hpp>
+#include <World/Diversity/STPBiomeDefine.h>
+#include <Environment/STPSetting.hpp>
 //String
 #include <string>
 
@@ -17,7 +17,7 @@ namespace STPDemo {
 	/**
 	 * @brief STPBiomeSettings stores settings for biome generation and texturing
 	*/
-	struct STPBiomeSettings : public SuperTerrainPlus::STPSettings::STPSetting {
+	struct STPBiomeSettings : public SuperTerrainPlus::STPEnvironment::STPSetting {
 	public:
 
 		//Identification and texture control

@@ -1,8 +1,8 @@
 #pragma once
-#ifndef _STP_HEIGHTFIELD_SETTINGS_HPP_
-#define _STP_HEIGHTFIELD_SETTINGS_HPP_
+#ifndef _STP_HEIGHTFIELD_SETTING_HPP_
+#define _STP_HEIGHTFIELD_SETTING_HPP_
 
-#include "STPRainDropSettings.hpp"
+#include "STPRainDropSetting.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -12,14 +12,14 @@
 namespace SuperTerrainPlus {
 
 	/**
-	 * @brief STPSettings contains all configurations for each generators, like heightmap, normalmap, biomes, texture, etc.
+	 * @brief STPEnvironment contains all configurations for each generators, like heightmap, normalmap, biomes, texture, etc.
 	*/
-	namespace STPSettings {
+	namespace STPEnvironment {
 
 		/**
 		 * @brief STPHeightfieldSettings stores all heightfield parameters for compute launch
 		*/
-		struct STPHeightfieldSettings: public STPRainDropSettings {
+		struct STPHeightfieldSetting: public STPRainDropSetting {
 		public:
 
 			//Heightfield Generator Parameters
@@ -32,20 +32,20 @@ namespace SuperTerrainPlus {
 			//Hydraulic Erosion Parameters are inherited from super class
 
 			/**
-			 * @brief Init STPHeightfieldSettings with defaults
+			 * @brief Init STPHeightfieldSetting with defaults
 			*/
-			STPHeightfieldSettings() : STPRainDropSettings() {
+			STPHeightfieldSetting() : STPRainDropSetting() {
 				this->Strength = 1.0f;
 			}
 
-			~STPHeightfieldSettings() = default;
+			~STPHeightfieldSetting() = default;
 
 			bool validate() const override {
 				static auto checkRange = []__host__(float value, float lower, float upper) -> bool {
 					return value >= lower && value <= upper;
 				};
 				//check the raindrop parameter plus also heightmap parameter
-				return this->STPRainDropSettings::validate()
+				return this->STPRainDropSetting::validate()
 					&& this->Strength > 0.0f;
 			}
 		};
@@ -53,4 +53,4 @@ namespace SuperTerrainPlus {
 	}
 
 }
-#endif//_STP_HEIGHTFIELD_SETTINGS_HPP_
+#endif//_STP_HEIGHTFIELD_SETTING_HPP_

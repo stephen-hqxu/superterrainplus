@@ -15,8 +15,8 @@ using glm::identity;
 
 using namespace SuperTerrainPlus;
 
-STPProcedural2DINF::STPProcedural2DINF(const STPSettings::STPMeshSettings& mesh_settings, STPChunkManager& manager, void* procedural2dinf_cmd)
-	: ChunkManager(manager), command(procedural2dinf_cmd), MeshSettings(mesh_settings) {
+STPProcedural2DINF::STPProcedural2DINF(const STPEnvironment::STPMeshSetting& mesh_settings, STPChunkManager& manager, void* procedural2dinf_cmd)
+	: ChunkManager(manager), command(procedural2dinf_cmd), MeshSetting(mesh_settings) {
 	cout << "....Loading STPProcedural2DINF, An Infinite Terrain Renderer....";
 	if (this->compile2DTerrainShader()) {
 		cout << "Shader Loaded :)" << endl;
@@ -30,7 +30,7 @@ STPProcedural2DINF::~STPProcedural2DINF() {
 }
 
 const bool STPProcedural2DINF::compile2DTerrainShader() {
-	const STPSettings::STPChunkSettings& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSettings();
+	const STPEnvironment::STPChunkSetting& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSetting();
 	//log
 	GLchar log[1024];
 	
@@ -57,12 +57,12 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("rendered_chunk_num"), 1, value_ptr(chunk_settings.RenderedChunk));
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("chunk_dimension"), 1, value_ptr(chunk_settings.ChunkSize));
 	glProgramUniform2fv(this->Terrain2d_shader.getP(), this->getLoc("base_chunk_position"), 1, value_ptr(base_chunk_position));
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MAX_TESS_LEVEL"), this->MeshSettings.TessSettings.MaxTessLevel);
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MIN_TESS_LEVEL"), this->MeshSettings.TessSettings.MinTessLevel);
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.FURTHEST_TESS_DISTANCE"), this->MeshSettings.TessSettings.FurthestTessDistance);
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.NEAREST_TESS_DISTANCE"), this->MeshSettings.TessSettings.NearestTessDistance);
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("altitude"), this->MeshSettings.Altitude);
-	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("shiftFactor"), this->MeshSettings.LoDShiftFactor);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MAX_TESS_LEVEL"), this->MeshSetting.TessSetting.MaxTessLevel);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MIN_TESS_LEVEL"), this->MeshSetting.TessSetting.MinTessLevel);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.FURTHEST_TESS_DISTANCE"), this->MeshSetting.TessSetting.FurthestTessDistance);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.NEAREST_TESS_DISTANCE"), this->MeshSetting.TessSetting.NearestTessDistance);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("altitude"), this->MeshSetting.Altitude);
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("shiftFactor"), this->MeshSetting.LoDShiftFactor);
 
 	//create pipeline
 	glCreateProgramPipelines(1, &this->Terrain2d_pipeline);
@@ -72,7 +72,7 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 }
 
 vec2 STPProcedural2DINF::calcBaseChunkPosition() {
-	const STPSettings::STPChunkSettings& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSettings();
+	const STPEnvironment::STPChunkSetting& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSetting();
 	//calculate offset
 	const ivec2 chunk_offset(-glm::floor(vec2(chunk_settings.RenderedChunk) / 2.0f));
 	return STPChunk::offsetChunk(vec2(chunk_settings.ChunkOffset.x, chunk_settings.ChunkOffset.z), chunk_settings.ChunkSize, chunk_offset);
@@ -133,7 +133,7 @@ GLuint STPProcedural2DINF::getTerrain2DINFProgram() const {
 }
 
 void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& projection, const vec3& position) const {
-	const STPSettings::STPChunkSettings& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSettings();
+	const STPEnvironment::STPChunkSetting& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSetting();
 	mat4 model = identity<mat4>();
 	//move the terrain center to the camera
 	vec2 chunk_center_position = STPChunk::getChunkPosition(

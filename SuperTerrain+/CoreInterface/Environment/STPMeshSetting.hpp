@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_MESH_SETTINGS_HPP_
-#define _STP_MESH_SETTINGS_HPP_
+#ifndef _STP_MESH_SETTING_HPP_
+#define _STP_MESH_SETTING_HPP_
 
 #include "STPSetting.hpp"
 
@@ -12,21 +12,21 @@
 namespace SuperTerrainPlus {
 
 	/**
-	 * @brief STPSettings contains all configurations for each generators, like heightmap, normalmap, biomes, texture, etc.
+	 * @brief STPEnvironment contains all configurations for each generators, like heightmap, normalmap, biomes, texture, etc.
 	*/
-	namespace STPSettings {
+	namespace STPEnvironment {
 
 		/**
 		 * @brief STPMeshSettings stores parameters for rendering terrain mesh
 		*/
-		struct STPMeshSettings: public STPSetting {
+		struct STPMeshSetting: public STPSetting {
 		public:
 
 			/**
 			 * @brief STPTessellationSettings controls the range of the tessellation levels, as well as the min and max distance
 			 * where tessellation will become min and max
 			*/
-			struct STPTessellationSettings : public STPSetting {
+			struct STPTessellationSetting : public STPSetting {
 			public:
 
 				/**
@@ -52,14 +52,14 @@ namespace SuperTerrainPlus {
 				/**
 				 * @brief Init STPTessellationSettings with defaults
 				*/
-				STPTessellationSettings() {
+				STPTessellationSetting() {
 					this->MaxTessLevel = 0.0f;
 					this->MinTessLevel = 0.0f;
 					this->FurthestTessDistance = 0.0f;
 					this->NearestTessDistance = 0.0f;
 				}
 
-				~STPTessellationSettings() = default;
+				~STPTessellationSetting() = default;
 
 				bool validate() const override {
 					return this->MaxTessLevel >= 0.0f
@@ -86,24 +86,24 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Determine the range of tessellations, and the tessellation LoD will be clamped between min and max within a specified range of distances.
 			*/
-			STPTessellationSettings TessSettings;
+			STPTessellationSetting TessSetting;
 
 			//Fragment Control
 
 			/**
 			 * @brief Init STPMeshSettings with defaults
 			*/
-			STPMeshSettings() {
+			STPMeshSetting() {
 				this->Altitude = 1.0f;
 				this->LoDShiftFactor = 2.0f;
 			}
 
-			~STPMeshSettings() = default;
+			~STPMeshSetting() = default;
 
 			bool validate() const override {
 				return this->Altitude > 0.0f
 					&& this->LoDShiftFactor > 0.0f
-					&& this->TessSettings.validate();
+					&& this->TessSetting.validate();
 			}
 
 		};
@@ -111,4 +111,4 @@ namespace SuperTerrainPlus {
 	}
 
 }
-#endif//_STP_MESH_SETTINGS_HPP_
+#endif//_STP_MESH_SETTING_HPP_

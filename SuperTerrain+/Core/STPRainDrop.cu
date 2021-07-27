@@ -75,7 +75,7 @@ __device__ float STPRainDrop::getCurrentVolume() const {
 	return this->volume;
 }
 
-__device__ void STPRainDrop::Erode(const STPSettings::STPRainDropSettings* settings, STPFreeSlipManager& map) {
+__device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* settings, STPFreeSlipManager& map) {
 	//Cache erosion brush to shared memory
 	//Erosion brush indices then weights
 	extern __shared__ unsigned char ErosionBrush[];

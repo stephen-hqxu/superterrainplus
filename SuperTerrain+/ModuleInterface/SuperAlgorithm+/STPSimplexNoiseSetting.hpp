@@ -1,8 +1,8 @@
 #pragma once
-#ifndef _STP_SIMPLEX_NOISE_SETTINGS_HPP_
-#define _STP_SIMPLEX_NOISE_SETTINGS_HPP_
+#ifndef _STP_SIMPLEX_NOISE_SETTING_HPP_
+#define _STP_SIMPLEX_NOISE_SETTING_HPP_
 
-#include <Settings/STPSetting.hpp>
+#include <Environment/STPSetting.hpp>
 //CUDA vector
 #include <vector_functions.h>
 
@@ -14,14 +14,14 @@
 namespace SuperTerrainPlus {
 
 	/**
-	 * @brief STPSettings contains all configurations for each generators, like heightmap, normalmap, biomes, texture, etc.
+	 * @brief STPEnvironment contains all configurations for each generators, like heightmap, normalmap, biomes, texture, etc.
 	*/
-	namespace STPSettings {
+	namespace STPEnvironment {
 
 		/**
 		 * @brief STPSimplexNoiseSettings specifies the simplex noise generator parameter for the simplex noise functions
 		*/
-		struct STPSimplexNoiseSettings: public STPSetting {
+		struct STPSimplexNoiseSetting: public STPSetting {
 		public:
 
 			//Determine the seed used for the RNG
@@ -36,14 +36,14 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Init the simplex noise settings with default values
 			*/
-			STPSimplexNoiseSettings() : STPSetting() {
+			STPSimplexNoiseSetting() : STPSetting() {
 				//Loading default value
 				this->Seed = 0u;
 				this->Distribution = 8u;
 				this->Offset = 45.0;
 			}
 
-			~STPSimplexNoiseSettings() = default;
+			~STPSimplexNoiseSetting() = default;
 
 			bool validate() const override {
 				return this->Distribution != 0
@@ -54,4 +54,4 @@ namespace SuperTerrainPlus {
 		};
 	}
 }
-#endif//_STP_SIMPLEX_NOISE_SETTINGS_HPP_
+#endif//_STP_SIMPLEX_NOISE_SETTING_HPP_

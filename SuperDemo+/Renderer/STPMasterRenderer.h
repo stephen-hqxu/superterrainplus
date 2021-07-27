@@ -35,7 +35,7 @@ using glm::value_ptr;
 #include "SglToolkit1.0/SgTShaderProc.h"
 #include "SglToolkit1.0/SgTUtils.h"
 //Multithreadding engine
-#include <Helpers/STPThreadPool.h>
+#include <Utility/STPThreadPool.h>
 
 //Invididual rendering engine
 #include "../Helpers/STPIndirectCommands.h"
@@ -187,31 +187,31 @@ namespace SuperTerrainPlus {
 			//starting thread pool
 			this->command_pool = new STPThreadPool(3u);
 			//loading terrain 2d inf parameters
-			STPSettings::STPConfigurations config = STPSettings::STPConfigurations();
-			std::future chunksPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFChunksParameters, std::ref(this->engineSettings["Generators"]));
-			std::future renderPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFRenderingParameters, std::ref(this->engineSettings["2DTerrainINF"]));
+			STPEnvironment::STPConfiguration config;
+			std::future chunksPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFChunksParameter, std::ref(this->engineSettings["Generators"]));
+			std::future renderPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFRenderingParameter, std::ref(this->engineSettings["2DTerrainINF"]));
 			std::future biomePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::loadBiomeParameters, std::ref(this->biomeSettings));
-			config.getChunkSettings() = chunksPara_loader.get();
-			config.getMeshSettings() = renderPara_loader.get();
+			config.getChunkSetting() = chunksPara_loader.get();
+			config.getMeshSetting() = renderPara_loader.get();
 			
-			const auto& chunk_settings = config.getChunkSettings();
-			std::future noisePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getSimplex2DNoiseParameters, std::ref(this->biomeSettings["simplex"]));
+			const auto& chunk_setting = config.getChunkSetting();
+			std::future noisePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getSimplex2DNoiseParameter, std::ref(this->biomeSettings["simplex"]));
 			//not quite sure why heightfield_settings isn't got copied to the config, it just share the pointer
-			config.getHeightfieldSettings() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameters(this->engineSettings["2DTerrainINF"], chunk_settings.MapSize * chunk_settings.FreeSlipChunk);
-			STPSettings::STPSimplexNoiseSettings simplex = noisePara_loader.get();
+			config.getHeightfieldSetting() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameter(this->engineSettings["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk);
+			STPEnvironment::STPSimplexNoiseSetting simplex = noisePara_loader.get();
 			biomePara_loader.get();
 
 			assert(config.validate());
-			const unsigned int unitplane_count = chunk_settings.ChunkSize.x * chunk_settings.ChunkSize.y * chunk_settings.RenderedChunk.x * chunk_settings.RenderedChunk.y;
+			const unsigned int unitplane_count = chunk_setting.ChunkSize.x * chunk_setting.ChunkSize.y * chunk_setting.RenderedChunk.x * chunk_setting.RenderedChunk.y;
 			
 			//rendering commands generation
 			this->command = new STPRendererCommander(this->command_pool, unitplane_count);
 			//setting up renderers
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer, this->command_pool);
 			//setting world manager
-			this->world_manager.attachSettings(&config);
-			this->world_manager.attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_settings.MapSize, simplex.Seed);
-			this->world_manager.attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(simplex, chunk_settings.MapSize);
+			this->world_manager.attachSetting(&config);
+			this->world_manager.attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
+			this->world_manager.attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(simplex, chunk_setting.MapSize);
 			this->world_manager.linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 			if (!this->world_manager) {
 				//do not proceed if it fails
