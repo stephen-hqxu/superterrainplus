@@ -5,6 +5,7 @@
 using std::invalid_argument;
 using std::make_unique;
 
+using namespace STPDemo;
 using namespace SuperTerrainPlus;
 
 STPWorldManager::STPWorldManager() {

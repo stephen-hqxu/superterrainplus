@@ -2,8 +2,8 @@
 #ifdef _STP_WORLD_MANAGER_H_
 
 template<class Fac, typename... Arg>
-inline void SuperTerrainPlus::STPWorldManager::attachBiomeFactory(Arg&&... arg) {
-	using namespace STPDiversity;
+inline void STPDemo::STPWorldManager::attachBiomeFactory(Arg&&... arg) {
+	using namespace SuperTerrainPlus::STPDiversity;
 	//create an instance of biome factory
 	//init a new biome factory
 	STPBiomeFactory* factory = dynamic_cast<STPBiomeFactory*>(new Fac(std::forward<Arg>(arg)...));
@@ -12,8 +12,8 @@ inline void SuperTerrainPlus::STPWorldManager::attachBiomeFactory(Arg&&... arg) 
 }
 
 template<class Div, typename... Arg>
-inline void SuperTerrainPlus::STPWorldManager::attachDiversityGenerator(Arg&&... arg) {
-	using namespace STPCompute;
+inline void STPDemo::STPWorldManager::attachDiversityGenerator(Arg&&... arg) {
+	using namespace SuperTerrainPlus::STPCompute;
 	//create an instance of diversity generator
 	STPDiversityGenerator* diversity = dynamic_cast<STPDiversityGenerator*>(new Div(std::forward<Arg>(arg)...));
 	//assign

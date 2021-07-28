@@ -18,8 +18,9 @@ add_subdirectory(${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})
 # tell the static library location so CUDA runtime compiler can find it easily (if developer wants to)
 get_target_property(SuperAlgorithm+Lib ${STP_ALGORITHM_ENGINE} ARCHIVE_OUTPUT_DIRECTORY)
 set(SuperAlgorithm+Include ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})
-# config file for SuperTerrain+ engine
-configure_file(${STP_TEMPLATE_DIR}/STPCoreDefine.h ${STP_CORE_INCLUDE}/STPCoreDefine.h @ONLY)
+# config files for engine
+configure_file(${STP_TEMPLATE_DIR}/STPCoreDefine.h ${STP_CORE_INCLUDE}/STPCoreDefine.h COPYONLY)
+configure_file(${STP_TEMPLATE_DIR}/STPAlgorithmDefine.h ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/STPAlgorithmDefine.h @ONLY)
 
 # dependencies
 target_include_directories(${STP_MAIN_ENGINE}
@@ -30,8 +31,9 @@ target_include_directories(${STP_ERROR_ENGINE}
 PRIVATE ${STP_MODULE_INCLUDE}/${STP_ERROR_ENGINE}
 )
 target_include_directories(${STP_ALGORITHM_ENGINE}
-PRIVATE ${STP_MODULE_INCLUDE}/${STP_ERROR_ENGINE} ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE} ${STP_CORE_INCLUDE}
+PRIVATE ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
 )
+
 
 # link error handling engine target
 target_link_libraries(${STP_MAIN_ENGINE}

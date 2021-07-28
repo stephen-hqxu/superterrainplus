@@ -9,7 +9,7 @@
 using namespace SuperTerrainPlus::STPCompute;
 using namespace STPDemo;
 
-static __constant__ unsigned char BiomeSetting_raw[sizeof(STPBiomeSettings)]; 
+static __constant__ unsigned char BiomeSetting_raw[sizeof(STPBiomeSettings)];
 static __constant__ uint2 Dimension[1];
 static __constant__ float2 HalfDimension[1];
 static __device__ unsigned char Simplex_raw[sizeof(STPSimplexNoise)];
@@ -33,7 +33,7 @@ __global__ void generateMultiBiomeHeightmap(float*, float2);
 __host__ void STPMultiHeightGenerator::initGenerator(const STPBiomeSettings* biome_settings, const SuperTerrainPlus::STPCompute::STPSimplexNoise* simplex_generator, uint2 dimension) {
 	//copy dimension
 	STPcudaCheckErr(cudaMemcpyToSymbol(Dimension, &dimension, sizeof(uint2), 0ull, cudaMemcpyHostToDevice));
-	const float2 half_dimension = make_float2(dimension.x / 2.0f , dimension.y / 2.0f);
+	const float2 half_dimension = make_float2(dimension.x / 2.0f, dimension.y / 2.0f);
 	STPcudaCheckErr(cudaMemcpyToSymbol(HalfDimension, &half_dimension, sizeof(float2), 0ull, cudaMemcpyHostToDevice));
 	//copy biome settings
 	STPcudaCheckErr(cudaMemcpyToSymbol(BiomeSetting_raw, biome_settings, sizeof(STPBiomeSettings), 0ull, cudaMemcpyHostToDevice));
@@ -46,8 +46,8 @@ __host__ void STPMultiHeightGenerator::generateHeightmap(float* heightmap, uint2
 	dim3 Dimgridsize, Dimblocksize;
 	//smart launch config
 	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &generateMultiBiomeHeightmap));
-		Dimblocksize = dim3(32, blocksize / 32);
-		Dimgridsize = dim3((dimension.x + Dimblocksize.x - 1) / Dimblocksize.x, (dimension.y + Dimblocksize.y - 1) / Dimblocksize.y);
+	Dimblocksize = dim3(32, blocksize / 32);
+	Dimgridsize = dim3((dimension.x + Dimblocksize.x - 1) / Dimblocksize.x, (dimension.y + Dimblocksize.y - 1) / Dimblocksize.y);
 	//launch
 	generateMultiBiomeHeightmap << <Dimgridsize, Dimblocksize, 0, stream >> > (heightmap, offset);
 }

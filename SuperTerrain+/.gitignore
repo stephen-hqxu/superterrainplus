@@ -1,2 +1,3 @@
 # exclude CMake configure file output
 CoreInterface/STPCoreDefine.h
+ModuleInterface/SuperAlgorithm+/STPAlgorithmDefine.h

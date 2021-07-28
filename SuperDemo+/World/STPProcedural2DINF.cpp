@@ -13,6 +13,7 @@ using glm::vec3;
 using glm::mat4;
 using glm::identity;
 
+using namespace STPDemo;
 using namespace SuperTerrainPlus;
 
 STPProcedural2DINF::STPProcedural2DINF(const STPEnvironment::STPMeshSetting& mesh_settings, STPChunkManager& manager, void* procedural2dinf_cmd)

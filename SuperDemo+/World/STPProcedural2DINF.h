@@ -13,11 +13,10 @@
 #include <World/Chunk/STPChunkManager.h>
 
 /**
- * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
- * including perlin noise generated height map, hydrology processing and marching cube algorithm.
- * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
+ * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
+ * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
-namespace SuperTerrainPlus {
+namespace STPDemo {
 
 	/**
 	 * @brief STPProcedural2DINF will create, render and update chunks with generated heightfield when rendering a 2D procedural infinite terrain.
@@ -39,10 +38,10 @@ namespace SuperTerrainPlus {
 		GLuint Terrain2d_pipeline;
 
 		//terrain rendering settings
-		const STPEnvironment::STPMeshSetting& MeshSetting;
+		const SuperTerrainPlus::STPEnvironment::STPMeshSetting& MeshSetting;
 
 		//chunk manager for this renderer
-		STPChunkManager& ChunkManager;
+		SuperTerrainPlus::STPChunkManager& ChunkManager;
 
 		/**
 		 * @brief Compile the 2D terrain shader
@@ -81,7 +80,7 @@ namespace SuperTerrainPlus {
 		 * @param manager Chunk manager to be linked with this renderer
 		 * @param procedural2dinf_cmd The indirect rendering command for prodecural 2d inf terrain renderer
 		*/
-		STPProcedural2DINF(const STPEnvironment::STPMeshSetting&, STPChunkManager&, void*);
+		STPProcedural2DINF(const SuperTerrainPlus::STPEnvironment::STPMeshSetting&, SuperTerrainPlus::STPChunkManager&, void*);
 
 		STPProcedural2DINF(const STPProcedural2DINF&) = delete;
 

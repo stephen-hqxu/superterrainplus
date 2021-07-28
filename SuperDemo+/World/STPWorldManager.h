@@ -6,11 +6,10 @@
 #include "STPProcedural2DINF.h"
 
 /**
- * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
- * including perlin noise generated height map, hydrology processing and marching cube algorithm.
- * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
+ * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
+ * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
-namespace SuperTerrainPlus {
+namespace STPDemo {
 
 	/**
 	 * @brief STPWorldManager is a high-level binding that allows user to generate and render any infinite procedural world within minimal efforts.
@@ -23,15 +22,15 @@ namespace SuperTerrainPlus {
 
 		//All stuff below are trival, no documentation is needed
 		//settings
-		std::unique_ptr<STPEnvironment::STPConfiguration> WorldSetting;
+		std::unique_ptr<SuperTerrainPlus::STPEnvironment::STPConfiguration> WorldSetting;
 		//generators
-		std::unique_ptr<STPCompute::STPHeightfieldGenerator> ChunkGenerator;
-		std::unique_ptr<STPDiversity::STPBiomeFactory> BiomeFactory;
-		std::unique_ptr<STPCompute::STPDiversityGenerator> DiversityGenerator;
+		std::unique_ptr<SuperTerrainPlus::STPCompute::STPHeightfieldGenerator> ChunkGenerator;
+		std::unique_ptr<SuperTerrainPlus::STPDiversity::STPBiomeFactory> BiomeFactory;
+		std::unique_ptr<SuperTerrainPlus::STPCompute::STPDiversityGenerator> DiversityGenerator;
 		//world management agents
-		std::unique_ptr<STPChunkStorage> ChunkStorage;
-		std::unique_ptr<STPChunkProvider> ChunkProvider;
-		std::unique_ptr<STPChunkManager> ChunkManager;
+		std::unique_ptr<SuperTerrainPlus::STPChunkStorage> ChunkStorage;
+		std::unique_ptr<SuperTerrainPlus::STPChunkProvider> ChunkProvider;
+		std::unique_ptr<SuperTerrainPlus::STPChunkManager> ChunkManager;
 		std::unique_ptr<STPProcedural2DINF> WorldRenderer;
 
 	public:
@@ -55,7 +54,7 @@ namespace SuperTerrainPlus {
 		 * @brief Attach world settings to the current world manager.
 		 * @param settings All world settings, it will be copied under the object
 		*/
-		void attachSetting(STPEnvironment::STPConfiguration*);
+		void attachSetting(SuperTerrainPlus::STPEnvironment::STPConfiguration*);
 
 		/**
 		 * @brief Attach the biome factory with this world manager
@@ -91,37 +90,37 @@ namespace SuperTerrainPlus {
 		 * @brief Get the world settings 
 		 * @return The world settings managed by the current world manager. If world manager is not linked, nullptr is returned.
 		*/
-		const STPEnvironment::STPConfiguration* getWorldSetting() const;
+		const SuperTerrainPlus::STPEnvironment::STPConfiguration* getWorldSetting() const;
 
 		/**
 		 * @brief Get the chunk generator.
 		 * @return The heightfield generator managed by the current world manager. If world manager is not linked, nullptr is returned.
 		*/
-		const STPCompute::STPHeightfieldGenerator* getChunkGenerator() const;
+		const SuperTerrainPlus::STPCompute::STPHeightfieldGenerator* getChunkGenerator() const;
 
 		/**
 		 * @brief Get the biome factory
 		 * @return The biome factory managed by the current world manager. If no biome factory is attached, nullptr is returned
 		*/
-		const STPDiversity::STPBiomeFactory* getBiomeFactory() const;
+		const SuperTerrainPlus::STPDiversity::STPBiomeFactory* getBiomeFactory() const;
 
 		/**
 		 * @brief Get the chunk storage
 		 * @return The chunk storage managed by the current world manager. If world manager is not linked, nullptr is returned.
 		*/
-		const STPChunkStorage* getChunkStorage() const;
+		const SuperTerrainPlus::STPChunkStorage* getChunkStorage() const;
 
 		/**
 		 * @brief Get the chunk provider
 		 * @return The chunk provider managed by the current world manager. If world manager is not linked, nullptr is returned.
 		*/
-		const STPChunkProvider* getChunkProvider() const;
+		const SuperTerrainPlus::STPChunkProvider* getChunkProvider() const;
 
 		/**
 		 * @brief Get the chunk manager
 		 * @return The chunk manager managed by the current world manager. If world manager is not linked, nullptr is returned.
 		*/
-		const STPChunkManager* getChunkManager() const;
+		const SuperTerrainPlus::STPChunkManager* getChunkManager() const;
 
 		/**
 		 * @brief Get the chunk renderer

@@ -1,11 +1,10 @@
 #pragma once
 
 /**
- * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
- * including perlin noise generated height map, hydrology processing and marching cube algorithm.
- * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
+ * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
+ * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
-namespace SuperTerrainPlus {
+namespace STPDemo {
 
 	/**
 	 * @brief Render the skybox with day-night cycle
@@ -16,7 +15,7 @@ namespace SuperTerrainPlus {
 		//drawing command
 		const void* const command;
 		//thread pool from the main drawing thread
-		STPThreadPool* const rendering_pool;
+		SuperTerrainPlus::STPThreadPool* const rendering_pool;
 
 		SglToolkit::SgTShaderProc skyShader;
 		//buffers
@@ -146,7 +145,7 @@ namespace SuperTerrainPlus {
 		 * @param sky_cmd The indrect rendering command for sky renderer
 		 * @param pool The thread pool for multi-threaded texture loading
 		*/
-		STPSkyRenderer(const SIMPLE::SISection& day, const SIMPLE::SISection& night, const SIMPLE::SISection& globalPreset, const DrawElementsIndirectCommand* sky_cmd, STPThreadPool* pool)
+		STPSkyRenderer(const SIMPLE::SISection& day, const SIMPLE::SISection& night, const SIMPLE::SISection& globalPreset, const DrawElementsIndirectCommand* sky_cmd, SuperTerrainPlus::STPThreadPool* pool)
 			: rotaingSpeed(std::stof(globalPreset("rotationSpeed"))), cyclingSpeed(std::stof(globalPreset("DaytimeSpeed"))), command(reinterpret_cast<const void*>(sky_cmd)), rendering_pool(pool) {
 			cout << "....Loading STPSkyRenderer....";
 			

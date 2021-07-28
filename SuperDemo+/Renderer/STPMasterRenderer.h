@@ -1,4 +1,8 @@
 #pragma once
+#ifndef _STP_START_CPP_
+#error __FILE__ is managed by STPStart.cpp internally and should not be included
+#endif//_STP_START_CPP_
+
 //System
 #include <iostream>
 using std::cerr;
@@ -49,11 +53,10 @@ using glm::value_ptr;
 #include "../World/Biomes/STPBiomefieldGenerator.h"
 
 /**
- * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
- * including perlin noise generated height map, hydrology processing and marching cube algorithm.
- * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
+ * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
+ * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
-namespace SuperTerrainPlus {
+namespace STPDemo {
 
 	/**
 	 * @brief Rendering the entire terrain scene for demo. There are multiple terrain rendering models for choices.
@@ -78,7 +81,7 @@ namespace SuperTerrainPlus {
 		//terrain renderers
 		STPWorldManager world_manager;
 		//thread pool
-		STPThreadPool* command_pool = nullptr;
+		SuperTerrainPlus::STPThreadPool* command_pool = nullptr;
 
 		/**
 		 * @brief Set up the shader storage buffer for pv matrix
@@ -185,9 +188,9 @@ namespace SuperTerrainPlus {
 			cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
 
 			//starting thread pool
-			this->command_pool = new STPThreadPool(3u);
+			this->command_pool = new SuperTerrainPlus::STPThreadPool(3u);
 			//loading terrain 2d inf parameters
-			STPEnvironment::STPConfiguration config;
+			SuperTerrainPlus::STPEnvironment::STPConfiguration config;
 			std::future chunksPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFChunksParameter, std::ref(this->engineSettings["Generators"]));
 			std::future renderPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFRenderingParameter, std::ref(this->engineSettings["2DTerrainINF"]));
 			std::future biomePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::loadBiomeParameters, std::ref(this->biomeSettings));
@@ -198,7 +201,7 @@ namespace SuperTerrainPlus {
 			std::future noisePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getSimplex2DNoiseParameter, std::ref(this->biomeSettings["simplex"]));
 			//not quite sure why heightfield_settings isn't got copied to the config, it just share the pointer
 			config.getHeightfieldSetting() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameter(this->engineSettings["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk);
-			STPEnvironment::STPSimplexNoiseSetting simplex = noisePara_loader.get();
+			SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting simplex = noisePara_loader.get();
 			biomePara_loader.get();
 
 			assert(config.validate());
@@ -218,7 +221,7 @@ namespace SuperTerrainPlus {
 				exit(-1);
 			}
 
-			const_cast<STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
+			const_cast<SuperTerrainPlus::STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
 			//setting up ssbo
 			this->setPVmatrix();
 		}
@@ -258,7 +261,7 @@ namespace SuperTerrainPlus {
 		*/
 		void draw(const double& frametime) {
 			//start loading terrain 2d inf async
-			const_cast<STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
+			const_cast<SuperTerrainPlus::STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
 
 			//clear the default framebuffer
 			glClearColor(121.0f / 255.0f, 151.0f / 255.0f, 52.0f / 255.0f, 1.0f);

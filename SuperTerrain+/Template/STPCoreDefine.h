@@ -8,14 +8,5 @@
 */
 namespace SuperTerrainPlus {
 
-	/**
-	 * @brief Denotes the SuperAlgorithm+ static library output path
-	*/
-	constexpr static char SuperAlgorithmPlus_Library[] = "@SuperAlgorithm+Lib@";
-	/**
-	 * @brief Denotes the SuperAlgorithm+ include path
-	*/
-	constexpr static char SuperAlgorithmPlus_Include[] = "@SuperAlgorithm+Include@";
-
 }
 #endif//_STP_CORE_DEFINE_H_

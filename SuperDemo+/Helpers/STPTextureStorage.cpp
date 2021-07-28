@@ -1,7 +1,7 @@
 #pragma once
 #include "STPTextureStorage.h"
 
-using namespace SuperTerrainPlus;
+using namespace STPDemo;
 
 STPTextureStorage::STPTextureStorage(const int width, const int height, const int channel, unsigned char* const texture)
 	: Width(width), Height(height), Channel(channel), Texture(texture) {

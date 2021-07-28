@@ -8,11 +8,10 @@
 #endif
 
 /**
- * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
- * including perlin noise generated height map, hydrology processing and marching cube algorithm.
- * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
+ * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
+ * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
-namespace SuperTerrainPlus {
+namespace STPDemo {
 
 	/**
 	 * @brief A texture storage that contains texture width, height and data

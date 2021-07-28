@@ -3,6 +3,7 @@
 //Biome Registry, just a demo program
 #include "../World/Biomes/STPBiomeRegistry.h"
 
+using namespace STPDemo;
 using namespace SuperTerrainPlus;
 
 using std::string;

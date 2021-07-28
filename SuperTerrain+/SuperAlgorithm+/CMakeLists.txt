@@ -1,6 +1,7 @@
 add_library(${STP_ALGORITHM_ENGINE} STATIC
 STPPermutationGenerator.cu
 STPSimplexNoise.cu
+STPSimplexNoiseRTC.cu
 )
 
 # link CUDA library

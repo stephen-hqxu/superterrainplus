@@ -13,11 +13,10 @@
 #include <SuperAlgorithm+/STPSimplexNoiseSetting.hpp>
 
 /**
- * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
- * including perlin noise generated height map, hydrology processing and marching cube algorithm.
- * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
+ * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
+ * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
 */
-namespace SuperTerrainPlus {
+namespace STPDemo {
 
 	/**
 	 * @brief STPTerrainParaLoader is a helper class to load terrain generation parameters from ini file to object that can be used by terrain generator 
@@ -46,14 +45,14 @@ namespace SuperTerrainPlus {
 		 * @param section The INI section that contains the 2d terrain rendering parameters
 		 * @return The terrain rendering parameters, if certain parameters are missing in the section, exception will be thrown
 		*/
-		static STPEnvironment::STPMeshSetting getProcedural2DINFRenderingParameter(const SIMPLE::SISection&);
+		static SuperTerrainPlus::STPEnvironment::STPMeshSetting getProcedural2DINFRenderingParameter(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load the chunk settings and rendering parameters for procedural infinite 2d terrain
 		 * @param section The INI section that contains the 2d terrian rendering parameters
 		 * @return The chunk manager rendering parameters, if certain parameters are missing in the section, exception will be thrown
 		*/
-		static STPEnvironment::STPChunkSetting getProcedural2DINFChunksParameter(const SIMPLE::SISection&);
+		static SuperTerrainPlus::STPEnvironment::STPChunkSetting getProcedural2DINFChunksParameter(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load the launch parameter for procedural infinite 2d terrain, stored in the ini file into STPHeightfieldLaunchPara
@@ -61,14 +60,14 @@ namespace SuperTerrainPlus {
 		 * @param slipRange The size of the free-slip range of the erosion
 		 * @return The launch parameter, if certain parameters are missing in the section, exception will be thrown
 		*/
-		static STPEnvironment::STPHeightfieldSetting getProcedural2DINFGeneratorParameter(const SIMPLE::SISection&, glm::uvec2);
+		static SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting getProcedural2DINFGeneratorParameter(const SIMPLE::SISection&, glm::uvec2);
 
 		/**
 		 * @brief Load the simplex noise 2d parameter, stored in the ini file into STPSimplexNoise2DPara
 		 * @param section The INI section that contains the launch parameter
 		 * @return The noise parameter,, if certain parameters are missing in the section, exception will eb thrown
 		*/
-		static STPEnvironment::STPSimplexNoiseSetting getSimplex2DNoiseParameter(const SIMPLE::SISection&);
+		static SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting getSimplex2DNoiseParameter(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load all biome parameters into STPBiomeRegistry
