@@ -2,6 +2,7 @@
 #ifndef _STP_LAYER_MANAGER_H_
 #define _STP_LAYER_MANAGER_H_
 
+#include <STPCoreDefine.h>
 //Data Structure
 #include <vector>
 //Layer Node
@@ -22,23 +23,19 @@ namespace SuperTerrainPlus {
 		 * @brief STPLayerManager is a graph structured class that manages all STPLayers as nodes.
 		 * It makes layer creation and destroy easier.
 		*/
-		class STPLayerManager {
+		class STP_API STPLayerManager {
 		private:
-			
-			/**
-			 * @brief STPLayerRecycler is a private deleter for STPLayer.
-			 * Since STPLayerManager is friend of STPLayer and STPLayerRecycler is friend of STPLayerManager, such that STPLayerRecycler can access deleter of STPLayer
-			*/
-			struct STPLayerRecycler {
-			public:
-
-				void operator()(STPLayer*) const;
-
-			};
 
 			//An array pointers to every layer.
 			//STPLayerManager owns the pointer to each layer so vertices can be deleted with ease
-			std::vector<std::unique_ptr<STPLayer, STPLayerRecycler>> Vertex;
+			std::vector<std::unique_ptr<STPLayer, void(*)(STPLayer*)>> Vertex;
+
+			/**
+			 * @brief Delete a internally stored layer
+			 * Since STPLayerManager is friend of STPLayer and STPLayerRecycler is friend of STPLayerManager, such that STPLayerRecycler can access deleter of STPLayer.
+			 * @param layer The pointer to the layer to be deleted
+			*/
+			static void recycleLayer(STPLayer*);
 
 		public:
 
@@ -48,6 +45,10 @@ namespace SuperTerrainPlus {
 			STPLayerManager() = default;
 
 			~STPLayerManager() = default;
+
+			STPLayerManager(const STPLayerManager&) = delete;
+
+			STPLayerManager& operator=(const STPLayerManager&) = delete;
 
 			/**
 			 * @brief Construct a new layer instance and add to the layer chain structure and let the current layer manager manage this layer.

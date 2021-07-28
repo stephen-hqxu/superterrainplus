@@ -2,6 +2,7 @@
 #ifndef _STP_LAYER_CACHE_H_
 #define _STP_LAYER_CACHE_H_
 
+#include <STPCoreDefine.h>
 //Functional
 #include <functional>
 //Exception
@@ -24,7 +25,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPLayerCache is a smart caching system that stores computed layer sample and read directly from when available
 		*/
-		class STPLayerCache final {
+		class STP_API STPLayerCache final {
 		private:
 
 			//Store the key value for a coordinate

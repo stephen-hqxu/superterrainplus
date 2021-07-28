@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _STP_ALGORITHM_DEFINE_H_
 #define _STP_ALGORITHM_DEFINE_H_
 

@@ -2,6 +2,7 @@
 #ifndef _STP_CHUNK_MANAGER_H_
 #define _STP_CHUNK_MANAGER_H_
 
+#include <STPCoreDefine.h>
 //GLM
 #include "glm/gtc/type_ptr.hpp"
 //OpenGL
@@ -24,7 +25,7 @@ namespace SuperTerrainPlus {
 	 * composing and preparing data for renderer. If data is currently ready, map will be loaded to opengl and send to renderer, if not ready, it will call CUDA functions and 
 	 * generate maps.
 	*/
-	class STPChunkManager {
+	class STP_API STPChunkManager {
 	public:
 
 		//Vector that stored rendered chunk world position and loading status (True is loaded, false otherwise)
@@ -34,7 +35,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPRenderingBufferType specifies the type of rendering buffer to retrieve
 		*/
-		enum class STPRenderingBufferType : unsigned char {
+		enum class STP_API STPRenderingBufferType : unsigned char {
 			//Biomemap
 			BIOME = 0x00u,
 			//Heightmap and normalmap

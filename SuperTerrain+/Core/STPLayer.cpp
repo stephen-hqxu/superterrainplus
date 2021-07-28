@@ -31,6 +31,10 @@ Sample STPLayer::STPLocalRNG::nextVal(Sample range) const {
 	return val;
 }
 
+SuperTerrainPlus::STPDiversity::STPLayer::STPLayer(Seed global_seed, Seed salt) : Salt(salt), LayerSeed(STPLayer::genLayerSeed(global_seed, salt)) {
+
+}
+
 Sample STPLayer::STPLocalRNG::choose(Sample var1, Sample var2) const {
 	return this->nextVal(2) == 0 ? var1 : var2;
 }

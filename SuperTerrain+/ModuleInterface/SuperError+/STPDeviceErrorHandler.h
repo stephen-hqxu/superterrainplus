@@ -15,23 +15,14 @@
 #define STP_ERROR_SEVERITY 2u
 #endif
 
-#if defined (_MSC_VER)
-	//MSVC compiler
-	#ifdef STPERRORPLUS_EXPORTS
-		#define STPERRORPLUS_API __declspec(dllexport)
-	#else
-		#define STPERRORPLUS_API __declspec(dllimport)
-	#endif
-#elif defined(__GNUC__)
-	//GCC
-	#ifdef STPERRORPLUS_EXPORTS
-		#define STPERRORPLUS_API __attribute__((visibility("default")))
-	#else
-		#define STPERRORPLUS_API
-	#endif
+#if defined(_WIN32) && defined(STPERRORPLUS_EXPORTS)
+#define STPERRORPLUS_API __declspec(dllexport)
+#elif defined(_WIN32)
+#define STPERRORPLUS_API __declspec(dllimport)
+#elif defined(__GNUC__) && defined(STPERRORPLUS_EXPORTS)
+#define STPERRORPLUS_API __attribute__((visibility("default")))
 #else
-	//Do nothing for compiler that exports automatically
-	#define STPERRORPLUS_API
+#define STPERRORPLUS_API
 #endif
 
 template<typename Err>

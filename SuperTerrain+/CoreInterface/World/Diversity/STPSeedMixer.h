@@ -2,6 +2,7 @@
 #ifndef _STP_SEED_MIXER_H_
 #define _STP_SEED_MIXER_H_
 
+#include <STPCoreDefine.h>
 //Biome define
 #include "STPBiomeDefine.h"
 
@@ -18,7 +19,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPSeedMixer mixes two seeds together to form a new seed
 		*/
-		class STPSeedMixer final {
+		class STP_API STPSeedMixer final {
 		private:
 
 			//No initialisation for a class with static functions only

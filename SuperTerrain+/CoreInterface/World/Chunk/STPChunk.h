@@ -2,6 +2,7 @@
 #ifndef _STP_CHUNK_H_
 #define _STP_CHUNK_H_
 
+#include <STPCoreDefine.h>
 //System
 #include <vector>
 #include <iostream>
@@ -25,11 +26,11 @@ namespace SuperTerrainPlus {
 	* @brief STPChunk stores chunk data (heightmap, normal map) for 2D terrain.
 	* It also contains arithmetic operation for chunk position, making locating chunks in world easier.
 	*/
-	class STPChunk {
+	class STP_API STPChunk {
 	public:
 
 		//Store the 1 bit state of the current chunk
-		enum class STPChunkState : unsigned char {
+		enum class STP_API STPChunkState : unsigned char {
 			//Empty chunk with no heightmap and normal map
 			Empty = 0x00u,
 			//Chunk with biomemap generated

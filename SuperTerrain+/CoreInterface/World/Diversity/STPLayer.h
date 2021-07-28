@@ -2,6 +2,7 @@
 #ifndef _STP_LAYER_H_
 #define _STP_LAYER_H_
 
+#include <STPCoreDefine.h>
 //System
 #include <vector>
 #include <memory>
@@ -25,7 +26,7 @@ namespace SuperTerrainPlus {
 		 * @brief Super Terrain Plus uses layered biome generation algorithm (ref: Minecraft),
 		 * STPLayer provides a abstract base class for implementations of subsequent layers.
 		*/
-		class STPLayer {
+		class STP_API STPLayer {
 		public:
 
 			friend class STPLayerManager;
@@ -33,7 +34,7 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief STPLocalRNG is a random number generator for each local seed (a seed that is deterministic on world coordinate)
 			*/
-			struct STPLocalRNG final {
+			struct STP_API STPLocalRNG final {
 			protected:
 
 				friend class STPLayer;
@@ -100,6 +101,14 @@ namespace SuperTerrainPlus {
 			static Seed genLayerSeed(Seed, Seed);
 
 		protected:
+
+			/**
+			 * @brief Create a layer instance with no ascendant.
+			 * @param global_seed The global seed is the seed that used to generate the entire world, a.k.a., world seed.
+			 * @param salt The salt is a random number that used to mix the global to generate local and layer seed, such that each layer should use
+			 * different salt value.
+			*/
+			STPLayer(Seed, Seed);
 
 			/**
 			 * @brief Create a layer instance

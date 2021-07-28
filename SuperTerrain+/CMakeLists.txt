@@ -15,12 +15,19 @@ add_subdirectory(${STP_MODULE_INCLUDE}/${STP_ERROR_ENGINE})
 add_subdirectory(${STP_ALGORITHM_ENGINE})
 add_subdirectory(${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})
 
+if(${STP_ENGINE_BUILD_SHARED})
+	# expose export/import symbols on shared library build
+	set(SuperTerrain+Shared "")
+else()
+	# hide export/import symbols on static library build
+	set(SuperTerrain+Shared "//")
+endif()
 # tell the static library location so CUDA runtime compiler can find it easily (if developer wants to)
 get_target_property(SuperAlgorithm+Lib ${STP_ALGORITHM_ENGINE} ARCHIVE_OUTPUT_DIRECTORY)
 set(SuperAlgorithm+Include ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})
 # config files for engine
-configure_file(${STP_TEMPLATE_DIR}/STPCoreDefine.h ${STP_CORE_INCLUDE}/STPCoreDefine.h COPYONLY)
-configure_file(${STP_TEMPLATE_DIR}/STPAlgorithmDefine.h ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/STPAlgorithmDefine.h @ONLY)
+configure_file(${STP_TEMPLATE_DIR}/STPCoreDefine.h.in ${STP_CORE_INCLUDE}/STPCoreDefine.h @ONLY)
+configure_file(${STP_TEMPLATE_DIR}/STPAlgorithmDefine.h.in ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/STPAlgorithmDefine.h @ONLY)
 
 # dependencies
 target_include_directories(${STP_MAIN_ENGINE}

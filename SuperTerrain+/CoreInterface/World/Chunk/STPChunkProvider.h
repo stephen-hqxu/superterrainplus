@@ -2,6 +2,7 @@
 #ifndef _STP_CHUNK_PROVIDER_H_
 #define _STP_CHUNK_PROVIDER_H_
 
+#include <STPCoreDefine.h>
 //System
 #include <utility>
 #include <functional>
@@ -27,7 +28,7 @@ namespace SuperTerrainPlus {
 	/**
 	 * @brief STPChunkProvider read chunks from chunk storage, and if the chunk is not available, it will return some status and dispatch compute async accordingly
 	*/
-	class STPChunkProvider {
+	class STP_API STPChunkProvider {
 	private:
 
 		//Chunk settings

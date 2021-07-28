@@ -1,6 +1,8 @@
 #pragma once
 #define _STP_START_CPP_
 #include "../Renderer/STPMasterRenderer.h"
+#include <STPEngineInitialiser.h>
+#include <STPCoreDefine.h>
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
@@ -72,11 +74,20 @@ namespace STPDemo {
 	 * @brief Create glad context, making the current running thread available to opengl
 	 * @return True if the context is created successfully
 	*/
-	const bool InitGLAD() {
-		if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
+	const bool InitSTP() {
+		const auto proc_addr = reinterpret_cast<GLADloadproc>(glfwGetProcAddress);
+		if (!gladLoadGLLoader(proc_addr)) {
 			cerr << "Fail to create GLAD context." << endl;
 			return false;
 		}
+#ifdef SUPERTERRAINPLUS_USE_SHARED
+		//In our demo program, since static library is linked directly to the current program so the init above does the job already.
+		//However if we are using shared library, there are 2 GLAD instances and we need to initalise both of them.
+		if (!SuperTerrainPlus::STPEngineInitialiser::initGLexplicit(proc_addr)) {
+			cerr << "Fail to initialise Super Terrain + engine." << endl;
+			return false;
+		}
+#endif//SUPERTERRAINPLUS_USE_SHARED
 		return true;
 	}
 
@@ -112,7 +123,7 @@ int main() {
 		glfwTerminate();
 		return -1;
 	}
-	if (!InitGLAD()) {
+	if (!InitSTP()) {
 		glfwTerminate();
 		return -1;
 	}

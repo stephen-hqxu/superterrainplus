@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _STP_SIMPLEX_NOISE_RTC_CUH_
 #define _STP_SIMPLEX_NOISE_RTC_CUH_
 

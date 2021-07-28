@@ -2,6 +2,7 @@
 #ifndef _STP_THREAD_POOL_H_
 #define _STP_THREAD_POOL_H_
 
+#include <STPCoreDefine.h>
 //ADT
 #include <queue>
 //Multi-threading
@@ -23,7 +24,7 @@ namespace SuperTerrainPlus {
 	 * @brief STPThreadPool is a simple implementation of thread pool that makes thread constantly working and grabing
 	 * new job when possible
 	*/
-	class STPThreadPool {
+	class STP_API STPThreadPool {
 	private:
 
 		//status

@@ -26,6 +26,7 @@ using glm::radians;
 using glm::value_ptr;
 //OpenGL engine
 #include "glad/glad.h"
+#define GLFW_DLL
 #include "GLFW/glfw3.h"
 //Image loader by stb_image
 #ifndef STBI_INCLUDE_STB_IMAGE_H

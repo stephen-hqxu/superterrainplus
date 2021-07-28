@@ -2,6 +2,7 @@
 #ifndef _STP_DIVERSITY_GENERATOR_RTC_H_
 #define _STP_DIVERSITY_GENERATOR_RTC_H_
 
+#include <STPCoreDefine.h>
 //Base Generator
 #include "STPDiversityGenerator.hpp"
 //System
@@ -29,7 +30,7 @@ namespace SuperTerrainPlus {
 		 * @brief STPDiversityGeneratorRTC provides a runtime-programmable multi-biome heightmap generation interface and
 		 * allows users to develop their biome-specific algorithms and parameters sets.
 		*/
-		class STPDiversityGeneratorRTC : public STPDiversityGenerator {
+		class STP_API STPDiversityGeneratorRTC : public STPDiversityGenerator {
 		protected:
 
 			//Store multiple string arguments that can be recognised by CUDA functions
@@ -45,7 +46,7 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Parameter sets for source complication
 			*/
-			struct STPSourceInformation {
+			struct STP_API STPSourceInformation {
 			public:
 
 				friend class STPDiversityGeneratorRTC;
@@ -53,7 +54,7 @@ namespace SuperTerrainPlus {
 				/**
 				 * @brief A helper argument setter for easy configuration
 				*/
-				struct STPSourceArgument : private STPStringArgument {
+				struct STP_API STPSourceArgument : private STPStringArgument {
 				public:
 
 					friend class STPDiversityGeneratorRTC;
@@ -87,7 +88,7 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Parameter sets for linker
 			*/
-			struct STPLinkerInformation {
+			struct STP_API STPLinkerInformation {
 			public:
 
 				friend class STPDiversityGeneratorRTC;
@@ -95,7 +96,7 @@ namespace SuperTerrainPlus {
 				/**
 				 * @brief Parameter sets for individual data in the linker
 				*/
-				struct STPDataJitOption {
+				struct STP_API STPDataJitOption {
 				public:
 
 					friend class STPDiversityGeneratorRTC;

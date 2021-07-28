@@ -1,5 +1,5 @@
 #pragma once
-#include <Environment/STPRainDropSetting.hpp>
+#include <Environment/STPRainDropSetting.h>
 
 #include <SuperError+/STPDeviceErrorHandler.h>
 

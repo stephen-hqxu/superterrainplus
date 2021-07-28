@@ -12,7 +12,7 @@ inline SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity:
 		//I hate using `new`, but there's no dynamic_cast for unique_ptr so I have to...
 		STPLayer* newLayer = dynamic_cast<STPLayer*>(new L(std::forward<Arg>(args)...));
 		//let this pointer managed by the current layer manager
-		this->Vertex.emplace_back(newLayer);
+		this->Vertex.emplace_back(newLayer, &STPLayerManager::recycleLayer);
 
 		//create cache
 		if (C != 0ull) {

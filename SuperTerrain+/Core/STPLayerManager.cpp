@@ -3,7 +3,7 @@
 
 using namespace SuperTerrainPlus::STPDiversity;
 
-void STPLayerManager::STPLayerRecycler::operator()(STPLayer* ptr) const {
+void STPLayerManager::recycleLayer(STPLayer* ptr) {
 	delete ptr;
 }
 

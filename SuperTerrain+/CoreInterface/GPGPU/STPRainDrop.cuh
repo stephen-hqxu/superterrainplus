@@ -7,7 +7,7 @@
 //ADT
 #include <list>
 //Settings
-#include "../Environment/STPRainDropSetting.hpp"
+#include "../Environment/STPRainDropSetting.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques

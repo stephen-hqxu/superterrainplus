@@ -5,6 +5,7 @@ STPChunkManager.cpp
 STPChunkProvider.cpp
 STPChunkStorage.cpp
 STPDiversityGeneratorRTC.cpp
+STPEngineInitialiser.cpp
 STPLayer.cpp
 STPLayerCache.cpp
 STPLayerManager.cpp
@@ -22,6 +23,7 @@ if(${STP_ENGINE_BUILD_SHARED})
 	set_target_properties(${STP_MAIN_ENGINE} PROPERTIES DEFINE_SYMBOL SUPERTERRAINPLUS_EXPORTS)
 else()
 	add_library(${STP_MAIN_ENGINE} STATIC ${MAIN_ENGINE_SOURCE})
+	set_target_properties(${STP_MAIN_ENGINE} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ${STP_DEVICELINK_STATIC})
 endif()
 
 # glad.c contains API entries to OpenGL functions

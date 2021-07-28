@@ -13,6 +13,11 @@ World/STPWorldManager.cpp
 
 World/Biomes/STPMultiHeightGenerator.cu
 )
+if(${STP_ENGINE_BUILD_SHARED})
+	# when building a shared library, GLAD.c is not exported by the engine so we need to compile it twice
+	# when building a static library, GLAD.c object is included in the library so don't need to add it
+	target_sources(${STP_DEMO_PROGRAM} PRIVATE ${STP_EXTERNAL_DIR}/include/glad/glad.c)
+endif()
 
 if(MSVC)
 	# set VS debuging directory

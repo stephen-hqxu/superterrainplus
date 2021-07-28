@@ -2,6 +2,7 @@
 #ifndef _STP_BIOME_FACTORY_H_
 #define _STP_BIOME_FACTORY_H_
 
+#include <STPCoreDefine.h>
 //System
 #include <queue>
 #include <mutex>
@@ -25,7 +26,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPBiomeFactory provides a safe environment for multi-threaded biome map generation.
 		*/
-		class STPBiomeFactory {
+		class STP_API STPBiomeFactory {
 		private:
 
 			typedef std::unique_ptr<STPLayerManager> STPLayerManager_t;

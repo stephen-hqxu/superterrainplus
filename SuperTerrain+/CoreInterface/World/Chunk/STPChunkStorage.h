@@ -2,6 +2,7 @@
 #ifndef _STP_CHUNK_STORAGE_H_
 #define _STP_CHUNK_STORAGE_H_
 
+#include <STPCoreDefine.h>
 //System ADT
 #include  <memory>
 #include <unordered_map>
@@ -19,7 +20,7 @@ namespace SuperTerrainPlus {
 	 * @brief STPChunkStorage stores all chunks in a sensible data structure.
 	 * STPChunkStorage is thread safe.
 	*/
-	class STPChunkStorage {
+	class STP_API STPChunkStorage {
 	public:
 
 		//A pair indicate the status of in-place chunk addition
