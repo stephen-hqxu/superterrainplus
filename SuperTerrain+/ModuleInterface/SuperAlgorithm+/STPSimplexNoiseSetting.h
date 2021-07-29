@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_SIMPLEX_NOISE_SETTING_HPP_
-#define _STP_SIMPLEX_NOISE_SETTING_HPP_
+#ifndef _STP_SIMPLEX_NOISE_SETTING_H_
+#define _STP_SIMPLEX_NOISE_SETTING_H_
 
 #include <Environment/STPSetting.hpp>
 //CUDA vector
@@ -36,22 +36,13 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Init the simplex noise settings with default values
 			*/
-			STPSimplexNoiseSetting() : STPSetting() {
-				//Loading default value
-				this->Seed = 0u;
-				this->Distribution = 8u;
-				this->Offset = 45.0;
-			}
+			STPSimplexNoiseSetting();
 
 			~STPSimplexNoiseSetting() = default;
 
-			bool validate() const override {
-				return this->Distribution != 0
-					&& this->Offset >= 0.0
-					&& this->Offset < 360.0;
-			}
+			bool validate() const override;
 
 		};
 	}
 }
-#endif//_STP_SIMPLEX_NOISE_SETTING_HPP_
+#endif//_STP_SIMPLEX_NOISE_SETTING_H_

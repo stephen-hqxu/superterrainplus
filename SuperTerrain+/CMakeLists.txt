@@ -1,7 +1,3 @@
-set(STP_MAIN_ENGINE "SuperTerrain+")
-set(STP_ERROR_ENGINE "SuperError+")
-set(STP_ALGORITHM_ENGINE "SuperAlgorithm+")
-
 set(STP_TEMPLATE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Template)
 set(STP_CORE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/CoreInterface)
 set(STP_MODULE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/ModuleInterface)
@@ -31,8 +27,7 @@ configure_file(${STP_TEMPLATE_DIR}/STPAlgorithmDefine.h.in ${STP_MODULE_INCLUDE}
 
 # dependencies
 target_include_directories(${STP_MAIN_ENGINE}
-PRIVATE ${STP_EXTERNAL_DIR}/include
-PUBLIC ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
+PUBLIC ${STP_EXTERNAL_DIR}/include ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
 )
 target_include_directories(${STP_ERROR_ENGINE}
 PRIVATE ${STP_MODULE_INCLUDE}/${STP_ERROR_ENGINE}

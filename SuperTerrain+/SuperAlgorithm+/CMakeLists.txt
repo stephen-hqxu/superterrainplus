@@ -1,4 +1,6 @@
 add_library(${STP_ALGORITHM_ENGINE} STATIC
+STPSimplexNoiseSetting.cpp
+
 STPPermutationGenerator.cu
 STPSimplexNoise.cu
 STPSimplexNoiseRTC.cu

@@ -1,10 +1,10 @@
 target_sources(${STP_MAIN_ENGINE} PRIVATE
 STPEngineInitialiser.h
 # /Environment
-Environment/STPChunkSetting.hpp
-Environment/STPConfiguration.hpp
-Environment/STPHeightfieldSetting.hpp
-Environment/STPMeshSetting.hpp
+Environment/STPChunkSetting.h
+Environment/STPConfiguration.h
+Environment/STPHeightfieldSetting.h
+Environment/STPMeshSetting.h
 Environment/STPRainDropSetting.h
 Environment/STPSetting.hpp
 # /GPGPU

@@ -1,0 +1,3 @@
+# don't include external library glad
+glad/
+KHR/

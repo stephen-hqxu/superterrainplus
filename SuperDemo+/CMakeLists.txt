@@ -16,7 +16,9 @@ World/Biomes/STPMultiHeightGenerator.cu
 if(${STP_ENGINE_BUILD_SHARED})
 	# when building a shared library, GLAD.c is not exported by the engine so we need to compile it twice
 	# when building a static library, GLAD.c object is included in the library so don't need to add it
-	target_sources(${STP_DEMO_PROGRAM} PRIVATE ${STP_EXTERNAL_DIR}/include/glad/glad.c)
+	target_link_libraries(${STP_DEMO_PROGRAM}
+	PRIVATE ${STP_GLAD}
+	)
 endif()
 
 if(MSVC)
@@ -35,7 +37,7 @@ PRIVATE ${STP_EXTERNAL_DIR}/include
 
 target_link_libraries(${STP_DEMO_PROGRAM}
 PRIVATE opengl32.lib glfw3.lib SglToolkit.lib SIMPLE.lib
-PRIVATE SuperTerrain+ SuperError+ SuperAlgorithm+
+PRIVATE ${STP_MAIN_ENGINE} ${STP_ERROR_ENGINE} ${STP_ALGORITHM_ENGINE}
 )
 
 # copy GLSL code to where the bin locates

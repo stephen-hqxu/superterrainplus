@@ -9,8 +9,8 @@
 //GLM
 #include "glm/vec2.hpp"
 //Settings
-#include <Environment/STPConfiguration.hpp>
-#include <SuperAlgorithm+/STPSimplexNoiseSetting.hpp>
+#include <Environment/STPConfiguration.h>
+#include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.

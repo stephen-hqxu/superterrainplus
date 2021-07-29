@@ -1,7 +1,8 @@
 #pragma once
-#ifndef _STP_CHUNK_SETTING_HPP_
-#define _STP_CHUNK_SETTING_HPP_
+#ifndef _STP_CHUNK_SETTING_H_
+#define _STP_CHUNK_SETTING_H_
 
+#include <STPCoreDefine.h>
 #include "STPSetting.hpp"
 //GLM
 #include "glm/vec2.hpp"
@@ -22,7 +23,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPChunkSettings stores settings for each generated chunk. It will be mainly used by 2d terrain generator
 		*/
-		struct STPChunkSetting: public STPSetting {
+		struct STP_API STPChunkSetting: public STPSetting {
 		public:
 
 			//Determine the the X*Y number of unit planes, greater chunk size will give more chunk details
@@ -46,26 +47,13 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Init STPChunksPara with defualt values
 			*/
-			STPChunkSetting(): STPSetting() {
-				//fill with defaults
-				this->ChunkSize = glm::uvec2(0u);
-				this->MapSize = glm::uvec2(0u);
-				this->RenderedChunk = glm::uvec2(0u);
-				this->ChunkOffset = glm::vec3(0.0f);
-				this->ChunkScaling = 1.0f;
-				this->MapOffset = glm::vec3(0.0f);
-				this->FreeSlipChunk = glm::uvec2(0u);
-			}
+			STPChunkSetting();
 
 			~STPChunkSetting() = default;
 
-			bool validate() const override {
-				return this->ChunkScaling > 0.0f
-					&& this->FreeSlipChunk.x >= 1u
-					&& this->FreeSlipChunk.y >= 1u;
-			}
+			bool validate() const override;
 		};
 	}
 
 }
-#endif//_STP_CHUNK_SETTINGS_HPP_
+#endif//_STP_CHUNK_SETTINGS_H_

@@ -6,6 +6,7 @@ STPChunkProvider.cpp
 STPChunkStorage.cpp
 STPDiversityGeneratorRTC.cpp
 STPEngineInitialiser.cpp
+STPEnvironment.cpp
 STPLayer.cpp
 STPLayerCache.cpp
 STPLayerManager.cpp
@@ -27,9 +28,8 @@ else()
 endif()
 
 # glad.c contains API entries to OpenGL functions
-target_sources(
-${STP_MAIN_ENGINE}
-PRIVATE ${STP_EXTERNAL_DIR}/include/glad/glad.c
+target_link_libraries(${STP_MAIN_ENGINE}
+PRIVATE ${STP_GLAD}
 )
 
 # link lib

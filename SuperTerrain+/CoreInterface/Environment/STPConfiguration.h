@@ -1,11 +1,12 @@
 #pragma once
-#ifndef _STP_CONFIGURATION_HPP_
-#define _STP_CONFIGURATION_HPP_
+#ifndef _STP_CONFIGURATION_H_
+#define _STP_CONFIGURATION_H_
 
+#include <STPCoreDefine.h>
 //Include all settings here
-#include "STPChunkSetting.hpp"
-#include "STPHeightfieldSetting.hpp"
-#include "STPMeshSetting.hpp"
+#include "STPChunkSetting.h"
+#include "STPHeightfieldSetting.h"
+#include "STPMeshSetting.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -22,7 +23,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPConfigurations stores configurations each settings of Super Terrain +
 		*/
-		class STPConfiguration : public STPSetting {
+		class STP_API STPConfiguration : public STPSetting {
 		private:
 
 			STPChunkSetting ChunkSetting;
@@ -38,28 +39,30 @@ namespace SuperTerrainPlus {
 
 			~STPConfiguration() = default;
 
-			bool validate() const override {
-				return this->ChunkSetting.validate()
-					&& this->HeightfieldSetting.validate()
-					&& this->MeshSetting.validate();
-			}
+			bool validate() const override;
 
-			//------------------Get settings-------------------//
+			//------------------Get setting-------------------//
 
-			STPChunkSetting& getChunkSetting() {
-				return this->ChunkSetting;
-			}
+			/**
+			 * @brief Get chunk setting
+			 * @return Pointer to chunk setting
+			*/
+			STPChunkSetting& getChunkSetting();
 
-			STPHeightfieldSetting& getHeightfieldSetting() {
-				return this->HeightfieldSetting;
-			}
+			/**
+			 * @brief Get heightfield setting
+			 * @return Pointer to heightfield setting
+			*/
+			STPHeightfieldSetting& getHeightfieldSetting();
 
-			STPMeshSetting& getMeshSetting() {
-				return this->MeshSetting;
-			}
+			/**
+			 * @brief Get mesh setting
+			 * @return Pointer to mesh setting
+			*/
+			STPMeshSetting& getMeshSetting();
 
 		};
 
 	}
 }
-#endif//_STP_CONFIGURATION_HPP_
+#endif//_STP_CONFIGURATION_H_

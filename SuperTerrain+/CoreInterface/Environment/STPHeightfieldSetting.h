@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_HEIGHTFIELD_SETTING_HPP_
-#define _STP_HEIGHTFIELD_SETTING_HPP_
+#ifndef _STP_HEIGHTFIELD_SETTING_H_
+#define _STP_HEIGHTFIELD_SETTING_H_
 
 #include "STPRainDropSetting.h"
 
@@ -19,7 +19,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPHeightfieldSettings stores all heightfield parameters for compute launch
 		*/
-		struct STPHeightfieldSetting: public STPRainDropSetting {
+		struct STP_API STPHeightfieldSetting: public STPRainDropSetting {
 		public:
 
 			//Heightfield Generator Parameters
@@ -34,23 +34,14 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Init STPHeightfieldSetting with defaults
 			*/
-			STPHeightfieldSetting() : STPRainDropSetting() {
-				this->Strength = 1.0f;
-			}
+			STPHeightfieldSetting();
 
 			~STPHeightfieldSetting() = default;
 
-			bool validate() const override {
-				static auto checkRange = []__host__(float value, float lower, float upper) -> bool {
-					return value >= lower && value <= upper;
-				};
-				//check the raindrop parameter plus also heightmap parameter
-				return this->STPRainDropSetting::validate()
-					&& this->Strength > 0.0f;
-			}
+			bool validate() const override;
 		};
 
 	}
 
 }
-#endif//_STP_HEIGHTFIELD_SETTING_HPP_
+#endif//_STP_HEIGHTFIELD_SETTING_H_

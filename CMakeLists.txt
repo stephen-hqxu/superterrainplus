@@ -14,7 +14,15 @@ include(OptionList)
 # setup compilers
 include(SetupEnvironment)
 
+# set some useful variables of our main engine
 set(STP_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/External)
+set(STP_GLAD "GLAD")
+set(STP_MAIN_ENGINE "SuperTerrain+")
+set(STP_ERROR_ENGINE "SuperError+")
+set(STP_ALGORITHM_ENGINE "SuperAlgorithm+")
+
+# pre-compile GLAD
+add_subdirectory(GLAD)
 # add main STP engine
 add_subdirectory(SuperTerrain+)
 # add demo program to show how STP engine works

@@ -16,7 +16,7 @@
 #include "../../GPGPU/STPHeightfieldGenerator.cuh"
 
 //Settings
-#include "../../Environment/STPConfiguration.hpp"
+#include "../../Environment/STPConfiguration.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
