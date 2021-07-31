@@ -1,12 +1,11 @@
-add_library(${STP_ALGORITHM_ENGINE} STATIC
+# host-side shared library
+add_library(${STP_ALGORITHM_HOST_ENGINE} SHARED
 STPSimplexNoiseSetting.cpp
-
-STPPermutationGenerator.cu
-STPSimplexNoise.cu
-STPSimplexNoiseRTC.cu
+STPPermutationGenerator.cpp
 )
+set_target_properties(${STP_ALGORITHM_HOST_ENGINE} PROPERTIES DEFINE_SYMBOL STPALGORITHMPLUS_HOST_EXPORTS)
 
-# link CUDA library
-target_link_libraries(${STP_ALGORITHM_ENGINE}
-PUBLIC CUDA::cudart
+# device-side static library
+add_library(${STP_ALGORITHM_DEVICE_ENGINE} STATIC
+Device/STPSimplexNoise.cu
 )

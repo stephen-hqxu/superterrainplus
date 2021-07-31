@@ -1,31 +1,31 @@
 #pragma once
-#include <SuperAlgorithm+/STPSimplexNoise.cuh>
+#include <STPSimplexNoise.cuh>
 
-#include <SuperError+/STPDeviceErrorHandler.h>
+#include <cassert>
+//Permutation
+#include "../STPPermutation.hpp"
 
 using namespace SuperTerrainPlus::STPCompute;
 
-static bool init = false;
-__constant__ double F2[1]; // 0.5 * (static_cast<double>(sqrt(3.0)) - 1.0);
-__constant__ double G2[1]; // (3.0 - static_cast<double>(sqrt(3.0))) / 6.0;
-__constant__ double H2[1]; // -1.0 + 2.0 * G2;
-
-__host__ static void initialise() {
-	if (init) {
-		//no need to reinit
-		return;
+constexpr static double csqrt(double x) {
+	assert(x >= 0);
+	if (x == 0) {
+		return 0;
 	}
 
-	const double f2 = 0.5 * (static_cast<double>(sqrt(3.0)) - 1.0);
-	const double g2 = (3.0 - static_cast<double>(sqrt(3.0))) / 6.0;
-	const double h2 = -1.0 + 2.0 * g2;
+	//For small numbers small iteration is enough for a good approximation
+	constexpr unsigned char Iteration = 5u;
 
-	STPcudaCheckErr(cudaMemcpyToSymbol(F2, &f2, sizeof(double), 0ull, cudaMemcpyHostToDevice));
-	STPcudaCheckErr(cudaMemcpyToSymbol(G2, &g2, sizeof(double), 0ull, cudaMemcpyHostToDevice));
-	STPcudaCheckErr(cudaMemcpyToSymbol(H2, &h2, sizeof(double), 0ull, cudaMemcpyHostToDevice));
-
-	return;
+	//Newton-Rhapson's method
+	double guess = x;
+	for (unsigned char i = 0u; i < Iteration; i++) {
+		guess -= (guess * guess - x) / (2 * guess);
+	}
+	return guess;
 }
+constexpr static __constant__ double F2 = 0.5 * (csqrt(3.0) - 1.0);
+constexpr static __constant__ double G2 = (3.0 - csqrt(3.0)) / 6.0;
+constexpr static __constant__ double H2 = -1.0 + 2.0 * G2; // -1.0 + 2.0 * G2;
 
 /**
  * @brief Perform 2D vector dot product
@@ -37,13 +37,26 @@ __host__ static void initialise() {
 */
 __device__ __forceinline__ double dot2D(double, double, double, double);
 
-__host__ STPSimplexNoise::STPSimplexNoise(const STPEnvironment::STPSimplexNoiseSetting* const noise_settings)
-	: STPPermutationGenerator(noise_settings->Seed, noise_settings->Distribution, noise_settings->Offset) {
-	initialise();
+__device__ STPSimplexNoise::STPSimplexNoise(const STPPermutation_t permutation) : Permutation(permutation) {
+
 }
 
-__host__ STPSimplexNoise::~STPSimplexNoise() {
+__device__ STPSimplexNoise::~STPSimplexNoise() {
 
+}
+
+__device__ int STPSimplexNoise::perm(int index) const {
+	//device memory can be accessed in device directly
+	return static_cast<int>(this->Permutation->Permutation[index]);
+}
+
+__device__ double STPSimplexNoise::grad2D(int index, int component) const {
+	//convert two int bits to one double bit
+	return this->Permutation->Gradient2D[index * 2 + component];
+}
+
+__device__ unsigned int STPSimplexNoise::grad2D_size() const {
+	return this->Permutation->Gradient2DSize;
 }
 
 __device__ float STPSimplexNoise::simplex2D(float x, float y) const {
@@ -52,12 +65,12 @@ __device__ float STPSimplexNoise::simplex2D(float x, float y) const {
 	float corner[3], dst_x[3], dst_y[3], weight[3];
 
 	//coordinate system skewing to determine which simplex cell we are in
-	const float hairy_factor2D = dot2D(x, y, *F2, *F2);
+	const float hairy_factor2D = dot2D(x, y, F2, F2);
 	const int i = static_cast<int>(floorf(x + hairy_factor2D)), //add then floor (round down)
 		j = static_cast<int>(floorf(y + hairy_factor2D)); //(i,j) space
 	
 	//unskewing the cells
-	const float original_factor2D = dot2D(i, j, *G2, *G2),
+	const float original_factor2D = dot2D(i, j, G2, G2),
 		X0 = i - original_factor2D, //unskweing the cell origin back to (x,y) space
 		Y0 = j - original_factor2D;
 	dst_x[0] = x - X0; //The distance from the cell origin in (x,y) space
@@ -75,10 +88,10 @@ __device__ float STPSimplexNoise::simplex2D(float x, float y) const {
 	// a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
 	// c = (3-sqrt(3))/6
 	
-	dst_x[1] = dst_x[0] - offseti1 + *G2; //Now offset the middle corner in the unskewed space (x,y)
-	dst_y[1] = dst_y[0] - offsetj1 + *G2;
-	dst_x[2] = dst_x[0] + *H2; //Offset for the last corner in (x,y)
-	dst_y[2] = dst_y[0] + *H2;
+	dst_x[1] = dst_x[0] - offseti1 + G2; //Now offset the middle corner in the unskewed space (x,y)
+	dst_y[1] = dst_y[0] - offsetj1 + G2;
+	dst_x[2] = dst_x[0] + H2; //Offset for the last corner in (x,y)
+	dst_y[2] = dst_y[0] + H2;
 
 	//Read the hashed gradient indices of the three simplex corner
 	const int ii = i & 255,

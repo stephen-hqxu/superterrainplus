@@ -4,8 +4,9 @@
 
 #include <glm/vec2.hpp>
 //Multi-biome Heightfield Generator
-#include <GPGPU/STPDiversityGenerator.hpp>
-#include <SuperAlgorithm+/STPSimplexNoise.cuh>
+#include <GPGPU/STPDiversityGeneratorRTC.h>
+#include <SuperAlgorithm+/STPPermutationGenerator.h>
+#include "STPBiomeSettings.hpp"
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
@@ -19,14 +20,20 @@ namespace STPDemo {
 	 * It generates different heightfield based on biome settings.
 	 * Heightfield generator uses NVRTC
 	*/
-	class STPBiomefieldGenerator : public SuperTerrainPlus::STPCompute::STPDiversityGenerator {
+	class STPBiomefieldGenerator : public SuperTerrainPlus::STPCompute::STPDiversityGeneratorRTC {
 	private:
 
 		//all parameters for the noise generator, stored on host, passing value to device
 		SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting Noise_Setting;
-		SuperTerrainPlus::STPCompute::STPSimplexNoise SimplexNoise;
+		SuperTerrainPlus::STPCompute::STPPermutationGenerator Simplex_Permutation;
 		//The size of the generated heightmap
 		const uint2 MapSize;
+
+		/**
+		 * @brief Init the multi-height generator
+		 * @param biome_settings The biome settings
+		*/
+		void initGenerator(const STPBiomeSettings*);
 
 	public:
 
@@ -36,6 +43,14 @@ namespace STPDemo {
 		 * @param dimension The size of the generated heightmap
 		*/
 		STPBiomefieldGenerator(SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&, glm::uvec2);
+
+		STPBiomefieldGenerator(const STPBiomefieldGenerator&) = delete;
+
+		STPBiomefieldGenerator(STPBiomefieldGenerator&&) = delete;
+
+		STPBiomefieldGenerator& operator=(const STPBiomefieldGenerator&) = delete;
+
+		STPBiomefieldGenerator& operator=(STPBiomefieldGenerator&&) = delete;
 
 		~STPBiomefieldGenerator() = default;
 

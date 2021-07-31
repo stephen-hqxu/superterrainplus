@@ -2,6 +2,7 @@
 #ifndef _STP_SIMPLEX_NOISE_SETTING_H_
 #define _STP_SIMPLEX_NOISE_SETTING_H_
 
+#include "STPAlgorithmDefine.h"
 #include <Environment/STPSetting.hpp>
 //CUDA vector
 #include <vector_functions.h>
@@ -21,7 +22,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPSimplexNoiseSettings specifies the simplex noise generator parameter for the simplex noise functions
 		*/
-		struct STPSimplexNoiseSetting: public STPSetting {
+		struct STPALGORITHMPLUS_HOST_API STPSimplexNoiseSetting: public STPSetting {
 		public:
 
 			//Determine the seed used for the RNG

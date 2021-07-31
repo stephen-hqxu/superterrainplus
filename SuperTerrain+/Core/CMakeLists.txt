@@ -26,13 +26,3 @@ else()
 	add_library(${STP_MAIN_ENGINE} STATIC ${MAIN_ENGINE_SOURCE})
 	set_target_properties(${STP_MAIN_ENGINE} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ${STP_DEVICELINK_STATIC})
 endif()
-
-# glad.c contains API entries to OpenGL functions
-target_link_libraries(${STP_MAIN_ENGINE}
-PRIVATE ${STP_GLAD}
-)
-
-# link lib
-target_link_libraries(${STP_MAIN_ENGINE}
-PRIVATE opengl32.lib
-)

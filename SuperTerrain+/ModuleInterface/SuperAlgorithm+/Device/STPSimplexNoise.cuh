@@ -1,11 +1,14 @@
 #pragma once
+#ifndef __CUDACC__
+#error __FILE__ can only be compiled by nvcc and nvrtc exclusively
+#endif
+
 #ifndef _STP_SIMPLEX_NOISE_CUH_
 #define _STP_SIMPLEX_NOISE_CUH_
 
-//Helpers and Tools
-#include "STPPermutationGenerator.cuh"
-//Settings
-#include "STPSimplexNoiseSetting.h"
+#ifndef __CUDACC_RTC__
+#include <cuda_runtime.h>
+#endif//__CUDACC_RTC__
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -32,24 +35,50 @@ namespace SuperTerrainPlus {
 		 * - Simplex noise has a well-defined and continuous gradient (almost) everywhere that can be computed quite cheaply.
 		 * - Simplex noise is easy to implement in hardware.
 		*/
-		class STPSimplexNoise : private STPPermutationGenerator {
+		class STPSimplexNoise {
+		private:
+
+			typedef struct STPPermutation* STPPermutation_t;
+			const STPPermutation_t Permutation;
+
+			/**
+			 * @brief Return the randomly generated permutation element from the class generated table.
+			 * @param index The index within the table
+			 * @return The number, ranged from 0-255 inclusive
+			*/
+			__device__ int perm(int) const;
+
+			/**
+			 * @brief Return the graident table element
+			 * @param index The index within the table
+			 * @param component The vector component, either 0 or 1 for the 2D table
+			 * @return The gradient number
+			*/
+			__device__ double grad2D(int, int) const;
+
+			/**
+			 * @brief Get the number of element in the gradient 2D table
+			 * @return The number of element
+			*/
+			__device__ unsigned int grad2D_size() const;
+
 		public:
 
 			/**
 			 * @brief Init the simplex noise generator.
-			 * @param noise_settings Provide the settings for simplex noise
+			 * @param permutation Provide the permutation table for simplex noise
 			*/
-			__host__ STPSimplexNoise(const STPEnvironment::STPSimplexNoiseSetting* const);
+			__device__  STPSimplexNoise(const STPPermutation_t);
 
-			__host__ STPSimplexNoise(const STPSimplexNoise&) = delete;
+			__device__ STPSimplexNoise(const STPSimplexNoise&) = delete;
 
-			__host__ STPSimplexNoise(STPSimplexNoise&&) = delete;
+			__device__ STPSimplexNoise(STPSimplexNoise&&) = delete;
 
-			__host__ STPSimplexNoise& operator=(const STPSimplexNoise&) = delete;
+			__device__ STPSimplexNoise& operator=(const STPSimplexNoise&) = delete;
 
-			__host__ STPSimplexNoise& operator=(STPSimplexNoise&&) = delete;
+			__device__ STPSimplexNoise& operator=(STPSimplexNoise&&) = delete;
 
-			__host__ ~STPSimplexNoise();
+			__device__ ~STPSimplexNoise();
 
 			/**
 			 * @brief Generate 2D simplex noise

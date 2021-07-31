@@ -1,8 +1,12 @@
-#include <SuperAlgorithm+/STPPermutationGenerator.cuh>
+#pragma once
+#include <SuperAlgorithm+/STPPermutationGenerator.h>
 #include <memory>
 #include <stdexcept>
 
 #include <SuperError+/STPDeviceErrorHandler.h>
+
+//CUDA Runtime
+#include <cuda_runtime.h>
 
 static constexpr double PI = 3.14159265358979323846;
 //Initial table, will be shuffled later
@@ -42,14 +46,15 @@ using std::shuffle;
 
 using namespace SuperTerrainPlus::STPCompute;
 
-__host__ STPPermutationGenerator::STPPermutationGenerator(unsigned long long seed, unsigned int distribution, double offset) : GRADIENT2D_SIZE(distribution) {
-	if (distribution == 0u) {
-		throw std::invalid_argument("Distribution must be greater than 0");
+STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) {
+	if (!simplex_setting.validate()) {
+		throw std::invalid_argument("Value range from simplex noise setting is not valid");
 	}
+	this->Permutation.Gradient2DSize = simplex_setting.Distribution;
 
 	//seed the engine
 	STPPermutationRNG rng;
-	rng.seed(seed);
+	rng.seed(simplex_setting.Seed);
 
 	//we allocate memory in cpu and shuffle the table, then copy back to gpu
 	//I was thinking about unified memory but we don't need the memory on host after the init process
@@ -64,49 +69,39 @@ __host__ STPPermutationGenerator::STPPermutationGenerator(unsigned long long see
 	copy(PERMUTATION_HOST, PERMUTATION_HOST + 256, PERMUTATION_HOST + 256);
 		
 	//now copy the host table to the device
-	STPcudaCheckErr(cudaMalloc(&this->PERMUTATION, sizeof(unsigned char) * 512));
-	STPcudaCheckErr(cudaMemcpy(this->PERMUTATION, PERMUTATION_HOST, sizeof(unsigned char) * 512, cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMalloc(&this->Permutation.Permutation, sizeof(unsigned char) * 512));
+	STPcudaCheckErr(cudaMemcpy(this->Permutation.Permutation, PERMUTATION_HOST, sizeof(unsigned char) * 512, cudaMemcpyHostToDevice));
 
 	//generate the gradient table
 	//we are going to distribute the gradient evenly in a circle
-	const double step = 360.0 / this->GRADIENT2D_SIZE * 1.0;//in degree
-	std::unique_ptr<double[]> GRADIENT2D_HOST = std::make_unique<double[]>(this->GRADIENT2D_SIZE * 2);//2D so we *2
+	const double step = 360.0 / this->Permutation.Gradient2DSize * 1.0;//in degree
+	std::unique_ptr<double[]> GRADIENT2D_HOST = std::make_unique<double[]>(this->Permutation.Gradient2DSize * 2);//2D so we *2
 	int counter = 0;
 	for (double angle = 0.0; angle < 360.0; angle += step) {//in degree
-		GRADIENT2D_HOST[counter * 2] = cos(PI * (angle + offset) / 180.0);
-		GRADIENT2D_HOST[counter * 2 + 1] = sin(PI * (angle + offset) / 180.0);
+		GRADIENT2D_HOST[counter * 2] = cos(PI * (angle + simplex_setting.Offset) / 180.0);
+		GRADIENT2D_HOST[counter * 2 + 1] = sin(PI * (angle + simplex_setting.Offset) / 180.0);
 
 		counter++;
 	}
 
-	shuffle(GRADIENT2D_HOST.get(), GRADIENT2D_HOST.get() + this->GRADIENT2D_SIZE * 2, rng);
+	shuffle(GRADIENT2D_HOST.get(), GRADIENT2D_HOST.get() + this->Permutation.Gradient2DSize * 2, rng);
 	//copy the host gradient to device
-	STPcudaCheckErr(cudaMalloc(&this->GRADIENT2D, sizeof(double) * this->GRADIENT2D_SIZE * 2));
-	STPcudaCheckErr(cudaMemcpy(this->GRADIENT2D, GRADIENT2D_HOST.get(), sizeof(double) * this->GRADIENT2D_SIZE * 2, cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMalloc(&this->Permutation.Gradient2D, sizeof(double) * this->Permutation.Gradient2DSize * 2));
+	STPcudaCheckErr(cudaMemcpy(this->Permutation.Gradient2D, GRADIENT2D_HOST.get(), sizeof(double) * this->Permutation.Gradient2DSize * 2, cudaMemcpyHostToDevice));
 	//finishing up
 }
 
-__host__ STPPermutationGenerator::~STPPermutationGenerator() {
-	if (this->GRADIENT2D != nullptr) {
-		STPcudaCheckErr(cudaFree(this->GRADIENT2D));
-		this->GRADIENT2D = nullptr;
+STPPermutationGenerator::~STPPermutationGenerator() {
+	if (this->Permutation.Gradient2D != nullptr) {
+		STPcudaCheckErr(cudaFree(this->Permutation.Gradient2D));
+		this->Permutation.Gradient2D = nullptr;
 	}
-	if (this->PERMUTATION != nullptr) {
-		STPcudaCheckErr(cudaFree(this->PERMUTATION));
-		this->PERMUTATION = nullptr;
+	if (this->Permutation.Permutation != nullptr) {
+		STPcudaCheckErr(cudaFree(this->Permutation.Permutation));
+		this->Permutation.Permutation = nullptr;
 	}
 }
 
-__device__ int STPPermutationGenerator::perm(int index) const {
-	//device memory can be accessed in device directly
-	return static_cast<int>(this->PERMUTATION[index]);
-}
-
-__device__ double STPPermutationGenerator::grad2D(int index, int component) const {
-	//convert two int bits to one double bit
-	return this->GRADIENT2D[index * 2 + component];
-}
-
-__device__ unsigned int STPPermutationGenerator::grad2D_size() const {
-	return this->GRADIENT2D_SIZE;
+const STPPermutation& STPPermutationGenerator::operator()() const {
+	return this->Permutation;
 }

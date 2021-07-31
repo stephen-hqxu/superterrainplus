@@ -20,6 +20,8 @@ set(STP_GLAD "GLAD")
 set(STP_MAIN_ENGINE "SuperTerrain+")
 set(STP_ERROR_ENGINE "SuperError+")
 set(STP_ALGORITHM_ENGINE "SuperAlgorithm+")
+set(STP_ALGORITHM_HOST_ENGINE "SuperAlgorithm+Host")
+set(STP_ALGORITHM_DEVICE_ENGINE "SuperAlgorithm+Device")
 
 # pre-compile GLAD
 add_subdirectory(GLAD)
