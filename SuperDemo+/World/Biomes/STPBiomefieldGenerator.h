@@ -29,6 +29,9 @@ namespace STPDemo {
 		//The size of the generated heightmap
 		const uint2 MapSize;
 
+		//The entry global function to generate the heightmap
+		CUfunction GeneratorEntry;
+
 		/**
 		 * @brief Init the multi-height generator
 		 * @param biome_settings The biome settings

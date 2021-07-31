@@ -42,6 +42,10 @@ namespace SuperTerrainPlus {
 			//Contains lowered name for a source program
 			//Key: original name, Value: lowered name
 			typedef std::unordered_map<std::string, const char*> STPLoweredName;
+			//Contains lowered name for all registered source program
+			//Key: source name, Value: STPLoweredName
+			//@see STPLoweredName
+			typedef std::unordered_map<std::string, STPLoweredName> STPNameExpression;
 
 			/**
 			 * @brief Parameter sets for source complication
@@ -55,7 +59,7 @@ namespace SuperTerrainPlus {
 				 * @brief A helper argument setter for easy configuration
 				*/
 				struct STP_API STPSourceArgument : private STPStringArgument {
-				public:
+				private:
 
 					friend class STPDiversityGeneratorRTC;
 
@@ -66,7 +70,7 @@ namespace SuperTerrainPlus {
 					 * @param arg The added argument
 					 * @return The current argument object for easy chained function call
 					*/
-					STPSourceArgument& addArg(const char[]);
+					STPSourceArgument& operator[](const char[]);
 
 				};
 
@@ -116,7 +120,7 @@ namespace SuperTerrainPlus {
 					 * @param value Value for this flag
 					 * @return The current object for easy chained function call
 					*/
-					STPDataJitOption& setDataOption(CUjit_option, void*);
+					STPDataJitOption& operator()(CUjit_option, void*);
 
 				};
 
@@ -179,6 +183,8 @@ namespace SuperTerrainPlus {
 			STPIncluded ExternalArchive;
 			//All source files compiled in PTX format.
 			STPCompiled ComplicationDatabase;
+			//All registered lowered name expression with programs.
+			STPNameExpression ComplicationNameDatabase;
 			//A complete program of diversity generator
 			CUmodule GeneratorProgram;
 			bool ModuleLoadingStatus;
@@ -197,6 +203,14 @@ namespace SuperTerrainPlus {
 			STPDiversityGeneratorRTC& operator=(const STPDiversityGeneratorRTC&) = delete;
 
 			STPDiversityGeneratorRTC& operator=(STPDiversityGeneratorRTC&&) = delete;
+
+			/**
+			 * @brief Read source code given a filename as input
+			 * @param filename The file to be read.
+			 * If filename cannot be found, exception is thrown
+			 * @return The source code contained in file
+			*/
+			std::string readSource(std::string);
 
 			/**
 			 * @brief Attach an external header into this runtime compiler database.
@@ -234,6 +248,9 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Given a piece of source code, compile it and attach the compiled result to generator's database.
+			 * If source with the same name has been compiled before, an exception will be thrown, and no operation is done.
+			 * If one wishes to replace source with the same name, call discardSource() first.
+			 * If name expression is added, only valid name will be kept in the name expression database, name which cannot be found in the source code will be discarded.
 			 * @param source_name The name of the source file
 			 * @param source_code The actual code of the source
 			 * @param source_info The information for the compiler.
@@ -264,13 +281,12 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Retrieve mangled name for each name that has been added to name expression when the source was compiled.
 			 * Only name expression that has been added prior to complication can be retrieved, otherwise exception is thrown
-			 * @param source_name The name of the source that was used compiled and added to the database
-			 * @param expression Given each key as the original name, value will be overwriten as the lowered name.
+			 * @param source_name The name of the source that was used compiled and added to the database.
+			 * If source_name cannot be found, exception is thrown.
+			 * @return Given each key as the original name, value will be overwriten as the lowered name.
 			 * Retrieved lowered name pointer is valid as long as the generator is not destroied and source is not discarded.
-			 * @return If compiled source is not found, return false and nothing will be writen
-			 * Otherwise true is returned.
 			*/
-			bool retrieveSourceLoweredName(std::string, STPLoweredName&) const;
+			const STPLoweredName& retrieveSourceLoweredName(std::string) const;
 
 			/**
 			 * @brief Get the complete generator program module.

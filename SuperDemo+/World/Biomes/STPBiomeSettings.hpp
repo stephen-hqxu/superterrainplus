@@ -2,8 +2,9 @@
 #ifndef _STP_BIOME_SETTINGS_HPP_
 #define _STP_BIOME_SETTINGS_HPP_
 
-#include <World/Diversity/STPBiomeDefine.h>
+#include "STPBiomeProperty.hpp"
 #include <Environment/STPSetting.hpp>
+#include <World/Diversity/STPBiomeDefine.h>
 //String
 #include <string>
 
@@ -15,9 +16,9 @@ namespace STPDemo {
 	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
-	 * @brief STPBiomeSettings stores settings for biome generation and texturing
+	 * @brief STPBiomeSettings stores all biome settings, including information about the biome and generation parameters
 	*/
-	struct STPBiomeSettings : public SuperTerrainPlus::STPEnvironment::STPSetting {
+	struct STPBiomeSettings : public STPBiomeProperty, public SuperTerrainPlus::STPEnvironment::STPSetting {
 	public:
 
 		//Identification and texture control
@@ -29,20 +30,6 @@ namespace STPDemo {
 		float Temperature;
 		//The amount of rainfall in this biome
 		float Precipitation;
-
-		//Generation control
-		//Determine the zooming of the noise map
-		float Scale;
-		//Control how many heightmap will be conbined
-		unsigned int Octave;
-		//Control how the amplitude will be changed in each octave. Range (0,1)
-		float Persistence;
-		//Control how the frequency will be changed in each octave.
-		float Lacunarity;
-		//The base height of the biome
-		float Depth;
-		//The variation from the base height of the biome
-		float Variation;
 
 		/**
 			* @brief Init STPBiomeSettings with default values

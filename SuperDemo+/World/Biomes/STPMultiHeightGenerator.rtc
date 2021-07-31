@@ -1,11 +1,18 @@
 #pragma once
 
-//TODO: Add SuperAlgorithm+ include
+#include <STPSimplexNoise.cuh>
 
-static __constant__ unsigned char BiomeSetting_raw[sizeof(STPBiomeSettings)];
-static __constant__ uint2 Dimension[1];
-static __constant__ float2 HalfDimension[1];
-static __constant__ unsigned char Simplex_raw[sizeof(STPSimplexNoise)];
+//Biome parameters
+#include <STPBiomeProperty>
+
+//PERMUTATION_SIZE will be defined by compiler
+
+using namespace SuperTerrainPlus::STPCompute;
+
+__constant__ unsigned char BiomeProp_raw[sizeof(STPDemo::STPBiomeProperty)];
+__constant__ uint2 Dimension[1];
+__constant__ float2 HalfDimension[1];
+__constant__ unsigned char Permutation[PERMUTATION_SIZE];
 
 /**
  * @brief Performing inverse linear interpolation for each value on the heightmap to scale it within [0,1] using CUDA kernel
@@ -39,23 +46,23 @@ __global__ void generateMultiBiomeHeightmap(float* height_storage, float2 offset
 		return;
 	}
 	//convert
-	const STPBiomeSettings* BiomeSetting = reinterpret_cast<STPBiomeSettings*>(BiomeSetting_raw);
-	const STPSimplexNoise* Simplex = reinterpret_cast<STPSimplexNoise*>(Simplex_raw);
+	const STPDemo::STPBiomeProperty* BiomeProp = reinterpret_cast<STPDemo::STPBiomeProperty*>(BiomeProp_raw);
+	const STPSimplexNoise Simplex(reinterpret_cast<STPSimplexNoise::STPPermutation_t>(Permutation));
 
 	float amplitude = 1.0f, frequency = 1.0f, noiseheight = 0.0f;
 	float min = 0.0f, max = 0.0f;//The min and max indicates the range of the multi-phased simplex function, not the range of the output texture
 	//multiple phases of noise
-	for (int i = 0; i < BiomeSetting->Octave; i++) {
-		float sampleX = ((1.0 * x - HalfDimension->x) + offset.x) / BiomeSetting->Scale * frequency, //subtract the half width and height can make the scaling focus at the center
-			sampleY = ((1.0 * y - HalfDimension->y) + offset.y) / BiomeSetting->Scale * frequency;//since the y is inverted we want to filp it over
-		noiseheight += Simplex->simplex2D(sampleX, sampleY) * amplitude;
+	for (int i = 0; i < BiomeProp->Octave; i++) {
+		float sampleX = ((1.0 * x - HalfDimension->x) + offset.x) / BiomeProp->Scale * frequency, //subtract the half width and height can make the scaling focus at the center
+			sampleY = ((1.0 * y - HalfDimension->y) + offset.y) / BiomeProp->Scale * frequency;//since the y is inverted we want to filp it over
+		noiseheight += Simplex.simplex2D(sampleX, sampleY) * amplitude;
 
 		//calculate the min and max
 		min -= 1.0f * amplitude;
 		max += 1.0f * amplitude;
 		//scale the parameters
-		amplitude *= BiomeSetting->Persistence;
-		frequency *= BiomeSetting->Lacunarity;
+		amplitude *= BiomeProp->Persistence;
+		frequency *= BiomeProp->Lacunarity;
 	}
 
 	//interpolate and clamp the value within [0,1], was [min,max]

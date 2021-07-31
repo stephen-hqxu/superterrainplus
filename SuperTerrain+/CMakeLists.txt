@@ -13,14 +13,11 @@ add_subdirectory(${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})
 
 if(${STP_ENGINE_BUILD_SHARED})
 	# expose export/import symbols on shared library build
-	set(SuperTerrain+Shared "")
-else()
-	# hide export/import symbols on static library build
-	set(SuperTerrain+Shared "//")
+	set(SUPERTERRAINPLUS_USE_SHARED ON)
 endif()
 # tell the static library location so CUDA runtime compiler can find it easily (if developer wants to)
-get_target_property(SuperAlgorithm+Lib ${STP_ALGORITHM_DEVICE_ENGINE} ARCHIVE_OUTPUT_DIRECTORY)
-set(SuperAlgorithm+Include ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})
+get_target_property(SuperAlgorithm+DeviceLib ${STP_ALGORITHM_DEVICE_ENGINE} ARCHIVE_OUTPUT_DIRECTORY)
+set(SuperAlgorithm+DeviceInclude ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/Device)
 # config files for engine
 configure_file(${STP_TEMPLATE_DIR}/STPCoreDefine.h.in ${STP_CORE_INCLUDE}/STPCoreDefine.h @ONLY)
 configure_file(${STP_TEMPLATE_DIR}/STPAlgorithmDefine.h.in ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/STPAlgorithmDefine.h @ONLY)

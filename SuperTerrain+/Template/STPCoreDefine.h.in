@@ -2,7 +2,7 @@
 #ifndef _STP_CORE_DEFINE_H_
 #define _STP_CORE_DEFINE_H_
 
-@SuperTerrain+Shared@#define SUPERTERRAINPLUS_USE_SHARED
+#cmakedefine SUPERTERRAINPLUS_USE_SHARED
 
 #if defined(_WIN32) && defined(SUPERTERRAINPLUS_EXPORTS)
 #define STP_API __declspec(dllexport)

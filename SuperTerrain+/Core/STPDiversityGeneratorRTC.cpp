@@ -6,6 +6,10 @@
 #include <SuperError+/STPDeviceErrorHandler.h>
 #include <stdexcept>
 
+//IO
+#include <fstream>
+#include <sstream>
+
 using std::vector;
 using std::list;
 using std::pair;
@@ -20,14 +24,14 @@ using std::exception_ptr;
 
 using namespace SuperTerrainPlus::STPCompute;
 
-STPDiversityGeneratorRTC::STPSourceInformation::STPSourceArgument& STPDiversityGeneratorRTC::STPSourceInformation::STPSourceArgument::addArg(const char arg[]) {
+STPDiversityGeneratorRTC::STPSourceInformation::STPSourceArgument& STPDiversityGeneratorRTC::STPSourceInformation::STPSourceArgument::operator[](const char arg[]) {
 	//inserting a string literal will not cause undefined behaviour
 	//string is a better choice but CUDA API only takes char array, so for simplicity store string literal.
 	this->emplace_back(arg);
 	return *this;
 }
 
-STPDiversityGeneratorRTC::STPLinkerInformation::STPDataJitOption& STPDiversityGeneratorRTC::STPLinkerInformation::STPDataJitOption::setDataOption(CUjit_option flag, void* value) {
+STPDiversityGeneratorRTC::STPLinkerInformation::STPDataJitOption& STPDiversityGeneratorRTC::STPLinkerInformation::STPDataJitOption::operator()(CUjit_option flag, void* value) {
 	this->DataOptionFlag.emplace_back(flag);
 	this->DataOptionFlagValue.emplace_back(value);
 	return *this;
@@ -65,6 +69,21 @@ STPDiversityGeneratorRTC::~STPDiversityGeneratorRTC() {
 	}
 }
 
+string STPDiversityGeneratorRTC::readSource(string filename) {
+	using std::ifstream;
+	using std::stringstream;
+
+	ifstream source_reader(filename);
+	if (!source_reader) {
+		throw std::ios_base::failure("file '" + filename + "' cannot be opened.");
+	}
+	//read all lines
+	stringstream buffer;
+	buffer << source_reader.rdbuf();
+
+	return buffer.str();
+}
+
 bool STPDiversityGeneratorRTC::attachHeader(string header_name, const string& header_code) {
 	//simply add the header
 	return this->ExternalHeader.emplace(header_name, header_code).second;
@@ -83,6 +102,11 @@ bool STPDiversityGeneratorRTC::detachArchive(string archive_name) {
 }
 
 string STPDiversityGeneratorRTC::compileSource(string source_name, const string& source_code, const STPSourceInformation& source_info) {
+	//make sure the source name is unique
+	if (this->ComplicationDatabase.find(source_name) != this->ComplicationDatabase.end()) {
+		throw string(__FILE__) + "::" + string(__FUNCTION__) + "\nA duplicate source with name '" + source_name + "' has been compiled before.";
+	}
+
 	nvrtcProgram program;
 	vector<const char*> external_header;
 	vector<const char*> external_header_code;
@@ -104,8 +128,8 @@ string STPDiversityGeneratorRTC::compileSource(string source_name, const string&
 		STPcudaCheckErr(nvrtcCreateProgram(&program, source_code.c_str(), source_name.c_str(), static_cast<int>(external_header.size()), external_header_code.data(), external_header.data()));
 
 		//add name expression
-		for (int i = 0; i < source_info.NameExpression.size(); i++) {
-			STPcudaCheckErr(nvrtcAddNameExpression(program, source_info.NameExpression[i]));
+		for (auto expr : source_info.NameExpression) {
+			STPcudaCheckErr(nvrtcAddNameExpression(program, expr));
 		}
 		//compile program
 		STPcudaCheckErr(nvrtcCompileProgram(program, static_cast<int>(source_info.Option.size()), source_info.Option.data()));
@@ -127,14 +151,34 @@ string STPDiversityGeneratorRTC::compileSource(string source_name, const string&
 		STPcudaCheckErr(nvrtcDestroyProgram(&program));
 		throw log;
 	}
-	//if no error appears add the program to our database
+	//if no error appears grab the lowered name expression from compiled program
+	STPLoweredName& current_source_name = this->ComplicationNameDatabase[source_name];
+	for (auto expr : source_info.NameExpression) {
+		const char* current_lowered_name;
+		if (nvrtcGetLoweredName(program, expr, &current_lowered_name) == NVRTC_SUCCESS) {
+			//we got the name, add to the database
+			current_source_name[expr] = current_lowered_name;
+		}
+		//lowered name cannot be found in the source code
+		//simply ignore this name
+	}
+	//and finally add the program to our database
 	this->ComplicationDatabase.emplace(source_name, program);
 	//return any non-error log
 	return log;
 }
 
 bool STPDiversityGeneratorRTC::discardSource(string source_name) {
-	return this->ComplicationDatabase.erase(source_name) == 1ull;
+	auto source = this->ComplicationDatabase.find(source_name);
+	if (source != this->ComplicationDatabase.end()) {
+		//make sure the source exists
+		STPcudaCheckErr(nvrtcDestroyProgram(&source->second));
+		//and destroy the program effectively
+		this->ComplicationDatabase.erase(source);
+		this->ComplicationNameDatabase.erase(source_name);
+		return true;
+	}
+	return false;
 }
 
 void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CUjitInputType input_type) {
@@ -171,6 +215,8 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 
 			//add this code to linker
 			//retrieve individual linker option (if any)
+			//we can safely delete the code since:
+			//'Ownership of data is retained by the caller. No reference is retained to any inputs after this call returns.'
 			auto curr_option = linker_info.DataOption.find(compiled->first);
 			if (curr_option == linker_info.DataOption.end()) {
 				//no individual flag for this file
@@ -231,24 +277,12 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 	
 }
 
-bool STPDiversityGeneratorRTC::retrieveSourceLoweredName(string source_name, STPLoweredName& expression) const {
-	auto complication = this->ComplicationDatabase.find(source_name);
-	if (complication == this->ComplicationDatabase.cend()) {
-		//source not found
-		return false;
+const STPDiversityGeneratorRTC::STPLoweredName& STPDiversityGeneratorRTC::retrieveSourceLoweredName(string source_name) const {
+	auto name_expression = this->ComplicationNameDatabase.find(source_name);
+	if (name_expression == this->ComplicationNameDatabase.end()) {
+		throw string(__FILE__) + "::" + string(__FUNCTION__) + "\nSource name cannot be found in source database.";
 	}
-	nvrtcProgram program = complication->second;
-	try {
-		//get lowered name for each expression
-		for (auto& expr : expression) {
-			STPcudaCheckErr(nvrtcGetLoweredName(program, expr.first.c_str(), &expr.second));
-		}
-	}
-	catch (...) {
-		rethrow_exception(current_exception());
-	}
-
-	return true;
+	return name_expression->second;
 }
 
 CUmodule STPDiversityGeneratorRTC::getGeneratorModule() const {

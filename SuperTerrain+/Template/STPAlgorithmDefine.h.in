@@ -22,11 +22,11 @@ namespace SuperTerrainPlus {
 	/**
 	 * @brief Denotes the SuperAlgorithm+ static library output path
 	*/
-	constexpr static char SuperAlgorithmPlus_Library[] = "@SuperAlgorithm+Lib@";
+	constexpr static char SuperAlgorithmPlus_DeviceLibrary[] = "@SuperAlgorithm+DeviceLib@";
 	/**
 	 * @brief Denotes the SuperAlgorithm+ include path
 	*/
-	constexpr static char SuperAlgorithmPlus_Include[] = "@SuperAlgorithm+Include@";
+	constexpr static char SuperAlgorithmPlus_DeviceInclude[] = "@SuperAlgorithm+DeviceInclude@";
 
 }
 

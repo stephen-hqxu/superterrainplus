@@ -43,6 +43,15 @@ ${CMAKE_CURRENT_SOURCE_DIR}/GLSL
 $<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>/GLSL
 )
 
+# copy runtime generator script
+add_custom_command(
+TARGET ${STP_DEMO_PROGRAM} POST_BUILD
+COMMAND ${CMAKE_COMMAND} -E copy_if_different
+${CMAKE_CURRENT_SOURCE_DIR}/World/Biomes/STPMultiHeightGenerator.rtc
+${CMAKE_CURRENT_SOURCE_DIR}/World/Biomes/STPBiomeProperty.hpp
+$<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>
+)
+
 # copy resource
 add_custom_command(
 TARGET ${STP_DEMO_PROGRAM} POST_BUILD      

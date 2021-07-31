@@ -36,9 +36,12 @@ namespace SuperTerrainPlus {
 		 * - Simplex noise is easy to implement in hardware.
 		*/
 		class STPSimplexNoise {
-		private:
+		public:
 
 			typedef struct STPPermutation* STPPermutation_t;
+
+		private:
+
 			const STPPermutation_t Permutation;
 
 			/**
@@ -66,7 +69,7 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Init the simplex noise generator.
-			 * @param permutation Provide the permutation table for simplex noise
+			 * @param permutation Provide the permutation table for simplex noise.
 			*/
 			__device__  STPSimplexNoise(const STPPermutation_t);
 
