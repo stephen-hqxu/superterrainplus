@@ -9,7 +9,7 @@
 
 using namespace SuperTerrainPlus::STPCompute;
 
-__constant__ unsigned char BiomeProp_raw[sizeof(STPDemo::STPBiomeProperty)];
+__constant__ STPDemo::STPBiomeProperty BiomeTable[2];
 __constant__ uint2 Dimension[1];
 __constant__ float2 HalfDimension[1];
 __constant__ unsigned char Permutation[PERMUTATION_SIZE];
@@ -26,9 +26,10 @@ __device__ __inline__ float InvlerpKERNEL(float, float, float);
 /**
  * @brief Generate our epic height map using simplex noise function within the CUDA kernel
  * @param height_storage - The pointer to a location where the heightmap will be stored
+ * @param biomemap - The biomemap which defines the biomeID on heightmap
  * @param offset - Controlling the offset on x, y directions
 */
-__global__ void generateMultiBiomeHeightmap(float*, float2);
+__global__ void generateMultiBiomeHeightmap(float*, unsigned short*, float2);
 
 //--------------------- Definition --------------------------
 
@@ -38,37 +39,43 @@ __device__ __inline__ float InvlerpKERNEL(float minVal, float maxVal, float valu
 }
 
 //TODO: Make sure it works as before, and then generate multi-biome heightmap
-__global__ void generateMultiBiomeHeightmap(float* height_storage, float2 offset) {
+__global__ void generateMultiBiomeHeightmap(float* height_storage, unsigned short* biomemap, float2 offset) {
 	//the current working pixel
-	unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
+	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	if (x >= Dimension->x || y >= Dimension->y) {
 		return;
 	}
+	const unsigned int index = x + y * Dimension->x;
+	
+	//grab the current biome setting
+	//we need to always make sure current biome can be referenced by the biomeID given in biome table
+	const STPDemo::STPBiomeProperty& current_biome = BiomeTable[biomemap[index]];
 	//convert
-	const STPDemo::STPBiomeProperty* BiomeProp = reinterpret_cast<STPDemo::STPBiomeProperty*>(BiomeProp_raw);
 	const STPSimplexNoise Simplex(reinterpret_cast<STPSimplexNoise::STPPermutation_t>(Permutation));
 
 	float amplitude = 1.0f, frequency = 1.0f, noiseheight = 0.0f;
 	float min = 0.0f, max = 0.0f;//The min and max indicates the range of the multi-phased simplex function, not the range of the output texture
 	//multiple phases of noise
-	for (int i = 0; i < BiomeProp->Octave; i++) {
-		float sampleX = ((1.0 * x - HalfDimension->x) + offset.x) / BiomeProp->Scale * frequency, //subtract the half width and height can make the scaling focus at the center
-			sampleY = ((1.0 * y - HalfDimension->y) + offset.y) / BiomeProp->Scale * frequency;//since the y is inverted we want to filp it over
+	for (int i = 0; i < current_biome.Octave; i++) {
+		float sampleX = ((1.0 * x - HalfDimension->x) + offset.x) / current_biome.Scale * frequency, //subtract the half width and height can make the scaling focus at the center
+			sampleY = ((1.0 * y - HalfDimension->y) + offset.y) / current_biome.Scale * frequency;//since the y is inverted we want to filp it over
 		noiseheight += Simplex.simplex2D(sampleX, sampleY) * amplitude;
 
 		//calculate the min and max
 		min -= 1.0f * amplitude;
 		max += 1.0f * amplitude;
 		//scale the parameters
-		amplitude *= BiomeProp->Persistence;
-		frequency *= BiomeProp->Lacunarity;
+		amplitude *= current_biome.Persistence;
+		frequency *= current_biome.Lacunarity;
 	}
 
 	//interpolate and clamp the value within [0,1], was [min,max]
 	noiseheight = InvlerpKERNEL(min, max, noiseheight);
+	//scale the noise
+	noiseheight *= current_biome.Variation;
+	noiseheight += current_biome.Depth;
 	//finally, output the texture
-	height_storage[x + y * Dimension->x] = noiseheight;//we have only allocated R32F format;
-
+	height_storage[index] = noiseheight;//we have only allocated R32F format;
 	return;
 }

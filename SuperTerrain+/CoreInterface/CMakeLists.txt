@@ -32,3 +32,5 @@ World/Diversity/STPLayerManager.h
 World/Diversity/STPLayerManager.inl
 World/Diversity/STPSeedMixer.h
 )
+
+set(STP_CORE_DEFINE_INCLUDE ${CMAKE_CURRENT_BINARY_DIR}/Include PARENT_SCOPE)

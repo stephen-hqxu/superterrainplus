@@ -84,7 +84,6 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 		counter++;
 	}
 
-	shuffle(GRADIENT2D_HOST.get(), GRADIENT2D_HOST.get() + this->Permutation.Gradient2DSize * 2, rng);
 	//copy the host gradient to device
 	STPcudaCheckErr(cudaMalloc(&this->Permutation.Gradient2D, sizeof(double) * this->Permutation.Gradient2DSize * 2));
 	STPcudaCheckErr(cudaMemcpy(this->Permutation.Gradient2D, GRADIENT2D_HOST.get(), sizeof(double) * this->Permutation.Gradient2DSize * 2, cudaMemcpyHostToDevice));

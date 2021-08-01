@@ -9,7 +9,7 @@
 //Composite layer
 #include "STPCrossLayer.h"
 #include "STPXCrossLayer.h"
-#include "STPCrossLayer.h"
+#include "STPVoronoiLayer.h"
 
 //Land layer
 #include "STPContinentLayer.h"
@@ -35,7 +35,7 @@
 
 //Scale layer
 #include "STPScaleLayer.h"
-#include "STPScaleLayer.h"
+#include "STPSmoothScaleLayer.h"
 
 using namespace STPDemo;
 
@@ -73,6 +73,9 @@ SuperTerrainPlus::STPDiversity::STPLayerManager* STPLayerChainBuilder::supply() 
 	base = chain->insert<STPScaleLayer, Cachesize>(this->GlobalSeed, 1ull, STPScaleLayer::STPScaleType::NORMAL, base);
 	base = chain->insert<STPScaleLayer, Cachesize>(this->GlobalSeed, 2ull, STPScaleLayer::STPScaleType::NORMAL, base);
 	base = chain->insert<STPScaleLayer, Cachesize>(this->GlobalSeed, 3ull, STPScaleLayer::STPScaleType::NORMAL, base);
+	base = chain->insert<STPVoronoiLayer, Cachesize>(this->GlobalSeed, 4ull, false, base);
+	base = chain->insert<STPVoronoiLayer, Cachesize>(this->GlobalSeed, 5ull, false, base);
+	base = chain->insert<STPVoronoiLayer, Cachesize>(this->GlobalSeed, 6ull, false, base);
 
 	return chain;
 }
