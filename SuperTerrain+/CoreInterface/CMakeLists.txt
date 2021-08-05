@@ -10,6 +10,7 @@ Environment/STPSetting.hpp
 # /GPGPU
 GPGPU/STPDiversityGenerator.hpp
 GPGPU/STPDiversityGeneratorRTC.h
+GPGPU/STPFreeSlipManager.cuh
 GPGPU/STPHeightfieldGenerator.cuh
 GPGPU/STPRainDrop.cuh
 # /Utility

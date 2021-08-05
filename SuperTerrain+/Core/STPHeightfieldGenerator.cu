@@ -1,5 +1,8 @@
 #pragma once
 #include <GPGPU/STPHeightfieldGenerator.cuh>
+
+//Simulator
+#include <GPGPU/STPFreeSlipManager.cuh>
 #include <GPGPU/STPRainDrop.cuh>
 
 #define STP_EXCEPTION_ON_ERROR
@@ -52,7 +55,7 @@ __global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG*, unsigned l
  * @param heightfield_settings - The settings to use to generate heightmap
  * @param rng The random number generator map sequence, independent for each rain drop
 */
-__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager, const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting*, STPHeightfieldGenerator::curandRNG*);
+__global__ void performErosionKERNEL(STPFreeSlipManager, const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting*, STPHeightfieldGenerator::curandRNG*);
 
 /**
  * @brief Generate the normal map for the height map within kernel, and combine two maps into a rendering buffer
@@ -60,7 +63,7 @@ __global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager, const Supe
  * @param strength - The strenghth of the generated normal map
  * @param heightfield - will be used to store the output of the normal map in RGB channel, heightmap will be copied to A channel
 */
-__global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager, float, unsigned short*);
+__global__ void generateRenderingBufferKERNEL(STPFreeSlipManager, float, unsigned short*);
 
 /**
  * @brief Generate a new global to local index table
@@ -208,7 +211,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	unsigned short* heightfield_formatted_d = nullptr, *heightfield_formatted_h = nullptr;
 	//biomemap
 	STPDiversity::Sample* biomefield_freeslip_d = nullptr, *biomefield_freeslip_h = nullptr;
-	const unsigned int mapbiome_freeslip_size = freeslip_pixel * sizeof(STPDiversity::Sample);
+	const unsigned int mapbiome_freeslip_size = args.Biomemap.size() * num_pixel * sizeof(STPDiversity::Sample);
 
 	//Retrieve all flags
 	auto isFlagged = []__host__(STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
@@ -284,7 +287,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	}
 
 	if (flag[1] || flag[2]) {
-		const STPRainDrop::STPFreeSlipManager heightmap_slip(heightfield_freeslip_d, this->GlobalLocalIndex.get(), this->FreeSlipChunk, this->MapSize);
+		const STPFreeSlipManager heightmap_slip(heightfield_freeslip_d, this->GlobalLocalIndex.get(), this->FreeSlipChunk, this->MapSize);
 
 		//Flag: Erosion
 		if (flag[1]) {
@@ -606,7 +609,7 @@ __global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG* rng, unsign
 	curand_init(seed, static_cast<unsigned long long>(index), 0, &rng[index]);
 }
 
-__global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager heightmap_storage, const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting* heightfield_settings, STPHeightfieldGenerator::curandRNG* rng) {
+__global__ void performErosionKERNEL(STPFreeSlipManager heightmap_storage, const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting* heightfield_settings, STPHeightfieldGenerator::curandRNG* rng) {
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
 	if (index >= heightfield_settings->RainDropCount) {
@@ -647,7 +650,7 @@ __global__ void performErosionKERNEL(STPRainDrop::STPFreeSlipManager heightmap_s
 	droplet.Erode((const SuperTerrainPlus::STPEnvironment::STPRainDropSetting*)heightfield_settings, heightmap_storage);
 }
 
-__global__ void generateRenderingBufferKERNEL(STPRainDrop::STPFreeSlipManager heightmap, float strength, unsigned short* heightfield) {
+__global__ void generateRenderingBufferKERNEL(STPFreeSlipManager heightmap, float strength, unsigned short* heightfield) {
 	//the current working pixel
 	const unsigned int x_b = blockIdx.x * blockDim.x,
 		y_b = blockIdx.y * blockDim.y,

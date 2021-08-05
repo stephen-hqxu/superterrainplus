@@ -57,9 +57,10 @@ namespace SuperTerrainPlus {
 			public:
 
 				//- A Sample array (sample is implementation defined, usually it's uint16) where biomemap is located.
-				//- If biome interpolation if enabled, the number of biomemap should be the same as that in Heightmap32F.
+				//- the number of biomemap should be the same as that in Heightmap32F when erosion is turned on.
+				//We need free-slip biomemap so custom heightmap implementation can do biome-edge interpolation
 				//See documentation of Heightmap32F for more details
-				//- Only one biomemap should be provided if heightmap generation is enabled
+				//If heightmap generation is not enabled, no biomemap is required
 				std::vector<const STPDiversity::Sample*> Biomemap;
 				//- A float array that will be used to stored heightmap pixles, must be pre-allocated with at least width * height * sizeof(float), i.e., R32F format
 				//- If generator is instructed to generate only a single heightmap, only one map is required

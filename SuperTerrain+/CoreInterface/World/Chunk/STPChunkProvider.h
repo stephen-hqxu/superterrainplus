@@ -42,6 +42,8 @@ namespace SuperTerrainPlus {
 		//Heightfield generator
 		STPCompute::STPHeightfieldGenerator& generateHeightfield;
 
+		typedef std::list<STPChunk*> STPChunkNeighbour;
+
 		/**
 		 * @brief Calculate the chunk offset such that the transition of each chunk is seamless
 		 * @param chunkPos The world position of the chunk
@@ -50,19 +52,39 @@ namespace SuperTerrainPlus {
 		float2 calcChunkOffset(glm::vec2) const;
 
 		/**
+		 * @brief Get all neighbour for this chunk position
+		 * @param chunkPos The central chunk world position
+		 * @return A list of all neighbour chunk position
+		*/
+		STPChunk::STPChunkPositionCache getNeighbour(glm::vec2) const;
+
+		/**
 		 * @brief Dispatch compute for heightmap, the heightmap result will be writen back to the storage
 		 * @param current_chunk The maps for the chunk
+		 * @param neighbour_chunks The maps of the chunks that require to be used for biome-edge interpolation during heightmap generation, 
+		 * require the central chunk and neighbour chunks arranged in row-major flavour. The central chunk should also be included.
 		 * @param chunkPos The world position of the chunk
 		*/
-		void computeHeightmap(STPChunk*, glm::vec2);
+		void computeHeightmap(STPChunk*, STPChunkProvider::STPChunkNeighbour&, glm::vec2);
 
 		/**
 		 * @brief Dispatch compute for free-slip hydraulic erosion, normalmap compute and formatting, requires heightmap presenting in the chunk
-		 * @param current_chunk The central chunk for the computation
 		 * @param neighbour_chunks The maps of the chunks that require to be eroded with a free-slip manner, require the central chunk and neighbour chunks 
 		 * arranged in row-major flavour. The central chunk should also be included
 		*/
-		void computeErosion(STPChunk*, std::list<STPChunk*>&);
+		void computeErosion(STPChunkProvider::STPChunkNeighbour&);
+
+		/**
+		 * @brief Recursively prepare neighbour chunks for the central chunk.
+		 * The first recursion will prepare neighbour biomemaps for heightmap generation.
+		 * The second recursion will prepare neighbour heightmaps for erosion.
+		 * @param chunkPos The position to the chunk which should be prepared.
+		 * @param erosion_reloader The function to call when erosion has been performed so rendering buffer for neighbour chunks will be checked later
+		 * @param rec_depth Please leave this empty, this is the recursion depth and will be managed properly
+		 * @return If all neighbours are ready to be used, true is returned.
+		 * If any neighbour is not ready (being used by other threads or neighbour is not ready and compute is launched), return false
+		*/
+		bool prepareNeighbour(glm::vec2, std::function<bool(glm::vec2)>&, unsigned char = 2u);
 
 	public:
 

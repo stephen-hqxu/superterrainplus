@@ -20,28 +20,6 @@ __device__ STPRainDrop::~STPRainDrop() {
 
 }
 
-__host__ STPRainDrop::STPFreeSlipManager::STPFreeSlipManager(float* heightmap, const unsigned int* index, uint2 range, uint2 mapSize)
-	: Dimension(mapSize), FreeSlipChunk(range), FreeSlipRange(make_uint2(range.x * mapSize.x, range.y * mapSize.y)) {
-	this->Heightmap = heightmap;
-	this->Index = index;
-}
-
-__host__ STPRainDrop::STPFreeSlipManager::~STPFreeSlipManager() {
-
-}
-
-__device__ float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) {
-	return const_cast<float&>(const_cast<const STPRainDrop::STPFreeSlipManager*>(this)->operator[](global));
-}
-
-__device__ const float& STPRainDrop::STPFreeSlipManager::operator[](unsigned int global) const {
-	return this->Heightmap[this->operator()(global)];
-}
-
-__device__ unsigned int STPRainDrop::STPFreeSlipManager::operator()(unsigned int global) const {
-	return this->Index == nullptr ? global : this->Index[global];
-}
-
 __device__ float3 STPRainDrop::calcHeightGradients(const STPFreeSlipManager& map) const {
 	//result
 	float3 height_gradients;

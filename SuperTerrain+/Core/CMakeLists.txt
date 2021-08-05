@@ -13,6 +13,7 @@ STPLayerManager.cpp
 STPSeedMixer.cpp
 STPThreadPool.cpp
 
+STPFreeSlipManager.cu
 STPHeightfieldGenerator.cu
 STPRainDrop.cu
 STPRainDropSetting.cu
@@ -26,3 +27,10 @@ else()
 	add_library(${STP_MAIN_ENGINE} STATIC ${MAIN_ENGINE_SOURCE})
 	set_target_properties(${STP_MAIN_ENGINE} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ${STP_DEVICELINK_STATIC})
 endif()
+
+# tell the compiler we are the source engine builder
+# there are some preprocessors in the source code to warn or prevent external environment from including internal headers
+# this is to suppress when we are the internal :)
+target_compile_definitions(${STP_MAIN_ENGINE}
+PRIVATE STP_IMPLEMENTATION
+)

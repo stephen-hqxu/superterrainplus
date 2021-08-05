@@ -48,6 +48,9 @@ __global__ void generateMultiBiomeHeightmap(float* height_storage, unsigned shor
 	}
 	const unsigned int index = x + y * Dimension->x;
 	
+	//TEMPORARY: offset the biomemap to central chunk, index of central chunk is 4
+	biomemap += Dimension->x * Dimension->y * 4;
+	
 	//grab the current biome setting
 	//we need to always make sure current biome can be referenced by the biomeID given in biome table
 	const STPDemo::STPBiomeProperty& current_biome = BiomeTable[biomemap[index]];
@@ -57,6 +60,7 @@ __global__ void generateMultiBiomeHeightmap(float* height_storage, unsigned shor
 	float amplitude = 1.0f, frequency = 1.0f, noiseheight = 0.0f;
 	float min = 0.0f, max = 0.0f;//The min and max indicates the range of the multi-phased simplex function, not the range of the output texture
 	//multiple phases of noise
+	#pragma unroll
 	for (int i = 0; i < current_biome.Octave; i++) {
 		float sampleX = ((1.0 * x - HalfDimension->x) + offset.x) / current_biome.Scale * frequency, //subtract the half width and height can make the scaling focus at the center
 			sampleY = ((1.0 * y - HalfDimension->y) + offset.y) / current_biome.Scale * frequency;//since the y is inverted we want to filp it over
