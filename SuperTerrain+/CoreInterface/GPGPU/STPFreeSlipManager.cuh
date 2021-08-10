@@ -1,13 +1,12 @@
 #pragma once
-#ifndef STP_IMPLEMENTATION
-#error __FILE__ auto wraps index in layered row-major texture matrix from global to local but shall not be used in external environment
-#endif//_STP_FREESLIP_MANAGER_CUH_
-
 #ifndef _STP_FREESLIP_MANAGER_CUH_
 #define _STP_FREESLIP_MANAGER_CUH_
 
+#include <STPCoreDefine.h>
 //CUDA
 #include <cuda_runtime.h>
+//Generator
+#include "STPFreeSlipData.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -21,40 +20,30 @@ namespace SuperTerrainPlus {
 	namespace STPCompute {
 
 		/**
-		 * @brief STPFreeSlipManager provides a center chunk for erosion and some neighbour chunks that hold data access out of the center chunk.
-		 * It will the convert global index to local index, such that rain drop can "free slip" out of the center chunk.
+		 * @brief STPFreeSlipManager is a utility wrapper on STPFreeSlipData
+		 * such that it can make use of the index table and other data to "free-slip" index access on texture
 		*/
-		struct STPFreeSlipManager {
+		class STP_API STPFreeSlipManager {
 		private:
+			
+			friend class STPFreeSlipGenerator;
 
-			friend class STPRainDrop;
-
-			//A matrix of heightmap, it should be arranged in row major order.
-			//The number of heightmap should be equal to the product or x and y defiend in FreeSlipRange
-			//The size of the heightmap should be equal to FreeSlipRange.x * FreeSlipRange.y * Dimension.x * Dimension.y * sizeof(float)
-			float* Heightmap;
-			//A table that is responsible for conversion from global index to local index
-			const unsigned int* Index;
-
-		public:
-
-			//The dimension of each map
-			const uint2 Dimension;
-			//The range of free slip in the unit of chunk
-			const uint2 FreeSlipChunk;
-			//number of element in a global row and column in the free slip range
-			const uint2 FreeSlipRange;
+			//A matrix of texture, it should be arranged in row major order.
+			//The number of texture should be equal to the product or x and y defiend in FreeSlipRange
+			//The size of the texture should be equal to FreeSlipRange.x * FreeSlipRange.y * Dimension.x * Dimension.y * sizeof(float)
+			float* Texture;
 
 			/**
 			 * @brief Init the free slip manager.
-			 * The center chunk will be determined automatically
-			 * @param heightmap The heightmap array, all chunks should be arranged in a linear array
-			 * @param index The lookup table to convert global index to local index.
-			 * If nullptr is provided (meaning no lookup table), global index will be used directly to reference heightmap.
-			 * @param range Free slip range in the unit of chunk
-			 * @param mapSize The size of the each heightmap
+			 * @param texture The texture array of any map (heightmap biomemap etc.), all chunks should be arranged in a linear array
+			 * @param data Contains all data required for free-slip indexing
 			*/
-			__host__ STPFreeSlipManager(float*, const unsigned int*, uint2, uint2);
+			__host__ STPFreeSlipManager(float*, const STPFreeSlipData*);
+
+		public:
+
+			//All free-slip data
+			const STPFreeSlipData Data;
 
 			__host__ ~STPFreeSlipManager();
 

@@ -36,7 +36,7 @@ namespace SuperTerrainPlus {
 		//chunk data
 		STPChunkStorage& ChunkStorage;
 		//thread pool
-		std::unique_ptr<STPThreadPool> kernel_launch_pool;
+		STPThreadPool kernel_launch_pool;
 		//Biomemap generator
 		STPDiversity::STPBiomeFactory& generateBiome;
 		//Heightfield generator

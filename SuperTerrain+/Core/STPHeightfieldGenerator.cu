@@ -65,16 +65,6 @@ __global__ void performErosionKERNEL(STPFreeSlipManager, const SuperTerrainPlus:
 */
 __global__ void generateRenderingBufferKERNEL(STPFreeSlipManager, float, unsigned short*);
 
-/**
- * @brief Generate a new global to local index table
- * @param output The generated table. Should be preallocated with size sizeof(unsigned int) * chunkRange.x * mapSize.x * chunkRange.y * mapSize.y
- * @param rowCount The number of row in the global index table, which is equivalent to chunkRange.x * mapSize.x
- * @param chunkRange The number of chunk (or locals)
- * @param tableSize The x,y dimension of the table
- * @param mapSize The dimension of the map
-*/
-__global__ void initGlobalLocalIndexKERNEL(unsigned int*, unsigned int, uint2, uint2, uint2);
-
 /*
  * @brief Copy block of memory from device to host and split into chunks.
  * Used by function operator()
@@ -144,8 +134,11 @@ void STPHeightfieldGenerator::STPDeviceDeleter<T>::operator()(T* ptr) const {
 
 __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting& chunk_settings, const STPEnvironment::STPHeightfieldSetting& heightfield_settings,
 	const STPDiversityGenerator& diversity_generator, unsigned int hint_level_of_concurrency)
-	: generateHeightmap(diversity_generator), FreeSlipChunk(make_uint2(chunk_settings.FreeSlipChunk.x, chunk_settings.FreeSlipChunk.y)), 
-	MapSize(make_uint2(chunk_settings.MapSize.x, chunk_settings.MapSize.y)), Heightfield_Setting_h(heightfield_settings) {
+	: generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings), 
+	FreeSlipTable(
+		make_uint2(chunk_settings.FreeSlipChunk.x, chunk_settings.FreeSlipChunk.y),
+		make_uint2(chunk_settings.MapSize.x, chunk_settings.MapSize.y)
+	) {
 	const unsigned int num_pixel = chunk_settings.MapSize.x * chunk_settings.MapSize.y,
 		num_freeslip_chunk = chunk_settings.FreeSlipChunk.x * chunk_settings.FreeSlipChunk.y;
 
@@ -169,8 +162,6 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::
 
 	//init erosion
 	this->setErosionIterationCUDA();
-	//set global local index
-	this->initLocalGlobalIndexCUDA();
 	//init edge table
 	this->initEdgeArrangementTable();
 }
@@ -195,14 +186,13 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	dim3 Dimgridsize, Dimblocksize;
 	//allocating spaces for texture, storing on device
 	//this is the size for a texture in one channel
-	const unsigned int num_pixel = this->MapSize.x * this->MapSize.y,
+	const unsigned int num_pixel = this->FreeSlipTable.getDimension().x * this->FreeSlipTable.getDimension().y,
 		map_size = num_pixel * sizeof(float),
 		map16ui_size = num_pixel * sizeof(unsigned short) * 4u,
 		mapbiome_size = num_pixel * sizeof(STPDiversity::Sample);
 	//if free-slip erosion is disabled, it should be one.
 	//if enabled, it should be the product of two dimension in free-slip chunk.
 	const unsigned int freeslip_chunk_total = args.Heightmap32F.size();
-	const uint2 freeslip_dimension = make_uint2(this->MapSize.x * this->FreeSlipChunk.x, this->MapSize.y * this->FreeSlipChunk.y);
 	const unsigned int freeslip_pixel = freeslip_chunk_total * num_pixel;
 	const unsigned int map_freeslip_size = freeslip_pixel * sizeof(float);
 	const unsigned int map16ui_freeslip_size = freeslip_pixel * sizeof(unsigned short) * 4u;
@@ -287,7 +277,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	}
 
 	if (flag[1] || flag[2]) {
-		const STPFreeSlipManager heightmap_slip(heightfield_freeslip_d, this->GlobalLocalIndex.get(), this->FreeSlipChunk, this->MapSize);
+		STPFreeSlipManager heightmap_slip = this->FreeSlipTable.getManager(heightfield_freeslip_d);
 
 		//Flag: Erosion
 		if (flag[1]) {
@@ -307,7 +297,10 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 			};
 			STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSizeVariableSMem(&Mingridsize, &blocksize, &generateRenderingBufferKERNEL, det_cacheSize));
 			Dimblocksize = dim3(32, blocksize / 32);
-			Dimgridsize = dim3((freeslip_dimension.x + Dimblocksize.x - 1) / Dimblocksize.x, (freeslip_dimension.y + Dimblocksize.y - 1) / Dimblocksize.y);
+			Dimgridsize = dim3(
+				(this->FreeSlipTable.getFreeSlipRange().x + Dimblocksize.x - 1) / Dimblocksize.x, 
+				(this->FreeSlipTable.getFreeSlipRange().y + Dimblocksize.y - 1) / Dimblocksize.y
+			);
 
 			if (freeslip_chunk_total > 1u) {
 				//no need to do copy if freeslip is not enabled
@@ -406,7 +399,7 @@ __host__ void STPHeightfieldGenerator::setErosionIterationCUDA() {
 
 __host__ void STPHeightfieldGenerator::copyNeighbourEdgeOnly(unsigned short* device, const vector<unsigned short*>& source, size_t element_count, cudaStream_t stream) const {
 	typedef STPHeightfieldGenerator::STPEdgeArrangement STPEA;
-	const uint2& dimension = this->MapSize;
+	const uint2& dimension = this->FreeSlipTable.getDimension();
 	const unsigned int one_pixel_size = 4u * sizeof(unsigned short);
 	const unsigned int pitch = dimension.x * one_pixel_size;
 	const unsigned int horizontal_stripe_size = dimension.x * one_pixel_size;
@@ -508,38 +501,10 @@ __host__ void STPHeightfieldGenerator::copyNeighbourEdgeOnly(unsigned short* dev
 	}
 }
 
-__host__ void STPHeightfieldGenerator::initLocalGlobalIndexCUDA() {
-	const uint2& dimension = this->MapSize;
-	const uint2& range = this->FreeSlipChunk;
-	const uint2 global_dimension = make_uint2(range.x * dimension.x, range.y * dimension.y);
-	//launch parameters
-	int Mingridsize, blocksize;
-	dim3 Dimgridsize, Dimblocksize;
-	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &initGlobalLocalIndexKERNEL));
-	Dimblocksize = dim3(32, blocksize / 32);
-	Dimgridsize = dim3((global_dimension.x + Dimblocksize.x - 1) / Dimblocksize.x, (global_dimension.y + Dimblocksize.y - 1) / Dimblocksize.y);
-
-	//Don't generate the table when FreeSlipChunk.xy are both 1, and in STPRainDrop don't use the table
-	if (range.x == 1u && range.y == 1u) {
-		this->GlobalLocalIndex = nullptr;
-		return;
-	}
-
-	//make sure all previous takes are finished
-	STPcudaCheckErr(cudaDeviceSynchronize());
-	//allocation
-	unsigned int* gli_cache;
-	STPcudaCheckErr(cudaMalloc(&gli_cache, sizeof(unsigned int) * global_dimension.x * global_dimension.y));
-	//compute
-	initGlobalLocalIndexKERNEL << <Dimgridsize, Dimblocksize >> > (gli_cache, global_dimension.x, range, global_dimension, dimension);
-	STPcudaCheckErr(cudaGetLastError());
-	STPcudaCheckErr(cudaDeviceSynchronize());
-	this->GlobalLocalIndex = unique_ptr_d<unsigned int>(gli_cache);
-}
-
 __host__ void STPHeightfieldGenerator::initEdgeArrangementTable() {
 	typedef STPHeightfieldGenerator::STPEdgeArrangement STPEA;
-	const unsigned int num_chunk = this->FreeSlipChunk.x * this->FreeSlipChunk.y;
+	const uint2& freeslip_chunk = this->FreeSlipTable.getFreeSlipChunk();
+	const unsigned int num_chunk = freeslip_chunk.x * freeslip_chunk.y;
 	if (num_chunk == 1u) {
 		//if freeslip logic is not turned on, there's no need to do copy
 		//since edge is calculated by neighbour chunks, but without freeslip there's no "other" chunks
@@ -551,7 +516,7 @@ __host__ void STPHeightfieldGenerator::initEdgeArrangementTable() {
 	this->EdgeArrangementTable = make_unique<STPEA[]>(num_chunk);
 	for (unsigned int chunkID = 0u; chunkID < num_chunk; chunkID++) {
 		STPEA& current_entry = this->EdgeArrangementTable[chunkID];
-		const uint2 chunkCoord = make_uint2(chunkID % this->FreeSlipChunk.x, static_cast<unsigned int>(floorf(1.0f * chunkID / this->FreeSlipChunk.x)));
+		const uint2 chunkCoord = make_uint2(chunkID % freeslip_chunk.x, static_cast<unsigned int>(floorf(1.0f * chunkID / freeslip_chunk.x)));
 
 		//some basic boolean logic to determine our "frame"
 		if (chunkCoord.x == 0u) {
@@ -559,19 +524,19 @@ __host__ void STPHeightfieldGenerator::initEdgeArrangementTable() {
 				current_entry = STPEA::TOP_LEFT_CORNER;
 				continue;
 			}
-			if (chunkCoord.y ==  this->FreeSlipChunk.y - 1u) {
+			if (chunkCoord.y == freeslip_chunk.y - 1u) {
 				current_entry = STPEA::BOTTOM_LEFT_CORNER;
 				continue;
 			}
 			current_entry = STPEA::LEFT_VERTICAL_STRIP;
 			continue;
 		}
-		if (chunkCoord.x == this->FreeSlipChunk.x - 1u) {
+		if (chunkCoord.x == freeslip_chunk.x - 1u) {
 			if (chunkCoord.y == 0u) {
 				current_entry = STPEA::TOP_RIGHT_CORNER;
 				continue;
 			}
-			if (chunkCoord.y == this->FreeSlipChunk.y - 1u) {
+			if (chunkCoord.y == freeslip_chunk.y - 1u) {
 				current_entry = STPEA::BOTTOM_RIGHT_CORNER;
 				continue;
 			}
@@ -583,7 +548,7 @@ __host__ void STPHeightfieldGenerator::initEdgeArrangementTable() {
 			current_entry = STPEA::TOP_HORIZONTAL_STRIP;
 			continue;
 		}
-		if (chunkCoord.y == this->FreeSlipChunk.y - 1u) {
+		if (chunkCoord.y == freeslip_chunk.y - 1u) {
 			current_entry = STPEA::BOTTOM_HORIZONTAL_STRIP;
 			continue;
 		}
@@ -621,8 +586,8 @@ __global__ void performErosionKERNEL(STPFreeSlipManager heightmap_storage, const
 	//Generate the raindrop at the central chunk only
 	__shared__ uint4 area;
 	if (threadIdx.x == 0u) {
-		const uint2 dimension = heightmap_storage.Dimension;
-		const uint2 freeslip_chunk = heightmap_storage.FreeSlipChunk;
+		const uint2 dimension = heightmap_storage.Data.Dimension;
+		const uint2 freeslip_chunk = heightmap_storage.Data.FreeSlipChunk;
 		area = make_uint4(
 			//base x
 			static_cast<unsigned int>(1.0f * dimension.x - 1.0f),
@@ -657,11 +622,12 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipManager heightmap, floa
 		x = x_b + threadIdx.x,
 		y = y_b + threadIdx.y,
 		threadperblock = blockDim.x * blockDim.y;
-	if (x >= heightmap.FreeSlipRange.x || y >= heightmap.FreeSlipRange.y) {
+	const uint2& freeslip_range = heightmap.Data.FreeSlipRange;
+	if (x >= freeslip_range.x || y >= freeslip_range.y) {
 		return;
 	}
 
-	const uint2& dimension = heightmap.FreeSlipRange;
+	const uint2& dimension = heightmap.Data.FreeSlipRange;
 	auto clamp = []__device__(int val, int lower, int upper) -> int {
 		return max(lower, min(val, upper));
 	};
@@ -676,7 +642,6 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipManager heightmap, floa
 	unsigned int iteration = 0u;
 	const unsigned int cacheSize_total = cacheSize.x * cacheSize.y;
 
-	//TODO: Verify after cache optimisation the result is consistent with that of before the optimisation
 	while (iteration < cacheSize_total) {
 		const unsigned int cacheIdx = (threadIdx.x + blockDim.x * threadIdx.y) + iteration;
 		const unsigned int x_w = x_b + static_cast<unsigned int>(fmodf(cacheIdx, cacheSize.x)),
@@ -693,7 +658,7 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipManager heightmap, floa
 	}
 	__syncthreads();
 
-	if ((heightmap.FreeSlipChunk.x * heightmap.FreeSlipChunk.y) > 1 && (x == 0 || y == 0 || x == heightmap.FreeSlipRange.x - 1 || y == heightmap.FreeSlipRange.y - 1)) {
+	if ((heightmap.Data.FreeSlipChunk.x * heightmap.Data.FreeSlipChunk.y) > 1 && (x == 0 || y == 0 || x == freeslip_range.x - 1 || y == freeslip_range.y - 1)) {
 		//if freeslip is not turned on, we need to calculate the edge pixel for this chunk
 		//otherwise, do not touch the border pixel since border pixel is calculated seamlessly by other chunks
 		return;
@@ -730,21 +695,4 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipManager heightmap, floa
 	heightfield[index * 4 + 1] = float2short(normal.y);//G
 	heightfield[index * 4 + 2] = float2short(normal.z);//B
 	heightfield[index * 4 + 3] = float2short(heightmapCache[x_c + y_c * cacheSize.x]);//A
-}
-
-__global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int rowCount, uint2 chunkRange, uint2 tableSize, uint2 mapSize) {
-	//current pixel
-	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
-		y = (blockIdx.y * blockDim.y) + threadIdx.y,
-		globalidx = x + y * rowCount;
-	if (x >= tableSize.x || y >= tableSize.y) {
-		return;
-	}
-
-	//simple maths
-	const uint2 globalPos = make_uint2(globalidx - floorf(globalidx / rowCount) * rowCount, floorf(globalidx / rowCount));
-	const uint2 chunkPos = make_uint2(floorf(globalPos.x / mapSize.x), floorf(globalPos.y / mapSize.y));
-	const uint2 localPos = make_uint2(globalPos.x - chunkPos.x * mapSize.x, globalPos.y - chunkPos.y * mapSize.y);
-
-	output[globalidx] = (chunkPos.x + chunkRange.x * chunkPos.y) * mapSize.x * mapSize.y + (localPos.x + mapSize.x * localPos.y);
 }

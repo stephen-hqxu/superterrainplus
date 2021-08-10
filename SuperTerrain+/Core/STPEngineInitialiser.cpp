@@ -3,16 +3,20 @@
 
 //GLAD
 #include <glad/glad.h>
+//CUDA
+#include <cuda_runtime.h>
+#include <SuperError+/STPDeviceErrorHandler.h>
 
 using namespace SuperTerrainPlus;
 
-bool STPEngineInitialiser::Inited = false;
+bool STPEngineInitialiser::GLInited = false;
+bool STPEngineInitialiser::CUDAInited = false;
 
 bool STPEngineInitialiser::initGLcurrent() {
 	if (!gladLoadGL()) {
 		return false;
 	}
-	STPEngineInitialiser::Inited = true;
+	STPEngineInitialiser::GLInited = true;
 	return true;
 }
 
@@ -20,10 +24,18 @@ bool STPEngineInitialiser::initGLexplicit(STPglProc process) {
 	if (!gladLoadGLLoader(process)) {
 		return false;
 	}
-	STPEngineInitialiser::Inited = true;
+	STPEngineInitialiser::GLInited = true;
 	return true;
 }
 
+void STPEngineInitialiser::initCUDA(int device) {
+	STPcudaCheckErr(cudaSetDevice(device));
+	STPcudaCheckErr(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+	STPcudaCheckErr(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte));
+	STPEngineInitialiser::CUDAInited = true;
+}
+
 bool STPEngineInitialiser::hasInit() {
-	return STPEngineInitialiser::Inited;
+	return STPEngineInitialiser::GLInited && 
+		STPEngineInitialiser::CUDAInited;
 }

@@ -185,9 +185,6 @@ namespace STPDemo {
 			
 			glPatchParameteri(GL_PATCH_VERTICES, 3);//barycentric coordinate system
 
-			cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
-			cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
-
 			//starting thread pool
 			this->command_pool = new SuperTerrainPlus::STPThreadPool(3u);
 			//loading terrain 2d inf parameters

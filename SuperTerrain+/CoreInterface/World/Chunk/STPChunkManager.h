@@ -48,7 +48,7 @@ namespace SuperTerrainPlus {
 		cudaStream_t buffering_stream;
 
 		//thread pool
-		std::unique_ptr<STPThreadPool> compute_pool;
+		STPThreadPool compute_pool;
 
 		//chunk data provider
 		STPChunkProvider& ChunkProvider;

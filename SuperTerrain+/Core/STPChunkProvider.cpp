@@ -15,8 +15,7 @@ using namespace SuperTerrainPlus;
 
 STPChunkProvider::STPChunkProvider(const STPEnvironment::STPChunkSetting& chunk_settings, STPChunkStorage& storage,
 	STPDiversity::STPBiomeFactory& biome_factory, STPCompute::STPHeightfieldGenerator& heightfield_generator)
-	: ChunkSetting(chunk_settings), ChunkStorage(storage), generateBiome(biome_factory), generateHeightfield(heightfield_generator) {
-	this->kernel_launch_pool = make_unique<STPThreadPool>(5u);
+	: ChunkSetting(chunk_settings), ChunkStorage(storage), generateBiome(biome_factory), generateHeightfield(heightfield_generator), kernel_launch_pool(5u){
 }
 
 unsigned int STPChunkProvider::calculateMaxConcurrency(uvec2 rendered_range, uvec2 freeslip_range) {
@@ -156,7 +155,7 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 			if (curr_neighbour->getChunkState() == STPChunk::STPChunkState::Empty) {
 				curr_neighbour->markOccupancy(true);
 				//compute biomemap
-				this->kernel_launch_pool->enqueue_void(biomemap_computer, curr_neighbour, neighbourPos, this->calcChunkOffset(neighbourPos));
+				this->kernel_launch_pool.enqueue_void(biomemap_computer, curr_neighbour, neighbourPos, this->calcChunkOffset(neighbourPos));
 				//try to compute all biomemap, and when biomemap is computing, we don't need to wait
 				canContinue = false;
 			}
@@ -191,11 +190,11 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 	switch (rec_depth) {
 	case BIOMEMAP_PASS:
 		//generate heightmap
-		this->kernel_launch_pool->enqueue_void(heightmap_computer, this->ChunkStorage.getChunk(chunkPos), neighbour, chunkPos);
+		this->kernel_launch_pool.enqueue_void(heightmap_computer, this->ChunkStorage.getChunk(chunkPos), neighbour, chunkPos);
 		break;
 	case HEIGHTMAP_PASS:
 		//perform erosion on heightmap
-		this->kernel_launch_pool->enqueue_void(erosion_computer, this->ChunkStorage.getChunk(chunkPos), neighbour);
+		this->kernel_launch_pool.enqueue_void(erosion_computer, this->ChunkStorage.getChunk(chunkPos), neighbour);
 		{
 			//trigger a chunk reload as some chunks have been added to render buffer already after neighbours are updated
 			const auto neighbour_position = this->getNeighbour(chunkPos);

@@ -49,12 +49,12 @@ PRIVATE ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/Device
 target_link_libraries(${STP_MAIN_ENGINE}
 # we don't need to link SuperAlgorithm+, this is a library left for developers
 PRIVATE ${STP_ERROR_ENGINE} ${STP_GLAD} opengl32.lib
+PUBLIC CUDA::cudart CUDA::cuda_driver CUDA::nvrtc
 )
 target_link_libraries(${STP_ALGORITHM_HOST_ENGINE}
-PRIVATE ${STP_ERROR_ENGINE}
-PUBLIC CUDA::cudart
+PRIVATE ${STP_ERROR_ENGINE} CUDA::cudart
 )
 # device engine doesn't require lib
 target_link_libraries(${STP_ERROR_ENGINE}
-PUBLIC CUDA::cudart CUDA::cuda_driver CUDA::nvrtc
+PRIVATE CUDA::cudart CUDA::cuda_driver CUDA::nvrtc
 )

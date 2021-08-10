@@ -19,7 +19,8 @@ namespace SuperTerrainPlus {
 	private:
 
 		//Default state is false, once the engine is initialised it will become true.
-		static bool Inited;
+		static bool GLInited;
+		static bool CUDAInited;
 
 		/**
 		 * @brief A static-only class should not be constructed
@@ -45,6 +46,13 @@ namespace SuperTerrainPlus {
 		 * @return True if OpenGL init is successful
 		*/
 		static bool initGLexplicit(STPglProc);
+
+		/**
+		 * @brief Initialise CUDA primary context with best-suited parameters for this engine.
+		 * User should not adjust the parameters on primary context, if needed, use another context.
+		 * @param device The GPU to create a primary context
+		*/
+		static void initCUDA(int);
 
 		/**
 		 * @brief Check if the engine has been initialised

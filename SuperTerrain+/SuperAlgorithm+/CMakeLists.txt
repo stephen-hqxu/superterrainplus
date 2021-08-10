@@ -7,5 +7,6 @@ set_target_properties(${STP_ALGORITHM_HOST_ENGINE} PROPERTIES DEFINE_SYMBOL STPA
 
 # device-side static library
 add_library(${STP_ALGORITHM_DEVICE_ENGINE} STATIC
+Device/STPKernelMath.cu
 Device/STPSimplexNoise.cu
 )

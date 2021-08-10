@@ -48,8 +48,8 @@ void STPBiomeFactory::operator()(Sample* biomemap, ivec3 offset) {
 	if (this->BiomeDimension.y == 1u) {
 		//it's a 2D biome
 		//to avoid making useless computation
-		for (unsigned int x = 0u; x < this->BiomeDimension.x; x++) {
-			for (unsigned int z = 0u; z < this->BiomeDimension.z; z++) {
+		for (unsigned int z = 0u; z < this->BiomeDimension.z; z++) {
+			for (unsigned int x = 0u; x < this->BiomeDimension.x; x++) {
 				//calculate the map index
 				const unsigned int index = x + z * this->BiomeDimension.x;
 				//get the biome at thie coordinate
@@ -59,16 +59,7 @@ void STPBiomeFactory::operator()(Sample* biomemap, ivec3 offset) {
 		return;
 	}
 	//it's a 3D biome
-	for (unsigned int x = 0u; x < this->BiomeDimension.x; x++) {
-		for (unsigned int y = 0u; y < this->BiomeDimension.y; y++) {
-			for (unsigned int z = 0u; z < this->BiomeDimension.z; z++) {
-				//calculate the map index
-				const unsigned int index = x + y * this->BiomeDimension.x + z * (this->BiomeDimension.x * this->BiomeDimension.y);
-				//get the biome at thie coordinate
-				biomemap[index] = producer->start()->sample(static_cast<int>(x) + offset.x, static_cast<int>(y) + offset.y, static_cast<int>(z) + offset.z);
-			}
-		}
-	}
+	throw "3-dimension biomemap generation is not supported yet.";
 
 	//free the producer
 	this->returnProductionLine(producer);

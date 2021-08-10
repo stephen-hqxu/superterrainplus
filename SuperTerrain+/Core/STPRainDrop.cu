@@ -28,12 +28,12 @@ __device__ float3 STPRainDrop::calcHeightGradients(const STPFreeSlipManager& map
 	//calculate drop's offset inside the cell (0,0) and (1,1)
 	const float2 cell_corner = make_float2(this->raindrop_pos.x - rounded_pos.x, this->raindrop_pos.y - rounded_pos.y);
 	//calculate the heights of the 4 nodes of the droplet's cell
-	const unsigned int nodebaseIndex = rounded_pos.y * map.FreeSlipRange.x + rounded_pos.x;//The position on the map of the local (0,0) cell
+	const unsigned int nodebaseIndex = rounded_pos.y * map.Data.FreeSlipRange.x + rounded_pos.x;//The position on the map of the local (0,0) cell
 	const float4 heights = make_float4(
 		map[nodebaseIndex], // (0,0)
 		map[nodebaseIndex + 1], // (1,0)
-		map[nodebaseIndex + map.FreeSlipRange.x], // (1,0)
-		map[nodebaseIndex + map.FreeSlipRange.x + 1] // (1,1)
+		map[nodebaseIndex + map.Data.FreeSlipRange.x], // (1,0)
+		map[nodebaseIndex + map.Data.FreeSlipRange.x + 1] // (1,1)
 	);
 
 	//calculate height with bilinear interpolation of the heights of the nodes of the cell
@@ -77,7 +77,7 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 	//Rain drop is still alive, continue descending...
 	while (this->volume >= settings->minWaterVolume) {
 		//The position of droplet on the map index
-		unsigned int mapIndex = static_cast<unsigned int>(this->raindrop_pos.y) * map.FreeSlipRange.x + static_cast<unsigned int>(this->raindrop_pos.x);
+		unsigned int mapIndex = static_cast<unsigned int>(this->raindrop_pos.y) * map.Data.FreeSlipRange.x + static_cast<unsigned int>(this->raindrop_pos.x);
 		//calculate the offset of the droplet inside cell (0,0) and cell (1,1)
 		float2 offset_cell = make_float2(this->raindrop_pos.x - static_cast<int>(this->raindrop_pos.x), this->raindrop_pos.y - static_cast<int>(this->raindrop_pos.y));
 		//check if the particle is not accelerating and is it surrounded by a lot of other particles
@@ -97,8 +97,8 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 
 		//check if the raindrop brushing range falls out of the map
 		if ((this->raindrop_dir.x == 0.0f && this->raindrop_dir.y == 0.0f) 
-			|| this->raindrop_pos.x < (settings->getErosionBrushRadius() * 1.0f) || this->raindrop_pos.x >= 1.0f * map.FreeSlipRange.x - settings->getErosionBrushRadius()
-			|| this->raindrop_pos.y < (settings->getErosionBrushRadius() * 1.0f) || this->raindrop_pos.y >= 1.0f * map.FreeSlipRange.y - settings->getErosionBrushRadius()) {
+			|| this->raindrop_pos.x < (settings->getErosionBrushRadius() * 1.0f) || this->raindrop_pos.x >= 1.0f * map.Data.FreeSlipRange.x - settings->getErosionBrushRadius()
+			|| this->raindrop_pos.y < (settings->getErosionBrushRadius() * 1.0f) || this->raindrop_pos.y >= 1.0f * map.Data.FreeSlipRange.y - settings->getErosionBrushRadius()) {
 			//ending the life of this poor raindrop
 			this->volume = 0.0f;
 			this->sediment = 0.0f;
@@ -121,8 +121,8 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 			//deposition is not distributed over a radius (like erosion) so that it can fill small pits :)
 			map[mapIndex] += depositAmount * (1.0f - offset_cell.x) * (1.0f - offset_cell.y);
 			map[mapIndex + 1] += depositAmount * offset_cell.x * (1.0f - offset_cell.y);
-			map[mapIndex + map.FreeSlipRange.x] += depositAmount * (1.0f - offset_cell.x) * offset_cell.y;
-			map[mapIndex + map.FreeSlipRange.x + 1] += depositAmount * offset_cell.x *  offset_cell.y;
+			map[mapIndex + map.Data.FreeSlipRange.x] += depositAmount * (1.0f - offset_cell.x) * offset_cell.y;
+			map[mapIndex + map.Data.FreeSlipRange.x + 1] += depositAmount * offset_cell.x *  offset_cell.y;
 		}
 		else {
 			//erode a fraction of the droplet's current carry capacity

@@ -88,7 +88,10 @@ namespace STPDemo {
 			return false;
 		}
 #endif//SUPERTERRAINPLUS_USE_SHARED
-		return true;
+		//cuda context init on device 0 (only one GPU)
+		SuperTerrainPlus::STPEngineInitialiser::initCUDA(0);
+
+		return SuperTerrainPlus::STPEngineInitialiser::hasInit();
 	}
 
 	//----------defining callback functions-----------

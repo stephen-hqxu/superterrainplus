@@ -21,7 +21,7 @@ using std::make_pair;
 
 using namespace SuperTerrainPlus;
 
-STPChunkManager::STPChunkManager(STPChunkProvider& provider) : ChunkProvider(provider), trigger_clearBuffer(false) {
+STPChunkManager::STPChunkManager(STPChunkProvider& provider) : ChunkProvider(provider), trigger_clearBuffer(false), compute_pool(1u) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkProvider.getChunkSetting();
 	const ivec2 buffer_size(chunk_setting.RenderedChunk * chunk_setting.MapSize);
 	const int totaltexture_size = buffer_size.x * buffer_size.y * sizeof(unsigned short) * 4;//4 channel
@@ -53,8 +53,6 @@ STPChunkManager::STPChunkManager(STPChunkProvider& provider) : ChunkProvider(pro
 	memset(this->quad_clear, 0x88, totaltexture_size);
 
 	this->renderingLocals.reserve(chunk_setting.RenderedChunk.x * chunk_setting.RenderedChunk.y);
-	//create thread pool
-	this->compute_pool = make_unique<STPThreadPool>(1u);
 	//create stream
 	STPcudaCheckErr(cudaStreamCreateWithFlags(&this->buffering_stream, cudaStreamNonBlocking));
 }
@@ -181,7 +179,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 	}
 
 	//start loading chunk
-	this->ChunkLoader = this->compute_pool->enqueue_future(asyncChunkLoader, biomemap_ptr, heightfield_ptr);
+	this->ChunkLoader = this->compute_pool.enqueue_future(asyncChunkLoader, biomemap_ptr, heightfield_ptr);
 	return true;
 }
 

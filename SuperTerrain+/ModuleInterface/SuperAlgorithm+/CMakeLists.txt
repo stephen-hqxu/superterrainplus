@@ -5,6 +5,7 @@ STPSimplexNoiseSetting.h
 )
 
 target_sources(${STP_ALGORITHM_DEVICE_ENGINE} PRIVATE
+Device/STPKernelMath.cuh
 Device/STPSimplexNoise.cuh
 )
 

@@ -13,6 +13,7 @@ STPLayerManager.cpp
 STPSeedMixer.cpp
 STPThreadPool.cpp
 
+STPFreeSlipGenerator.cu
 STPFreeSlipManager.cu
 STPHeightfieldGenerator.cu
 STPRainDrop.cu

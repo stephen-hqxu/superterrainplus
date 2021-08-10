@@ -34,9 +34,12 @@ namespace SuperTerrainPlus {
 			virtual ~STPDiversityGenerator() = default;
 
 			/**
-			 * @brief Generate a biome-specific heightmaps
+			 * @brief Generate a biome-specific heightmaps.
+			 * Note that this function does not provide any information about the texture size since user is responsible for initialising 
+			 * the generator like STPHeightfieldGenerator with said parameters, and should keep track on those their own.
 			 * @param heightmap The result of generated heightmap that will be stored
-			 * @param biomemap The biomemap, which is an array of biomeID, the meaning of biomeID is however implementation-specific
+			 * @param biomemap The biomemap, which is an array of biomeID, the meaning of biomeID is however implementation-specific.
+			 * Biomemap uses free-slip neighbour logic, the exact number of free-slip chunk is defined by the parameters used in heightfield generator.
 			 * @param offset The offset of maps in world coordinate
 			 * @param stream The stream currently being used
 			*/

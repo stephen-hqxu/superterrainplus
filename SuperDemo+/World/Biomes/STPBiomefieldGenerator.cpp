@@ -148,7 +148,9 @@ void STPBiomefieldGenerator::operator()(float* heightmap, const Sample* biomemap
 	//smart launch config
 	STPcudaCheckErr(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->GeneratorEntry, nullptr, 0ull, 0));
 	Dimblocksize = dim3(32, blocksize / 32);
-	Dimgridsize = dim3((this->MapSize.x + Dimblocksize.x - 1) / Dimblocksize.x, (this->MapSize.y + Dimblocksize.y - 1) / Dimblocksize.y);
+	//under-sampled heightmap, and super-sample it back with interpolation
+	Dimgridsize = dim3((this->MapSize.x + Dimblocksize.x - 1) / Dimblocksize.x, 
+		(this->MapSize.y + Dimblocksize.y - 1) / Dimblocksize.y);
 
 	//launch kernel
 	size_t bufferSize = 24ull;
@@ -166,4 +168,5 @@ void STPBiomefieldGenerator::operator()(float* heightmap, const Sample* biomemap
 		Dimgridsize.x, Dimgridsize.y, Dimgridsize.z,
 		Dimblocksize.x, Dimblocksize.y, Dimblocksize.z,
 		0u, stream, nullptr, config));
+	STPcudaCheckErr(cudaGetLastError());
 }

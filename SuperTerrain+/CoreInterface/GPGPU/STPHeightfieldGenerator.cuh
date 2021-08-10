@@ -11,6 +11,7 @@
 #include <curand_kernel.h>
 //Engine
 #include "STPDiversityGenerator.hpp"
+#include "STPFreeSlipGenerator.cuh"
 #include "../Utility/STPMemoryPool.hpp"
 //Settings
 #include "../Environment/STPHeightfieldSetting.h"
@@ -151,30 +152,10 @@ namespace SuperTerrainPlus {
 
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency
 			unique_ptr_d<curandRNG> RNG_Map;
-			/**
-			 * @brief Convert global index to local index, making data access outside the central chunk available
-			 * As shown the difference between local and global index
-			 *		 Local					 Global
-			 * 0 1 2 3 | 0 1 2 3	0  1  2  3  | 4  5  6  7
-			 * 4 5 6 7 | 4 5 6 7	8  9  10 11 | 12 13 14 15
-			 * -----------------	-------------------------
-			 * 0 1 2 3 | 0 1 2 3	16 17 18 19 | 20 21 22 23
-			 * 4 5 6 7 | 4 5 6 7	24 25 26 27 | 28 29 30 21
-			 *
-			 * Given that chunk should be arranged in a linear array (just an example)
-			 * Chunk 1 | Chunk 2
-			 * -----------------
-			 * Chunk 3 | Chunk 4
-			*/
-			//Btw don't use `unsigned int[]` here since we are dealing with device memory
-			unique_ptr_d<unsigned int> GlobalLocalIndex;
+			//free-slip index table generator
+			STPFreeSlipGenerator FreeSlipTable;
 			//A lookup table that, given a chunkID, determine the edge type of this chunk within the neighbour chunk logic
 			std::unique_ptr<STPEdgeArrangement[]> EdgeArrangementTable;
-
-			//The size of the map generated
-			const uint2 MapSize;
-			//Free slip range in the unit of chunk
-			const uint2 FreeSlipChunk;
 
 			//Temp cache on device for heightmap computation
 			mutable std::mutex MapCachePinned_lock;
@@ -188,11 +169,6 @@ namespace SuperTerrainPlus {
 			 * Determine the number of raindrop to summon, the higher the more accurate but slower
 			*/
 			__host__ void setErosionIterationCUDA();
-
-			/**
-			 * @brief Initialise the local global index lookup table
-			*/
-			__host__ void initLocalGlobalIndexCUDA();
 
 			/**
 			 * @brief Initialise edge arrangement lookup table

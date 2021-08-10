@@ -3,7 +3,7 @@
 
 #include <cassert>
 //Permutation
-#include "../STPPermutation.hpp"
+#include <../STPPermutation.hpp>
 
 using namespace SuperTerrainPlus::STPCompute;
 
