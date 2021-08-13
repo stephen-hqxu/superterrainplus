@@ -277,7 +277,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	}
 
 	if (flag[1] || flag[2]) {
-		STPFreeSlipManager heightmap_slip = this->FreeSlipTable.getManager(heightfield_freeslip_d);
+		STPFreeSlipManager heightmap_slip = this->FreeSlipTable.getManager<STPFreeSlipGenerator::STPFreeSlipManagerType::DeviceManager>(heightfield_freeslip_d);
 
 		//Flag: Erosion
 		if (flag[1]) {
@@ -586,8 +586,8 @@ __global__ void performErosionKERNEL(STPFreeSlipManager heightmap_storage, const
 	//Generate the raindrop at the central chunk only
 	__shared__ uint4 area;
 	if (threadIdx.x == 0u) {
-		const uint2 dimension = heightmap_storage.Data.Dimension;
-		const uint2 freeslip_chunk = heightmap_storage.Data.FreeSlipChunk;
+		const uint2 dimension = heightmap_storage.Data->Dimension;
+		const uint2 freeslip_chunk = heightmap_storage.Data->FreeSlipChunk;
 		area = make_uint4(
 			//base x
 			static_cast<unsigned int>(1.0f * dimension.x - 1.0f),
@@ -622,12 +622,12 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipManager heightmap, floa
 		x = x_b + threadIdx.x,
 		y = y_b + threadIdx.y,
 		threadperblock = blockDim.x * blockDim.y;
-	const uint2& freeslip_range = heightmap.Data.FreeSlipRange;
+	const uint2& freeslip_range = heightmap.Data->FreeSlipRange;
 	if (x >= freeslip_range.x || y >= freeslip_range.y) {
 		return;
 	}
 
-	const uint2& dimension = heightmap.Data.FreeSlipRange;
+	const uint2& dimension = heightmap.Data->FreeSlipRange;
 	auto clamp = []__device__(int val, int lower, int upper) -> int {
 		return max(lower, min(val, upper));
 	};
@@ -658,7 +658,7 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipManager heightmap, floa
 	}
 	__syncthreads();
 
-	if ((heightmap.Data.FreeSlipChunk.x * heightmap.Data.FreeSlipChunk.y) > 1 && (x == 0 || y == 0 || x == freeslip_range.x - 1 || y == freeslip_range.y - 1)) {
+	if ((heightmap.Data->FreeSlipChunk.x * heightmap.Data->FreeSlipChunk.y) > 1 && (x == 0 || y == 0 || x == freeslip_range.x - 1 || y == freeslip_range.y - 1)) {
 		//if freeslip is not turned on, we need to calculate the edge pixel for this chunk
 		//otherwise, do not touch the border pixel since border pixel is calculated seamlessly by other chunks
 		return;

@@ -23,14 +23,11 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief Generate a random permutaion and gradient table for simplex noise generator
 		*/
-		class STPALGORITHMPLUS_HOST_API STPPermutationGenerator {
+		class STPALGORITHMPLUS_HOST_API STPPermutationGenerator : private STPPermutation {
 		private:
 
 			//TODO Choose your prefered rng here!!!
 			typedef std::mt19937_64 STPPermutationRNG;
-
-			//Simplex noise generator lookup table, contains permutation and gradient
-			STPPermutation Permutation;
 
 		public:
 

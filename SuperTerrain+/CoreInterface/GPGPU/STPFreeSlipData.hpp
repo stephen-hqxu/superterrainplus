@@ -38,7 +38,7 @@ namespace SuperTerrainPlus {
 			 * -----------------
 			 * Chunk 3 | Chunk 4
 			*/
-			unsigned int* GlobalLocalIndex = nullptr;
+			unsigned int* GlobalLocalIndex;
 
 			//The dimension of each map
 			uint2 Dimension;
