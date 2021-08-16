@@ -6,6 +6,7 @@
 //CUDA
 #include <cuda_runtime.h>
 //Generator
+#include <World/Diversity/STPBiomeDefine.h>
 #include "STPFreeSlipData.hpp"
 
 /**
@@ -21,8 +22,10 @@ namespace SuperTerrainPlus {
 
 		/**
 		 * @brief STPFreeSlipManager is a utility wrapper on STPFreeSlipData
-		 * such that it can make use of the index table and other data to "free-slip" index access on texture
+		 * such that it can make use of the index table and other data to "free-slip" index access on texture.
+		 * @tparam T The data type of the texture
 		*/
+		template<typename T>
 		class STP_API STPFreeSlipManager {
 		private:
 			
@@ -31,7 +34,7 @@ namespace SuperTerrainPlus {
 			//A matrix of texture, it should be arranged in row major order.
 			//The number of texture should be equal to the product or x and y defiend in FreeSlipRange
 			//The size of the texture should be equal to FreeSlipRange.x * FreeSlipRange.y * Dimension.x * Dimension.y * sizeof(float)
-			float* const Texture;
+			T* const Texture;
 
 			/**
 			 * @brief Init the free slip manager.
@@ -40,7 +43,7 @@ namespace SuperTerrainPlus {
 			 * Data will be copied and no reference is retained by the caller.
 			 * Depends on the usage, the pointer to data should be either on host or device side
 			*/
-			__host__ STPFreeSlipManager(float*, const STPFreeSlipData*);
+			__host__ STPFreeSlipManager(T*, const STPFreeSlipData*);
 
 		public:
 
@@ -71,6 +74,9 @@ namespace SuperTerrainPlus {
 			__device__ __host__ unsigned int operator()(unsigned int) const;
 
 		};
+
+		typedef STPFreeSlipManager<float> STPFreeSlipFloatManager;
+		typedef STPFreeSlipManager<STPDiversity::Sample> STPFreeSlipSampleManager;
 
 	}
 }

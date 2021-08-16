@@ -7,6 +7,7 @@
 #include <SuperError+/STPDeviceErrorHandler.h>
 
 using namespace SuperTerrainPlus::STPCompute;
+using SuperTerrainPlus::STPDiversity::Sample;
 
 using std::make_unique;
 using std::exception;
@@ -23,7 +24,46 @@ using std::current_exception;
 */
 __global__ void initGlobalLocalIndexKERNEL(unsigned int*, unsigned int, uint2, uint2, uint2);
 
-STPFreeSlipGenerator::STPFreeSlipGenerator(uint2 range, uint2 mapSize) {
+__host__ STPFreeSlipGenerator::STPFreeSlipManagerAdaptor::STPFreeSlipManagerAdaptor(void* texture, const STPFreeSlipGenerator& generator) :
+	Generator(generator), Texture(texture) {
+
+}
+
+__host__ STPFreeSlipGenerator::STPFreeSlipManagerAdaptor::~STPFreeSlipManagerAdaptor() {
+
+}
+
+template<typename T>
+__host__ STPFreeSlipManager<T> STPFreeSlipGenerator::STPFreeSlipManagerAdaptor::getTypedManager(STPFreeSlipManagerType type) const {
+	const STPFreeSlipData* data;
+	switch (type) {
+	case STPFreeSlipManagerType::HostManager:
+		//free-slip manager requires a host index table
+		data = dynamic_cast<const STPFreeSlipData*>(&this->Generator);
+		break;
+	case STPFreeSlipManagerType::DeviceManager:
+		//free-slip manager requires a device index table
+		data = this->Generator.Data_Device;
+		break;
+	default:
+		//never going to happen
+		break;
+	}
+
+	return STPFreeSlipManager(reinterpret_cast<T*>(this->Texture), data);
+}
+
+template<>
+__host__ STP_API STPFreeSlipManager<float> STPFreeSlipGenerator::STPFreeSlipManagerAdaptor::getManager(STPFreeSlipManagerType type) const {
+	return this->getTypedManager<float>(type);
+}
+
+template<>
+__host__ STP_API STPFreeSlipManager<Sample> STPFreeSlipGenerator::STPFreeSlipManagerAdaptor::getManager(STPFreeSlipManagerType type) const {
+	return this->getTypedManager<Sample>(type);
+}
+
+__host__ STPFreeSlipGenerator::STPFreeSlipGenerator(uint2 range, uint2 mapSize) {
 	this->Dimension = mapSize;
 	this->FreeSlipChunk = range;
 	this->FreeSlipRange = make_uint2(range.x * mapSize.x, range.y * mapSize.y);
@@ -36,7 +76,7 @@ STPFreeSlipGenerator::STPFreeSlipGenerator(uint2 range, uint2 mapSize) {
 	}
 }
 
-STPFreeSlipGenerator::~STPFreeSlipGenerator() {
+__host__ STPFreeSlipGenerator::~STPFreeSlipGenerator() {
 	this->clearDeviceIndex();
 }
 
@@ -105,16 +145,8 @@ __host__ const uint2& STPFreeSlipGenerator::getFreeSlipRange() const {
 	return this->FreeSlipRange;
 }
 
-template<>
-__host__ STPFreeSlipManager STPFreeSlipGenerator::getManager<STPFreeSlipGenerator::STPFreeSlipManagerType::HostManager>(float* texture) const {
-	//free-slip manager requires a host index table
-	return STPFreeSlipManager(texture, dynamic_cast<const STPFreeSlipData*>(this));
-}
-
-template<>
-__host__ STPFreeSlipManager STPFreeSlipGenerator::getManager<STPFreeSlipGenerator::STPFreeSlipManagerType::DeviceManager>(float* texture) const {
-	//free-slip manager requires a device index table
-	return STPFreeSlipManager(texture, this->Data_Device);
+__host__ STPFreeSlipGenerator::STPFreeSlipManagerAdaptor STPFreeSlipGenerator::operator()(void* texture) const {
+	return STPFreeSlipManagerAdaptor(texture, *this);
 }
 
 __global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int rowCount, uint2 chunkRange, uint2 tableSize, uint2 mapSize) {

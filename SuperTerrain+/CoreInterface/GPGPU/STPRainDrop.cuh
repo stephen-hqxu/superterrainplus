@@ -59,10 +59,10 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Calculate the current height of the water drop and the direction of acceleration
-			 * @param map The heightmap with free slip configurations
+			 * @param map The floating point heightmap with free slip configurations
 			 * @return Height and Gradients, will be defined in vec3 as (height, gradientX, gradientY);
 			*/
-			__device__ float3 calcHeightGradients(const STPFreeSlipManager&) const;
+			__device__ float3 calcHeightGradients(const STPFreeSlipFloatManager&) const;
 
 		public:
 
@@ -84,10 +84,10 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Performing hydraulic erosion algorithm to descend the raindrop downhill once, water drop will bring sediment but lose water each time this method is called
-			 * @param map - The heightmap with free slip configurations
+			 * @param map - The floating point heightmap with free slip configurations
 			 * @param settings - The raindrop settings for erosion
 			*/
-			__device__ void Erode(const STPEnvironment::STPRainDropSetting*, STPFreeSlipManager&);
+			__device__ void Erode(const STPEnvironment::STPRainDropSetting*, STPFreeSlipFloatManager&);
 
 		};
 

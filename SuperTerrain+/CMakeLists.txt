@@ -21,8 +21,6 @@ configure_file(${STP_TEMPLATE_DIR}/STPCoreDefine.h.in ${STP_CORE_DEFINE_INCLUDE}
 # config file for algorithm engine
 # tell the static library location so CUDA runtime compiler can find it easily (if developer wants to)
 set(SuperAlgorithm+DeviceInclude ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/Device)
-# algorithm define include dir is set in algorithm sub-dir
-configure_file(${STP_TEMPLATE_DIR}/STPAlgorithmDefine.h.in ${STP_ALGORITHM_DEFINE_INCLUDE}/STPAlgorithmDefine.h COPYONLY)
 # algorithm device info contains path to the static library, we need to output that based on configuration
 configure_file(${STP_TEMPLATE_DIR}/STPAlgorithmDeviceInfo.h.in ${STP_ALGORITHM_DEFINE_INCLUDE}/STPAlgorithmDeviceInfoRaw.h @ONLY)
 file(GENERATE
@@ -32,17 +30,20 @@ INPUT ${STP_ALGORITHM_DEFINE_INCLUDE}/STPAlgorithmDeviceInfoRaw.h
 
 # dependencies
 target_include_directories(${STP_MAIN_ENGINE}
-PUBLIC ${STP_EXTERNAL_DIR}/include ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE} ${STP_CORE_DEFINE_INCLUDE}
+PRIVATE ${STP_MODULE_INCLUDE} # we only use SuperError+ in source code and didn't expose in public header
+PUBLIC ${STP_EXTERNAL_DIR}/include ${STP_CORE_INCLUDE} ${STP_CORE_DEFINE_INCLUDE}
 )
 target_include_directories(${STP_ERROR_ENGINE}
-PRIVATE ${STP_MODULE_INCLUDE}/${STP_ERROR_ENGINE}
+PUBLIC ${STP_MODULE_INCLUDE}
 )
 target_include_directories(${STP_ALGORITHM_HOST_ENGINE}
-PRIVATE ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
-PUBLIC ${STP_ALGORITHM_DEFINE_INCLUDE}
+PUBLIC ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
+# info about the algorithm device engine, which may not be linked by the actual application if one chooses to use runtime comilation.
+# however if algorithm device engine is linked (developer decides to not use RTC), then device info header is useless since the target has all info needed.
+INTERFACE ${STP_ALGORITHM_DEFINE_INCLUDE}
 )
-target_include_directories(${STP_ALGORITHM_DEVICE_ENGINE}
-PRIVATE ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/Device
+target_include_directories(${STP_ALGORITHM_DEVICE_ENGINE} # algorithm device engine do not expose any external header in its public headers
+PRIVATE ${STP_MODULE_INCLUDE}
 )
 
 # library dependencies
@@ -52,7 +53,7 @@ PRIVATE ${STP_ERROR_ENGINE} ${STP_GLAD} opengl32.lib
 PUBLIC CUDA::cudart CUDA::cuda_driver CUDA::nvrtc
 )
 target_link_libraries(${STP_ALGORITHM_HOST_ENGINE}
-PRIVATE ${STP_ERROR_ENGINE} CUDA::cudart
+PRIVATE ${STP_MAIN_ENGINE} ${STP_ERROR_ENGINE} CUDA::cudart
 )
 # device engine doesn't require lib
 target_link_libraries(${STP_ERROR_ENGINE}

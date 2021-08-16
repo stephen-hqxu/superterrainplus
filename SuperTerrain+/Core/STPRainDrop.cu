@@ -20,7 +20,7 @@ __device__ STPRainDrop::~STPRainDrop() {
 
 }
 
-__device__ float3 STPRainDrop::calcHeightGradients(const STPFreeSlipManager& map) const {
+__device__ float3 STPRainDrop::calcHeightGradients(const STPFreeSlipFloatManager& map) const {
 	//result
 	float3 height_gradients;
 
@@ -53,7 +53,7 @@ __device__ float STPRainDrop::getCurrentVolume() const {
 	return this->volume;
 }
 
-__device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* settings, STPFreeSlipManager& map) {
+__device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* settings, STPFreeSlipFloatManager& map) {
 	//Cache erosion brush to shared memory
 	//Erosion brush indices then weights
 	extern __shared__ unsigned char ErosionBrush[];

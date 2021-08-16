@@ -51,19 +51,19 @@ __global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG*, unsigned l
 
 /**
  * @brief Performing hydraulic erosion for the given heightmap terrain using CUDA parallel computing
- * @param height_storage The heightmap with global-local convertion management
+ * @param height_storage The floating point heightmap with global-local convertion management
  * @param heightfield_settings - The settings to use to generate heightmap
  * @param rng The random number generator map sequence, independent for each rain drop
 */
-__global__ void performErosionKERNEL(STPFreeSlipManager, const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting*, STPHeightfieldGenerator::curandRNG*);
+__global__ void performErosionKERNEL(STPFreeSlipFloatManager, const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting*, STPHeightfieldGenerator::curandRNG*);
 
 /**
  * @brief Generate the normal map for the height map within kernel, and combine two maps into a rendering buffer
- * @param heightmap - contains the height map that will be used to generate the normalmap, with free-slip manager
+ * @param heightmap - contains the floating point height map that will be used to generate the normalmap, with free-slip manager
  * @param strength - The strenghth of the generated normal map
  * @param heightfield - will be used to store the output of the normal map in RGB channel, heightmap will be copied to A channel
 */
-__global__ void generateRenderingBufferKERNEL(STPFreeSlipManager, float, unsigned short*);
+__global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager, float, unsigned short*);
 
 /*
  * @brief Copy block of memory from device to host and split into chunks.
@@ -277,7 +277,8 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	}
 
 	if (flag[1] || flag[2]) {
-		STPFreeSlipManager heightmap_slip = this->FreeSlipTable.getManager<STPFreeSlipGenerator::STPFreeSlipManagerType::DeviceManager>(heightfield_freeslip_d);
+		STPFreeSlipFloatManager heightmap_slip = this->FreeSlipTable(heightfield_freeslip_d)
+			.getManager<float>(STPFreeSlipGenerator::STPFreeSlipManagerAdaptor::STPFreeSlipManagerType::DeviceManager);
 
 		//Flag: Erosion
 		if (flag[1]) {
@@ -574,7 +575,7 @@ __global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG* rng, unsign
 	curand_init(seed, static_cast<unsigned long long>(index), 0, &rng[index]);
 }
 
-__global__ void performErosionKERNEL(STPFreeSlipManager heightmap_storage, const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting* heightfield_settings, STPHeightfieldGenerator::curandRNG* rng) {
+__global__ void performErosionKERNEL(STPFreeSlipFloatManager heightmap_storage, const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting* heightfield_settings, STPHeightfieldGenerator::curandRNG* rng) {
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
 	if (index >= heightfield_settings->RainDropCount) {
@@ -615,7 +616,7 @@ __global__ void performErosionKERNEL(STPFreeSlipManager heightmap_storage, const
 	droplet.Erode((const SuperTerrainPlus::STPEnvironment::STPRainDropSetting*)heightfield_settings, heightmap_storage);
 }
 
-__global__ void generateRenderingBufferKERNEL(STPFreeSlipManager heightmap, float strength, unsigned short* heightfield) {
+__global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap, float strength, unsigned short* heightfield) {
 	//the current working pixel
 	const unsigned int x_b = blockIdx.x * blockDim.x,
 		y_b = blockIdx.y * blockDim.y,

@@ -23,9 +23,9 @@ namespace SuperTerrainPlus {
 		private:
 
 			//No initialisation for a class with static functions only
-			STPSeedMixer();
+			STPSeedMixer() = delete;
 
-			~STPSeedMixer();
+			~STPSeedMixer() = delete;
 
 		public:
 

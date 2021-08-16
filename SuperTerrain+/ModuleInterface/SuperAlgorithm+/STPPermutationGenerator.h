@@ -2,7 +2,7 @@
 #ifndef _STP_PERMUTATION_GENERATOR_H_
 #define _STP_PERMUTATION_GENERATOR_H_
 
-#include <STPAlgorithmDefine.h>
+#include <SuperAlgorithm+/STPAlgorithmDefine.h>
 #include "STPSimplexNoiseSetting.h"
 //System
 #include <random>
