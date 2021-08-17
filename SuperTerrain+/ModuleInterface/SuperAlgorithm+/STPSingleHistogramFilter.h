@@ -61,19 +61,6 @@ namespace SuperTerrainPlus {
 			};
 
 			/**
-			 * @brief Contains information of a histogram of one pixel.
-			*/
-			struct STPHistogram {
-			public:
-
-				//The number of bin in this histogram for this pixel
-				unsigned int BinSize;
-				//The index of STPBin from the beginning of the linear array of the texture per-pixel histogram to reach the current pixel
-				unsigned int HistogramStartOffset;
-
-			};
-
-			/**
 			 * @brief STPFilterReport contains the output of the result from running STPSingleHistogramFilter for the entire texture.
 			 * Each pixel has one histogram, each histogram has some numebr of bins.
 			 * All Bins are arranged in a contiguous linear memory, to get the bin for a pixel, BinStartOffset needs to be retrieved
@@ -81,11 +68,11 @@ namespace SuperTerrainPlus {
 			struct STPFilterReport {
 			public:
 
-				//Histogram for all pixels.
-				STPHistogram* Histogram;
 				//All bins extracted from histogram, it's a flatten array of histograms for every pixel.
 				//The bins of the next histogram is connected to that of the previous histogram, such that memory is contiguous.
 				STPBin* Bin;
+				//The index of STPBin from the beginning of the linear array of the texture per-pixel histogram to reach the current pixel
+				unsigned int* HistogramStartOffset;
 
 			};
 
@@ -117,15 +104,57 @@ namespace SuperTerrainPlus {
 			std::unique_ptr<STPHistogramBuffer> Output;
 
 			/**
+			 * @brief Copy the content in accumulator to the histogram buffer.
+			 * Caller should make sure Output buffer has been preallocated, the size equals to the sum of all thread buffers.
+			 * @param target The target histogram buffer
+			 * @param acc The accumulator to be copied
+			 * @param normalise True to normalise the histogram in accumulator before copying.
+			 * After normalisation, STPBin.Data should use Weight rather than Quantity, and the sum of weight of all bins in the accumulator is 1.0f
+			*/
+			static void copy_to_buffer(STPHistogramBuffer&, STPAccumulator&, bool);
+
+			/**
 			 * @brief Perform horizontal pass histogram filter
 			 * @param sample_map The input sample map, usually it's biomemap
+			 * @param horizontal_start_offset The horizontal starting offset on the texture.
+			 * The start offset should make the worker starts at the first x coordinate of the central texture.
 			 * @param h_range Denotes the height start and end that will be computed by the current function call.
 			 * The range should start from the halo (central image y index minus radius), and should use global index.
 			 * The range end applies as well (central image y index plus dimension plus radius)
 			 * @param threadID the ID of the CPU thread that is calling this function
 			 * @param radius The radius of the filter.
 			*/
-			void filter_horizontal(const STPFreeSlipSampleManager&, glm::uvec2, unsigned char, unsigned int);
+			void filter_horizontal(const STPFreeSlipSampleManager&, unsigned int, glm::uvec2, unsigned char, unsigned int);
+
+			/**
+			 * @brief Merge buffers from each thread into a large chunk of output data.
+			 * It will perform offset correction for HistogramStartOffset.
+			 * @param threadID The buffer from that threadID to copy.
+			 * Note that threadID 0 doesn't require offset correction.
+			 * @param output_base The base start index from the beginning of output container for each thread for bin and histogram offset
+			*/
+			void copy_to_output(unsigned char, glm::uvec2);
+
+			/**
+			 * @brief Perform vertical pass histogram filter
+			 * @param freeslip_range The number of pixel the entire free-slip texture
+			 * @param vertical_start_offset The vertical starting offset on the texture.
+			 * The start offset should make the worker starts at the first y coordinate of the central texture.
+			 * @param w_range Denotes the width start and end that will be computed by the current function call.
+			 * The range should start from the actual image width, and should use global index.
+			 * The range end applies as well
+			 * @param threadID the ID of the CPU thread that is calling this function
+			 * @param radius The radius of the filter
+			*/
+			void filter_vertical(const glm::uvec2&, unsigned int, glm::uvec2, unsigned char, unsigned int);
+			
+			/**
+			 * @brief Performa a complete histogram filter
+			 * @param sample_map The input sample map for filter.
+			 * @param radius The radius of the filter
+			 * @param The final pointer to the filter output
+			*/
+			const STPHistogramBuffer* filter(const STPFreeSlipSampleManager&, unsigned int);
 
 		public:
 
@@ -155,6 +184,8 @@ namespace SuperTerrainPlus {
 			STPSingleHistogramFilter& operator=(const STPSingleHistogramFilter&) = delete;
 
 			STPSingleHistogramFilter& operator=(STPSingleHistogramFilter&&) = delete;
+
+			STPFilterReport operator()(const STPFreeSlipSampleManager&, unsigned int);
 
 		};
 
