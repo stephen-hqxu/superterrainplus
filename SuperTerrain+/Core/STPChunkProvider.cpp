@@ -232,7 +232,7 @@ STPChunk* STPChunkProvider::requestChunk(vec2 chunkPos) {
 		}
 		return nullptr;
 	}
-	throw std::runtime_error("Chunk chunk should have been computed but not found");
+	throw std::logic_error("Chunk chunk should have been computed but not found");
 }
 
 const STPEnvironment::STPChunkSetting& STPChunkProvider::getChunkSetting() const {

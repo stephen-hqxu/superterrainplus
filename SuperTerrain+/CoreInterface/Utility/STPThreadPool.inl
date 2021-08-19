@@ -8,7 +8,7 @@ std::future<typename std::invoke_result<F, Args...>::type> SuperTerrainPlus::STP
 		std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
 		//if not running, throw exception
 		if (!this->running) {
-			throw std::runtime_error("InvalidThreadPoolError");
+			throw std::runtime_error("thread pool is not running");
 		}
 	}
 	//get the return type of the function
@@ -37,7 +37,7 @@ void SuperTerrainPlus::STPThreadPool::enqueue_void(F&& function, Args&& ... args
 		std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
 		//if not running, throw exception
 		if (!this->running) {
-			throw std::runtime_error("InvalidThreadPoolError");
+			throw std::runtime_error("thread pool is not running");
 		}
 	}
 	auto new_task = std::bind(std::forward<F>(function), std::forward<Args>(args)...);

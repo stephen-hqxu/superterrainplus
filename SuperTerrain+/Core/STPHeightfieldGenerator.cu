@@ -613,7 +613,7 @@ __global__ void performErosionKERNEL(STPFreeSlipFloatManager heightmap_storage, 
 
 	//spawn in the raindrop
 	STPRainDrop droplet(initPos, heightfield_settings->initWaterVolume, heightfield_settings->initSpeed);
-	droplet.Erode((const SuperTerrainPlus::STPEnvironment::STPRainDropSetting*)heightfield_settings, heightmap_storage);
+	droplet.Erode(static_cast<const SuperTerrainPlus::STPEnvironment::STPRainDropSetting*>(heightfield_settings), heightmap_storage);
 }
 
 __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap, float strength, unsigned short* heightfield) {

@@ -29,6 +29,7 @@ namespace SuperTerrainPlus {
 		 * The bin or bucket size of the histogram will always be one, which denotes by the biomemap format "Sample".
 		 * STPSingleHistogramFilter optimises for performant CPU computation, such that all memory provided to the histogram filter should be available on host side.
 		 * An example use case is biome-edge interpolation, and space-partitioning biomes within a given radius to calculate a "factor" for linear interpolation.
+		 * Please be warned that this class is NOT multi-thread safe.
 		*/
 		class STPALGORITHMPLUS_HOST_API STPSingleHistogramFilter {
 		public:
@@ -70,9 +71,11 @@ namespace SuperTerrainPlus {
 
 				//All bins extracted from histogram, it's a flatten array of histograms for every pixel.
 				//The bins of the next histogram is connected to that of the previous histogram, such that memory is contiguous.
-				STPBin* Bin;
+				//The number of element this array contains is the number read from the last element in HistogramStartOffset.
+				const STPBin* Bin;
 				//The index of STPBin from the beginning of the linear array of the texture per-pixel histogram to reach the current pixel
-				unsigned int* HistogramStartOffset;
+				//The number of element in this array is the same as the dimension (of one texture) in the input
+				const unsigned int* HistogramStartOffset;
 
 			};
 
@@ -102,6 +105,9 @@ namespace SuperTerrainPlus {
 			std::unique_ptr<STPAccumulator[]> Accumulator;
 			//The output bins from each phase of computation, it's a flat array of STPBin that contains bins for every pixel
 			std::unique_ptr<STPHistogramBuffer> Output;
+
+			//Denote if user is holding a filter report to prevent filter execution to avoid undefined behaviour
+			mutable bool ReportInUsed;
 
 			/**
 			 * @brief Copy the content in accumulator to the histogram buffer.
@@ -136,25 +142,25 @@ namespace SuperTerrainPlus {
 			void copy_to_output(unsigned char, glm::uvec2);
 
 			/**
-			 * @brief Perform vertical pass histogram filter
-			 * @param freeslip_range The number of pixel the entire free-slip texture
-			 * @param vertical_start_offset The vertical starting offset on the texture.
-			 * The start offset should make the worker starts at the first y coordinate of the central texture.
+			 * @brief Perform vertical pass histogram filter.
+			 * The input is the ouput from horizontal pass
+			 * @param dimension The dimension of one texture
 			 * @param w_range Denotes the width start and end that will be computed by the current function call.
 			 * The range should start from the actual image width, and should use global index.
 			 * The range end applies as well
 			 * @param threadID the ID of the CPU thread that is calling this function
 			 * @param radius The radius of the filter
 			*/
-			void filter_vertical(const glm::uvec2&, unsigned int, glm::uvec2, unsigned char, unsigned int);
+			void filter_vertical(const glm::uvec2&, glm::uvec2, unsigned char, unsigned int);
 			
 			/**
 			 * @brief Performa a complete histogram filter
 			 * @param sample_map The input sample map for filter.
+			 * @param central_chunk_index The local free-slip coordinate points to the central chunk.
 			 * @param radius The radius of the filter
 			 * @param The final pointer to the filter output
 			*/
-			const STPHistogramBuffer* filter(const STPFreeSlipSampleManager&, unsigned int);
+			const STPHistogramBuffer* filter(const STPFreeSlipSampleManager&, const glm::uvec2&, unsigned int);
 
 		public:
 
@@ -185,7 +191,25 @@ namespace SuperTerrainPlus {
 
 			STPSingleHistogramFilter& operator=(STPSingleHistogramFilter&&) = delete;
 
+			/**
+			 * @brief Perform histogram filter on the input texture.
+			 * If there is a report returned and no destroy() is called, execution is thrown and no execution is launched.
+			 * @param sample_map The input sample map to be filtered.
+			 * The input texture must be aligned in row-major order
+			 * @param radius The filter radius
+			 * @return The result of the execution.
+			 * Note that the memory stored in report is managed by the current filter, and is temporary.
+			 * The report will stay valid until destroy() is called by user, after which point data access to report will lead to undefined behaviour.
+			 * The output histogram, unlike input, is aligned in column major order
+			*/
 			STPFilterReport operator()(const STPFreeSlipSampleManager&, unsigned int);
+
+			/**
+			 * @brief Destroy the previously returned filter report so another filter execution can be launched.
+			 * If there's no active report, nothing will be done.
+			 * After the call, the memory will be invalidated, further access will result in undefined behaviour.
+			*/
+			void destroy() const;
 
 		};
 

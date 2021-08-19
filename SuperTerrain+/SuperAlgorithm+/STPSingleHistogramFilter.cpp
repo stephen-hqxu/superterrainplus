@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <functional>
 
+#include <stdexcept>
+
 #include <glm/common.hpp>
 
 using namespace SuperTerrainPlus::STPCompute;
@@ -171,6 +173,7 @@ public:
 /* Histogram Filter implementation */
 
 STPSingleHistogramFilter::STPSingleHistogramFilter() : filter_worker(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM) {
+	this->ReportInUsed = false;
 	//Initialise pointer to implementations
 	this->Cache = make_unique<STPHistogramBuffer[]>(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM);
 	this->Accumulator = make_unique<STPAccumulator[]>(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM);
@@ -197,12 +200,11 @@ STPSingleHistogramFilter::STPSingleHistogramFilter(uvec2 dimension_hint, unsigne
 
 void STPSingleHistogramFilter::copy_to_buffer(STPHistogramBuffer& target, STPAccumulator& acc, bool normalise) {
 	STPAccumulator::STPBinArray acc_arr = acc();
-	//TODO: since HistogramStartOffset size is fixed, maybe use a static array and access each elemenet using variable ti ?
-	target.HistogramStartOffset.emplace_back(static_cast<unsigned int>(target.Bin.size()));//previous bin size
+	target.HistogramStartOffset.emplace_back(static_cast<unsigned int>(target.Bin.size()));
 	//copy bin
 	if (normalise) {
 		//sum everything in the accumulator
-		const float sum = static_cast<float>(std::accumulate(acc_arr.first, acc_arr.second, 0u, [](auto init, const STPBin& bin) { return bin.Data.Quantity; }));
+		const float sum = static_cast<float>(std::reduce(acc_arr.first, acc_arr.second, 0u, [](auto init, const STPBin& bin) { return init + bin.Data.Quantity; }));
 		std::transform(
 			acc_arr.first, 
 			acc_arr.second,
@@ -230,11 +232,11 @@ void STPSingleHistogramFilter::filter_horizontal(const STPFreeSlipSampleManager&
 	//we assume the radius never goes out of the free-slip boundary
 	for (unsigned int i = h_range.x; i < h_range.y; i++) {
 		//the target (current) pixel index
-		unsigned int ti = i * sample_map.Data->FreeSlipRange.x + horizontal_start_offset,
-			//the pixel index of left-most radius
-			li = ti - radius,
-			//the pixel index of right-most radius
-			ri = ti + radius;
+		const unsigned int ti = i * sample_map.Data->FreeSlipRange.x + horizontal_start_offset;
+			//the pixel index of left-most radius (inclusive of the current radius)
+		unsigned int li = ti - radius,
+			//the pixel index of right-most radius (exclusive of the current radius)
+			ri = ti + radius + 1u;
 
 		//load radius strip for the first pixel into accumulator
 		//we exclude the right most pixel in the radius to avoid duplicate loading later.
@@ -243,18 +245,15 @@ void STPSingleHistogramFilter::filter_horizontal(const STPFreeSlipSampleManager&
 		}
 		//copy the first pixel radius to buffer
 		STPSingleHistogramFilter::copy_to_buffer(target, acc, false);
-		ti++;
-		//generate histogram, starting from the second pixel
+		//generate histogram, starting from the second pixel, we only loop through the central texture
 		for (unsigned int j = 1u; j < sample_map.Data->Dimension.x; j++) {
 			//load one pixel to the right while unloading one pixel from the left
 			acc.inc(sample_map[ri++], 1u);
 			acc.dec(sample_map[li++], 1u);
 			
 			//copy acc to buffer
-			STPSingleHistogramFilter::copy_to_buffer(target, acc, false);
-
 			//advance to the next central pixel
-			ti++;
+			STPSingleHistogramFilter::copy_to_buffer(target, acc, false);
 		}
 
 		//clear the accumulator before starting the next row
@@ -288,25 +287,25 @@ void STPSingleHistogramFilter::copy_to_output(unsigned char threadID, uvec2 outp
 	std::copy(target.Bin.cbegin(), target.Bin.cend(), this->Output->Bin.begin() + output_base.x);
 }
 
-void STPSingleHistogramFilter::filter_vertical(const uvec2& freeslip_range, unsigned int vertical_start_offset, uvec2 w_range, unsigned char threadID, unsigned int radius) {
+void STPSingleHistogramFilter::filter_vertical(const uvec2& dimension, uvec2 w_range, unsigned char threadID, unsigned int radius) {
 	STPHistogramBuffer& target = this->Cache[threadID];
 	STPAccumulator& acc = this->Accumulator[threadID];
-	//clear them both
+	//clear both
 	target.clear();
 	acc.clear();
 
 	//we use the output from horizontal pass as "texture", and assume the output pixels are always available
 	for (unsigned int i = w_range.x; i < w_range.y; i++) {
 		//the target (current) pixel index
-		unsigned int ti = i + vertical_start_offset * freeslip_range.x,
-			//the pixel index of up-most radius
-			ui = ti - radius * freeslip_range.x,
-			//the pixel index of down-most radius
-			di = ti + radius * freeslip_range.x;
+		const unsigned int ti = i + radius * dimension.x;
+			//the pixel index of up-most radius (inclusive of the current radius)
+		unsigned int ui = i /* ti - radius * dimension.x */,
+			//the pixel index of down-most radius (exclusive of the current radius)
+			di = ti + (radius + 1u) * dimension.x;
 
 		//load the radius into accumulator
-		for (unsigned int j = -static_cast<int>(radius); j <= static_cast<int>(radius); j++) {
-			auto bin_offset = this->Output->HistogramStartOffset.cbegin() + (ti + j * freeslip_range.x);
+		for (int j = -static_cast<int>(radius); j <= static_cast<int>(radius); j++) {
+			auto bin_offset = this->Output->HistogramStartOffset.cbegin() + (ti + j * dimension.x);
 			const unsigned int bin_start = *bin_offset,
 				bin_end = *(bin_offset + 1);
 			//it will be a bit tricky for the last pixel in the histogram since that's the last iterator in start offset array.
@@ -319,9 +318,8 @@ void STPSingleHistogramFilter::filter_vertical(const uvec2& freeslip_range, unsi
 		//copy the first pixel to buffer
 		//we can start normalising data on the go, the accumulator is complete for this pixel
 		STPSingleHistogramFilter::copy_to_buffer(target, acc, true);
-		ti += freeslip_range.x;
 		//generate histogram
-		for (unsigned int j = 1u; j < freeslip_range.y; j++) {
+		for (unsigned int j = 1u; j < dimension.y; j++) {
 			//load one pixel to the bottom while unloading one pixel from the top
 			auto bin_beg = this->Output->HistogramStartOffset.cbegin();
 			auto bin_offset_d = bin_beg + di,
@@ -349,9 +347,8 @@ void STPSingleHistogramFilter::filter_vertical(const uvec2& freeslip_range, unsi
 			STPSingleHistogramFilter::copy_to_buffer(target, acc, true);
 
 			//advance to the next central pixel
-			ti += freeslip_range.x;
-			ui += freeslip_range.x;
-			di += freeslip_range.x;
+			ui += dimension.x;
+			di += dimension.x;
 		}
 
 		//clear the accumulator
@@ -359,20 +356,18 @@ void STPSingleHistogramFilter::filter_vertical(const uvec2& freeslip_range, unsi
 	}
 }
 
-const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::filter(const STPFreeSlipSampleManager& sample_map, unsigned int radius) {
+const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::filter(const STPFreeSlipSampleManager& sample_map, const uvec2& central_chunk_index, unsigned int radius) {
 	using namespace std::placeholders;
 	using std::bind;
 	using std::future;
 	using std::ref;
 	auto horizontal = bind(&STPSingleHistogramFilter::filter_horizontal, this, _1, _2, _3, _4, _5);
-	auto vertical = bind(&STPSingleHistogramFilter::filter_vertical, this, _1, _2, _3, _4, _5);
+	auto vertical = bind(&STPSingleHistogramFilter::filter_vertical, this, _1, _2, _3, _4);
 	auto copy_output = bind(&STPSingleHistogramFilter::copy_to_output, this, _1, _2);
 	future<void> workgroup[STPSingleHistogramFilter::DEGREE_OF_PARALLELISM];
 	//calculate central texture starting index
-	const uvec2 free_slip_range = uvec2(sample_map.Data->FreeSlipRange.x, sample_map.Data->FreeSlipRange.y),
-		dimension = uvec2(sample_map.Data->Dimension.x, sample_map.Data->Dimension.y),
-		central_chunk_index = static_cast<uvec2>(glm::floor(vec2(sample_map.Data->FreeSlipChunk.x, sample_map.Data->FreeSlipChunk.y) / 2.0f));
-	const uvec2 central_starting_coordinate = dimension * central_chunk_index;
+	const uvec2& dimension = reinterpret_cast<const uvec2&>(sample_map.Data->Dimension),
+		central_starting_coordinate = dimension * central_chunk_index;
 
 	auto sync_then_copy_to_output = [this, &copy_output, &workgroup]() -> void {
 		size_t bin_total = 0ull,
@@ -391,7 +386,7 @@ const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::fi
 		//we don't need to clear the output, but rather we can resize it (items will get overwriten anyway)
 		this->Output->Bin.resize(bin_total);
 		this->Output->HistogramStartOffset.resize(offset_total);
-		uvec2 base = uvec2(0u);
+		uvec2 base(0u);
 		for (unsigned char w = 0u; w < STPSingleHistogramFilter::DEGREE_OF_PARALLELISM; w++) {
 			workgroup[w] = this->filter_worker.enqueue_future(copy_output, w, base);
 
@@ -415,9 +410,9 @@ const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::fi
 	//we need to start from the top halo, and ends at the bottom halo, width of which is radius.
 	const unsigned int height_start = central_starting_coordinate.y - radius,
 		//no need to minus 1 since our loop ends at less than (no equal)
-		//TODO: make sure radius is an even number to ensure divisibility, also it's not too large to go out of memory bound
+		//we had already make sure radius is an even number to ensure divisibility, also it's not too large to go out of memory bound
 		height_step = (dimension.y + 2u * radius) / STPSingleHistogramFilter::DEGREE_OF_PARALLELISM;
-	uvec2 h_range = uvec2(height_start, height_start + height_step);
+	uvec2 h_range(height_start, height_start + height_step);
 	for (unsigned char w = 0u; w < STPSingleHistogramFilter::DEGREE_OF_PARALLELISM; w++) {
 		workgroup[w] = this->filter_worker.enqueue_future(horizontal, ref(sample_map), central_starting_coordinate.x, h_range, w, radius);
 		//increment range
@@ -428,12 +423,12 @@ const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::fi
 	sync_then_copy_to_output();
 
 	//perform vertical filter
-	//unlike horizontal pass, we only need to start from the firts pixel of the central texture
-	const unsigned int width_start = central_starting_coordinate.x,
-		width_step = dimension.x / STPSingleHistogramFilter::DEGREE_OF_PARALLELISM;
-	uvec2 w_range = uvec2(width_start, width_start + width_step);
+	//unlike horizontal pass, we start from the firts pixel of output from previous stage, and the output contains the free-slip texture.
+	//width start from 0, output buffer has the same width as each texture, and 2 * radius addition to the height as halos
+	const unsigned int width_step = dimension.x / STPSingleHistogramFilter::DEGREE_OF_PARALLELISM;
+	uvec2 w_range(0u, width_step);
 	for (unsigned char w = 0u; w < STPSingleHistogramFilter::DEGREE_OF_PARALLELISM; w++) {
-		workgroup[w] = this->filter_worker.enqueue_future(vertical, ref(free_slip_range), central_starting_coordinate.y, w_range, w, radius);
+		workgroup[w] = this->filter_worker.enqueue_future(vertical, ref(dimension), w_range, w, radius);
 		//increment
 		w_range.x = w_range.y;
 		w_range.y += width_step;
@@ -443,4 +438,36 @@ const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::fi
 
 	//finally
 	return this->Output.get();
+}
+
+STPSingleHistogramFilter::STPFilterReport STPSingleHistogramFilter::operator()(const STPFreeSlipSampleManager& sample_map, unsigned int radius) {
+	//do some simple runtime check
+	//before everything else, make sure user has told us the previously returned filter report can be destroyed
+	if (this->ReportInUsed) {
+		throw std::logic_error("a previously returned filter report is preventing execution, call destroy() first");
+	}
+	//first make sure radius is an even number
+	if ((radius | 0x00u) == 0x00u) {
+		throw std::invalid_argument("radius should be an even number");
+	}
+	//second make sure radius is not larger than the free-slip range
+	//reinterpret_cast is safe as uint2 and uvec2 are both same in standard, alignment and type
+	const uvec2 central_chunk_index = static_cast<uvec2>(glm::floor(vec2(reinterpret_cast<const uvec2&>(sample_map.Data->FreeSlipChunk)) / 2.0f)),
+		halo_size = central_chunk_index * reinterpret_cast<const uvec2&>(sample_map.Data->Dimension);
+	if (halo_size.x < radius || halo_size.y < radius) {
+		throw std::invalid_argument("radius is too large and will overflow free-slip boundary");
+	}
+
+	//looks safe now, start the filter
+	const STPHistogramBuffer* output_histogram = this->filter(sample_map, central_chunk_index, radius);
+	//wrap it to the report
+	STPFilterReport report = { output_histogram->Bin.data(), output_histogram->HistogramStartOffset.data() };
+
+	this->ReportInUsed = true;
+
+	return report;
+}
+
+void STPSingleHistogramFilter::destroy() const {
+	this->ReportInUsed = false;
 }
