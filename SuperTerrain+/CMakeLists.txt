@@ -43,7 +43,8 @@ PUBLIC ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
 INTERFACE ${STP_ALGORITHM_DEFINE_INCLUDE}
 )
 target_include_directories(${STP_ALGORITHM_DEVICE_ENGINE} # algorithm device engine do not expose any external header in its public headers
-PRIVATE ${STP_MODULE_INCLUDE}
+# we only include some define symbols from the core engine, no implementations are used
+PRIVATE ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
 )
 
 # library dependencies
