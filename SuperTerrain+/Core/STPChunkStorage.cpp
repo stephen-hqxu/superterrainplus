@@ -9,8 +9,18 @@ using std::make_pair;
 
 using namespace SuperTerrainPlus;
 
+void STPChunkStorage::STPHashvec2::hashSeed(size_t& seed, float value) const {
+	seed ^= this->hasher(value) + 0x9e3779b9ull + (seed << 6ull) + (seed >> 2ull);
+}
+
 size_t STPChunkStorage::STPHashvec2::operator()(const vec2& position) const {
-	return std::hash<float>()(position.x) ^ std::hash<float>()(position.y);
+	size_t seed = 0ull;
+
+	//hash_combine in Boost library
+	this->hashSeed(seed, position.x);
+	this->hashSeed(seed, position.y);
+
+	return seed;
 }
 
 STPChunkStorage::STPChunkStorage() {

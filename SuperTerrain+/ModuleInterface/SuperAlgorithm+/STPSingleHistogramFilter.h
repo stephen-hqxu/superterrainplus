@@ -146,7 +146,7 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Perform histogram filter on the input texture.
 			 * If there is a histogram returned and no destroyHistogram() is called, execution is thrown and no execution is launched.
-			 * @param sample_map The input sample map to be filtered.
+			 * @param manager_adapter The input free-slip manager adapter with sample_map loaded
 			 * The input texture must be aligned in row-major order
 			 * @param radius The filter radius
 			 * @return The resultant histogram of the execution.
@@ -154,7 +154,7 @@ namespace SuperTerrainPlus {
 			 * The output histogram will stay valid until destroy() is called by user, after which point data access to histogram will lead to undefined behaviour.
 			 * The output histogram, unlike input, is aligned in column major order
 			*/
-			STPSingleHistogram operator()(const STPFreeSlipSampleManager&, unsigned int);
+			STPSingleHistogram operator()(const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor&, unsigned int);
 
 			/**
 			 * @brief Destroy the previously returned output histogram so another filter execution can be launched.

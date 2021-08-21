@@ -5,6 +5,10 @@
 #include <STPCoreDefine.h>
 //System
 #include <memory>
+#include <optional>
+//Data Structure
+#include <vector>
+#include <tuple>
 //CUDA
 #include <cuda_runtime.h>
 //Free-slip Data
@@ -29,20 +33,27 @@ namespace SuperTerrainPlus {
 		public:
 
 			/**
-			 * @brief STPFreeSlipManagerAdaptor is a top-level wrapper to STPFreeSlipManager.
-			 * It stores information about free-slip and the texture, and generate STPFreeSlipManager depends on usage.
+			 * @brief STPFreeSlipLocation denotes where tje free-slip data will be available.
+			 * Once retrieved, the data retrieved can only be used in designated memory space
 			*/
+			enum class STPFreeSlipLocation : unsigned char {
+				HostMemory = 0x00u,
+				DeviceMemory = 0x01u
+			};
+
+			/**
+			 * @brief STPFreeSlipManagerAdaptor is a top-level wrapper to STPFreeSlipManager.
+			 * It stores information about free-slip and the texture, adapts and generates STPFreeSlipManager depends on usage.
+			 * Note that life-time of the texture stored in returned STPFreeSlipManager is controlled by the calling STPFreeSlipManagerAdaptor.
+			 * When the bounded STPFreeSlipManagerAdaptor is destroyed, free-slip texture can be optionally copied back to the original buffer.
+			 * @tparam T The data type of the texture
+			*/
+			template<typename T>
 			class STP_API STPFreeSlipManagerAdaptor {
 			public:
 
-				/**
-				 * @brief STPFreeSlipManagerType denotes the type of free-slip manager to retrieve.
-				 * Once retrieved, the manager can only be used in designated memory space
-				*/
-				enum class STP_API STPFreeSlipManagerType : unsigned char {
-					HostManager = 0x00u,
-					DeviceManager = 0x01u
-				};
+				//reference to pointers to texture in a free-slip range in row-major order
+				typedef std::vector<T*> STPFreeSlipTexture;
 
 			private:
 
@@ -50,25 +61,30 @@ namespace SuperTerrainPlus {
 
 				//The generator that the free-slip manager adaptor is bounded to
 				const STPFreeSlipGenerator& Generator;
-				//The stored pointer to texture
-				void* const Texture;
+
+				//The free-slip texture buffer stored separately
+				STPFreeSlipTexture& Buffer;
+				//CUDA stream for device memory allocation and copy.
+				//Provide 0 to use default stream
+				cudaStream_t Stream;
+
+				//Allocated pinned memory
+				mutable T* PinnedMemoryBuffer;
+				//The previously integrated texture and its location
+				//0: Set to false to copy the merged texture buffer back to the original array
+				//1: The number of channel per pixel
+				//2: Pointer to merged free-slip texture.
+				//3: The location of the pointer
+				mutable std::optional<std::tuple<T*, unsigned char, STPFreeSlipLocation, bool>> Integration;
 
 				/**
 				 * @brief Init the free-slip manager adaptor
-				 * @param texture The texture which will be used to indexed in a free-slip manner
+				 * @param texture The ranged of free-slip texture per chunk which will be used to indexed in a free-slip manner.
 				 * @param generator The free-slip generator that the adaptor will be bounded to.
 				 * It will export data to free-slip manager based on the generator chosen
+				 * @param stream CUDA stream for async device memory allocation and copy
 				*/
-				__host__ STPFreeSlipManagerAdaptor(void*, const STPFreeSlipGenerator&);
-
-				/**
-				 * @brief Get the free-slip manager which deals with specific texture format
-				 * @tparam M The format of the manager
-				 * @param type The memory space where the manager will reside
-				 * @return The manager which deals with that type of texture
-				*/
-				template<typename T>
-				__host__ STPFreeSlipManager<T> getTypedManager(STPFreeSlipManagerType) const;
+				__host__ STPFreeSlipManagerAdaptor(STPFreeSlipTexture&, const STPFreeSlipGenerator&, cudaStream_t);
 
 			public:
 
@@ -76,15 +92,21 @@ namespace SuperTerrainPlus {
 
 				/**
 				 * @brief Get the free-slip manager adaptor can retrieve different types of free-slip manager based on usage.
-				 * @tparam M The data type on the free-slip manager, so it will convert texture to that data type.
-				 * @param type The memory space where the free-slip manager will be used.
+				 * @param location The memory space where the free-slip manager will be used.
+				 * @param read_only Decide if the texture pointers provided should be read-only.
+				 * If it's set to false, when the destructor of the adaptor is called, merged free-slip texture will be disintegrated and copied back to the original array of buffers.
+				 * @param channel Denote the number of channel per pixel.
 				 * @return The free-slip manager.
 				 * Note that the manager is bounded to the current generator, meaning all underlying contents will be managed and become invalid once generator is deleted.
+				 * The underlying merged texture pointer is managed by the current adaptor and will be freed when the adaptor got destroyed
 				*/
-				template<typename M>
-				__host__ STPFreeSlipManager<M> getManager(STPFreeSlipManagerType) const;
+				__host__ STPFreeSlipManager<T> operator()(STPFreeSlipLocation, bool, unsigned char) const;
 
 			};
+
+			typedef STPFreeSlipManagerAdaptor<float> STPFreeSlipFloatManagerAdaptor;
+			typedef STPFreeSlipManagerAdaptor<STPDiversity::Sample> STPFreeSlipSampleManagerAdaptor;
+			typedef STPFreeSlipManagerAdaptor<unsigned short> STPFreeSlipRenderManagerAdaptor;
 
 		private:
 
@@ -94,6 +116,10 @@ namespace SuperTerrainPlus {
 			unsigned int* Index_Device;
 			//Freeslip data copy on device side, the device index table is contained
 			STPFreeSlipData* Data_Device;
+
+			//Memory pool
+			//TODO: no memory pool for pinned memory yet
+			cudaMemPool_t DevicePool;
 
 			/**
 			 * @brief Initialise the local global index lookup table
@@ -125,6 +151,12 @@ namespace SuperTerrainPlus {
 			__host__ STPFreeSlipGenerator& operator=(STPFreeSlipGenerator&&) = delete;
 
 			/**
+			 * @brief Set CUDA device memory pool
+			 * @param device_mempool The CUDA memory pool.
+			*/
+			__host__ void setDeviceMemPool(cudaMemPool_t);
+
+			/**
 			 * @brief Get the dimension of each texture.
 			 * @return The pointer to dimension
 			*/
@@ -145,10 +177,13 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Get the free-slip manager adaptor, which will dynamically determine free-slip configuration to use from the generator based on chosen type.
 			 * The obtained adaptor is bounded to the current generator.
-			 * @param texture The texture that will be bounded to the 
+			 * @tparam T The type of texture
+			 * @param texture The ranged of free-slip texture per chunk which will be used to indexed in a free-slip manner.
+			 * @param stream CUDA stream for async device memory allocation and copy
 			 * @return The free-slip manager adaptor which will be bounded to the current generator
 			*/
-			__host__ STPFreeSlipManagerAdaptor operator()(void*) const;
+			template<typename T>
+			__host__ STPFreeSlipManagerAdaptor<T> getAdaptor(typename STPFreeSlipManagerAdaptor<T>::STPFreeSlipTexture&, cudaStream_t) const;
 
 		};
 

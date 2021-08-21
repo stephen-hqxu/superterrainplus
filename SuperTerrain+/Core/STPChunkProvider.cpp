@@ -46,7 +46,7 @@ void STPChunkProvider::computeHeightmap(STPChunk* current_chunk, STPChunkProvide
 	maps.Biomemap.reserve(neighbour_chunks.size());
 	maps.Heightmap32F.reserve(1ull);
 	for (STPChunk* chk : neighbour_chunks) {
-		maps.Biomemap.push_back(const_cast<const STPDiversity::Sample*>(chk->getBiomemap()));
+		maps.Biomemap.push_back(chk->getBiomemap());
 	}
 	maps.Heightmap32F.push_back(current_chunk->getHeightmap());
 	maps.HeightmapOffset = this->calcChunkOffset(chunkPos);

@@ -62,7 +62,7 @@ namespace SuperTerrainPlus {
 				//We need free-slip biomemap so custom heightmap implementation can do biome-edge interpolation
 				//See documentation of Heightmap32F for more details
 				//If heightmap generation is not enabled, no biomemap is required
-				std::vector<const STPDiversity::Sample*> Biomemap;
+				std::vector<STPDiversity::Sample*> Biomemap;
 				//- A float array that will be used to stored heightmap pixles, must be pre-allocated with at least width * height * sizeof(float), i.e., R32F format
 				//- If generator is instructed to generate only a single heightmap, only one map is required
 				//- If hydraulic erosion and/or normalmap generation is enabled, a list of maps of neighbour chunks are required for edge sync, heightmap generation will 

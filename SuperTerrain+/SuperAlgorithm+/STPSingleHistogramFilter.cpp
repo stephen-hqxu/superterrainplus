@@ -454,7 +454,10 @@ const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::fi
 	return this->Output.get();
 }
 
-STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleManager& sample_map, unsigned int radius) {
+STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor& manager_adapter, unsigned int radius) {
+	//get the free-slip manager for host usage
+	const STPFreeSlipSampleManager sample_map = manager_adapter(STPFreeSlipGenerator::STPFreeSlipLocation::HostMemory, true, 1u);
+	
 	//do some simple runtime check
 	//before everything else, make sure user has told us the previously returned filter report can be destroyed
 	if (this->ReportInUsed) {
@@ -475,7 +478,7 @@ STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleM
 	//looks safe now, start the filter
 	const STPHistogramBuffer* histogram_buffer = this->filter(sample_map, central_chunk_index, radius);
 	//wrap it to the report
-	STPSingleHistogram histogram = { histogram_buffer->Bin.data(), histogram_buffer->HistogramStartOffset.data() };
+	STPSingleHistogram histogram{ histogram_buffer->Bin.data(), histogram_buffer->HistogramStartOffset.data() };
 
 	this->ReportInUsed = true;
 

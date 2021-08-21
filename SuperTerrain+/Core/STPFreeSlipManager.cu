@@ -17,12 +17,12 @@ __host__ STPFreeSlipManager<T>::~STPFreeSlipManager() {
 }
 
 template<typename T>
-__device__ __host__ float& STPFreeSlipManager<T>::operator[](unsigned int global) {
-	return const_cast<float&>(const_cast<const STPFreeSlipManager*>(this)->operator[](global));
+__device__ __host__ T& STPFreeSlipManager<T>::operator[](unsigned int global) {
+	return const_cast<T&>(const_cast<const STPFreeSlipManager*>(this)->operator[](global));
 }
 
 template<typename T>
-__device__ __host__ const float& STPFreeSlipManager<T>::operator[](unsigned int global) const {
+__device__ __host__ const T& STPFreeSlipManager<T>::operator[](unsigned int global) const {
 	return this->Texture[this->operator()(global)];
 }
 

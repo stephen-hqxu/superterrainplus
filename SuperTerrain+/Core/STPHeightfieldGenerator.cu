@@ -19,6 +19,7 @@ using std::vector;
 using std::mutex;
 using std::unique_lock;
 using std::unique_ptr;
+using std::optional;
 using std::make_unique;
 
 enum class STPHeightfieldGenerator::STPEdgeArrangement : unsigned char {
@@ -159,6 +160,7 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::
 	//TODO: smartly determine the average memory pool size
 	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short) * 4u) * num_freeslip_chunk * num_pixel * hint_level_of_concurrency;
 	STPcudaCheckErr(cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres));
+	this->FreeSlipTable.setDeviceMemPool(this->MapCacheDevice);
 
 	//init erosion
 	this->setErosionIterationCUDA();
@@ -199,6 +201,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	//heightmap
 	float* heightfield_freeslip_d = nullptr, *heightfield_freeslip_h = nullptr;
 	unsigned short* heightfield_formatted_d = nullptr, *heightfield_formatted_h = nullptr;
+	optional<STPFreeSlipGenerator::STPFreeSlipFloatManagerAdaptor> heightmap_adaptor;
 	//biomemap
 	STPDiversity::Sample* biomefield_freeslip_d = nullptr, *biomefield_freeslip_h = nullptr;
 	const unsigned int mapbiome_freeslip_size = args.Biomemap.size() * num_pixel * sizeof(STPDiversity::Sample);
@@ -250,7 +253,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 			biomefield_freeslip_h = reinterpret_cast<STPDiversity::Sample*>(this->MapCachePinned.allocate(mapbiome_freeslip_size));
 		}
 	}
-	
+
 	//Flag: HeightmapGeneration
 	if (flag[0]) {
 		//generate a new heightmap using diversity generator and store it to the output later
@@ -277,8 +280,8 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	}
 
 	if (flag[1] || flag[2]) {
-		STPFreeSlipFloatManager heightmap_slip = this->FreeSlipTable(heightfield_freeslip_d)
-			.getManager<float>(STPFreeSlipGenerator::STPFreeSlipManagerAdaptor::STPFreeSlipManagerType::DeviceManager);
+		heightmap_adaptor.emplace(this->FreeSlipTable.getAdaptor<float>(args.Heightmap32F, stream));
+		STPFreeSlipFloatManager heightmap_slip = (*heightmap_adaptor)(STPFreeSlipGenerator::STPFreeSlipLocation::DeviceMemory, false, 1u);
 
 		//Flag: Erosion
 		if (flag[1]) {
