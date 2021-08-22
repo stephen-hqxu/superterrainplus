@@ -54,7 +54,7 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief STPMapStorage stores heightfield data for the generator
 			*/
-			struct STP_API STPMapStorage {
+			struct STPMapStorage {
 			public:
 
 				//- A Sample array (sample is implementation defined, usually it's uint16) where biomemap is located.
@@ -85,28 +85,6 @@ namespace SuperTerrainPlus {
 			 * @brief STPEdgeArrangement specifies the edge arrangement type when performing edge copy operations
 			*/
 			enum class STPEdgeArrangement : unsigned char;
-
-			/**
-			 * @brief Memory allocation for pinned memory
-			*/
-			class STPHeightfieldHostAllocator {
-			public:
-
-				/**
-				 * @brief Allocate page-locked memory on host
-				 * @param count The number of byte to allocate
-				 * @return The memory pointer
-				*/
-				__host__ void* allocate(size_t);
-
-				/**
-				 * @brief Free up the host pinned memory
-				 * @param count The size to free
-				 * @param The host pinned pointer to free
-				*/
-				__host__ void deallocate(size_t, void*);
-
-			};
 
 			/**
 			 * @brief CUDA nonblocking stream allocator
@@ -154,14 +132,13 @@ namespace SuperTerrainPlus {
 			unique_ptr_d<curandRNG> RNG_Map;
 			//free-slip index table generator
 			STPFreeSlipGenerator FreeSlipTable;
+			STPFreeSlipTextureAttribute TextureBufferAttr;
 			//A lookup table that, given a chunkID, determine the edge type of this chunk within the neighbour chunk logic
 			std::unique_ptr<STPEdgeArrangement[]> EdgeArrangementTable;
 
 			//Temp cache on device for heightmap computation
-			mutable std::mutex MapCachePinned_lock;
 			mutable std::mutex StreamPool_lock;
 			mutable cudaMemPool_t MapCacheDevice;
-			mutable STPMemoryPool<void, STPHeightfieldHostAllocator> MapCachePinned;
 			mutable STPMemoryPool<void, STPHeightfieldNonblockingStreamAllocator> StreamPool;
 
 			/**

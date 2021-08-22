@@ -77,6 +77,7 @@ namespace SuperTerrainPlus {
 
 		typedef STPFreeSlipManager<float> STPFreeSlipFloatManager;
 		typedef STPFreeSlipManager<STPDiversity::Sample> STPFreeSlipSampleManager;
+		typedef STPFreeSlipManager<unsigned short> STPFreeSlipRenderManager;
 
 	}
 }

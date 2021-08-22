@@ -7,6 +7,7 @@ STPChunkStorage.cpp
 STPDiversityGeneratorRTC.cpp
 STPEngineInitialiser.cpp
 STPEnvironment.cpp
+STPFreeSlipTextureBuffer.cpp
 STPLayer.cpp
 STPLayerCache.cpp
 STPLayerManager.cpp

@@ -9,6 +9,7 @@
 #include <iterator>
 #include <algorithm>
 #include <functional>
+#include <tuple>
 
 #include <stdexcept>
 
@@ -24,6 +25,7 @@ using std::vector;
 using std::make_unique;
 using std::pair;
 using std::make_pair;
+using std::tie;
 
 /* Private object implementations */
 
@@ -454,14 +456,11 @@ const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::fi
 	return this->Output.get();
 }
 
-STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor& manager_adapter, unsigned int radius) {
-	//get the free-slip manager for host usage
-	const STPFreeSlipSampleManager sample_map = manager_adapter(STPFreeSlipGenerator::STPFreeSlipLocation::HostMemory, true, 1u);
-	
+STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleManager& samplemap_manager, unsigned int radius) {
 	//do some simple runtime check
-	//before everything else, make sure user has told us the previously returned filter report can be destroyed
+	//before everything else, make sure user has told us the previously returned histogram can be destroyed
 	if (this->ReportInUsed) {
-		throw std::logic_error("a previously returned filter report is preventing execution, call destroyReport() first");
+		throw std::logic_error("a previously returned histogram is preventing execution, call destroyHistogram() first");
 	}
 	//first make sure radius is an even number
 	if ((radius | 0x00u) == 0x00u) {
@@ -469,14 +468,14 @@ STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipGenerat
 	}
 	//second make sure radius is not larger than the free-slip range
 	//reinterpret_cast is safe as uint2 and uvec2 are both same in standard, alignment and type
-	const uvec2 central_chunk_index = static_cast<uvec2>(glm::floor(vec2(reinterpret_cast<const uvec2&>(sample_map.Data->FreeSlipChunk)) / 2.0f)),
-		halo_size = central_chunk_index * reinterpret_cast<const uvec2&>(sample_map.Data->Dimension);
+	const uvec2 central_chunk_index = static_cast<uvec2>(glm::floor(vec2(reinterpret_cast<const uvec2&>(samplemap_manager.Data->FreeSlipChunk)) / 2.0f)),
+		halo_size = central_chunk_index * reinterpret_cast<const uvec2&>(samplemap_manager.Data->Dimension);
 	if (halo_size.x < radius || halo_size.y < radius) {
 		throw std::invalid_argument("radius is too large and will overflow free-slip boundary");
 	}
 
 	//looks safe now, start the filter
-	const STPHistogramBuffer* histogram_buffer = this->filter(sample_map, central_chunk_index, radius);
+	const STPHistogramBuffer* histogram_buffer = this->filter(samplemap_manager, central_chunk_index, radius);
 	//wrap it to the report
 	STPSingleHistogram histogram{ histogram_buffer->Bin.data(), histogram_buffer->HistogramStartOffset.data() };
 

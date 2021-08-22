@@ -12,7 +12,9 @@ GPGPU/STPDiversityGenerator.hpp
 GPGPU/STPDiversityGeneratorRTC.h
 GPGPU/STPFreeSlipData.hpp
 GPGPU/STPFreeSlipGenerator.cuh
+GPGPU/STPFreeSlipLocation.hpp
 GPGPU/STPFreeSlipManager.cuh
+GPGPU/STPFreeSlipTextureBuffer.h
 GPGPU/STPHeightfieldGenerator.cuh
 GPGPU/STPRainDrop.cuh
 # /Utility

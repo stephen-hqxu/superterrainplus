@@ -66,57 +66,6 @@ __global__ void performErosionKERNEL(STPFreeSlipFloatManager, const SuperTerrain
 */
 __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager, float, unsigned short*);
 
-/*
- * @brief Copy block of memory from device to host and split into chunks.
- * Used by function operator()
- * @param dest - The destination chunks
- * @param host - Host pinned memory acts as buffer
- * @param device - Device source memory
- * @param block_size - The total size of the host and device memory, in byte.
- * @param individual_size - The size of one chunk, in byte.
- * @param element_count - The number of pixel in one chunk
- * @param stream - Async CUDA stream
-*/
-template<typename T>
-__host__ void blockcopy_d2h(vector<T*>& dest, T* host, T* device, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
-	STPcudaCheckErr(cudaMemcpyAsync(host, device, block_size, cudaMemcpyDeviceToHost, stream));
-	for (T* map : dest) {
-		STPcudaCheckErr(cudaMemcpyAsync(map, host, individual_size, cudaMemcpyHostToHost, stream));
-		host += element_count;
-	}
-}
-
-/*
- * @brief Copy block of memory from host, split chunks into maps and then copy to device
- * Used by function operator()
- * @param host - Host pinned memory acts as buffer
- * @param device - Device destination memory
- * @param souce - The source chunks
- * @param block_size - The total size of the host and device memory, in byte.
- * @param individual_size - The size of one chunk, in byte.
- * @param element_count - The number of pixel in one chunk
- * @param stream - Async CUDA stream
-*/
-template<class Vec, typename T>
-__host__ void blockcopy_h2d(T* device, T* host, const Vec& source, size_t block_size, size_t individual_size, size_t element_count, cudaStream_t stream) {
-	static_assert(std::is_same<Vec, vector<T*>>::value || std::is_same<Vec, vector<const T*>>::value, "Type 'Vec' must be vector<T*> or vector<const T*>");
-	unsigned int base = 0u;
-	for (const T* map : source) {
-		STPcudaCheckErr(cudaMemcpyAsync(host + base, map, individual_size, cudaMemcpyHostToHost, stream));
-		base += element_count;
-	}
-	STPcudaCheckErr(cudaMemcpyAsync(device, host, block_size, cudaMemcpyHostToDevice, stream));
-}
-
-__host__ void* STPHeightfieldGenerator::STPHeightfieldHostAllocator::allocate(size_t count) {
-	void* mem = nullptr;
-	STPcudaCheckErr(cudaMallocHost(&mem, count, cudaHostAllocMapped));
-	return mem;
-}
-
-__host__ void STPHeightfieldGenerator::STPHeightfieldHostAllocator::deallocate(size_t count, void* ptr) {
-	STPcudaCheckErr(cudaFreeHost(ptr));
-}
 
 __host__ void* STPHeightfieldGenerator::STPHeightfieldNonblockingStreamAllocator::allocate(size_t count) {
 	cudaStream_t stream;
@@ -139,7 +88,7 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::
 	FreeSlipTable(
 		make_uint2(chunk_settings.FreeSlipChunk.x, chunk_settings.FreeSlipChunk.y),
 		make_uint2(chunk_settings.MapSize.x, chunk_settings.MapSize.y)
-	) {
+	), TextureBufferAttr{ chunk_settings.MapSize.x * chunk_settings.MapSize.y, 0ull } {
 	const unsigned int num_pixel = chunk_settings.MapSize.x * chunk_settings.MapSize.y,
 		num_freeslip_chunk = chunk_settings.FreeSlipChunk.x * chunk_settings.FreeSlipChunk.y;
 
@@ -160,7 +109,7 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::
 	//TODO: smartly determine the average memory pool size
 	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short) * 4u) * num_freeslip_chunk * num_pixel * hint_level_of_concurrency;
 	STPcudaCheckErr(cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres));
-	this->FreeSlipTable.setDeviceMemPool(this->MapCacheDevice);
+	this->TextureBufferAttr.DeviceMemPool = this->MapCacheDevice;
 
 	//init erosion
 	this->setErosionIterationCUDA();
@@ -186,25 +135,13 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	std::exception_ptr exp;
 	int Mingridsize, gridsize, blocksize;
 	dim3 Dimgridsize, Dimblocksize;
-	//allocating spaces for texture, storing on device
-	//this is the size for a texture in one channel
-	const unsigned int num_pixel = this->FreeSlipTable.getDimension().x * this->FreeSlipTable.getDimension().y,
-		map_size = num_pixel * sizeof(float),
-		map16ui_size = num_pixel * sizeof(unsigned short) * 4u,
-		mapbiome_size = num_pixel * sizeof(STPDiversity::Sample);
-	//if free-slip erosion is disabled, it should be one.
-	//if enabled, it should be the product of two dimension in free-slip chunk.
-	const unsigned int freeslip_chunk_total = args.Heightmap32F.size();
-	const unsigned int freeslip_pixel = freeslip_chunk_total * num_pixel;
-	const unsigned int map_freeslip_size = freeslip_pixel * sizeof(float);
-	const unsigned int map16ui_freeslip_size = freeslip_pixel * sizeof(unsigned short) * 4u;
 	//heightmap
-	float* heightfield_freeslip_d = nullptr, *heightfield_freeslip_h = nullptr;
-	unsigned short* heightfield_formatted_d = nullptr, *heightfield_formatted_h = nullptr;
+	optional<STPFreeSlipFloatTextureBuffer> heightmap_buffer;
+	optional<STPFreeSlipRenderTextureBuffer> heightfield_buffer;
 	optional<STPFreeSlipGenerator::STPFreeSlipFloatManagerAdaptor> heightmap_adaptor;
 	//biomemap
-	STPDiversity::Sample* biomefield_freeslip_d = nullptr, *biomefield_freeslip_h = nullptr;
-	const unsigned int mapbiome_freeslip_size = args.Biomemap.size() * num_pixel * sizeof(STPDiversity::Sample);
+	optional<STPFreeSlipSampleTextureBuffer> biomemap_buffer;
+	optional<STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor> biomemap_adaptor;
 
 	//Retrieve all flags
 	auto isFlagged = []__host__(STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
@@ -225,52 +162,28 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		unique_lock<mutex> stream_lock(this->StreamPool_lock);
 		stream = reinterpret_cast<cudaStream_t>(this->StreamPool.allocate(1ull));
 	}
-	//memory allocation
-	//Device
-	//FP32
-	//we need heightmap for computation regardlessly
-	STPcudaCheckErr(cudaMallocFromPoolAsync(&heightfield_freeslip_d, map_freeslip_size, this->MapCacheDevice, stream));
-	//INT16
-	if (flag[2]) {
-		STPcudaCheckErr(cudaMallocFromPoolAsync(&heightfield_formatted_d, map16ui_freeslip_size, this->MapCacheDevice, stream));
-	}
-	//Sample
-	if (flag[0]) {
-		//we need biomemap in order to generate heightmap
-		STPcudaCheckErr(cudaMallocFromPoolAsync(&biomefield_freeslip_d, mapbiome_freeslip_size, this->MapCacheDevice, stream));
-	}
-	//Host
-	{
-		unique_lock<mutex> lock(this->MapCachePinned_lock);
-		//FP32
-		heightfield_freeslip_h = reinterpret_cast<float*>(this->MapCachePinned.allocate(map_freeslip_size));
-		//INT16
-		if (flag[2]) {
-			heightfield_formatted_h = reinterpret_cast<unsigned short*>(this->MapCachePinned.allocate(map16ui_freeslip_size));
-		}
-		//Sample
-		if (flag[0]) {
-			biomefield_freeslip_h = reinterpret_cast<STPDiversity::Sample*>(this->MapCachePinned.allocate(mapbiome_freeslip_size));
-		}
-	}
 
 	//Flag: HeightmapGeneration
 	if (flag[0]) {
 		//generate a new heightmap using diversity generator and store it to the output later
-		//copy biome map to device
+		//copy biome map to device, and allocate heightmap
+		STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData heightmap_data{ 1u, STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::WriteOnly, stream };
+		STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData biomemap_data{ 1u, STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadOnly, stream };
 		try {
-			blockcopy_h2d(biomefield_freeslip_d, biomefield_freeslip_h, args.Biomemap, mapbiome_freeslip_size, mapbiome_size, num_pixel, stream);
+			heightmap_buffer.emplace(args.Heightmap32F, heightmap_data, this->TextureBufferAttr);
+			biomemap_buffer.emplace(args.Biomemap, biomemap_data, this->TextureBufferAttr);
 		}
 		catch (...) {
 			exp = std::current_exception();
 			goto freeUp;
 		}
-		this->generateHeightmap(heightfield_freeslip_d, biomefield_freeslip_d, args.HeightmapOffset, stream);
+		this->generateHeightmap((*heightmap_buffer)(STPFreeSlipLocation::DeviceMemory), const_cast<const STPDiversity::Sample*>((*biomemap_buffer)(STPFreeSlipLocation::DeviceMemory)), args.HeightmapOffset, stream);
 	}
 	else {
 		//no generation, use existing
+		STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData heightmap_data{ 1u, STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadWrite, stream };
 		try {
-			blockcopy_h2d(heightfield_freeslip_d, heightfield_freeslip_h, args.Heightmap32F, map_freeslip_size, map_size, num_pixel, stream);
+			heightmap_buffer.emplace(args.Heightmap32F, heightmap_data, this->TextureBufferAttr);
 		}
 		catch (...) {
 			exp = std::current_exception();
@@ -280,8 +193,9 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	}
 
 	if (flag[1] || flag[2]) {
-		heightmap_adaptor.emplace(this->FreeSlipTable.getAdaptor<float>(args.Heightmap32F, stream));
-		STPFreeSlipFloatManager heightmap_slip = (*heightmap_adaptor)(STPFreeSlipGenerator::STPFreeSlipLocation::DeviceMemory, false, 1u);
+		//prepare free-slip utility for heightmap
+		heightmap_adaptor.emplace(this->FreeSlipTable(heightmap_buffer.value()));
+		STPFreeSlipFloatManager heightmap_slip = (*heightmap_adaptor)(STPFreeSlipLocation::DeviceMemory);
 
 		//Flag: Erosion
 		if (flag[1]) {
@@ -296,6 +210,10 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 
 		//Flag: RenderingBufferGeneration
 		if (flag[2]) {
+			//allocate formation memory
+			STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData heightfield_data{ 4u, STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::WriteOnly, stream };
+			heightfield_buffer.emplace(args.Heightfield16UI, heightfield_data, this->TextureBufferAttr);
+
 			auto det_cacheSize = []__host__ __device__(int blockSize) -> size_t {
 				return (blockSize + 2u) * sizeof(float);
 			};
@@ -306,11 +224,13 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 				(this->FreeSlipTable.getFreeSlipRange().y + Dimblocksize.y - 1) / Dimblocksize.y
 			);
 
-			if (freeslip_chunk_total > 1u) {
+			//get free-slip util and memory
+			unsigned short* heightfield_formatted_d = (*heightfield_buffer)(STPFreeSlipLocation::DeviceMemory);
+			if (args.Heightfield16UI.size() > 1u) {
 				//no need to do copy if freeslip is not enabled
 				try {
 					//this is the way to make sure normalmap is seamless, since the border is already in-sync with other chunks
-					this->copyNeighbourEdgeOnly(heightfield_formatted_d, args.Heightfield16UI, num_pixel, stream);
+					this->copyNeighbourEdgeOnly(heightfield_formatted_d, args.Heightfield16UI, this->TextureBufferAttr.TexturePixel, stream);
 				}
 				catch (...) {
 					exp = std::current_exception();
@@ -326,52 +246,22 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	
 	//Store the result accordingly
 	//copy the result back to the host
-	//heightmap will always be available
+	freeUp:
 	try {
-		if (flag[0] || flag[1]) {
-			//copy all heightmap chunks back if heightmap has been modified
-			blockcopy_d2h(args.Heightmap32F, heightfield_freeslip_h, heightfield_freeslip_d, map_freeslip_size, map_size, num_pixel, stream);
-		}
-		//copy the rendering buffer result if enabled
-		if (flag[2]) {
-			//copy heightfield
-			blockcopy_d2h(args.Heightfield16UI, heightfield_formatted_h, heightfield_formatted_d, map16ui_freeslip_size, map16ui_size, num_pixel * 4u, stream);
-		}
+		//it will call the destructor in texture buffer, and result will be copied back using CUDA stream
+		heightmap_buffer.reset();
+		heightfield_buffer.reset();
+		biomemap_buffer.reset();
 	}
 	catch (...) {
 		exp = std::current_exception();
 	}
 
-	//Finish up the rest, clear up all allocations
-	freeUp:
-	//nullptr means not allocated
-	if (heightfield_freeslip_d != nullptr) {
-		STPcudaCheckErr(cudaFreeAsync(heightfield_freeslip_d, stream));
-	}
-	if (heightfield_formatted_d != nullptr) {
-		STPcudaCheckErr(cudaFreeAsync(heightfield_formatted_d, stream));
-	}
-	if (biomefield_freeslip_d != nullptr) {
-		STPcudaCheckErr(cudaFreeAsync(biomefield_freeslip_d, stream));
-	}
 	//waiting for finish
 	STPcudaCheckErr(cudaStreamSynchronize(stream));
 	{
 		unique_lock<mutex> stream_lock(this->StreamPool_lock);
 		this->StreamPool.deallocate(1ull, reinterpret_cast<void*>(stream));
-	}
-
-	{
-		unique_lock<mutex> lock(this->MapCachePinned_lock);
-		if (heightfield_freeslip_h != nullptr) {
-			this->MapCachePinned.deallocate(map_freeslip_size, heightfield_freeslip_h);
-		}
-		if (heightfield_formatted_h != nullptr) {
-			this->MapCachePinned.deallocate(map16ui_freeslip_size, heightfield_formatted_h);
-		}
-		if (biomefield_freeslip_h != nullptr) {
-			this->MapCachePinned.deallocate(mapbiome_freeslip_size, biomefield_freeslip_h);
-		}
 	}
 
 	if (exp) {

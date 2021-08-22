@@ -1,6 +1,8 @@
 #pragma once
 #include <GPGPU/STPFreeSlipManager.cuh>
 
+#include <type_traits>
+
 using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;
 
@@ -34,3 +36,4 @@ __device__ __host__ unsigned int STPFreeSlipManager<T>::operator()(unsigned int 
 //Export explicit instantiations
 template class STP_API STPFreeSlipManager<float>;
 template class STP_API STPFreeSlipManager<Sample>;
+template class STP_API STPFreeSlipManager<std::enable_if<!std::is_same<unsigned short, Sample>::value, unsigned short>>;
