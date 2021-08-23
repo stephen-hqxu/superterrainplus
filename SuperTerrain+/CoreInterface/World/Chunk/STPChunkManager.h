@@ -9,6 +9,7 @@
 #include "glad/glad.h"
 //CUDA
 #include "cuda_gl_interop.h"//used to upload to opengl texture in multithread
+#include "../../Utility/STPSmartStream.h"
 
 //Chunks
 #include "STPChunkProvider.h"
@@ -45,7 +46,7 @@ namespace SuperTerrainPlus {
 	private:
 
 		//cuda stream
-		cudaStream_t buffering_stream;
+		STPSmartStream buffering_stream;
 
 		//thread pool
 		STPThreadPool compute_pool;

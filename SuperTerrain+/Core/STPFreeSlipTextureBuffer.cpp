@@ -14,9 +14,6 @@ using SuperTerrainPlus::STPDiversity::Sample;
 using std::rethrow_exception;
 using std::current_exception;
 
-using std::make_optional;
-using std::tie;
-
 template<typename T>
 STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(typename STPFreeSlipTexture& texture, const STPFreeSlipTextureData& data, const STPFreeSlipTextureAttribute& attr) : 
 	Buffer(texture), Data(data), Attr(attr) {
@@ -64,7 +61,7 @@ void STPFreeSlipTextureBuffer<T>::destroyAllocation() {
 
 	//deallocation
 	//host memory will always be allocated
-	STPcudaCheckErr(cudaFreeHost(host));
+	this->Attr.HostMemPool.release(reinterpret_cast<void*>(host));
 	//if texture is in host the pointer is the same as PinnedMemoryBuffer
 	if (location == STPFreeSlipLocation::DeviceMemory) {
 		STPcudaCheckErr(cudaFreeAsync(device, this->Data.Stream));
@@ -99,7 +96,7 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 	try {
 		//we need host memory anyway
 		//pinned memory will be needed anyway
-		STPcudaCheckErr(cudaMallocHost(&host, freeslip_size));
+		host = reinterpret_cast<T*>(this->Attr.HostMemPool.request(freeslip_size));
 		if (this->Data.Mode != STPFreeSlipTextureData::STPMemoryMode::WriteOnly) {
 			//make a initial copy from the original buffer if it's not write only
 			//combine texture from each chunk to a large buffer
@@ -137,7 +134,7 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 	}
 
 	//record the state
-	this->Integration = make_optional(tie(host, device, location));
+	this->Integration.emplace(host, device, location);
 	//finally return merged buffer
 	return texture;
 }

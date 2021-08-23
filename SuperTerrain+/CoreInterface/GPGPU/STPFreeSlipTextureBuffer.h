@@ -8,6 +8,7 @@
 //Data Structure
 #include <vector>
 #include <tuple>
+#include "../Utility/STPPinnedMemoryPool.h"
 //CUDA
 #include <cuda_runtime.h>
 //Free-Slip Data
@@ -36,6 +37,8 @@ namespace SuperTerrainPlus {
 			size_t TexturePixel;
 
 			//Memory Pool
+			//Host memory pool is thread safe and can (and should!) be shared with other texture buffer objects
+			mutable STPPinnedMemoryPool HostMemPool;
 			cudaMemPool_t DeviceMemPool;
 
 		};

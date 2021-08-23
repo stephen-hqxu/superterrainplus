@@ -9,7 +9,6 @@
 #include <iterator>
 #include <algorithm>
 #include <functional>
-#include <tuple>
 
 #include <stdexcept>
 
@@ -25,7 +24,6 @@ using std::vector;
 using std::make_unique;
 using std::pair;
 using std::make_pair;
-using std::tie;
 
 /* Private object implementations */
 

@@ -6,13 +6,15 @@
 //System
 #include <mutex>
 #include <vector>
+#include <queue>
+#include <list>
 //CUDA
 //CUDA lib are included in the "Engine" section
 #include <curand_kernel.h>
 //Engine
 #include "STPDiversityGenerator.hpp"
 #include "STPFreeSlipGenerator.cuh"
-#include "../Utility/STPMemoryPool.hpp"
+#include "../Utility/STPSmartStream.h"
 //Settings
 #include "../Environment/STPHeightfieldSetting.h"
 #include "../Environment/STPChunkSetting.h"
@@ -87,27 +89,6 @@ namespace SuperTerrainPlus {
 			enum class STPEdgeArrangement : unsigned char;
 
 			/**
-			 * @brief CUDA nonblocking stream allocator
-			*/
-			class STPHeightfieldNonblockingStreamAllocator {
-			public:
-
-				/**
-				 * @brief Allocate nonblocking stream
-				 * @param count Useless argument, it will only allocate one stream at a time
-				 * @return The pointer to stream
-				*/
-				__host__ void* allocate(size_t);
-
-				/**
-				 * @brief Destroy the stream
-				 * @param count Useless argument, it will only destroy one stream
-				 * @param The stream to destroy
-				*/
-				__host__ void deallocate(size_t, void*);
-			};
-
-			/**
 			 * @brief A custom deleter for device memory
 			 * @tparam T Type of the variable
 			*/
@@ -139,7 +120,7 @@ namespace SuperTerrainPlus {
 			//Temp cache on device for heightmap computation
 			mutable std::mutex StreamPool_lock;
 			mutable cudaMemPool_t MapCacheDevice;
-			mutable STPMemoryPool<void, STPHeightfieldNonblockingStreamAllocator> StreamPool;
+			mutable std::queue<STPSmartStream, std::list<STPSmartStream>> StreamPool;
 
 			/**
 			 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.
