@@ -1,9 +1,9 @@
 #pragma once
-#include <STPSimplexNoise.cuh>
+#include <SuperAlgorithm+/Device/STPSimplexNoise.cuh>
 
 #include <cassert>
 //Permutation
-#include <../STPPermutation.hpp>
+#include <SuperAlgorithm+/STPPermutation.hpp>
 
 using namespace SuperTerrainPlus::STPCompute;
 

@@ -142,7 +142,7 @@ void STPBiomefieldGenerator::initGenerator() {
 	STPcudaCheckErr(cuMemFreeHost(biomeTable_buffer));
 }
 	
-void STPBiomefieldGenerator::operator()(float* heightmap, const Sample* biomemap, float2 offset, cudaStream_t stream) const {
+void STPBiomefieldGenerator::operator()(float* heightmap, const Sample* biomemap_adaptor, float2 offset, cudaStream_t stream) const {
 	int Mingridsize, blocksize;
 	dim3 Dimgridsize, Dimblocksize;
 	//smart launch config
@@ -156,7 +156,7 @@ void STPBiomefieldGenerator::operator()(float* heightmap, const Sample* biomemap
 	size_t bufferSize = 24ull;
 	unsigned char buffer[24];
 	memcpy(buffer, &heightmap, sizeof(heightmap));
-	memcpy(buffer + 8, &biomemap, sizeof(biomemap));
+	memcpy(buffer + 8, &biomemap_adaptor, sizeof(biomemap_adaptor));
 	memcpy(buffer + 16, &offset, sizeof(offset));
 		
 	void* config[] = {

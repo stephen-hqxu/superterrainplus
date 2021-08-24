@@ -59,7 +59,7 @@ void STPBiomeFactory::operator()(Sample* biomemap, ivec3 offset) {
 		return;
 	}
 	//it's a 3D biome
-	throw "3-dimension biomemap generation is not supported yet.";
+	throw std::invalid_argument("3-dimension biomemap generation is not supported yet.");
 
 	//free the producer
 	this->returnProductionLine(producer);

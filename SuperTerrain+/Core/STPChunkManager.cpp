@@ -21,7 +21,7 @@ using std::make_pair;
 
 using namespace SuperTerrainPlus;
 
-STPChunkManager::STPChunkManager(STPChunkProvider& provider) : ChunkProvider(provider), trigger_clearBuffer(false), compute_pool(1u) {
+STPChunkManager::STPChunkManager(STPChunkProvider& provider) : ChunkProvider(provider), trigger_clearBuffer(false), compute_pool(1u), buffering_stream(cudaStreamNonBlocking) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkProvider.getChunkSetting();
 	const ivec2 buffer_size(chunk_setting.RenderedChunk * chunk_setting.MapSize);
 	const int totaltexture_size = buffer_size.x * buffer_size.y * sizeof(unsigned short) * 4;//4 channel
@@ -53,8 +53,6 @@ STPChunkManager::STPChunkManager(STPChunkProvider& provider) : ChunkProvider(pro
 	memset(this->quad_clear, 0x88, totaltexture_size);
 
 	this->renderingLocals.reserve(chunk_setting.RenderedChunk.x * chunk_setting.RenderedChunk.y);
-	//create stream
-	STPcudaCheckErr(cudaStreamCreateWithFlags(&this->buffering_stream, cudaStreamNonBlocking));
 }
 
 STPChunkManager::~STPChunkManager() {
@@ -62,9 +60,9 @@ STPChunkManager::~STPChunkManager() {
 	if (this->ChunkLoader.valid()) {
 		this->ChunkLoader.get();
 	}
-	//wait until stream has finished
+
+	//wait for the stream to finish
 	STPcudaCheckErr(cudaStreamSynchronize(this->buffering_stream));
-	STPcudaCheckErr(cudaStreamDestroy(this->buffering_stream));
 
 	//unregister resource
 	STPcudaCheckErr(cudaGraphicsUnregisterResource(this->heightfield_texture_res[0]));

@@ -1,5 +1,5 @@
 #pragma once
-#include <STPKernelMath.cuh>
+#include <SuperAlgorithm+/Device/STPKernelMath.cuh>
 
 using namespace SuperTerrainPlus::STPCompute;
 

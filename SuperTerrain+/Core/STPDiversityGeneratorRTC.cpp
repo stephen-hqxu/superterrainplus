@@ -104,7 +104,7 @@ bool STPDiversityGeneratorRTC::detachArchive(string archive_name) {
 string STPDiversityGeneratorRTC::compileSource(string source_name, const string& source_code, const STPSourceInformation& source_info) {
 	//make sure the source name is unique
 	if (this->ComplicationDatabase.find(source_name) != this->ComplicationDatabase.end()) {
-		throw string(__FILE__) + "::" + string(__FUNCTION__) + "\nA duplicate source with name '" + source_name + "' has been compiled before.";
+		throw std::invalid_argument(string(__FILE__) + "::" + string(__FUNCTION__) + "\nA duplicate source with name '" + source_name + "' has been compiled before.");
 	}
 
 	nvrtcProgram program;
@@ -149,7 +149,7 @@ string STPDiversityGeneratorRTC::compileSource(string source_name, const string&
 	if (exptr) {
 		//destroy the broken program
 		STPcudaCheckErr(nvrtcDestroyProgram(&program));
-		throw log;
+		throw std::runtime_error(log);
 	}
 	//if no error appears grab the lowered name expression from compiled program
 	STPLoweredName& current_source_name = this->ComplicationNameDatabase[source_name];
@@ -280,7 +280,7 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 const STPDiversityGeneratorRTC::STPLoweredName& STPDiversityGeneratorRTC::retrieveSourceLoweredName(string source_name) const {
 	auto name_expression = this->ComplicationNameDatabase.find(source_name);
 	if (name_expression == this->ComplicationNameDatabase.end()) {
-		throw string(__FILE__) + "::" + string(__FUNCTION__) + "\nSource name cannot be found in source database.";
+		throw std::invalid_argument(string(__FILE__) + "::" + string(__FUNCTION__) + "\nSource name cannot be found in source database.");
 	}
 	return name_expression->second;
 }

@@ -6,13 +6,15 @@
 //System
 #include <mutex>
 #include <vector>
+#include <queue>
+#include <list>
 //CUDA
 //CUDA lib are included in the "Engine" section
 #include <curand_kernel.h>
 //Engine
 #include "STPDiversityGenerator.hpp"
 #include "STPFreeSlipGenerator.cuh"
-#include "../Utility/STPMemoryPool.hpp"
+#include "../Utility/STPSmartStream.h"
 //Settings
 #include "../Environment/STPHeightfieldSetting.h"
 #include "../Environment/STPChunkSetting.h"
@@ -54,7 +56,7 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief STPMapStorage stores heightfield data for the generator
 			*/
-			struct STP_API STPMapStorage {
+			struct STPMapStorage {
 			public:
 
 				//- A Sample array (sample is implementation defined, usually it's uint16) where biomemap is located.
@@ -62,7 +64,7 @@ namespace SuperTerrainPlus {
 				//We need free-slip biomemap so custom heightmap implementation can do biome-edge interpolation
 				//See documentation of Heightmap32F for more details
 				//If heightmap generation is not enabled, no biomemap is required
-				std::vector<const STPDiversity::Sample*> Biomemap;
+				std::vector<STPDiversity::Sample*> Biomemap;
 				//- A float array that will be used to stored heightmap pixles, must be pre-allocated with at least width * height * sizeof(float), i.e., R32F format
 				//- If generator is instructed to generate only a single heightmap, only one map is required
 				//- If hydraulic erosion and/or normalmap generation is enabled, a list of maps of neighbour chunks are required for edge sync, heightmap generation will 
@@ -85,49 +87,6 @@ namespace SuperTerrainPlus {
 			 * @brief STPEdgeArrangement specifies the edge arrangement type when performing edge copy operations
 			*/
 			enum class STPEdgeArrangement : unsigned char;
-
-			/**
-			 * @brief Memory allocation for pinned memory
-			*/
-			class STPHeightfieldHostAllocator {
-			public:
-
-				/**
-				 * @brief Allocate page-locked memory on host
-				 * @param count The number of byte to allocate
-				 * @return The memory pointer
-				*/
-				__host__ void* allocate(size_t);
-
-				/**
-				 * @brief Free up the host pinned memory
-				 * @param count The size to free
-				 * @param The host pinned pointer to free
-				*/
-				__host__ void deallocate(size_t, void*);
-
-			};
-
-			/**
-			 * @brief CUDA nonblocking stream allocator
-			*/
-			class STPHeightfieldNonblockingStreamAllocator {
-			public:
-
-				/**
-				 * @brief Allocate nonblocking stream
-				 * @param count Useless argument, it will only allocate one stream at a time
-				 * @return The pointer to stream
-				*/
-				__host__ void* allocate(size_t);
-
-				/**
-				 * @brief Destroy the stream
-				 * @param count Useless argument, it will only destroy one stream
-				 * @param The stream to destroy
-				*/
-				__host__ void deallocate(size_t, void*);
-			};
 
 			/**
 			 * @brief A custom deleter for device memory
@@ -154,15 +113,14 @@ namespace SuperTerrainPlus {
 			unique_ptr_d<curandRNG> RNG_Map;
 			//free-slip index table generator
 			STPFreeSlipGenerator FreeSlipTable;
+			STPFreeSlipTextureAttribute TextureBufferAttr;
 			//A lookup table that, given a chunkID, determine the edge type of this chunk within the neighbour chunk logic
 			std::unique_ptr<STPEdgeArrangement[]> EdgeArrangementTable;
 
 			//Temp cache on device for heightmap computation
-			mutable std::mutex MapCachePinned_lock;
 			mutable std::mutex StreamPool_lock;
 			mutable cudaMemPool_t MapCacheDevice;
-			mutable STPMemoryPool<void, STPHeightfieldHostAllocator> MapCachePinned;
-			mutable STPMemoryPool<void, STPHeightfieldNonblockingStreamAllocator> StreamPool;
+			mutable std::queue<STPSmartStream, std::list<STPSmartStream>> StreamPool;
 
 			/**
 			 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.

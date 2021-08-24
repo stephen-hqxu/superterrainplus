@@ -25,9 +25,9 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief A static-only class should not be constructed
 		*/
-		STPEngineInitialiser() = default;
+		STPEngineInitialiser() = delete;
 
-		~STPEngineInitialiser() = default;
+		~STPEngineInitialiser() = delete;
 
 	public:
 

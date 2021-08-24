@@ -50,7 +50,7 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	if (!simplex_setting.validate()) {
 		throw std::invalid_argument("Value range from simplex noise setting is not valid");
 	}
-	this->Permutation.Gradient2DSize = simplex_setting.Distribution;
+	this->Gradient2DSize = simplex_setting.Distribution;
 
 	//seed the engine
 	STPPermutationRNG rng;
@@ -67,15 +67,15 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	shuffle(PERMUTATION_HOST, PERMUTATION_HOST + 256, rng);
 	//copy this the shuffled result
 	copy(PERMUTATION_HOST, PERMUTATION_HOST + 256, PERMUTATION_HOST + 256);
-		
+
 	//now copy the host table to the device
-	STPcudaCheckErr(cudaMalloc(&this->Permutation.Permutation, sizeof(unsigned char) * 512));
-	STPcudaCheckErr(cudaMemcpy(this->Permutation.Permutation, PERMUTATION_HOST, sizeof(unsigned char) * 512, cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMalloc(&this->Permutation, sizeof(unsigned char) * 512));
+	STPcudaCheckErr(cudaMemcpy(this->Permutation, PERMUTATION_HOST, sizeof(unsigned char) * 512, cudaMemcpyHostToDevice));
 
 	//generate the gradient table
 	//we are going to distribute the gradient evenly in a circle
-	const double step = 360.0 / this->Permutation.Gradient2DSize * 1.0;//in degree
-	std::unique_ptr<double[]> GRADIENT2D_HOST = std::make_unique<double[]>(this->Permutation.Gradient2DSize * 2);//2D so we *2
+	const double step = 360.0 / this->Gradient2DSize * 1.0;//in degree
+	std::unique_ptr<double[]> GRADIENT2D_HOST = std::make_unique<double[]>(this->Gradient2DSize * 2);//2D so we *2
 	int counter = 0;
 	for (double angle = 0.0; angle < 360.0; angle += step) {//in degree
 		GRADIENT2D_HOST[counter * 2] = cos(PI * (angle + simplex_setting.Offset) / 180.0);
@@ -85,22 +85,22 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	}
 
 	//copy the host gradient to device
-	STPcudaCheckErr(cudaMalloc(&this->Permutation.Gradient2D, sizeof(double) * this->Permutation.Gradient2DSize * 2));
-	STPcudaCheckErr(cudaMemcpy(this->Permutation.Gradient2D, GRADIENT2D_HOST.get(), sizeof(double) * this->Permutation.Gradient2DSize * 2, cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMalloc(&this->Gradient2D, sizeof(double) * this->Gradient2DSize * 2));
+	STPcudaCheckErr(cudaMemcpy(this->Gradient2D, GRADIENT2D_HOST.get(), sizeof(double) * this->Gradient2DSize * 2, cudaMemcpyHostToDevice));
 	//finishing up
 }
 
 STPPermutationGenerator::~STPPermutationGenerator() {
-	if (this->Permutation.Gradient2D != nullptr) {
-		STPcudaCheckErr(cudaFree(this->Permutation.Gradient2D));
-		this->Permutation.Gradient2D = nullptr;
+	if (this->Gradient2D != nullptr) {
+		STPcudaCheckErr(cudaFree(this->Gradient2D));
+		this->Gradient2D = nullptr;
 	}
-	if (this->Permutation.Permutation != nullptr) {
-		STPcudaCheckErr(cudaFree(this->Permutation.Permutation));
-		this->Permutation.Permutation = nullptr;
+	if (this->Permutation != nullptr) {
+		STPcudaCheckErr(cudaFree(this->Permutation));
+		this->Permutation = nullptr;
 	}
 }
 
 const STPPermutation& STPPermutationGenerator::operator()() const {
-	return this->Permutation;
+	return dynamic_cast<const STPPermutation&>(*this);
 }

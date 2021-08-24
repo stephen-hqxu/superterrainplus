@@ -7,10 +7,13 @@ STPChunkStorage.cpp
 STPDiversityGeneratorRTC.cpp
 STPEngineInitialiser.cpp
 STPEnvironment.cpp
+STPFreeSlipTextureBuffer.cpp
 STPLayer.cpp
 STPLayerCache.cpp
 STPLayerManager.cpp
+STPPinnedMemoryPool.cpp
 STPSeedMixer.cpp
+STPSmartStream.cpp
 STPThreadPool.cpp
 
 STPFreeSlipGenerator.cu

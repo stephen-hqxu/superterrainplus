@@ -12,12 +12,15 @@ GPGPU/STPDiversityGenerator.hpp
 GPGPU/STPDiversityGeneratorRTC.h
 GPGPU/STPFreeSlipData.hpp
 GPGPU/STPFreeSlipGenerator.cuh
+GPGPU/STPFreeSlipLocation.hpp
 GPGPU/STPFreeSlipManager.cuh
+GPGPU/STPFreeSlipTextureBuffer.h
 GPGPU/STPHeightfieldGenerator.cuh
 GPGPU/STPRainDrop.cuh
 # /Utility
-Utility/STPMemoryPool.hpp
+Utility/STPPinnedMemoryPool.h
 Utility/STPSerialisationException.hpp
+Utility/STPSmartStream.h
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl
 # /World/Chunk

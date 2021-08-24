@@ -104,6 +104,14 @@ namespace SuperTerrainPlus {
 		*/
 		STPChunkProvider(const STPEnvironment::STPChunkSetting&, STPChunkStorage&, STPDiversity::STPBiomeFactory&, STPCompute::STPHeightfieldGenerator&);
 
+		STPChunkProvider(const STPChunkProvider&) = delete;
+
+		STPChunkProvider(STPChunkProvider&&) = delete;
+
+		STPChunkProvider& operator=(const STPChunkProvider&) = delete;
+
+		STPChunkProvider& operator=(STPChunkProvider&&) = delete;
+
 		~STPChunkProvider() = default;
 
 		/**

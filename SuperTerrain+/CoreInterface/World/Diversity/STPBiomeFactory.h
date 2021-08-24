@@ -74,6 +74,14 @@ namespace SuperTerrainPlus {
 
 		public:
 
+			STPBiomeFactory(const STPBiomeFactory&) = delete;
+
+			STPBiomeFactory(STPBiomeFactory&&) = delete;
+
+			STPBiomeFactory& operator=(const STPBiomeFactory&) = delete;
+
+			STPBiomeFactory& operator=(STPBiomeFactory&&) = delete;
+
 			//Specify the dimension of the generated biome map, in 3 dimension
 			const glm::uvec3 BiomeDimension;
 

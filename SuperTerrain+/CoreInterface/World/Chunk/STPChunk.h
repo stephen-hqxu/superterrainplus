@@ -30,7 +30,7 @@ namespace SuperTerrainPlus {
 	public:
 
 		//Store the 1 bit state of the current chunk
-		enum class STP_API STPChunkState : unsigned char {
+		enum class STPChunkState : unsigned char {
 			//Empty chunk with no heightmap and normal map
 			Empty = 0x00u,
 			//Chunk with biomemap generated

@@ -46,6 +46,14 @@ namespace SuperTerrainPlus {
 		*/
 		STPThreadPool(unsigned int);
 
+		STPThreadPool(const STPThreadPool&) = delete;
+
+		STPThreadPool(STPThreadPool&&) = delete;
+
+		STPThreadPool& operator=(const STPThreadPool&) = delete;
+
+		STPThreadPool& operator=(STPThreadPool&&) = delete;
+
 		~STPThreadPool();
 
 		/**
