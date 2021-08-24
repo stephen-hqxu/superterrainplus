@@ -69,19 +69,18 @@ namespace SuperTerrainPlus {
 	public:
 
 		/**
-		 * @brief Init chunk.
+		 * @brief Init chunk. Pre-allocate spaces for all map
 		 * @param size - The size of all maps, all maps must have the same size.
-		 * @param initialise - Set true to pre-allocate spaces for all map.
 		*/
-		STPChunk(glm::uvec2, bool = true);
+		STPChunk(glm::uvec2);
 
 		STPChunk(const STPChunk&) = delete;
 
-		STPChunk(STPChunk&&) = delete;
+		STPChunk(STPChunk&&) = default;
 
 		STPChunk& operator=(const STPChunk&) = delete;
 
-		STPChunk& operator=(STPChunk&&) = delete;
+		STPChunk& operator=(STPChunk&&) = default;
 
 		~STPChunk();
 

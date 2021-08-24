@@ -7,23 +7,25 @@
 
 using namespace SuperTerrainPlus::STPEnvironment;
 
-__host__ STPRainDropSetting::STPRainDropSetting() : STPSetting() {
-	this->ErosionBrushRadius = 0u;
-	this->BrushSize = 0u;
-	this->RainDropCount = 0u;
-	this->Inertia = 0.0f;
-	this->SedimentCapacityFactor = 1.0f;
-	this->minSedimentCapacity = 0.0f;
-	this->initWaterVolume = 1.0f;
-	this->minWaterVolume = 0.0f;
-	this->Friction = 0.0f;
-	this->initSpeed = 0.0f;
-	this->ErodeSpeed = 0.0f;
-	this->DepositSpeed = 0.0f;
-	this->EvaporateSpeed = 0.0f;
-	this->Gravity = 1.0f;
-	this->ErosionBrushIndices = nullptr;
-	this->ErosionBrushWeights = nullptr;
+__host__ STPRainDropSetting::STPRainDropSetting() : 
+	STPSetting(), 
+	ErosionBrushRadius(0u), 
+	BrushSize(0u), 
+	RainDropCount(0u),
+	Inertia(0.0f), 
+	SedimentCapacityFactor(1.0f), 
+	minSedimentCapacity(0.0f), 
+	initWaterVolume(1.0f), 
+	minWaterVolume(0.0f), 
+	Friction(0.0f), 
+	initSpeed(0.0f), 
+	ErodeSpeed(0.0f), 
+	DepositSpeed(0.0f), 
+	EvaporateSpeed(0.0f), 
+	Gravity(1.0f), 
+	ErosionBrushIndices(nullptr), 
+	ErosionBrushWeights(nullptr) {
+
 }
 
 __host__ STPRainDropSetting::~STPRainDropSetting() {
@@ -86,14 +88,13 @@ __host__ void STPRainDropSetting::setErosionBrushRadius(uint2 slipRange, unsigne
 	//radius must be greater than 0
 	double weightSum = 0.0f;
 
-	double sqrDst = 0.0f;
 	double currentbrushWeight;
 	//calculate the brushing weight
 	//unfortunately we can't parallel compute this on gpu or multithread cpu since the number of thread to dispatch is undefined
 	for (int brushY = -radius; brushY <= radius; brushY++) {
 		for (int brushX = -radius; brushX <= radius; brushX++) {
-			sqrDst = 1.0 * brushX * brushX + brushY * brushY * 1.0;
-			if (sqrDst < radius * radius) {//The brush lies within the erosion range
+			if (double sqrDst = 1.0 * brushX * brushX + brushY * brushY * 1.0; 
+				sqrDst < radius * radius) {//The brush lies within the erosion range
 				this->ErosionBrushIndicesCache.push_back(brushY * slipRange.x + brushX);
 				currentbrushWeight = 1 - sqrt(sqrDst) / radius;
 				weightSum += currentbrushWeight;

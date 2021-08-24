@@ -32,20 +32,8 @@ STPDiversityGeneratorRTC::STPSourceInformation::STPSourceArgument& STPDiversityG
 }
 
 STPDiversityGeneratorRTC::STPLinkerInformation::STPDataJitOption& STPDiversityGeneratorRTC::STPLinkerInformation::STPDataJitOption::operator()(CUjit_option flag, void* value) {
-	this->DataOptionFlag.emplace_back(flag);
-	this->DataOptionFlagValue.emplace_back(value);
-	return *this;
-}
-
-STPDiversityGeneratorRTC::STPLinkerInformation& STPDiversityGeneratorRTC::STPLinkerInformation::setLinkerOption(CUjit_option flag, void* value) {
 	this->OptionFlag.emplace_back(flag);
-	this->OptionFlagValue.emplace_back(value);
-	return *this;
-}
-
-STPDiversityGeneratorRTC::STPLinkerInformation& STPDiversityGeneratorRTC::STPLinkerInformation::setModuleLoadOption(CUjit_option flag, void* value) {
-	this->ModuleOptionFlag.emplace_back(flag);
-	this->ModuleOptionFlagValue.emplace_back(value);
+	this->OptionValue.emplace_back(value);
 	return *this;
 }
 
@@ -60,7 +48,7 @@ STPDiversityGeneratorRTC::STPDiversityGeneratorRTC() : ModuleLoadingStatus(false
 
 STPDiversityGeneratorRTC::~STPDiversityGeneratorRTC() {
 	//destroy all compiled program
-	for (auto source = this->ComplicationDatabase.begin(); source != this->ComplicationDatabase.end(); source = this->ComplicationDatabase.erase(source)) {
+	for (auto source = this->CompilationDatabase.begin(); source != this->CompilationDatabase.end(); source = this->CompilationDatabase.erase(source)) {
 		STPcudaCheckErr(nvrtcDestroyProgram(&source->second));
 	}
 	//unload module
@@ -103,7 +91,7 @@ bool STPDiversityGeneratorRTC::detachArchive(string archive_name) {
 
 string STPDiversityGeneratorRTC::compileSource(string source_name, const string& source_code, const STPSourceInformation& source_info) {
 	//make sure the source name is unique
-	if (this->ComplicationDatabase.find(source_name) != this->ComplicationDatabase.end()) {
+	if (this->CompilationDatabase.find(source_name) != this->CompilationDatabase.end()) {
 		throw std::invalid_argument(string(__FILE__) + "::" + string(__FUNCTION__) + "\nA duplicate source with name '" + source_name + "' has been compiled before.");
 	}
 
@@ -114,8 +102,8 @@ string STPDiversityGeneratorRTC::compileSource(string source_name, const string&
 
 	//search each external header in our database
 	for (auto header_name = source_info.ExternalHeader.begin(); header_name != source_info.ExternalHeader.end(); header_name++) {
-		const auto header_code = this->ExternalHeader.find(*header_name);
-		if (header_code != this->ExternalHeader.end()) {
+		if (const auto header_code = this->ExternalHeader.find(*header_name); 
+			header_code != this->ExternalHeader.end()) {
 			//code is found, add source of header
 			external_header.emplace_back(*header_name);
 			external_header_code.emplace_back(header_code->second.c_str());
@@ -152,10 +140,10 @@ string STPDiversityGeneratorRTC::compileSource(string source_name, const string&
 		throw std::runtime_error(log);
 	}
 	//if no error appears grab the lowered name expression from compiled program
-	STPLoweredName& current_source_name = this->ComplicationNameDatabase[source_name];
+	STPLoweredName& current_source_name = this->CompilationNameDatabase[source_name];
 	for (auto expr : source_info.NameExpression) {
-		const char* current_lowered_name;
-		if (nvrtcGetLoweredName(program, expr, &current_lowered_name) == NVRTC_SUCCESS) {
+		if (const char* current_lowered_name; 
+			nvrtcGetLoweredName(program, expr, &current_lowered_name) == NVRTC_SUCCESS) {
 			//we got the name, add to the database
 			current_source_name[expr] = current_lowered_name;
 		}
@@ -163,19 +151,19 @@ string STPDiversityGeneratorRTC::compileSource(string source_name, const string&
 		//simply ignore this name
 	}
 	//and finally add the program to our database
-	this->ComplicationDatabase.emplace(source_name, program);
+	this->CompilationDatabase.emplace(source_name, program);
 	//return any non-error log
 	return log;
 }
 
 bool STPDiversityGeneratorRTC::discardSource(string source_name) {
-	auto source = this->ComplicationDatabase.find(source_name);
-	if (source != this->ComplicationDatabase.end()) {
+	if (auto source = this->CompilationDatabase.find(source_name); 
+		source != this->CompilationDatabase.end()) {
 		//make sure the source exists
 		STPcudaCheckErr(nvrtcDestroyProgram(&source->second));
 		//and destroy the program effectively
-		this->ComplicationDatabase.erase(source);
-		this->ComplicationNameDatabase.erase(source_name);
+		this->CompilationDatabase.erase(source);
+		this->CompilationNameDatabase.erase(source_name);
 		return true;
 	}
 	return false;
@@ -189,10 +177,11 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 	try {
 		//we can make sure the number of option flag is the same as that of value
 		//create a linker
-		STPcudaCheckErr(cuLinkCreate(static_cast<int>(linker_info.OptionFlag.size()), linker_info.OptionFlag.data(), linker_info.OptionFlagValue.data(), &linker));
+		STPLinkerInformation::STPDataJitOption& linkerOption = linker_info.LinkerOption;
+		STPcudaCheckErr(cuLinkCreate(static_cast<int>(linkerOption.OptionFlag.size()), linkerOption.OptionFlag.data(), linkerOption.OptionValue.data(), &linker));
 
 		//for each entry, add compiled data to the linker
-		for (auto compiled = this->ComplicationDatabase.cbegin(); compiled != this->ComplicationDatabase.cend(); compiled++) {
+		for (auto compiled = this->CompilationDatabase.cbegin(); compiled != this->CompilationDatabase.cend(); compiled++) {
 			nvrtcProgram curr_program = compiled->second;
 			//get assembly code
 			size_t codeSize;
@@ -217,8 +206,8 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 			//retrieve individual linker option (if any)
 			//we can safely delete the code since:
 			//'Ownership of data is retained by the caller. No reference is retained to any inputs after this call returns.'
-			auto curr_option = linker_info.DataOption.find(compiled->first);
-			if (curr_option == linker_info.DataOption.end()) {
+			if (auto curr_option = linker_info.DataOption.find(compiled->first); 
+				curr_option == linker_info.DataOption.end()) {
 				//no individual flag for this file
 				STPcudaCheckErr(cuLinkAddData(linker, input_type, code.get(), codeSize, compiled->first.c_str(), 0, nullptr, nullptr));
 			}
@@ -226,20 +215,20 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 				//flag exists
 				auto& individual_option = curr_option->second;
 				STPcudaCheckErr(cuLinkAddData(linker, input_type, code.get(), codeSize, compiled->first.c_str(),
-					static_cast<int>(individual_option.DataOptionFlag.size()), individual_option.DataOptionFlag.data(), individual_option.DataOptionFlagValue.data()));
+					static_cast<int>(individual_option.OptionFlag.size()), individual_option.OptionFlag.data(), individual_option.OptionValue.data()));
 			}
 		}
 
 		//for each archive, add to the linker
 		for (auto archive = this->ExternalArchive.cbegin(); archive != this->ExternalArchive.cend(); archive++) {
-			auto curr_option = linker_info.DataOption.find(archive->first);
-			if (curr_option == linker_info.DataOption.end()) {
+			if (auto curr_option = linker_info.DataOption.find(archive->first); 
+				curr_option == linker_info.DataOption.end()) {
 				STPcudaCheckErr(cuLinkAddFile(linker, CU_JIT_INPUT_LIBRARY, archive->second.c_str(), 0, nullptr, nullptr));
 			}
 			else {
 				auto& archive_option = curr_option->second;
 				STPcudaCheckErr(cuLinkAddFile(linker, CU_JIT_INPUT_LIBRARY, archive->second.c_str(),
-					static_cast<int>(archive_option.DataOptionFlag.size()), archive_option.DataOptionFlag.data(), archive_option.DataOptionFlagValue.data()));
+					static_cast<int>(archive_option.OptionFlag.size()), archive_option.OptionFlag.data(), archive_option.OptionValue.data()));
 			}
 		}
 
@@ -259,8 +248,9 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 			//unload previously loaded module
 			STPcudaCheckErr(cuModuleUnload(this->GeneratorProgram));
 		}
+		STPLinkerInformation::STPDataJitOption& moduleOption = linker_info.ModuleOption;
 		STPcudaCheckErr(cuModuleLoadDataEx(&this->GeneratorProgram, program_cubin,
-			static_cast<int>(linker_info.ModuleOptionFlag.size()), linker_info.ModuleOptionFlag.data(), linker_info.ModuleOptionFlagValue.data()));
+			static_cast<int>(moduleOption.OptionFlag.size()), moduleOption.OptionFlag.data(), moduleOption.OptionValue.data()));
 		this->ModuleLoadingStatus = true;
 	}
 	catch (...) {
@@ -278,8 +268,8 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 }
 
 const STPDiversityGeneratorRTC::STPLoweredName& STPDiversityGeneratorRTC::retrieveSourceLoweredName(string source_name) const {
-	auto name_expression = this->ComplicationNameDatabase.find(source_name);
-	if (name_expression == this->ComplicationNameDatabase.end()) {
+	auto name_expression = this->CompilationNameDatabase.find(source_name);
+	if (name_expression == this->CompilationNameDatabase.end()) {
 		throw std::invalid_argument(string(__FILE__) + "::" + string(__FUNCTION__) + "\nSource name cannot be found in source database.");
 	}
 	return name_expression->second;

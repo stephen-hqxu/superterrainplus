@@ -136,23 +136,23 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 		//requesting rendering buffer
 		unsigned int num_chunkLoaded = 0u;
 		for (int i = 0; i < loading_chunks.size(); i++) {
-			auto& current_chunk = loading_chunks[i];
+			auto& [chunkPos, chunkLoaded] = loading_chunks[i];
 
-			if (current_chunk.second) {
+			if (chunkLoaded) {
 				//skip this chunk if loading has been completed before
 				continue;
 			}
 			//make sure chunk is available, if not we need to compute it
-			if (!this->getChunkProvider().checkChunk(current_chunk.first, bind(&STPChunkManager::reloadChunkAsync, this, _1))) {
+			if (!this->getChunkProvider().checkChunk(chunkPos, bind(&STPChunkManager::reloadChunkAsync, this, _1))) {
 				//chunk is in used, skip it for now
 				continue;
 			}
 			
 			//load chunk into rendering buffer
 			cudaArray_t chunk_data[2] = { biomemap_data, heightfield_data };
-			if (this->renderingBufferChunkSubData(chunk_data, current_chunk.first, i)) {
+			if (this->renderingBufferChunkSubData(chunk_data, chunkPos, i)) {
 				//loaded
-				current_chunk.second = true;
+				chunkLoaded = true;
 				num_chunkLoaded++;
 			}
 		}
@@ -188,8 +188,8 @@ bool STPChunkManager::loadChunksAsync(vec3 cameraPos) {
 	//make sure there isn't any worker accessing the loading_chunks, otherwise undefined behaviour warning
 
 	//check if the central position has changed or not
-	const vec2 thisCentralPos = STPChunk::getChunkPosition(cameraPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScaling);
-	if (thisCentralPos != this->lastCentralPos) {
+	if (const vec2 thisCentralPos = STPChunk::getChunkPosition(cameraPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScaling); 
+		thisCentralPos != this->lastCentralPos) {
 		//changed
 		//recalculate loading chunks
 		this->renderingLocals.clear();

@@ -18,14 +18,14 @@ STPSmartStream::STPSmartStream(unsigned int flag) {
 	STPcudaCheckErr(cudaStreamCreateWithFlags(&stream, flag));
 
 	//assign the stream
-	this->Stream = unique_ptr<CUstream_st, STPSmartStream::STPStreamDestroyer>(stream);
+	this->Stream = unique_ptr<STPStream_t, STPSmartStream::STPStreamDestroyer>(stream);
 }
 
 STPSmartStream::STPSmartStream(unsigned int flag, int priority) {
 	cudaStream_t stream;
 	STPcudaCheckErr(cudaStreamCreateWithPriority(&stream, flag, priority));
 
-	this->Stream = unique_ptr<CUstream_st, STPSmartStream::STPStreamDestroyer>(stream);
+	this->Stream = unique_ptr<STPStream_t, STPSmartStream::STPStreamDestroyer>(stream);
 }
 
 STPSmartStream::STPStreamPriorityRange STPSmartStream::getStreamPriorityRange() {

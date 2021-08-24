@@ -74,30 +74,31 @@ void STPBiomefieldGenerator::initGenerator() {
 	}
 	//link
 	//linker log output
-	constexpr static unsigned int LinkerLogSize = 1024u;
+	constexpr unsigned int LinkerLogSize = 1024u;
 	char linker_info_log[LinkerLogSize], linker_error_log[LinkerLogSize];
 	char module_info_log[LinkerLogSize], module_error_log[LinkerLogSize];
 	STPDiversityGeneratorRTC::STPLinkerInformation link_info;
-	link_info
-		.setLinkerOption(CU_JIT_INFO_LOG_BUFFER, linker_info_log)
-		.setLinkerOption(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
-		.setLinkerOption(CU_JIT_ERROR_LOG_BUFFER, linker_error_log)
-		.setLinkerOption(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
+	link_info.LinkerOption
+		(CU_JIT_INFO_LOG_BUFFER, linker_info_log)
+		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
+		(CU_JIT_ERROR_LOG_BUFFER, linker_error_log)
+		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
 #ifdef _DEBUG
 		//if debug has turned on, optimisation must be 0 or linker will be crying...
-		.setLinkerOption(CU_JIT_OPTIMIZATION_LEVEL, (void*)0u)
+		(CU_JIT_OPTIMIZATION_LEVEL, (void*)0u)
 #else
-		.setLinkerOption(CU_JIT_OPTIMIZATION_LEVEL, (void*)3u)
+		(CU_JIT_OPTIMIZATION_LEVEL, (void*)3u)
 #endif
-		.setLinkerOption(CU_JIT_LOG_VERBOSE, (void*)1)
+		(CU_JIT_LOG_VERBOSE, (void*)1);
 		//no need to generate debug info anymore since our library and runtime script all contain that
+	link_info.ModuleOption
 #ifdef _DEBUG
-		.setModuleLoadOption(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
+		(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
 #endif
-		.setModuleLoadOption(CU_JIT_INFO_LOG_BUFFER, module_info_log)
-		.setModuleLoadOption(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
-		.setModuleLoadOption(CU_JIT_ERROR_LOG_BUFFER, module_error_log)
-		.setModuleLoadOption(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize);
+		(CU_JIT_INFO_LOG_BUFFER, module_info_log)
+		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
+		(CU_JIT_ERROR_LOG_BUFFER, module_error_log)
+		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize);
 	try {
 		this->linkProgram(link_info, CU_JIT_INPUT_PTX);
 		std::cout << linker_info_log << std::endl;

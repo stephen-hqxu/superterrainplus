@@ -108,9 +108,9 @@ namespace SuperTerrainPlus {
 				private:
 
 					//Individual override flag for some optional source files
-					STPJitFlag DataOptionFlag;
+					STPJitFlag OptionFlag;
 					//Individual override respective flag value for some optional source files
-					STPJitFlagValue DataOptionFlagValue;
+					STPJitFlagValue OptionValue;
 
 				public:
 
@@ -126,35 +126,15 @@ namespace SuperTerrainPlus {
 
 			private:
 
-				//The assembler and linker flag
-				STPJitFlag OptionFlag;
-				//The respective values for the flag
-				STPJitFlagValue OptionFlagValue;
 				//Given individual option for optional source files.
 				//It will override the global option set for that file.
 				std::unordered_map<std::string, STPDataJitOption> DataOption;
-				//The generator program module flag
-				STPJitFlag ModuleOptionFlag;
-				//The generator program module flag value
-				STPJitFlagValue ModuleOptionFlagValue;
 
 			public:
 
-				/**
-				 * @brief Emplace a new linker option and value
-				 * @param flag The flag for the linker
-				 * @param value The value for this flag
-				 * @return The current object for easy chained function call
-				*/
-				STPLinkerInformation& setLinkerOption(CUjit_option, void*);
 
-				/**
-				 * @brief Emplace a new module loading option and value
-				 * @param flag The flag for the module loader
-				 * @param value The value for this flag
-				 * @return The current object for easy chained function call
-				*/
-				STPLinkerInformation& setModuleLoadOption(CUjit_option, void*);
+				//The assembler and linker flag and value
+				STPDataJitOption LinkerOption;
 
 				/**
 				 * @brief Get the data option for one source file
@@ -163,6 +143,9 @@ namespace SuperTerrainPlus {
 				 * @return The data option for this source file
 				*/
 				STPDataJitOption& getDataOption(std::string);
+
+				//The generator program module flag and value
+				STPDataJitOption ModuleOption;
 			};
 
 		private:
@@ -182,9 +165,9 @@ namespace SuperTerrainPlus {
 			//Key: archive name, Value: the filename of the archive
 			STPIncluded ExternalArchive;
 			//All source files compiled in PTX format.
-			STPCompiled ComplicationDatabase;
+			STPCompiled CompilationDatabase;
 			//All registered lowered name expression with programs.
-			STPNameExpression ComplicationNameDatabase;
+			STPNameExpression CompilationNameDatabase;
 			//A complete program of diversity generator
 			CUmodule GeneratorProgram;
 			bool ModuleLoadingStatus;

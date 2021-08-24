@@ -175,12 +175,12 @@ public:
 
 /* Histogram Filter implementation */
 
-STPSingleHistogramFilter::STPSingleHistogramFilter() : filter_worker(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM) {
-	this->ReportInUsed = false;
-	//Initialise pointer to implementations
-	this->Cache = make_unique<STPHistogramBuffer[]>(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM);
-	this->Accumulator = make_unique<STPAccumulator[]>(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM);
-	this->Output = make_unique<STPHistogramBuffer>();
+STPSingleHistogramFilter::STPSingleHistogramFilter() : filter_worker(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM), 
+	ReportInUsed(false), 
+	Cache(make_unique<STPHistogramBuffer[]>(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM)), 
+	Accumulator(make_unique<STPAccumulator[]>(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM)), 
+	Output(make_unique<STPHistogramBuffer>()) {
+
 }
 
 STPSingleHistogramFilter::STPSingleHistogramFilter(uvec2 dimension_hint, unsigned int radius_hint, Sample max_sample_hint, unsigned int partition_hint) : STPSingleHistogramFilter() {
@@ -466,9 +466,9 @@ STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleM
 	}
 	//second make sure radius is not larger than the free-slip range
 	//reinterpret_cast is safe as uint2 and uvec2 are both same in standard, alignment and type
-	const uvec2 central_chunk_index = static_cast<uvec2>(glm::floor(vec2(reinterpret_cast<const uvec2&>(samplemap_manager.Data->FreeSlipChunk)) / 2.0f)),
-		halo_size = central_chunk_index * reinterpret_cast<const uvec2&>(samplemap_manager.Data->Dimension);
-	if (halo_size.x < radius || halo_size.y < radius) {
+	const uvec2 central_chunk_index = static_cast<uvec2>(glm::floor(vec2(reinterpret_cast<const uvec2&>(samplemap_manager.Data->FreeSlipChunk)) / 2.0f));
+	if (const uvec2 halo_size = central_chunk_index * reinterpret_cast<const uvec2&>(samplemap_manager.Data->Dimension); 
+		halo_size.x < radius || halo_size.y < radius) {
 		throw std::invalid_argument("radius is too large and will overflow free-slip boundary");
 	}
 

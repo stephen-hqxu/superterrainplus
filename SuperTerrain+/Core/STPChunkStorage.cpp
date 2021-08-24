@@ -3,8 +3,6 @@
 using glm::vec2;
 using glm::uvec2;
 
-using std::unique_ptr;
-using std::make_unique;
 using std::make_pair;
 
 using namespace SuperTerrainPlus;
@@ -27,28 +25,15 @@ STPChunkStorage::STPChunkStorage() {
 
 }
 
-STPChunkStorage::~STPChunkStorage() {
-	//free memory
-	this->clearChunk();
-}
-
 STPChunkStorage::STPChunkConstructed STPChunkStorage::constructChunk(vec2 chunkPos, uvec2 mapSize) {
-	auto found = this->TerrainMap2D.find(chunkPos);
-	if (found == this->TerrainMap2D.end()) {
-		//not found
-		unique_ptr<STPChunk> chunk = make_unique<STPChunk>(mapSize, true);
-		STPChunk* new_chunk = chunk.get();
-		this->TerrainMap2D.emplace(chunkPos, std::move(chunk));
-		return make_pair(true, new_chunk);
-	}
-	//found
-	return make_pair(false, found->second.get());
+	auto [it, inserted] = this->TerrainMap2D.emplace(chunkPos, mapSize);
+	return make_pair(inserted, &it->second);
 }
 
 STPChunk* STPChunkStorage::getChunk(vec2 chunkPos) {
 	auto chunk = this->TerrainMap2D.find(chunkPos);
 	//if not found, we return null
-	return chunk == this->TerrainMap2D.end() ? nullptr : chunk->second.get();
+	return chunk == this->TerrainMap2D.end() ? nullptr : &chunk->second;
 }
 
 bool STPChunkStorage::removeChunk(vec2 chunkPos) {

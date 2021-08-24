@@ -3,6 +3,10 @@
 
 using namespace SuperTerrainPlus::STPEnvironment;
 
+using glm::uvec2;
+using glm::uvec3;
+using glm::vec3;
+
 //STPConfiguration.h
 
 bool STPConfiguration::validate() const {
@@ -25,15 +29,15 @@ STPMeshSetting& STPConfiguration::getMeshSetting() {
 
 //STPChunkSetting.h
 
-STPChunkSetting::STPChunkSetting() : STPSetting() {
-	//fill with defaults
-	this->ChunkSize = glm::uvec2(0u);
-	this->MapSize = glm::uvec2(0u);
-	this->RenderedChunk = glm::uvec2(0u);
-	this->ChunkOffset = glm::vec3(0.0f);
-	this->ChunkScaling = 1.0f;
-	this->MapOffset = glm::vec3(0.0f);
-	this->FreeSlipChunk = glm::uvec2(0u);
+STPChunkSetting::STPChunkSetting() : STPSetting(), 
+	ChunkSize(uvec2(0u)), 
+	MapSize(uvec2(0u)), 
+	RenderedChunk(uvec2(0u)), 
+	ChunkOffset(vec3(0.0f)), 
+	ChunkScaling(1.0f), 
+	MapOffset(vec3(0.0f)), 
+	FreeSlipChunk(uvec2(0u)) {
+
 }
 
 bool STPChunkSetting::validate() const {
@@ -44,9 +48,10 @@ bool STPChunkSetting::validate() const {
 
 //STPHeightfieldSetting.h
 
-STPHeightfieldSetting::STPHeightfieldSetting() : STPRainDropSetting() {
-	this->Seed = 0ull;
-	this->Strength = 1.0f;
+STPHeightfieldSetting::STPHeightfieldSetting() : STPRainDropSetting(), 
+	Seed(0ull), 
+	Strength(1.0f) {
+
 }
 
 bool STPHeightfieldSetting::validate() const {
@@ -60,11 +65,12 @@ bool STPHeightfieldSetting::validate() const {
 
 //STPMeshSetting.h
 
-STPMeshSetting::STPTessellationSetting::STPTessellationSetting() {
-	this->MaxTessLevel = 0.0f;
-	this->MinTessLevel = 0.0f;
-	this->FurthestTessDistance = 0.0f;
-	this->NearestTessDistance = 0.0f;
+STPMeshSetting::STPTessellationSetting::STPTessellationSetting() : 
+	MaxTessLevel(0.0f), 
+	MinTessLevel(0.0f), 
+	FurthestTessDistance(0.0f), 
+	NearestTessDistance(0.0f) {
+
 }
 
 bool STPMeshSetting::STPTessellationSetting::validate() const {
@@ -77,9 +83,10 @@ bool STPMeshSetting::STPTessellationSetting::validate() const {
 		&& this->FurthestTessDistance >= this->NearestTessDistance;
 }
 
-STPMeshSetting::STPMeshSetting() {
-	this->Altitude = 1.0f;
-	this->LoDShiftFactor = 2.0f;
+STPMeshSetting::STPMeshSetting() : 
+	Altitude(1.0f), 
+	LoDShiftFactor(2.0f) {
+
 }
 
 bool STPMeshSetting::validate() const {

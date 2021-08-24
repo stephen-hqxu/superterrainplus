@@ -3,11 +3,11 @@
 
 using namespace SuperTerrainPlus::STPEnvironment;
 
-STPSimplexNoiseSetting::STPSimplexNoiseSetting() : STPSetting() {
-	//Loading default value
-	this->Seed = 0u;
-	this->Distribution = 8u;
-	this->Offset = 45.0;
+STPSimplexNoiseSetting::STPSimplexNoiseSetting() : STPSetting(), 
+	Seed(0ull), 
+	Distribution(8u), 
+	Offset(45.0f) {
+
 }
 
 bool STPSimplexNoiseSetting::validate() const {

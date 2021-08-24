@@ -4,7 +4,6 @@
 
 #include <STPCoreDefine.h>
 //System ADT
-#include  <memory>
 #include <unordered_map>
 //Chunks
 #include "STPChunk.h"
@@ -54,7 +53,7 @@ namespace SuperTerrainPlus {
 	private:
 
 		//Hash table that stores the chunks by world position
-		typedef std::unordered_map<glm::vec2, std::unique_ptr<STPChunk>, STPHashvec2> STPChunkCache;
+		typedef std::unordered_map<glm::vec2, STPChunk, STPHashvec2> STPChunkCache;
 
 		//chunk storage
 		//the key will be the x,z world position of each chunk
@@ -69,13 +68,9 @@ namespace SuperTerrainPlus {
 
 		STPChunkStorage(const STPChunkStorage&) = delete;
 
-		STPChunkStorage(STPChunkStorage&&) = delete;
-
 		STPChunkStorage& operator=(const STPChunkStorage&) = delete;
 
-		STPChunkStorage& operator=(STPChunkStorage&&) = delete;
-
-		~STPChunkStorage();
+		~STPChunkStorage() = default;
 
 		/**
 		 * @brief Construct a new chunk in-place if not presented. Otherwise return the prsented chunk

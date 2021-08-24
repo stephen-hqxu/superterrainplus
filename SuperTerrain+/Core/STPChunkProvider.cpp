@@ -93,7 +93,6 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 		HEIGHTMAP_PASS = 2u;
 
 	{
-		STPChunk* center = this->ChunkStorage.getChunk(chunkPos);
 		STPChunk::STPChunkState expected_state;
 		switch (rec_depth) {
 		case BIOMEMAP_PASS: expected_state = STPChunk::STPChunkState::Heightmap_Ready;
@@ -103,7 +102,8 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 		default:
 			break;
 		}
-		if (center != nullptr && center->getChunkState() >= expected_state) {
+		if (STPChunk* center = this->ChunkStorage.getChunk(chunkPos); 
+			center != nullptr && center->getChunkState() >= expected_state) {
 			//no need to continue if center chunk is available
 			//since the center chunk might be used as a neighbour chunk later, we only return bool instead of a pointer
 			//after checkChunk() is performed for every chunks, we can grab all pointers and check for occupancy in other functions.
@@ -224,8 +224,8 @@ bool STPChunkProvider::checkChunk(vec2 chunkPos, std::function<bool(glm::vec2)> 
 
 STPChunk* STPChunkProvider::requestChunk(vec2 chunkPos) {
 	//after calling checkChunk(), we can guarantee it's not null
-	STPChunk* chunk = this->ChunkStorage.getChunk(chunkPos);
-	if (chunk != nullptr) {
+	if (STPChunk* chunk = this->ChunkStorage.getChunk(chunkPos); 
+		chunk != nullptr) {
 		if (!chunk->isOccupied() && chunk->getChunkState() == STPChunk::STPChunkState::Complete) {
 			//since we wait for all threads to finish checkChunk(), such that occupancy status will not be changed here
 			return chunk;

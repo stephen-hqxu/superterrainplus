@@ -7,13 +7,9 @@
 
 using namespace SuperTerrainPlus::STPCompute;
 
-__device__ STPRainDrop::STPRainDrop(float2 position, float WaterVolume, float MovementSpeed) {
-	//copy the contructor
-	this->raindrop_pos = position;
-	this->raindrop_dir = make_float2(0.0f, 0.0f);
-	//They are the initial values.
-	this->volume = WaterVolume;
-	this->speed = MovementSpeed;
+__device__ STPRainDrop::STPRainDrop(float2 position, float WaterVolume, float MovementSpeed) : 
+	raindrop_pos(position), raindrop_dir(make_float2(0.0f, 0.0f)), volume(WaterVolume), speed(MovementSpeed) {
+
 }
 
 __device__ STPRainDrop::~STPRainDrop() {

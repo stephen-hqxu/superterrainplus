@@ -66,10 +66,8 @@ template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<float>;
 template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<Sample>;
 template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<SampleIsUint16>;
 
-__host__ STPFreeSlipGenerator::STPFreeSlipGenerator(uint2 range, uint2 mapSize) {
-	this->Dimension = mapSize;
-	this->FreeSlipChunk = range;
-	this->FreeSlipRange = make_uint2(range.x * mapSize.x, range.y * mapSize.y);
+__host__ STPFreeSlipGenerator::STPFreeSlipGenerator(uint2 range, uint2 mapSize) : 
+	STPFreeSlipData{ nullptr, mapSize, range, make_uint2(range.x * mapSize.x, range.y * mapSize.y) } {
 	try {
 		//set global local index
 		this->initLocalGlobalIndexCUDA();

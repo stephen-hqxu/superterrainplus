@@ -16,19 +16,14 @@ using std::ios_base;
 
 using namespace SuperTerrainPlus;
 
-STPChunk::STPChunk(uvec2 size, bool initialise) : PixelSize(size) {
-	if (initialise) {
-		const int num_pixel = size.x * size.y;
-		//heightmap is R32F format
-		this->Heightmap = make_unique<float[]>(num_pixel);
-		//biomemap is R16UI format
-		this->Biomemap = make_unique<STPDiversity::Sample[]>(num_pixel);
-		//rendering buffer is RGBA16 format, contains heightmap and normalmap
-		this->TerrainRenderingBuffer = make_unique<unsigned short[]>(num_pixel * 4);
-	}
-
-	atomic_init<STPChunkState>(&this->State, STPChunkState::Empty);
-	atomic_init<bool>(&this->inUsed, false);
+STPChunk::STPChunk(uvec2 size) : PixelSize(size), State(STPChunkState::Empty), inUsed(false) {
+	const int num_pixel = size.x * size.y;
+	//heightmap is R32F format
+	this->Heightmap = make_unique<float[]>(num_pixel);
+	//biomemap is R16UI format
+	this->Biomemap = make_unique<STPDiversity::Sample[]>(num_pixel);
+	//rendering buffer is RGBA16 format, contains heightmap and normalmap
+	this->TerrainRenderingBuffer = make_unique<unsigned short[]>(num_pixel * 4);
 }
 
 STPChunk::~STPChunk() {
@@ -161,7 +156,7 @@ namespace SuperTerrainPlus {
 		input.read(reinterpret_cast<char*>(&pix_size.y), sizeof(unsigned int));
 		const unsigned int size = pix_size.x * pix_size.y;
 		//allocation
-		chunk = new STPChunk(pix_size, true);
+		chunk = new STPChunk(pix_size);
 		//read heightmap, 1 channel
 		input.read(reinterpret_cast<char*>(chunk->Heightmap.get()), sizeof(float) * size);
 		//chunk state

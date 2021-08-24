@@ -5,6 +5,7 @@
 #include <STPCoreDefine.h>
 //System
 #include <memory>
+#include <type_traits>
 //CUDA
 #include <cuda_runtime.h>
 
@@ -31,8 +32,10 @@ namespace SuperTerrainPlus {
 
 		};
 
+		using STPStream_t = std::remove_pointer_t<cudaStream_t>;
+
 		//The smart stream deleted by custom deleter
-		std::unique_ptr<CUstream_st, STPStreamDestroyer> Stream;
+		std::unique_ptr<STPStream_t, STPStreamDestroyer> Stream;
 
 	public:
 
