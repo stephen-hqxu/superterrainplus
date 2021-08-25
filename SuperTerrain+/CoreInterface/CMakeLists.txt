@@ -18,7 +18,7 @@ GPGPU/STPFreeSlipTextureBuffer.h
 GPGPU/STPHeightfieldGenerator.cuh
 GPGPU/STPRainDrop.cuh
 # /Utility
-Utility/STPPinnedMemoryPool.h
+Utility/STPMemoryPool.h
 Utility/STPSerialisationException.hpp
 Utility/STPSmartStream.h
 Utility/STPThreadPool.h

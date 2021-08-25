@@ -73,6 +73,9 @@ namespace SuperTerrainPlus {
 			*/
 			__device__ __host__ unsigned int operator()(unsigned int) const;
 
+			//TODO: temporary for fast testing
+			__host__ T* getTexture();
+
 		};
 
 		typedef STPFreeSlipManager<float> STPFreeSlipFloatManager;

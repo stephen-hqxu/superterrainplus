@@ -11,7 +11,7 @@ STPFreeSlipTextureBuffer.cpp
 STPLayer.cpp
 STPLayerCache.cpp
 STPLayerManager.cpp
-STPPinnedMemoryPool.cpp
+STPMemoryPool.cpp
 STPSeedMixer.cpp
 STPSmartStream.cpp
 STPThreadPool.cpp

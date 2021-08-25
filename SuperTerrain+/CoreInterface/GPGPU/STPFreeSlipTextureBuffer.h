@@ -8,7 +8,7 @@
 //Data Structure
 #include <vector>
 #include <tuple>
-#include "../Utility/STPPinnedMemoryPool.h"
+#include "../Utility/STPMemoryPool.h"
 //CUDA
 #include <cuda_runtime.h>
 //Free-Slip Data

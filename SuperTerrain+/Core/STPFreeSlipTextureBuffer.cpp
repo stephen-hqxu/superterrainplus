@@ -14,6 +14,30 @@ using SuperTerrainPlus::STPDiversity::Sample;
 using std::rethrow_exception;
 using std::current_exception;
 
+static SuperTerrainPlus::STPRegularMemoryPool CallbackMemPool;
+
+/**
+ * @brief Essential data for stream-ordered host memory release
+*/
+struct STPHostReleaseData {
+public:
+
+	//Memory to be returned
+	void* ReleasingHostMemory;
+	//Memory pool where the memory will be returned to
+	SuperTerrainPlus::STPPinnedMemoryPool* ReleasingHostMemPool;
+
+};
+
+//A CUDA stream callback function to release host memory
+static void releaseHostMemory(void* release_data) {
+	auto [memory, pool] = *reinterpret_cast<STPHostReleaseData*>(release_data);
+	pool->release(memory);
+
+	//free-up memory
+	CallbackMemPool.release(release_data);
+}
+
 template<typename T>
 STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(typename STPFreeSlipTexture& texture, const STPFreeSlipTextureData& data, const STPFreeSlipTextureAttribute& attr) : 
 	Buffer(texture), Data(data), Attr(attr) {
@@ -61,7 +85,11 @@ void STPFreeSlipTextureBuffer<T>::destroyAllocation() {
 
 	//deallocation
 	//host memory will always be allocated
-	this->Attr.HostMemPool.release(reinterpret_cast<void*>(host));
+	//we need to add a callback because we don't want the host memory to be released right now as unfinished works may be still using it.
+	STPHostReleaseData* release_data = static_cast<STPHostReleaseData*>(CallbackMemPool.request(sizeof(STPHostReleaseData)));
+	release_data->ReleasingHostMemory = static_cast<void*>(host);
+	release_data->ReleasingHostMemPool = &this->Attr.HostMemPool;
+	STPcudaCheckErr(cudaLaunchHostFunc(this->Data.Stream, &releaseHostMemory, static_cast<void*>(release_data)));
 	//if texture is in host the pointer is the same as PinnedMemoryBuffer
 	if (location == STPFreeSlipLocation::DeviceMemory) {
 		STPcudaCheckErr(cudaFreeAsync(device, this->Data.Stream));
@@ -96,7 +124,7 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 	try {
 		//we need host memory anyway
 		//pinned memory will be needed anyway
-		host = reinterpret_cast<T*>(this->Attr.HostMemPool.request(freeslip_size));
+		host = static_cast<T*>(this->Attr.HostMemPool.request(freeslip_size));
 		if (this->Data.Mode != STPFreeSlipTextureData::STPMemoryMode::WriteOnly) {
 			//make a initial copy from the original buffer if it's not write only
 			//combine texture from each chunk to a large buffer

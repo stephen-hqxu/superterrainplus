@@ -33,6 +33,11 @@ __device__ __host__ unsigned int STPFreeSlipManager<T>::operator()(unsigned int 
 	return this->Data->GlobalLocalIndex == nullptr ? global : this->Data->GlobalLocalIndex[global];
 }
 
+template<typename T>
+__host__ T* STPFreeSlipManager<T>::getTexture() {
+	return this->Texture;
+}
+
 //Export explicit instantiations
 template class STP_API STPFreeSlipManager<float>;
 template class STP_API STPFreeSlipManager<Sample>;

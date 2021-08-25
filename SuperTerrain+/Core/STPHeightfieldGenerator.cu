@@ -98,7 +98,7 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::
 	pool_props.handleTypes = cudaMemHandleTypeNone;
 	STPcudaCheckErr(cudaMemPoolCreate(&this->MapCacheDevice, &pool_props));
 	//TODO: smartly determine the average memory pool size
-	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short) * 4u) * num_freeslip_chunk * num_pixel * hint_level_of_concurrency;
+	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short) * 5u) * num_freeslip_chunk * num_pixel * hint_level_of_concurrency;
 	STPcudaCheckErr(cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres));
 	this->TextureBufferAttr.DeviceMemPool = this->MapCacheDevice;
 
@@ -173,12 +173,13 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		try {
 			heightmap_buffer.emplace(args.Heightmap32F, heightmap_data, this->TextureBufferAttr);
 			biomemap_buffer.emplace(args.Biomemap, biomemap_data, this->TextureBufferAttr);
+			biomemap_adaptor.emplace(this->FreeSlipTable(*biomemap_buffer));
 		}
 		catch (...) {
 			exp = std::current_exception();
 			goto freeUp;
 		}
-		this->generateHeightmap((*heightmap_buffer)(STPFreeSlipLocation::DeviceMemory), const_cast<const STPDiversity::Sample*>((*biomemap_buffer)(STPFreeSlipLocation::DeviceMemory)), args.HeightmapOffset, stream);
+		this->generateHeightmap(*heightmap_buffer, *biomemap_adaptor, args.HeightmapOffset, stream);
 	}
 	else {
 		//no generation, use existing
@@ -195,7 +196,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 
 	if (flag[1] || flag[2]) {
 		//prepare free-slip utility for heightmap
-		heightmap_adaptor.emplace(this->FreeSlipTable(heightmap_buffer.value()));
+		heightmap_adaptor.emplace(this->FreeSlipTable(*heightmap_buffer));
 		STPFreeSlipFloatManager heightmap_slip = (*heightmap_adaptor)(STPFreeSlipLocation::DeviceMemory);
 
 		//Flag: Erosion
@@ -250,6 +251,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 	freeUp:
 	try {
 		//it will call the destructor in texture buffer, and result will be copied back using CUDA stream
+		//this operation is stream ordered
 		heightmap_buffer.reset();
 		heightfield_buffer.reset();
 		biomemap_buffer.reset();

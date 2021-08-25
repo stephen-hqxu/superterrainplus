@@ -6,8 +6,8 @@
 #include <cuda_runtime.h>
 //Biome Defines
 #include "../World/Diversity/STPBiomeDefine.h"
-//TODO: Sample Map Free-Slip
-//#include "../GPGPU/STPFreeSlipGenerator.cuh"
+//Sample Map Free-Slip
+#include "../GPGPU/STPFreeSlipGenerator.cuh"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -35,19 +35,19 @@ namespace SuperTerrainPlus {
 
 			virtual ~STPDiversityGenerator() = default;
 
-			//TODO: change Sample* to sample manager adaptor
 			/**
 			 * @brief Generate a biome-specific heightmaps.
 			 * Note that this function does not provide any information about the texture size since user is responsible for initialising 
 			 * the generator like STPHeightfieldGenerator with said parameters, and should keep track on those their own.
-			 * @param heightmap The result of generated heightmap that will be stored.
+			 * @param heightmap_buffer The result of generated heightmap that will be stored, with auto-managed texture memory
 			 * @param biomemap_adaptor The free-slip manager adaptor loaded with biomemap, 
 			 * which is an array of biomeID, the meaning of biomeID is however implementation-specific.
+			 * The biomemap data is read-only, writing to the biome map will not affect the original data
 			 * Biomemap uses free-slip neighbour logic, the exact number of free-slip chunk is defined by the parameters used in heightfield generator.
 			 * @param offset The offset of maps in world coordinate
 			 * @param stream The stream currently being used
 			*/
-			virtual void operator()(float*, const STPDiversity::Sample*, float2, cudaStream_t) const = 0;
+			virtual void operator()(STPFreeSlipFloatTextureBuffer&, const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor&, float2, cudaStream_t) const = 0;
 
 		};
 

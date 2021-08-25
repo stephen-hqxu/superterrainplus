@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_PINNED_MEMORY_POOL_H_
-#define _STP_PINNED_MEMORY_POOL_H_
+#ifndef _STP_MEMORY_POOL_H_
+#define _STP_MEMORY_POOL_H_
 
 #include <STPCoreDefine.h>
 //System
@@ -19,20 +19,32 @@
 namespace SuperTerrainPlus {
 
 	/**
-	 * @brief STPPinnedMemoryPool is a reusable memory pool for pinned memory.
+	 * @brief STPMemoryPoolType denotes the type of memory pool to use
+	*/
+	enum class STPMemoryPoolType : unsigned char {
+		//A regular pagable memory pool
+		Regular = 0x00u,
+		//A memory pool which allocates page-locked memory
+		Pinned = 0x01u
+	};
+
+	/**
+	 * @brief STPMemoryPool is a reusable memory pool for regular host and pinned memory.
 	 * Pinned memory allocation is slower than pagable memory, it's the best to reuse it.
 	 * It supports reusing memory with different size, but
 	 * it's still best suited for reusing memory with the same size, or a limited range of memory size.
 	 * A large range of memory size will shred system memory and may slow down the program.
-	 * STPPinnedMemoryPool is also thread-safe.
+	 * STPMemoryPool is also thread-safe.
+	 * @tparam T The type of the memory pool
 	*/
-	class STP_API STPPinnedMemoryPool {
+	template<STPMemoryPoolType T>
+	class STP_API STPMemoryPool {
 	private:
 
 		/**
-		 * @brief A pinned memory deleter.
+		 * @brief A memory deleter for different types.
 		*/
-		struct STPPinnedMemoryDeleter {
+		struct STPMemoryDeleter {
 		public:
 
 			void operator()(void*) const;
@@ -44,12 +56,12 @@ namespace SuperTerrainPlus {
 		//The size of the header for a returned memory unit, in byte
 		constexpr static unsigned char HEADER_SIZE = static_cast<unsigned char>(sizeof(STPHeader));
 
-		typedef std::unique_ptr<void, STPPinnedMemoryDeleter> STPMemoryUnit;
+		typedef std::unique_ptr<void, STPMemoryDeleter> STPMemoryUnit;
 		//A memory pool contains memory blocks with the same size.
-		typedef std::queue<STPMemoryUnit, std::list<STPMemoryUnit>> STPMemoryPool;
+		typedef std::queue<STPMemoryUnit, std::list<STPMemoryUnit>> STPMemoryUnitPool;
 
 		//All memory pool with different sizes
-		std::unordered_map<size_t, STPMemoryPool> Collection;
+		std::unordered_map<size_t, STPMemoryUnitPool> Collection;
 
 		std::mutex PoolLock;
 
@@ -66,24 +78,20 @@ namespace SuperTerrainPlus {
 		 * @param memory The pointer to the memory block, must contatins header in before the given pointer.
 		 * @return content The header of the content.
 		*/
-		static STPHeader decodeHeader(unsigned char*);
+		static typename STPHeader decodeHeader(unsigned char*);
 
 	public:
 
 		/**
-		 * @brief Init a pinned memory pool
+		 * @brief Init a memory pool
 		*/
-		STPPinnedMemoryPool() = default;
+		STPMemoryPool() = default;
 
-		~STPPinnedMemoryPool() = default;
+		~STPMemoryPool() = default;
 
-		STPPinnedMemoryPool(const STPPinnedMemoryPool&) = delete;
+		STPMemoryPool(const STPMemoryPool&) = delete;
 
-		STPPinnedMemoryPool(STPPinnedMemoryPool&&) = delete;
-
-		STPPinnedMemoryPool& operator=(const STPPinnedMemoryPool&) = delete;
-
-		STPPinnedMemoryPool& operator=(STPPinnedMemoryPool&&) = delete;
+		STPMemoryPool& operator=(const STPMemoryPool&) = delete;
 
 		/**
 		 * @brief Request a memory unit with specified size.
@@ -103,5 +111,8 @@ namespace SuperTerrainPlus {
 
 	};
 
+	typedef STPMemoryPool<STPMemoryPoolType::Regular> STPRegularMemoryPool;
+	typedef STPMemoryPool<STPMemoryPoolType::Pinned> STPPinnedMemoryPool;
+
 }
-#endif//_STP_PINNED_MEMORY_POOL_H_
+#endif//_STP_MEMORY_POOL_H_
