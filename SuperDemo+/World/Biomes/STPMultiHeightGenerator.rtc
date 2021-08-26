@@ -1,7 +1,9 @@
 #pragma once
 
+//SuperAlgorithm+ Device library
 #include <STPSimplexNoise.cuh>
 #include <STPKernelMath.cuh>
+#include <STPSingleHistogramWrapper.cuh>
 
 //Biome parameters
 #include <STPBiomeProperty>

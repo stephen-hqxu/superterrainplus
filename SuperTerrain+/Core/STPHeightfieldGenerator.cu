@@ -79,8 +79,8 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::
 		make_uint2(chunk_settings.FreeSlipChunk.x, chunk_settings.FreeSlipChunk.y),
 		make_uint2(chunk_settings.MapSize.x, chunk_settings.MapSize.y)
 	) {
-	const unsigned int num_pixel = chunk_settings.MapSize.x * chunk_settings.MapSize.y,
-		num_freeslip_chunk = chunk_settings.FreeSlipChunk.x * chunk_settings.FreeSlipChunk.y;
+	const unsigned int num_pixel = this->FreeSlipTable.getDimension().x * this->FreeSlipTable.getDimension().y,
+		num_freeslip_pixel = this->FreeSlipTable.getFreeSlipRange().x * this->FreeSlipTable.getFreeSlipRange().y;
 	this->TextureBufferAttr.TexturePixel = num_pixel;
 
 	//allocating space
@@ -98,7 +98,7 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::
 	pool_props.handleTypes = cudaMemHandleTypeNone;
 	STPcudaCheckErr(cudaMemPoolCreate(&this->MapCacheDevice, &pool_props));
 	//TODO: smartly determine the average memory pool size
-	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short) * 5u) * num_freeslip_chunk * num_pixel * hint_level_of_concurrency;
+	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short) * 5u) * num_freeslip_pixel * hint_level_of_concurrency;
 	STPcudaCheckErr(cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres));
 	this->TextureBufferAttr.DeviceMemPool = this->MapCacheDevice;
 

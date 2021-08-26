@@ -1,6 +1,11 @@
 #pragma once
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 
+//Error
+#include <SuperError+/STPDeviceErrorHandler.h>
+//CUDA
+#include <cuda_runtime.h>
+
 //Container
 #include <vector>
 //Util
@@ -9,6 +14,7 @@
 #include <iterator>
 #include <algorithm>
 #include <functional>
+#include <type_traits>
 
 #include <stdexcept>
 
@@ -25,9 +31,56 @@ using std::make_unique;
 using std::pair;
 using std::make_pair;
 
+/* Pinned memory allocator */
+
+template<class T>
+struct STPPinnedAllocator {
+public:
+
+	typedef T value_type;
+
+	STPPinnedAllocator() = default;
+
+	//Allocator should be copiable
+	template<class U>
+	STPPinnedAllocator(const STPPinnedAllocator<U>&) {
+		//nothing to copy...
+	}
+
+	T* allocate(size_t size) const {
+		T* mem;
+		STPcudaCheckErr(cudaMallocHost(&mem, size));
+		return mem;
+	}
+
+	void deallocate(T* mem, size_t) const {
+		STPcudaCheckErr(cudaFreeHost(mem));
+	}
+
+	//Allocators must be equal after the copy, meaning they should share the same memory pool
+	template<class U>
+	constexpr bool operator==(const STPPinnedAllocator<U>&) {
+		//we use CUDA API so memory will always comes from the OS
+		return true;
+	}
+
+	template<class U>
+	constexpr bool operator!=(const STPPinnedAllocator<U>&) {
+		return false;
+	}
+
+};
+
 /* Private object implementations */
 
+template<bool Pinned>
 struct STPSingleHistogramFilter::STPHistogramBuffer {
+private:
+
+	//Choose pinned allocator or default allocator
+	template<class T>
+	using StrategicAlloc = std::conditional_t<Pinned, typename std::allocator_traits<STPPinnedAllocator<T>>::template rebind_alloc<T>, std::allocator<T>>;
+
 public:
 
 	STPHistogramBuffer() = default;
@@ -41,9 +94,9 @@ public:
 	STPHistogramBuffer& operator=(STPHistogramBuffer&&) = delete;
 
 	//All flatten bins in all histograms
-	vector<STPSingleHistogram::STPBin> Bin;
+	vector<STPSingleHistogram::STPBin, StrategicAlloc<STPSingleHistogram::STPBin>> Bin;
 	//Get the bin starting index for a pixel in the flatten bin array
-	vector<unsigned int> HistogramStartOffset;
+	vector<unsigned int, StrategicAlloc<unsigned int>> HistogramStartOffset;
 
 	/**
 	 * @brief Clear containers in histogram buffer.
@@ -55,6 +108,9 @@ public:
 	}
 
 };
+
+//We don't need explicit instantiation for STPHistogramBuffer since it's a private struct and the main class implements have forced the compiler to instantiate
+//We don't need to export instantiations either since the external environment won't call any function in this class (opaque type)
 
 class STPSingleHistogramFilter::STPAccumulator {
 private:
@@ -176,41 +232,24 @@ public:
 /* Histogram Filter implementation */
 
 STPSingleHistogramFilter::STPSingleHistogramFilter() : filter_worker(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM), 
-	ReportInUsed(false), 
-	Cache(make_unique<STPHistogramBuffer[]>(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM)), 
-	Accumulator(make_unique<STPAccumulator[]>(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM)), 
-	Output(make_unique<STPHistogramBuffer>()) {
+	Cache(make_unique<STPDefaultHistogramBuffer[]>(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM)), 
+	Accumulator(make_unique<STPAccumulator[]>(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM)) {
 
 }
 
-STPSingleHistogramFilter::STPSingleHistogramFilter(uvec2 dimension_hint, unsigned int radius_hint, Sample max_sample_hint, unsigned int partition_hint) : STPSingleHistogramFilter() {
-	//In horizontal pass, we need to take the bottom and top halo, each of which has width of radius
-	//In vertical pass, only the central area is needed
-	const unsigned int pixel = dimension_hint.x * (dimension_hint.y + radius_hint * 2u),
-		pixel_per_thread = glm::ceil(1.0f * pixel / STPSingleHistogramFilter::DEGREE_OF_PARALLELISM);
+STPSingleHistogramFilter::~STPSingleHistogramFilter() = default;
 
-	//Preallocate room
-	for (unsigned int i = 0; i < STPSingleHistogramFilter::DEGREE_OF_PARALLELISM; i++) {
-		this->Cache[i].Bin.reserve(pixel_per_thread);
-		this->Cache[i].HistogramStartOffset.reserve(pixel_per_thread);
-
-		this->Accumulator[i].Dictionary.reserve(max_sample_hint);
-		this->Accumulator[i].Bin.reserve(partition_hint);
-	}
-	this->Output->HistogramStartOffset.reserve(pixel);
-	this->Output->Bin.reserve(pixel);
-}
-
-void STPSingleHistogramFilter::copy_to_buffer(STPHistogramBuffer& target, STPAccumulator& acc, bool normalise) {
-	STPAccumulator::STPBinArray acc_arr = acc();
+void STPSingleHistogramFilter::copy_to_buffer(STPDefaultHistogramBuffer& target, STPAccumulator& acc, bool normalise) {
+	auto [acc_beg, acc_end] = acc();
 	target.HistogramStartOffset.emplace_back(static_cast<unsigned int>(target.Bin.size()));
+
 	//copy bin
 	if (normalise) {
 		//sum everything in the accumulator
-		const float sum = static_cast<float>(std::reduce(acc_arr.first, acc_arr.second, 0u, [](auto init, const STPSingleHistogram::STPBin& bin) { return init + bin.Data.Quantity; }));
+		const float sum = static_cast<float>(std::reduce(acc_beg, acc_end, 0u, [](auto init, const STPSingleHistogram::STPBin& bin) { return init + bin.Data.Quantity; }));
 		std::transform(
-			acc_arr.first, 
-			acc_arr.second,
+			acc_beg,
+			acc_end,
 			std::back_inserter(target.Bin),
 			[sum](STPSingleHistogram::STPBin bin) {
 				//we need to make a copy
@@ -221,12 +260,12 @@ void STPSingleHistogramFilter::copy_to_buffer(STPHistogramBuffer& target, STPAcc
 	}
 	else {
 		//just copy the data
-		std::copy(acc_arr.first, acc_arr.second, std::back_inserter(target.Bin));
+		std::copy(acc_beg, acc_end, std::back_inserter(target.Bin));
 	}
 }
 
 void STPSingleHistogramFilter::filter_vertical(const STPFreeSlipSampleManager& sample_map, unsigned int vertical_start_offset, uvec2 w_range, unsigned char threadID, unsigned int radius) {
-	STPHistogramBuffer& target = this->Cache[threadID];
+	STPDefaultHistogramBuffer& target = this->Cache[threadID];
 	STPAccumulator& acc = this->Accumulator[threadID];
 	//clear both
 	target.clear();
@@ -267,9 +306,9 @@ void STPSingleHistogramFilter::filter_vertical(const STPFreeSlipSampleManager& s
 	}
 }
 
-void STPSingleHistogramFilter::copy_to_output(unsigned char threadID, uvec2 output_base) {
-	STPHistogramBuffer& target = this->Cache[threadID];
-	auto offset_base_it = this->Output->HistogramStartOffset.begin() + output_base.y;
+void STPSingleHistogramFilter::copy_to_output(STPPinnedHistogramBuffer* buffer, unsigned char threadID, uvec2 output_base) {
+	STPDefaultHistogramBuffer& target = this->Cache[threadID];
+	auto offset_base_it = buffer->HistogramStartOffset.begin() + output_base.y;
 	//caller should guarantee the output container has been allocated that many elements, we are not doing back_inserter here
 
 	//copy histogram offset
@@ -290,11 +329,11 @@ void STPSingleHistogramFilter::copy_to_output(unsigned char threadID, uvec2 outp
 	}
 
 	//copy the bin
-	std::copy(target.Bin.cbegin(), target.Bin.cend(), this->Output->Bin.begin() + output_base.x);
+	std::copy(target.Bin.cbegin(), target.Bin.cend(), buffer->Bin.begin() + output_base.x);
 }
 
-void STPSingleHistogramFilter::filter_horizontal(const uvec2& dimension, uvec2 h_range, unsigned char threadID, unsigned int radius) {
-	STPHistogramBuffer& target = this->Cache[threadID];
+void STPSingleHistogramFilter::filter_horizontal(STPPinnedHistogramBuffer* histogram_input, const uvec2& dimension, uvec2 h_range, unsigned char threadID, unsigned int radius) {
+	STPDefaultHistogramBuffer& target = this->Cache[threadID];
 	STPAccumulator& acc = this->Accumulator[threadID];
 	//make sure both of them are cleared (don't deallocate)
 	target.clear();
@@ -312,13 +351,13 @@ void STPSingleHistogramFilter::filter_horizontal(const uvec2& dimension, uvec2 h
 
 		//load radius strip for the first pixel into accumulator
 		for (int j = -static_cast<int>(radius); j <= static_cast<int>(radius); j++) {
-			auto bin_offset = this->Output->HistogramStartOffset.cbegin() + (ti + j * dimension.y);
+			auto bin_offset = histogram_input->HistogramStartOffset.cbegin() + (ti + j * dimension.y);
 			const unsigned int bin_start = *bin_offset,
 				bin_end = *(bin_offset + 1);
 			//it will be a bit tricky for the last pixel in the histogram since that's the last iterator in start offset array.
 			//we have emplaced one more offset at the end of HistogramStartOffset in Output to indicate the size of the entire flatten Bin
 			for (unsigned int bin_index = bin_start; bin_index < bin_end; bin_index++) {
-				const STPSingleHistogram::STPBin& curr_bin = this->Output->Bin[bin_index];
+				const STPSingleHistogram::STPBin& curr_bin = histogram_input->Bin[bin_index];
 				acc.inc(curr_bin.Item, curr_bin.Data.Quantity);
 			}
 		}
@@ -328,7 +367,7 @@ void STPSingleHistogramFilter::filter_horizontal(const uvec2& dimension, uvec2 h
 		//generate histogram, starting from the second pixel, we only loop through the central texture
 		for (unsigned int j = 1u; j < dimension.x; j++) {
 			//load one pixel to the right while unloading one pixel from the left
-			auto bin_beg = this->Output->HistogramStartOffset.cbegin();
+			auto bin_beg = histogram_input->HistogramStartOffset.cbegin();
 			auto bin_offset_r = bin_beg + ri,
 				bin_offset_l = bin_beg + li;
 			//collect histogram at the right pixel
@@ -336,7 +375,7 @@ void STPSingleHistogramFilter::filter_horizontal(const uvec2& dimension, uvec2 h
 				const unsigned int bin_start = *bin_offset_r,
 					bin_end = *(bin_offset_r + 1);
 				for (unsigned int bin_index = bin_start; bin_index < bin_end; bin_index++) {
-					const STPSingleHistogram::STPBin& curr_bin = this->Output->Bin[bin_index];
+					const STPSingleHistogram::STPBin& curr_bin = histogram_input->Bin[bin_index];
 					acc.inc(curr_bin.Item, curr_bin.Data.Quantity);
 				}
 			}
@@ -345,7 +384,7 @@ void STPSingleHistogramFilter::filter_horizontal(const uvec2& dimension, uvec2 h
 				const unsigned int bin_start = *bin_offset_l,
 					bin_end = *(bin_offset_l + 1);
 				for (unsigned int bin_index = bin_start; bin_index < bin_end; bin_index++) {
-					const STPSingleHistogram::STPBin& curr_bin = this->Output->Bin[bin_index];
+					const STPSingleHistogram::STPBin& curr_bin = histogram_input->Bin[bin_index];
 					acc.dec(curr_bin.Item, curr_bin.Data.Quantity);
 				}
 			}
@@ -363,20 +402,21 @@ void STPSingleHistogramFilter::filter_horizontal(const uvec2& dimension, uvec2 h
 	}
 }
 
-const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::filter(const STPFreeSlipSampleManager& sample_map, const uvec2& central_chunk_index, unsigned int radius) {
+void STPSingleHistogramFilter::filter
+	(const STPFreeSlipSampleManager& sample_map, STPPinnedHistogramBuffer* histogram_output, const uvec2& central_chunk_index, unsigned int radius) {
 	using namespace std::placeholders;
 	using std::bind;
 	using std::future;
 	using std::cref;
 	auto vertical = bind(&STPSingleHistogramFilter::filter_vertical, this, _1, _2, _3, _4, _5);
-	auto horizontal = bind(&STPSingleHistogramFilter::filter_horizontal, this, _1, _2, _3, _4);
-	auto copy_output = bind(&STPSingleHistogramFilter::copy_to_output, this, _1, _2);
+	auto copy_output = bind(&STPSingleHistogramFilter::copy_to_output, this, _1, _2, _3);
+	auto horizontal = bind(&STPSingleHistogramFilter::filter_horizontal, this, _1, _2, _3, _4, _5);
 	future<void> workgroup[STPSingleHistogramFilter::DEGREE_OF_PARALLELISM];
 	//calculate central texture starting index
 	const uvec2& dimension = reinterpret_cast<const uvec2&>(sample_map.Data->Dimension),
 		central_starting_coordinate = dimension * central_chunk_index;
 
-	auto sync_then_copy_to_output = [this, &copy_output, &workgroup]() -> void {
+	auto sync_then_copy_to_output = [this, histogram_output, &copy_output, &workgroup]() -> void {
 		size_t bin_total = 0ull,
 			offset_total = 0ull;
 
@@ -384,21 +424,21 @@ const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::fi
 		for (unsigned char w = 0u; w < STPSingleHistogramFilter::DEGREE_OF_PARALLELISM; w++) {
 			workgroup[w].get();
 
-			STPHistogramBuffer& curr_buffer = this->Cache[w];
+			STPDefaultHistogramBuffer& curr_buffer = this->Cache[w];
 			bin_total += curr_buffer.Bin.size();
 			offset_total += curr_buffer.HistogramStartOffset.size();
 		}
 
 		//copy thread buffer to output
 		//we don't need to clear the output, but rather we can resize it (items will get overwriten anyway)
-		this->Output->Bin.resize(bin_total);
-		this->Output->HistogramStartOffset.resize(offset_total);
+		histogram_output->Bin.resize(bin_total);
+		histogram_output->HistogramStartOffset.resize(offset_total);
 		uvec2 base(0u);
 		for (unsigned char w = 0u; w < STPSingleHistogramFilter::DEGREE_OF_PARALLELISM; w++) {
-			workgroup[w] = this->filter_worker.enqueue_future(copy_output, w, base);
+			workgroup[w] = this->filter_worker.enqueue_future(copy_output, histogram_output, w, base);
 
 			//get the base index for the next worker, so each worker only copies buffer belongs to them to independent location
-			STPHistogramBuffer& curr_buffer = this->Cache[w];
+			STPDefaultHistogramBuffer& curr_buffer = this->Cache[w];
 			//bin_base
 			base.x += curr_buffer.Bin.size();
 			//offset_base
@@ -410,7 +450,7 @@ const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::fi
 		}
 		//in vertical pass, each pixel needs to access the current offset, and the offset of the next pixel.
 		//insert one at the back to make sure the last pixel can read some valid data
-		this->Output->HistogramStartOffset.emplace_back(static_cast<unsigned int>(this->Output->Bin.size()));
+		histogram_output->HistogramStartOffset.emplace_back(static_cast<unsigned int>(histogram_output->Bin.size()));
 	};
 
 	//we perform vertical first as the input sample_map is a row-major matrix, after this stage the output buffer will be in column-major.
@@ -441,7 +481,7 @@ const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::fi
 		const unsigned int height_step = dimension.y / STPSingleHistogramFilter::DEGREE_OF_PARALLELISM;
 		uvec2 h_range(0u, height_step);
 		for (unsigned char w = 0u; w < STPSingleHistogramFilter::DEGREE_OF_PARALLELISM; w++) {
-			workgroup[w] = this->filter_worker.enqueue_future(horizontal, cref(dimension), h_range, w, radius);
+			workgroup[w] = this->filter_worker.enqueue_future(horizontal, histogram_output, cref(dimension), h_range, w, radius);
 			//increment range
 			h_range.x = h_range.y;
 			h_range.y += height_step;
@@ -450,16 +490,16 @@ const STPSingleHistogramFilter::STPHistogramBuffer* STPSingleHistogramFilter::fi
 		sync_then_copy_to_output();
 	}
 
-	//finally
-	return this->Output.get();
+	//finished
 }
 
-STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleManager& samplemap_manager, unsigned int radius) {
+STPSingleHistogramFilter::STPHistogramBuffer_t STPSingleHistogramFilter::createHistogramBuffer() {
+	//I hate to use `new` but unfortunately make_unique doesn't work with custom deleter...
+	return STPHistogramBuffer_t(new STPPinnedHistogramBuffer(), [](STPPinnedHistogramBuffer* buffer) { std::default_delete<STPPinnedHistogramBuffer>()(buffer); });
+}
+
+STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleManager& samplemap_manager, const STPHistogramBuffer_t& histogram_output, unsigned int radius) {
 	//do some simple runtime check
-	//before everything else, make sure user has told us the previously returned histogram can be destroyed
-	if (this->ReportInUsed) {
-		throw std::logic_error("a previously returned histogram is preventing execution, call destroyHistogram() first");
-	}
 	//first make sure radius is an even number
 	if ((radius | 0x00u) == 0x00u) {
 		throw std::invalid_argument("radius should be an even number");
@@ -473,15 +513,11 @@ STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleM
 	}
 
 	//looks safe now, start the filter
-	const STPHistogramBuffer* histogram_buffer = this->filter(samplemap_manager, central_chunk_index, radius);
-	//wrap it to the report
-	STPSingleHistogram histogram{ histogram_buffer->Bin.data(), histogram_buffer->HistogramStartOffset.data() };
+	this->filter(samplemap_manager, histogram_output.get(), central_chunk_index, radius);
 
-	this->ReportInUsed = true;
-
-	return histogram;
+	return STPSingleHistogramFilter::readHistogramBuffer(histogram_output);
 }
 
-void STPSingleHistogramFilter::destroyHistogram() const {
-	this->ReportInUsed = false;
+STPSingleHistogram STPSingleHistogramFilter::readHistogramBuffer(const STPHistogramBuffer_t& buffer) {
+	return STPSingleHistogram{ buffer->Bin.data(), buffer->HistogramStartOffset.data() };
 }

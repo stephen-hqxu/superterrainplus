@@ -3,7 +3,6 @@
 #include <STPAlgorithmDeviceInfoDebug.h>
 //Error
 #include <SuperError+/STPDeviceErrorHandler.h>
-
 //Biome
 #include "STPBiomeRegistry.h"
 
@@ -167,7 +166,7 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	memcpy(buffer, &heightmap, sizeof(heightmap));
 	memcpy(buffer + 8, &biomemap, sizeof(biomemap));
 	memcpy(buffer + 16, &offset, sizeof(offset));
-		
+
 	void* config[] = {
 		CU_LAUNCH_PARAM_BUFFER_POINTER, buffer,
 		CU_LAUNCH_PARAM_BUFFER_SIZE, &bufferSize,

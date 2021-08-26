@@ -31,10 +31,15 @@ public:
 
 //A CUDA stream callback function to release host memory
 static void releaseHostMemory(void* release_data) {
-	auto [memory, pool] = *reinterpret_cast<STPHostReleaseData*>(release_data);
+	STPHostReleaseData* data = reinterpret_cast<STPHostReleaseData*>(release_data);
+	auto [memory, pool] = *data;
 	pool->release(memory);
 
 	//free-up memory
+	if constexpr (!std::is_trivially_destructible_v<STPHostReleaseData>) {
+		//we need to call the destructor if it has user-defined destructor before returning to the thread pool.
+		data->~STPHostReleaseData();
+	}
 	CallbackMemPool.release(release_data);
 }
 
@@ -86,6 +91,7 @@ void STPFreeSlipTextureBuffer<T>::destroyAllocation() {
 	//deallocation
 	//host memory will always be allocated
 	//we need to add a callback because we don't want the host memory to be released right now as unfinished works may be still using it.
+	//all pointers we provide are guaranteed to be valid until the stream has synced.
 	STPHostReleaseData* release_data = static_cast<STPHostReleaseData*>(CallbackMemPool.request(sizeof(STPHostReleaseData)));
 	release_data->ReleasingHostMemory = static_cast<void*>(host);
 	release_data->ReleasingHostMemPool = &this->Attr.HostMemPool;

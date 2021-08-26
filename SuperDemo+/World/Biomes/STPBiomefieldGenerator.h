@@ -7,6 +7,8 @@
 #include <GPGPU/STPDiversityGeneratorRTC.h>
 #include <SuperAlgorithm+/STPPermutationGenerator.h>
 #include "STPBiomeSettings.hpp"
+//Biome Interpolation
+#include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
@@ -28,6 +30,8 @@ namespace STPDemo {
 		SuperTerrainPlus::STPCompute::STPPermutationGenerator Simplex_Permutation;
 		//The size of the generated heightmap
 		const uint2 MapSize;
+		//Generate a histogram to retrieve weights for biomes in a range
+		SuperTerrainPlus::STPCompute::STPSingleHistogramFilter biome_histogram;
 
 		CUcontext cudaCtx;
 		//The entry global function to generate the heightmap

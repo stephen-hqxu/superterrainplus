@@ -56,7 +56,7 @@ namespace SuperTerrainPlus {
 			//The number of element this array contains is the number read from the last element in HistogramStartOffset.
 			const STPBin* Bin;
 			//The index of STPBin from the beginning of the linear array of the texture per-pixel histogram to reach the current pixel
-			//The number of element in this array is the same as the dimension (of one texture) in the input
+			//The number of element in this array is the same as the dimension (of one texture) in the input, plus one element at the end denotes the total size of the bin
 			const unsigned int* HistogramStartOffset;
 
 		};
