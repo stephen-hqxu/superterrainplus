@@ -135,10 +135,12 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Get the pointer to the merged free-slip texture.
 			 * No reallocation is allowed for data safety since STPFreeSlipTexture might be shared with other program, copy back to the buffer may cause race condition.
+			 * Function can be called multiple times to retrieve the internal buffer
 			 * @param location The memory space where the free-slip texture will be used.
 			 * Only host memory will be available if memory location is host.
 			 * Device memory location impiles host memory, so if both memory are needed, choose device memory.
-			 * @return The free-slip texture, available at the memory specified by location.
+			 * @return The free-slip texture, will be available at the memory specified by location.
+			 * Host memory will be available right after the function returned while device memory is stream-ordered.
 			 * The underlying merged texture pointer is managed by the current texture buffer and will be freed (and optionally copied back) when the object got destroyed.
 			 * If function is called repetitively, depends on the previous memory location, function will return:
 			 * If the allocated location was host, host pointer is returned, the argument is ignored.

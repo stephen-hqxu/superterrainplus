@@ -48,6 +48,16 @@ namespace SuperTerrainPlus {
 			typedef STPHistogramBuffer<true> STPPinnedHistogramBuffer;
 
 			/**
+			 * @brief The default membered deleter for pinned histogram buffer that will be passed to external user
+			*/
+			struct STPALGORITHMPLUS_HOST_API STPPinnedHistogramBufferDeleter {
+			public:
+
+				void operator()(STPPinnedHistogramBuffer*) const;
+
+			};
+
+			/**
 			 * @brief Accumulator acts as a cache for each row or column iteration.
 			 * The accumulator for the next pixel equals to the accumulator from the previous pixel plus the left/down out-of-range radius pixel and
 			 * minux the right/up in-range radius pixel.
@@ -127,7 +137,7 @@ namespace SuperTerrainPlus {
 			 * Direct access to the underlying histogram is not available, but can be retrieved.
 			 * @see STPHistogramBuffer
 			*/
-			typedef std::unique_ptr<STPPinnedHistogramBuffer, void(*)(STPPinnedHistogramBuffer*)> STPHistogramBuffer_t;
+			typedef std::unique_ptr<STPPinnedHistogramBuffer, STPPinnedHistogramBufferDeleter> STPHistogramBuffer_t;
 
 			/**
 			 * @brief Init single histogram filter.

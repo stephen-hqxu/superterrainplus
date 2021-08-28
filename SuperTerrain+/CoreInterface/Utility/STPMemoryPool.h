@@ -91,7 +91,11 @@ namespace SuperTerrainPlus {
 
 		STPMemoryPool(const STPMemoryPool&) = delete;
 
+		STPMemoryPool(STPMemoryPool&&) = default;
+
 		STPMemoryPool& operator=(const STPMemoryPool&) = delete;
+
+		STPMemoryPool& operator=(STPMemoryPool&&) = default;
 
 		/**
 		 * @brief Request a memory unit with specified size.

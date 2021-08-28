@@ -2,13 +2,16 @@
 #ifndef _STP_BIOMEFIELD_GENERATOR_H_
 #define _STP_BIOMEFIELD_GENERATOR_H_
 
-#include <glm/vec2.hpp>
+//System
+#include <queue>
+#include <mutex>
 //Multi-biome Heightfield Generator
 #include <GPGPU/STPDiversityGeneratorRTC.h>
 #include <SuperAlgorithm+/STPPermutationGenerator.h>
 #include "STPBiomeSettings.hpp"
 //Biome Interpolation
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
+#include <glm/vec2.hpp>
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
@@ -31,16 +34,29 @@ namespace STPDemo {
 		//The size of the generated heightmap
 		const uint2 MapSize;
 		//Generate a histogram to retrieve weights for biomes in a range
-		SuperTerrainPlus::STPCompute::STPSingleHistogramFilter biome_histogram;
+		mutable std::mutex HistogramFilterLock;
+		mutable SuperTerrainPlus::STPCompute::STPSingleHistogramFilter biome_histogram;
 
 		CUcontext cudaCtx;
 		//The entry global function to generate the heightmap
 		CUfunction GeneratorEntry;
+		CUmemoryPool HistogramCacheDevice;
+
+		//A queue of histogram buffer
+		typedef std::queue<STPSingleHistogramFilter::STPHistogramBuffer_t> STPHistogramBufferPool;
+		mutable STPHistogramBufferPool BufferPool;
+		mutable std::mutex BufferPoolLock;
 
 		/**
 		 * @brief Init the multi-height generator
 		*/
 		void initGenerator();
+
+		//Essential data to return the histogram buffer back to pool after the computation has finished
+		struct STPBufferReleaseData;
+
+		//A CUDA stream call back to return histogram buffer back to the pool
+		static void returnBuffer(void*);
 
 	public:
 
@@ -59,7 +75,7 @@ namespace STPDemo {
 
 		STPBiomefieldGenerator& operator=(STPBiomefieldGenerator&&) = delete;
 
-		~STPBiomefieldGenerator() = default;
+		~STPBiomefieldGenerator();
 
 		void operator()(SuperTerrainPlus::STPCompute::STPFreeSlipFloatTextureBuffer&, const SuperTerrainPlus::STPCompute::STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor&, float2, cudaStream_t) const override;
 

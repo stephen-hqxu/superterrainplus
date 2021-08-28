@@ -4,7 +4,7 @@
 //Error
 #include <SuperError+/STPDeviceErrorHandler.h>
 //CUDA
-#include <cuda_runtime.h>
+#include <cuda.h>
 
 //Container
 #include <vector>
@@ -39,7 +39,7 @@ public:
 
 	typedef T value_type;
 
-	STPPinnedAllocator() = default;
+	STPPinnedAllocator() noexcept = default;
 
 	//Allocator should be copiable
 	template<class U>
@@ -49,12 +49,12 @@ public:
 
 	T* allocate(size_t size) const {
 		T* mem;
-		STPcudaCheckErr(cudaMallocHost(&mem, size));
+		STPcudaCheckErr(cuMemAllocHost(reinterpret_cast<void**>(&mem), size));
 		return mem;
 	}
 
 	void deallocate(T* mem, size_t) const {
-		STPcudaCheckErr(cudaFreeHost(mem));
+		STPcudaCheckErr(cuMemFreeHost(mem));
 	}
 
 	//Allocators must be equal after the copy, meaning they should share the same memory pool
@@ -83,7 +83,7 @@ private:
 
 public:
 
-	STPHistogramBuffer() = default;
+	STPHistogramBuffer() noexcept = default;
 
 	STPHistogramBuffer(const STPHistogramBuffer&) = delete;
 
@@ -93,10 +93,12 @@ public:
 
 	STPHistogramBuffer& operator=(STPHistogramBuffer&&) = delete;
 
+	~STPHistogramBuffer() = default;
+
 	//All flatten bins in all histograms
-	vector<STPSingleHistogram::STPBin, StrategicAlloc<STPSingleHistogram::STPBin>> Bin;
+	vector<STPSingleHistogram::STPBin> Bin;
 	//Get the bin starting index for a pixel in the flatten bin array
-	vector<unsigned int, StrategicAlloc<unsigned int>> HistogramStartOffset;
+	vector<unsigned int> HistogramStartOffset;
 
 	/**
 	 * @brief Clear containers in histogram buffer.
@@ -148,7 +150,7 @@ private:
 
 public:
 
-	STPAccumulator() = default;
+	STPAccumulator() noexcept = default;
 
 	STPAccumulator(const STPAccumulator&) = delete;
 
@@ -157,6 +159,8 @@ public:
 	STPAccumulator& operator=(const STPAccumulator&) = delete;
 
 	STPAccumulator& operator=(STPAccumulator&&) = delete;
+
+	~STPAccumulator() = default;
 
 	//Use Sample as index, find the index in Bin for this sample
 	vector<unsigned int> Dictionary;
@@ -230,6 +234,10 @@ public:
 };
 
 /* Histogram Filter implementation */
+
+void STPSingleHistogramFilter::STPPinnedHistogramBufferDeleter::operator()(STPPinnedHistogramBuffer* ptr) const {
+	std::default_delete<STPPinnedHistogramBuffer>()(ptr);
+}
 
 STPSingleHistogramFilter::STPSingleHistogramFilter() : filter_worker(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM), 
 	Cache(make_unique<STPDefaultHistogramBuffer[]>(STPSingleHistogramFilter::DEGREE_OF_PARALLELISM)), 
@@ -495,7 +503,7 @@ void STPSingleHistogramFilter::filter
 
 STPSingleHistogramFilter::STPHistogramBuffer_t STPSingleHistogramFilter::createHistogramBuffer() {
 	//I hate to use `new` but unfortunately make_unique doesn't work with custom deleter...
-	return STPHistogramBuffer_t(new STPPinnedHistogramBuffer(), [](STPPinnedHistogramBuffer* buffer) { std::default_delete<STPPinnedHistogramBuffer>()(buffer); });
+	return STPHistogramBuffer_t(new STPPinnedHistogramBuffer());
 }
 
 STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleManager& samplemap_manager, const STPHistogramBuffer_t& histogram_output, unsigned int radius) {

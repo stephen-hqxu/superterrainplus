@@ -68,7 +68,11 @@ namespace SuperTerrainPlus {
 
 		STPChunkStorage(const STPChunkStorage&) = delete;
 
+		STPChunkStorage(STPChunkStorage&&) noexcept = default;
+
 		STPChunkStorage& operator=(const STPChunkStorage&) = delete;
+
+		STPChunkStorage& operator=(STPChunkStorage&&) = default;
 
 		~STPChunkStorage() = default;
 

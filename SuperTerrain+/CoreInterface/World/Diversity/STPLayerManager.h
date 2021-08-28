@@ -44,11 +44,15 @@ namespace SuperTerrainPlus {
 			*/
 			STPLayerManager() = default;
 
-			~STPLayerManager() = default;
-
 			STPLayerManager(const STPLayerManager&) = delete;
 
+			STPLayerManager(STPLayerManager&&) = default;
+
 			STPLayerManager& operator=(const STPLayerManager&) = delete;
+
+			STPLayerManager& operator=(STPLayerManager&&) = default;
+
+			~STPLayerManager() = default;
 
 			/**
 			 * @brief Construct a new layer instance and add to the layer chain structure and let the current layer manager manage this layer.

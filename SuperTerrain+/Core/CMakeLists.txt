@@ -17,7 +17,6 @@ STPSmartStream.cpp
 STPThreadPool.cpp
 
 STPFreeSlipGenerator.cu
-STPFreeSlipManager.cu
 STPHeightfieldGenerator.cu
 STPRainDrop.cu
 STPRainDropSetting.cu

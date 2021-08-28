@@ -98,7 +98,7 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::
 	pool_props.handleTypes = cudaMemHandleTypeNone;
 	STPcudaCheckErr(cudaMemPoolCreate(&this->MapCacheDevice, &pool_props));
 	//TODO: smartly determine the average memory pool size
-	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short) * 5u) * num_freeslip_pixel * hint_level_of_concurrency;
+	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short) * 4u) * num_freeslip_pixel * hint_level_of_concurrency;
 	STPcudaCheckErr(cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres));
 	this->TextureBufferAttr.DeviceMemPool = this->MapCacheDevice;
 

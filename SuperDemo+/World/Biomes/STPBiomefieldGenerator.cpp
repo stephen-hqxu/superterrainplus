@@ -15,12 +15,17 @@ using namespace SuperTerrainPlus::STPEnvironment;
 using glm::uvec2;
 
 using std::string;
+using std::unique_lock;
+using std::move;
+using std::mutex;
+using std::to_string;
 
 //File name of the generator script
 constexpr static char GeneratorFilename[] = "./STPMultiHeightGenerator.rtc";
 constexpr static char BiomePropertyFilename[] = "./STPBiomeProperty.hpp";
 const static string device_include = "-I " + string(SuperTerrainPlus::SuperAlgorithmPlus_DeviceInclude),
-	stppermutation_size = "-DPERMUTATION_SIZE=" + std::to_string(sizeof(SuperTerrainPlus::STPCompute::STPPermutation));
+	stppermutation_size = "-DPERMUTATION_SIZE=" + to_string(sizeof(SuperTerrainPlus::STPCompute::STPPermutation)),
+	stpsinglehistogram_size = "-DSINGLEHISTOGRAM_SIZE=" + to_string(sizeof(SuperTerrainPlus::STPCompute::STPSingleHistogram));
 
 STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_setting, uvec2 dimension)
 	: STPDiversityGeneratorRTC(), Noise_Setting(simplex_setting), MapSize(make_uint2(dimension.x, dimension.y)), Simplex_Permutation(this->Noise_Setting) {
@@ -28,6 +33,22 @@ STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_s
 	//init our device generator
 	//our heightfield setting only available in OCEAN biome for now
 	this->initGenerator();
+
+	//create a cuda memory pool
+	CUmemPoolProps pool_props = { };
+	pool_props.allocType = CU_MEM_ALLOCATION_TYPE_PINNED;
+	pool_props.handleTypes = CU_MEM_HANDLE_TYPE_NONE;
+	pool_props.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+	pool_props.location.id = 0;
+	STPcudaCheckErr(cuMemPoolCreate(&this->HistogramCacheDevice, &pool_props));
+	//it's pretty hard to predict
+	constexpr size_t avg_bin_per_pixel = 2ull, deg_para = 5ull;
+	cuuint64_t release_thres = this->MapSize.x * this->MapSize.y * (sizeof(unsigned int) + sizeof(STPSingleHistogram::STPBin) * avg_bin_per_pixel) * deg_para;
+	cuMemPoolSetAttribute(this->HistogramCacheDevice, CU_MEMPOOL_ATTR_RELEASE_THRESHOLD, &release_thres);
+}
+
+STPBiomefieldGenerator::~STPBiomefieldGenerator() {
+	STPcudaCheckErr(cuMemPoolDestroy(this->HistogramCacheDevice));
 }
 
 void STPBiomefieldGenerator::initGenerator() {
@@ -59,6 +80,7 @@ void STPBiomefieldGenerator::initGenerator() {
 #endif
 		["-maxrregcount=80"]
 		[stppermutation_size.c_str()]
+		[stpsinglehistogram_size.c_str()]
 		//include path
 		[device_include.c_str()];
 	multiheightfield_info.ExternalHeader
@@ -67,8 +89,8 @@ void STPBiomefieldGenerator::initGenerator() {
 		const string log = this->compileSource("STPMultiHeightGenerator", multiheightfield_source, multiheightfield_info);
 		std::cout << log << std::endl;
 	}
-	catch (const string& error) {
-		std::cerr << error << std::endl;
+	catch (const std::runtime_error& error) {
+		std::cerr << error.what() << std::endl;
 		exit(-1);
 	}
 	//link
@@ -142,7 +164,41 @@ void STPBiomefieldGenerator::initGenerator() {
 	STPcudaCheckErr(cuMemFreeHost(biomeTable_buffer));
 }
 
+//Memory Pool
+#include <Utility/STPMemoryPool.h>
+
 using namespace SuperTerrainPlus::STPCompute;
+
+//As a reminder, this is thread-safe
+static SuperTerrainPlus::STPRegularMemoryPool CallbackDataPool;
+
+struct STPBiomefieldGenerator::STPBufferReleaseData {
+public:
+
+	//The pool that the buffer will be returned to
+	STPBiomefieldGenerator::STPHistogramBufferPool* Pool;
+	//The buffer to be returned
+	STPSingleHistogramFilter::STPHistogramBuffer_t Buffer;
+	//The pool lock
+	mutex* Lock;
+
+};
+
+void STPBiomefieldGenerator::returnBuffer(void* buffer_data) {
+	STPBufferReleaseData* data = reinterpret_cast<STPBufferReleaseData*>(buffer_data);
+
+	//return buffer to the buffer pool safely
+	{
+		unique_lock<mutex> buffer_lock(*data->Lock);
+		data->Pool->emplace(move(data->Buffer));
+	}
+
+	if constexpr (!std::is_trivially_destructible_v<STPBufferReleaseData>) {
+		data->~STPBufferReleaseData();
+	}
+	//free the data
+	CallbackDataPool.release(buffer_data);
+}
 	
 void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap_buffer, const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor& biomemap_adaptor, float2 offset, cudaStream_t stream) const {
 	int Mingridsize, blocksize;
@@ -156,16 +212,62 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 
 	//retrieve raw texture
 	float* heightmap = heightmap_buffer(STPFreeSlipLocation::DeviceMemory);
-	STPFreeSlipSampleManager biomemap_manager = biomemap_adaptor(STPFreeSlipLocation::DeviceMemory);
-	//TODO: this is temporary
-	const Sample* biomemap = biomemap_manager.getTexture();
+	//we only need host memory on biome map
+	STPFreeSlipSampleManager biomemap_manager = biomemap_adaptor(STPFreeSlipLocation::HostMemory);
+
+	//TODO: disabled temporarily
+	////histogram filter
+	//STPSingleHistogramFilter::STPHistogramBuffer_t histogram_buffer;
+	//{
+	//	unique_lock<mutex> buffer_lock(this->BufferPoolLock);
+	//	//try to grab a buffer
+	//	if (this->BufferPool.empty()) {
+	//		//no more buffer avilable? create a new one
+	//		histogram_buffer = move(STPSingleHistogramFilter::createHistogramBuffer());
+	//	}
+	//	else {
+	//		//otherwise grab an exisiting one
+	//		histogram_buffer = move(this->BufferPool.front());
+	//		this->BufferPool.pop();
+	//	}
+	//}
+	////start execution
+	////host to host memory copy is always synchornous, so the host memory should be available now
+	//STPSingleHistogram histogram_h;
+	//{
+	//	unique_lock<mutex> filter_lock(this->HistogramFilterLock);
+	//	histogram_h = this->biome_histogram(biomemap_manager, histogram_buffer, 32u);
+	//	printf("+1\n");
+	//}
+	////copy histogram to device
+	//STPSingleHistogram histogram_d;
+	////calculate the size of allocation
+	//const uint2& biome_dimension = biomemap_manager.Data->Dimension;
+	//const unsigned int num_pixel_biomemap = biome_dimension.x * biome_dimension.y;
+	//const size_t bin_size = histogram_h.HistogramStartOffset[num_pixel_biomemap] * sizeof(STPSingleHistogram::STPBin),
+	//	offset_size = (num_pixel_biomemap + 1u) * sizeof(unsigned int);
+	////the number of bin is the last element in the offset array
+	//STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_d.Bin, bin_size, this->HistogramCacheDevice, stream));
+	//STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_d.HistogramStartOffset, offset_size, this->HistogramCacheDevice, stream));
+	////and copy
+	//STPcudaCheckErr(cudaMemcpyAsync(histogram_d.Bin, histogram_h.Bin, bin_size, cudaMemcpyHostToDevice, stream));
+	//STPcudaCheckErr(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset, offset_size, cudaMemcpyHostToDevice, stream));
+
+	////returning the buffer requires a stream callback
+	//STPBufferReleaseData* release_data = reinterpret_cast<STPBufferReleaseData*>(CallbackDataPool.request(sizeof(STPBufferReleaseData)));
+	////needs to clear the memory since the struct contains object that needs to be zero-init
+	//memset(release_data, 0x00, sizeof(STPBufferReleaseData));
+	//release_data->Buffer = move(histogram_buffer);
+	//release_data->Lock = &this->BufferPoolLock;
+	//release_data->Pool = &this->BufferPool;
+	//STPcudaCheckErr(cuLaunchHostFunc(stream, &STPBiomefieldGenerator::returnBuffer, release_data));
 
 	//launch kernel
-	size_t bufferSize = 24ull;
-	unsigned char buffer[24];
+	size_t bufferSize = 32ull;
+	unsigned char buffer[32];
 	memcpy(buffer, &heightmap, sizeof(heightmap));
-	memcpy(buffer + 8, &biomemap, sizeof(biomemap));
-	memcpy(buffer + 16, &offset, sizeof(offset));
+	//memcpy(buffer + 8, &histogram_d, sizeof(STPSingleHistogram));
+	memcpy(buffer + 24, &offset, sizeof(offset));
 
 	void* config[] = {
 		CU_LAUNCH_PARAM_BUFFER_POINTER, buffer,
@@ -177,4 +279,11 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 		Dimblocksize.x, Dimblocksize.y, Dimblocksize.z,
 		0u, stream, nullptr, config));
 	STPcudaCheckErr(cudaGetLastError());
+
+	//TODO: disabled temporarily
+	////free histogram device memory
+	////STPBin is a POD-type so can be freed with no problem
+	////histogram_d will be recycled after, the pointer will reside in the stream
+	//STPcudaCheckErr(cudaFreeAsync(histogram_d.Bin, stream));
+	//STPcudaCheckErr(cudaFreeAsync(histogram_d.HistogramStartOffset, stream));
 }

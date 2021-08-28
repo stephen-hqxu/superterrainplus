@@ -2,12 +2,18 @@
 #ifndef _STP_FREESLIP_MANAGER_CUH_
 #define _STP_FREESLIP_MANAGER_CUH_
 
-#include <STPCoreDefine.h>
 //CUDA
 #include <cuda_runtime.h>
 //Generator
 #include <World/Diversity/STPBiomeDefine.h>
 #include "STPFreeSlipData.hpp"
+
+//Use device code only in .cu files and host code only in .cpp to avoid nvcc generating unnecessary host on device applications
+#ifdef __CUDACC__
+#define MANAGER_HOST_DEVICE_SWITCH __device__
+#else
+#define MANAGER_HOST_DEVICE_SWITCH __host__
+#endif//__CUDACC__
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -26,7 +32,7 @@ namespace SuperTerrainPlus {
 		 * @tparam T The data type of the texture
 		*/
 		template<typename T>
-		class STP_API STPFreeSlipManager {
+		class STPFreeSlipManager {
 		private:
 			
 			friend class STPFreeSlipGenerator;
@@ -57,24 +63,21 @@ namespace SuperTerrainPlus {
 			 * @param global Global index
 			 * @return The pointer to the map pointed by the global index
 			*/
-			__device__ __host__ T& operator[](unsigned int);
+			MANAGER_HOST_DEVICE_SWITCH T& operator[](unsigned int);
 
 			/**
 			 * @brief Convert global index to local index and return the const reference value
 			 * @param global Global index
 			 * @return Constant reference to the map pointed by the global index
 			*/
-			__device__ __host__ const T& operator[](unsigned int) const;
+			MANAGER_HOST_DEVICE_SWITCH const T& operator[](unsigned int) const;
 
 			/**
 			 * @brief Convert global index to local index
 			 * @param global Global index
 			 * @return Local index
 			*/
-			__device__ __host__ unsigned int operator()(unsigned int) const;
-
-			//TODO: temporary for fast testing
-			__host__ T* getTexture();
+			MANAGER_HOST_DEVICE_SWITCH unsigned int operator()(unsigned int) const;
 
 		};
 
@@ -84,4 +87,6 @@ namespace SuperTerrainPlus {
 
 	}
 }
+//We need to inline definitions, not because of template, but device function cannot be exported as shared library
+#include "STPFreeSlipManager.inl"
 #endif//_STP_FREESLIP_MANAGER_CUH_
