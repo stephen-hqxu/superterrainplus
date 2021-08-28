@@ -215,59 +215,59 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	//we only need host memory on biome map
 	STPFreeSlipSampleManager biomemap_manager = biomemap_adaptor(STPFreeSlipLocation::HostMemory);
 
-	//TODO: disabled temporarily
-	////histogram filter
-	//STPSingleHistogramFilter::STPHistogramBuffer_t histogram_buffer;
-	//{
-	//	unique_lock<mutex> buffer_lock(this->BufferPoolLock);
-	//	//try to grab a buffer
-	//	if (this->BufferPool.empty()) {
-	//		//no more buffer avilable? create a new one
-	//		histogram_buffer = move(STPSingleHistogramFilter::createHistogramBuffer());
-	//	}
-	//	else {
-	//		//otherwise grab an exisiting one
-	//		histogram_buffer = move(this->BufferPool.front());
-	//		this->BufferPool.pop();
-	//	}
-	//}
-	////start execution
-	////host to host memory copy is always synchornous, so the host memory should be available now
-	//STPSingleHistogram histogram_h;
-	//{
-	//	unique_lock<mutex> filter_lock(this->HistogramFilterLock);
-	//	histogram_h = this->biome_histogram(biomemap_manager, histogram_buffer, 32u);
-	//	printf("+1\n");
-	//}
-	////copy histogram to device
-	//STPSingleHistogram histogram_d;
-	////calculate the size of allocation
-	//const uint2& biome_dimension = biomemap_manager.Data->Dimension;
-	//const unsigned int num_pixel_biomemap = biome_dimension.x * biome_dimension.y;
-	//const size_t bin_size = histogram_h.HistogramStartOffset[num_pixel_biomemap] * sizeof(STPSingleHistogram::STPBin),
-	//	offset_size = (num_pixel_biomemap + 1u) * sizeof(unsigned int);
-	////the number of bin is the last element in the offset array
-	//STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_d.Bin, bin_size, this->HistogramCacheDevice, stream));
-	//STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_d.HistogramStartOffset, offset_size, this->HistogramCacheDevice, stream));
-	////and copy
-	//STPcudaCheckErr(cudaMemcpyAsync(histogram_d.Bin, histogram_h.Bin, bin_size, cudaMemcpyHostToDevice, stream));
-	//STPcudaCheckErr(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset, offset_size, cudaMemcpyHostToDevice, stream));
+	//histogram filter
+	STPSingleHistogramFilter::STPHistogramBuffer_t histogram_buffer;
+	{
+		unique_lock<mutex> buffer_lock(this->BufferPoolLock);
+		//try to grab a buffer
+		if (this->BufferPool.empty()) {
+			//no more buffer avilable? create a new one
+			histogram_buffer = move(STPSingleHistogramFilter::createHistogramBuffer());
+		}
+		else {
+			//otherwise grab an exisiting one
+			histogram_buffer = move(this->BufferPool.front());
+			this->BufferPool.pop();
+		}
+	}
+	//start execution
+	//host to host memory copy is always synchornous, so the host memory should be available now
+	STPSingleHistogram histogram_h;
+	{
+		unique_lock<mutex> filter_lock(this->HistogramFilterLock);
+		histogram_h = this->biome_histogram(biomemap_manager, histogram_buffer, 32u);
+	}
+	//copy histogram to device
+	STPSingleHistogram histogram_d, *histogram_t;
+	//calculate the size of allocation
+	const uint2& biome_dimension = biomemap_manager.Data->Dimension;
+	const unsigned int num_pixel_biomemap = biome_dimension.x * biome_dimension.y;
+	const size_t bin_size = histogram_h.HistogramStartOffset[num_pixel_biomemap] * sizeof(STPSingleHistogram::STPBin),
+		offset_size = (num_pixel_biomemap + 1u) * sizeof(unsigned int);
+	//the number of bin is the last element in the offset array
+	STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_d.Bin, bin_size, this->HistogramCacheDevice, stream));
+	STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_d.HistogramStartOffset, offset_size, this->HistogramCacheDevice, stream));
+	STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_t, sizeof(STPSingleHistogram), this->HistogramCacheDevice, stream));
+	//and copy
+	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.Bin, histogram_h.Bin, bin_size, cudaMemcpyHostToDevice, stream));
+	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset, offset_size, cudaMemcpyHostToDevice, stream));
+	STPcudaCheckErr(cudaMemcpyAsync(histogram_t, &histogram_d, sizeof(histogram_d), cudaMemcpyHostToDevice, stream));
 
-	////returning the buffer requires a stream callback
-	//STPBufferReleaseData* release_data = reinterpret_cast<STPBufferReleaseData*>(CallbackDataPool.request(sizeof(STPBufferReleaseData)));
-	////needs to clear the memory since the struct contains object that needs to be zero-init
-	//memset(release_data, 0x00, sizeof(STPBufferReleaseData));
-	//release_data->Buffer = move(histogram_buffer);
-	//release_data->Lock = &this->BufferPoolLock;
-	//release_data->Pool = &this->BufferPool;
-	//STPcudaCheckErr(cuLaunchHostFunc(stream, &STPBiomefieldGenerator::returnBuffer, release_data));
+	//returning the buffer requires a stream callback
+	STPBufferReleaseData* release_data = reinterpret_cast<STPBufferReleaseData*>(CallbackDataPool.request(sizeof(STPBufferReleaseData)));
+	//needs to clear the memory since the struct contains object that needs to be zero-init
+	memset(release_data, 0x00, sizeof(STPBufferReleaseData));
+	release_data->Buffer = move(histogram_buffer);
+	release_data->Lock = &this->BufferPoolLock;
+	release_data->Pool = &this->BufferPool;
+	STPcudaCheckErr(cuLaunchHostFunc(stream, &STPBiomefieldGenerator::returnBuffer, release_data));
 
 	//launch kernel
-	size_t bufferSize = 32ull;
-	unsigned char buffer[32];
+	size_t bufferSize = 24ull;
+	unsigned char buffer[24];
 	memcpy(buffer, &heightmap, sizeof(heightmap));
-	//memcpy(buffer + 8, &histogram_d, sizeof(STPSingleHistogram));
-	memcpy(buffer + 24, &offset, sizeof(offset));
+	memcpy(buffer + 8, &histogram_t, sizeof(histogram_t));
+	memcpy(buffer + 16, &offset, sizeof(offset));
 
 	void* config[] = {
 		CU_LAUNCH_PARAM_BUFFER_POINTER, buffer,
@@ -280,10 +280,10 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 		0u, stream, nullptr, config));
 	STPcudaCheckErr(cudaGetLastError());
 
-	//TODO: disabled temporarily
-	////free histogram device memory
-	////STPBin is a POD-type so can be freed with no problem
-	////histogram_d will be recycled after, the pointer will reside in the stream
-	//STPcudaCheckErr(cudaFreeAsync(histogram_d.Bin, stream));
-	//STPcudaCheckErr(cudaFreeAsync(histogram_d.HistogramStartOffset, stream));
+	//free histogram device memory
+	//STPBin is a POD-type so can be freed with no problem
+	//histogram_d will be recycled after, the pointer will reside in the stream
+	STPcudaCheckErr(cudaFreeAsync(histogram_d.Bin, stream));
+	STPcudaCheckErr(cudaFreeAsync(histogram_d.HistogramStartOffset, stream));
+	STPcudaCheckErr(cudaFreeAsync(histogram_t, stream));
 }

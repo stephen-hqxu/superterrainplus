@@ -6,8 +6,6 @@
 //CUDA
 #include <cuda.h>
 
-//Container
-#include <vector>
 //Util
 #include <limits>
 #include <numeric>
@@ -17,6 +15,7 @@
 #include <type_traits>
 
 #include <stdexcept>
+#include <cstring>
 
 #include <glm/common.hpp>
 
@@ -26,7 +25,7 @@ using SuperTerrainPlus::STPDiversity::Sample;
 using glm::vec2;
 using glm::uvec2;
 
-using std::vector;
+using std::unique_ptr;
 using std::make_unique;
 using std::pair;
 using std::make_pair;
@@ -71,6 +70,262 @@ public:
 
 };
 
+/* Custom data structure */
+
+/**
+ * @brief A simple implementation of std::vector.
+ * After some profiling a custom data structure works better than the stl one due to its simplicity.
+ * @tparam T The data type of the array list
+*/
+template<class T>
+class STPArrayList {
+public:
+
+	//The iterator for the array list
+	using STPArrayList_it = typename T*;
+	//The const interator for the array list
+	using STPArrayList_cit = typename const T*;
+
+private:
+
+	static_assert(std::is_trivial_v<T>, "type must be a trivial type");
+	static_assert(std::is_trivially_destructible_v<T>, "type must be trivially destructable");
+
+	//The data held by the array list, also denotes the beginning of the array
+	unique_ptr<T[]> Begin;
+	//The pointer to the end of the array.
+	STPArrayList_it End;
+	//The pointer to the end of the internal storage array
+	STPArrayList_it Last;
+
+	/**
+	 * @brief Expand the internal storage capacity
+	 * @param new_capacity The new capacity
+	*/
+	void expand(size_t new_capacity) {
+		//clamp the capacity, because a newly created array list might have zero capacity.
+		new_capacity = std::max(1ull, new_capacity);
+		//the current size of the user array
+		const size_t current_size = this->size();
+		//allocate a cache
+		unique_ptr<T[]> cache = make_unique<T[]>(new_capacity);
+
+		//copy will handle the case when begin == end
+		std::copy(this->cbegin(), this->cend(), cache.get());
+		
+		//reassign data
+		this->Begin = move(cache);
+		this->End = this->begin() + current_size;
+		this->Last = this->begin() + new_capacity;
+	}
+
+	/**
+	 * @brief Check if reallocation is needed for insert_back_n function
+	 * @param count The number of new elements are going to be inserted
+	*/
+	inline void insert_back_realloc_check(size_t count) {
+		if (this->cend() + count >= this->Last) {
+			//not enough room, reallocation
+			this->expand((this->size() + count) * 2ull);
+		}
+	}
+
+public:
+
+	STPArrayList() noexcept : End(nullptr), Last(nullptr) {
+
+	}
+
+	STPArrayList(const STPArrayList&) = delete;
+
+	STPArrayList(STPArrayList&&) = delete;
+
+	STPArrayList& operator=(const STPArrayList&) = delete;
+
+	STPArrayList& operator=(STPArrayList&&) = delete;
+
+	~STPArrayList() = default;
+
+	/**
+	 * @brief Construct element in-place and put the newly constucted element at the end of the array list
+	 * @tparam ...Arg Argument list
+	 * @param ...arg All arguments to be used to construct the element
+	 * @return The reference to the new element
+	*/
+	template<class... Arg>
+	T& emplace_back(Arg&&... arg) {
+		//check if we have free capacity
+		if (this->End == this->Last) {
+			//no more free room, expand, capacity is clampped in the function
+			this->expand(this->capacity() * 2ull);
+		}
+
+		T& item = *this->end();
+		//this is actually pretty dangerous.
+		//if the type has non-trivial destructor and it will be called on the garbage data at the end iteraor, which results in undefined behaviour.
+		//but it's fine since we are dealing with trivial type only
+		item = T(std::forward<Arg>(arg)...);
+		
+		//finally push the end by 1
+		this->End++;
+		return item;
+	}
+
+	/**
+	 * @brief Insert count many elements at the end without initialisation
+	 * @param count The number of element to be inserted
+	*/
+	void insert_back_n(size_t count) {
+		this->insert_back_realloc_check(count);
+
+		//simply move the end iterator ahead
+		this->End += count;
+	}
+
+	/**
+	 * @brief Insert count many elements at the end with initialisation
+	 * @param count The number of element to be inserted
+	 * @param value The value to be filled for every new element
+	*/
+	void insert_back_n(size_t count, const T& value) {
+		this->insert_back_realloc_check(count);
+
+		//init
+		std::fill(this->end(), this->end() + count, value);
+
+		this->End += count;
+	}
+
+	/**
+	 * @brief Erase the item pointed by the iterator
+	 * @param it The item to be erased
+	 * @return The iterator to the item following the iterator provided
+	*/
+	STPArrayList_it erase(STPArrayList_it it) {
+		//we don't need to call the destructor since T is always trivially destructable
+
+		if (it < this->cend() - 1ull) {
+			//it's not the last element, we need to move the memory forward
+			STPArrayList_it move_start = it + 1ull;
+			memmove(it, move_start, (this->cend() - move_start) * sizeof(T));
+		}
+		
+		//correct the internal iterator
+		this->End--;
+		return it;
+	}
+
+	/**
+	 * @brief Resize the array, either allocating more space or shrink it.
+	 * Since T is trivial, no initialisation will be done to save time.
+	 * @param new_size The new size for the array
+	*/
+	void resize(size_t new_size) {
+		const size_t current_size = this->size();
+
+		if (new_size == current_size) {
+			//nothing needs to be done
+			return;
+		}
+		if (new_size < current_size) {
+			//simply move the end iterator by that many number
+			this->End = this->begin() + new_size;
+			return;
+		}
+		if (new_size > current_size) {
+			//tricky, either just move the iterator ahead, or reallocation
+			this->insert_back_n(new_size - current_size);
+		}
+	}
+
+	/**
+	 * @brief Get the reference to the element in the index
+	 * @param index The index of the element to be retrieved
+	 * @return The reference.
+	 * If index is out-of-bound, return value is undefined.
+	*/
+	inline T& operator[](size_t index) {
+		return this->Begin[index];
+	}
+
+	/**
+	 * @brief Clear the internal storage of the array list.
+	 * Clear takes constant time as the array list only deals with trivial type
+	*/
+	inline void clear() {
+		//since the array list only holds trivially destructable type, we can simply move the pointer
+		this->End = this->begin();
+	}
+
+	/**
+	 * @brief Check if the array list is empty.
+	 * @return True if the array list is empty.
+	 * True denotes size equals zero
+	*/
+	inline bool empty() const {
+		return this->size() == 0ull;
+	}
+
+	/**
+	 * @brief Retrieve the number of element stored in the array list
+	 * @return The number of element
+	*/
+	inline size_t size() const {
+		return this->End - this->Begin.get();
+	}
+
+	/**
+	 * @brief Get the number of element can be held by the internal storage
+	 * @return The capacity
+	*/
+	inline size_t capacity() const {
+		return this->Last - this->Begin.get();
+	}
+
+	/**
+	 * @brief Get the constant iterator to the beginning of the array list
+	 * @return The const iterator to the beginning of the array list
+	*/
+	inline STPArrayList_cit cbegin() const {
+		return this->Begin.get();
+	}
+
+	/**
+	 * @brief Get the constant iterator to the end of the array list
+	 * @return The const iterator to the end of the array list
+	*/
+	inline STPArrayList_cit cend() const {
+		return this->End;
+	}
+
+	/**
+	 * @brief Get the iterator to the beginning of the array list
+	 * @return The iterator to the beginning of the array list
+	*/
+	inline STPArrayList_it begin() {
+		return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T>*>(this)->cbegin());
+	}
+
+	/**
+	 * @brief Get the iterator to the end of the array list
+	 * @return The iterator to the end of the array list.
+	 * Note that dereferencing this iterator will result in undefined behaviour.
+	*/
+	inline STPArrayList_it end() {
+		return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T>*>(this)->cend());
+	}
+
+	/**
+	 * @brief Get the pointer to the first element in the array list.
+	 * @return The pointer to the first element.
+	 * If array list is empty, return nullptr
+	*/
+	inline T* data() {
+		return this->begin();
+	}
+
+};
+
 /* Private object implementations */
 
 template<bool Pinned>
@@ -96,9 +351,9 @@ public:
 	~STPHistogramBuffer() = default;
 
 	//All flatten bins in all histograms
-	vector<STPSingleHistogram::STPBin> Bin;
+	STPArrayList<STPSingleHistogram::STPBin> Bin;
 	//Get the bin starting index for a pixel in the flatten bin array
-	vector<unsigned int> HistogramStartOffset;
+	STPArrayList<unsigned int> HistogramStartOffset;
 
 	/**
 	 * @brief Clear containers in histogram buffer.
@@ -131,7 +386,7 @@ private:
 		const int diff = static_cast<int>(this->Dictionary.size() - sample);
 		if (diff <= 0) {
 			//if not we need to insert that many extra entries so we can use sample to index the dictionary directly
-			this->Dictionary.insert(this->Dictionary.end(), (-diff) + 1, NO_ENTRY);
+			this->Dictionary.insert_back_n(static_cast<size_t>((-diff) + 1u), NO_ENTRY);
 		}
 
 		//get the biome using the index from dictionary
@@ -163,12 +418,12 @@ public:
 	~STPAccumulator() = default;
 
 	//Use Sample as index, find the index in Bin for this sample
-	vector<unsigned int> Dictionary;
+	STPArrayList<unsigned int> Dictionary;
 	//Store the number of element
-	vector<STPSingleHistogram::STPBin> Bin;
+	STPArrayList<STPSingleHistogram::STPBin> Bin;
 
 	//Array of bins in accumulator
-	typedef vector<STPSingleHistogram::STPBin>::const_iterator STPBinIterator;
+	typedef STPArrayList<STPSingleHistogram::STPBin>::STPArrayList_cit STPBinIterator;
 	typedef pair<STPBinIterator, STPBinIterator> STPBinArray;
 
 	/**
@@ -251,6 +506,10 @@ void STPSingleHistogramFilter::copy_to_buffer(STPDefaultHistogramBuffer& target,
 	auto [acc_beg, acc_end] = acc();
 	target.HistogramStartOffset.emplace_back(static_cast<unsigned int>(target.Bin.size()));
 
+	//instead of using the slow back_inserter, we can resize the array first
+	const size_t bin_size = acc_end - acc_beg;
+	target.Bin.resize(target.Bin.size() + bin_size);
+	auto target_dest_begin = target.Bin.end() - bin_size;
 	//copy bin
 	if (normalise) {
 		//sum everything in the accumulator
@@ -258,7 +517,7 @@ void STPSingleHistogramFilter::copy_to_buffer(STPDefaultHistogramBuffer& target,
 		std::transform(
 			acc_beg,
 			acc_end,
-			std::back_inserter(target.Bin),
+			target_dest_begin,
 			[sum](STPSingleHistogram::STPBin bin) {
 				//we need to make a copy
 				bin.Data.Weight = 1.0f * bin.Data.Quantity / sum;
@@ -268,7 +527,7 @@ void STPSingleHistogramFilter::copy_to_buffer(STPDefaultHistogramBuffer& target,
 	}
 	else {
 		//just copy the data
-		std::copy(acc_beg, acc_end, std::back_inserter(target.Bin));
+		std::copy(acc_beg, acc_end, target_dest_begin);
 	}
 }
 
@@ -317,7 +576,7 @@ void STPSingleHistogramFilter::filter_vertical(const STPFreeSlipSampleManager& s
 void STPSingleHistogramFilter::copy_to_output(STPPinnedHistogramBuffer* buffer, unsigned char threadID, uvec2 output_base) {
 	STPDefaultHistogramBuffer& target = this->Cache[threadID];
 	auto offset_base_it = buffer->HistogramStartOffset.begin() + output_base.y;
-	//caller should guarantee the output container has been allocated that many elements, we are not doing back_inserter here
+	//caller should guarantee the output container has been allocated that many elements, we don't need to allocate memory here
 
 	//copy histogram offset
 	if (threadID != 0u) {

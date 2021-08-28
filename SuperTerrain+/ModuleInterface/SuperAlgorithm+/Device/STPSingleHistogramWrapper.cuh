@@ -98,7 +98,7 @@ namespace SuperTerrainPlus {
 			 * Weight will always be in the range (0.0f, 1.0f]
 			*/
 			template<class Func>
-			__device__ __inline__ void operator()(unsigned int, Func) const;
+			__device__ __inline__ void operator()(unsigned int, Func&&) const;
 
 		};
 

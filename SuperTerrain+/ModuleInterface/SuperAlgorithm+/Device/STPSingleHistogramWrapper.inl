@@ -5,7 +5,7 @@
 
 template<typename I>
 template<class Func>
-__device__ __inline__ void SuperTerrainPlus::STPCompute::STPSingleHistogramWrapper<I>::operator()(unsigned int pixel_index, Func function) const {
+__device__ __inline__ void SuperTerrainPlus::STPCompute::STPSingleHistogramWrapper<I>::operator()(unsigned int pixel_index, Func&& function) const {
 	//get the bin index range for the current histogram
 	const unsigned int begin = (*this)[pixel_index],
 		end = (*this)[pixel_index + 1];
@@ -15,7 +15,7 @@ __device__ __inline__ void SuperTerrainPlus::STPCompute::STPSingleHistogramWrapp
 		//get the pointer to the current bin
 		STPSingleHistogramBin_ct bin = this->getBin(bin_index);
 		//call user defined function
-		function(this->getItem(bin), this->getWeight(bin));
+		std::forward<Func>(function)(this->getItem(bin), this->getWeight(bin));
 	}
 }
 
