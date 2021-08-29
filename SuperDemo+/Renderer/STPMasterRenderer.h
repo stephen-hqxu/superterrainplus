@@ -212,7 +212,7 @@ namespace STPDemo {
 			//setting world manager
 			this->world_manager.attachSetting(&config);
 			this->world_manager.attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
-			this->world_manager.attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(simplex, chunk_setting.MapSize);
+			this->world_manager.attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(simplex, chunk_setting.MapSize, static_cast<unsigned int>(std::stoul(this->biomeSettings("interpolationRadius"))));
 			this->world_manager.linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 			if (!this->world_manager) {
 				//do not proceed if it fails

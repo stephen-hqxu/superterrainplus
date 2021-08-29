@@ -20,6 +20,7 @@ endif()
 configure_file(${STP_TEMPLATE_DIR}/STPCoreDefine.h.in ${STP_CORE_DEFINE_INCLUDE}/STPCoreDefine.h @ONLY)
 # config file for algorithm engine
 # tell the static library location so CUDA runtime compiler can find it easily (if developer wants to)
+set(SuperTerrain+CoreInclude ${STP_CORE_INCLUDE})
 set(SuperAlgorithm+DeviceInclude ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/Device)
 # algorithm device info contains path to the static library, we need to output that based on configuration
 configure_file(${STP_TEMPLATE_DIR}/STPAlgorithmDeviceInfo.h.in ${STP_ALGORITHM_DEFINE_INCLUDE}/STPAlgorithmDeviceInfoRaw.h @ONLY)

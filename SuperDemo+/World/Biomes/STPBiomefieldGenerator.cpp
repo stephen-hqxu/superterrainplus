@@ -24,11 +24,10 @@ using std::to_string;
 constexpr static char GeneratorFilename[] = "./STPMultiHeightGenerator.rtc";
 constexpr static char BiomePropertyFilename[] = "./STPBiomeProperty.hpp";
 const static string device_include = "-I " + string(SuperTerrainPlus::SuperAlgorithmPlus_DeviceInclude),
-	stppermutation_size = "-DPERMUTATION_SIZE=" + to_string(sizeof(SuperTerrainPlus::STPCompute::STPPermutation)),
-	stpsinglehistogram_size = "-DSINGLEHISTOGRAM_SIZE=" + to_string(sizeof(SuperTerrainPlus::STPCompute::STPSingleHistogram));
+	core_include = "-I " + string(SuperTerrainPlus::SuperTerrainPlus_CoreInclude);
 
-STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_setting, uvec2 dimension)
-	: STPDiversityGeneratorRTC(), Noise_Setting(simplex_setting), MapSize(make_uint2(dimension.x, dimension.y)), Simplex_Permutation(this->Noise_Setting) {
+STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_setting, uvec2 dimension, unsigned int interpolation_radius)
+	: STPDiversityGeneratorRTC(), Noise_Setting(simplex_setting), MapSize(make_uint2(dimension.x, dimension.y)), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
 	STPcudaCheckErr(cuCtxGetCurrent(&this->cudaCtx));
 	//init our device generator
 	//our heightfield setting only available in OCEAN biome for now
@@ -79,9 +78,8 @@ void STPBiomefieldGenerator::initGenerator() {
 		["-lineinfo"]
 #endif
 		["-maxrregcount=80"]
-		[stppermutation_size.c_str()]
-		[stpsinglehistogram_size.c_str()]
 		//include path
+		[core_include.c_str()]
 		[device_include.c_str()];
 	multiheightfield_info.ExternalHeader
 		["STPBiomeProperty"];
@@ -235,10 +233,10 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	STPSingleHistogram histogram_h;
 	{
 		unique_lock<mutex> filter_lock(this->HistogramFilterLock);
-		histogram_h = this->biome_histogram(biomemap_manager, histogram_buffer, 32u);
+		histogram_h = this->biome_histogram(biomemap_manager, histogram_buffer, this->InterpolationRadius);
 	}
 	//copy histogram to device
-	STPSingleHistogram histogram_d, *histogram_t;
+	STPSingleHistogram histogram_d;
 	//calculate the size of allocation
 	const uint2& biome_dimension = biomemap_manager.Data->Dimension;
 	const unsigned int num_pixel_biomemap = biome_dimension.x * biome_dimension.y;
@@ -247,11 +245,9 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	//the number of bin is the last element in the offset array
 	STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_d.Bin, bin_size, this->HistogramCacheDevice, stream));
 	STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_d.HistogramStartOffset, offset_size, this->HistogramCacheDevice, stream));
-	STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_t, sizeof(STPSingleHistogram), this->HistogramCacheDevice, stream));
 	//and copy
 	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.Bin, histogram_h.Bin, bin_size, cudaMemcpyHostToDevice, stream));
 	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset, offset_size, cudaMemcpyHostToDevice, stream));
-	STPcudaCheckErr(cudaMemcpyAsync(histogram_t, &histogram_d, sizeof(histogram_d), cudaMemcpyHostToDevice, stream));
 
 	//returning the buffer requires a stream callback
 	STPBufferReleaseData* release_data = reinterpret_cast<STPBufferReleaseData*>(CallbackDataPool.request(sizeof(STPBufferReleaseData)));
@@ -263,11 +259,11 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	STPcudaCheckErr(cuLaunchHostFunc(stream, &STPBiomefieldGenerator::returnBuffer, release_data));
 
 	//launch kernel
-	size_t bufferSize = 24ull;
-	unsigned char buffer[24];
+	size_t bufferSize = 32ull;
+	unsigned char buffer[32];
 	memcpy(buffer, &heightmap, sizeof(heightmap));
-	memcpy(buffer + 8, &histogram_t, sizeof(histogram_t));
-	memcpy(buffer + 16, &offset, sizeof(offset));
+	memcpy(buffer + 8, &histogram_d, sizeof(STPSingleHistogram));
+	memcpy(buffer + 24, &offset, sizeof(offset));
 
 	void* config[] = {
 		CU_LAUNCH_PARAM_BUFFER_POINTER, buffer,
@@ -285,5 +281,4 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	//histogram_d will be recycled after, the pointer will reside in the stream
 	STPcudaCheckErr(cudaFreeAsync(histogram_d.Bin, stream));
 	STPcudaCheckErr(cudaFreeAsync(histogram_d.HistogramStartOffset, stream));
-	STPcudaCheckErr(cudaFreeAsync(histogram_t, stream));
 }

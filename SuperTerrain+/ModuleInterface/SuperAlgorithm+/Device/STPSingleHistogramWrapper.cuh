@@ -10,6 +10,9 @@
 #include <cuda_runtime.h>
 #endif//__CUDACC_RTC__
 
+//Histogram
+#include "../STPSingleHistogram.hpp"
+
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
  * including perlin noise generated height map, hydrology processing and marching cube algorithm.
@@ -24,19 +27,14 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPSingleHistogramWrapper is a high-level wrapper class over data structure STPSingleHistogram, 
 		 * it provides easier data access to histogram for every pixel.
-		 * @tparam I The type of the bin item in the histogram. Currently only STPDiversity::Sample is supported
 		*/
-		template<typename I>
 		class STPSingleHistogramWrapper {
-		public:
-
-			typedef struct STPSingleHistogram* STPSingleHistogram_t;
-
 		private:
 
-			typedef const void* STPSingleHistogramBin_ct;
+			//Constant reference to STPBin
+			typedef const STPSingleHistogram::STPBin& STPSingleHistogramBin_ct;
 
-			const STPSingleHistogram_t Histogram;
+			const STPSingleHistogram& Histogram;
 
 			/**
 			 * @brief Get the index to the STPBin, corresponds to the first STPBin for the histogram of this pixel index.
@@ -59,7 +57,7 @@ namespace SuperTerrainPlus {
 			 * @param bin The bin to be retrieved
 			 * @return The item
 			*/
-			__device__ I getItem(STPSingleHistogramBin_ct) const;
+			__device__ STPDiversity::Sample getItem(STPSingleHistogramBin_ct) const;
 
 			/**
 			 * @brief Get the weight of the item in this bin for the histogram this bin is in.
@@ -75,7 +73,7 @@ namespace SuperTerrainPlus {
 			 * @brief Init single histogram wrapper
 			 * @param histogram The histogram data to be operated on
 			*/
-			__device__ STPSingleHistogramWrapper(const STPSingleHistogram_t);
+			__device__ STPSingleHistogramWrapper(const STPSingleHistogram&);
 
 			__device__ STPSingleHistogramWrapper(const STPSingleHistogramWrapper&) = delete;
 

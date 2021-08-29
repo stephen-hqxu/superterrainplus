@@ -10,6 +10,9 @@
 #include <cuda_runtime.h>
 #endif//__CUDACC_RTC__
 
+//Permutation
+#include "../STPPermutation.hpp"
+
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
  * including perlin noise generated height map, hydrology processing and marching cube algorithm.
@@ -36,13 +39,9 @@ namespace SuperTerrainPlus {
 		 * - Simplex noise is easy to implement in hardware.
 		*/
 		class STPSimplexNoise {
-		public:
-
-			typedef struct STPPermutation* STPPermutation_t;
-
 		private:
 
-			const STPPermutation_t Permutation;
+			const STPPermutation& Permutation;
 
 			/**
 			 * @brief Return the randomly generated permutation element from the class generated table.
@@ -71,7 +70,7 @@ namespace SuperTerrainPlus {
 			 * @brief Init the simplex noise generator.
 			 * @param permutation Provide the permutation table for simplex noise.
 			*/
-			__device__  STPSimplexNoise(const STPPermutation_t);
+			__device__  STPSimplexNoise(const STPPermutation&);
 
 			__device__ STPSimplexNoise(const STPSimplexNoise&) = delete;
 

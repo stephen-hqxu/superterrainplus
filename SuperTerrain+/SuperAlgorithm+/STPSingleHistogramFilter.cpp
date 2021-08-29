@@ -4,7 +4,7 @@
 //Error
 #include <SuperError+/STPDeviceErrorHandler.h>
 //CUDA
-#include <cuda.h>
+#include <cuda_runtime.h>
 
 //Util
 #include <limits>
@@ -29,6 +29,8 @@ using std::unique_ptr;
 using std::make_unique;
 using std::pair;
 using std::make_pair;
+using std::allocator;
+using std::allocator_traits;
 
 /* Pinned memory allocator */
 
@@ -38,34 +40,15 @@ public:
 
 	typedef T value_type;
 
-	STPPinnedAllocator() noexcept = default;
-
-	//Allocator should be copiable
-	template<class U>
-	STPPinnedAllocator(const STPPinnedAllocator<U>&) {
-		//nothing to copy...
-	}
-
 	T* allocate(size_t size) const {
 		T* mem;
-		STPcudaCheckErr(cuMemAllocHost(reinterpret_cast<void**>(&mem), size));
+		//note that the allocator-provided size is the number of object, not byte
+		STPcudaCheckErr(cudaMallocHost(&mem, size * sizeof(T)));
 		return mem;
 	}
 
 	void deallocate(T* mem, size_t) const {
-		STPcudaCheckErr(cuMemFreeHost(mem));
-	}
-
-	//Allocators must be equal after the copy, meaning they should share the same memory pool
-	template<class U>
-	constexpr bool operator==(const STPPinnedAllocator<U>&) {
-		//we use CUDA API so memory will always comes from the OS
-		return true;
-	}
-
-	template<class U>
-	constexpr bool operator!=(const STPPinnedAllocator<U>&) {
-		return false;
+		STPcudaCheckErr(cudaFreeHost(mem));
 	}
 
 };
@@ -77,7 +60,7 @@ public:
  * After some profiling a custom data structure works better than the stl one due to its simplicity.
  * @tparam T The data type of the array list
 */
-template<class T>
+template<class T, class A = allocator<T>>
 class STPArrayList {
 public:
 
@@ -91,8 +74,16 @@ private:
 	static_assert(std::is_trivial_v<T>, "type must be a trivial type");
 	static_assert(std::is_trivially_destructible_v<T>, "type must be trivially destructable");
 
+	using RebindAlloc = typename allocator_traits<A>::template rebind_alloc<T>;
+	using AllocTr = allocator_traits<RebindAlloc>;
+
+	RebindAlloc arrayAllocator;
+
+	//Smart pointer that uses allocator to destroy
+	using unique_ptr_alloc = typename unique_ptr<T[], std::function<void(T*)>>;
+
 	//The data held by the array list, also denotes the beginning of the array
-	unique_ptr<T[]> Begin;
+	unique_ptr_alloc Begin;
 	//The pointer to the end of the array.
 	STPArrayList_it End;
 	//The pointer to the end of the internal storage array
@@ -103,12 +94,19 @@ private:
 	 * @param new_capacity The new capacity
 	*/
 	void expand(size_t new_capacity) {
+		using std::bind;
+		using namespace std::placeholders;
 		//clamp the capacity, because a newly created array list might have zero capacity.
 		new_capacity = std::max(1ull, new_capacity);
 		//the current size of the user array
 		const size_t current_size = this->size();
+
 		//allocate a cache
-		unique_ptr<T[]> cache = make_unique<T[]>(new_capacity);
+		auto deleter = [](T* ptr, RebindAlloc alloc, size_t size) -> void {
+			//ptr is trivially destructor so we don't need to call destroy
+			AllocTr::deallocate(alloc, ptr, size);
+		};
+		unique_ptr_alloc cache(AllocTr::allocate(this->arrayAllocator, new_capacity), bind(deleter, _1, this->arrayAllocator, new_capacity));
 
 		//copy will handle the case when begin == end
 		std::copy(this->cbegin(), this->cend(), cache.get());
@@ -207,6 +205,7 @@ public:
 		if (it < this->cend() - 1ull) {
 			//it's not the last element, we need to move the memory forward
 			STPArrayList_it move_start = it + 1ull;
+			//memmove will auto-manage the case when size == 0
 			memmove(it, move_start, (this->cend() - move_start) * sizeof(T));
 		}
 		
@@ -303,7 +302,7 @@ public:
 	 * @return The iterator to the beginning of the array list
 	*/
 	inline STPArrayList_it begin() {
-		return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T>*>(this)->cbegin());
+		return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T, A>*>(this)->cbegin());
 	}
 
 	/**
@@ -312,7 +311,7 @@ public:
 	 * Note that dereferencing this iterator will result in undefined behaviour.
 	*/
 	inline STPArrayList_it end() {
-		return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T>*>(this)->cend());
+		return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T, A>*>(this)->cend());
 	}
 
 	/**
@@ -334,7 +333,7 @@ private:
 
 	//Choose pinned allocator or default allocator
 	template<class T>
-	using StrategicAlloc = std::conditional_t<Pinned, typename std::allocator_traits<STPPinnedAllocator<T>>::template rebind_alloc<T>, std::allocator<T>>;
+	using StrategicAlloc = typename std::conditional_t<Pinned, STPPinnedAllocator<T>, std::allocator<T>>;
 
 public:
 
@@ -351,9 +350,9 @@ public:
 	~STPHistogramBuffer() = default;
 
 	//All flatten bins in all histograms
-	STPArrayList<STPSingleHistogram::STPBin> Bin;
+	STPArrayList<STPSingleHistogram::STPBin, StrategicAlloc<STPSingleHistogram::STPBin>> Bin;
 	//Get the bin starting index for a pixel in the flatten bin array
-	STPArrayList<unsigned int> HistogramStartOffset;
+	STPArrayList<unsigned int, StrategicAlloc<unsigned int>> HistogramStartOffset;
 
 	/**
 	 * @brief Clear containers in histogram buffer.

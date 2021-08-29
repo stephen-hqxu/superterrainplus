@@ -42,6 +42,8 @@ namespace STPDemo {
 		CUfunction GeneratorEntry;
 		CUmemoryPool HistogramCacheDevice;
 
+		const unsigned int InterpolationRadius;
+
 		//A queue of histogram buffer
 		typedef std::queue<STPSingleHistogramFilter::STPHistogramBuffer_t> STPHistogramBufferPool;
 		mutable STPHistogramBufferPool BufferPool;
@@ -64,8 +66,9 @@ namespace STPDemo {
 		 * @brief Init the demo biomefield generator
 		 * @param simplex_setting The settings for the simplex noise generator
 		 * @param dimension The size of the generated heightmap
+		 * @param interpolation_radius The radius for biome edge interpolation
 		*/
-		STPBiomefieldGenerator(SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&, glm::uvec2);
+		STPBiomefieldGenerator(SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&, glm::uvec2, unsigned int);
 
 		STPBiomefieldGenerator(const STPBiomefieldGenerator&) = delete;
 

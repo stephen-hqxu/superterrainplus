@@ -2,8 +2,6 @@
 #include <SuperAlgorithm+/Device/STPSimplexNoise.cuh>
 
 #include <cassert>
-//Permutation
-#include <SuperAlgorithm+/STPPermutation.hpp>
 
 using namespace SuperTerrainPlus::STPCompute;
 
@@ -37,7 +35,7 @@ constexpr static __constant__ double H2 = -1.0 + 2.0 * G2; // -1.0 + 2.0 * G2;
 */
 __device__ __forceinline__ double dot2D(double, double, double, double);
 
-__device__ STPSimplexNoise::STPSimplexNoise(const STPPermutation_t permutation) : Permutation(permutation) {
+__device__ STPSimplexNoise::STPSimplexNoise(const STPPermutation& permutation) : Permutation(permutation) {
 
 }
 
@@ -47,16 +45,16 @@ __device__ STPSimplexNoise::~STPSimplexNoise() {
 
 __device__ int STPSimplexNoise::perm(int index) const {
 	//device memory can be accessed in device directly
-	return static_cast<int>(this->Permutation->Permutation[index]);
+	return static_cast<int>(this->Permutation.Permutation[index]);
 }
 
 __device__ double STPSimplexNoise::grad2D(int index, int component) const {
 	//convert two int bits to one double bit
-	return this->Permutation->Gradient2D[index * 2 + component];
+	return this->Permutation.Gradient2D[index * 2 + component];
 }
 
 __device__ unsigned int STPSimplexNoise::grad2D_size() const {
-	return this->Permutation->Gradient2DSize;
+	return this->Permutation.Gradient2DSize;
 }
 
 __device__ float STPSimplexNoise::simplex2D(float x, float y) const {

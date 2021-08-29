@@ -8,7 +8,11 @@
  * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
 */
 namespace SuperTerrainPlus {
-
+	
+	/**
+	 * @brief
+	*/
+	constexpr static char SuperTerrainPlus_CoreInclude[] = "@SuperTerrain+CoreInclude@";
 	/**
 	 * @brief Denotes the SuperAlgorithm+ static library output path
 	*/
