@@ -4,20 +4,10 @@ set(STP_MODULE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/ModuleInterface)
 # add SuperTerrain+ source codes to target
 add_subdirectory(Core)
 add_subdirectory(${STP_CORE_INCLUDE})
-# add SuperError+ source code
-add_subdirectory(${STP_ERROR_ENGINE})
-add_subdirectory(${STP_MODULE_INCLUDE}/${STP_ERROR_ENGINE})
 # Add SuperAlgorithm+
 add_subdirectory(${STP_ALGORITHM_ENGINE})
 add_subdirectory(${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})
 
-# config file for main engine
-if(${STP_ENGINE_BUILD_SHARED})
-	# expose export/import symbols on shared library build
-	set(SUPERTERRAINPLUS_USE_SHARED ON)
-endif()
-# core define include dir is set in core sub-dir
-configure_file(${STP_TEMPLATE_DIR}/STPCoreDefine.h.in ${STP_CORE_DEFINE_INCLUDE}/STPCoreDefine.h @ONLY)
 # config file for algorithm engine
 # tell the static library location so CUDA runtime compiler can find it easily (if developer wants to)
 set(SuperTerrain+CoreInclude ${STP_CORE_INCLUDE})
@@ -31,11 +21,8 @@ INPUT ${STP_ALGORITHM_DEFINE_INCLUDE}/STPAlgorithmDeviceInfoRaw.h
 
 # dependencies
 target_include_directories(${STP_MAIN_ENGINE}
-PRIVATE ${STP_MODULE_INCLUDE} # we only use SuperError+ in source code and didn't expose in public header
-PUBLIC ${STP_EXTERNAL_DIR}/include ${STP_CORE_INCLUDE} ${STP_CORE_DEFINE_INCLUDE}
-)
-target_include_directories(${STP_ERROR_ENGINE}
-PUBLIC ${STP_MODULE_INCLUDE}
+PRIVATE ${STP_MODULE_INCLUDE}
+PUBLIC ${STP_EXTERNAL_DIR}/include ${STP_CORE_INCLUDE}
 )
 target_include_directories(${STP_ALGORITHM_HOST_ENGINE}
 PUBLIC ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
@@ -51,13 +38,9 @@ PRIVATE ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
 # library dependencies
 target_link_libraries(${STP_MAIN_ENGINE}
 # we don't need to link SuperAlgorithm+, this is a library left for developers
-PRIVATE ${STP_ERROR_ENGINE} ${STP_GLAD} opengl32.lib
+PRIVATE ${STP_GLAD} opengl32.lib
 PUBLIC CUDA::cudart CUDA::cuda_driver CUDA::nvrtc
 )
 target_link_libraries(${STP_ALGORITHM_HOST_ENGINE}
-PRIVATE ${STP_MAIN_ENGINE} ${STP_ERROR_ENGINE} CUDA::cudart
-)
-# device engine doesn't require lib
-target_link_libraries(${STP_ERROR_ENGINE}
-PRIVATE CUDA::cudart CUDA::cuda_driver CUDA::nvrtc
+PRIVATE ${STP_MAIN_ENGINE} # main engine has all CUDA drivers linked as public
 )

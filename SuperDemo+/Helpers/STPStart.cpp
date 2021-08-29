@@ -80,14 +80,11 @@ namespace STPDemo {
 			cerr << "Fail to create GLAD context." << endl;
 			return false;
 		}
-#ifdef SUPERTERRAINPLUS_USE_SHARED
-		//In our demo program, since static library is linked directly to the current program so the init above does the job already.
-		//However if we are using shared library, there are 2 GLAD instances and we need to initalise both of them.
+		//When we are using shared library, there are 2 GLAD instances and we need to initalise both of them.
 		if (!SuperTerrainPlus::STPEngineInitialiser::initGLexplicit(proc_addr)) {
 			cerr << "Fail to initialise Super Terrain + engine." << endl;
 			return false;
 		}
-#endif//SUPERTERRAINPLUS_USE_SHARED
 		//cuda context init on device 0 (only one GPU)
 		SuperTerrainPlus::STPEngineInitialiser::initCUDA(0);
 

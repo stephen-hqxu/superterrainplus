@@ -3,7 +3,7 @@
 #include <GPGPU/STPDiversityGeneratorRTC.h>
 
 #define STP_EXCEPTION_ON_ERROR
-#include <SuperError+/STPDeviceErrorHandler.h>
+#include <Utility/STPDeviceErrorHandler.h>
 #include <stdexcept>
 
 //IO

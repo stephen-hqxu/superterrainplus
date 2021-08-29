@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 project(SuperTerrain+
-VERSION 0.6.0
+VERSION 0.6.5
 LANGUAGES C CXX CUDA
 DESCRIPTION "A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering."
 HOMEPAGE_URL "https://github.com/stephen-hqxu/superterrainplus"
@@ -18,7 +18,6 @@ include(SetupEnvironment)
 set(STP_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/External)
 set(STP_GLAD "GLAD")
 set(STP_MAIN_ENGINE "SuperTerrain+")
-set(STP_ERROR_ENGINE "SuperError+")
 set(STP_ALGORITHM_ENGINE "SuperAlgorithm+")
 set(STP_ALGORITHM_HOST_ENGINE "SuperAlgorithm+Host")
 set(STP_ALGORITHM_DEVICE_ENGINE "SuperAlgorithm+Device")

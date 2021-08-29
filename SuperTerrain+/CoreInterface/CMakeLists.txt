@@ -1,4 +1,5 @@
 target_sources(${STP_MAIN_ENGINE} PRIVATE
+STPCoreDefine.h
 STPEngineInitialiser.h
 # /Environment
 Environment/STPChunkSetting.h
@@ -19,6 +20,7 @@ GPGPU/STPFreeSlipTextureBuffer.h
 GPGPU/STPHeightfieldGenerator.cuh
 GPGPU/STPRainDrop.cuh
 # /Utility
+Utility/STPDeviceErrorHandler.h
 Utility/STPMemoryPool.h
 Utility/STPSerialisationException.hpp
 Utility/STPSmartStream.h
@@ -39,5 +41,3 @@ World/Diversity/STPLayerManager.h
 World/Diversity/STPLayerManager.inl
 World/Diversity/STPSeedMixer.h
 )
-
-set(STP_CORE_DEFINE_INCLUDE ${CMAKE_CURRENT_BINARY_DIR}/Include PARENT_SCOPE)

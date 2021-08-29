@@ -1,5 +1,5 @@
 #pragma once
-#include <SuperError+/STPDeviceErrorHandler.h>
+#include <Utility/STPDeviceErrorHandler.h>
 
 //CUDA
 #include <cuda.h>
@@ -31,7 +31,7 @@ void programDecision(stringstream& msg, unsigned int error_level) {
 }
 
 //explicit instantiation
-template<> STPERRORPLUS_API void STPcudaAssert<cudaError_t>(cudaError_t cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
+template<> STP_API void STPcudaAssert<cudaError_t>(cudaError_t cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
 	//CUDA Runtime API
 	if (cuda_code != cudaSuccess) {
 		stringstream err_str;
@@ -40,7 +40,7 @@ template<> STPERRORPLUS_API void STPcudaAssert<cudaError_t>(cudaError_t cuda_cod
 	}
 }
 
-template<> STPERRORPLUS_API void STPcudaAssert<nvrtcResult>(nvrtcResult cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
+template<> STP_API void STPcudaAssert<nvrtcResult>(nvrtcResult cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
 	//CUDA Runtime Compilication
 	if (cuda_code != NVRTC_SUCCESS) {
 		stringstream err_str;
@@ -49,7 +49,7 @@ template<> STPERRORPLUS_API void STPcudaAssert<nvrtcResult>(nvrtcResult cuda_cod
 	}
 }
 
-template<> STPERRORPLUS_API void STPcudaAssert<CUresult>(CUresult cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
+template<> STP_API void STPcudaAssert<CUresult>(CUresult cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
 	//CUDA Driver API
 	if (cuda_code != CUDA_SUCCESS) {
 		stringstream err_str;

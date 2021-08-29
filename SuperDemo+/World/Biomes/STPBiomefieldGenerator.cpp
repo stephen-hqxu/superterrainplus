@@ -2,7 +2,7 @@
 #include "STPBiomefieldGenerator.h"
 #include <STPAlgorithmDeviceInfoDebug.h>
 //Error
-#include <SuperError+/STPDeviceErrorHandler.h>
+#include <Utility/STPDeviceErrorHandler.h>
 //Biome
 #include "STPBiomeRegistry.h"
 
@@ -250,9 +250,8 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset, offset_size, cudaMemcpyHostToDevice, stream));
 
 	//returning the buffer requires a stream callback
-	STPBufferReleaseData* release_data = reinterpret_cast<STPBufferReleaseData*>(CallbackDataPool.request(sizeof(STPBufferReleaseData)));
-	//needs to clear the memory since the struct contains object that needs to be zero-init
-	memset(release_data, 0x00, sizeof(STPBufferReleaseData));
+	//do a placement new call to construct since STPBufferReleaseData is not trivial
+	STPBufferReleaseData* release_data = new(CallbackDataPool.request(sizeof(STPBufferReleaseData))) STPBufferReleaseData();
 	release_data->Buffer = move(histogram_buffer);
 	release_data->Lock = &this->BufferPoolLock;
 	release_data->Pool = &this->BufferPool;

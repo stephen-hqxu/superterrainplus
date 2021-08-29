@@ -11,13 +11,6 @@ Helpers/STPTerrainParaLoader.cpp
 Helpers/STPTextureStorage.cpp
 World/STPWorldManager.cpp
 )
-if(${STP_ENGINE_BUILD_SHARED})
-	# when building a shared library, GLAD.c is not exported by the engine so we need to compile it twice
-	# when building a static library, GLAD.c object is included in the library so don't need to add it
-	target_link_libraries(${STP_DEMO_PROGRAM}
-	PRIVATE ${STP_GLAD}
-	)
-endif()
 
 if(MSVC)
 	# set VS debuging directory
@@ -30,9 +23,10 @@ PRIVATE ${STP_EXTERNAL_DIR}/lib
 # all includes are included automatically since target include is public
 # cuda related static libraries are also added by public target
 
+# when building a shared library, GLAD.c is not exported by the engine so we need to compile it twice
 target_link_libraries(${STP_DEMO_PROGRAM}
 PRIVATE opengl32.lib glfw3.lib SglToolkit.lib SIMPLE.lib
-PRIVATE ${STP_MAIN_ENGINE} ${STP_ERROR_ENGINE} ${STP_ALGORITHM_HOST_ENGINE}
+PRIVATE ${STP_GLAD} ${STP_MAIN_ENGINE} ${STP_ALGORITHM_HOST_ENGINE}
 )
 
 # copy GLSL code to where the bin locates

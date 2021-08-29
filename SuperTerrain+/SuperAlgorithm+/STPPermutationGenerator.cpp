@@ -3,7 +3,7 @@
 #include <memory>
 #include <stdexcept>
 
-#include <SuperError+/STPDeviceErrorHandler.h>
+#include <Utility/STPDeviceErrorHandler.h>
 
 //CUDA Runtime
 #include <cuda_runtime.h>

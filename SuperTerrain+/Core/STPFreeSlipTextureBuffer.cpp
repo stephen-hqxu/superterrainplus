@@ -3,7 +3,7 @@
 
 //Error
 #define STP_EXCEPTION_ON_ERROR
-#include <SuperError+/STPDeviceErrorHandler.h>
+#include <Utility/STPDeviceErrorHandler.h>
 
 #include <type_traits>
 #include <stdexcept>
@@ -92,7 +92,8 @@ void STPFreeSlipTextureBuffer<T>::destroyAllocation() {
 	//host memory will always be allocated
 	//we need to add a callback because we don't want the host memory to be released right now as unfinished works may be still using it.
 	//all pointers we provide are guaranteed to be valid until the stream has synced.
-	STPHostReleaseData* release_data = static_cast<STPHostReleaseData*>(CallbackMemPool.request(sizeof(STPHostReleaseData)));
+	//use placement new to init STPHostReleaseData after allocating raw memory
+	STPHostReleaseData* release_data = new(CallbackMemPool.request(sizeof(STPHostReleaseData))) STPHostReleaseData();
 	release_data->ReleasingHostMemory = static_cast<void*>(host);
 	release_data->ReleasingHostMemPool = &this->Attr.HostMemPool;
 	STPcudaCheckErr(cudaLaunchHostFunc(this->Data.Stream, &releaseHostMemory, static_cast<void*>(release_data)));

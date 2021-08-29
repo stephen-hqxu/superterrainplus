@@ -2,7 +2,7 @@
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 
 //Error
-#include <SuperError+/STPDeviceErrorHandler.h>
+#include <Utility/STPDeviceErrorHandler.h>
 //CUDA
 #include <cuda_runtime.h>
 

@@ -6,7 +6,7 @@
 #include <GPGPU/STPRainDrop.cuh>
 
 #define STP_EXCEPTION_ON_ERROR
-#include <SuperError+/STPDeviceErrorHandler.h>
+#include <Utility/STPDeviceErrorHandler.h>
 
 #include <type_traits>
 #include <memory>

@@ -7,7 +7,7 @@
 
 //Error
 #define STP_EXCEPTION_ON_ERROR
-#include <SuperError+/STPDeviceErrorHandler.h>
+#include <Utility/STPDeviceErrorHandler.h>
 
 using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;

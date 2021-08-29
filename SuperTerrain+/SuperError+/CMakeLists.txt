@@ -1,5 +1,0 @@
-add_library(${STP_ERROR_ENGINE} SHARED
-STPDeviceErrorHandler.cpp
-)
-
-set_target_properties(${STP_ERROR_ENGINE} PROPERTIES DEFINE_SYMBOL STPERRORPLUS_EXPORTS)

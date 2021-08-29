@@ -5,7 +5,7 @@
 #include <glad/glad.h>
 //CUDA
 #include <cuda_runtime.h>
-#include <SuperError+/STPDeviceErrorHandler.h>
+#include <Utility/STPDeviceErrorHandler.h>
 
 using namespace SuperTerrainPlus;
 

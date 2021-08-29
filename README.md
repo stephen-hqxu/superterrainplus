@@ -78,14 +78,12 @@ Those are some third-party libraries used by this project, we always make sure t
 - CoreInterface
 - ModuleInterface
   - SuperAlgorithm+
-  - SuperError+
 
 ### :dart: Build targets
 
 - GLAD: Pre-complication of `glad.c` for object file sharing.
 - SuperTerrain+: Main procedural terrain generation engine.
   - SuperAlgorithm+: A library of useful noise algorithms for pipeline programming.
-  - SuperError+: A smart CUDA error handler.
 - SuperDemo+: An application which demostrates the usage of the main engine.
 - SuperTest+: Unit test program for dynamic testings.
 
@@ -94,10 +92,7 @@ Those are some third-party libraries used by this project, we always make sure t
 | Option | Explaination |
 | ------ | ----- |
 | STP_CUDA_RUNTIME_LIBRARY | Set the global `nvcc` compiler flag `-cudart=` to the value set |
-| STP_CUDA_ARCH | Set the global `nvcc` compiler flag `-arch` to the value set for both real and virtual architexture |
 | STP_CUDA_VERBOSE_PTX | Append to the global `nvcc` compiler flag with `--ptxas-options=-v` |
-| STP_ENGINE_BUILD_SHARED | Build SuperTerrain+ engine as a shared library |
-| STP_DEVICELINK_STATIC | Use `-dlink` on `nvcc` compiler flag for SuperTerrain+ engnine when static library build is turned on |
 | STP_USE_AVX2 | Use AVX2 instruction sets on all vector operations |
 | STP_BUILD_DEMO | Enable build SuperDemo+ program |
 | STP_BUILD_TEST | Enable build SuperTest+ program |

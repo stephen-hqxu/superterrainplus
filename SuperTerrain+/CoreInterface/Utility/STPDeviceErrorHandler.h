@@ -15,18 +15,10 @@
 #define STP_ERROR_SEVERITY 2u
 #endif
 
-#if defined(_WIN32) && defined(STPERRORPLUS_EXPORTS)
-#define STPERRORPLUS_API __declspec(dllexport)
-#elif defined(_WIN32)
-#define STPERRORPLUS_API __declspec(dllimport)
-#elif defined(__GNUC__) && defined(STPERRORPLUS_EXPORTS)
-#define STPERRORPLUS_API __attribute__((visibility("default")))
-#else
-#define STPERRORPLUS_API
-#endif
+#include <STPCoreDefine.h>
 
 template<typename Err>
-STPERRORPLUS_API void STPcudaAssert(Err, unsigned int, const char* __restrict, const char* __restrict, int);
+STP_API void STPcudaAssert(Err, unsigned int, const char* __restrict, const char* __restrict, int);
 
 #define STPcudaCheckErr(ans) STPcudaAssert(ans, STP_ERROR_SEVERITY, __FILE__, __FUNCTION__, __LINE__);
 #endif//_STP_DEVICE_ERROR_HANDLER_H_
