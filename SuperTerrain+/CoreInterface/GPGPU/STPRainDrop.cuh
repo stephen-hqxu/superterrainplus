@@ -15,6 +15,9 @@
 #include "../Environment/STPRainDropSetting.h"
 //Free slipper
 #include "STPFreeSlipManager.cuh"
+//GLM
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -45,13 +48,13 @@ namespace SuperTerrainPlus {
 		private:
 
 			//The current position of the raindrop
-			float2 raindrop_pos;
+			glm::vec2 raindrop_pos;
 			//Direction of water flow
-			float2 raindrop_dir;
+			glm::vec2 raindrop_dir;
 			//Flowing speed
 			float speed;
 			//Flowing velocity
-			float2 velocity;
+			glm::vec2 velocity;
 			//Water volume
 			float volume;
 			//The amount of sediment it carries
@@ -62,7 +65,7 @@ namespace SuperTerrainPlus {
 			 * @param map The floating point heightmap with free slip configurations
 			 * @return Height and Gradients, will be defined in vec3 as (height, gradientX, gradientY);
 			*/
-			__device__ float3 calcHeightGradients(const STPFreeSlipFloatManager&) const;
+			__device__ glm::vec3 calcHeightGradients(const STPFreeSlipFloatManager&) const;
 
 		public:
 
@@ -72,7 +75,7 @@ namespace SuperTerrainPlus {
 			 * @param WaterVolume - The initial water volume
 			 * @param MovementSpeed - The initial speed of the droplet
 			*/
-			__device__ STPRainDrop(float2, float, float);
+			__device__ STPRainDrop(glm::vec2, float, float);
 
 			__device__ ~STPRainDrop();
 

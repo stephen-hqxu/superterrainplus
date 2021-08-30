@@ -8,6 +8,8 @@
 #include "../World/Diversity/STPBiomeDefine.h"
 //Sample Map Free-Slip
 #include "../GPGPU/STPFreeSlipGenerator.cuh"
+//GLM
+#include <glm/vec2.hpp>
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -47,7 +49,7 @@ namespace SuperTerrainPlus {
 			 * @param offset The offset of maps in world coordinate
 			 * @param stream The stream currently being used
 			*/
-			virtual void operator()(STPFreeSlipFloatTextureBuffer&, const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor&, float2, cudaStream_t) const = 0;
+			virtual void operator()(STPFreeSlipFloatTextureBuffer&, const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor&, glm::vec2, cudaStream_t) const = 0;
 
 		};
 

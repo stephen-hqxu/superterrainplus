@@ -13,6 +13,7 @@ using namespace STPDemo;
 using namespace SuperTerrainPlus::STPEnvironment;
 
 using glm::uvec2;
+using glm::vec2;
 
 using std::string;
 using std::unique_lock;
@@ -26,8 +27,8 @@ constexpr static char BiomePropertyFilename[] = "./STPBiomeProperty.hpp";
 const static string device_include = "-I " + string(SuperTerrainPlus::SuperAlgorithmPlus_DeviceInclude),
 	core_include = "-I " + string(SuperTerrainPlus::SuperTerrainPlus_CoreInclude);
 
-STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_setting, uvec2 dimension, unsigned int interpolation_radius)
-	: STPDiversityGeneratorRTC(), Noise_Setting(simplex_setting), MapSize(make_uint2(dimension.x, dimension.y)), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
+STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_setting, const uvec2& dimension, unsigned int interpolation_radius)
+	: STPDiversityGeneratorRTC(), Noise_Setting(simplex_setting), MapSize(dimension), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
 	STPcudaCheckErr(cuCtxGetCurrent(&this->cudaCtx));
 	//init our device generator
 	//our heightfield setting only available in OCEAN biome for now
@@ -198,15 +199,13 @@ void STPBiomefieldGenerator::returnBuffer(void* buffer_data) {
 	CallbackDataPool.release(buffer_data);
 }
 	
-void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap_buffer, const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor& biomemap_adaptor, float2 offset, cudaStream_t stream) const {
+void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap_buffer, const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor& biomemap_adaptor, vec2 offset, cudaStream_t stream) const {
 	int Mingridsize, blocksize;
-	dim3 Dimgridsize, Dimblocksize;
 	//smart launch config
 	STPcudaCheckErr(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->GeneratorEntry, nullptr, 0ull, 0));
-	Dimblocksize = dim3(32, blocksize / 32);
-	//under-sampled heightmap, and super-sample it back with interpolation
-	Dimgridsize = dim3((this->MapSize.x + Dimblocksize.x - 1) / Dimblocksize.x, 
-		(this->MapSize.y + Dimblocksize.y - 1) / Dimblocksize.y);
+	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
+		//under-sampled heightmap, and super-sample it back with interpolation
+		Dimgridsize = (this->MapSize + Dimblocksize - 1u) / Dimblocksize;
 
 	//retrieve raw texture
 	float* heightmap = heightmap_buffer(STPFreeSlipLocation::DeviceMemory);
@@ -238,7 +237,7 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	//copy histogram to device
 	STPSingleHistogram histogram_d;
 	//calculate the size of allocation
-	const uint2& biome_dimension = biomemap_manager.Data->Dimension;
+	const uvec2& biome_dimension = biomemap_manager.Data->Dimension;
 	const unsigned int num_pixel_biomemap = biome_dimension.x * biome_dimension.y;
 	const size_t bin_size = histogram_h.HistogramStartOffset[num_pixel_biomemap] * sizeof(STPSingleHistogram::STPBin),
 		offset_size = (num_pixel_biomemap + 1u) * sizeof(unsigned int);
@@ -258,11 +257,12 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	STPcudaCheckErr(cuLaunchHostFunc(stream, &STPBiomefieldGenerator::returnBuffer, release_data));
 
 	//launch kernel
+	float2 gpu_offset = make_float2(offset.x, offset.y);
 	size_t bufferSize = 32ull;
 	unsigned char buffer[32];
 	memcpy(buffer, &heightmap, sizeof(heightmap));
-	memcpy(buffer + 8, &histogram_d, sizeof(STPSingleHistogram));
-	memcpy(buffer + 24, &offset, sizeof(offset));
+	memcpy(buffer + 8, &histogram_d, sizeof(histogram_d));
+	memcpy(buffer + 24, &gpu_offset, sizeof(gpu_offset));
 
 	void* config[] = {
 		CU_LAUNCH_PARAM_BUFFER_POINTER, buffer,
@@ -270,8 +270,8 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 		CU_LAUNCH_PARAM_END
 	};
 	STPcudaCheckErr(cuLaunchKernel(this->GeneratorEntry,
-		Dimgridsize.x, Dimgridsize.y, Dimgridsize.z,
-		Dimblocksize.x, Dimblocksize.y, Dimblocksize.z,
+		Dimgridsize.x, Dimgridsize.y, 1u,
+		Dimblocksize.x, Dimblocksize.y, 1u,
 		0u, stream, nullptr, config));
 	STPcudaCheckErr(cudaGetLastError());
 

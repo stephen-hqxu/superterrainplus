@@ -88,8 +88,8 @@ bool STPChunkManager::renderingBufferChunkSubData(cudaArray_t buffer[2], vec2 ch
 		& dimension = chunk_setting.MapSize;
 	auto calcBufferOffset = [&rendered_chunk](unsigned int chunkID, const uvec2& dimension) -> uvec2 {
 		//calculate global offset, basically
-		const uvec2 chunkIdx(chunkID % rendered_chunk.x, static_cast<unsigned int>(floorf(1.0f * chunkID / rendered_chunk.x)));
-		return uvec2(dimension.x * chunkIdx.x, dimension.y * chunkIdx.y);
+		const uvec2 chunkIdx(chunkID % rendered_chunk.x, chunkID / rendered_chunk.x);
+		return dimension * chunkIdx;
 	};
 	const uvec2 buffer_offset = calcBufferOffset(chunkID, dimension);
 

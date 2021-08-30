@@ -17,6 +17,11 @@ using std::exception;
 using std::rethrow_exception;
 using std::current_exception;
 
+//GLM
+#include <glm/geometric.hpp>
+
+using glm::uvec2;
+
 #define SampleIsUint16 std::enable_if<!std::is_same<unsigned short, Sample>::value, unsigned short>
 
 /**
@@ -27,7 +32,7 @@ using std::current_exception;
  * @param tableSize The x,y dimension of the table
  * @param mapSize The dimension of the map
 */
-__global__ void initGlobalLocalIndexKERNEL(unsigned int*, unsigned int, uint2, uint2, uint2);
+__global__ void initGlobalLocalIndexKERNEL(unsigned int*, unsigned int, uvec2, uvec2, uvec2);
 
 template<typename T>
 __host__ STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<T>::STPFreeSlipManagerAdaptor(STPFreeSlipTextureBuffer<T>& buffer, const STPFreeSlipGenerator& generator) :
@@ -66,8 +71,8 @@ template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<float>;
 template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<Sample>;
 template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<SampleIsUint16>;
 
-__host__ STPFreeSlipGenerator::STPFreeSlipGenerator(uint2 range, uint2 mapSize) : 
-	STPFreeSlipData{ nullptr, mapSize, range, make_uint2(range.x * mapSize.x, range.y * mapSize.y) } {
+__host__ STPFreeSlipGenerator::STPFreeSlipGenerator(const uvec2& range, const uvec2& mapSize) : 
+	STPFreeSlipData{ nullptr, mapSize, range, range * mapSize } {
 	try {
 		//set global local index
 		this->initLocalGlobalIndexCUDA();
@@ -82,15 +87,14 @@ __host__ STPFreeSlipGenerator::~STPFreeSlipGenerator() {
 }
 
 __host__ void STPFreeSlipGenerator::initLocalGlobalIndexCUDA() {
-	const uint2& global_dimension = this->FreeSlipRange;
+	const uvec2& global_dimension = this->FreeSlipRange;
 	const size_t index_count = global_dimension.x * global_dimension.y;
 	try {
 		//launch parameters
 		int Mingridsize, blocksize;
-		dim3 Dimgridsize, Dimblocksize;
 		STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &initGlobalLocalIndexKERNEL));
-		Dimblocksize = dim3(32, blocksize / 32);
-		Dimgridsize = dim3((global_dimension.x + Dimblocksize.x - 1) / Dimblocksize.x, (global_dimension.y + Dimblocksize.y - 1) / Dimblocksize.y);
+		const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
+			Dimgridsize = (global_dimension + Dimblocksize - 1u) / Dimblocksize;
 
 		//Don't generate the table when FreeSlipChunk.xy are both 1, and in STPRainDrop don't use the table
 		if (this->FreeSlipChunk.x == 1u && this->FreeSlipChunk.y == 1u) {
@@ -103,7 +107,7 @@ __host__ void STPFreeSlipGenerator::initLocalGlobalIndexCUDA() {
 		//allocation
 		STPcudaCheckErr(cudaMalloc(&this->Index_Device, sizeof(unsigned int) * index_count));
 		//compute
-		initGlobalLocalIndexKERNEL << <Dimgridsize, Dimblocksize >> > (this->Index_Device, global_dimension.x, this->FreeSlipChunk, global_dimension, this->Dimension);
+		initGlobalLocalIndexKERNEL << <dim3(Dimgridsize.x, Dimgridsize.y), dim3(Dimblocksize.x, Dimblocksize.y) >> > (this->Index_Device, global_dimension.x, this->FreeSlipChunk, global_dimension, this->Dimension);
 		STPcudaCheckErr(cudaGetLastError());
 		STPcudaCheckErr(cudaDeviceSynchronize());
 
@@ -134,15 +138,15 @@ __host__ void STPFreeSlipGenerator::clearDeviceIndex() noexcept {
 	}
 }
 
-__host__ const uint2& STPFreeSlipGenerator::getDimension() const {
+__host__ const uvec2& STPFreeSlipGenerator::getDimension() const {
 	return this->Dimension;
 }
 
-__host__ const uint2& STPFreeSlipGenerator::getFreeSlipChunk() const {
+__host__ const uvec2& STPFreeSlipGenerator::getFreeSlipChunk() const {
 	return this->FreeSlipChunk;
 }
 
-__host__ const uint2& STPFreeSlipGenerator::getFreeSlipRange() const {
+__host__ const uvec2& STPFreeSlipGenerator::getFreeSlipRange() const {
 	return this->FreeSlipRange;
 }
 
@@ -163,7 +167,8 @@ __host__ STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<SampleIsUint16>
 	return getManagerAdapter;
 }
 
-__global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int rowCount, uint2 chunkRange, uint2 tableSize, uint2 mapSize) {
+__global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int rowCount, uvec2 chunkRange, uvec2 tableSize, uvec2 mapSize) {
+	using glm::vec2;
 	//current pixel
 	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y,
@@ -173,9 +178,9 @@ __global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int ro
 	}
 
 	//simple maths
-	const uint2 globalPos = make_uint2(globalidx - floorf(globalidx / rowCount) * rowCount, floorf(globalidx / rowCount));
-	const uint2 chunkPos = make_uint2(floorf(globalPos.x / mapSize.x), floorf(globalPos.y / mapSize.y));
-	const uint2 localPos = make_uint2(globalPos.x - chunkPos.x * mapSize.x, globalPos.y - chunkPos.y * mapSize.y);
+	const uvec2 globalPos = uvec2(globalidx - y * rowCount, y);
+	const uvec2 chunkPos = globalPos / mapSize;//non-negative integer division is a floor
+	const uvec2 localPos = globalPos - chunkPos * mapSize;
 
 	output[globalidx] = (chunkPos.x + chunkRange.x * chunkPos.y) * mapSize.x * mapSize.y + (localPos.x + mapSize.x * localPos.y);
 }

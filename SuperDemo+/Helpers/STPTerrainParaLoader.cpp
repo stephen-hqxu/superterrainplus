@@ -135,7 +135,7 @@ STPEnvironment::STPHeightfieldSetting STPTerrainParaLoader::getProcedural2DINFGe
 	//set the parameter one by one, enjoy :)
 	launch_options.Seed = stoull(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[0]));
 	launch_options.Strength = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[1]));
-	launch_options.setErosionBrushRadius(make_uint2(slipRange.x, slipRange.y), stoul(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[2])));
+	launch_options.setErosionBrushRadius(slipRange, stoul(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[2])));
 	launch_options.Inertia = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[3]));
 	launch_options.SedimentCapacityFactor = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[4]));
 	launch_options.minSedimentCapacity = stof(section(STPTerrainParaLoader::Procedural2DINFGeneratorVariables[5]));

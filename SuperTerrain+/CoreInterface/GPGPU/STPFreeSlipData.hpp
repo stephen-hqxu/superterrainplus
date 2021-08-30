@@ -5,6 +5,9 @@
 //CUDA vector
 #include <vector_types.h>
 
+//GLM
+#include <glm/vec2.hpp>
+
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
  * including perlin noise generated height map, hydrology processing and marching cube algorithm.
@@ -41,11 +44,11 @@ namespace SuperTerrainPlus {
 			unsigned int* GlobalLocalIndex;
 
 			//The dimension of each map
-			uint2 Dimension;
+			glm::uvec2 Dimension;
 			//The range of free slip in the unit of chunk
-			uint2 FreeSlipChunk;
+			glm::uvec2 FreeSlipChunk;
 			//number of element in a global row and column in the free slip range
-			uint2 FreeSlipRange;
+			glm::uvec2 FreeSlipRange;
 
 		};
 

@@ -49,7 +49,7 @@ namespace SuperTerrainPlus {
 		 * @param chunkPos The world position of the chunk
 		 * @return The chunk offset
 		*/
-		float2 calcChunkOffset(glm::vec2) const;
+		glm::vec2 calcChunkOffset(glm::vec2) const;
 
 		/**
 		 * @brief Get all neighbour for this chunk position

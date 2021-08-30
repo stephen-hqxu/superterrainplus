@@ -7,8 +7,18 @@
 
 using namespace SuperTerrainPlus::STPCompute;
 
-__device__ STPRainDrop::STPRainDrop(float2 position, float WaterVolume, float MovementSpeed) : 
-	raindrop_pos(position), raindrop_dir(make_float2(0.0f, 0.0f)), volume(WaterVolume), speed(MovementSpeed) {
+//GLM
+#include <glm/geometric.hpp>
+#include <glm/vec4.hpp>
+
+using glm::ivec2;
+using glm::uvec2;
+using glm::vec2;
+using glm::vec3;
+using glm::vec4;
+
+__device__ STPRainDrop::STPRainDrop(vec2 position, float WaterVolume, float MovementSpeed) : 
+	raindrop_pos(position), raindrop_dir(0.0f), volume(WaterVolume), speed(MovementSpeed) {
 
 }
 
@@ -16,16 +26,16 @@ __device__ STPRainDrop::~STPRainDrop() {
 
 }
 
-__device__ float3 STPRainDrop::calcHeightGradients(const STPFreeSlipFloatManager& map) const {
+__device__ vec3 STPRainDrop::calcHeightGradients(const STPFreeSlipFloatManager& map) const {
 	//result
-	float3 height_gradients;
+	vec3 height_gradients;
 
-	const uint2 rounded_pos = make_uint2(static_cast<unsigned int>(this->raindrop_pos.x), static_cast<unsigned int>(this->raindrop_pos.y));
+	const uvec2 rounded_pos = static_cast<uvec2>(this->raindrop_pos);
 	//calculate drop's offset inside the cell (0,0) and (1,1)
-	const float2 cell_corner = make_float2(this->raindrop_pos.x - rounded_pos.x, this->raindrop_pos.y - rounded_pos.y);
+	const vec2 cell_corner = this->raindrop_pos - static_cast<vec2>(rounded_pos);
 	//calculate the heights of the 4 nodes of the droplet's cell
 	const unsigned int nodebaseIndex = rounded_pos.y * map.Data->FreeSlipRange.x + rounded_pos.x;//The position on the map of the local (0,0) cell
-	const float4 heights = make_float4(
+	const vec4 heights(
 		map[nodebaseIndex], // (0,0)
 		map[nodebaseIndex + 1], // (1,0)
 		map[nodebaseIndex + map.Data->FreeSlipRange.x], // (1,0)
@@ -39,8 +49,8 @@ __device__ float3 STPRainDrop::calcHeightGradients(const STPFreeSlipFloatManager
 		+ heights.z * (1 - cell_corner.x) * cell_corner.y
 		+ heights.w * cell_corner.x * cell_corner.y;
 	//calculate droplet's direction of flow with bilinear interpolation of height difference along the edge
-	height_gradients.y = (heights.y - heights.x) * (1 - cell_corner.y) + (heights.w - heights.z) * cell_corner.y;
-	height_gradients.z = (heights.z - heights.x) * (1 - cell_corner.x) + (heights.w - heights.y) * cell_corner.x;
+	height_gradients.y = glm::mix(heights.y - heights.x, heights.w - heights.z, cell_corner.y);
+	height_gradients.z = glm::mix(heights.z - heights.x, heights.w - heights.y, cell_corner.x);
 
 	return height_gradients;
 }
@@ -73,23 +83,21 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 	//Rain drop is still alive, continue descending...
 	while (this->volume >= settings->minWaterVolume) {
 		//The position of droplet on the map index
-		unsigned int mapIndex = static_cast<unsigned int>(this->raindrop_pos.y) * map.Data->FreeSlipRange.x + static_cast<unsigned int>(this->raindrop_pos.x);
+		const unsigned int mapIndex = static_cast<unsigned int>(this->raindrop_pos.y) * map.Data->FreeSlipRange.x + static_cast<unsigned int>(this->raindrop_pos.x);
 		//calculate the offset of the droplet inside cell (0,0) and cell (1,1)
-		float2 offset_cell = make_float2(this->raindrop_pos.x - static_cast<int>(this->raindrop_pos.x), this->raindrop_pos.y - static_cast<int>(this->raindrop_pos.y));
+		const vec2 offset_cell = this->raindrop_pos - static_cast<vec2>(static_cast<ivec2>(this->raindrop_pos));
 		//check if the particle is not accelerating and is it surrounded by a lot of other particles
 
 		//calculate droplet's height and the direction of flow with bilinear interpolation of surrounding heights
-		const float3 height_gradients = STPRainDrop::calcHeightGradients(map);
+		const vec3 height_gradients = STPRainDrop::calcHeightGradients(map);
 		
 		//update droplet's position and direction
-		this->raindrop_dir.x = this->raindrop_dir.x * settings->Inertia - height_gradients.y * (1.0f - settings->Inertia);
-		this->raindrop_dir.y = this->raindrop_dir.y * settings->Inertia - height_gradients.z * (1.0f - settings->Inertia);
+		this->raindrop_dir = glm::mix(-vec2(height_gradients.y, height_gradients.z), this->raindrop_dir, settings->Inertia);
 		//normalise the direction and update the position and direction, (move position 1 unit regardless of speed)
-		float length = fmaxf(0.01f, sqrtf(this->raindrop_dir.x * this->raindrop_dir.x + this->raindrop_dir.y * this->raindrop_dir.y));
-		this->raindrop_dir.x /= length;
-		this->raindrop_dir.y /= length;
-		this->raindrop_pos.x += this->raindrop_dir.x;
-		this->raindrop_pos.y += this->raindrop_dir.y;
+		//clamp the length to handle division by zero instead of using the glm::normalize directly
+		const float length = fmaxf(0.01f, glm::length(this->raindrop_dir));
+		this->raindrop_dir /= length;
+		this->raindrop_pos += this->raindrop_dir;
 
 		//check if the raindrop brushing range falls out of the map
 		if ((this->raindrop_dir.x == 0.0f && this->raindrop_dir.y == 0.0f) 
@@ -110,7 +118,7 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 		//if carrying more sediment than capacity, or it's flowing uphill
 		if (this->sediment > sedimentCapacity || deltaHeight > 0.0f) {
 			//If flowing uphill (deltaheight > 0) try to fill up the current height, otherwise deposit a fraction of the excess sediment
-			float depositAmount = (deltaHeight > 0.0f) ? fminf(deltaHeight, this->sediment) : (this->sediment - sedimentCapacity) * settings->DepositSpeed ;
+			const float depositAmount = (deltaHeight > 0.0f) ? fminf(deltaHeight, this->sediment) : (this->sediment - sedimentCapacity) * settings->DepositSpeed ;
 			this->sediment -= depositAmount;
 
 			//add the sediment to the four nodes of the current cell using bilinear interpolation
@@ -128,8 +136,8 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 			//use erode brush to erode from all nodes inside the droplet's erode radius
 			for (unsigned int brushPointIndex = 0u; brushPointIndex < settings->getErosionBrushSize(); brushPointIndex++) {
 				int erodeIndex = mapIndex + brushIndices[brushPointIndex];
-				float weightederodeAmout = erodeAmout * brushWeights[brushPointIndex];
-				float deltaSediment = (map[erodeIndex] < weightederodeAmout) ? map[erodeIndex] : weightederodeAmout;
+				const float weightederodeAmout = erodeAmout * brushWeights[brushPointIndex];
+				const float deltaSediment = (map[erodeIndex] < weightederodeAmout) ? map[erodeIndex] : weightederodeAmout;
 				//erode the map
 				map[erodeIndex] -= deltaSediment;
 				this->sediment += deltaSediment;

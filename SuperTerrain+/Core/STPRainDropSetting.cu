@@ -7,6 +7,8 @@
 
 using namespace SuperTerrainPlus::STPEnvironment;
 
+using glm::uvec2;
+
 __host__ STPRainDropSetting::STPRainDropSetting() : 
 	STPSetting(), 
 	ErosionBrushRadius(0u), 
@@ -83,7 +85,7 @@ __host__ bool STPRainDropSetting::validate() const {
 		&& this->Gravity > 0.0f;
 }
 
-__host__ void STPRainDropSetting::setErosionBrushRadius(uint2 slipRange, unsigned int erodeRadius) {
+__host__ void STPRainDropSetting::setErosionBrushRadius(const uvec2& slipRange, unsigned int erodeRadius) {
 	const int radius = static_cast<int>(erodeRadius);
 	//radius must be greater than 0
 	double weightSum = 0.0f;

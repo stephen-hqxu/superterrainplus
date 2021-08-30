@@ -679,7 +679,7 @@ void STPSingleHistogramFilter::filter
 	auto horizontal = bind(&STPSingleHistogramFilter::filter_horizontal, this, _1, _2, _3, _4, _5);
 	future<void> workgroup[STPSingleHistogramFilter::DEGREE_OF_PARALLELISM];
 	//calculate central texture starting index
-	const uvec2& dimension = reinterpret_cast<const uvec2&>(sample_map.Data->Dimension),
+	const uvec2& dimension = sample_map.Data->Dimension,
 		central_starting_coordinate = dimension * central_chunk_index;
 
 	auto sync_then_copy_to_output = [this, histogram_output, &copy_output, &workgroup]() -> void {
@@ -771,9 +771,8 @@ STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleM
 		throw std::invalid_argument("radius should be an even number");
 	}
 	//second make sure radius is not larger than the free-slip range
-	//reinterpret_cast is safe as uint2 and uvec2 are both same in standard, alignment and type
-	const uvec2 central_chunk_index = static_cast<uvec2>(glm::floor(vec2(reinterpret_cast<const uvec2&>(samplemap_manager.Data->FreeSlipChunk)) / 2.0f));
-	if (const uvec2 halo_size = central_chunk_index * reinterpret_cast<const uvec2&>(samplemap_manager.Data->Dimension); 
+	const uvec2 central_chunk_index = samplemap_manager.Data->FreeSlipChunk / 2u;
+	if (const uvec2 halo_size = central_chunk_index * samplemap_manager.Data->Dimension;
 		halo_size.x < radius || halo_size.y < radius) {
 		throw std::invalid_argument("radius is too large and will overflow free-slip boundary");
 	}

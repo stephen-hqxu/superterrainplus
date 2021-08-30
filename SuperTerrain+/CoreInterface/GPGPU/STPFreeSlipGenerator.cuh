@@ -100,11 +100,12 @@ namespace SuperTerrainPlus {
 		public:
 
 			/**
-			 * @brief Init STPFreeSlipGenerator and generate global-local index table
+			 * @brief Init STPFreeSlipGenerator and generate global-local index table.
+			 * No reference is retained after the function returned
 			 * @param range Free slip range in the unit of chunk
 			 * @param mapSize The size of the each heightmap
 			*/
-			__host__ STPFreeSlipGenerator(uint2, uint2);
+			__host__ STPFreeSlipGenerator(const glm::uvec2&, const glm::uvec2&);
 
 			__host__ ~STPFreeSlipGenerator();
 
@@ -120,19 +121,19 @@ namespace SuperTerrainPlus {
 			 * @brief Get the dimension of each texture.
 			 * @return The pointer to dimension
 			*/
-			__host__ const uint2& getDimension() const;
+			__host__ const glm::uvec2& getDimension() const;
 
 			/**
 			 * @brief Get the number of free-slip chunk
 			 * @return The poiner to free-slip chunk
 			*/
-			__host__ const uint2& getFreeSlipChunk() const;
+			__host__ const glm::uvec2& getFreeSlipChunk() const;
 
 			/**
 			 * @brief Get the number of pixel in total in free-slip logic
 			 * @return The pointer to the free-slip range
 			*/
-			__host__ const uint2& getFreeSlipRange() const;
+			__host__ const glm::uvec2& getFreeSlipRange() const;
 
 			/**
 			 * @brief Get the free-slip manager adaptor, which will dynamically determine free-slip configuration to use from the generator based on chosen type.

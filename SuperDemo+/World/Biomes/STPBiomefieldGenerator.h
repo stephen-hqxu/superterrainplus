@@ -12,6 +12,8 @@
 //Biome Interpolation
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 #include <glm/vec2.hpp>
+//GLM
+#include <glm/vec2.hpp>
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
@@ -32,7 +34,7 @@ namespace STPDemo {
 		SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting Noise_Setting;
 		SuperTerrainPlus::STPCompute::STPPermutationGenerator Simplex_Permutation;
 		//The size of the generated heightmap
-		const uint2 MapSize;
+		const glm::uvec2 MapSize;
 		//Generate a histogram to retrieve weights for biomes in a range
 		mutable std::mutex HistogramFilterLock;
 		mutable SuperTerrainPlus::STPCompute::STPSingleHistogramFilter biome_histogram;
@@ -68,7 +70,7 @@ namespace STPDemo {
 		 * @param dimension The size of the generated heightmap
 		 * @param interpolation_radius The radius for biome edge interpolation
 		*/
-		STPBiomefieldGenerator(SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&, glm::uvec2, unsigned int);
+		STPBiomefieldGenerator(SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&, const glm::uvec2&, unsigned int);
 
 		STPBiomefieldGenerator(const STPBiomefieldGenerator&) = delete;
 
@@ -80,7 +82,7 @@ namespace STPDemo {
 
 		~STPBiomefieldGenerator();
 
-		void operator()(SuperTerrainPlus::STPCompute::STPFreeSlipFloatTextureBuffer&, const SuperTerrainPlus::STPCompute::STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor&, float2, cudaStream_t) const override;
+		void operator()(SuperTerrainPlus::STPCompute::STPFreeSlipFloatTextureBuffer&, const SuperTerrainPlus::STPCompute::STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor&, glm::vec2, cudaStream_t) const override;
 
 	};
 

@@ -67,12 +67,13 @@ const uvec2& STPChunk::getSize() const {
 }
 
 vec2 STPChunk::getChunkPosition(vec3 cameraPos, uvec2 chunkSize, float scaling) noexcept {
-	const vec2 chunkSize_int = vec2(scaling * static_cast<int>(chunkSize.x), scaling * static_cast<int>(chunkSize.y));
-	return vec2(glm::floor(cameraPos.x / chunkSize_int.x) * chunkSize_int.x, glm::floor(cameraPos.z / chunkSize_int.y) * chunkSize_int.y);
+	const vec2 scaled_chunkSize = static_cast<vec2>(chunkSize) * scaling, 
+		cameraPos_2d = vec2(cameraPos.x, cameraPos.z);
+	return glm::floor(cameraPos_2d / scaled_chunkSize) * scaled_chunkSize;
 }
 
 vec2 STPChunk::offsetChunk(vec2 chunkPos, uvec2 chunkSize, ivec2 offset, float scaling) noexcept {
-	return chunkPos + vec2(scaling * static_cast<int>(chunkSize.x) * offset.x, scaling * static_cast<int>(chunkSize.y) * offset.y);
+	return chunkPos + scaling * static_cast<vec2>(chunkSize) * static_cast<vec2>(offset);
 }
 
 STPChunk::STPChunkPositionCache STPChunk::getRegion(vec2 centerPos, uvec2 chunkSize, uvec2 regionSize, float scaling) noexcept {
@@ -80,7 +81,7 @@ STPChunk::STPChunkPositionCache STPChunk::getRegion(vec2 centerPos, uvec2 chunkS
 	//We need to calculate the starting unit plane, i.e., the unit plane of the top-left corner of the entire rendered terrain
 	//We don't need y, all the plane will be aligned at the same height, so it contains x and z position
 	//Base position is negative since we want the camera locates above the center of the entire rendered plane
-	const vec2 base_position = STPChunk::offsetChunk(centerPos, chunkSize, ivec2(-glm::floor(regionSize.x / 2.0f), -glm::floor(regionSize.y / 2.0f)), scaling);
+	const vec2 base_position = STPChunk::offsetChunk(centerPos, chunkSize, -static_cast<ivec2>(regionSize / 2u), scaling);
 
 	STPChunkPositionCache results;
 	results.reserve(num_chunk);
@@ -91,7 +92,7 @@ STPChunk::STPChunkPositionCache STPChunk::getRegion(vec2 centerPos, uvec2 chunkS
 		//The latter one refers to the world coordinate
 
 		//Basically it converts 1D chunk ID to 2D local chunk position, btw chunk position must be a positive integer
-		const uvec2 local_chunk_offset = uvec2(i % regionSize.x, static_cast<unsigned int>(glm::floor<unsigned int>(i / regionSize.y)));
+		const uvec2 local_chunk_offset = uvec2(i % regionSize.x, i / regionSize.y);
 		//Then convert local to world coordinate
 		const vec2 basePos = STPChunk::offsetChunk(base_position, chunkSize, local_chunk_offset, scaling);
 

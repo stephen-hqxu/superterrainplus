@@ -23,6 +23,14 @@ using std::optional;
 using std::move;
 using std::make_unique;
 
+//GLM
+#include <glm/vec3.hpp>
+#include <glm/geometric.hpp>
+
+using glm::uvec2;
+using glm::vec2;
+using glm::vec3;
+
 enum class STPHeightfieldGenerator::STPEdgeArrangement : unsigned char {
 	TOP_LEFT_CORNER = 0x00u,
 	TOP_RIGHT_CORNER = 0x01u,
@@ -34,13 +42,6 @@ enum class STPHeightfieldGenerator::STPEdgeArrangement : unsigned char {
 	RIGHT_VERTICAL_STRIP = 0x13u,
 	NOT_AN_EDGE = 0xffu
 };
-
-/**
- * @brief Find the unit vector of the input vector
- * @param vec3 - Vector input
- * @return Unit vector of the input
-*/
-__device__ __inline__ float3 normalize3DKERNEL(float3);
 
 /**
  * @brief Init the curand generator for each thread
@@ -75,10 +76,7 @@ void STPHeightfieldGenerator::STPDeviceDeleter<T>::operator()(T* ptr) const {
 __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting& chunk_settings, const STPEnvironment::STPHeightfieldSetting& heightfield_settings,
 	const STPDiversityGenerator& diversity_generator, unsigned int hint_level_of_concurrency)
 	: generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings), 
-	FreeSlipTable(
-		make_uint2(chunk_settings.FreeSlipChunk.x, chunk_settings.FreeSlipChunk.y),
-		make_uint2(chunk_settings.MapSize.x, chunk_settings.MapSize.y)
-	) {
+	FreeSlipTable(chunk_settings.FreeSlipChunk, chunk_settings.MapSize) {
 	const unsigned int num_pixel = this->FreeSlipTable.getDimension().x * this->FreeSlipTable.getDimension().y,
 		num_freeslip_pixel = this->FreeSlipTable.getFreeSlipRange().x * this->FreeSlipTable.getFreeSlipRange().y;
 	this->TextureBufferAttr.TexturePixel = num_pixel;
@@ -125,7 +123,6 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 
 	std::exception_ptr exp;
 	int Mingridsize, gridsize, blocksize;
-	dim3 Dimgridsize, Dimblocksize;
 	//heightmap
 	optional<STPFreeSlipFloatTextureBuffer> heightmap_buffer;
 	optional<STPFreeSlipRenderTextureBuffer> heightfield_buffer;
@@ -220,11 +217,8 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 				return (blockSize + 2u) * sizeof(float);
 			};
 			STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSizeVariableSMem(&Mingridsize, &blocksize, &generateRenderingBufferKERNEL, det_cacheSize));
-			Dimblocksize = dim3(32, blocksize / 32);
-			Dimgridsize = dim3(
-				(this->FreeSlipTable.getFreeSlipRange().x + Dimblocksize.x - 1) / Dimblocksize.x, 
-				(this->FreeSlipTable.getFreeSlipRange().y + Dimblocksize.y - 1) / Dimblocksize.y
-			);
+			const uvec2 DimblockSize(32u, static_cast<unsigned int>(blocksize) / 32u),
+				DimgridSize = (this->FreeSlipTable.getFreeSlipRange() + DimblockSize - 1u) / DimblockSize;
 
 			//get free-slip util and memory
 			unsigned short* heightfield_formatted_d = (*heightfield_buffer)(STPFreeSlipLocation::DeviceMemory);
@@ -238,10 +232,11 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 					exp = std::current_exception();
 					goto freeUp;
 				}
-			}
+				}
 			//generate normalmap from heightmap and format into rendering buffer
-			const unsigned int cacheSize = (Dimblocksize.x + 2u) * (Dimblocksize.y + 2u) * sizeof(float);
-			generateRenderingBufferKERNEL << <Dimgridsize, Dimblocksize, cacheSize, stream >> > (heightmap_slip, this->Heightfield_Setting_h.Strength, heightfield_formatted_d);
+			const uvec2 cacheBlockSize = DimblockSize + 2u;
+			const unsigned int cacheSize = cacheBlockSize.x * cacheBlockSize.y * sizeof(float);
+			generateRenderingBufferKERNEL << <dim3(DimgridSize.x, DimgridSize.y), dim3(DimblockSize.x, DimblockSize.y), cacheSize, stream >> > (heightmap_slip, this->Heightfield_Setting_h.Strength, heightfield_formatted_d);
 			STPcudaCheckErr(cudaGetLastError());
 		}
 	}
@@ -296,7 +291,7 @@ __host__ void STPHeightfieldGenerator::setErosionIterationCUDA() {
 
 __host__ void STPHeightfieldGenerator::copyNeighbourEdgeOnly(unsigned short* device, const vector<unsigned short*>& source, size_t element_count, cudaStream_t stream) const {
 	typedef STPHeightfieldGenerator::STPEdgeArrangement STPEA;
-	const uint2& dimension = this->FreeSlipTable.getDimension();
+	const uvec2& dimension = this->FreeSlipTable.getDimension();
 	const unsigned int one_pixel_size = 4u * sizeof(unsigned short);
 	const unsigned int pitch = dimension.x * one_pixel_size;
 	const unsigned int horizontal_stripe_size = dimension.x * one_pixel_size;
@@ -400,7 +395,7 @@ __host__ void STPHeightfieldGenerator::copyNeighbourEdgeOnly(unsigned short* dev
 
 __host__ void STPHeightfieldGenerator::initEdgeArrangementTable() {
 	typedef STPHeightfieldGenerator::STPEdgeArrangement STPEA;
-	const uint2& freeslip_chunk = this->FreeSlipTable.getFreeSlipChunk();
+	const uvec2& freeslip_chunk = this->FreeSlipTable.getFreeSlipChunk();
 	const unsigned int num_chunk = freeslip_chunk.x * freeslip_chunk.y;
 	if (num_chunk == 1u) {
 		//if freeslip logic is not turned on, there's no need to do copy
@@ -413,7 +408,7 @@ __host__ void STPHeightfieldGenerator::initEdgeArrangementTable() {
 	this->EdgeArrangementTable = make_unique<STPEA[]>(num_chunk);
 	for (unsigned int chunkID = 0u; chunkID < num_chunk; chunkID++) {
 		STPEA& current_entry = this->EdgeArrangementTable[chunkID];
-		const uint2 chunkCoord = make_uint2(chunkID % freeslip_chunk.x, static_cast<unsigned int>(floorf(1.0f * chunkID / freeslip_chunk.x)));
+		const uvec2 chunkCoord(chunkID % freeslip_chunk.x, chunkID / freeslip_chunk.x);
 
 		//some basic boolean logic to determine our "frame"
 		if (chunkCoord.x == 0u) {
@@ -455,11 +450,6 @@ __host__ void STPHeightfieldGenerator::initEdgeArrangementTable() {
 	}
 }
 
-__device__ __inline__ float3 normalize3DKERNEL(float3 vec3) {
-	const float length = sqrtf(powf(vec3.x, 2) + powf(vec3.y, 2) + powf(vec3.z, 2));
-	return make_float3(fdividef(vec3.x, length), fdividef(vec3.y, length), fdividef(vec3.z, length));
-}
-
 __global__ void curandInitKERNEL(STPHeightfieldGenerator::curandRNG* rng, unsigned long long seed, unsigned int raindrop_count) {
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
@@ -481,31 +471,22 @@ __global__ void performErosionKERNEL(STPFreeSlipFloatManager heightmap_storage, 
 	//convert to (base, dimension - 1]
 	//range: dimension
 	//Generate the raindrop at the central chunk only
-	__shared__ uint4 area;
+	__shared__ uvec2 base;
+	__shared__ uvec2 range;
 	if (threadIdx.x == 0u) {
-		const uint2 dimension = heightmap_storage.Data->Dimension;
-		const uint2 freeslip_chunk = heightmap_storage.Data->FreeSlipChunk;
-		area = make_uint4(
-			//base x
-			static_cast<unsigned int>(1.0f * dimension.x - 1.0f),
-			//range x
-			static_cast<unsigned int>(floorf(freeslip_chunk.x / 2.0f) * dimension.x),
-			//base z
-			static_cast<unsigned int>(1.0f * dimension.y - 1.0f),
-			//range z
-			static_cast<unsigned int>(floorf(freeslip_chunk.y / 2.0f) * dimension.y)
-		);
+		const uvec2& dimension = heightmap_storage.Data->Dimension;
+
+		base = dimension - 1u,
+		range = (heightmap_storage.Data->FreeSlipChunk / 2u) * dimension;
 	}
 	__syncthreads();
 
 	//generating random location
 	//first we generate the number (0.0f, 1.0f]
-	float2 initPos = make_float2(curand_uniform(&rng[index]), curand_uniform(&rng[index]));
+	vec2 initPos = vec2(curand_uniform(&rng[index]), curand_uniform(&rng[index]));
 	//range convertion
-	initPos.x *= area.x;
-	initPos.x += area.y;
-	initPos.y *= area.z;
-	initPos.y += area.w;
+	initPos *= base;
+	initPos += range;
 
 	//spawn in the raindrop
 	STPRainDrop droplet(initPos, heightfield_settings->initWaterVolume, heightfield_settings->initSpeed);
@@ -514,17 +495,16 @@ __global__ void performErosionKERNEL(STPFreeSlipFloatManager heightmap_storage, 
 
 __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap, float strength, unsigned short* heightfield) {
 	//the current working pixel
-	const unsigned int x_b = blockIdx.x * blockDim.x,
-		y_b = blockIdx.y * blockDim.y,
-		x = x_b + threadIdx.x,
-		y = y_b + threadIdx.y,
-		threadperblock = blockDim.x * blockDim.y;
-	const uint2& freeslip_range = heightmap.Data->FreeSlipRange;
-	if (x >= freeslip_range.x || y >= freeslip_range.y) {
+	const uvec2 block = uvec2(blockIdx.x * blockDim.x, blockIdx.y * blockDim.y),
+		local_thread = uvec2(threadIdx.x, threadIdx.y),
+		thread = local_thread + block;
+	const unsigned int threadperblock = blockDim.x * blockDim.y;
+	const uvec2& freeslip_range = heightmap.Data->FreeSlipRange;
+	if (thread.x >= freeslip_range.x || thread.y >= freeslip_range.y) {
 		return;
 	}
 
-	const uint2& dimension = heightmap.Data->FreeSlipRange;
+	const uvec2& dimension = heightmap.Data->FreeSlipRange;
 	auto clamp = []__device__(int val, int lower, int upper) -> int {
 		return max(lower, min(val, upper));
 	};
@@ -535,15 +515,14 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 	//Cache heightmap the current thread block needs since each pixel is accessed upto 9 times.
 	extern __shared__ float heightmapCache[];
 	//each thread needs to access a 3x3 matrix around the current pixel, so we need to take the edge into consideration
-	const uint2 cacheSize = make_uint2(blockDim.x + 2u, blockDim.y + 2u);
+	const uvec2 cacheSize = uvec2(blockDim.x, blockDim.y) + 2u;
 	unsigned int iteration = 0u;
 	const unsigned int cacheSize_total = cacheSize.x * cacheSize.y;
 
 	while (iteration < cacheSize_total) {
 		const unsigned int cacheIdx = (threadIdx.x + blockDim.x * threadIdx.y) + iteration;
-		const unsigned int x_w = x_b + static_cast<unsigned int>(fmodf(cacheIdx, cacheSize.x)),
-			y_w = y_b + static_cast<unsigned int>(floorf(1.0f * cacheIdx / cacheSize.x));
-		const unsigned int workerIdx = clamp((x_w - 1u), 0, dimension.x - 1u) + clamp((y_w - 1u), 0, dimension.y - 1u) * dimension.x;
+		const uvec2 worker = block + uvec2(cacheIdx % cacheSize.x, cacheIdx / cacheSize.x);
+		const unsigned int workerIdx = clamp((worker.x - 1u), 0, dimension.x - 1u) + clamp((worker.y - 1u), 0, dimension.y - 1u) * dimension.x;
 
 		if (cacheIdx < cacheSize_total) {
 			//make sure index don't get out of bound
@@ -555,7 +534,8 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 	}
 	__syncthreads();
 
-	if ((heightmap.Data->FreeSlipChunk.x * heightmap.Data->FreeSlipChunk.y) > 1 && (x == 0 || y == 0 || x == freeslip_range.x - 1 || y == freeslip_range.y - 1)) {
+	if ((heightmap.Data->FreeSlipChunk.x * heightmap.Data->FreeSlipChunk.y) > 1 && 
+		(thread.x == 0 || thread.y == 0 || thread.x == freeslip_range.x - 1 || thread.y == freeslip_range.y - 1)) {
 		//if freeslip is not turned on, we need to calculate the edge pixel for this chunk
 		//otherwise, do not touch the border pixel since border pixel is calculated seamlessly by other chunks
 		return;
@@ -563,33 +543,30 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 	//load the cells from heightmap, remember the height map only contains one color channel
 	//using Sobel fitering
 	//Cache index
-	const unsigned int x_c = threadIdx.x + 1u,
-		y_c = threadIdx.y + 1u;
+	const uvec2 cache = local_thread + 1u;
 	float cell[8];
-	cell[0] = heightmapCache[(x_c - 1) + (y_c - 1) * cacheSize.x];
-	cell[1] = heightmapCache[x_c + (y_c - 1) * cacheSize.x];
-	cell[2] = heightmapCache[(x_c + 1) + (y_c - 1) * cacheSize.x];
-	cell[3] = heightmapCache[(x_c - 1) + y_c * cacheSize.x];
-	cell[4] = heightmapCache[(x_c + 1) + y_c * cacheSize.x];
-	cell[5] = heightmapCache[(x_c - 1) + (y_c + 1) * cacheSize.x];
-	cell[6] = heightmapCache[x_c + (y_c + 1) * cacheSize.x];
-	cell[7] = heightmapCache[(x_c + 1) + (y_c + 1) * cacheSize.x];
+	cell[0] = heightmapCache[(cache.x - 1) + (cache.y - 1) * cacheSize.x];
+	cell[1] = heightmapCache[cache.x + (cache.y - 1) * cacheSize.x];
+	cell[2] = heightmapCache[(cache.x + 1) + (cache.y - 1) * cacheSize.x];
+	cell[3] = heightmapCache[(cache.x - 1) + cache.y * cacheSize.x];
+	cell[4] = heightmapCache[(cache.x + 1) + cache.y * cacheSize.x];
+	cell[5] = heightmapCache[(cache.x - 1) + (cache.y + 1) * cacheSize.x];
+	cell[6] = heightmapCache[cache.x + (cache.y + 1) * cacheSize.x];
+	cell[7] = heightmapCache[(cache.x + 1) + (cache.y + 1) * cacheSize.x];
 	//apply the filtering kernel matrix
-	float3 normal;
+	vec3 normal;
 	normal.z = 1.0f / strength;
 	normal.x = cell[0] + 2 * cell[3] + cell[5] - (cell[2] + 2 * cell[4] + cell[7]);
 	normal.y = cell[0] + 2 * cell[1] + cell[2] - (cell[5] + 2 * cell[6] + cell[7]);
 	//normalize
-	normal = normalize3DKERNEL(normal);
+	normal = glm::normalize(normal);
 	//clamp to [0,1], was [-1,1]
-	normal.x = __saturatef((normal.x + 1.0f) / 2.0f);
-	normal.y = __saturatef((normal.y + 1.0f) / 2.0f);
-	normal.z = __saturatef((normal.z + 1.0f) / 2.0f);
+	normal = (glm::clamp(normal, -1.0f, 1.0f) + 1.0f) / 2.0f;
 	
 	//copy to the output, RGBA32F
-	const unsigned int index = heightmap(x + y * dimension.x);
+	const unsigned int index = heightmap(thread.x + thread.y * dimension.x);
 	heightfield[index * 4] = float2short(normal.x);//R
 	heightfield[index * 4 + 1] = float2short(normal.y);//G
 	heightfield[index * 4 + 2] = float2short(normal.z);//B
-	heightfield[index * 4 + 3] = float2short(heightmapCache[x_c + y_c * cacheSize.x]);//A
+	heightfield[index * 4 + 3] = float2short(heightmapCache[cache.x + cache.y * cacheSize.x]);//A
 }

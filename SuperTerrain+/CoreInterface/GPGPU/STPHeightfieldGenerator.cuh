@@ -19,6 +19,9 @@
 #include "../Environment/STPHeightfieldSetting.h"
 #include "../Environment/STPChunkSetting.h"
 
+//GLM
+#include <glm/vec2.hpp>
+
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
  * including perlin noise generated height map, hydrology processing and marching cube algorithm.
@@ -74,7 +77,7 @@ namespace SuperTerrainPlus {
 				std::vector<float*> Heightmap32F;
 				//The x vector specify the offset on x direction of the map and and z on y direction of the map.
 				//The offset parameter will only be applied on the heightmap generation.
-				float2 HeightmapOffset = make_float2(0.0f, 0.0f);
+				glm::vec2 HeightmapOffset = glm::vec2(0.0f);
 				//A INT16 array that will be used to stored the heightmap and normalmap after formation. The final format will become RGBA.
 				//The number of pointer provided should be the same as the number of heightmap and normalmap.
 				std::vector<unsigned short*> Heightfield16UI;

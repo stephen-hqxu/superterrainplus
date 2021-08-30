@@ -8,6 +8,8 @@
 #include <cuda_runtime.h>
 //System ADT
 #include <vector>
+//GLM
+#include <glm/vec2.hpp>
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -101,12 +103,13 @@ namespace SuperTerrainPlus {
 			 * @brief Init the erosion brush indices and weights, so each droplet can erode a certain range of terrain but not only the current pixel.
 			 * The erosion radius will be automatically updated to the parameter.
 			 * @param slipRange The area in both direction where raindrop can slip freely. Usually this is the same as the size of the heightmap, or 
-			 * under free-slip hydraulic erosion, this is the free-slip range
+			 * under free-slip hydraulic erosion, this is the free-slip range.
+			 * No reference is retained after the function returns.
 			 * @param erodeRadius Specify the radius of the brush. Determines the radius in which sediment is taken from therock layer.
 			 * The smaller radius is, the deeper and more distinct the ravines will be.
 			 * Raising the erosion radius also increases the computational time needed for each drop drastically.
 			*/
-			__host__ void setErosionBrushRadius(uint2 slipRange, unsigned int erodeRadius);
+			__host__ void setErosionBrushRadius(const glm::uvec2& slipRange, unsigned int erodeRadius);
 
 			/**
 			 * @brief Get the radius of the erosion brush

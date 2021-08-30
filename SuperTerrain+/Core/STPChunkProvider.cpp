@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+using glm::ivec2;
 using glm::vec2;
 using glm::uvec2;
 using glm::ivec3;
@@ -19,19 +20,13 @@ STPChunkProvider::STPChunkProvider(const STPEnvironment::STPChunkSetting& chunk_
 }
 
 unsigned int STPChunkProvider::calculateMaxConcurrency(uvec2 rendered_range, uvec2 freeslip_range) {
-	using glm::floor;
-	const vec2 rr = vec2(rendered_range),
-		fr = vec2(freeslip_range);
-	const uvec2 max_used = uvec2(floor((rr + floor(fr / 2.0f) * 2.0f) / fr));
+	const uvec2 max_used = uvec2((rendered_range + (freeslip_range / 2u) * 2u) / freeslip_range);
 	return max_used.x * max_used.y;
 }
 
-float2 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
+vec2 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
 	//first convert chunk world position to relative chunk position, then multiply by the map size, such that the generated map will be seamless
-	return make_float2(
-		static_cast<float>(this->ChunkSetting.MapSize.x) * chunkPos.x / (static_cast<float>(this->ChunkSetting.ChunkSize.x) * this->ChunkSetting.ChunkScaling) + this->ChunkSetting.MapOffset.x,
-		static_cast<float>(this->ChunkSetting.MapSize.y) * chunkPos.y / (static_cast<float>(this->ChunkSetting.ChunkSize.y) * this->ChunkSetting.ChunkScaling) + this->ChunkSetting.MapOffset.y
-	);
+	return static_cast<vec2>(this->ChunkSetting.MapSize) * chunkPos / (static_cast<vec2>(this->ChunkSetting.ChunkSize) * this->ChunkSetting.ChunkScaling) + this->ChunkSetting.MapOffset;
 }
 
 STPChunk::STPChunkPositionCache STPChunkProvider::getNeighbour(vec2 chunkPos) const {
@@ -110,9 +105,10 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 			return true;
 		}
 	}
-	auto biomemap_computer = [this](STPChunk* chunk, vec2 position, float2 offset) -> void {
+	auto biomemap_computer = [this](STPChunk* chunk, vec2 position, vec2 offset) -> void {
 		//since biomemap is discrete, we need to round the pixel
-		this->generateBiome(chunk->getBiomemap(), ivec3(static_cast<int>(round(offset.x)), 0, static_cast<int>(round(offset.y))));
+		ivec2 rounded_offset = static_cast<ivec2>(glm::round(offset));
+		this->generateBiome(chunk->getBiomemap(), ivec3(rounded_offset.x, 0, rounded_offset.y));
 		//computation was successful
 		chunk->markChunkState(STPChunk::STPChunkState::Biomemap_Ready);
 		chunk->markOccupancy(false);
