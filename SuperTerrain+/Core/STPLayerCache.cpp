@@ -1,5 +1,7 @@
 #include <World/Diversity/STPLayerCache.h>
 
+#include <Utility/Exception/STPBadNumericRange.h>
+
 using namespace SuperTerrainPlus::STPDiversity;
 
 using std::make_unique;
@@ -33,7 +35,7 @@ unsigned long long STPLayerCache::mixKey(unsigned long long key) {
 
 STPLayerCache::STPLayerCache(size_t capacity) {
 	if (!STPLayerCache::isPow2(capacity)) {
-		throw std::invalid_argument("The capacity must be a power of 2");
+		throw STPException::STPBadNumericRange("The capacity must be a power of 2");
 	}
 	
 	this->Mask = capacity - 1ull;

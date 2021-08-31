@@ -3,6 +3,7 @@
 
 //Error
 #include <Utility/STPDeviceErrorHandler.h>
+#include <Utility/Exception/STPBadNumericRange.h>
 //CUDA
 #include <cuda_runtime.h>
 
@@ -768,13 +769,13 @@ STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleM
 	//do some simple runtime check
 	//first make sure radius is an even number
 	if ((radius | 0x00u) == 0x00u) {
-		throw std::invalid_argument("radius should be an even number");
+		throw STPException::STPBadNumericRange("radius should be an even number");
 	}
 	//second make sure radius is not larger than the free-slip range
 	const uvec2 central_chunk_index = samplemap_manager.Data->FreeSlipChunk / 2u;
 	if (const uvec2 halo_size = central_chunk_index * samplemap_manager.Data->Dimension;
 		halo_size.x < radius || halo_size.y < radius) {
-		throw std::invalid_argument("radius is too large and will overflow free-slip boundary");
+		throw STPException::STPBadNumericRange("radius is too large and will overflow free-slip boundary");
 	}
 
 	//looks safe now, start the filter

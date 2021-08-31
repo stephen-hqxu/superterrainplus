@@ -8,6 +8,7 @@ STPDeviceErrorHandler.cpp
 STPDiversityGeneratorRTC.cpp
 STPEngineInitialiser.cpp
 STPEnvironment.cpp
+STPException.cpp
 STPFreeSlipTextureBuffer.cpp
 STPLayer.cpp
 STPLayerCache.cpp

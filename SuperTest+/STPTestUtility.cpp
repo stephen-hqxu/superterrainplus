@@ -44,7 +44,10 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool functionality", "[STPThreadPool
 
 		WHEN("Some works needs to be done") {
 			unsigned int work = GENERATE(take(5u, random(0u, 6666u)));
-			auto result = Pool.enqueue_future(&ThreadPoolTester::busyWork, work);
+			std::future<unsigned int> result;
+			REQUIRE_NOTHROW([&Pool = Pool, &result, work]() {
+				result = Pool.enqueue_future(&ThreadPoolTester::busyWork, work);
+			}());
 
 			THEN("Later work should have finished with returned result") {
 				REQUIRE(result.get() == work);

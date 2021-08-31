@@ -1,5 +1,7 @@
 #include <World/Diversity/STPBiomeFactory.h>
 
+#include <Utility/Exception/STPUnsupportedFunctionality.h>
+
 using glm::uvec2;
 using glm::uvec3;
 using glm::ivec3;
@@ -59,7 +61,7 @@ void STPBiomeFactory::operator()(Sample* biomemap, ivec3 offset) {
 		return;
 	}
 	//it's a 3D biome
-	throw std::invalid_argument("3-dimension biomemap generation is not supported yet.");
+	throw STPException::STPUnsupportedFunctionality("3-dimension biomemap generation is not supported");
 
 	//free the producer
 	this->returnProductionLine(producer);

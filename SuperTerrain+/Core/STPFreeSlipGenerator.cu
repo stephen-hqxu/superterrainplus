@@ -125,7 +125,7 @@ __host__ void STPFreeSlipGenerator::initLocalGlobalIndexCUDA() {
 	catch (const exception& e) {
 		//clear device memory (if any) to avoid memory leaks
 		this->clearDeviceIndex();
-		throw e;
+		throw;
 	}
 }
 

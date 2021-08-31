@@ -4,7 +4,10 @@
 
 #define STP_EXCEPTION_ON_ERROR
 #include <Utility/STPDeviceErrorHandler.h>
-#include <stdexcept>
+#include <Utility/Exception/STPSerialisationError.h>
+#include <Utility/Exception/STPCompilationError.h>
+#include <Utility/Exception/STPUnsupportedFunctionality.h>
+#include <Utility/Exception/STPMemoryError.h>
 
 //IO
 #include <fstream>
@@ -63,7 +66,7 @@ string STPDiversityGeneratorRTC::readSource(string filename) {
 
 	ifstream source_reader(filename);
 	if (!source_reader) {
-		throw std::ios_base::failure("file '" + filename + "' cannot be opened.");
+		throw STPException::STPSerialisationError(("file '" + filename + "' cannot be opened.").c_str());
 	}
 	//read all lines
 	stringstream buffer;
@@ -92,7 +95,9 @@ bool STPDiversityGeneratorRTC::detachArchive(string archive_name) {
 string STPDiversityGeneratorRTC::compileSource(string source_name, const string& source_code, const STPSourceInformation& source_info) {
 	//make sure the source name is unique
 	if (this->CompilationDatabase.find(source_name) != this->CompilationDatabase.end()) {
-		throw std::invalid_argument(string(__FILE__) + "::" + string(__FUNCTION__) + "\nA duplicate source with name '" + source_name + "' has been compiled before.");
+		throw STPException::STPMemoryError(
+			(string(__FILE__) + "::" + string(__FUNCTION__) + "\nA duplicate source with name '" + source_name + "' has been compiled before.").c_str()
+		);
 	}
 
 	nvrtcProgram program;
@@ -137,7 +142,7 @@ string STPDiversityGeneratorRTC::compileSource(string source_name, const string&
 	if (exptr) {
 		//destroy the broken program
 		STPcudaCheckErr(nvrtcDestroyProgram(&program));
-		throw std::runtime_error(log);
+		throw STPException::STPCompilationError(log.c_str());
 	}
 	//if no error appears grab the lowered name expression from compiled program
 	STPLoweredName& current_source_name = this->CompilationNameDatabase[source_name];
@@ -198,7 +203,7 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 				STPcudaCheckErr(nvrtcGetPTX(curr_program, code.get()));
 				break;
 			default:
-				throw std::invalid_argument("unsupported input type");
+				throw STPException::STPUnsupportedFunctionality("unsupported assembly code type");
 				break;
 			}
 
@@ -270,7 +275,7 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 const STPDiversityGeneratorRTC::STPLoweredName& STPDiversityGeneratorRTC::retrieveSourceLoweredName(string source_name) const {
 	auto name_expression = this->CompilationNameDatabase.find(source_name);
 	if (name_expression == this->CompilationNameDatabase.end()) {
-		throw std::invalid_argument(string(__FILE__) + "::" + string(__FUNCTION__) + "\nSource name cannot be found in source database.");
+		throw STPException::STPMemoryError((string(__FILE__) + "::" + string(__FUNCTION__) + "\nSource name cannot be found in source database.").c_str());
 	}
 	return name_expression->second;
 }

@@ -1,10 +1,12 @@
 #include <Utility/STPThreadPool.h>
 
+#include <Utility/Exception/STPBadNumericRange.h>
+
 using namespace SuperTerrainPlus;
 
 STPThreadPool::STPThreadPool(unsigned int count) {
 	if (count == 0u) {
-		throw std::invalid_argument("The number of worker in a thread pool must be greater than 0");
+		throw STPException::STPBadNumericRange("The number of worker in a thread pool must be greater than 0");
 	}
 
 	//start the thread pool
@@ -23,6 +25,7 @@ STPThreadPool::STPThreadPool(unsigned int count) {
 					std::unique_lock<std::shared_mutex> lock(this->task_queue_locker);
 					//proceeds only if we have new task or the thread has stopped (then we call to exit)
 					this->condition.wait(lock, [this] {
+						//predicate is checked outside the lock, so this is thread safe!
 						return !(this->running && this->task.empty());
 						});
 					if (!this->running) {
@@ -57,19 +60,11 @@ STPThreadPool::~STPThreadPool() {
 }
 
 size_t STPThreadPool::size() const {
-	size_t size;
-	{
-		std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
-		size = this->task.size();
-	}
-	return size;
+	std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
+	return this->task.size();
 }
 
 bool STPThreadPool::isRunning() const {
-	bool isrunning;
-	{
-		std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
-		isrunning = this->running;
-	}
-	return isrunning;
+	std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
+	return this->running;
 }

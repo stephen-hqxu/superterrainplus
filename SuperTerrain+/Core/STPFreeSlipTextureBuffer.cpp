@@ -4,9 +4,10 @@
 //Error
 #define STP_EXCEPTION_ON_ERROR
 #include <Utility/STPDeviceErrorHandler.h>
+#include <Utility/Exception/STPInvalidArgument.h>
+#include <Utility/Exception/STPMemoryError.h>
 
 #include <type_traits>
-#include <stdexcept>
 
 using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;
@@ -47,7 +48,7 @@ template<typename T>
 STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(typename STPFreeSlipTexture& texture, const STPFreeSlipTextureData& data, const STPFreeSlipTextureAttribute& attr) : 
 	Buffer(texture), Data(data), Attr(attr) {
 	if (this->Buffer.empty()) {
-		throw std::invalid_argument("provided free-slip texture is empty");
+		throw STPException::STPInvalidArgument("provided free-slip texture is empty");
 	}
 }
 
@@ -177,7 +178,7 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 template<typename T>
 STPFreeSlipTextureBuffer<T>::operator STPFreeSlipLocation() const {
 	if (!this->Integration) {
-		throw std::logic_error("no memory location has been specified as no memory has been allocated");
+		throw STPException::STPMemoryError("no memory location has been specified as no memory has been allocated");
 	}
 	return std::get<2>(this->Integration.value());
 }

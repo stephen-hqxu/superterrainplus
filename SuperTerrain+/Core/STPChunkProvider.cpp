@@ -1,5 +1,7 @@
 #include <World/Chunk/STPChunkProvider.h>
 
+#include <Utility/Exception/STPMemoryError.h>
+
 #include <algorithm>
 
 using glm::ivec2;
@@ -228,7 +230,7 @@ STPChunk* STPChunkProvider::requestChunk(vec2 chunkPos) {
 		}
 		return nullptr;
 	}
-	throw std::logic_error("Chunk chunk should have been computed but not found");
+	throw STPException::STPMemoryError("Chunk should have been computed but not found in the storage");
 }
 
 const STPEnvironment::STPChunkSetting& STPChunkProvider::getChunkSetting() const {

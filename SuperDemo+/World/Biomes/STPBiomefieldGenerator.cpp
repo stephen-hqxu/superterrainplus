@@ -3,6 +3,7 @@
 #include <STPAlgorithmDeviceInfoDebug.h>
 //Error
 #include <Utility/STPDeviceErrorHandler.h>
+#include <Utility/Exception/STPCUDAError.h>
 //Biome
 #include "STPBiomeRegistry.h"
 
@@ -88,7 +89,7 @@ void STPBiomefieldGenerator::initGenerator() {
 		const string log = this->compileSource("STPMultiHeightGenerator", multiheightfield_source, multiheightfield_info);
 		std::cout << log << std::endl;
 	}
-	catch (const std::runtime_error& error) {
+	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
 		std::cerr << error.what() << std::endl;
 		exit(-1);
 	}
@@ -124,7 +125,7 @@ void STPBiomefieldGenerator::initGenerator() {
 		std::cout << linker_info_log << std::endl;
 		std::cout << module_info_log << std::endl;
 	}
-	catch (const std::exception& e) {
+	catch (const SuperTerrainPlus::STPException::STPCUDAError& e) {
 		std::cerr << e.what() << std::endl;
 		std::cerr << linker_error_log << std::endl;
 		std::cerr << module_error_log << std::endl;

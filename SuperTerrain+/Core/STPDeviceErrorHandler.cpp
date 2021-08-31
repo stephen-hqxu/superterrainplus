@@ -9,7 +9,8 @@
 #include <iostream>
 #include <sstream>
 #include <typeinfo>
-#include <stdexcept>
+
+#include <Utility/Exception/STPCUDAError.h>
 
 using std::stringstream;
 using std::cerr;
@@ -23,7 +24,7 @@ void programDecision(stringstream& msg, unsigned int error_level) {
 	case 0: //STP_CONTINUE_ON_ERROR
 		break;
 	case 1: //STP_EXCEPTION_ON_ERROR
-		throw std::runtime_error(msg.str());
+		throw SuperTerrainPlus::STPException::STPCUDAError(msg.str().c_str());
 		break;
 	default:
 		exit(EXIT_FAILURE);

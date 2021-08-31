@@ -22,8 +22,8 @@ inline SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity:
 		}
 		return newLayer;
 	}
-	catch (std::exception e) {
-		throw e;
+	catch (...) {
+		std::rethrow_exception(std::current_exception());
 	}
 
 }

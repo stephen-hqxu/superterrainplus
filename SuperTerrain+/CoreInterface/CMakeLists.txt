@@ -19,10 +19,18 @@ GPGPU/STPFreeSlipManager.inl
 GPGPU/STPFreeSlipTextureBuffer.h
 GPGPU/STPHeightfieldGenerator.cuh
 GPGPU/STPRainDrop.cuh
+# /Utility/Exception
+Utility/Exception/STPBadNumericRange.h
+Utility/Exception/STPCompilationError.h
+Utility/Exception/STPCUDAError.h
+Utility/Exception/STPDeadThreadPool.h
+Utility/Exception/STPInvalidArgument.h
+Utility/Exception/STPMemoryError.h
+Utility/Exception/STPSerialisationError.h
+Utility/Exception/STPUnsupportedFunctionality.h
 # /Utility
 Utility/STPDeviceErrorHandler.h
 Utility/STPMemoryPool.h
-Utility/STPSerialisationException.hpp
 Utility/STPSmartStream.h
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl

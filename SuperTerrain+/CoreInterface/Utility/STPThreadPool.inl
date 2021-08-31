@@ -4,12 +4,9 @@
 #ifdef _STP_THREAD_POOL_H_
 template<class F, class ...Args>
 std::future<typename std::invoke_result<F, Args...>::type> SuperTerrainPlus::STPThreadPool::enqueue_future(F&& function, Args && ... args) {
-	{
-		std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
-		//if not running, throw exception
-		if (!this->running) {
-			throw std::runtime_error("thread pool is not running");
-		}
+	if (!this->isRunning()) {
+		//thread-safely test if it's running, or throw exception
+		throw STPException::STPDeadThreadPool("thread pool is not running");
 	}
 	//get the return type of the function
 	using return_type = typename std::invoke_result<F, Args...>::type;
@@ -33,12 +30,9 @@ std::future<typename std::invoke_result<F, Args...>::type> SuperTerrainPlus::STP
 
 template<class F, class ...Args>
 void SuperTerrainPlus::STPThreadPool::enqueue_void(F&& function, Args&& ... args) {
-	{
-		std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
-		//if not running, throw exception
-		if (!this->running) {
-			throw std::runtime_error("thread pool is not running");
-		}
+	if (!this->isRunning()) {
+		//thread-safely test if it's running, or throw exception
+		throw STPException::STPDeadThreadPool("thread pool is not running");
 	}
 	auto new_task = std::bind(std::forward<F>(function), std::forward<Args>(args)...);
 

@@ -12,7 +12,6 @@
 //GLM
 #include "glm/gtc/matrix_transform.hpp"
 
-#include "../../Utility/STPSerialisationException.hpp"
 #include "../Diversity/STPBiomeDefine.h"
 
 /**
@@ -115,12 +114,6 @@ namespace SuperTerrainPlus {
 		 * @return Chunk positions in world coordinate (x,z), aligning from top-left to bottom right
 		*/
 		static STPChunkPositionCache getRegion(glm::vec2, glm::uvec2, glm::uvec2, float = 1.0f) noexcept;
-
-		//serialise
-		friend std::ostream& operator<<(std::ostream&, const STPChunk* const);
-
-		//deserialise
-		friend std::istream& operator>>(std::istream&, STPChunk*&);
 
 		/**
 		 * @brief Atomically determine if current chunk is used by other threads
