@@ -32,6 +32,6 @@ if(${STP_BUILD_DEMO})
 endif()
 # add unit test program
 if(${STP_BUILD_TEST})
-	# test is WIP
-	# add_subdirectory(SuperTest+)
+	enable_testing()
+	add_subdirectory(SuperTest+)
 endif()
