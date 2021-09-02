@@ -1,4 +1,5 @@
 set(STP_UNIT_TEST "SuperTest+")
+set(STP_CONSOLE_REPORTER "stp_console")
 
 # minimum catch2 v3.0
 find_package(Catch2 3 REQUIRED CONFIG)
@@ -8,6 +9,7 @@ add_executable(${STP_UNIT_TEST}
 # Reporter/
 Reporter/STPConsoleReporter.cpp
 # Main test code
+STPTest2DBiome.cpp
 STPTest2DChunk.cpp
 STPTestUtility.cpp
 )
@@ -26,5 +28,5 @@ PRIVATE CATCH_CONFIG_CONSOLE_WIDTH=100
 # catch2 with ctest integration
 include(Catch)
 catch_discover_tests(${STP_UNIT_TEST}
-REPORTER stp_console
+REPORTER ${STP_CONSOLE_REPORTER}
 )

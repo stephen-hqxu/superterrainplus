@@ -150,22 +150,17 @@ __host__ const uvec2& STPFreeSlipGenerator::getFreeSlipRange() const {
 	return this->FreeSlipRange;
 }
 
-#define getManagerAdapter STPFreeSlipManagerAdaptor(buffer, *this)
-
-template<>
-__host__ STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<float> STPFreeSlipGenerator::operator()(STPFreeSlipTextureBuffer<float>& buffer) const {
-	return getManagerAdapter;
+#define GET_MANAGER(TYPE) \
+template<> \
+__host__ STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<TYPE> STPFreeSlipGenerator::operator()(STPFreeSlipTextureBuffer<TYPE>& buffer) const { \
+	return STPFreeSlipManagerAdaptor(buffer, *this); \
 }
 
-template<>
-__host__ STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<Sample> STPFreeSlipGenerator::operator()(STPFreeSlipTextureBuffer<Sample>& buffer) const {
-	return getManagerAdapter;
-}
+GET_MANAGER(float)
 
-template<>
-__host__ STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<SampleIsUint16> STPFreeSlipGenerator::operator()(STPFreeSlipTextureBuffer<SampleIsUint16>& buffer) const {
-	return getManagerAdapter;
-}
+GET_MANAGER(Sample)
+
+GET_MANAGER(SampleIsUint16)
 
 __global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int rowCount, uvec2 chunkRange, uvec2 tableSize, uvec2 mapSize) {
 	using glm::vec2;

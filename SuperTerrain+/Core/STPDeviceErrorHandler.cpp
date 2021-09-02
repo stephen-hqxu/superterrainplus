@@ -17,8 +17,10 @@ using std::cerr;
 using std::endl;
 
 //Decide what to do next when we catch an error
-void programDecision(stringstream& msg, unsigned int error_level) {
-	cerr << msg.str();
+void programDecision(stringstream& msg, unsigned int error_level, bool no_msg) {
+	if (!no_msg) {
+		cerr << msg.str();
+	}
 
 	switch (error_level) {
 	case 0: //STP_CONTINUE_ON_ERROR
@@ -31,33 +33,37 @@ void programDecision(stringstream& msg, unsigned int error_level) {
 	}
 }
 
+//Helpers to cut down coding efforts
+#define ASSERT_FUNCTION(ERR) template<> STP_API void STPcudaAssert<ERR>(ERR cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line, bool no_msg)
+#define WRITE_ERR_STRING(SS) SS << file << "(" << function << "):" << line
+#define CALL_PROGRAM_DECISION(SS) programDecision(SS, error_level, no_msg)
+
 //explicit instantiation
-template<> STP_API void STPcudaAssert<cudaError_t>(cudaError_t cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
+ASSERT_FUNCTION(cudaError_t) {
 	//CUDA Runtime API
 	if (cuda_code != cudaSuccess) {
 		stringstream err_str;
-		err_str << file << "(" << function << "):" << line << "\nCUDA Runtime API: " << cudaGetErrorString(cuda_code) << endl;
-		programDecision(err_str, error_level);
+		WRITE_ERR_STRING(err_str) << "\nCUDA Runtime API: " << cudaGetErrorString(cuda_code) << endl;
+		CALL_PROGRAM_DECISION(err_str);
 	}
 }
 
-template<> STP_API void STPcudaAssert<nvrtcResult>(nvrtcResult cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
+ASSERT_FUNCTION(nvrtcResult) {
 	//CUDA Runtime Compilication
 	if (cuda_code != NVRTC_SUCCESS) {
 		stringstream err_str;
-		err_str << file << "(" << function << "):" << line << "\nCUDA Runtime Compiler: " << nvrtcGetErrorString(cuda_code) << endl;
-		programDecision(err_str, error_level);
+		WRITE_ERR_STRING(err_str) << "\nCUDA Runtime Compiler: " << nvrtcGetErrorString(cuda_code) << endl;
+		CALL_PROGRAM_DECISION(err_str);
 	}
 }
 
-template<> STP_API void STPcudaAssert<CUresult>(CUresult cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line) {
+ASSERT_FUNCTION(CUresult) {
 	//CUDA Driver API
 	if (cuda_code != CUDA_SUCCESS) {
 		stringstream err_str;
 		const char* str;
 		cuGetErrorString(cuda_code, &str);
-		err_str << file << "(" << function << "):" << line << "\nCUDA Driver API: " << str << endl;
-		programDecision(err_str, error_level);
+		WRITE_ERR_STRING(err_str) << "\nCUDA Driver API: " << str << endl;
+		CALL_PROGRAM_DECISION(err_str);
 	}
-	
 }

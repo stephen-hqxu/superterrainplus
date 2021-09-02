@@ -25,7 +25,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPLayerCache is a smart caching system that stores computed layer sample and read directly from when available
 		*/
-		class STP_API STPLayerCache final {
+		class STP_API STPLayerCache {
 		private:
 
 			//Store the key value for a coordinate
@@ -77,7 +77,7 @@ namespace SuperTerrainPlus {
 
 			STPLayerCache(STPLayerCache&&) = delete;
 
-			~STPLayerCache();
+			~STPLayerCache() = default;
 
 			STPLayerCache& operator=(const STPLayerCache&) = delete;
 

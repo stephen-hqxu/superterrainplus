@@ -46,10 +46,6 @@ STPLayerCache::STPLayerCache(size_t capacity) {
 
 }
 
-STPLayerCache::~STPLayerCache() {
-	//Key and Value will be deleted automatically
-}
-
 Sample STPLayerCache::cache(int x, int y, int z, std::function<Sample(int, int, int)> sampler) {
 	//calc the key
 	const unsigned long long key = STPLayerCache::uniqueHash(x, y, z);
@@ -71,8 +67,9 @@ Sample STPLayerCache::cache(int x, int y, int z, std::function<Sample(int, int, 
 
 void STPLayerCache::clearCache() {
 	const size_t capacity = this->getCapacity();
-	memset(this->Key.get(), 0x00, sizeof(unsigned long long) * capacity);
-	memset(this->Value.get(), 0x00, sizeof(Sample) * capacity);
+	//to avoid hash collision for key (it's equivalent to -1 with signed integer)
+	memset(this->Key.get(), 0xFFu, sizeof(unsigned long long) * capacity);
+	memset(this->Value.get(), 0x00u, sizeof(Sample) * capacity);
 }
 
 size_t STPLayerCache::getCapacity() const {

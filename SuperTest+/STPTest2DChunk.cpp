@@ -19,14 +19,14 @@ using glm::uvec2;
 using glm::vec2;
 using glm::vec3;
 
-SCENARIO("STPChunk chunk coordinate static compute functions", "[STPChunk]") {
+SCENARIO("STPChunk static functions can compute chunk coordinate correctly", "[Chunk][STPChunk]") {
 
 	GIVEN("A camera position in the world and some chunk parameters") {
 		constexpr vec3 CameraPosition = vec3(-573.74f, 679.5f, 845.982f);
 		constexpr uvec2 ChunkSize = uvec2(10u);
 		constexpr float ChunkScaling = 25.5f;
 
-		THEN("The chunk world position should be correct") {
+		THEN("The chunk world position should be correctly calculated") {
 			constexpr vec2 ChunkPosition = vec2(-765.0f, 765.0f);
 			CHECK(STPChunk::getChunkPosition(CameraPosition, ChunkSize, ChunkScaling) == ChunkPosition);
 		}
@@ -59,11 +59,10 @@ SCENARIO("STPChunk chunk coordinate static compute functions", "[STPChunk]") {
 	}
 }
 
-class ChunkTester {
+class ChunkTester : protected STPChunk {
 protected:
 
 	constexpr static uvec2 Size = uvec2(5u);
-	STPChunk Chunk;
 
 	template<typename T>
 	static void fillValue(T* texture, T value) {
@@ -76,74 +75,68 @@ protected:
 
 public:
 
-	ChunkTester() : Chunk(ChunkTester::Size) {
+	ChunkTester() : STPChunk(ChunkTester::Size) {
 
 	}
 
 };
 
-SCENARIO_METHOD(ChunkTester, "STPChunk texture memory management", "[STPChunk]") {
-	constexpr auto no_state = STPChunk::STPChunkState::Empty;
+SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk][STPChunk]") {
 
 	GIVEN("A STPChunk object") {
+		constexpr auto no_state = STPChunk::STPChunkState::Empty;
 
-		THEN("New chunk should be usable and empty") {
-			REQUIRE_FALSE(Chunk.isOccupied());
-			REQUIRE(Chunk.getChunkState() == no_state);
-		}
-
-		THEN("The new chunk has a fixed size") {
-			REQUIRE(Chunk.getSize() == ChunkTester::Size);
+		THEN("New chunk should be usable and empty with fixed size") {
+			REQUIRE_FALSE(this->isOccupied());
+			REQUIRE(this->getChunkState() == no_state);
+			REQUIRE(this->getSize() == ChunkTester::Size);
 		}
 
 		WHEN("Changing the chunk status flags") {
 
 			THEN("Chunk can be locked") {
 				//lock the chunk
-				Chunk.markOccupancy(true);
-				REQUIRE(Chunk.isOccupied());
+				this->markOccupancy(true);
+				REQUIRE(this->isOccupied());
 
 				AND_THEN("Chunk can be unlocked") {
 					//unlock the chunk
-					Chunk.markOccupancy(false);
-					REQUIRE_FALSE(Chunk.isOccupied());
+					this->markOccupancy(false);
+					REQUIRE_FALSE(this->isOccupied());
 				}
 			}
 
-			const auto target_state = STPChunk::STPChunkState::Erosion_Ready;
-			THEN("Chunk state can be changed back and forth") {
+			THEN("Chunk state can be changed randomly") {
+				const auto target_state = GENERATE(take(3, values({
+					STPChunk::STPChunkState::Empty,
+					STPChunk::STPChunkState::Biomemap_Ready, 
+					STPChunk::STPChunkState::Heightmap_Ready, 
+					STPChunk::STPChunkState::Erosion_Ready,
+					STPChunk::STPChunkState::Complete
+				})));
 				//change chunk status
-				Chunk.markChunkState(target_state);
-				REQUIRE(Chunk.getChunkState() == target_state);
-				//change back to default stats
-				Chunk.markChunkState(no_state);
-				REQUIRE(Chunk.getChunkState() == no_state);
+				this->markChunkState(target_state);
+				REQUIRE(this->getChunkState() == target_state);
 			}
 
 		}
 
 		AND_GIVEN("Some texture values") {
-			constexpr float float_value = -19.5;
-			constexpr Sample biome_value = 984u;
+			constexpr float float_value = -756.5f;
+			constexpr Sample biome_value = 2984u;
 
-			WHEN("Asking for some texture stored in the chunk") {
+			WHEN("Trying to write some data into the texture") {
+				ChunkTester::fillValue(this->getHeightmap(), float_value);
+				ChunkTester::fillValue(this->getBiomemap(), biome_value);
 
-				AND_WHEN("Filling in heightmap with some values") {
-					ChunkTester::fillValue(Chunk.getHeightmap(), float_value);
+				THEN("Value can be retrieved without corrupted") {
+					auto heightmap = this->getHeightmap();
+					const auto index = GENERATE(take(3u, random(0u, 24u)));
 
-					THEN("Value can be retrieved without corrupted") {
-						auto heightmap = Chunk.getHeightmap();
-						CHECK(heightmap[GENERATE(take(3u, random(0u, 24u)))] == float_value);
-					}
-				}
+					CHECK(heightmap[index] == float_value);
 
-				AND_WHEN("Filling in biomemap with some values") {
-					ChunkTester::fillValue(Chunk.getBiomemap(), biome_value);
-
-					THEN("Value can be retrieved without corrupted") {
-						auto biomemap = Chunk.getBiomemap();
-						CHECK(biomemap[GENERATE(take(3u, random(0u, 24u)))] == biome_value);
-					}
+					auto biomemap = this->getBiomemap();
+					CHECK(biomemap[index] == biome_value);
 				}
 			}
 		}

@@ -222,10 +222,14 @@ public:
 					this->emitStats(testcase->value.totals.assertions);
 				}
 				//end of test case
+				//emit stats for the group
+				this->emitSymbol('.');
+				this->emitStats(group->value.totals.assertions);
 			}
 			//end of group
 		}
 		//end of run
+		this->emitSymbol('=');
 	}
 
 };
