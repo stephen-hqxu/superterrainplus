@@ -28,7 +28,7 @@ STPThreadPool::STPThreadPool(unsigned int count) {
 						//predicate is checked outside the lock, so this is thread safe!
 						return !(this->running && this->task.empty());
 						});
-					if (!this->running) {
+					if (!this->running && this->task.empty()) {
 						//end the thread
 						return;
 					}

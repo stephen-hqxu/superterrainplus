@@ -80,9 +80,10 @@ namespace STPDemo {
 		STPOffscreenRenderer* screen = nullptr;
 		STPRendererCommander* command = nullptr;
 		//terrain renderers
-		STPWorldManager world_manager;
+		STPWorldManager* world_manager = nullptr;
 		//thread pool
-		SuperTerrainPlus::STPThreadPool* command_pool = nullptr;
+		//thread pool must be the last one to be destroyed
+		SuperTerrainPlus::STPThreadPool command_pool;
 
 		/**
 		 * @brief Set up the shader storage buffer for pv matrix
@@ -114,9 +115,9 @@ namespace STPDemo {
 			static std::future<void*> bufferUploaders[3];
 			//increasing char* will shift 1 byte so we can manipulate the pure address
 			
-			bufferUploaders[0] = this->command_pool->enqueue_future(memcpy, PVblock_mapped, &this->View, sizeof(mat4));
-			bufferUploaders[1] = this->command_pool->enqueue_future(memcpy, PVblock_mapped + sizeof(mat4), &View_notrans, sizeof(mat4));
-			bufferUploaders[2] = this->command_pool->enqueue_future(memcpy, PVblock_mapped + 2 * sizeof(mat4), &this->Projection, sizeof(mat4));
+			bufferUploaders[0] = this->command_pool.enqueue_future(memcpy, PVblock_mapped, &this->View, sizeof(mat4));
+			bufferUploaders[1] = this->command_pool.enqueue_future(memcpy, PVblock_mapped + sizeof(mat4), &View_notrans, sizeof(mat4));
+			bufferUploaders[2] = this->command_pool.enqueue_future(memcpy, PVblock_mapped + 2 * sizeof(mat4), &this->Projection, sizeof(mat4));
 			//wait
 			for (int i = 0; i < 3; i++) {
 				bufferUploaders[i].get();
@@ -134,8 +135,8 @@ namespace STPDemo {
 			delete this->command;
 			//delete renderers
 			delete this->sky;
-			//delete thread pool
-			delete this->command_pool;
+			//delete world manager
+			delete this->world_manager;
 		}
 
 	public:
@@ -146,7 +147,8 @@ namespace STPDemo {
 		 * @param windowSize The size of the window frame
 		 * @param ini The ini setting file for the engine
 		*/
-		STPMasterRenderer(SglToolkit::SgTCamera*& camera, const int windowSize[2], SIMPLE::SIStorage& ini, SIMPLE::SIStorage& biome) : Camera(camera), engineSettings(ini), biomeSettings(biome) {
+		STPMasterRenderer(SglToolkit::SgTCamera*& camera, const int windowSize[2], SIMPLE::SIStorage& ini, SIMPLE::SIStorage& biome) : 
+			Camera(camera), engineSettings(ini), biomeSettings(biome), command_pool(3u) {
 			this->SCR_SIZE[0] = windowSize[0];
 			this->SCR_SIZE[1] = windowSize[1];
 		}
@@ -185,18 +187,16 @@ namespace STPDemo {
 			
 			glPatchParameteri(GL_PATCH_VERTICES, 3);//barycentric coordinate system
 
-			//starting thread pool
-			this->command_pool = new SuperTerrainPlus::STPThreadPool(3u);
 			//loading terrain 2d inf parameters
 			SuperTerrainPlus::STPEnvironment::STPConfiguration config;
-			std::future chunksPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFChunksParameter, std::ref(this->engineSettings["Generators"]));
-			std::future renderPara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getProcedural2DINFRenderingParameter, std::ref(this->engineSettings["2DTerrainINF"]));
-			std::future biomePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::loadBiomeParameters, std::ref(this->biomeSettings));
+			std::future chunksPara_loader = this->command_pool.enqueue_future(STPTerrainParaLoader::getProcedural2DINFChunksParameter, std::ref(this->engineSettings["Generators"]));
+			std::future renderPara_loader = this->command_pool.enqueue_future(STPTerrainParaLoader::getProcedural2DINFRenderingParameter, std::ref(this->engineSettings["2DTerrainINF"]));
+			std::future biomePara_loader = this->command_pool.enqueue_future(STPTerrainParaLoader::loadBiomeParameters, std::ref(this->biomeSettings));
 			config.getChunkSetting() = chunksPara_loader.get();
 			config.getMeshSetting() = renderPara_loader.get();
 			
 			const auto& chunk_setting = config.getChunkSetting();
-			std::future noisePara_loader = this->command_pool->enqueue_future(STPTerrainParaLoader::getSimplex2DNoiseParameter, std::ref(this->biomeSettings["simplex"]));
+			std::future noisePara_loader = this->command_pool.enqueue_future(STPTerrainParaLoader::getSimplex2DNoiseParameter, std::ref(this->biomeSettings["simplex"]));
 			//not quite sure why heightfield_settings isn't got copied to the config, it just share the pointer
 			config.getHeightfieldSetting() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameter(this->engineSettings["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk);
 			SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting simplex = noisePara_loader.get();
@@ -210,16 +210,17 @@ namespace STPDemo {
 			//setting up renderers
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer, this->command_pool);
 			//setting world manager
-			this->world_manager.attachSetting(&config);
-			this->world_manager.attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
-			this->world_manager.attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(simplex, chunk_setting.MapSize, static_cast<unsigned int>(std::stoul(this->biomeSettings("interpolationRadius"))));
-			this->world_manager.linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
+			this->world_manager = new STPWorldManager();
+			this->world_manager->attachSetting(&config);
+			this->world_manager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
+			this->world_manager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(simplex, chunk_setting.MapSize, static_cast<unsigned int>(std::stoul(this->biomeSettings("interpolationRadius"))));
+			this->world_manager->linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 			if (!this->world_manager) {
 				//do not proceed if it fails
 				exit(-1);
 			}
 
-			const_cast<SuperTerrainPlus::STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
+			const_cast<SuperTerrainPlus::STPChunkManager*>(this->world_manager->getChunkManager())->loadChunksAsync(this->Camera->getPosition());
 			//setting up ssbo
 			this->setPVmatrix();
 		}
@@ -259,7 +260,7 @@ namespace STPDemo {
 		*/
 		void draw(const double& frametime) {
 			//start loading terrain 2d inf async
-			const_cast<SuperTerrainPlus::STPChunkManager*>(this->world_manager.getChunkManager())->loadChunksAsync(this->Camera->getPosition());
+			const_cast<SuperTerrainPlus::STPChunkManager*>(this->world_manager->getChunkManager())->loadChunksAsync(this->Camera->getPosition());
 
 			//clear the default framebuffer
 			glClearColor(121.0f / 255.0f, 151.0f / 255.0f, 52.0f / 255.0f, 1.0f);
@@ -278,7 +279,7 @@ namespace STPDemo {
 			//terrain renderer, choose whichever terrain renderer you like
 			glDepthFunc(GL_LESS);
 			glEnable(GL_CULL_FACE);
-			this->world_manager.getChunkRenderer()->renderVisibleChunks(this->View, this->Projection, this->Camera->getPosition());
+			this->world_manager->getChunkRenderer()->renderVisibleChunks(this->View, this->Projection, this->Camera->getPosition());
 		}
 
 		/**

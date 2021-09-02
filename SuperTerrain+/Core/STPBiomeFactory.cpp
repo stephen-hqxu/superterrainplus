@@ -1,5 +1,6 @@
 #include <World/Diversity/STPBiomeFactory.h>
 
+#include <Utility/Exception/STPBadNumericRange.h>
 #include <Utility/Exception/STPUnsupportedFunctionality.h>
 
 using glm::uvec2;
@@ -9,7 +10,9 @@ using glm::ivec3;
 using namespace SuperTerrainPlus::STPDiversity;
 
 STPBiomeFactory::STPBiomeFactory(uvec3 dimension) : BiomeDimension(dimension) {
-
+	if (dimension.x == 0u || dimension.y == 0u || dimension.z == 0u) {
+		throw STPException::STPBadNumericRange("No component in a dimension vector should be zero");
+	}
 }
 
 STPBiomeFactory::STPBiomeFactory(uvec2 dimension) : STPBiomeFactory(uvec3(dimension.x, 1u, dimension.y)) {
@@ -42,26 +45,26 @@ void STPBiomeFactory::returnProductionLine(STPLayerManager_t& line) {
 }
 
 void STPBiomeFactory::operator()(Sample* biomemap, ivec3 offset) {
+	if (this->BiomeDimension.y != 1u) {
+		//it's a 3D biome
+		throw STPException::STPUnsupportedFunctionality("3-dimension biomemap generation is not supported");
+	}
+
+	//it's a 2D biome
 	//request a production line
 	STPLayerManager_t producer = this->requestProductionLine();
 
 	//loop through and generate the biome map
 	//why not using CUDA and do it in parallel? Because the biome layers are cached, tested and parallel performance is a piece of shit
-	if (this->BiomeDimension.y == 1u) {
-		//it's a 2D biome
-		//to avoid making useless computation
-		for (unsigned int z = 0u; z < this->BiomeDimension.z; z++) {
-			for (unsigned int x = 0u; x < this->BiomeDimension.x; x++) {
-				//calculate the map index
-				const unsigned int index = x + z * this->BiomeDimension.x;
-				//get the biome at thie coordinate
-				biomemap[index] = producer->start()->sample(static_cast<int>(x) + offset.x, 0, static_cast<int>(z) + offset.z);
-			}
+	for (unsigned int z = 0u; z < this->BiomeDimension.z; z++) {
+		for (unsigned int x = 0u; x < this->BiomeDimension.x; x++) {
+			//calculate the map index
+			const unsigned int index = x + z * this->BiomeDimension.x;
+			//get the biome at thie coordinate
+			//I don't find using cache at the first layer necessary since each pixel is sampled only once
+			biomemap[index] = producer->start()->sample(static_cast<int>(x) + offset.x, 0, static_cast<int>(z) + offset.z);
 		}
-		return;
 	}
-	//it's a 3D biome
-	throw STPException::STPUnsupportedFunctionality("3-dimension biomemap generation is not supported");
 
 	//free the producer
 	this->returnProductionLine(producer);

@@ -15,7 +15,7 @@ namespace STPDemo {
 		//drawing command
 		const void* const command;
 		//thread pool from the main drawing thread
-		SuperTerrainPlus::STPThreadPool* const rendering_pool;
+		SuperTerrainPlus::STPThreadPool& rendering_pool;
 
 		SglToolkit::SgTShaderProc skyShader;
 		//buffers
@@ -145,7 +145,7 @@ namespace STPDemo {
 		 * @param sky_cmd The indrect rendering command for sky renderer
 		 * @param pool The thread pool for multi-threaded texture loading
 		*/
-		STPSkyRenderer(const SIMPLE::SISection& day, const SIMPLE::SISection& night, const SIMPLE::SISection& globalPreset, const DrawElementsIndirectCommand* sky_cmd, SuperTerrainPlus::STPThreadPool* pool)
+		STPSkyRenderer(const SIMPLE::SISection& day, const SIMPLE::SISection& night, const SIMPLE::SISection& globalPreset, const DrawElementsIndirectCommand* sky_cmd, SuperTerrainPlus::STPThreadPool& pool)
 			: rotaingSpeed(std::stof(globalPreset("rotationSpeed"))), cyclingSpeed(std::stof(globalPreset("DaytimeSpeed"))), command(reinterpret_cast<const void*>(sky_cmd)), rendering_pool(pool) {
 			cout << "....Loading STPSkyRenderer....";
 			
@@ -156,8 +156,8 @@ namespace STPDemo {
 			}
 			//loading textures in multiple threads
 			for (int i = 0; i < 6; i++) {
-				this->Texloader_day[i] = this->rendering_pool->enqueue_future(STPTextureStorage::loadTexture, this->path_day[i].c_str(), 3);//we don't need alpha channel for skybox
-				this->Texloader_night[i] = this->rendering_pool->enqueue_future(STPTextureStorage::loadTexture, this->path_night[i].c_str(), 3);
+				this->Texloader_day[i] = this->rendering_pool.enqueue_future(STPTextureStorage::loadTexture, this->path_day[i].c_str(), 3);//we don't need alpha channel for skybox
+				this->Texloader_night[i] = this->rendering_pool.enqueue_future(STPTextureStorage::loadTexture, this->path_night[i].c_str(), 3);
 			}
 			
 			if (this->compileShader()) {
@@ -214,8 +214,8 @@ namespace STPDemo {
 			//multithreading, why wasting our powerful CPU?
 			static std::future<mat4> rotationCalc;
 			static std::future<float> daynightCalc;
-			rotationCalc = this->rendering_pool->enqueue_future(getRotations, this->rotaingSpeed, std::ref(this->rotations));
-			daynightCalc = this->rendering_pool->enqueue_future(getDayNightFactor, this->cyclingSpeed, std::ref(this->tick));
+			rotationCalc = this->rendering_pool.enqueue_future(getRotations, this->rotaingSpeed, std::ref(this->rotations));
+			daynightCalc = this->rendering_pool.enqueue_future(getDayNightFactor, this->cyclingSpeed, std::ref(this->tick));
 
 			//sending uniforms
 			glProgramUniformMatrix4fv(this->skyShader.getP(), this->getLoc("Rotations"), 1, GL_FALSE, value_ptr(rotationCalc.get()));

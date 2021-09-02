@@ -112,7 +112,7 @@ namespace SuperTerrainPlus {
 
 		STPChunkProvider& operator=(STPChunkProvider&&) = delete;
 
-		~STPChunkProvider() = default;
+		~STPChunkProvider();
 
 		/**
 		 * @brief For every neighbour of the current chunk, check if they exists in the storage.

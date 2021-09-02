@@ -23,10 +23,10 @@ namespace STPDemo {
 		 * @param terrain2d_unitplane_count specify the number of unit plane for the procedural 2d infinite terrain renderer.
 		 * The value is equavalent to CHUNK_SIZE.x * CHUNK_SIZE.y * RENDERED_CHUNK.x * RENDERED_CHUNK.y;
 		*/
-		STPRendererCommander(SuperTerrainPlus::STPThreadPool* pool, unsigned int terrain2d_unitplane_count) {
+		STPRendererCommander(SuperTerrainPlus::STPThreadPool& pool, unsigned int terrain2d_unitplane_count) {
 			//Initialise rendering command in multi-thread
 			//Sky renderer
-			std::future<DrawElementsIndirectCommand*> skycmd_generator = pool->enqueue_future([]() -> DrawElementsIndirectCommand* {
+			std::future<DrawElementsIndirectCommand*> skycmd_generator = pool.enqueue_future([]() -> DrawElementsIndirectCommand* {
 				DrawElementsIndirectCommand* skycmd = new DrawElementsIndirectCommand{
 					SglToolkit::SgTUtils::UNITBOX_INDICES_SIZE,
 					1,
@@ -37,7 +37,7 @@ namespace STPDemo {
 				return skycmd;
 				});
 			//Quad renderer
-			std::future<DrawArraysIndirectCommand*> quadcmd_generator = pool->enqueue_future([]() -> DrawArraysIndirectCommand* {
+			std::future<DrawArraysIndirectCommand*> quadcmd_generator = pool.enqueue_future([]() -> DrawArraysIndirectCommand* {
 				DrawArraysIndirectCommand* quadcmd = new DrawArraysIndirectCommand{
 					6,
 					1,
@@ -47,7 +47,7 @@ namespace STPDemo {
 				return quadcmd;
 				});
 			//Procedural 2D infinite terrain renderer
-			std::future<DrawElementsIndirectCommand*> procedural2dinf_generator = pool->enqueue_future([terrain2d_unitplane_count]() -> DrawElementsIndirectCommand* {
+			std::future<DrawElementsIndirectCommand*> procedural2dinf_generator = pool.enqueue_future([terrain2d_unitplane_count]() -> DrawElementsIndirectCommand* {
 				DrawElementsIndirectCommand* procedural2dinfcmd = new DrawElementsIndirectCommand{
 					SglToolkit::SgTUtils::UNITPLANE_INDICES_SIZE,
 					terrain2d_unitplane_count,

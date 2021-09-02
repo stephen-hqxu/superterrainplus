@@ -232,7 +232,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 					exp = std::current_exception();
 					goto freeUp;
 				}
-				}
+			}
 			//generate normalmap from heightmap and format into rendering buffer
 			const uvec2 cacheBlockSize = DimblockSize + 2u;
 			const unsigned int cacheSize = cacheBlockSize.x * cacheBlockSize.y * sizeof(float);

@@ -75,7 +75,8 @@ SuperTerrainPlus::STPDiversity::STPLayerManager* STPLayerChainBuilder::supply() 
 	base = chain->insert<STPScaleLayer, Cachesize>(this->GlobalSeed, 3ull, STPScaleLayer::STPScaleType::NORMAL, base);
 	base = chain->insert<STPVoronoiLayer, Cachesize>(this->GlobalSeed, 4ull, false, base);
 	base = chain->insert<STPVoronoiLayer, Cachesize>(this->GlobalSeed, 5ull, false, base);
-	base = chain->insert<STPVoronoiLayer, Cachesize>(this->GlobalSeed, 6ull, false, base);
+	//the last layer can be uncached because each pixel is only referenced once
+	base = chain->insert<STPVoronoiLayer>(this->GlobalSeed, 6ull, false, base);
 
 	return chain;
 }

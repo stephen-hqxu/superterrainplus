@@ -21,6 +21,12 @@ STPChunkProvider::STPChunkProvider(const STPEnvironment::STPChunkSetting& chunk_
 	: ChunkSetting(chunk_settings), ChunkStorage(storage), generateBiome(biome_factory), generateHeightfield(heightfield_generator), kernel_launch_pool(5u){
 }
 
+STPChunkProvider::~STPChunkProvider() {
+	while (this->kernel_launch_pool.size() > 0ull) {
+		//sync and wait for the thread pool to finish all compute threads
+	}
+}
+
 unsigned int STPChunkProvider::calculateMaxConcurrency(uvec2 rendered_range, uvec2 freeslip_range) {
 	const uvec2 max_used = uvec2((rendered_range + (freeslip_range / 2u) * 2u) / freeslip_range);
 	return max_used.x * max_used.y;

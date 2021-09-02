@@ -11,12 +11,18 @@
 #include <World/Diversity/STPSeedMixer.h>
 #include <World/Diversity/STPLayerCache.h>
 #include <World/Diversity/STPLayerManager.h>
+#include <World/Diversity/STPBiomeFactory.h>
 
 #include <Utility/Exception/STPBadNumericRange.h>
+#include <Utility/Exception/STPUnsupportedFunctionality.h>
 
 using namespace SuperTerrainPlus::STPDiversity;
 using SuperTerrainPlus::STPDiversity::Sample;
 using SuperTerrainPlus::STPDiversity::Seed;
+
+using glm::uvec2;
+using glm::ivec3;
+using glm::uvec3;
 
 class LayerCacheTester : protected STPLayerCache {
 protected:
@@ -153,7 +159,7 @@ public:
 
 #define FAST_SAMPLE(LAYER, COOR) LAYER->retrieve(COOR[0], COOR[1], COOR[2])
 
-SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for biome genereation", "[Diversity][STPLayerManager]") {
+SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for biome genereation", "[Diversity][STPLayerManager][!mayfail]") {
 
 	GIVEN("A new layer manager") {
 
@@ -162,11 +168,14 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 		}
 
 		AND_GIVEN("Some random numbers") {
-			const auto SeedSalt = GENERATE(take(2, chunk(10, random(0ull, 88888888ull))));
+			using std::make_pair;
+			//we are not using RNG, so doesn't matter
+			constexpr Seed RandomSeed = 0ull;
+			constexpr Seed Salt = 0ull;
 
 			WHEN("Insert one simple layer without cache") {
-				auto FirstLayer = this->insert<RootLayer>(SeedSalt[0], SeedSalt[1]);
-				const auto Coordinate = GENERATE(take(2, chunk(3, random(-13131313, 78987678))));
+				auto FirstLayer = this->insert<RootLayer>(RandomSeed, Salt);
+				const auto Coordinate = GENERATE(take(3, chunk(3, random(-13131313, 78987678))));
 
 				THEN("The orphan layer properties should be validated") {
 					//property test
@@ -195,7 +204,7 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 				}
 
 				AND_WHEN("Insert one more cached layer so the chain is linear") {
-					auto SecondLayer = this->insert<NormalLayer, 32ull>(SeedSalt[2], SeedSalt[3], FirstLayer);
+					auto SecondLayer = this->insert<NormalLayer, 32ull>(RandomSeed, Salt, FirstLayer);
 
 					THEN("The properties of the new layer should be validated") {
 						REQUIRE(this->getLayerCount() == 2ull);
@@ -223,9 +232,9 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 					}
 
 					AND_WHEN("Insert more layers to form a tree structure") {
-						auto BranchLayer1 = this->insert<NormalLayer, 32ull>(SeedSalt[4], SeedSalt[5], SecondLayer);
-						auto BranchLayer2 = this->insert<NormalLayer>(SeedSalt[6], SeedSalt[7], SecondLayer);
-						auto MergeLayer = this->insert<MergingLayer, 32ull>(SeedSalt[8], SeedSalt[9], BranchLayer1, BranchLayer2);
+						auto BranchLayer1 = this->insert<NormalLayer, 32ull>(RandomSeed, Salt, SecondLayer);
+						auto BranchLayer2 = this->insert<NormalLayer>(RandomSeed, Salt, SecondLayer);
+						auto MergeLayer = this->insert<MergingLayer, 32ull>(RandomSeed, Salt, BranchLayer1, BranchLayer2);
 
 						THEN("The properties of all tree layers are validated") {
 							REQUIRE(this->getLayerCount() == 5ull);
@@ -252,6 +261,87 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 				}
 			}
 
+		}
+
+	}
+
+}
+
+class BiomeFactoryTester : protected STPBiomeFactory {
+protected:
+
+	constexpr static uvec2 Dimension = uvec2(4u);
+	constexpr static Seed RandomSeed = 0ull;
+	constexpr static Seed Salt = 0ull;
+
+	STPLayerManager* supply() const override {
+		STPLayerManager* Mgr = new STPLayerManager();
+		STPLayer* Layer, *BranchLayer1, *BranchLayer2;
+		
+		Layer = Mgr->insert<RootLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt);
+		Layer = Mgr->insert<NormalLayer>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+
+		BranchLayer1 = Mgr->insert<NormalLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		BranchLayer2 = Mgr->insert<NormalLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+
+		Layer = Mgr->insert<MergingLayer>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, BranchLayer1, BranchLayer2);
+
+		return Mgr;
+	}
+
+public:
+
+	BiomeFactoryTester() : STPBiomeFactory(BiomeFactoryTester::Dimension) {
+
+	}
+
+	BiomeFactoryTester(uvec3 dimension) : STPBiomeFactory(dimension) {
+
+	}
+
+};
+
+SCENARIO_METHOD(BiomeFactoryTester, "STPBiomeFactory can be used to produce biomemap in batches", "[Diversity][STPBiomeFactory]") {
+
+	WHEN("Dimension is some invalid values") {
+
+		THEN("Biome factory should reject the values") {
+			REQUIRE_THROWS_AS(BiomeFactoryTester(uvec3(0u, 4u, 8u)), SuperTerrainPlus::STPException::STPBadNumericRange);
+		}
+
+	}
+
+	GIVEN("A complete biome factory with generation pipeline loaded") {
+
+		THEN("Biome dimension should be available in the factory") {
+			//2D biome generation should have the y dimension 1
+			REQUIRE(this->BiomeDimension == uvec3(BiomeFactoryTester::Dimension.x, 1u, BiomeFactoryTester::Dimension.y));
+		}
+
+		AND_GIVEN("A world coordinate for generation") {
+			using std::unique_ptr;
+			using std::make_unique;
+
+			const auto Coordinate = GENERATE(take(1, chunk(2, random(-666666666, 666666666))));
+			const ivec3 Offset = ivec3(Coordinate[0], GENERATE(values({ 0, 16974382 })), Coordinate[1]);
+			unique_ptr<Sample[]> BiomeMap = make_unique<Sample[]>(BiomeFactoryTester::Dimension.x * BiomeFactoryTester::Dimension.y);
+
+			WHEN("Asking the factory to generate a new " << (Offset.y == 0 ? "2" : "3") << "D biome") {
+
+				THEN("Generation should be successful") {
+					REQUIRE_NOTHROW((*this)(BiomeMap.get(), Offset));
+
+					AND_THEN("The biomemap should be validated") {
+						//root layer is ((x_offset + y_offset) + x + y + z + 1), normal layer simply uses the value from parent, merging layer adds the values
+						//and in 2D biome generator y is ignore (essentially treated as 0)
+						//3D biome, currently behaves the same as 2D biome because it's not yet implemented
+						const unsigned int Index = GENERATE(take(3, random(0u, 15u)));
+						REQUIRE(BiomeMap[Index] ==
+							static_cast<Sample>(((Index % BiomeFactoryTester::Dimension.x) + (Index / BiomeFactoryTester::Dimension.y) + Offset.x + Offset.z + 1) * 2));
+					}
+				}
+
+			}
 		}
 
 	}

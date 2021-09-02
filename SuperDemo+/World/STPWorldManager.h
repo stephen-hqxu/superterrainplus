@@ -29,6 +29,7 @@ namespace STPDemo {
 		std::unique_ptr<SuperTerrainPlus::STPCompute::STPDiversityGenerator> DiversityGenerator;
 		//world management agents
 		std::unique_ptr<SuperTerrainPlus::STPChunkStorage> ChunkStorage;
+		//make sure provider is destroyed (it will auto sync) before all generators and storage because it's the multi-threaded commander to call all other generators
 		std::unique_ptr<SuperTerrainPlus::STPChunkProvider> ChunkProvider;
 		std::unique_ptr<SuperTerrainPlus::STPChunkManager> ChunkManager;
 		std::unique_ptr<STPProcedural2DINF> WorldRenderer;
