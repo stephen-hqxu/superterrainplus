@@ -4,6 +4,7 @@
 #include <Utility/Exception/STPCUDAError.h>
 #include <Utility/Exception/STPDeadThreadPool.h>
 #include <Utility/Exception/STPInvalidArgument.h>
+#include <Utility/Exception/STPInvalidEnvironment.h>
 #include <Utility/Exception/STPMemoryError.h>
 #include <Utility/Exception/STPSerialisationError.h>
 #include <Utility/Exception/STPUnsupportedFunctionality.h>
@@ -44,6 +45,11 @@ STPDeadThreadPool::STPDeadThreadPool(const char* msg) : runtime_error(msg) {
 
 STPInvalidArgument::STPInvalidArgument(const char* msg) : invalid_argument(msg) {
 
+}
+
+//STPInvalidEnvironment.h
+
+STPInvalidEnvironment::STPInvalidEnvironment(const char* msg) : STPInvalidArgument(msg) {
 }
 
 //STPMemoryError.h

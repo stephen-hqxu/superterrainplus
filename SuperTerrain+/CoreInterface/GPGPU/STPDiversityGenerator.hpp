@@ -7,7 +7,7 @@
 //Biome Defines
 #include "../World/Diversity/STPBiomeDefine.h"
 //Sample Map Free-Slip
-#include "../GPGPU/STPFreeSlipGenerator.cuh"
+#include "../GPGPU/FreeSlip/STPFreeSlipGenerator.cuh"
 //GLM
 #include <glm/vec2.hpp>
 

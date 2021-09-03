@@ -12,9 +12,9 @@ using std::endl;
 #include <future>
 #include <string>
 //Math library
-#include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/type_ptr.hpp"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 using glm::vec2;
 using glm::vec3;
 using glm::vec4;
@@ -25,20 +25,20 @@ using glm::perspective;
 using glm::radians;
 using glm::value_ptr;
 //OpenGL engine
-#include "glad/glad.h"
+#include <glad/glad.h>
 #define GLFW_DLL
-#include "GLFW/glfw3.h"
+#include <GLFW/glfw3.h>
 //Image loader by stb_image
 #ifndef STBI_INCLUDE_STB_IMAGE_H
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include <stb_image.h>
 #endif
 //INI loader
-#include "SIMPLE1.0/SIParser.h"
+#include <SIMPLE1.0/SIParser.h>
 //OpenGL utilities
-#include "SglToolkit1.0/SgTCamera/SgTSpectatorCamera.h"
-#include "SglToolkit1.0/SgTShaderProc.h"
-#include "SglToolkit1.0/SgTUtils.h"
+#include <SglToolkit1.0/SgTCamera/SgTSpectatorCamera.h>
+#include <SglToolkit1.0/SgTShaderProc.h>
+#include <SglToolkit1.0/SgTUtils.h>
 //Multithreadding engine
 #include <Utility/STPThreadPool.h>
 
@@ -217,10 +217,9 @@ namespace STPDemo {
 			this->world_manager->linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 			if (!this->world_manager) {
 				//do not proceed if it fails
-				exit(-1);
+				terminate();
 			}
 
-			const_cast<SuperTerrainPlus::STPChunkManager*>(this->world_manager->getChunkManager())->loadChunksAsync(this->Camera->getPosition());
 			//setting up ssbo
 			this->setPVmatrix();
 		}
@@ -261,7 +260,7 @@ namespace STPDemo {
 		void draw(const double& frametime) {
 			//start loading terrain 2d inf async
 			const_cast<SuperTerrainPlus::STPChunkManager*>(this->world_manager->getChunkManager())->loadChunksAsync(this->Camera->getPosition());
-
+			
 			//clear the default framebuffer
 			glClearColor(121.0f / 255.0f, 151.0f / 255.0f, 52.0f / 255.0f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);

@@ -29,7 +29,7 @@ void programDecision(stringstream& msg, unsigned int error_level, bool no_msg) {
 		throw SuperTerrainPlus::STPException::STPCUDAError(msg.str().c_str());
 		break;
 	default:
-		exit(EXIT_FAILURE);
+		std::terminate();
 	}
 }
 

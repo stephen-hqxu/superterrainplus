@@ -175,7 +175,7 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 
 			WHEN("Insert one simple layer without cache") {
 				auto FirstLayer = this->insert<RootLayer>(RandomSeed, Salt);
-				const auto Coordinate = GENERATE(take(3, chunk(3, random(-13131313, 78987678))));
+				const auto Coordinate = GENERATE(take(2, chunk(3, random(-13131313, 78987678))));
 
 				THEN("The orphan layer properties should be validated") {
 					//property test

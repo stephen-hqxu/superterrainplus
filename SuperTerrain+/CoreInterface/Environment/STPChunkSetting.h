@@ -5,8 +5,8 @@
 #include <STPCoreDefine.h>
 #include "STPSetting.hpp"
 //GLM
-#include "glm/vec2.hpp"
-#include "glm/vec3.hpp"
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques

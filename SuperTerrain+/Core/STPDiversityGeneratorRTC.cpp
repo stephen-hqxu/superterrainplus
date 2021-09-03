@@ -240,14 +240,7 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 		//linking
 		size_t cubinSize;
 		STPcudaCheckErr(cuLinkComplete(linker, &program_cubin, &cubinSize));
-	}
-	catch (...) {
-		exptr = current_exception();
-		goto cleanUp;
-	}
-	
-	//if linking is okay...
-	try {
+
 		//create module
 		if (this->ModuleLoadingStatus) {
 			//unload previously loaded module
@@ -263,7 +256,6 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 	}
 
 	//delete the link regardlessly
-	cleanUp:
 	STPcudaCheckErr(cuLinkDestroy(linker));
 	if (exptr) {
 		//throw any module exception

@@ -5,7 +5,7 @@
 //CUDA
 #include <cuda_runtime.h>
 //Generator
-#include <World/Diversity/STPBiomeDefine.h>
+#include "../../World/Diversity/STPBiomeDefine.h"
 #include "STPFreeSlipData.hpp"
 
 //Use device code only in .cu files and host code only in .cpp to avoid nvcc generating unnecessary host on device applications

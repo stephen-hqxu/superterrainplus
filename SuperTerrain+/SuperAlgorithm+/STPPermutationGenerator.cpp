@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 #include <Utility/STPDeviceErrorHandler.h>
-#include <Utility/Exception/STPBadNumericRange.h>
+#include <Utility/Exception/STPInvalidEnvironment.h>
 
 //CUDA Runtime
 #include <cuda_runtime.h>
@@ -49,7 +49,7 @@ using namespace SuperTerrainPlus::STPCompute;
 
 STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) {
 	if (!simplex_setting.validate()) {
-		throw STPException::STPBadNumericRange("value range from simplex noise setting cannot be validated");
+		throw STPException::STPInvalidEnvironment("value range from simplex noise setting cannot be validated");
 	}
 	this->Gradient2DSize = simplex_setting.Distribution;
 

@@ -8,12 +8,12 @@
 //Data Structure
 #include <vector>
 #include <tuple>
-#include "../Utility/STPMemoryPool.h"
+#include "../../Utility/STPMemoryPool.h"
 //CUDA
 #include <cuda_runtime.h>
 //Free-Slip Data
 #include "STPFreeSlipLocation.hpp"
-#include "../World/Diversity/STPBiomeDefine.h"
+#include "../../World/Diversity/STPBiomeDefine.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -130,7 +130,7 @@ namespace SuperTerrainPlus {
 
 			STPFreeSlipTextureBuffer& operator=(STPFreeSlipTextureBuffer&&) = delete;
 
-			~STPFreeSlipTextureBuffer();
+			~STPFreeSlipTextureBuffer() noexcept(false);
 			
 			/**
 			 * @brief Get the pointer to the merged free-slip texture.

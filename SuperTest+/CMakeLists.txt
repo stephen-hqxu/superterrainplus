@@ -14,6 +14,10 @@ STPTest2DChunk.cpp
 STPTestUtility.cpp
 )
 
+if(MSVC)
+	set_target_properties(${STP_UNIT_TEST} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${STP_UNIT_TEST}>)
+endif()
+
 # link with the main program that needs to be tested and catch2
 target_link_libraries(${STP_UNIT_TEST}
 PRIVATE ${STP_MAIN_ENGINE}

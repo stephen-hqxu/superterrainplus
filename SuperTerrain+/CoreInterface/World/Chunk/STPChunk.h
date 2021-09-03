@@ -93,7 +93,7 @@ namespace SuperTerrainPlus {
 		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
 		 * @return Chunk position in world coordinate (x,z)
 		*/
-		static glm::vec2 getChunkPosition(glm::vec3, glm::uvec2, float = 1.0f) noexcept;
+		static glm::vec2 getChunkPosition(glm::vec3, glm::uvec2, float = 1.0f);
 
 		/**
 		 * @brief Move the chunk by chunk position
@@ -103,7 +103,7 @@ namespace SuperTerrainPlus {
 		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
 		 * @return The offset chunk position in world coordinate
 		*/
-		static glm::vec2 offsetChunk(glm::vec2, glm::uvec2, glm::ivec2, float = 1.0f) noexcept;
+		static glm::vec2 offsetChunk(glm::vec2, glm::uvec2, glm::ivec2, float = 1.0f);
 
 		/**
 		 * @brief Get an area of chunk coordinates, centered at a give chunk position
@@ -113,7 +113,7 @@ namespace SuperTerrainPlus {
 		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
 		 * @return Chunk positions in world coordinate (x,z), aligning from top-left to bottom right
 		*/
-		static STPChunkPositionCache getRegion(glm::vec2, glm::uvec2, glm::uvec2, float = 1.0f) noexcept;
+		static STPChunkPositionCache getRegion(glm::vec2, glm::uvec2, glm::uvec2, float = 1.0f);
 
 		/**
 		 * @brief Atomically determine if current chunk is used by other threads

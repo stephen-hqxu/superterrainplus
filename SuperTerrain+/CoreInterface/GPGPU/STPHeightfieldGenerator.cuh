@@ -13,7 +13,7 @@
 #include <curand_kernel.h>
 //Engine
 #include "STPDiversityGenerator.hpp"
-#include "STPFreeSlipGenerator.cuh"
+#include "./FreeSlip/STPFreeSlipGenerator.cuh"
 #include "../Utility/STPSmartStream.h"
 //Settings
 #include "../Environment/STPHeightfieldSetting.h"

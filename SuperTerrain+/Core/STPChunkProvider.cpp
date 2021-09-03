@@ -1,6 +1,7 @@
 #include <World/Chunk/STPChunkProvider.h>
 
 #include <Utility/Exception/STPMemoryError.h>
+#include <Utility/Exception/STPInvalidEnvironment.h>
 
 #include <algorithm>
 
@@ -13,12 +14,16 @@ using glm::round;
 using std::list;
 using std::make_unique;
 using std::make_pair;
+using std::for_each;
 
 using namespace SuperTerrainPlus;
 
 STPChunkProvider::STPChunkProvider(const STPEnvironment::STPChunkSetting& chunk_settings, STPChunkStorage& storage,
 	STPDiversity::STPBiomeFactory& biome_factory, STPCompute::STPHeightfieldGenerator& heightfield_generator)
 	: ChunkSetting(chunk_settings), ChunkStorage(storage), generateBiome(biome_factory), generateHeightfield(heightfield_generator), kernel_launch_pool(5u){
+	if (!chunk_settings.validate()) {
+		throw STPException::STPInvalidEnvironment("Values from STPChunkSetting are not validated");
+	}
 }
 
 STPChunkProvider::~STPChunkProvider() {
@@ -61,7 +66,7 @@ void STPChunkProvider::computeHeightmap(STPChunk* current_chunk, STPChunkProvide
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;
-		exit(-1);
+		std::terminate();
 	}
 }
 
@@ -85,7 +90,7 @@ void STPChunkProvider::computeErosion(STPChunkProvider::STPChunkNeighbour& neigh
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;
-		exit(-1);
+		std::terminate();
 	}
 }
 
@@ -126,14 +131,14 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 		//computation was successful
 		chunk->markChunkState(STPChunk::STPChunkState::Heightmap_Ready);
 		//unlock all neighbours
-		std::for_each(neighbours.begin(), neighbours.end(), [](auto c) -> void { c->markOccupancy(false); });
+		for_each(neighbours.begin(), neighbours.end(), [](auto c) -> void { c->markOccupancy(false); });
 	};
 	auto erosion_computer = [this](STPChunk* centre, STPChunkNeighbour neighbours) -> void {
 		this->computeErosion(neighbours);
 		//erosion was successful
 		//mark center chunk complete
 		centre->markChunkState(STPChunk::STPChunkState::Complete);
-		std::for_each(neighbours.begin(), neighbours.end(), [](auto c) -> void { c->markOccupancy(false); });
+		for_each(neighbours.begin(), neighbours.end(), [](auto c) -> void { c->markOccupancy(false); });
 	};
 
 	//reminder: central chunk is included in neighbours
@@ -189,7 +194,7 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 		return false;
 	}
 	//all chunks are available, lock all neighbours
-	std::for_each(neighbour.begin(), neighbour.end(), [](auto c) -> void { c->markOccupancy(true); });
+	for_each(neighbour.begin(), neighbour.end(), [](auto c) -> void { c->markOccupancy(true); });
 	//send the list of neighbour chunks to GPU to perform some operations
 	switch (rec_depth) {
 	case BIOMEMAP_PASS:

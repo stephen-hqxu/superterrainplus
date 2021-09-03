@@ -13,7 +13,7 @@
 #include <functional>
 #include <type_traits>
 
-#include "Exception/STPDeadThreadPool.h"
+#include "./Exception/STPDeadThreadPool.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques

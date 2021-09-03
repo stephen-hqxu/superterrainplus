@@ -14,7 +14,7 @@
 //Settings
 #include "../Environment/STPRainDropSetting.h"
 //Free slipper
-#include "STPFreeSlipManager.cuh"
+#include "./FreeSlip/STPFreeSlipManager.cuh"
 //GLM
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>

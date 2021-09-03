@@ -7,8 +7,8 @@
 #include <queue>
 #include <mutex>
 //GLM
-#include "glm/vec2.hpp"
-#include "glm/vec3.hpp"
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
 //Biome
 #include "STPLayerManager.h"
 

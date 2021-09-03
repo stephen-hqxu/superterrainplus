@@ -3,6 +3,7 @@
 
 //Error
 #include <Utility/STPDeviceErrorHandler.h>
+#include <Utility/Exception/STPBadNumericRange.h>
 //CUDA
 #include <cuda_runtime.h>
 
@@ -52,8 +53,11 @@ typename STPMemoryPool<T>::STPHeader STPMemoryPool<T>::decodeHeader(unsigned cha
 
 template<STPMemoryPoolType T>
 void* STPMemoryPool<T>::request(size_t size) {
-	unsigned char* memory;
+	if (size == 0ull) {
+		throw STPException::STPBadNumericRange("The memory size should be a position integer");
+	}
 
+	unsigned char* memory;
 	{
 		unique_lock<mutex> lock(this->PoolLock);
 		//try to find the memory pool with this size

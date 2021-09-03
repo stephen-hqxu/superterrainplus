@@ -4,11 +4,11 @@
 
 #include <STPCoreDefine.h>
 //GLM
-#include "glm/gtc/type_ptr.hpp"
+#include <glm/gtc/type_ptr.hpp>
 //OpenGL
-#include "glad/glad.h"
+#include <glad/glad.h>
 //CUDA
-#include "cuda_gl_interop.h"//used to upload to opengl texture in multithread
+#include <cuda_gl_interop.h>//used to upload to opengl texture in multithread
 #include "../../Utility/STPSmartStream.h"
 
 //Chunks

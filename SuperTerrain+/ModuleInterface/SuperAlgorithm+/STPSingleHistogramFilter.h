@@ -5,7 +5,7 @@
 #include <SuperAlgorithm+/STPAlgorithmDefine.h>
 //Engine Components
 #include <Utility/STPThreadPool.h>
-#include <GPGPU/STPFreeSlipManager.cuh>
+#include <GPGPU/FreeSlip/STPFreeSlipManager.cuh>
 //GLM
 #include <glm/vec2.hpp>
 //Single Histogram Data Structure

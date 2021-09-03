@@ -3,7 +3,7 @@
 //THIS INLINE FILE IS MANAGED AUTOMATICALLY BY STPFreeSlipManager
 #ifdef _STP_FREESLIP_MANAGER_CUH_
 
-#include <GPGPU/STPFreeSlipManager.cuh>
+#include "STPFreeSlipManager.cuh"
 
 #include <type_traits>
 

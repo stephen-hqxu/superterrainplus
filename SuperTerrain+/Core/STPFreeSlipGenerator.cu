@@ -1,5 +1,5 @@
 #pragma once
-#include <GPGPU/STPFreeSlipGenerator.cuh>
+#include <GPGPU/FreeSlip/STPFreeSlipGenerator.cuh>
 #include <device_launch_parameters.h>
 
 #include <type_traits>
@@ -8,14 +8,13 @@
 //Error
 #define STP_EXCEPTION_ON_ERROR
 #include <Utility/STPDeviceErrorHandler.h>
+#include <Utility/Exception/STPBadNumericRange.h>
 
 using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;
 
 using std::make_unique;
 using std::exception;
-using std::rethrow_exception;
-using std::current_exception;
 
 //GLM
 #include <glm/geometric.hpp>
@@ -73,13 +72,12 @@ template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<SampleIsU
 
 __host__ STPFreeSlipGenerator::STPFreeSlipGenerator(const uvec2& range, const uvec2& mapSize) : 
 	STPFreeSlipData{ nullptr, mapSize, range, range * mapSize } {
-	try {
-		//set global local index
-		this->initLocalGlobalIndexCUDA();
+	if (this->FreeSlipRange.x == 0u || this->FreeSlipRange.y == 0u) {
+		throw STPException::STPBadNumericRange("Dimension or/and free-slip chunk size should not be zero");
 	}
-	catch (...) {
-		rethrow_exception(current_exception());
-	}
+
+	//set global local index
+	this->initLocalGlobalIndexCUDA();
 }
 
 __host__ STPFreeSlipGenerator::~STPFreeSlipGenerator() {
@@ -89,6 +87,7 @@ __host__ STPFreeSlipGenerator::~STPFreeSlipGenerator() {
 __host__ void STPFreeSlipGenerator::initLocalGlobalIndexCUDA() {
 	const uvec2& global_dimension = this->FreeSlipRange;
 	const size_t index_count = global_dimension.x * global_dimension.y;
+	
 	try {
 		//launch parameters
 		int Mingridsize, blocksize;
@@ -122,8 +121,8 @@ __host__ void STPFreeSlipGenerator::initLocalGlobalIndexCUDA() {
 		STPcudaCheckErr(cudaMalloc(&this->Data_Device, sizeof(STPFreeSlipData)));
 		STPcudaCheckErr(cudaMemcpy(this->Data_Device, &device_buffer, sizeof(STPFreeSlipData), cudaMemcpyHostToDevice));
 	}
-	catch (const exception& e) {
-		//clear device memory (if any) to avoid memory leaks
+	catch (...) {
+		//avoid memory leaks
 		this->clearDeviceIndex();
 		throw;
 	}

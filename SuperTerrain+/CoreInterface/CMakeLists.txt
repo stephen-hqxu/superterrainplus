@@ -8,15 +8,16 @@ Environment/STPHeightfieldSetting.h
 Environment/STPMeshSetting.h
 Environment/STPRainDropSetting.h
 Environment/STPSetting.hpp
+# /GPGPU/FreeSlip
+GPGPU/FreeSlip/STPFreeSlipData.hpp
+GPGPU/FreeSlip/STPFreeSlipGenerator.cuh
+GPGPU/FreeSlip/STPFreeSlipLocation.hpp
+GPGPU/FreeSlip/STPFreeSlipManager.cuh
+GPGPU/FreeSlip/STPFreeSlipManager.inl
+GPGPU/FreeSlip/STPFreeSlipTextureBuffer.h
 # /GPGPU
 GPGPU/STPDiversityGenerator.hpp
 GPGPU/STPDiversityGeneratorRTC.h
-GPGPU/STPFreeSlipData.hpp
-GPGPU/STPFreeSlipGenerator.cuh
-GPGPU/STPFreeSlipLocation.hpp
-GPGPU/STPFreeSlipManager.cuh
-GPGPU/STPFreeSlipManager.inl
-GPGPU/STPFreeSlipTextureBuffer.h
 GPGPU/STPHeightfieldGenerator.cuh
 GPGPU/STPRainDrop.cuh
 # /Utility/Exception
@@ -25,6 +26,7 @@ Utility/Exception/STPCompilationError.h
 Utility/Exception/STPCUDAError.h
 Utility/Exception/STPDeadThreadPool.h
 Utility/Exception/STPInvalidArgument.h
+Utility/Exception/STPInvalidEnvironment.h
 Utility/Exception/STPMemoryError.h
 Utility/Exception/STPSerialisationError.h
 Utility/Exception/STPUnsupportedFunctionality.h

@@ -1,19 +1,19 @@
 #pragma once
-#include <GPGPU/STPFreeSlipTextureBuffer.h>
+#include <GPGPU/FreeSlip/STPFreeSlipTextureBuffer.h>
 
 //Error
 #define STP_EXCEPTION_ON_ERROR
 #include <Utility/STPDeviceErrorHandler.h>
 #include <Utility/Exception/STPInvalidArgument.h>
 #include <Utility/Exception/STPMemoryError.h>
+#include <Utility/Exception/STPCUDAError.h>
 
 #include <type_traits>
 
+#include <iostream>
+
 using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;
-
-using std::rethrow_exception;
-using std::current_exception;
 
 static SuperTerrainPlus::STPRegularMemoryPool CallbackMemPool;
 
@@ -53,13 +53,22 @@ STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(typename STPFreeSlipTextur
 }
 
 template<typename T>
-STPFreeSlipTextureBuffer<T>::~STPFreeSlipTextureBuffer() {
+STPFreeSlipTextureBuffer<T>::~STPFreeSlipTextureBuffer() noexcept(false) try {
 	if (!this->Integration) {
 		//no texture has been integrated, nothing to do
 		return;
 	}
 	//else we need to destroy allocation
 	this->destroyAllocation();
+	
+}
+catch (const STPException::STPCUDAError& cuda_err) {
+	using std::cerr;
+	using std::endl;
+	//if exception is caught during destroying memory, it's mostly caused by illegal memory access and is very dangerous if let go
+	//simply terminate the program
+	cerr << cuda_err.what() << endl;
+	std::terminate();
 }
 
 template<typename T>
@@ -120,12 +129,12 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 			break;
 		default:
 			//impossible
-			return nullptr;
+			throw STPException::STPInvalidArgument("The argument of memory location is not recognised");
 			break;
 		}
 	}
 
-	T* host, *device, *texture;
+	T* host = nullptr, *device = nullptr, *texture;
 	const size_t pixel_per_chunk = this->Attr.TexturePixel * this->Data.Channel;
 	const size_t freeslip_size = sizeof(T) * this->Buffer.size() * pixel_per_chunk;
 
@@ -161,12 +170,20 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 			texture = device;
 			break;
 		default:
-			texture = nullptr;
+			throw STPException::STPInvalidArgument("The argument of memory location is not recognised");
 			break;
 		}
 	}
 	catch (...) {
-		rethrow_exception(current_exception());
+		//clear up memory
+		if (host != nullptr) {
+			this->Attr.HostMemPool.release(host);
+		}
+		if (device != nullptr) {
+			STPcudaCheckErr(cudaFreeAsync(device, this->Data.Stream));
+		}
+
+		throw;
 	}
 
 	//record the state
