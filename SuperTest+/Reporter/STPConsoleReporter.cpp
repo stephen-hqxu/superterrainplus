@@ -27,34 +27,76 @@ class STPConsoleReporter : public CumulativeReporterBase {
 private:
 
 	/**
+	 * @brief Emit text that exceeds the width of the console and auto wrap it to the next line.
+	 * @param text The text to wrap.
+	 * @param reserve Control the number of maximum character offset that can be in one line.
+	 * 0 is the default, means no offset
+	 * If text does not exceed the line limit, it will simply emit the text
+	 * @return The last line of the wrap
+	*/
+	string emitWrapped(string text, size_t reserve = 0ull) const {
+		while (text.size() > CATCH_CONFIG_CONSOLE_WIDTH - reserve) {
+			//we do not wish to break a single word into half, instead of wrap it when it's a space
+			//find the last space in the emit string
+			const size_t emitStart = text.rfind(' ', CATCH_CONFIG_CONSOLE_WIDTH - reserve);
+			if (emitStart == string::npos) {
+				//the entire width of text has no space, simply break the text
+				const size_t breakLength = CATCH_CONFIG_CONSOLE_WIDTH - reserve - 1ull;
+				const string emit = text.substr(0ull, breakLength) + '-';
+				//prune thet original string
+				text.erase(0ull, breakLength);
+				
+				//output
+				this->stream << emit << endl;
+				continue;
+			}
+			const string emit = text.substr(0ull, emitStart + 1ull);
+			//prune
+			text.erase(0ull, emit.size());
+
+			//output
+			this->stream << emit << endl;
+		}
+
+		//return the text if wrap is not required
+		return text;
+	}
+
+	/**
 	 * @brief Emit a text to the stream that is centred at the console
 	 * @param text The text to be centred
 	*/
 	void emitCentreString(const string& text) const {
+		auto centreStr = [&stream = this->stream](const string& text) -> void {
+			auto emit_border = [&stream](size_t border_size) -> void {
+				for (size_t i = 0ull; i < border_size / 2ull; i++) {
+					stream << ' ';
+				}
+			};
+			//space left empty
+			const size_t border = CATCH_CONFIG_CONSOLE_WIDTH - text.size();
+
+			//emit the left border
+			emit_border(border);
+
+			//emit the text
+			stream << text;
+
+			//emit the right border
+			emit_border(border);
+
+			stream << endl;
+		};
+
 		if (text.size() > CATCH_CONFIG_CONSOLE_WIDTH) {
-			//cannot centre the tetx because it's too wide
-			this->stream << text;
+			//cannot centre the tetx because it's too wide, wrap it
+			const string lastLine = this->emitWrapped(text);
+			//and centre the last line
+			centreStr(lastLine);
 			return;
 		}
-
-		auto emit_border = [this](size_t border_size) -> void {
-			for (size_t i = 0ull; i < border_size / 2ull; i++) {
-				this->stream << ' ';
-			}
-		};
-		//space left empty
-		const size_t border = CATCH_CONFIG_CONSOLE_WIDTH - text.size();
-
-		//emit the left border
-		emit_border(border);
-
-		//emit the text
-		this->stream << text;
-
-		//emit the right border
-		emit_border(border);
-
-		this->stream << endl;
+		//simply centre the line
+		centreStr(text);
 	}
 
 	/**
@@ -101,7 +143,8 @@ private:
 	*/
 	void writeSection(const CumulativeReporterBase::SectionNode* section, unsigned short depth = 0u) const {
 		const auto& sec_stats = section->stats;
-		const string& sec_name = sec_stats.sectionInfo.name;
+		//reserve some spaces some the status tag at the end
+		const string& sec_name = this->emitWrapped(sec_stats.sectionInfo.name, 6ull);
 
 		//print the current section
 		this->stream << sec_name;
@@ -208,7 +251,9 @@ public:
 					//write information about the current test case
 					const auto* testcase_info = testcase->value.testInfo;
 					this->emitSymbol('-');
-					this->stream << Colour(Colour::FileName) << testcase_info->name << endl;
+					stringstream testcase_ss;
+					testcase_ss << Colour(Colour::FileName) << testcase_info->name;
+					this->stream << this->emitWrapped(testcase_ss.str()) << endl;
 					this->emitSymbol('-');
 
 					//for each section in a test case

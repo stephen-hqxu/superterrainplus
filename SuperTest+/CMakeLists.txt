@@ -11,6 +11,8 @@ Reporter/STPConsoleReporter.cpp
 # Main test code
 STPTest2DBiome.cpp
 STPTest2DChunk.cpp
+STPTestFreeSlip.cpp
+STPTestMain.cpp
 STPTestUtility.cpp
 )
 
@@ -21,7 +23,7 @@ endif()
 # link with the main program that needs to be tested and catch2
 target_link_libraries(${STP_UNIT_TEST}
 PRIVATE ${STP_MAIN_ENGINE}
-PRIVATE Catch2::Catch2WithMain
+PRIVATE Catch2::Catch2
 )
 
 # compile-time settings for catch2
@@ -33,4 +35,12 @@ PRIVATE CATCH_CONFIG_CONSOLE_WIDTH=100
 include(Catch)
 catch_discover_tests(${STP_UNIT_TEST}
 REPORTER ${STP_CONSOLE_REPORTER}
+)
+
+# copy data for testings
+add_custom_command(
+TARGET ${STP_UNIT_TEST} POST_BUILD
+COMMAND ${CMAKE_COMMAND} -E copy_directory
+${CMAKE_CURRENT_SOURCE_DIR}/TestData
+$<TARGET_FILE_DIR:${STP_UNIT_TEST}>/TestData
 )

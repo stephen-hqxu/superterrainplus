@@ -5,6 +5,7 @@
 #define STP_EXCEPTION_ON_ERROR
 #include <Utility/STPDeviceErrorHandler.h>
 #include <Utility/Exception/STPInvalidArgument.h>
+#include <Utility/Exception/STPBadNumericRange.h>
 #include <Utility/Exception/STPMemoryError.h>
 #include <Utility/Exception/STPCUDAError.h>
 
@@ -48,7 +49,13 @@ template<typename T>
 STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(typename STPFreeSlipTexture& texture, const STPFreeSlipTextureData& data, const STPFreeSlipTextureAttribute& attr) : 
 	Buffer(texture), Data(data), Attr(attr) {
 	if (this->Buffer.empty()) {
-		throw STPException::STPInvalidArgument("provided free-slip texture is empty");
+		throw STPException::STPInvalidArgument("Provided free-slip texture is empty");
+	}
+	if (this->Attr.TexturePixel == 0ull) {
+		throw STPException::STPBadNumericRange("Number of pixel should be a positive integer");
+	}
+	if (this->Data.Channel == 0u) {
+		throw STPException::STPBadNumericRange("Number of texture channel should be a positive integer");
 	}
 }
 

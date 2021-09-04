@@ -95,12 +95,6 @@ __host__ void STPFreeSlipGenerator::initLocalGlobalIndexCUDA() {
 		const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
 			Dimgridsize = (global_dimension + Dimblocksize - 1u) / Dimblocksize;
 
-		//Don't generate the table when FreeSlipChunk.xy are both 1, and in STPRainDrop don't use the table
-		if (this->FreeSlipChunk.x == 1u && this->FreeSlipChunk.y == 1u) {
-			this->Index_Device = nullptr;
-			return;
-		}
-
 		//make sure all previous takes are finished
 		STPcudaCheckErr(cudaDeviceSynchronize());
 		//allocation

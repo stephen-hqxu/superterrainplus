@@ -33,7 +33,7 @@ MANAGER_HOST_DEVICE_SWITCH const T& STPFreeSlipManager<T>::operator[](unsigned i
 
 template<typename T>
 MANAGER_HOST_DEVICE_SWITCH unsigned int STPFreeSlipManager<T>::operator()(unsigned int global) const {
-	return this->Data->GlobalLocalIndex == nullptr ? global : this->Data->GlobalLocalIndex[global];
+	return this->Data->GlobalLocalIndex[global];
 }
 
 #endif//_STP_FREESLIP_MANAGER_CUH_
