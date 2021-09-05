@@ -1,3 +1,7 @@
+# import GLM and OpenGL
+find_package(glm REQUIRED CONFIG)
+find_package(OpenGL REQUIRED)
+
 # minimum supported CUDA versions
 set(STP_CUDA_MIN_VERSION 11.3)
 

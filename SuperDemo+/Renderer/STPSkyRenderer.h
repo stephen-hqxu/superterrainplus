@@ -146,13 +146,13 @@ namespace STPDemo {
 		 * @param pool The thread pool for multi-threaded texture loading
 		*/
 		STPSkyRenderer(const SIMPLE::SISection& day, const SIMPLE::SISection& night, const SIMPLE::SISection& globalPreset, const DrawElementsIndirectCommand* sky_cmd, SuperTerrainPlus::STPThreadPool& pool)
-			: rotaingSpeed(std::stof(globalPreset("rotationSpeed"))), cyclingSpeed(std::stof(globalPreset("DaytimeSpeed"))), command(reinterpret_cast<const void*>(sky_cmd)), rendering_pool(pool) {
+			: rotaingSpeed(globalPreset("rotationSpeed").to<float>()), cyclingSpeed(globalPreset("DaytimeSpeed").to<float>()), command(reinterpret_cast<const void*>(sky_cmd)), rendering_pool(pool) {
 			cout << "....Loading STPSkyRenderer....";
 			
 			//get the filename from the ini file
 			for (int i = 0; i < 6; i++) {
-				this->path_day[i] = "./Resource/" + day("folder") + "/" + day(this->LOADING_ORDER[i]) + "." + day("suffix");
-				this->path_night[i] = "./Resource/" + night("folder") + "/" + night(this->LOADING_ORDER[i]) + "." + night("suffix");
+				this->path_day[i] = "./Resource/" + day("folder")() + "/" + day(this->LOADING_ORDER[i])() + "." + day("suffix")();
+				this->path_night[i] = "./Resource/" + night("folder")() + "/" + night(this->LOADING_ORDER[i])() + "." + night("suffix")();
 			}
 			//loading textures in multiple threads
 			for (int i = 0; i < 6; i++) {

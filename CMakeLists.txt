@@ -15,7 +15,6 @@ include(OptionList)
 include(SetupEnvironment)
 
 # set some useful variables of our main engine
-set(STP_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/External)
 set(STP_GLAD "GLAD")
 set(STP_MAIN_ENGINE "SuperTerrain+")
 set(STP_ALGORITHM_ENGINE "SuperAlgorithm+")

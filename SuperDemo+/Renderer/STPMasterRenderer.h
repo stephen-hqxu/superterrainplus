@@ -26,7 +26,6 @@ using glm::radians;
 using glm::value_ptr;
 //OpenGL engine
 #include <glad/glad.h>
-#define GLFW_DLL
 #include <GLFW/glfw3.h>
 //Image loader by stb_image
 #ifndef STBI_INCLUDE_STB_IMAGE_H
@@ -34,7 +33,7 @@ using glm::value_ptr;
 #include <stb_image.h>
 #endif
 //INI loader
-#include <SIMPLE1.0/SIParser.h>
+#include <SIMPLE/SIParser.h>
 //OpenGL utilities
 #include <SglToolkit1.0/SgTCamera/SgTSpectatorCamera.h>
 #include <SglToolkit1.0/SgTShaderProc.h>
@@ -213,7 +212,7 @@ namespace STPDemo {
 			this->world_manager = new STPWorldManager();
 			this->world_manager->attachSetting(&config);
 			this->world_manager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
-			this->world_manager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(simplex, chunk_setting.MapSize, static_cast<unsigned int>(std::stoul(this->biomeSettings("interpolationRadius"))));
+			this->world_manager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(simplex, chunk_setting.MapSize, this->biomeSettings("interpolationRadius").to<unsigned int>());
 			this->world_manager->linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 			if (!this->world_manager) {
 				//do not proceed if it fails

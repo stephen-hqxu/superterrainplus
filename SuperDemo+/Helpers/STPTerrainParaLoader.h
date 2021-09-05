@@ -5,7 +5,7 @@
 //System
 #include <string>
 //INI loader
-#include "SIMPLE1.0/SIStorage.h"
+#include "SIMPLE/SIStorage.h"
 //GLM
 #include "glm/vec2.hpp"
 //Settings

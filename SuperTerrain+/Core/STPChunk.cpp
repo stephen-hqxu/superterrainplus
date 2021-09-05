@@ -108,10 +108,8 @@ STPChunk::STPChunkPositionCache STPChunk::getRegion(vec2 centerPos, uvec2 chunkS
 		//Basically it converts 1D chunk ID to 2D local chunk position, btw chunk position must be a positive integer
 		const uvec2 local_chunk_offset = uvec2(i % regionSize.x, i / regionSize.y);
 		//Then convert local to world coordinate
-		const vec2 basePos = STPChunk::offsetChunk(base_position, chunkSize, local_chunk_offset, scaling);
-
 		//arranged from top-left to bottom right
-		results.push_back(basePos);
+		results.emplace_back(STPChunk::offsetChunk(base_position, chunkSize, local_chunk_offset, scaling));
 	}
 
 	return results;

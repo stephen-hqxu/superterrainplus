@@ -76,11 +76,7 @@ namespace STPDemo {
 	*/
 	const bool InitSTP() {
 		const auto proc_addr = reinterpret_cast<GLADloadproc>(glfwGetProcAddress);
-		if (!gladLoadGLLoader(proc_addr)) {
-			cerr << "Fail to create GLAD context." << endl;
-			return false;
-		}
-		//When we are using shared library, there are 2 GLAD instances and we need to initalise both of them.
+		//when we are using shared library build in GLAD, the GLAD context is shared to all libraries that are linked to it.
 		if (!SuperTerrainPlus::STPEngineInitialiser::initGLexplicit(proc_addr)) {
 			cerr << "Fail to initialise Super Terrain + engine." << endl;
 			return false;
@@ -129,7 +125,7 @@ int main() {
 	}
 	//Init camera and the master renderer
 	Camera = dynamic_cast<SglToolkit::SgTCamera*>(new SglToolkit::SgTSpectatorCamera(90.0f, 0.0f, 
-		std::stof((engineINILoader->get())("movementSpeed")), std::stof((engineINILoader->get())("mouseSensitivity")), 
+		(engineINILoader->get())("movementSpeed").to<float>(), (engineINILoader->get())("mouseSensitivity").to<float>(), 
 		60.0f, SglToolkit::SgTvec3(0.0f, 500.0f, 0.0f)));//facing towards positive-x
 	engine = new STPMasterRenderer(Camera, WINDOW_SIZE, engineINILoader->get(), BiomeINILoader->get());
 
@@ -140,7 +136,7 @@ int main() {
 	engine->reshape(WINDOW_SIZE[0], WINDOW_SIZE[1]);
 
 	//rendering loop
-	double currentTime, lastTime = 0.0f, deltaTime, FPS = std::stod((engineINILoader->get())("FPS"));
+	double currentTime, lastTime = 0.0f, deltaTime, FPS = engineINILoader->get()("FPS").to<double>();
 	cout << "Start..." << endl;
 	while (!glfwWindowShouldClose(frame)) {
 		//frametime logic

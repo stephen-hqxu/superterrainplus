@@ -22,7 +22,7 @@ INPUT ${STP_ALGORITHM_DEFINE_INCLUDE}/STPAlgorithmDeviceInfoRaw.h
 # dependencies
 target_include_directories(${STP_MAIN_ENGINE}
 PRIVATE ${STP_MODULE_INCLUDE}
-PUBLIC ${STP_EXTERNAL_DIR}/include ${STP_CORE_INCLUDE}
+PUBLIC ${STP_CORE_INCLUDE}
 )
 target_include_directories(${STP_ALGORITHM_HOST_ENGINE}
 PUBLIC ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
@@ -38,8 +38,8 @@ PRIVATE ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
 # library dependencies
 target_link_libraries(${STP_MAIN_ENGINE}
 # we don't need to link SuperAlgorithm+, this is a library left for developers
-PRIVATE ${STP_GLAD} opengl32.lib
-PUBLIC CUDA::cudart CUDA::cuda_driver CUDA::nvrtc
+PRIVATE ${STP_GLAD} OpenGL::GL
+PUBLIC CUDA::cudart CUDA::cuda_driver CUDA::nvrtc glm::glm
 )
 target_link_libraries(${STP_ALGORITHM_HOST_ENGINE}
 PRIVATE ${STP_MAIN_ENGINE} # main engine has all CUDA drivers linked as public

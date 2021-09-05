@@ -41,10 +41,6 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 
 No plan, yet.
 
-## :fountain_pen: Working Example
-
-Our project is still under development, features are subject to change.
-
 ## :bricks: Middleware
 
 ### Language
@@ -66,10 +62,10 @@ Those libraries are maintained by us and can be downloaded from our public repo 
 Those are some third-party libraries used by this project, we always make sure the latest version is compatible with our project.
 
 - [GLM](https://github.com/g-truc/glm)
-- [GLFW](https://www.glfw.org/)
-- [GLAD](https://glad.dav1d.de/)
+- [GLFW](https://github.com/glfw/glfw)
+- [GLAD](https://github.com/Dav1dde/glad)
 - [stb](https://github.com/nothings/stb)
-- [Catch2](https://github.com/catchorg/Catch2)
+- [Catch2 v3](https://github.com/catchorg/Catch2)
 
 ## :building_construction: Project Structure
 
@@ -81,9 +77,11 @@ Those are some third-party libraries used by this project, we always make sure t
 
 ### :dart: Build targets
 
-- GLAD: Pre-complication of `glad.c` for object file sharing.
+- GLAD: Pre-compilation of `glad.c` for source and GL-context sharing among build targets.
 - SuperTerrain+: Main procedural terrain generation engine.
   - SuperAlgorithm+: A library of useful noise algorithms for pipeline programming.
+    - SuperAlgorithm+Host: Algorithms and prep-works for device computation that are best suited for CPU execution.
+    - SuperAlgorithm+Device:  Performant algorhtms that can be benefitted from parallel compute.
 - SuperDemo+: An application which demostrates the usage of the main engine.
 - SuperTest+: Unit test program for dynamic testings.
 
@@ -172,6 +170,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ## :telephone: Contact
 
 Stephen Xu - stephen.hqxu@gmail.com
+
 Project Repository: https://github.com/stephen-hqxu/superterrainplus
 
 ## :books: Reference
