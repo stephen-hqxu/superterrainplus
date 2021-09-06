@@ -2,8 +2,8 @@
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 
 //Error
-#include <Utility/STPDeviceErrorHandler.h>
-#include <Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 //CUDA
 #include <cuda_runtime.h>
 

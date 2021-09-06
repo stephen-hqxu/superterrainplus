@@ -3,7 +3,7 @@
 #define _STP_SIMPLEX_NOISE_SETTING_H_
 
 #include <SuperAlgorithm+/STPAlgorithmDefine.h>
-#include <Environment/STPSetting.hpp>
+#include <SuperTerrain+/Environment/STPSetting.hpp>
 //CUDA vector
 #include <vector_functions.h>
 

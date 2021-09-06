@@ -1,8 +1,7 @@
 #pragma once
 #define _STP_START_CPP_
 #include "../Renderer/STPMasterRenderer.h"
-#include <STPEngineInitialiser.h>
-#include <STPCoreDefine.h>
+#include <SuperTerrain+/STPEngineInitialiser.h>
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.

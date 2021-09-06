@@ -1,11 +1,11 @@
 #pragma once
-#include <STPEngineInitialiser.h>
+#include <SuperTerrain+/STPEngineInitialiser.h>
 
 //GLAD
 #include <glad/glad.h>
 //CUDA
 #include <cuda_runtime.h>
-#include <Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 using namespace SuperTerrainPlus;
 

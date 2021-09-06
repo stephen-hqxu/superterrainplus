@@ -1,6 +1,6 @@
 #pragma once
 #pragma warning(disable:26495)//Alarm for un-init variables
-#include <GPGPU/STPRainDrop.cuh>
+#include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
 
 //CUDA Device Parameters
 #include <device_launch_parameters.h>

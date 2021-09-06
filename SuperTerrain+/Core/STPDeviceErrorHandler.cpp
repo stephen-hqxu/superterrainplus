@@ -1,5 +1,5 @@
 #pragma once
-#include <Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //CUDA
 #include <cuda.h>
@@ -10,33 +10,25 @@
 #include <sstream>
 #include <typeinfo>
 
-#include <Utility/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
 
 using std::stringstream;
 using std::cerr;
 using std::endl;
 
-//Decide what to do next when we catch an error
-void programDecision(stringstream& msg, unsigned int error_level, bool no_msg) {
+//always throw an exception
+inline void printError(stringstream& msg, bool no_msg) noexcept(false) {
 	if (!no_msg) {
 		cerr << msg.str();
 	}
-
-	switch (error_level) {
-	case 0: //STP_CONTINUE_ON_ERROR
-		break;
-	case 1: //STP_EXCEPTION_ON_ERROR
-		throw SuperTerrainPlus::STPException::STPCUDAError(msg.str().c_str());
-		break;
-	default:
-		std::terminate();
-	}
+	//throw exception
+	throw SuperTerrainPlus::STPException::STPCUDAError(msg.str().c_str());
 }
 
 //Helpers to cut down coding efforts
-#define ASSERT_FUNCTION(ERR) template<> STP_API void STPcudaAssert<ERR>(ERR cuda_code, unsigned int error_level, const char* __restrict file, const char* __restrict function, int line, bool no_msg)
+#define ASSERT_FUNCTION(ERR) template<> STP_API void STPcudaAssert<ERR>(ERR cuda_code, const char* __restrict file, const char* __restrict function, int line, bool no_msg)
 #define WRITE_ERR_STRING(SS) SS << file << "(" << function << "):" << line
-#define CALL_PROGRAM_DECISION(SS) programDecision(SS, error_level, no_msg)
+#define CALL_PROGRAM_DECISION(SS) printError(SS, no_msg)
 
 //explicit instantiation
 ASSERT_FUNCTION(cudaError_t) {

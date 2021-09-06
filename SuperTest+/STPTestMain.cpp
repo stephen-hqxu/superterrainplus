@@ -4,8 +4,8 @@
 #include <catch2/catch_session.hpp>
 
 //Setup Engine
-#include <STPEngineInitialiser.h>
-#include <Utility/Exception/STPCUDAError.h>
+#include <SuperTerrain+/STPEngineInitialiser.h>
+#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
 
 #include <iostream>
 

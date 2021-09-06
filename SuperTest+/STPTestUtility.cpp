@@ -8,16 +8,15 @@
 #include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
 
-//SuperTerrain+/Utility
-#include <Utility/STPThreadPool.h>
-#define STP_EXCEPTION_ON_ERROR
-#define STP_SUPPRESS_ERROR_MESSAGE
-#include <Utility/STPDeviceErrorHandler.h>
-#include <Utility/STPSmartStream.h>
-#include <Utility/STPMemoryPool.h>
-//SuperTerrain+/Utility/Exception
-#include <Utility/Exception/STPCUDAError.h>
-#include <Utility/Exception/STPBadNumericRange.h>
+//SuperTerrain+/SuperTerrain+/Utility
+#include <SuperTerrain+/Utility/STPThreadPool.h>
+#define STP_DEVICE_ERROR_SUPPRESS_CERR
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPSmartStream.h>
+#include <SuperTerrain+/Utility/STPMemoryPool.h>
+//SuperTerrain+/SuperTerrain+/Utility/Exception
+#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 
 //CUDA
 #include <cuda_runtime.h>
@@ -67,7 +66,7 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded worklo
 				STPThreadPool& pool = dynamic_cast<STPThreadPool&>(*this);
 				REQUIRE_NOTHROW([&pool, &result, work]() {
 					result = pool.enqueue_future(&ThreadPoolTester::busyWork, work);
-				}());
+					}());
 
 				AND_THEN("Work can be done successfully") {
 					//get the work done
@@ -89,7 +88,7 @@ SCENARIO("STPDeviceErrorHandler reports CUDA API error", "[Utility][STPDeviceErr
 		WHEN("Calling some CUDA APIs") {
 
 			AND_WHEN("API call is successful") {
-				
+
 				THEN("No error is thrown") {
 					CHECK_NOTHROW(STPcudaCheckErr(cudaError::cudaSuccess));
 					CHECK_NOTHROW(STPcudaCheckErr(CUresult::CUDA_SUCCESS));
@@ -126,7 +125,7 @@ SCENARIO_METHOD(STPSmartStream, "STPSmartStream manages CUDA stream smartly", "[
 				unsigned long long Destination;
 				//actually, host to host copy is synchronous, but CUDA will still use the stream to make sure all previous works are done.
 				REQUIRE_NOTHROW(STPcudaCheckErr(cudaMemcpyAsync(&Destination, &Original, sizeof(unsigned long long), cudaMemcpyHostToHost, stream)));
-				
+
 				AND_THEN("Work done should be verified") {
 					REQUIRE_NOTHROW(STPcudaCheckErr(cudaStreamSynchronize(stream)));
 					REQUIRE(Destination == Original);
@@ -141,7 +140,7 @@ SCENARIO_METHOD(STPSmartStream, "STPSmartStream manages CUDA stream smartly", "[
 
 #define REQUEST_MEMORY static_cast<unsigned long long*>(this->request(sizeof(unsigned long long)))
 
-TEMPLATE_TEST_CASE_METHOD_SIG(STPMemoryPool, "STPMemoryPool reuses memory whenever possible", "[Utility][STPMemoryPool]", 
+TEMPLATE_TEST_CASE_METHOD_SIG(STPMemoryPool, "STPMemoryPool reuses memory whenever possible", "[Utility][STPMemoryPool]",
 	((STPMemoryPoolType T), T), STPMemoryPoolType::Regular, STPMemoryPoolType::Pinned) {
 
 	GIVEN("A fresh memory pool") {

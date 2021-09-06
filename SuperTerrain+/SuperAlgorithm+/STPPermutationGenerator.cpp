@@ -3,8 +3,8 @@
 #include <memory>
 #include <stdexcept>
 
-#include <Utility/STPDeviceErrorHandler.h>
-#include <Utility/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
 
 //CUDA Runtime
 #include <cuda_runtime.h>

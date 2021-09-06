@@ -1,7 +1,7 @@
 #pragma once
-#include <Utility/STPSmartStream.h>
+#include <SuperTerrain+/Utility/STPSmartStream.h>
 
-#include <Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 using namespace SuperTerrainPlus;
 

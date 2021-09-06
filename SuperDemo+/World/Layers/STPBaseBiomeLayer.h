@@ -1,7 +1,7 @@
 #pragma once
 #ifdef _STP_LAYERS_ALL_HPP_
 
-#include <World/Diversity/STPLayer.h>
+#include <SuperTerrain+/World/Diversity/STPLayer.h>
 #include "../Biomes/STPBiomeRegistry.h"
 
 #include <vector>

@@ -3,7 +3,7 @@ set(STP_CORE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/CoreInterface)
 set(STP_MODULE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/ModuleInterface)
 # add SuperTerrain+ source codes to target
 add_subdirectory(Core)
-add_subdirectory(${STP_CORE_INCLUDE})
+add_subdirectory(${STP_CORE_INCLUDE}/${STP_MAIN_ENGINE})
 # Add SuperAlgorithm+
 add_subdirectory(${STP_ALGORITHM_ENGINE})
 add_subdirectory(${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})

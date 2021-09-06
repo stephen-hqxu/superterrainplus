@@ -2,8 +2,8 @@
 #include "STPBiomefieldGenerator.h"
 #include <STPAlgorithmDeviceInfoDebug.h>
 //Error
-#include <Utility/STPDeviceErrorHandler.h>
-#include <Utility/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
 //Biome
 #include "STPBiomeRegistry.h"
 
@@ -26,7 +26,7 @@ using std::to_string;
 constexpr static char GeneratorFilename[] = "./STPMultiHeightGenerator.rtc";
 constexpr static char BiomePropertyFilename[] = "./STPBiomeProperty.hpp";
 const static string device_include = "-I " + string(SuperTerrainPlus::SuperAlgorithmPlus_DeviceInclude),
-	core_include = "-I " + string(SuperTerrainPlus::SuperTerrainPlus_CoreInclude);
+core_include = "-I " + string(SuperTerrainPlus::SuperTerrainPlus_CoreInclude);
 
 STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_setting, const uvec2& dimension, unsigned int interpolation_radius)
 	: STPDiversityGeneratorRTC(), Noise_Setting(simplex_setting), MapSize(dimension), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
@@ -65,24 +65,24 @@ void STPBiomefieldGenerator::initGenerator() {
 	multiheightfield_info.NameExpression
 		//global function
 		["generateMultiBiomeHeightmap"]
-		//constant
-		["BiomeTable"]
-		["Permutation"]
-		["Dimension"]
-		["HalfDimension"];
+	//constant
+	["BiomeTable"]
+	["Permutation"]
+	["Dimension"]
+	["HalfDimension"];
 	multiheightfield_info.Option
 		["-std=c++17"]
-		["-fmad=false"]
-		["-arch=compute_75"]
-		["-rdc=true"]
+	["-fmad=false"]
+	["-arch=compute_75"]
+	["-rdc=true"]
 #ifdef _DEBUG
-		["-G"]
-		["-lineinfo"]
+	["-G"]
+	["-lineinfo"]
 #endif
-		["-maxrregcount=80"]
-		//include path
-		[core_include.c_str()]
-		[device_include.c_str()];
+	["-maxrregcount=80"]
+	//include path
+	[core_include.c_str()]
+	[device_include.c_str()];
 	multiheightfield_info.ExternalHeader
 		["STPBiomeProperty"];
 	try {
@@ -100,7 +100,7 @@ void STPBiomefieldGenerator::initGenerator() {
 	char module_info_log[LinkerLogSize], module_error_log[LinkerLogSize];
 	STPDiversityGeneratorRTC::STPLinkerInformation link_info;
 	link_info.LinkerOption
-		(CU_JIT_INFO_LOG_BUFFER, linker_info_log)
+	(CU_JIT_INFO_LOG_BUFFER, linker_info_log)
 		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
 		(CU_JIT_ERROR_LOG_BUFFER, linker_error_log)
 		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
@@ -111,10 +111,10 @@ void STPBiomefieldGenerator::initGenerator() {
 		(CU_JIT_OPTIMIZATION_LEVEL, (void*)3u)
 #endif
 		(CU_JIT_LOG_VERBOSE, (void*)1);
-		//no need to generate debug info anymore since our library and runtime script all contain that
+	//no need to generate debug info anymore since our library and runtime script all contain that
 	link_info.ModuleOption
 #ifdef _DEBUG
-		(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
+	(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
 #endif
 		(CU_JIT_INFO_LOG_BUFFER, module_info_log)
 		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
@@ -131,7 +131,7 @@ void STPBiomefieldGenerator::initGenerator() {
 		std::cerr << module_error_log << std::endl;
 		exit(-1);
 	}
-	
+
 	//global pointers
 	CUmodule program = this->getGeneratorModule();
 	CUdeviceptr biome_prop, dimension, half_dimension, permutation;
@@ -165,7 +165,7 @@ void STPBiomefieldGenerator::initGenerator() {
 }
 
 //Memory Pool
-#include <Utility/STPMemoryPool.h>
+#include <SuperTerrain+/Utility/STPMemoryPool.h>
 
 using namespace SuperTerrainPlus::STPCompute;
 

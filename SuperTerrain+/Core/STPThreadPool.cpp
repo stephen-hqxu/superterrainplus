@@ -1,6 +1,6 @@
-#include <Utility/STPThreadPool.h>
+#include <SuperTerrain+/Utility/STPThreadPool.h>
 
-#include <Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 
 using namespace SuperTerrainPlus;
 

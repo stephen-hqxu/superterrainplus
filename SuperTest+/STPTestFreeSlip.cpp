@@ -9,10 +9,10 @@
 #include <catch2/generators/catch_generators_random.hpp>
 
 //SuperTerrain+/GPGPU/FreeSlip
-#include <GPGPU/FreeSlip/STPFreeSlipGenerator.cuh>
+#include <SuperTerrain+/GPGPU/FreeSlip/STPFreeSlipGenerator.cuh>
 
-#include <Utility/Exception/STPInvalidArgument.h>
-#include <Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Utility/Exception/STPInvalidArgument.h>
+#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 
 #include <type_traits>
 #include <algorithm>

@@ -3,8 +3,8 @@
 #define _STP_BIOME_SETTINGS_HPP_
 
 #include "STPBiomeProperty.hpp"
-#include <Environment/STPSetting.hpp>
-#include <World/Diversity/STPBiomeDefine.h>
+#include <SuperTerrain+/Environment/STPSetting.hpp>
+#include <SuperTerrain+/World/Diversity/STPBiomeDefine.h>
 //String
 #include <string>
 

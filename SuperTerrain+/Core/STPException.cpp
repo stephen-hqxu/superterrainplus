@@ -1,13 +1,13 @@
 #pragma once
-#include <Utility/Exception/STPBadNumericRange.h>
-#include <Utility/Exception/STPCompilationError.h>
-#include <Utility/Exception/STPCUDAError.h>
-#include <Utility/Exception/STPDeadThreadPool.h>
-#include <Utility/Exception/STPInvalidArgument.h>
-#include <Utility/Exception/STPInvalidEnvironment.h>
-#include <Utility/Exception/STPMemoryError.h>
-#include <Utility/Exception/STPSerialisationError.h>
-#include <Utility/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Utility/Exception/STPCompilationError.h>
+#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Utility/Exception/STPDeadThreadPool.h>
+#include <SuperTerrain+/Utility/Exception/STPInvalidArgument.h>
+#include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Utility/Exception/STPSerialisationError.h>
+#include <SuperTerrain+/Utility/Exception/STPUnsupportedFunctionality.h>
 
 using namespace SuperTerrainPlus::STPException;
 

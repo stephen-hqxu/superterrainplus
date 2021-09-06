@@ -1,5 +1,5 @@
 #pragma once
-#include <Environment/STPConfiguration.h>
+#include <SuperTerrain+/Environment/STPConfiguration.h>
 
 using namespace SuperTerrainPlus::STPEnvironment;
 

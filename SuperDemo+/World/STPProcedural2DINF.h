@@ -10,7 +10,7 @@
 #include "SglToolkit1.0/SgTShaderProc.h"
 #include "SglToolkit1.0/SgTUtils.h"
 //Processing data with chunk manager so we can use the map directly
-#include <World/Chunk/STPChunkManager.h>
+#include <SuperTerrain+/World/Chunk/STPChunkManager.h>
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.

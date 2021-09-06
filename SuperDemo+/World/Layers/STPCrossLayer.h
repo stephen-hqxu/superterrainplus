@@ -2,7 +2,7 @@
 #ifdef _STP_LAYERS_ALL_HPP_
 
 //Base layer
-#include <World/Diversity/STPLayer.h>
+#include <SuperTerrain+/World/Diversity/STPLayer.h>
 
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.

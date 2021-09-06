@@ -1,13 +1,12 @@
 #pragma once
-#include <GPGPU/FreeSlip/STPFreeSlipTextureBuffer.h>
+#include <SuperTerrain+/GPGPU/FreeSlip/STPFreeSlipTextureBuffer.h>
 
 //Error
-#define STP_EXCEPTION_ON_ERROR
-#include <Utility/STPDeviceErrorHandler.h>
-#include <Utility/Exception/STPInvalidArgument.h>
-#include <Utility/Exception/STPBadNumericRange.h>
-#include <Utility/Exception/STPMemoryError.h>
-#include <Utility/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/Exception/STPInvalidArgument.h>
+#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
 
 #include <type_traits>
 

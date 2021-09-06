@@ -1,14 +1,13 @@
 #pragma once
-#include <GPGPU/FreeSlip/STPFreeSlipGenerator.cuh>
+#include <SuperTerrain+/GPGPU/FreeSlip/STPFreeSlipGenerator.cuh>
 #include <device_launch_parameters.h>
 
 #include <type_traits>
 #include <stdexcept>
 
 //Error
-#define STP_EXCEPTION_ON_ERROR
-#include <Utility/STPDeviceErrorHandler.h>
-#include <Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 
 using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;

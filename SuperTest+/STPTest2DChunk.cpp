@@ -8,7 +8,7 @@
 #include <catch2/generators/catch_generators_adapters.hpp>
 
 //SuperTerrain+/World/Chunk
-#include <World/Chunk/STPChunk.h>
+#include <SuperTerrain+/World/Chunk/STPChunk.h>
 
 using namespace SuperTerrainPlus;
 

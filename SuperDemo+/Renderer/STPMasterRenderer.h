@@ -39,7 +39,7 @@ using glm::value_ptr;
 #include <SglToolkit1.0/SgTShaderProc.h>
 #include <SglToolkit1.0/SgTUtils.h>
 //Multithreadding engine
-#include <Utility/STPThreadPool.h>
+#include <SuperTerrain+/Utility/STPThreadPool.h>
 
 //Invididual rendering engine
 #include "../Helpers/STPIndirectCommands.h"

@@ -1,5 +1,5 @@
 #pragma once
-#include <World/Diversity/STPLayerManager.h>
+#include <SuperTerrain+/World/Diversity/STPLayerManager.h>
 
 using namespace SuperTerrainPlus::STPDiversity;
 

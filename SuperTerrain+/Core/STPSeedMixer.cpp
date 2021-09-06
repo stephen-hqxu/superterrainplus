@@ -1,4 +1,4 @@
-#include <World/Diversity/STPSeedMixer.h>
+#include <SuperTerrain+/World/Diversity/STPSeedMixer.h>
 
 using namespace SuperTerrainPlus::STPDiversity;
 

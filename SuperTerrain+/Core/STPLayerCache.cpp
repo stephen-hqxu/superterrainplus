@@ -1,6 +1,6 @@
-#include <World/Diversity/STPLayerCache.h>
+#include <SuperTerrain+/World/Diversity/STPLayerCache.h>
 
-#include <Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 
 using namespace SuperTerrainPlus::STPDiversity;
 

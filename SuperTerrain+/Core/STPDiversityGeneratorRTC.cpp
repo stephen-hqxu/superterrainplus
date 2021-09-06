@@ -1,13 +1,12 @@
 #pragma once
 #pragma warning(disable:26812)//Enum unsafe, use enum class instead
-#include <GPGPU/STPDiversityGeneratorRTC.h>
+#include <SuperTerrain+/GPGPU/STPDiversityGeneratorRTC.h>
 
-#define STP_EXCEPTION_ON_ERROR
-#include <Utility/STPDeviceErrorHandler.h>
-#include <Utility/Exception/STPSerialisationError.h>
-#include <Utility/Exception/STPCompilationError.h>
-#include <Utility/Exception/STPUnsupportedFunctionality.h>
-#include <Utility/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/Exception/STPSerialisationError.h>
+#include <SuperTerrain+/Utility/Exception/STPCompilationError.h>
+#include <SuperTerrain+/Utility/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
 
 //IO
 #include <fstream>

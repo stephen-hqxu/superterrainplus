@@ -9,7 +9,7 @@
 //GLM
 #include "glm/vec2.hpp"
 //Settings
-#include <Environment/STPConfiguration.h>
+#include <SuperTerrain+/Environment/STPConfiguration.h>
 #include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
 
 /**

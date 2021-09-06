@@ -1,13 +1,12 @@
 #pragma once
-#include <GPGPU/STPHeightfieldGenerator.cuh>
+#include <SuperTerrain+/GPGPU/STPHeightfieldGenerator.cuh>
 
 //Simulator
-#include <GPGPU/FreeSlip/STPFreeSlipManager.cuh>
-#include <GPGPU/STPRainDrop.cuh>
+#include <SuperTerrain+/GPGPU/FreeSlip/STPFreeSlipManager.cuh>
+#include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
 
-#define STP_EXCEPTION_ON_ERROR
-#include <Utility/STPDeviceErrorHandler.h>
-#include <Utility/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
 
 #include <type_traits>
 #include <memory>

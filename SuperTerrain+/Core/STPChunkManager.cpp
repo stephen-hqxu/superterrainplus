@@ -1,7 +1,7 @@
-#pragma warning(disable : 4267)//implicit conversion may lose data wwarning (actually it won't)
-#include <World/Chunk/STPChunkManager.h>
+#pragma warning(disable : 4267)//implicit conversion may lose data warning (actually it won't)
+#include <SuperTerrain+/World/Chunk/STPChunkManager.h>
 
-#include <Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 using glm::uvec2;
 using glm::ivec2;

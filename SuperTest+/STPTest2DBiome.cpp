@@ -7,14 +7,14 @@
 #include <catch2/generators/catch_generators_adapters.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
 
-//SuperTerrain+/World/Diversity
-#include <World/Diversity/STPSeedMixer.h>
-#include <World/Diversity/STPLayerCache.h>
-#include <World/Diversity/STPLayerManager.h>
-#include <World/Diversity/STPBiomeFactory.h>
+//SuperTerrain+/SuperTerrain+/World/Diversity
+#include <SuperTerrain+/World/Diversity/STPSeedMixer.h>
+#include <SuperTerrain+/World/Diversity/STPLayerCache.h>
+#include <SuperTerrain+/World/Diversity/STPLayerManager.h>
+#include <SuperTerrain+/World/Diversity/STPBiomeFactory.h>
 
-#include <Utility/Exception/STPBadNumericRange.h>
-#include <Utility/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Utility/Exception/STPUnsupportedFunctionality.h>
 
 using namespace SuperTerrainPlus::STPDiversity;
 using SuperTerrainPlus::STPDiversity::Sample;

@@ -1,7 +1,7 @@
-#include <World/Chunk/STPChunkProvider.h>
+#include <SuperTerrain+/World/Chunk/STPChunkProvider.h>
 
-#include <Utility/Exception/STPMemoryError.h>
-#include <Utility/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
 
 #include <algorithm>
 
