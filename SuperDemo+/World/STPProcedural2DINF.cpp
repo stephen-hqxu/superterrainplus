@@ -92,8 +92,8 @@ void STPProcedural2DINF::loadPlane() {
 	glNamedBufferStorage(this->plane_indirect, sizeof(GLuint) * 5, this->command, GL_NONE);
 
 	//sending data
-	glNamedBufferStorage(this->plane_vbo, sizeof(SglToolkit::SgTUtils::UNITPLANE_VERTICES), SglToolkit::SgTUtils::UNITPLANE_VERTICES, GL_NONE);
-	glNamedBufferStorage(this->plane_ebo, sizeof(SglToolkit::SgTUtils::UNITBOX_INDICES), SglToolkit::SgTUtils::UNITBOX_INDICES, GL_NONE);
+	glNamedBufferStorage(this->plane_vbo, sizeof(SglToolkit::SgTUtil::UNITPLANE_VERTICES), SglToolkit::SgTUtil::UNITPLANE_VERTICES, GL_NONE);
+	glNamedBufferStorage(this->plane_ebo, sizeof(SglToolkit::SgTUtil::UNITBOX_INDICES), SglToolkit::SgTUtil::UNITBOX_INDICES, GL_NONE);
 	//binding to vao
 	glVertexArrayVertexBuffer(this->plane_vao, 0, this->plane_vbo, 0, 14 * sizeof(int));
 	glVertexArrayElementBuffer(this->plane_vao, this->plane_ebo);
@@ -149,7 +149,13 @@ void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& proje
 	glProgramUniformMatrix4fv(this->Terrain2d_shader.getP(), this->getLoc("Model"), 1, GL_FALSE, value_ptr(model));
 	
 	//render, sync textures to make sure they are all ready before loading
-	this->ChunkManager.SyncloadChunks();
+	try {
+		this->ChunkManager.SyncloadChunks();
+	}
+	catch (const std::exception& e) {
+		cerr << e.what() << endl;
+		std::terminate();
+	}
 	this->ChunkManager.generateMipmaps();
 	glBindTextureUnit(0, this->ChunkManager.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::BIOME));//biomemap
 	glBindTextureUnit(1, this->ChunkManager.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::HEIGHTFIELD));//heightfield

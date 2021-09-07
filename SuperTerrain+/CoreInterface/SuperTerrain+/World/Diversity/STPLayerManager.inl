@@ -3,7 +3,7 @@
 //DO NOT INCLUDE THIS HEADER SEPARATELY
 #ifdef _STP_LAYER_MANAGER_H_
 template <class L, size_t C, class... Arg>
-inline SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity::STPLayerManager::insert(Arg&&... args) {
+SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity::STPLayerManager::insert(Arg&&... args) {
 	//make sure only STPLayer is supplied as template, error throws at compile time
 	static_assert(std::is_base_of<STPLayer, L>::value, "Only STPLayer and its children are allowed to instantiate as a new layer");
 

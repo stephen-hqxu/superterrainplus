@@ -87,8 +87,8 @@ namespace STPDemo {
 
 			//loading the unit cube into vbo
 			//set the flag to 0 to turn the buffer into fully-unmappable and immutable
-			glNamedBufferStorage(this->box_vbo, sizeof(SglToolkit::SgTUtils::UNITBOX_VERTICES), SglToolkit::SgTUtils::UNITBOX_VERTICES, GL_NONE);
-			glNamedBufferStorage(this->box_ebo, sizeof(SglToolkit::SgTUtils::UNITBOX_INDICES), SglToolkit::SgTUtils::UNITBOX_INDICES, GL_NONE);
+			glNamedBufferStorage(this->box_vbo, sizeof(SglToolkit::SgTUtil::UNITBOX_VERTICES), SglToolkit::SgTUtil::UNITBOX_VERTICES, GL_NONE);
+			glNamedBufferStorage(this->box_ebo, sizeof(SglToolkit::SgTUtil::UNITBOX_INDICES), SglToolkit::SgTUtil::UNITBOX_INDICES, GL_NONE);
 			//assigning vao
 			glVertexArrayVertexBuffer(this->box_vao, 0, this->box_vbo, 0, sizeof(int) * 3);
 			glVertexArrayElementBuffer(this->box_vao, this->box_ebo);

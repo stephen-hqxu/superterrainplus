@@ -26,7 +26,7 @@ inline void printError(stringstream& msg, bool no_msg) noexcept(false) {
 }
 
 //Helpers to cut down coding efforts
-#define ASSERT_FUNCTION(ERR) template<> STP_API void STPcudaAssert<ERR>(ERR cuda_code, const char* __restrict file, const char* __restrict function, int line, bool no_msg)
+#define ASSERT_FUNCTION(ERR) template<> STP_API void STPcudaAssert<ERR>(ERR cuda_code, const char* __restrict file, const char* __restrict function, int line, bool no_msg) noexcept(false)
 #define WRITE_ERR_STRING(SS) SS << file << "(" << function << "):" << line
 #define CALL_PROGRAM_DECISION(SS) printError(SS, no_msg)
 

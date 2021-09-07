@@ -28,7 +28,7 @@ namespace STPDemo {
 			//Sky renderer
 			std::future<DrawElementsIndirectCommand*> skycmd_generator = pool.enqueue_future([]() -> DrawElementsIndirectCommand* {
 				DrawElementsIndirectCommand* skycmd = new DrawElementsIndirectCommand{
-					SglToolkit::SgTUtils::UNITBOX_INDICES_SIZE,
+					SglToolkit::SgTUtil::UNITBOX_INDICES_SIZE,
 					1,
 					0,
 					0,
@@ -49,7 +49,7 @@ namespace STPDemo {
 			//Procedural 2D infinite terrain renderer
 			std::future<DrawElementsIndirectCommand*> procedural2dinf_generator = pool.enqueue_future([terrain2d_unitplane_count]() -> DrawElementsIndirectCommand* {
 				DrawElementsIndirectCommand* procedural2dinfcmd = new DrawElementsIndirectCommand{
-					SglToolkit::SgTUtils::UNITPLANE_INDICES_SIZE,
+					SglToolkit::SgTUtil::UNITPLANE_INDICES_SIZE,
 					terrain2d_unitplane_count,
 					0,
 					0,

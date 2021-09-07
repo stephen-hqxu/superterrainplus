@@ -13,6 +13,9 @@
 //CUDA Device Parameters
 #include <device_launch_parameters.h>
 
+//Template definition for the smart device memory
+#include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
+
 using namespace SuperTerrainPlus::STPCompute;
 
 using std::vector;
@@ -70,10 +73,6 @@ __global__ void performErosionKERNEL(STPFreeSlipFloatManager, const SuperTerrain
 */
 __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager, float, unsigned short*);
 
-template<typename T>
-void STPHeightfieldGenerator::STPDeviceDeleter<T>::operator()(T* ptr) const {
-	STPcudaCheckErr(cudaFree(ptr));
-}
 
 __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting& chunk_settings, const STPEnvironment::STPHeightfieldSetting& heightfield_settings,
 	const STPDiversityGenerator& diversity_generator, unsigned int hint_level_of_concurrency)
@@ -94,8 +93,8 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::
 	//heightfield settings
 	STPEnvironment::STPHeightfieldSetting* hfs_cache;
 	STPcudaCheckErr(cudaMalloc(&hfs_cache, sizeof(STPEnvironment::STPHeightfieldSetting)));
+	this->Heightfield_Setting_d = STPSmartDeviceMemory<STPEnvironment::STPHeightfieldSetting>(hfs_cache);
 	STPcudaCheckErr(cudaMemcpy(hfs_cache, &this->Heightfield_Setting_h, sizeof(STPEnvironment::STPHeightfieldSetting), cudaMemcpyHostToDevice));
-	this->Heightfield_Setting_d = unique_ptr_d<STPEnvironment::STPHeightfieldSetting>(hfs_cache);
 	
 	//create memory pool
 	cudaMemPoolProps pool_props = { };
@@ -130,12 +129,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		return;
 	}
 
-	std::exception_ptr exp;
 	int Mingridsize, gridsize, blocksize;
-	//creating stream so cpu thread can calculate all chunks altogether
-	optional<STPSmartStream> stream_buffer;
-	cudaStream_t stream;
-
 	//Retrieve all flags
 	auto isFlagged = []__host__(STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
 		return (op & flag) != 0u;
@@ -145,10 +139,14 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		isFlagged(operation, STPHeightfieldGenerator::Erosion),
 		isFlagged(operation, STPHeightfieldGenerator::RenderingBufferGeneration)
 	};
+	STPcudaCheckErr(cudaSetDevice(0));
 
-	try {
-		STPcudaCheckErr(cudaSetDevice(0));
-
+	//creating stream so cpu thread can calculate all chunks altogether
+	//if exception is thrown during exception, stream will be the last object to be deleted, automatically
+	optional<STPSmartStream> stream_buffer;
+	cudaStream_t stream;
+	//limit the scope for std::optional to control the destructor call
+	{
 		//heightmap
 		optional<STPFreeSlipFloatTextureBuffer> heightmap_buffer;
 		optional<STPFreeSlipRenderTextureBuffer> heightfield_buffer;
@@ -241,19 +239,12 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 		//it will call the destructor in texture buffer (optional calls it when goes out of scope), and result will be copied back using CUDA stream
 		//this operation is stream ordered
 	}
-	catch (...) {
-		exp = current_exception();
-	}
 
 	//waiting for finish before release the stream back to the pool
 	STPcudaCheckErr(cudaStreamSynchronize(stream));
 	{
 		unique_lock<mutex> stream_lock(this->StreamPool_lock);
 		this->StreamPool.emplace(move(*stream_buffer));
-	}
-
-	if (exp) {
-		rethrow_exception(exp);
 	}
 }
 
@@ -272,11 +263,11 @@ __host__ void STPHeightfieldGenerator::setErosionIterationCUDA() {
 	//allocating spaces for rng storage array
 	curandRNG* rng_cache;
 	STPcudaCheckErr(cudaMalloc(&rng_cache, sizeof(curandRNG) * raindrop_count));
+	this->RNG_Map = STPSmartDeviceMemory<curandRNG>(rng_cache);
 	//and send to kernel
 	curandInitKERNEL << <gridsize, blocksize >> > (rng_cache, this->Heightfield_Setting_h.Seed, raindrop_count);
 	STPcudaCheckErr(cudaGetLastError());
 	STPcudaCheckErr(cudaDeviceSynchronize());
-	this->RNG_Map = unique_ptr_d<curandRNG>(rng_cache);
 }
 
 __host__ void STPHeightfieldGenerator::copyNeighbourEdgeOnly(unsigned short* device, const vector<unsigned short*>& source, size_t element_count, cudaStream_t stream) const {

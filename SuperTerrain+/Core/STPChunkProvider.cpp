@@ -2,8 +2,10 @@
 
 #include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
 #include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Utility/Exception/STPAsyncGenerationError.h>
 
 #include <algorithm>
+#include <sstream>
 
 using glm::ivec2;
 using glm::vec2;
@@ -15,6 +17,11 @@ using std::list;
 using std::make_unique;
 using std::make_pair;
 using std::for_each;
+
+using std::current_exception;
+using std::unique_lock;
+using std::shared_lock;
+using std::shared_mutex;
 
 using namespace SuperTerrainPlus;
 
@@ -61,13 +68,7 @@ void STPChunkProvider::computeHeightmap(STPChunk* current_chunk, STPChunkProvide
 	const STPHeightfieldGenerator::STPGeneratorOperation op = STPHeightfieldGenerator::HeightmapGeneration;
 
 	//computing, check success state
-	try {
-		this->generateHeightfield(maps, op);
-	}
-	catch (const std::exception& e) {
-		std::cerr << e.what() << std::endl;
-		std::terminate();
-	}
+	this->generateHeightfield(maps, op);
 }
 
 void STPChunkProvider::computeErosion(STPChunkProvider::STPChunkNeighbour& neighbour_chunks) {
@@ -85,13 +86,17 @@ void STPChunkProvider::computeErosion(STPChunkProvider::STPChunkNeighbour& neigh
 		STPHeightfieldGenerator::RenderingBufferGeneration;
 
 	//computing and return success state
-	try {
-		this->generateHeightfield(maps, op);
-	}
-	catch (const std::exception& e) {
-		std::cerr << e.what() << std::endl;
-		std::terminate();
-	}
+	this->generateHeightfield(maps, op);
+}
+
+#define STORE_EXCEPTION(FUN) try { \
+	FUN; \
+} \
+catch (...) { \
+	{ \
+		unique_lock<shared_mutex> newExceptionLock(this->ExceptionStorageLock); \
+		this->ExceptionStorage.emplace(current_exception()); \
+	} \
 }
 
 bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::vec2)>& erosion_reloader, unsigned char rec_depth) {
@@ -121,20 +126,20 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 	auto biomemap_computer = [this](STPChunk* chunk, vec2 position, vec2 offset) -> void {
 		//since biomemap is discrete, we need to round the pixel
 		ivec2 rounded_offset = static_cast<ivec2>(glm::round(offset));
-		this->generateBiome(chunk->getBiomemap(), ivec3(rounded_offset.x, 0, rounded_offset.y));
+		STORE_EXCEPTION(this->generateBiome(chunk->getBiomemap(), ivec3(rounded_offset.x, 0, rounded_offset.y)))
 		//computation was successful
 		chunk->markChunkState(STPChunk::STPChunkState::Biomemap_Ready);
 		chunk->markOccupancy(false);
 	};
 	auto heightmap_computer = [this](STPChunk* chunk, STPChunkNeighbour neighbours, vec2 position) -> void {
-		this->computeHeightmap(chunk, neighbours, position);
+		STORE_EXCEPTION(this->computeHeightmap(chunk, neighbours, position))
 		//computation was successful
 		chunk->markChunkState(STPChunk::STPChunkState::Heightmap_Ready);
 		//unlock all neighbours
 		for_each(neighbours.begin(), neighbours.end(), [](auto c) -> void { c->markOccupancy(false); });
 	};
 	auto erosion_computer = [this](STPChunk* centre, STPChunkNeighbour neighbours) -> void {
-		this->computeErosion(neighbours);
+		STORE_EXCEPTION(this->computeErosion(neighbours))
 		//erosion was successful
 		//mark center chunk complete
 		centre->markChunkState(STPChunk::STPChunkState::Complete);
@@ -222,6 +227,32 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 }
 
 bool STPChunkProvider::checkChunk(vec2 chunkPos, std::function<bool(glm::vec2)> reload_callback) {
+	//check if there's any exception thrown from previous async compute launch
+	bool hasException;
+	{
+		shared_lock<shared_mutex> checkExceptionLock(this->ExceptionStorageLock);
+		hasException = !this->ExceptionStorage.empty();
+	}
+	if (hasException) {
+		unique_lock<shared_mutex> clearExceptionLock(this->ExceptionStorageLock);
+		std::stringstream error_message;
+
+		//merge all exception messages
+		while (!this->ExceptionStorage.empty()) {
+			std::exception_ptr exptr = this->ExceptionStorage.front();
+			this->ExceptionStorage.pop();
+			try {
+				std::rethrow_exception(exptr);
+			}
+			catch (const std::exception& e) {
+				//unfortunately we will lose all exception type information :(
+				error_message << e.what() << std::endl;
+			}
+		}
+		//throw the compound exception out
+		throw STPException::STPAsyncGenerationError(error_message.str().c_str());
+	}
+
 	//recursively preparing neighbours
 	if (!this->prepareNeighbour(chunkPos, reload_callback)) {
 		//if any neighbour is not ready, and compute has been launched, it will return false

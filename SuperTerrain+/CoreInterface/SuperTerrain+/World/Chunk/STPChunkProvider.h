@@ -6,6 +6,10 @@
 //System
 #include <utility>
 #include <functional>
+//Exception Handling
+#include <queue>
+#include <mutex>
+#include <exception>
 
 //Multithreading
 #include "../../Utility/STPThreadPool.h"
@@ -43,6 +47,10 @@ namespace SuperTerrainPlus {
 		STPCompute::STPHeightfieldGenerator& generateHeightfield;
 
 		typedef std::list<STPChunk*> STPChunkNeighbour;
+
+		//Store exception thrown from async execution
+		std::queue<std::exception_ptr> ExceptionStorage;
+		std::shared_mutex ExceptionStorageLock;
 
 		/**
 		 * @brief Calculate the chunk offset such that the transition of each chunk is seamless

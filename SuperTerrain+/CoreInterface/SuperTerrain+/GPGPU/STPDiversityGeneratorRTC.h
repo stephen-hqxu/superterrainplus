@@ -150,12 +150,34 @@ namespace SuperTerrainPlus {
 
 		private:
 
+			/**
+			 * @brief Delete nvrtcProgram
+			 * @param program The program to be deleted
+			*/
+			static void deleteProgram(nvrtcProgram);
+
+			/**
+			 * @brief Delete CUmodule
+			 * @param module The module to be deleted
+			*/
+			static void deleteModule(CUmodule);
+
+			/**
+			 * @brief Delete CUlinkState
+			 * @param link The link to be deleted
+			*/
+			static void deleteLink(CUlinkState);
+
+			typedef std::unique_ptr<std::remove_pointer_t<nvrtcProgram>, void(*)(nvrtcProgram)> ManagednvrtcProgram;
+			typedef std::unique_ptr<std::remove_pointer_t<CUmodule>, void(*)(CUmodule)> ManagedCUmodule;
+			typedef std::unique_ptr<std::remove_pointer_t<CUlinkState>, void(*)(CUlinkState)> ManagedCUlinkState;
+
 			//Store included files
 			//Key: header name, Value: header code
 			typedef std::unordered_map<std::string, std::string> STPIncluded;
 			//Store compiled device source code in device format
 			//Key: source name, Value: compiled code
-			typedef std::unordered_map<std::string, nvrtcProgram> STPCompiled;
+			typedef std::unordered_map<std::string, ManagednvrtcProgram> STPCompiled;
 
 			//All external header used within the runtime script that cannot be found directly under the script's directory nor the include directory set during complication
 			//This can be useful for in-place code, i.e., code is a hard-coded string in the executable
@@ -169,8 +191,7 @@ namespace SuperTerrainPlus {
 			//All registered lowered name expression with programs.
 			STPNameExpression CompilationNameDatabase;
 			//A complete program of diversity generator
-			CUmodule GeneratorProgram;
-			bool ModuleLoadingStatus;
+			ManagedCUmodule GeneratorProgram;
 
 		protected:
 
@@ -280,7 +301,7 @@ namespace SuperTerrainPlus {
 
 		public:
 
-			virtual ~STPDiversityGeneratorRTC();
+			virtual ~STPDiversityGeneratorRTC() = default;
 
 		};
 	}

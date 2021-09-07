@@ -44,7 +44,7 @@ STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_s
 	STPcudaCheckErr(cuMemPoolCreate(&this->HistogramCacheDevice, &pool_props));
 	//it's pretty hard to predict
 	constexpr size_t avg_bin_per_pixel = 2ull, deg_para = 5ull;
-	cuuint64_t release_thres = this->MapSize.x * this->MapSize.y * (sizeof(unsigned int) + sizeof(STPSingleHistogram::STPBin) * avg_bin_per_pixel) * deg_para;
+	cuuint64_t release_thres = this->MapSize.x * this->MapSize.y * (sizeof(unsigned int) + sizeof(SuperTerrainPlus::STPCompute::STPSingleHistogram::STPBin) * avg_bin_per_pixel) * deg_para;
 	cuMemPoolSetAttribute(this->HistogramCacheDevice, CU_MEMPOOL_ATTR_RELEASE_THRESHOLD, &release_thres);
 }
 

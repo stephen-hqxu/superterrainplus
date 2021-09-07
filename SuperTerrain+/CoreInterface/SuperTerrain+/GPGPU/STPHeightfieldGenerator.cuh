@@ -15,6 +15,7 @@
 #include "STPDiversityGenerator.hpp"
 #include "./FreeSlip/STPFreeSlipGenerator.cuh"
 #include "../Utility/STPSmartStream.h"
+#include "../Utility/STPSmartDeviceMemory.h"
 //Settings
 #include "../Environment/STPHeightfieldSetting.h"
 #include "../Environment/STPChunkSetting.h"
@@ -91,29 +92,14 @@ namespace SuperTerrainPlus {
 			*/
 			enum class STPEdgeArrangement : unsigned char;
 
-			/**
-			 * @brief A custom deleter for device memory
-			 * @tparam T Type of the variable
-			*/
-			template<typename T>
-			struct STPDeviceDeleter {
-			public:
-
-				void operator()(T*) const;
-
-			};
-			//An alias of unique_ptr with cudaFree as deleter
-			template<typename T>
-			using unique_ptr_d = std::unique_ptr<T, STPDeviceDeleter<T>>;
-
 			//multi-biome heightmap generator linked with external
 			const STPDiversityGenerator& generateHeightmap;
 			//heightfield generation parameters
 			const STPEnvironment::STPHeightfieldSetting& Heightfield_Setting_h;
-			unique_ptr_d<STPEnvironment::STPHeightfieldSetting> Heightfield_Setting_d;
+			STPSmartDeviceMemory<STPEnvironment::STPHeightfieldSetting> Heightfield_Setting_d;
 
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency
-			unique_ptr_d<curandRNG> RNG_Map;
+			STPSmartDeviceMemory<curandRNG[]> RNG_Map;
 			//free-slip index table generator
 			STPFreeSlipGenerator FreeSlipTable;
 			STPFreeSlipTextureAttribute TextureBufferAttr;

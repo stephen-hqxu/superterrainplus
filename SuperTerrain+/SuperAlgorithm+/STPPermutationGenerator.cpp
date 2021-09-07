@@ -6,6 +6,9 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
 
+//Import definition
+#include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
+
 //CUDA Runtime
 #include <cuda_runtime.h>
 
@@ -71,6 +74,7 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 
 	//now copy the host table to the device
 	STPcudaCheckErr(cudaMalloc(&this->Permutation, sizeof(unsigned char) * 512));
+	this->ManagedPermutation = STPSmartDeviceMemory<unsigned char[]>(this->Permutation);
 	STPcudaCheckErr(cudaMemcpy(this->Permutation, PERMUTATION_HOST, sizeof(unsigned char) * 512, cudaMemcpyHostToDevice));
 
 	//generate the gradient table
@@ -87,19 +91,9 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 
 	//copy the host gradient to device
 	STPcudaCheckErr(cudaMalloc(&this->Gradient2D, sizeof(double) * this->Gradient2DSize * 2));
+	this->ManagedGradient2D = STPSmartDeviceMemory<double[]>(this->Gradient2D);
 	STPcudaCheckErr(cudaMemcpy(this->Gradient2D, GRADIENT2D_HOST.get(), sizeof(double) * this->Gradient2DSize * 2, cudaMemcpyHostToDevice));
 	//finishing up
-}
-
-STPPermutationGenerator::~STPPermutationGenerator() {
-	if (this->Gradient2D != nullptr) {
-		STPcudaCheckErr(cudaFree(this->Gradient2D));
-		this->Gradient2D = nullptr;
-	}
-	if (this->Permutation != nullptr) {
-		STPcudaCheckErr(cudaFree(this->Permutation));
-		this->Permutation = nullptr;
-	}
 }
 
 const STPPermutation& STPPermutationGenerator::operator()() const {

@@ -21,6 +21,7 @@ GPGPU/STPDiversityGeneratorRTC.h
 GPGPU/STPHeightfieldGenerator.cuh
 GPGPU/STPRainDrop.cuh
 # /Utility/Exception
+Utility/Exception/STPAsyncGenerationError.h
 Utility/Exception/STPBadNumericRange.h
 Utility/Exception/STPCompilationError.h
 Utility/Exception/STPCUDAError.h
@@ -33,6 +34,8 @@ Utility/Exception/STPUnsupportedFunctionality.h
 # /Utility
 Utility/STPDeviceErrorHandler.h
 Utility/STPMemoryPool.h
+Utility/STPSmartDeviceMemory.h
+Utility/STPSmartDeviceMemory.tpp
 Utility/STPSmartStream.h
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl

@@ -14,18 +14,15 @@ using std::mutex;
 
 //Allocate different types of memory
 template<STPMemoryPoolType T>
-inline static void* allocate(size_t);
-
-template<>
-inline void* allocate<STPMemoryPoolType::Regular>(size_t size) {
-	return malloc(size);
-}
-
-template<>
-inline void* allocate<STPMemoryPoolType::Pinned>(size_t size) {
-	void* mem;
-	STPcudaCheckErr(cudaMallocHost(&mem, size));
-	return mem;
+inline static void* allocate(size_t size) {
+	if constexpr (T == STPMemoryPoolType::Regular) {
+		return malloc(size);
+	}
+	else {
+		void* mem;
+		STPcudaCheckErr(cudaMallocHost(&mem, size));
+		return mem;
+	}
 }
 
 template<STPMemoryPoolType T>

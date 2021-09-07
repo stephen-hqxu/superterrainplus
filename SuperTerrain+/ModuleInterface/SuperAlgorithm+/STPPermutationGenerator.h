@@ -8,6 +8,8 @@
 #include <random>
 //Permutation Table
 #include "STPPermutation.hpp"
+//Device Memory Management
+#include <SuperTerrain+/Utility/STPSmartDeviceMemory.h>
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -29,6 +31,10 @@ namespace SuperTerrainPlus {
 			//TODO Choose your prefered rng here!!!
 			typedef std::mt19937_64 STPPermutationRNG;
 
+			//Manage the memory smartly and only pass the pointer to the STPPermutation
+			STPSmartDeviceMemory<unsigned char[]> ManagedPermutation;
+			STPSmartDeviceMemory<double[]> ManagedGradient2D;
+
 		public:
 
 			/**
@@ -47,7 +53,7 @@ namespace SuperTerrainPlus {
 
 			STPPermutationGenerator& operator=(STPPermutationGenerator&&) = delete;
 
-			~STPPermutationGenerator();
+			~STPPermutationGenerator() = default;
 
 			/**
 			 * @brief Get the generated permutation table.

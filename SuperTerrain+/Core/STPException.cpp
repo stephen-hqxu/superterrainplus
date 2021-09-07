@@ -1,4 +1,5 @@
 #pragma once
+#include <SuperTerrain+/Utility/Exception/STPAsyncGenerationError.h>
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Utility/Exception/STPCompilationError.h>
 #include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
@@ -16,6 +17,12 @@ using std::ios_base;
 using std::runtime_error;
 using std::invalid_argument;
 using std::logic_error;
+
+//STPAsyncGenerationError.h
+
+STPAsyncGenerationError::STPAsyncGenerationError(const char* msg) : runtime_error(msg) {
+
+}
 
 //STPBadNumericRange.h
 

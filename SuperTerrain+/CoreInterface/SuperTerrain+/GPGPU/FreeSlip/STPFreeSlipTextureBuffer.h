@@ -130,7 +130,7 @@ namespace SuperTerrainPlus {
 
 			STPFreeSlipTextureBuffer& operator=(STPFreeSlipTextureBuffer&&) = delete;
 
-			~STPFreeSlipTextureBuffer() noexcept(false);
+			~STPFreeSlipTextureBuffer();
 			
 			/**
 			 * @brief Get the pointer to the merged free-slip texture.

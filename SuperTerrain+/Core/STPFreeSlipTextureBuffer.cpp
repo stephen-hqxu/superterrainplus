@@ -59,7 +59,7 @@ STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(typename STPFreeSlipTextur
 }
 
 template<typename T>
-STPFreeSlipTextureBuffer<T>::~STPFreeSlipTextureBuffer() noexcept(false) try {
+STPFreeSlipTextureBuffer<T>::~STPFreeSlipTextureBuffer() {
 	if (!this->Integration) {
 		//no texture has been integrated, nothing to do
 		return;
@@ -67,14 +67,6 @@ STPFreeSlipTextureBuffer<T>::~STPFreeSlipTextureBuffer() noexcept(false) try {
 	//else we need to destroy allocation
 	this->destroyAllocation();
 	
-}
-catch (const STPException::STPCUDAError& cuda_err) {
-	using std::cerr;
-	using std::endl;
-	//if exception is caught during destroying memory, it's mostly caused by illegal memory access and is very dangerous if let go
-	//simply terminate the program
-	cerr << cuda_err.what() << endl;
-	std::terminate();
 }
 
 template<typename T>

@@ -5,6 +5,7 @@ set(STP_DEMO_PROGRAM "SuperDemo+")
 find_package(glfw3 3 REQUIRED CONFIG)
 # and include our home-made libraries ;)
 find_package(SIMPLE 2 REQUIRED CONFIG)
+find_package(SglToolkit 1 REQUIRED CONFIG)
 
 # add all demo program code
 # header and source code will be placed together
@@ -26,16 +27,12 @@ endif()
 
 # cuda related static libraries are added by public target
 target_include_directories(${STP_DEMO_PROGRAM}
-PRIVATE ${STP_EXTERNAL_DIR}/include
-)
-
-target_link_directories(${STP_DEMO_PROGRAM}
-PRIVATE ${STP_EXTERNAL_DIR}/lib
+PRIVATE ${STP_EXTERNAL_DIR}
 )
 
 # when building a shared library, GLAD.c is not exported by the engine so we need to compile it twice
 target_link_libraries(${STP_DEMO_PROGRAM}
-PRIVATE glfw OpenGL::GL SglToolkit.lib SIMPLE::SIMPLE
+PRIVATE glfw OpenGL::GL SIMPLE::SIMPLE SglToolkit::SglToolkit
 PRIVATE ${STP_GLAD} ${STP_MAIN_ENGINE} ${STP_ALGORITHM_HOST_ENGINE}
 )
 

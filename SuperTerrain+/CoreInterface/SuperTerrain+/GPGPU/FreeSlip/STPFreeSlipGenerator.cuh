@@ -11,6 +11,7 @@
 #include "STPFreeSlipLocation.hpp"
 #include "STPFreeSlipTextureBuffer.h"
 #include "STPFreeSlipManager.cuh"
+#include "../../Utility/STPSmartDeviceMemory.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -83,19 +84,14 @@ namespace SuperTerrainPlus {
 			//Make a copy of global-local index table on host side
 			std::unique_ptr<unsigned int[]> Index_Host;
 			//Same for device side
-			unsigned int* Index_Device;
+			STPSmartDeviceMemory<unsigned int[]> Index_Device;
 			//Freeslip data copy on device side, the device index table is contained
-			STPFreeSlipData* Data_Device;
+			STPSmartDeviceMemory<STPFreeSlipData> Data_Device;
 
 			/**
 			 * @brief Initialise the local global index lookup table
 			*/
 			__host__ void initLocalGlobalIndexCUDA();
-
-			/**
-			 * @brief Try to delete the device index table (if exists)
-			*/
-			__host__ void clearDeviceIndex() noexcept;
 
 		public:
 

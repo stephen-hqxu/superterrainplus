@@ -35,9 +35,9 @@ using glm::value_ptr;
 //INI loader
 #include <SIMPLE/SIParser.h>
 //OpenGL utilities
-#include <SglToolkit1.0/SgTCamera/SgTSpectatorCamera.h>
-#include <SglToolkit1.0/SgTShaderProc.h>
-#include <SglToolkit1.0/SgTUtils.h>
+#include <SglToolkit/SgTCamera/SgTSpectatorCamera.h>
+#include <SglToolkit/SgTShaderProc.h>
+#include <SglToolkit/SgTUtil.h>
 //Multithreadding engine
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 
@@ -176,7 +176,7 @@ namespace STPDemo {
 
 			//debug output
 			static auto debug_callback = [](GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) -> void {
-				SglToolkit::SgTUtils::debugOutput(source, type, id, severity, length, message, userParam);
+				SglToolkit::SgTUtil::debugOutput(source, type, id, severity, length, message, userParam);
 			};
 			glEnable(GL_DEBUG_OUTPUT);
 			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -258,7 +258,13 @@ namespace STPDemo {
 		*/
 		void draw(const double& frametime) {
 			//start loading terrain 2d inf async
-			const_cast<SuperTerrainPlus::STPChunkManager*>(this->world_manager->getChunkManager())->loadChunksAsync(this->Camera->getPosition());
+			try {
+				const_cast<SuperTerrainPlus::STPChunkManager*>(this->world_manager->getChunkManager())->loadChunksAsync(this->Camera->getPosition());
+			}
+			catch (const std::exception& e) {
+				cerr << e.what() << endl;
+				std::terminate();
+			}
 			
 			//clear the default framebuffer
 			glClearColor(121.0f / 255.0f, 151.0f / 255.0f, 52.0f / 255.0f, 1.0f);

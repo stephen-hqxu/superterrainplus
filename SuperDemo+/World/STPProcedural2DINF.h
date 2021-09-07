@@ -5,10 +5,10 @@
 //System
 #include <iostream>
 //OpenGL
-#include "glad/glad.h"
+#include <glad/glad.h>
 //My Own Library
-#include "SglToolkit1.0/SgTShaderProc.h"
-#include "SglToolkit1.0/SgTUtils.h"
+#include <SglToolkit/SgTShaderProc.h>
+#include <SglToolkit/SgTUtil.h>
 //Processing data with chunk manager so we can use the map directly
 #include <SuperTerrain+/World/Chunk/STPChunkManager.h>
 

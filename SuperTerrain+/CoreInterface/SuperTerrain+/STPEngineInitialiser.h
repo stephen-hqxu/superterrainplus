@@ -15,7 +15,7 @@ namespace SuperTerrainPlus {
 	 * @brief STPEngineInitialiser initialises SuperTerrain+ main engine.
 	 * Making any function call before engine is initialised will result in underfined behaviour
 	*/
-	class STP_API STPEngineInitialiser {
+	class STP_API STPEngineInitialiser final {
 	private:
 
 		//Default state is false, once the engine is initialised it will become true.

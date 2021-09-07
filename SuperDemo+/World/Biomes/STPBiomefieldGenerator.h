@@ -47,7 +47,7 @@ namespace STPDemo {
 		const unsigned int InterpolationRadius;
 
 		//A queue of histogram buffer
-		typedef std::queue<STPSingleHistogramFilter::STPHistogramBuffer_t> STPHistogramBufferPool;
+		typedef std::queue<SuperTerrainPlus::STPCompute::STPSingleHistogramFilter::STPHistogramBuffer_t> STPHistogramBufferPool;
 		mutable STPHistogramBufferPool BufferPool;
 		mutable std::mutex BufferPoolLock;
 

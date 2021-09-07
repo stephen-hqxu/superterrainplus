@@ -63,7 +63,7 @@ namespace STPDemo {
 			//creating indirect buffer
 			glNamedBufferStorage(this->quad_indirect, sizeof(DrawArraysIndirectCommand), this->command, GL_NONE);
 			//vbo
-			glNamedBufferStorage(this->quad_vbo, sizeof(SglToolkit::SgTUtils::FRAMEBUFFER_QUAD), SglToolkit::SgTUtils::FRAMEBUFFER_QUAD, GL_NONE);
+			glNamedBufferStorage(this->quad_vbo, sizeof(SglToolkit::SgTUtil::FRAMEBUFFER_QUAD), SglToolkit::SgTUtil::FRAMEBUFFER_QUAD, GL_NONE);
 			//vao
 			glVertexArrayVertexBuffer(this->quad_vao, 0, this->quad_vbo, 0, 4 * sizeof(int));
 			//attributing

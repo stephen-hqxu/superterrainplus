@@ -9,6 +9,8 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 
+#include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
+
 using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;
 
@@ -54,7 +56,7 @@ __host__ STPFreeSlipManager<T> STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<T
 		break;
 	case STPFreeSlipLocation::DeviceMemory:
 		//free-slip manager requires a device index table
-		data = this->Generator.Data_Device;
+		data = this->Generator.Data_Device.get();
 		break;
 	default:
 		data = nullptr;
@@ -80,54 +82,42 @@ __host__ STPFreeSlipGenerator::STPFreeSlipGenerator(const uvec2& range, const uv
 }
 
 __host__ STPFreeSlipGenerator::~STPFreeSlipGenerator() {
-	this->clearDeviceIndex();
+
 }
 
 __host__ void STPFreeSlipGenerator::initLocalGlobalIndexCUDA() {
 	const uvec2& global_dimension = this->FreeSlipRange;
 	const size_t index_count = global_dimension.x * global_dimension.y;
 	
-	try {
-		//launch parameters
-		int Mingridsize, blocksize;
-		STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &initGlobalLocalIndexKERNEL));
-		const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
-			Dimgridsize = (global_dimension + Dimblocksize - 1u) / Dimblocksize;
+	//launch parameters
+	int Mingridsize, blocksize;
+	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &initGlobalLocalIndexKERNEL));
+	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
+		Dimgridsize = (global_dimension + Dimblocksize - 1u) / Dimblocksize;
 
-		//make sure all previous takes are finished
-		STPcudaCheckErr(cudaDeviceSynchronize());
-		//allocation
-		STPcudaCheckErr(cudaMalloc(&this->Index_Device, sizeof(unsigned int) * index_count));
-		//compute
-		initGlobalLocalIndexKERNEL << <dim3(Dimgridsize.x, Dimgridsize.y), dim3(Dimblocksize.x, Dimblocksize.y) >> > (this->Index_Device, global_dimension.x, this->FreeSlipChunk, global_dimension, this->Dimension);
-		STPcudaCheckErr(cudaGetLastError());
-		STPcudaCheckErr(cudaDeviceSynchronize());
+	//make sure all previous takes are finished
+	STPcudaCheckErr(cudaDeviceSynchronize());
+	//allocation
+	unsigned int* index_cache = nullptr;
+	STPcudaCheckErr(cudaMalloc(&index_cache, sizeof(unsigned int) * index_count));
+	this->Index_Device = STPSmartDeviceMemory<unsigned int[]>(index_cache);
+	//compute
+	initGlobalLocalIndexKERNEL << <dim3(Dimgridsize.x, Dimgridsize.y), dim3(Dimblocksize.x, Dimblocksize.y) >> > (index_cache, global_dimension.x, this->FreeSlipChunk, global_dimension, this->Dimension);
+	STPcudaCheckErr(cudaGetLastError());
+	STPcudaCheckErr(cudaDeviceSynchronize());
 
-		//make a copy of index table on host
-		//the copy that the generator inherited is a host copy, the host pointer is managed by unique_ptr
-		this->Index_Host = make_unique<unsigned int[]>(index_count);
-		STPcudaCheckErr(cudaMemcpy(this->Index_Host.get(), this->Index_Device, sizeof(unsigned int) * index_count, cudaMemcpyDeviceToHost));
-		this->GlobalLocalIndex = this->Index_Host.get();
-		//get a device version of free-slip data
-		STPFreeSlipData device_buffer(dynamic_cast<const STPFreeSlipData&>(*this));
-		device_buffer.GlobalLocalIndex = this->Index_Device;
-		STPcudaCheckErr(cudaMalloc(&this->Data_Device, sizeof(STPFreeSlipData)));
-		STPcudaCheckErr(cudaMemcpy(this->Data_Device, &device_buffer, sizeof(STPFreeSlipData), cudaMemcpyHostToDevice));
-	}
-	catch (...) {
-		//avoid memory leaks
-		this->clearDeviceIndex();
-		throw;
-	}
-}
-
-__host__ void STPFreeSlipGenerator::clearDeviceIndex() noexcept {
-	if (this->Data_Device != nullptr) {
-		STPcudaCheckErr(cudaFree(this->Data_Device));
-	}
-	if (this->Index_Device != nullptr) {
-		STPcudaCheckErr(cudaFree(this->Index_Device));
-	}
+	//make a copy of index table on host
+	//the copy that the generator inherited is a host copy, the host pointer is managed by unique_ptr
+	this->Index_Host = make_unique<unsigned int[]>(index_count);
+	STPcudaCheckErr(cudaMemcpy(this->Index_Host.get(), this->Index_Device.get(), sizeof(unsigned int) * index_count, cudaMemcpyDeviceToHost));
+	this->GlobalLocalIndex = this->Index_Host.get();
+	//get a device version of free-slip data
+	STPFreeSlipData device_buffer(dynamic_cast<const STPFreeSlipData&>(*this));
+	device_buffer.GlobalLocalIndex = index_cache;
+	STPFreeSlipData* data_cache;
+	STPcudaCheckErr(cudaMalloc(&data_cache, sizeof(STPFreeSlipData)));
+	this->Data_Device = STPSmartDeviceMemory<STPFreeSlipData>(data_cache);
+	STPcudaCheckErr(cudaMemcpy(data_cache, &device_buffer, sizeof(STPFreeSlipData), cudaMemcpyHostToDevice));
 }
 
 __host__ const uvec2& STPFreeSlipGenerator::getDimension() const {
