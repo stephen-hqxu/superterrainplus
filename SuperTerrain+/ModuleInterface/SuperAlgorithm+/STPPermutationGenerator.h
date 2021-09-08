@@ -32,8 +32,8 @@ namespace SuperTerrainPlus {
 			typedef std::mt19937_64 STPPermutationRNG;
 
 			//Manage the memory smartly and only pass the pointer to the STPPermutation
-			STPSmartDeviceMemory<unsigned char[]> ManagedPermutation;
-			STPSmartDeviceMemory<double[]> ManagedGradient2D;
+			STPSmartDeviceMemory::STPDeviceMemory<unsigned char[]> ManagedPermutation;
+			STPSmartDeviceMemory::STPDeviceMemory<double[]> ManagedGradient2D;
 
 		public:
 

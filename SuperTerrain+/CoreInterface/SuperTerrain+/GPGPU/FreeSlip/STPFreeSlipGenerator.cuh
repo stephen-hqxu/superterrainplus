@@ -84,9 +84,9 @@ namespace SuperTerrainPlus {
 			//Make a copy of global-local index table on host side
 			std::unique_ptr<unsigned int[]> Index_Host;
 			//Same for device side
-			STPSmartDeviceMemory<unsigned int[]> Index_Device;
+			STPSmartDeviceMemory::STPDeviceMemory<unsigned int[]> Index_Device;
 			//Freeslip data copy on device side, the device index table is contained
-			STPSmartDeviceMemory<STPFreeSlipData> Data_Device;
+			STPSmartDeviceMemory::STPDeviceMemory<STPFreeSlipData> Data_Device;
 
 			/**
 			 * @brief Initialise the local global index lookup table

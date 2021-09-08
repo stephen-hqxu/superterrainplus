@@ -91,10 +91,8 @@ __host__ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::
 
 	//allocating space
 	//heightfield settings
-	STPEnvironment::STPHeightfieldSetting* hfs_cache;
-	STPcudaCheckErr(cudaMalloc(&hfs_cache, sizeof(STPEnvironment::STPHeightfieldSetting)));
-	this->Heightfield_Setting_d = STPSmartDeviceMemory<STPEnvironment::STPHeightfieldSetting>(hfs_cache);
-	STPcudaCheckErr(cudaMemcpy(hfs_cache, &this->Heightfield_Setting_h, sizeof(STPEnvironment::STPHeightfieldSetting), cudaMemcpyHostToDevice));
+	this->Heightfield_Setting_d = STPSmartDeviceMemory::makeDevice<STPEnvironment::STPHeightfieldSetting>();
+	STPcudaCheckErr(cudaMemcpy(this->Heightfield_Setting_d.get(), &this->Heightfield_Setting_h, sizeof(STPEnvironment::STPHeightfieldSetting), cudaMemcpyHostToDevice));
 	
 	//create memory pool
 	cudaMemPoolProps pool_props = { };
@@ -261,11 +259,9 @@ __host__ void STPHeightfieldGenerator::setErosionIterationCUDA() {
 	//the the number of rng = the number of the raindrop
 	//such that each raindrop has independent rng
 	//allocating spaces for rng storage array
-	curandRNG* rng_cache;
-	STPcudaCheckErr(cudaMalloc(&rng_cache, sizeof(curandRNG) * raindrop_count));
-	this->RNG_Map = STPSmartDeviceMemory<curandRNG>(rng_cache);
+	this->RNG_Map = STPSmartDeviceMemory::makeDevice<curandRNG[]>(raindrop_count);
 	//and send to kernel
-	curandInitKERNEL << <gridsize, blocksize >> > (rng_cache, this->Heightfield_Setting_h.Seed, raindrop_count);
+	curandInitKERNEL << <gridsize, blocksize >> > (this->RNG_Map.get(), this->Heightfield_Setting_h.Seed, raindrop_count);
 	STPcudaCheckErr(cudaGetLastError());
 	STPcudaCheckErr(cudaDeviceSynchronize());
 }

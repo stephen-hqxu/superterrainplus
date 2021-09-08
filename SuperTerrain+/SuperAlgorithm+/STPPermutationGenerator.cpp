@@ -73,8 +73,8 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	copy(PERMUTATION_HOST, PERMUTATION_HOST + 256, PERMUTATION_HOST + 256);
 
 	//now copy the host table to the device
-	STPcudaCheckErr(cudaMalloc(&this->Permutation, sizeof(unsigned char) * 512));
-	this->ManagedPermutation = STPSmartDeviceMemory<unsigned char[]>(this->Permutation);
+	this->ManagedPermutation = STPSmartDeviceMemory::makeDevice<unsigned char[]>(512ull);
+	this->Permutation = this->ManagedPermutation.get();
 	STPcudaCheckErr(cudaMemcpy(this->Permutation, PERMUTATION_HOST, sizeof(unsigned char) * 512, cudaMemcpyHostToDevice));
 
 	//generate the gradient table
@@ -90,8 +90,8 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	}
 
 	//copy the host gradient to device
-	STPcudaCheckErr(cudaMalloc(&this->Gradient2D, sizeof(double) * this->Gradient2DSize * 2));
-	this->ManagedGradient2D = STPSmartDeviceMemory<double[]>(this->Gradient2D);
+	this->ManagedGradient2D = STPSmartDeviceMemory::makeDevice<double[]>(this->Gradient2DSize * 2);
+	this->Gradient2D = this->ManagedGradient2D.get();
 	STPcudaCheckErr(cudaMemcpy(this->Gradient2D, GRADIENT2D_HOST.get(), sizeof(double) * this->Gradient2DSize * 2, cudaMemcpyHostToDevice));
 	//finishing up
 }

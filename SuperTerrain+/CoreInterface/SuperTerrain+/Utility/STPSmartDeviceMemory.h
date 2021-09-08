@@ -2,9 +2,12 @@
 #ifndef _STP_SMART_DEVICE_MEMORY_H_
 #define _STP_SMART_DEVICE_MEMORY_H_
 
+//CUDA
+#include <cuda_runtime.h>
 //System
 #include <memory>
 #include <type_traits>
+#include <optional>
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -14,20 +17,18 @@
 namespace SuperTerrainPlus {
 
 	/**
-	 * @brief STPSmartDeviceMemoryUtility is some utilities for managed device memory
+	 * @brief STPSmartDeviceMemory is a collection of managed device memory
 	*/
-	class STPSmartDeviceMemoryUtility final {
+	class STPSmartDeviceMemory final {
 	private:
 
-		STPSmartDeviceMemoryUtility() = delete;
+		STPSmartDeviceMemory() = delete;
 
-		~STPSmartDeviceMemoryUtility() = delete;
-
-	public:
+		~STPSmartDeviceMemory() = delete;
 
 		//Treat array as a regular type since cudaFree() treats array like normal pointer
 		template<typename T>
-		using NoArray = std::conditional_t<std::is_array_v<T>, std::remove_pointer_t<std::decay_t<T>>, T>;
+		using NoArray = std::remove_all_extents_t<T>;
 
 		//Delete device memory using cudaFree();
 		template<typename T>
@@ -38,16 +39,67 @@ namespace SuperTerrainPlus {
 
 		};
 
-	};
+		//Delete device memory using cudaFreeAsync();
+		template<typename T>
+		struct STPStreamedDeviceMemoryDeleter {
+		private:
 
-	//STPSmartDeviceMemory is a device memory version of std::unique_ptr.
-	//Currently it only supports non-stream ordered memory free
-	template<typename T>
-	using STPSmartDeviceMemory = 
-		std::unique_ptr<
-			STPSmartDeviceMemoryUtility::NoArray<T>, 
-			STPSmartDeviceMemoryUtility::STPDeviceMemoryDeleter<STPSmartDeviceMemoryUtility::NoArray<T>>
-		>;
+			std::optional<cudaStream_t> Stream;
+
+		public:
+
+			STPStreamedDeviceMemoryDeleter() = default;
+
+			STPStreamedDeviceMemoryDeleter(cudaStream_t);
+
+			void operator()(T*) const;
+
+		};
+
+	public:
+
+		//STPDeviceMemory is a normal device memory version of std::unique_ptr.
+		//The deleter utilises cudaFree()
+		template<typename T>
+		using STPDeviceMemory =
+			std::unique_ptr<
+				STPSmartDeviceMemory::NoArray<T>,
+				STPSmartDeviceMemory::STPDeviceMemoryDeleter<STPSmartDeviceMemory::NoArray<T>>
+			>;
+
+		//STPStreamedDeviceMemory is a stream-ordered device memory deleter.
+		//The deleter utilises cudaFreeAsync()
+		//However the caller should guarantee the availability of the stream when the memory is destroyed
+		template<typename T>
+		using STPStreamedDeviceMemory = 
+			std::unique_ptr<
+				STPSmartDeviceMemory::NoArray<T>,
+				STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<STPSmartDeviceMemory::NoArray<T>>
+			>;
+
+		//Some helper functions
+
+		/**
+		 * @brief Create a STPDeviceMemory which is a smart pointer to device memory with default device deleter
+		 * @tparam T The type of the pointer
+		 * @param size The number of element of T to be allocated (WARNING: NOT the size in byte)
+		 * @return The smart pointer to the memory allocated
+		*/
+		template<typename T>
+		static STPDeviceMemory<T> makeDevice(size_t = 1ull);
+
+		/**
+		 * @brief Create a STPStreamedDeviceMemory which is a smart pointer to device memory with stream-ordered device deleter
+		 * @tparam T The type of the pointer
+		 * @param size The number of element of T to be allocated (WARNING: NOT the size in byte)
+		 * @param memPool The device memory pool that the memory will be allocated from
+		 * @param stream The device stream the deleter will be called
+		 * @return The streamed smart pointer to the memory allocated
+		*/
+		template<typename T>
+		static STPStreamedDeviceMemory<T> makeStreamedDevice(cudaMemPool_t, cudaStream_t, size_t = 1ull);
+
+	};
 
 }
 //Template definition should be included by user in the source code to avoid header containmination

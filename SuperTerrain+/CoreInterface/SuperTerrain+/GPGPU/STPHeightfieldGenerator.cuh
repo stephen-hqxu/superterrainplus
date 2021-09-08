@@ -96,10 +96,10 @@ namespace SuperTerrainPlus {
 			const STPDiversityGenerator& generateHeightmap;
 			//heightfield generation parameters
 			const STPEnvironment::STPHeightfieldSetting& Heightfield_Setting_h;
-			STPSmartDeviceMemory<STPEnvironment::STPHeightfieldSetting> Heightfield_Setting_d;
+			STPSmartDeviceMemory::STPDeviceMemory<STPEnvironment::STPHeightfieldSetting> Heightfield_Setting_d;
 
 			//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independency
-			STPSmartDeviceMemory<curandRNG[]> RNG_Map;
+			STPSmartDeviceMemory::STPDeviceMemory<curandRNG[]> RNG_Map;
 			//free-slip index table generator
 			STPFreeSlipGenerator FreeSlipTable;
 			STPFreeSlipTextureAttribute TextureBufferAttr;

@@ -7,13 +7,14 @@
 #include <optional>
 //Data Structure
 #include <vector>
-#include <tuple>
 #include "../../Utility/STPMemoryPool.h"
 //CUDA
 #include <cuda_runtime.h>
 //Free-Slip Data
 #include "STPFreeSlipLocation.hpp"
 #include "../../World/Diversity/STPBiomeDefine.h"
+//Memory
+#include "../../Utility/STPSmartDeviceMemory.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -93,16 +94,41 @@ namespace SuperTerrainPlus {
 
 		private:
 
+			/**
+			 * @brief STPHostCallbackDeleter is a deleter to return host memory to memory pool using CUDA stream callback function
+			*/
+			struct STPHostCallbackDeleter {
+			private:
+
+				//Stream the callback function will be enqueued
+				//Host memory will be returned to
+				std::optional<std::pair<cudaStream_t, STPPinnedMemoryPool*>> Data;
+
+			public:
+
+				STPHostCallbackDeleter() = default;
+
+				/**
+				 * @brief Init STPHostCallbackDeleter with data
+				 * @param stream Stream that the free operation will be called in
+				 * @param memPool The host memory pool that the memory will be returned to
+				*/
+				STPHostCallbackDeleter(cudaStream_t, STPPinnedMemoryPool*);
+
+				void operator()(T*) const;
+
+			};
+
 			const STPFreeSlipTextureAttribute& Attr;
 			const STPFreeSlipTextureData Data;
 
 			//The free-slip texture buffer stored separately
 			STPFreeSlipTexture& Buffer;
-			//The previously integrated texture and its location
-			//0: Pointer to merged free-slip texture in host pinned memory.
-			//1: Pointer to merged free-slip texture in device memory
-			//2: The location of the pointer
-			std::optional<std::tuple<T*, T*, STPFreeSlipLocation>> Integration;
+			//The previously integrated texture location
+			std::optional<STPFreeSlipLocation> Integration;
+			//Pointer to merged free-slip texture in device memory.
+			std::unique_ptr<T[], STPHostCallbackDeleter> HostIntegration;
+			STPSmartDeviceMemory::STPStreamedDeviceMemory<T[]> DeviceIntegration;
 
 			/**
 			 * @brief Free merged buffer returned previously.
