@@ -23,7 +23,7 @@ namespace SuperTerrainPlus {
 			unsigned char* Permutation = nullptr;
 
 			//Gradient table for simplex noise 2D, the modular of the offset will equal to 1.0
-			double* Gradient2D = nullptr;
+			float* Gradient2D = nullptr;
 
 			//The size of the gradient table
 			unsigned int Gradient2DSize;

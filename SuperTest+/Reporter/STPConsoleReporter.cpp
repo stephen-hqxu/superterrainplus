@@ -230,49 +230,40 @@ public:
 
 	//emit all results after the test run
 	void testRunEndedCumulative() override {
-		for (const auto& run : m_testRuns) {
-			//write the information about the current run
-			this->emitCentreString(run.value.runInfo.name);
-			this->emitSymbol('=');
+		//begin a run
+		this->emitSymbol('=');
 
-			//for each group in a run
-			const auto& total_group = run.children;
-			for (const auto& group : total_group) {
-				//write information about the current group
-				stringstream group_ss;
-				const auto& group_info = group->value.groupInfo;
-				group_ss << Colour(Colour::Headers) << "Group " << group_info.groupIndex << '/' << group_info.groupsCounts << " -- " << group_info.name;
-				this->emitCentreString(group_ss.str());
-				this->emitSymbol('.');
-				
-				//for each test case in a group
-				const auto& total_case = group->children;
-				for (const auto& testcase : total_case) {
-					//write information about the current test case
-					const auto* testcase_info = testcase->value.testInfo;
-					this->emitSymbol('-');
-					stringstream testcase_ss;
-					testcase_ss << Colour(Colour::FileName) << testcase_info->name;
-					this->stream << this->emitWrapped(testcase_ss.str()) << endl;
-					this->emitSymbol('-');
+		const auto* run = m_testRun.get();
+		//write the information about the current run
+		this->emitCentreString(run->value.runInfo.name);
+		this->emitSymbol('.');
 
-					//for each section in a test case
-					const auto& total_section = testcase->children;
-					for (const auto& section : total_section) {
-						//write a section recursively
-						this->writeSection(section.get());
-					}
-					//end of section
-					//emit stats for this test case
-					this->emitStats(testcase->value.totals.assertions);
-				}
-				//end of test case
-				//emit stats for the group
-				this->emitSymbol('.');
-				this->emitStats(group->value.totals.assertions);
+		//for each test case in a run
+		const auto& total_case = run->children;
+		for (const auto& testcase : total_case) {
+			//write information about the current test case
+			const auto* testcase_info = testcase->value.testInfo;
+			this->emitSymbol('-');
+			stringstream testcase_ss;
+			testcase_ss << Colour(Colour::FileName) << testcase_info->name;
+			this->stream << this->emitWrapped(testcase_ss.str()) << endl;
+			this->emitSymbol('-');
+
+			//for each section in a test case
+			const auto& total_section = testcase->children;
+			for (const auto& section : total_section) {
+				//write a section recursively
+				this->writeSection(section.get());
 			}
-			//end of group
+			//end of section
+			//emit stats for this test case
+			this->emitStats(testcase->value.totals.assertions);
 		}
+		//end of test case
+		//emit stats for the run
+		this->emitSymbol('.');
+		this->emitStats(run->value.totals.assertions);
+
 		//end of run
 		this->emitSymbol('=');
 	}

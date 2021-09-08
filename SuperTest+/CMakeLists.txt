@@ -14,6 +14,8 @@ STPTest2DChunk.cpp
 STPTestFreeSlip.cpp
 STPTestMain.cpp
 STPTestUtility.cpp
+# SuperAlgorithm+ test code
+STPTestPermutation.cpp
 )
 
 if(MSVC)
@@ -22,7 +24,7 @@ endif()
 
 # link with the main program that needs to be tested and catch2
 target_link_libraries(${STP_UNIT_TEST}
-PRIVATE ${STP_MAIN_ENGINE}
+PRIVATE ${STP_MAIN_ENGINE} ${STP_ALGORITHM_HOST_ENGINE}
 PRIVATE Catch2::Catch2
 )
 

@@ -12,7 +12,8 @@
 //CUDA Runtime
 #include <cuda_runtime.h>
 
-static constexpr double PI = 3.14159265358979323846;
+#include <glm/trigonometric.hpp>
+
 //Initial table, will be shuffled later
 static constexpr unsigned char INIT_TABLE[256] = {
 	0,1,2,3,4,5,6,7,8,9,10,
@@ -47,6 +48,7 @@ using std::copy;
 using std::begin;
 using std::end;
 using std::shuffle;
+using std::make_pair;
 
 using namespace SuperTerrainPlus::STPCompute;
 
@@ -77,22 +79,21 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	this->Permutation = this->ManagedPermutation.get();
 	STPcudaCheckErr(cudaMemcpy(this->Permutation, PERMUTATION_HOST, sizeof(unsigned char) * 512, cudaMemcpyHostToDevice));
 
+	using glm::radians;
 	//generate the gradient table
 	//we are going to distribute the gradient evenly in a circle
-	const double step = 360.0 / this->Gradient2DSize * 1.0;//in degree
-	std::unique_ptr<double[]> GRADIENT2D_HOST = std::make_unique<double[]>(this->Gradient2DSize * 2);//2D so we *2
-	int counter = 0;
-	for (double angle = 0.0; angle < 360.0; angle += step) {//in degree
-		GRADIENT2D_HOST[counter * 2] = cos(PI * (angle + simplex_setting.Offset) / 180.0);
-		GRADIENT2D_HOST[counter * 2 + 1] = sin(PI * (angle + simplex_setting.Offset) / 180.0);
-
-		counter++;
+	const double step = 360.0 / (this->Gradient2DSize * 1.0);//in degree
+	std::unique_ptr<float[]> GRADIENT2D_HOST = std::make_unique<float[]>(this->Gradient2DSize * 2);//2D so we *2
+	for (auto [angle, counter] = make_pair(0.0, 0u); angle < 360.0; angle += step, counter++) {//in degree
+		const double offset_angle = angle + simplex_setting.Offset;
+		GRADIENT2D_HOST[counter * 2] = static_cast<float>(glm::cos(radians(offset_angle)));
+		GRADIENT2D_HOST[counter * 2 + 1] = static_cast<float>(glm::sin(radians(offset_angle)));
 	}
 
 	//copy the host gradient to device
-	this->ManagedGradient2D = STPSmartDeviceMemory::makeDevice<double[]>(this->Gradient2DSize * 2);
+	this->ManagedGradient2D = STPSmartDeviceMemory::makeDevice<float[]>(this->Gradient2DSize * 2);
 	this->Gradient2D = this->ManagedGradient2D.get();
-	STPcudaCheckErr(cudaMemcpy(this->Gradient2D, GRADIENT2D_HOST.get(), sizeof(double) * this->Gradient2DSize * 2, cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMemcpy(this->Gradient2D, GRADIENT2D_HOST.get(), sizeof(float) * this->Gradient2DSize * 2, cudaMemcpyHostToDevice));
 	//finishing up
 }
 

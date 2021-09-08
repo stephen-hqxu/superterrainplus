@@ -56,7 +56,7 @@ namespace SuperTerrainPlus {
 			 * @param component The vector component, either 0 or 1 for the 2D table
 			 * @return The gradient number
 			*/
-			__device__ double grad2D(int, int) const;
+			__device__ float grad2D(int, int) const;
 
 			/**
 			 * @brief Get the number of element in the gradient 2D table

@@ -33,7 +33,7 @@ namespace SuperTerrainPlus {
 
 			//Manage the memory smartly and only pass the pointer to the STPPermutation
 			STPSmartDeviceMemory::STPDeviceMemory<unsigned char[]> ManagedPermutation;
-			STPSmartDeviceMemory::STPDeviceMemory<double[]> ManagedGradient2D;
+			STPSmartDeviceMemory::STPDeviceMemory<float[]> ManagedGradient2D;
 
 		public:
 

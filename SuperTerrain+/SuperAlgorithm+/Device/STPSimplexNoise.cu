@@ -21,9 +21,9 @@ constexpr static double csqrt(double x) {
 	}
 	return guess;
 }
-constexpr static __constant__ double F2 = 0.5 * (csqrt(3.0) - 1.0);
-constexpr static __constant__ double G2 = (3.0 - csqrt(3.0)) / 6.0;
-constexpr static __constant__ double H2 = -1.0 + 2.0 * G2; // -1.0 + 2.0 * G2;
+constexpr static __constant__ float F2 = static_cast<float>(0.5 * (csqrt(3.0) - 1.0));
+constexpr static __constant__ float G2 = static_cast<float>((3.0 - csqrt(3.0)) / 6.0);
+constexpr static __constant__ float H2 = static_cast<float>(-1.0 + 2.0 * G2);
 
 /**
  * @brief Perform 2D vector dot product
@@ -33,7 +33,7 @@ constexpr static __constant__ double H2 = -1.0 + 2.0 * G2; // -1.0 + 2.0 * G2;
  * @param v2y vector 2 y
  * @return The result
 */
-__device__ __forceinline__ double dot2D(double, double, double, double);
+__device__ __forceinline__ float dot2D(float, float, float, float);
 
 __device__ STPSimplexNoise::STPSimplexNoise(const STPPermutation& permutation) : Permutation(permutation) {
 
@@ -48,8 +48,7 @@ __device__ int STPSimplexNoise::perm(int index) const {
 	return static_cast<int>(this->Permutation.Permutation[index]);
 }
 
-__device__ double STPSimplexNoise::grad2D(int index, int component) const {
-	//convert two int bits to one double bit
+__device__ float STPSimplexNoise::grad2D(int index, int component) const {
 	return this->Permutation.Gradient2D[index * 2 + component];
 }
 
@@ -116,6 +115,6 @@ __device__ float STPSimplexNoise::simplex2D(float x, float y) const {
 	return 70.0f * (corner[0] + corner[1] + corner[2]);
 }
 
-__device__ __forceinline__ double dot2D(double v1x, double v1y, double v2x, double v2y) {
+__device__ __forceinline__ float dot2D(float v1x, float v1y, float v2x, float v2y) {
 	return v1x * v2x + v1y * v2y;
 }
