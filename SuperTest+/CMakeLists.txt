@@ -12,6 +12,7 @@ Reporter/STPConsoleReporter.cpp
 STPTest2DBiome.cpp
 STPTest2DChunk.cpp
 STPTestFreeSlip.cpp
+STPTestHistogram.cpp
 STPTestMain.cpp
 STPTestUtility.cpp
 # SuperAlgorithm+ test code
@@ -30,7 +31,7 @@ PRIVATE Catch2::Catch2
 
 # compile-time settings for catch2
 target_compile_definitions(${STP_UNIT_TEST}
-PRIVATE CATCH_CONFIG_CONSOLE_WIDTH=100
+PRIVATE CATCH_CONFIG_CONSOLE_WIDTH=120
 )
 
 # catch2 with ctest integration

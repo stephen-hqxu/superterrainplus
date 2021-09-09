@@ -768,8 +768,8 @@ STPSingleHistogramFilter::STPHistogramBuffer_t STPSingleHistogramFilter::createH
 STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleManager& samplemap_manager, const STPHistogramBuffer_t& histogram_output, unsigned int radius) {
 	//do some simple runtime check
 	//first make sure radius is an even number
-	if ((radius | 0x00u) == 0x00u) {
-		throw STPException::STPBadNumericRange("radius should be an even number");
+	if (radius == 0u || (radius & 0x01u) != 0x00u) {
+		throw STPException::STPBadNumericRange("radius should be an positive even number");
 	}
 	//second make sure radius is not larger than the free-slip range
 	const uvec2 central_chunk_index = samplemap_manager.Data->FreeSlipChunk / 2u;

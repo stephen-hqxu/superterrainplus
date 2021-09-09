@@ -143,15 +143,18 @@ cd ./build
 cmake ../
 ```
 
-5. Build the source:
+5. Configure CMake cache if preferred. Leave it as default otherwise.
 
-Unix-like systems:
+6. Build the program
+
 ```sh
-make ./
+cmake --build ./ --target ALL_BUILD
 ```
 
-Windows:
-Open Visual Studio Soltuion, select build configuration and build the project.
+Executables:
+
+- `SuperDemo+` if demo build is enabled
+- `SuperTest+` if test build is enabled
 
 ## :world_map: Road Map
 
