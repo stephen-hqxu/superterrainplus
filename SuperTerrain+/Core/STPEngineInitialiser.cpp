@@ -30,6 +30,9 @@ bool STPEngineInitialiser::initGLexplicit(STPglProc process) {
 
 void STPEngineInitialiser::initCUDA(int device) {
 	STPcudaCheckErr(cudaSetDevice(device));
+	//init context in case the first call is CUDA driver API
+	STPcudaCheckErr(cudaFree(0));
+	//setup
 	STPcudaCheckErr(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 	STPcudaCheckErr(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte));
 	STPEngineInitialiser::CUDAInited = true;

@@ -12,10 +12,11 @@ Reporter/STPConsoleReporter.cpp
 STPTest2DBiome.cpp
 STPTest2DChunk.cpp
 STPTestFreeSlip.cpp
-STPTestHistogram.cpp
 STPTestMain.cpp
+STPTestRTC.cpp
 STPTestUtility.cpp
 # SuperAlgorithm+ test code
+STPTestHistogram.cpp
 STPTestPermutation.cpp
 )
 
@@ -38,6 +39,7 @@ PRIVATE CATCH_CONFIG_CONSOLE_WIDTH=120
 include(Catch)
 catch_discover_tests(${STP_UNIT_TEST}
 REPORTER ${STP_CONSOLE_REPORTER}
+WORKING_DIRECTORY $<TARGET_FILE_DIR:${STP_UNIT_TEST}>
 )
 
 # copy data for testings

@@ -1,0 +1,10 @@
+#pragma once
+#ifndef _MatrixArithmetic_RTCH_
+#define _MatrixArithmetic_RTCH_
+
+enum class MatrixOperator : unsigned char {
+	Addition = 0x00u,
+	Subtraction = 0x01u
+};
+
+#endif//_MatrixArithmetic_RTCH_

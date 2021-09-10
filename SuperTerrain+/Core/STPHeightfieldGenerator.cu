@@ -482,8 +482,8 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 	}
 
 	const uvec2& dimension = heightmap.Data->FreeSlipRange;
-	auto clamp = []__device__(int val, int lower, int upper) -> int {
-		return max(lower, min(val, upper));
+	auto clamp = []__device__(int val, int lower, int upper) -> unsigned int {
+		return static_cast<unsigned int>(max(lower, min(val, upper)));
 	};
 	auto float2short = []__device__(float input) -> unsigned short {
 		return static_cast<unsigned short>(input * 65535u);
@@ -499,7 +499,8 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 	while (iteration < cacheSize_total) {
 		const unsigned int cacheIdx = (threadIdx.x + blockDim.x * threadIdx.y) + iteration;
 		const uvec2 worker = block + uvec2(cacheIdx % cacheSize.x, cacheIdx / cacheSize.x);
-		const unsigned int workerIdx = clamp((worker.x - 1u), 0, dimension.x - 1u) + clamp((worker.y - 1u), 0, dimension.y - 1u) * dimension.x;
+		//worker index may be zero, and 0u - 1u will become UINT32_MAX, so we should cast it to int and it will be come -1 thus correctly clampped
+		const unsigned int workerIdx = clamp(static_cast<int>(worker.x - 1u), 0, dimension.x - 1u) + clamp(static_cast<int>(worker.y - 1u), 0, dimension.y - 1u) * dimension.x;
 
 		if (cacheIdx < cacheSize_total) {
 			//make sure index don't get out of bound

@@ -1,0 +1,50 @@
+#pragma once
+#include "./TestData/MatrixArithmetic.rtch"
+//A demo program to show how NVRTC works
+
+#ifndef __CUDACC_RTC__
+#error __FILE__ can only be compiled by NVRTC
+#endif
+
+//Testing if compiler recognises compiler flags
+#ifndef STP_TEST_ENABLE
+#error STP_TEST_ENABLE is not defined by the compiler
+#endif//STP_TEST_ENABLE
+
+/* Decalration */
+
+__constant__ uint2 MatrixDimension[1];
+
+template<MatrixOperator Op>
+__global__ void transform(float*, float*, float*);
+
+__global__ void scale(float*, float*, float);
+
+/* Definition */
+
+#define SETUP() const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x, y = (blockIdx.y * blockDim.y) + threadIdx.y; \
+if (x >= MatrixDimension->x || y >= MatrixDimension->y) { \
+	return; \
+} \
+\
+const unsigned int index = x + y * MatrixDimension->x
+
+template<>
+__global__ void transform<MatrixOperator::Addition>(float* matOut, float* matA, float* matB) {
+	SETUP();
+	
+	matOut[index] = matA[index] + matB[index];
+}
+
+template<>
+__global__ void transform<MatrixOperator::Subtraction>(float* matOut, float* matA, float* matB) {
+	SETUP();
+	
+	matOut[index] = matA[index] - matB[index];
+}
+
+__global__ void scale(float* matOut, float* matIn, float factor) {
+	SETUP();
+	
+	matOut[index] = matIn[index] * factor;
+}
