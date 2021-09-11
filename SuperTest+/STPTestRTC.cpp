@@ -51,7 +51,6 @@ class RTCTester : protected STPDiversityGeneratorRTC {
 private:
 
 	constexpr static char SourceLocation[] = "./TestData/MatrixArithmetic.rtc";
-	constexpr static char SourceName[] = "MatrixArithmetic";
 
 	constexpr static uvec2 MatDim = uvec2(4u);
 
@@ -61,11 +60,21 @@ private:
 
 protected:
 
+	constexpr static char SourceName[] = "MatrixArithmetic";
+
+	constexpr static char ExternalHeaderSource[] = 
+		"#pragma once								\n"
+		"#ifndef _MatrixArithmeticVersion_			\n"
+		"#define _MatrixArithmeticVersion_			\n"
+		"#define MATRIX_ARITHETIC_VERSION \"6.6.6\"	\n"
+		"#endif//_MatrixArithmeticVersion_			\n";
+	constexpr static char ExternalHeaderName[] = "MatrixArithmeticVersion";
+
 	STPSmartDeviceMemory::STPDeviceMemory<float[]> MatA, MatB, MatOut, MatBuffer;
 
 	CUfunction MattransformAdd, MattransformSub, Matscale;
 
-	void testCompilation(bool test_enable) {
+	void testCompilation(bool test_enable, bool attach_header) {
 		//settings
 		STPSourceInformation src_info;
 		src_info.Option
@@ -84,6 +93,16 @@ protected:
 			[RTCTester::TransformAdd.c_str()]
 			[RTCTester::TransformSub.c_str()]
 			["scale"];
+		if (attach_header) {
+			//define a macro to enable external header testing
+			src_info.Option
+				["-DSTP_TEST_EXTERNAL_HEADER"];
+			//attach header source code to the database
+			REQUIRE(this->attachHeader(RTCTester::ExternalHeaderName, RTCTester::ExternalHeaderSource));
+			//add to compiler list
+			src_info.ExternalHeader
+				[RTCTester::ExternalHeaderName];
+		}
 
 		//read source code
 		string src;
@@ -92,14 +111,27 @@ protected:
 		//compile
 		auto startCompile = [&src_info, &src, this]() {
 			string log;
-			log = this->compileSource(RTCTester::SourceName, src, src_info);
+			try {
+				log = this->compileSource(RTCTester::SourceName, src, src_info);
+			}
+			catch (const STPException::STPCompilationError& ce) {
+				//compile time error
+				cerr << ce.what() << endl;
+				//rethrow it
+				throw;
+			}
 			//print the log (if any)
 			if (!log.empty()) {
 				cout << log << endl;
 			}
 		};
 		CHECKED_IF(test_enable) {
-			REQUIRE_NOTHROW(startCompile());
+			CHECKED_IF(attach_header) {
+				REQUIRE_THROWS_WITH(startCompile(), Catch::Matchers::Contains("6.6.6") && Catch::Matchers::Contains("PASS"));
+			}
+			CHECKED_ELSE(attach_header) {
+				REQUIRE_NOTHROW(startCompile());
+			}
 		}
 		CHECKED_ELSE(test_enable) {
 			REQUIRE_THROWS_WITH(startCompile(), Catch::Matchers::Contains("STP_TEST_ENABLE"));
@@ -114,17 +146,17 @@ protected:
 
 		STPLinkerInformation link_info;
 		link_info.LinkerOption
-		(CU_JIT_OPTIMIZATION_LEVEL, (void*)1u)
+		(CU_JIT_OPTIMIZATION_LEVEL, (void*)0u)
 			(CU_JIT_LOG_VERBOSE, (void*)1)
 			(CU_JIT_INFO_LOG_BUFFER, linker_info)
-			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)logSize)
+			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize)
 			(CU_JIT_ERROR_LOG_BUFFER, linker_error)
-			(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)logSize);
+			(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize);
 		link_info.ModuleOption
 		(CU_JIT_INFO_LOG_BUFFER, module_info)
-			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)logSize)
+			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize)
 			(CU_JIT_ERROR_LOG_BUFFER, module_error)
-			(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)logSize);
+			(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize);
 
 		//link
 		REQUIRE_NOTHROW([&]() {
@@ -227,6 +259,8 @@ public:
 
 };
 
+static constexpr char Nonsense[] = "Blah.blah";
+
 SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA scripts and runs the kernel", "[GPGPU][STPDiversityGeneratorRTC]") {
 
 	GIVEN("A RTC version of diversity generator with custom implementation and runtime script") {
@@ -235,7 +269,7 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 
 			THEN("Error should be thrown out to notify the user with compiler log") {
 				//set false to not define a macro to make it throws an intended error
-				this->testCompilation(false);
+				this->testCompilation(false, false);
 			}
 
 		}
@@ -243,13 +277,14 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 		WHEN("The source code works fine") {
 
 			THEN("Program can be compiled and linked without errors") {
-				this->testCompilation(true);
+				this->testCompilation(true, false);
 				this->testLink();
 				REQUIRE_NOTHROW(this->prepData());
 
 				AND_THEN("Data can be sent to kernel, after execution result can be retrieved, and correctness is verified") {
 					//round the number to 1 d.p. to avoid float rounding issue during assertion
-					const auto Data = GENERATE(take(2, chunk(18, map<float>([](auto f) { return roundf(f * 10.0f) / 10.0f; }, random(-6666.0f, 6666.0f)))));
+					//compilation is a slow process, so we only test it once
+					const auto Data = GENERATE(take(1, chunk(18, map<float>([](auto f) { return roundf(f * 10.0f) / 10.0f; }, random(-6666.0f, 6666.0f)))));
 					//kernel exeuction for matrix addition
 					const mat4 matA = mat4(
 						Data[0], Data[1], Data[2], Data[3],
@@ -265,6 +300,61 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 					//again for subtraction
 					REQUIRE_NOTHROW([this, &matResult, &matA, &matB, &scale]() { matResult = this->matrixTransform(this->MattransformSub, matA, matB, scale); }());
 					REQUIRE(matResult == (matA - matB) * scale);
+
+				}
+
+			}
+
+			AND_WHEN("Source is asked to be discarded") {
+
+				THEN("Source code is discarded if it has been compiled before") {
+					this->testCompilation(true, false);
+					REQUIRE(this->discardSource(RTCTester::SourceName));
+				}
+
+				THEN("Nothing should happen if source code name is not found in the database") {
+					REQUIRE_FALSE(this->discardSource(Nonsense));
+				}
+
+			}
+
+			AND_GIVEN("An external header") {
+
+				WHEN("Header is attached to the program database") {
+
+					THEN("Header is recongised by the compiler and can be used alongside with the source file") {
+						this->testCompilation(true, true);
+					}
+
+					AND_WHEN("Header is asked to be discarded") {
+
+						THEN("Header should be discarded if it exists") {
+							this->testCompilation(true, true);
+							REQUIRE(this->detachHeader(RTCTester::ExternalHeaderName));
+						}
+
+						THEN("Nothing should happen if header name is not found") {
+							REQUIRE_FALSE(this->detachHeader(Nonsense));
+						}
+
+					}
+
+				}
+
+			}
+
+			AND_GIVEN("An archive file") {
+
+				WHEN("Archive is attached to the program database") {
+					//TODO: I don't have an archive on my hand to be tested
+
+					AND_WHEN("Archive is asked to be discarded") {
+
+						THEN("Nothing should happen if the archive name is not found") {
+							REQUIRE_FALSE(this->detachArchive(Nonsense));
+						}
+
+					}
 
 				}
 

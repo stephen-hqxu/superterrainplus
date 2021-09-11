@@ -101,9 +101,9 @@ void STPBiomefieldGenerator::initGenerator() {
 	STPDiversityGeneratorRTC::STPLinkerInformation link_info;
 	link_info.LinkerOption
 	(CU_JIT_INFO_LOG_BUFFER, linker_info_log)
-		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
+		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)LinkerLogSize)
 		(CU_JIT_ERROR_LOG_BUFFER, linker_error_log)
-		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
+		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)LinkerLogSize)
 #ifdef _DEBUG
 		//if debug has turned on, optimisation must be 0 or linker will be crying...
 		(CU_JIT_OPTIMIZATION_LEVEL, (void*)0u)
@@ -117,9 +117,9 @@ void STPBiomefieldGenerator::initGenerator() {
 	(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
 #endif
 		(CU_JIT_INFO_LOG_BUFFER, module_info_log)
-		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize)
+		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)LinkerLogSize)
 		(CU_JIT_ERROR_LOG_BUFFER, module_error_log)
-		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)LinkerLogSize);
+		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)LinkerLogSize);
 	try {
 		this->linkProgram(link_info, CU_JIT_INPUT_PTX);
 		std::cout << linker_info_log << std::endl;

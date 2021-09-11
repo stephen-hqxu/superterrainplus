@@ -6,10 +6,22 @@
 #error __FILE__ can only be compiled by NVRTC
 #endif
 
-//Testing if compiler recognises compiler flags
+//Test if compiler recognises compiler flags
 #ifndef STP_TEST_ENABLE
 #error STP_TEST_ENABLE is not defined by the compiler
 #endif//STP_TEST_ENABLE
+
+//Test if compiler recognise external header source
+#ifdef STP_TEST_EXTERNAL_HEADER
+#include <MatrixArithmeticVersion>
+#ifndef MATRIX_ARITHETIC_VERSION
+#error MATRIX_ARITHETIC_VERSION is not defined
+#else
+//just throw an error also to indicate it works
+#pragma message "MatrixArithmetic Version: " MATRIX_ARITHETIC_VERSION
+#error PASS
+#endif//MATRIX_ARITHETIC_VERSION
+#endif//STP_TEST_EXTERNAL_HEADER
 
 /* Decalration */
 
