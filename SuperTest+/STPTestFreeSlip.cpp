@@ -115,8 +115,9 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 					Merged = (*TestBuffer)(STPFreeSlipLocation::HostMemory);
 				}());
 
-				AND_THEN("Merge location should be correct") {
+				AND_THEN("Merge location is correct and no reallocation when the merging operation is called again, instead the previously returned memory should be returned") {
 					REQUIRE((*TestBuffer) == STPFreeSlipLocation::HostMemory);
+					REQUIRE((*TestBuffer)(STPFreeSlipLocation::HostMemory) == Merged);
 				}
 
 				AND_THEN("Manipulation on the texture data and disintegrating the data repects the memory mode") {

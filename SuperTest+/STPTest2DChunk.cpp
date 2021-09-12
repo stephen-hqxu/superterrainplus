@@ -9,6 +9,9 @@
 
 //SuperTerrain+/World/Chunk
 #include <SuperTerrain+/World/Chunk/STPChunk.h>
+#include <SuperTerrain+/World/Chunk/STPChunkStorage.h>
+
+#include <algorithm>
 
 using namespace SuperTerrainPlus;
 
@@ -62,7 +65,7 @@ SCENARIO("STPChunk static functions can compute chunk coordinate correctly", "[C
 class ChunkTester : protected STPChunk {
 protected:
 
-	constexpr static uvec2 Size = uvec2(5u);
+	constexpr static uvec2 Size = uvec2(2u);
 
 	template<typename T>
 	static void fillValue(T* texture, T value) {
@@ -129,17 +132,69 @@ SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk
 				ChunkTester::fillValue(this->getHeightmap(), float_value);
 				ChunkTester::fillValue(this->getBiomemap(), biome_value);
 
-				THEN("Value can be retrieved without corrupted") {
+				THEN("Value can be retrieved without being corrupted") {
 					auto heightmap = this->getHeightmap();
-					const auto index = GENERATE(take(3u, random(0u, 24u)));
-
-					CHECK(heightmap[index] == float_value);
+					CHECK(std::all_of(heightmap, heightmap + 4, [float_value](auto f) { return f == float_value; }));
 
 					auto biomemap = this->getBiomemap();
-					CHECK(biomemap[index] == biome_value);
+					CHECK(std::all_of(biomemap, biomemap + 4, [biome_value](auto i) { return i == biome_value; }));
 				}
 			}
 		}
 		
 	}
+}
+
+SCENARIO_METHOD(STPChunkStorage, "STPChunkStorage stores chunks and we can retrieve chunks when needed", "[Chunk][STPChunkStorage]") {
+
+	GIVEN("A chunk storage object and some chunks") {
+		constexpr static uvec2 MapSize = uvec2(2u);
+		//round to 1 d.p.
+		const auto Location = GENERATE(take(3, chunk(2, map<float>([](auto f) { return roundf(f * 10.0f) / 10.0f; }, random(-6666.666f, 6666.666f)))));
+		const vec2 InsertLocation = vec2(Location[0], Location[1]);
+
+		THEN("A newly created chunk storage is empty") {
+			REQUIRE(this->size() == 0ull);
+		}
+
+		WHEN("Try to use a non-exisiting chunk on the chunk storage") {
+
+			THEN("Retrival of such chunk returns a null pointer") {
+				REQUIRE((*this)[InsertLocation] == nullptr);
+			}
+
+			THEN("Removal of such chunk returns failure") {
+				REQUIRE_FALSE(this->remove(InsertLocation));
+			}
+
+		}
+
+		WHEN("Emplace some new chunks into the chunk storage") {
+
+			THEN("New chunks should have been inserted") {
+				const auto [inserted, chunk] = this->construct(InsertLocation, MapSize);
+				REQUIRE(inserted);
+
+				AND_WHEN("Insert another chunk with the same world coordinate") {
+
+					THEN("Insertion fails, and the chunk with the coordinate returns") {
+						const auto [insertedAgain, chunkAgain] = this->construct(InsertLocation, MapSize);
+						REQUIRE_FALSE(insertedAgain);
+						//the same pointer as the previous one should be returned
+						REQUIRE(chunkAgain == chunk);
+					}
+
+				}
+
+				AND_THEN("The inserted chunk can be retrieved") {
+					auto* RetrievedChunk = (*this)[InsertLocation];
+					REQUIRE(RetrievedChunk == chunk);
+				}
+
+			}
+
+		}
+
+	}
+
 }

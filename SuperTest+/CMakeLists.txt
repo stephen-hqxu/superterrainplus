@@ -18,6 +18,12 @@ STPTestUtility.cpp
 # SuperAlgorithm+ test code
 STPTestHistogram.cpp
 STPTestPermutation.cpp
+# Prototype testing
+STPPrototypeCachedConvolution.cpp
+Compute/SobelFilter.cu
+)
+target_sources(${STP_UNIT_TEST} PRIVATE
+Compute/SobelFilter.cuh
 )
 
 if(MSVC)

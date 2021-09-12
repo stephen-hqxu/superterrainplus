@@ -20,16 +20,16 @@
 #include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
 
 #include <SuperTerrain+/Utility/Exception/STPCompilationError.h>
+#include <SuperTerrain+/Utility/Exception/STPSerialisationError.h>
+#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
+
+//CUDA
+#include <cuda_runtime.h>
 
 //GLM
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/type_ptr.hpp>
-
-//CUDA
-#include <cuda_runtime.h>
-//RTC header testing
-#include "./TestData/MatrixArithmetic.rtch"
 
 #include <iostream>
 
@@ -55,8 +55,8 @@ private:
 	constexpr static uvec2 MatDim = uvec2(4u);
 
 	//We need to guarantee the life-time of those string
-	inline const static string TransformAdd = "transform<" + string("MatrixOperator::Addition") + ">";
-	inline const static string TransformSub = "transform<" + string("MatrixOperator::Subtraction") + ">";
+	constexpr static char TransformAdd[] = "transform<MatrixOperator::Addition>";
+	constexpr static char TransformSub[] = "transform<MatrixOperator::Subtraction>";
 
 protected:
 
@@ -90,8 +90,8 @@ protected:
 			//constant variable
 			["MatrixDimension"]
 			//global functions
-			[RTCTester::TransformAdd.c_str()]
-			[RTCTester::TransformSub.c_str()]
+			[RTCTester::TransformAdd]
+			[RTCTester::TransformSub]
 			["scale"];
 		if (attach_header) {
 			//define a macro to enable external header testing
@@ -156,7 +156,8 @@ protected:
 		(CU_JIT_INFO_LOG_BUFFER, module_info)
 			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize)
 			(CU_JIT_ERROR_LOG_BUFFER, module_error)
-			(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize);
+			(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize)
+			(CU_JIT_LOG_VERBOSE, (void*)1);
 
 		//link
 		REQUIRE_NOTHROW([&]() {
@@ -184,7 +185,7 @@ protected:
 		//get the pointer to the variable
 		const uint2 matrixDim_h = make_uint2(RTCTester::MatDim.x, RTCTester::MatDim.y);
 		STPcudaCheckErr(cuModuleGetGlobal(&matrixDim_d, &matrixDimSize, program, name.at("MatrixDimension")));
-		STPcudaCheckErr(cuMemcpyHtoD(matrixDim_d, &matrixDim_h, sizeof(uint2)));
+		STPcudaCheckErr(cuMemcpyHtoD(matrixDim_d, &matrixDim_h, matrixDimSize));
 
 		//get function pointer
 		STPcudaCheckErr(cuModuleGetFunction(&this->MattransformAdd, program, name.at(RTCTester::TransformAdd)));
@@ -233,7 +234,7 @@ protected:
 				0u, 0, args, nullptr
 			));
 		}
-		STPcudaCheckErr(cuCtxSynchronize());
+		STPcudaCheckErr(cuStreamSynchronize(0));
 
 		//copy the result back
 		mat4 matOut;
@@ -265,6 +266,14 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 
 	GIVEN("A RTC version of diversity generator with custom implementation and runtime script") {
 
+		WHEN("Source code cannot be found") {
+
+			THEN("Exception is thrown to notify the user") {
+				REQUIRE_THROWS_AS(this->readSource(Nonsense), STPException::STPSerialisationError);
+			}
+
+		}
+
 		WHEN("The source code contains error") {
 
 			THEN("Error should be thrown out to notify the user with compiler log") {
@@ -274,14 +283,22 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 
 		}
 
-		WHEN("The source code works fine") {
+		WHEN("Retrive source lowered name from a non-existing source code") {
 
-			THEN("Program can be compiled and linked without errors") {
+			THEN("No lowered name is returned with an error thrown") {
+				REQUIRE_THROWS_AS(this->retrieveSourceLoweredName(Nonsense), STPException::STPMemoryError);
+			}
+
+		}
+
+		WHEN("A piece of working souce code is added to the program") {
+
+			THEN("Program can be compiled without errors") {
 				this->testCompilation(true, false);
-				this->testLink();
-				REQUIRE_NOTHROW(this->prepData());
 
-				AND_THEN("Data can be sent to kernel, after execution result can be retrieved, and correctness is verified") {
+				AND_THEN("After linking, data can be sent to kernel, after the execution result can be retrieved, and correctness is verified") {
+					this->testLink();
+					REQUIRE_NOTHROW(this->prepData());
 					//round the number to 1 d.p. to avoid float rounding issue during assertion
 					//compilation is a slow process, so we only test it once
 					const auto Data = GENERATE(take(1, chunk(18, map<float>([](auto f) { return roundf(f * 10.0f) / 10.0f; }, random(-6666.0f, 6666.0f)))));
@@ -300,6 +317,16 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 					//again for subtraction
 					REQUIRE_NOTHROW([this, &matResult, &matA, &matB, &scale]() { matResult = this->matrixTransform(this->MattransformSub, matA, matB, scale); }());
 					REQUIRE(matResult == (matA - matB) * scale);
+
+				}
+
+				AND_WHEN("The same piece of source code is re-added to the program") {
+
+					THEN("Diversity generator does not allow the same source code to be added") {
+						STPSourceInformation test_info;
+						const string randomSource("#error This source code is not intended to be compiled\n");
+						REQUIRE_THROWS_AS(this->compileSource(RTCTester::SourceName, randomSource, test_info), STPException::STPMemoryError);
+					}
 
 				}
 
@@ -324,13 +351,22 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 
 					THEN("Header is recongised by the compiler and can be used alongside with the source file") {
 						this->testCompilation(true, true);
+
+						AND_WHEN("The same header is attached to the program") {
+
+							THEN("Program should not allow header with the same name to be added") {
+								REQUIRE_FALSE(this->attachHeader(RTCTester::ExternalHeaderName, RTCTester::ExternalHeaderSource));
+							}
+
+						}
+
 					}
 
 					AND_WHEN("Header is asked to be discarded") {
 
 						THEN("Header should be discarded if it exists") {
-							this->testCompilation(true, true);
-							REQUIRE(this->detachHeader(RTCTester::ExternalHeaderName));
+							REQUIRE(this->attachHeader(Nonsense, Nonsense));
+							REQUIRE(this->detachHeader(Nonsense));
 						}
 
 						THEN("Nothing should happen if header name is not found") {
@@ -349,6 +385,11 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 					//TODO: I don't have an archive on my hand to be tested
 
 					AND_WHEN("Archive is asked to be discarded") {
+
+						THEN("Archive should be discarded if it exists") {
+							REQUIRE(this->attachArchive(Nonsense, Nonsense));
+							REQUIRE(this->detachArchive(Nonsense));
+						}
 
 						THEN("Nothing should happen if the archive name is not found") {
 							REQUIRE_FALSE(this->detachArchive(Nonsense));

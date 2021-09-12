@@ -32,6 +32,7 @@ using std::rethrow_exception;
 #include <glm/vec3.hpp>
 #include <glm/geometric.hpp>
 
+using glm::ivec2;
 using glm::uvec2;
 using glm::vec2;
 using glm::vec3;
@@ -482,13 +483,10 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 	}
 
 	const uvec2& dimension = heightmap.Data->FreeSlipRange;
-	auto clamp = []__device__(int val, int lower, int upper) -> unsigned int {
-		return static_cast<unsigned int>(max(lower, min(val, upper)));
+	const static auto float2short = []__device__(float input) -> unsigned short {
+		return static_cast<unsigned short>(input * 0xFFFFu);
 	};
-	auto float2short = []__device__(float input) -> unsigned short {
-		return static_cast<unsigned short>(input * 65535u);
-	};
-	 
+
 	//Cache heightmap the current thread block needs since each pixel is accessed upto 9 times.
 	extern __shared__ float heightmapCache[];
 	//each thread needs to access a 3x3 matrix around the current pixel, so we need to take the edge into consideration
@@ -500,7 +498,8 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 		const unsigned int cacheIdx = (threadIdx.x + blockDim.x * threadIdx.y) + iteration;
 		const uvec2 worker = block + uvec2(cacheIdx % cacheSize.x, cacheIdx / cacheSize.x);
 		//worker index may be zero, and 0u - 1u will become UINT32_MAX, so we should cast it to int and it will be come -1 thus correctly clampped
-		const unsigned int workerIdx = clamp(static_cast<int>(worker.x - 1u), 0, dimension.x - 1u) + clamp(static_cast<int>(worker.y - 1u), 0, dimension.y - 1u) * dimension.x;
+		const uvec2 clamppeWorkerIdx = static_cast<uvec2>(glm::clamp(static_cast<ivec2>(worker) - 1, ivec2(0), static_cast<ivec2>(dimension - 1u)));
+		const unsigned int workerIdx = clamppeWorkerIdx.x + clamppeWorkerIdx.y * dimension.x;
 
 		if (cacheIdx < cacheSize_total) {
 			//make sure index don't get out of bound
@@ -518,19 +517,26 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 		//otherwise, do not touch the border pixel since border pixel is calculated seamlessly by other chunks
 		return;
 	}
+
 	//load the cells from heightmap, remember the height map only contains one color channel
 	//using Sobel fitering
 	//Cache index
 	const uvec2 cache = local_thread + 1u;
+	//no need to pass by reference since vec2 type a big as a pointer
+	const auto loadCache = [cacheIdx = cache, horizontalCacheSize = cacheSize.x]__device__(float* cache, ivec2 offset) -> float {
+		const uvec2 coord = static_cast<uvec2>(static_cast<ivec2>(cacheIdx) + offset);
+		return cache[coord.x + coord.y * horizontalCacheSize];
+	};
+
 	float cell[8];
-	cell[0] = heightmapCache[(cache.x - 1) + (cache.y - 1) * cacheSize.x];
-	cell[1] = heightmapCache[cache.x + (cache.y - 1) * cacheSize.x];
-	cell[2] = heightmapCache[(cache.x + 1) + (cache.y - 1) * cacheSize.x];
-	cell[3] = heightmapCache[(cache.x - 1) + cache.y * cacheSize.x];
-	cell[4] = heightmapCache[(cache.x + 1) + cache.y * cacheSize.x];
-	cell[5] = heightmapCache[(cache.x - 1) + (cache.y + 1) * cacheSize.x];
-	cell[6] = heightmapCache[cache.x + (cache.y + 1) * cacheSize.x];
-	cell[7] = heightmapCache[(cache.x + 1) + (cache.y + 1) * cacheSize.x];
+	cell[0] = loadCache(heightmapCache, ivec2(-1, -1));
+	cell[1] = loadCache(heightmapCache, ivec2(0, -1));
+	cell[2] = loadCache(heightmapCache, ivec2(+1, -1));
+	cell[3] = loadCache(heightmapCache, ivec2(-1, 0));
+	cell[4] = loadCache(heightmapCache, ivec2(+1, 0));
+	cell[5] = loadCache(heightmapCache, ivec2(-1, +1));
+	cell[6] = loadCache(heightmapCache, ivec2(0, +1));
+	cell[7] = loadCache(heightmapCache, ivec2(+1, +1));
 	//apply the filtering kernel matrix
 	vec3 normal;
 	normal.z = 1.0f / strength;

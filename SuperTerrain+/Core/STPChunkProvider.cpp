@@ -115,7 +115,7 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 		default:
 			break;
 		}
-		if (STPChunk* center = this->ChunkStorage.getChunk(chunkPos); 
+		if (STPChunk* center = this->ChunkStorage[chunkPos];
 			center != nullptr && center->getChunkState() >= expected_state) {
 			//no need to continue if center chunk is available
 			//since the center chunk might be used as a neighbour chunk later, we only return bool instead of a pointer
@@ -155,7 +155,7 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 	STPChunkNeighbour neighbour;
 	for (vec2 neighbourPos : neighbour_position) {
 		//get current neighbour chunk
-		STPChunkStorage::STPChunkConstructed res = this->ChunkStorage.constructChunk(neighbourPos, chk_config.MapSize);
+		STPChunkStorage::STPChunkConstructed res = this->ChunkStorage.construct(neighbourPos, chk_config.MapSize);
 		STPChunk* curr_neighbour = res.second;
 
 		if (curr_neighbour->isOccupied()) {
@@ -204,11 +204,11 @@ bool STPChunkProvider::prepareNeighbour(vec2 chunkPos, std::function<bool(glm::v
 	switch (rec_depth) {
 	case BIOMEMAP_PASS:
 		//generate heightmap
-		this->kernel_launch_pool.enqueue_void(heightmap_computer, this->ChunkStorage.getChunk(chunkPos), neighbour, chunkPos);
+		this->kernel_launch_pool.enqueue_void(heightmap_computer, this->ChunkStorage[chunkPos], neighbour, chunkPos);
 		break;
 	case HEIGHTMAP_PASS:
 		//perform erosion on heightmap
-		this->kernel_launch_pool.enqueue_void(erosion_computer, this->ChunkStorage.getChunk(chunkPos), neighbour);
+		this->kernel_launch_pool.enqueue_void(erosion_computer, this->ChunkStorage[chunkPos], neighbour);
 		{
 			//trigger a chunk reload as some chunks have been added to render buffer already after neighbours are updated
 			const auto neighbour_position = this->getNeighbour(chunkPos);
@@ -264,7 +264,7 @@ bool STPChunkProvider::checkChunk(vec2 chunkPos, std::function<bool(glm::vec2)> 
 
 STPChunk* STPChunkProvider::requestChunk(vec2 chunkPos) {
 	//after calling checkChunk(), we can guarantee it's not null
-	if (STPChunk* chunk = this->ChunkStorage.getChunk(chunkPos); 
+	if (STPChunk* chunk = this->ChunkStorage[chunkPos];
 		chunk != nullptr) {
 		if (!chunk->isOccupied() && chunk->getChunkState() == STPChunk::STPChunkState::Complete) {
 			//since we wait for all threads to finish checkChunk(), such that occupancy status will not be changed here

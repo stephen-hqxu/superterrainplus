@@ -171,6 +171,7 @@ namespace SuperTerrainPlus {
 			 * If function is called repetitively, depends on the previous memory location, function will return:
 			 * If the allocated location was host, host pointer is returned, the argument is ignored.
 			 * If the allocated location was device, device pointer is returned if argument asks for device pointer, or host pointer otherwise.
+			 * When texture is dintegrated back to the buffer, device memory will be used, such that the host memory will be read only in device mode.
 			*/
 			T* operator()(STPFreeSlipLocation);
 

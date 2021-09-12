@@ -83,14 +83,20 @@ namespace SuperTerrainPlus {
 		 * @return If chunk is not presented, it's constructed with provided arguments and return true and the new pointer
 		 * Otherwise, return false and the pointer to the original chunk
 		*/
-		STPChunkConstructed constructChunk(glm::vec2, glm::uvec2);
+		STPChunkConstructed construct(glm::vec2, glm::uvec2);
 
 		/**
 		 * @brief Get the chunk by its world position
 		 * @param chunkPos the chunk world position
 		 * @return The chunk with specified position, return null if chunk not found
 		*/
-		STPChunk* getChunk(glm::vec2);
+		STPChunk* operator[](glm::vec2);
+
+		/**
+		 * @brief Get the number of chunk in the storage
+		 * @return The number of chunk in the storage
+		*/
+		size_t size() const;
 
 		/**
 		 * @brief Remove the chunk by its world position
@@ -98,12 +104,12 @@ namespace SuperTerrainPlus {
 		 * @return True if the chunk with specified world position has removed, or false if not found. 
 		 * The chunk will be effectively deleted and memory is freed, and no longer be available inside the chunk
 		*/
-		bool removeChunk(glm::vec2);
+		bool remove(glm::vec2);
 
 		/**
 		 * @brief Effectively clear the storage and free all used memory
 		*/
-		void clearChunk();
+		void clear();
 
 	};
 }

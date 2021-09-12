@@ -14,6 +14,8 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Utility/STPSmartStream.h>
 #include <SuperTerrain+/Utility/STPMemoryPool.h>
+#include <SuperTerrain+/Utility/STPSmartDeviceMemory.h>
+#include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
 //SuperTerrain+/SuperTerrain+/Utility/Exception
 #include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
@@ -23,7 +25,12 @@
 #include <cuda.h>
 #include <nvrtc.h>
 
+#include <algorithm>
+
 using namespace SuperTerrainPlus;
+
+using std::unique_ptr;
+using std::make_unique;
 
 class ThreadPoolTester : protected STPThreadPool {
 protected:
@@ -158,6 +165,32 @@ TEMPLATE_TEST_CASE_METHOD_SIG(STPMemoryPool, "STPMemoryPool reuses memory whenev
 			}
 
 			this->release(Mem);
+
+		}
+
+	}
+
+}
+
+SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Utility][STPSmartDeviceMemory]") {
+	
+	GIVEN("A piece of host data that is needed to be copied to device memory") {
+		unique_ptr<unsigned int[]> HostData = make_unique<unsigned int[]>(8);
+		unique_ptr<unsigned int[]> ReturnedData = make_unique<unsigned int[]>(8);
+
+		const unsigned int Data = GENERATE(take(3, random(0u, 66666666u)));
+		std::fill_n(HostData.get(), 8, Data);
+
+		WHEN("A smart device memory is requested") {
+			auto DeviceData = STPSmartDeviceMemory::makeDevice<unsigned int[]>(8);
+
+			THEN("Smart device memory can be used like normal memory") {
+				//copy back and forth
+				STPcudaCheckErr(cudaMemcpy(DeviceData.get(), HostData.get(), sizeof(unsigned int) * 8, cudaMemcpyHostToDevice));
+				STPcudaCheckErr(cudaMemcpy(ReturnedData.get(), DeviceData.get(), sizeof(unsigned int) * 8, cudaMemcpyDeviceToHost));
+
+				REQUIRE(std::all_of(ReturnedData.get(), ReturnedData.get() + 8, [Data](auto i) { return i == Data; }));
+			}
 
 		}
 

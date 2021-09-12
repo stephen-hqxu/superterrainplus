@@ -41,15 +41,16 @@ if (x >= MatrixDimension->x || y >= MatrixDimension->y) { \
 \
 const unsigned int index = x + y * MatrixDimension->x
 
-template<>
-__global__ void transform<MatrixOperator::Addition>(float* matOut, float* matA, float* matB) {
+#define TRANSFORM_FUNCTION(OP) template<> \
+__global__ void transform<OP>(float* matOut, float* matA, float* matB)
+
+TRANSFORM_FUNCTION(MatrixOperator::Addition) {
 	SETUP();
 	
 	matOut[index] = matA[index] + matB[index];
 }
 
-template<>
-__global__ void transform<MatrixOperator::Subtraction>(float* matOut, float* matA, float* matB) {
+TRANSFORM_FUNCTION(MatrixOperator::Subtraction) {
 	SETUP();
 	
 	matOut[index] = matA[index] - matB[index];
