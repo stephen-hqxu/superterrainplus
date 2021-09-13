@@ -22,7 +22,7 @@ using std::exception;
 
 using glm::uvec2;
 
-#define SampleIsUint16 std::enable_if<!std::is_same<unsigned short, Sample>::value, unsigned short>
+static_assert(std::is_same_v<unsigned short, Sample>, "Rendering buffer format is not exported");
 
 /**
  * @brief Generate a new global to local index table
@@ -69,7 +69,6 @@ __host__ STPFreeSlipManager<T> STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<T
 //Export Instantiations of STPFreeSlipManagerAdaptor
 template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<float>;
 template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<Sample>;
-template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<SampleIsUint16>;
 
 __host__ STPFreeSlipGenerator::STPFreeSlipGenerator(const uvec2& range, const uvec2& mapSize) : 
 	STPFreeSlipData{ nullptr, mapSize, range, range * mapSize } {
@@ -137,8 +136,6 @@ __host__ STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<TYPE> STPFreeSl
 GET_MANAGER(float)
 
 GET_MANAGER(Sample)
-
-GET_MANAGER(SampleIsUint16)
 
 __global__ void initGlobalLocalIndexKERNEL(unsigned int* output, unsigned int rowCount, uvec2 chunkRange, uvec2 tableSize, uvec2 mapSize) {
 	using glm::vec2;

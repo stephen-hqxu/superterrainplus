@@ -19,6 +19,7 @@
 //SuperTerrain+/SuperTerrain+/Utility/Exception
 #include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Utility/Exception/STPDeadThreadPool.h>
 
 //CUDA
 #include <cuda_runtime.h>
@@ -26,24 +27,56 @@
 #include <nvrtc.h>
 
 #include <algorithm>
+#include <optional>
 
 using namespace SuperTerrainPlus;
 
+using std::optional;
 using std::unique_ptr;
 using std::make_unique;
+using std::mutex;
+using std::condition_variable;
+using std::unique_lock;
+using std::future;
+using std::async;
 
-class ThreadPoolTester : protected STPThreadPool {
+class ThreadPoolTester {
 protected:
 
+	mutable mutex Lock;
+	mutable condition_variable Signal;
+
+	//use optional so we can control the life-time of the thread pool for easy testing
+	optional<STPThreadPool> Pool;
+
+	static void sleep(size_t time) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(time));
+	}
+
 	static unsigned int busyWork(unsigned int value) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		ThreadPoolTester::sleep(10ull);
 		return value;
 	}
 
 public:
 
-	ThreadPoolTester() : STPThreadPool(1u) {
+	ThreadPoolTester() : Pool(1u) {
 
+	}
+
+	void waitUntilSignaled() const {
+		{
+			unique_lock<mutex> cond_lock(this->Lock);
+			this->Signal.wait(cond_lock);
+		}
+	}
+
+	void sendSignal() const {
+		this->Signal.notify_one();
+	}
+
+	void killPool() {
+		this->Pool.reset();//this line will not return until the previous worker has finished
 	}
 
 };
@@ -61,8 +94,8 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded worklo
 	GIVEN("A valid thread pool object") {
 
 		THEN("New thread pool should be ready to go") {
-			REQUIRE(this->isRunning());
-			REQUIRE(this->size() == 0ull);
+			REQUIRE(this->Pool->isRunning());
+			REQUIRE(this->Pool->size() == 0ull);
 		}
 
 		WHEN("Some works needs to be done") {
@@ -70,8 +103,7 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded worklo
 			std::future<unsigned int> result;
 
 			THEN("Thread pool should be working on the task") {
-				STPThreadPool& pool = dynamic_cast<STPThreadPool&>(*this);
-				REQUIRE_NOTHROW([&pool, &result, work]() {
+				REQUIRE_NOTHROW([&pool = *(this->Pool), &result, work]() {
 					result = pool.enqueue_future(&ThreadPoolTester::busyWork, work);
 					}());
 
@@ -80,10 +112,31 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded worklo
 					REQUIRE(result.get() == work);
 
 					//thread pool should be idling
-					REQUIRE(this->size() == 0ull);
+					REQUIRE(this->Pool->size() == 0ull);
 				}
 			}
 
+		}
+
+		WHEN("Insert more works to a thread pool that has been signaled to be killed") {
+			using std::bind;
+			//send a busy worker
+			this->Pool->enqueue_void(bind(&ThreadPoolTester::waitUntilSignaled, this));
+			//send a thread to kill the thread pool
+			future<void> killer = async(bind(&ThreadPoolTester::killPool, this));
+			
+			//destructor of the thread pool will not return until all waiting works are finished
+			//wait for the thread to reach the "deadlock" state
+			ThreadPoolTester::sleep(25ull);
+
+			THEN("Thread pool should not allow more works to be inserted") {
+				CHECK_THROWS_AS(this->Pool->enqueue_void(&ThreadPoolTester::busyWork, 0u), STPException::STPDeadThreadPool);
+
+				//clear up
+				this->sendSignal();
+				killer.get();
+			}
+			
 		}
 	}
 }
@@ -120,10 +173,49 @@ SCENARIO("STPDeviceErrorHandler reports CUDA API error", "[Utility][STPDeviceErr
 
 }
 
-SCENARIO_METHOD(STPSmartStream, "STPSmartStream manages CUDA stream smartly", "[Utility][STPSmartStream]") {
-	cudaStream_t stream = static_cast<cudaStream_t>(*this);
+enum class SmartStreamType : unsigned char {
+	Default = 0x00u,
+	Priority = 0x01u
+};
+
+template<SmartStreamType Pri>
+class SmartStreamTester : protected STPSmartStream {
+public:
+
+	SmartStreamTester();
+
+};
+template<>
+SmartStreamTester<SmartStreamType::Default>::SmartStreamTester() : STPSmartStream() {
+
+}
+
+template<>
+SmartStreamTester<SmartStreamType::Priority>::SmartStreamTester() : STPSmartStream(cudaStreamDefault, 0u) {
+
+}
+
+TEMPLATE_TEST_CASE_METHOD_SIG(SmartStreamTester, "STPSmartStream manages CUDA stream smartly", "[Utility][STPSmartStream]",
+	((SmartStreamType Pri), Pri), SmartStreamType::Default, SmartStreamType::Priority) {
+
+	WHEN("Trying to retrieve CUDA stream priority range") {
+
+		THEN("Value can be retrieved without error") {
+			STPSmartStream::STPStreamPriorityRange range;
+			REQUIRE_NOTHROW([&range]() -> void {
+				range = STPSmartStream::getStreamPriorityRange();
+				
+			}());
+			//verify
+			//in fact, CUDA define the "low" value as the greatest priority
+			auto [low, high] = range;
+			REQUIRE(low <= high);
+		}
+
+	}
 
 	GIVEN("A smart stream object") {
+		cudaStream_t stream = static_cast<cudaStream_t>(*dynamic_cast<const STPSmartStream*>(this));
 
 		WHEN("Some data needs to be done by CUDA") {
 			const unsigned long long Original = GENERATE(take(3u, random(0ull, 1313131313ull)));
@@ -162,9 +254,16 @@ TEMPLATE_TEST_CASE_METHOD_SIG(STPMemoryPool, "STPMemoryPool reuses memory whenev
 			THEN("When re-requesting memory it should be reused") {
 				Mem = REQUEST_MEMORY;
 				REQUIRE(Mem[0] == Data);
+				this->release(Mem);
 			}
 
-			this->release(Mem);
+			AND_WHEN("Requesting a memory with size of zero") {
+				
+				THEN("Error should be thrown to notify that memory size should be positive") {
+					REQUIRE_THROWS_AS(this->request(0ull), STPException::STPBadNumericRange);
+				}
+
+			}
 
 		}
 

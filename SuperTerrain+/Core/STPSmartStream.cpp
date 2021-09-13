@@ -29,10 +29,11 @@ STPSmartStream::STPSmartStream(unsigned int flag, int priority) {
 }
 
 STPSmartStream::STPStreamPriorityRange STPSmartStream::getStreamPriorityRange() {
-	int low, high;
-	STPcudaCheckErr(cudaDeviceGetStreamPriorityRange(&low, &high));
+	int least, greatest;
+	STPcudaCheckErr(cudaDeviceGetStreamPriorityRange(&least, &greatest));
 
-	return make_pair(low, high);
+	//we flip the order since CUDA defines the priority as [greatest, least]
+	return make_pair(greatest, least);
 }
 
 STPSmartStream::operator cudaStream_t() const {

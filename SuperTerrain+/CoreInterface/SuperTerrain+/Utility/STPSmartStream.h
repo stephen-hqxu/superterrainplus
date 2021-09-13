@@ -39,7 +39,9 @@ namespace SuperTerrainPlus {
 
 	public:
 
-		//A pair of number contains lowest priority and highest priority
+		//A pair of number contains range of possible priority
+		//0: the greatest priority
+		//1: the least priority
 		typedef std::pair<int, int> STPStreamPriorityRange;
 
 		/**

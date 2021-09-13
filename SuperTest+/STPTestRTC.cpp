@@ -152,6 +152,8 @@ protected:
 			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize)
 			(CU_JIT_ERROR_LOG_BUFFER, linker_error)
 			(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize);
+		link_info.getDataOption(RTCTester::SourceName)
+			(CU_JIT_MAX_REGISTERS, (void*)(uintptr_t)72u);
 		link_info.ModuleOption
 		(CU_JIT_INFO_LOG_BUFFER, module_info)
 			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize)
@@ -303,12 +305,8 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 					//compilation is a slow process, so we only test it once
 					const auto Data = GENERATE(take(1, chunk(18, map<float>([](auto f) { return roundf(f * 10.0f) / 10.0f; }, random(-6666.0f, 6666.0f)))));
 					//kernel exeuction for matrix addition
-					const mat4 matA = mat4(
-						Data[0], Data[1], Data[2], Data[3],
-						Data[4], Data[5], Data[6], Data[7],
-						Data[8], Data[9], Data[10], Data[11],
-						Data[12], Data[13], Data[14], Data[15]
-					), matB = glm::identity<mat4>() * Data[16];
+					const mat4 matA = glm::make_mat4(Data.data()), 
+						matB = glm::identity<mat4>() * Data[16];
 					const float scale = Data[17];
 					mat4 matResult;
 					REQUIRE_NOTHROW([this, &matResult, &matA, &matB, &scale]() { matResult = this->matrixTransform(this->MattransformAdd, matA, matB, scale); }());

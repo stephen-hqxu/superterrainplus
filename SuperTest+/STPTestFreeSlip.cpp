@@ -13,6 +13,9 @@
 
 #include <SuperTerrain+/Utility/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
+
+#include <glm/gtc/type_ptr.hpp>
 
 #include <type_traits>
 #include <algorithm>
@@ -106,6 +109,14 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 			TestData Data = { 1u, Mode, 0 };
 			TestBuffer.emplace(this->TextureBuffer, Data, CurrentTester::SmallAttribute);
 		}());
+
+		WHEN("Texture buffer is unmerged") {
+
+			THEN("Merge location is not available") {
+				REQUIRE_THROWS_AS((*TestBuffer) == STPFreeSlipLocation::HostMemory, STPException::STPMemoryError);
+			}
+
+		}
 
 		WHEN("Merge the texture with said memory mode") {
 			TestType* Merged;
@@ -235,7 +246,7 @@ SCENARIO_METHOD(LocalIndexRef, "STPFreeSlipGenerator generates global-local inde
 
 						AND_THEN("Texture can be indexed correctly using global-local index table, and the correctness of index table is verified") {
 							const auto IndexXY = GENERATE(take(5, chunk(2, random(0u, 31u))));
-							const uvec2 Coordinate = uvec2(IndexXY[0], IndexXY[1]);
+							const uvec2 Coordinate = glm::make_vec2(IndexXY.data());
 							const unsigned int Local = this->locate(Coordinate);
 
 							//index table correctness, our texture simply converts 2D coordinate to 1D index

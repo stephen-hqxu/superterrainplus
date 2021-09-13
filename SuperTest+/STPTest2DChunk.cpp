@@ -11,6 +11,11 @@
 #include <SuperTerrain+/World/Chunk/STPChunk.h>
 #include <SuperTerrain+/World/Chunk/STPChunkStorage.h>
 
+#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+
+//GLM
+#include <glm/gtc/type_ptr.hpp>
+
 #include <algorithm>
 
 using namespace SuperTerrainPlus;
@@ -66,6 +71,7 @@ class ChunkTester : protected STPChunk {
 protected:
 
 	constexpr static uvec2 Size = uvec2(2u);
+	constexpr static unsigned int Count = Size.x * Size.y;
 
 	template<typename T>
 	static void fillValue(T* texture, T value) {
@@ -74,6 +80,11 @@ protected:
 				texture[x + y * ChunkTester::Size.x] = value;
 			}
 		}
+	}
+
+	template<typename T>
+	inline static void testMapValue(T* map, T reference) {
+		CHECK(std::all_of(map, map + ChunkTester::Count, [reference](auto val) { return val == reference; }));
 	}
 
 public:
@@ -86,7 +97,15 @@ public:
 
 SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk][STPChunk]") {
 
-	GIVEN("A STPChunk object") {
+	GIVEN("An invalid chunk object with zero in any of the dimension component") {
+
+		THEN("Contruction of such chunk is not allowed") {
+			REQUIRE_THROWS_AS(STPChunk(uvec2(0u, 128u)), STPException::STPBadNumericRange);
+		}
+
+	}
+
+	GIVEN("A chunk object") {
 		constexpr auto no_state = STPChunk::STPChunkState::Empty;
 
 		THEN("New chunk should be usable and empty with fixed size") {
@@ -100,12 +119,12 @@ SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk
 			THEN("Chunk can be locked") {
 				//lock the chunk
 				this->markOccupancy(true);
-				REQUIRE(this->isOccupied());
+				CHECK(this->isOccupied());
 
 				AND_THEN("Chunk can be unlocked") {
 					//unlock the chunk
 					this->markOccupancy(false);
-					REQUIRE_FALSE(this->isOccupied());
+					CHECK_FALSE(this->isOccupied());
 				}
 			}
 
@@ -126,18 +145,18 @@ SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk
 
 		AND_GIVEN("Some texture values") {
 			constexpr float float_value = -756.5f;
-			constexpr Sample biome_value = 2984u;
+			constexpr Sample biome_value = 5u;
+			constexpr unsigned short buffer_value = 123u;
 
 			WHEN("Trying to write some data into the texture") {
 				ChunkTester::fillValue(this->getHeightmap(), float_value);
 				ChunkTester::fillValue(this->getBiomemap(), biome_value);
+				ChunkTester::fillValue(this->getRenderingBuffer(), buffer_value);
 
 				THEN("Value can be retrieved without being corrupted") {
-					auto heightmap = this->getHeightmap();
-					CHECK(std::all_of(heightmap, heightmap + 4, [float_value](auto f) { return f == float_value; }));
-
-					auto biomemap = this->getBiomemap();
-					CHECK(std::all_of(biomemap, biomemap + 4, [biome_value](auto i) { return i == biome_value; }));
+					ChunkTester::testMapValue(this->getHeightmap(), float_value);
+					ChunkTester::testMapValue(this->getBiomemap(), biome_value);
+					ChunkTester::testMapValue(this->getRenderingBuffer(), buffer_value);
 				}
 			}
 		}
@@ -151,7 +170,7 @@ SCENARIO_METHOD(STPChunkStorage, "STPChunkStorage stores chunks and we can retri
 		constexpr static uvec2 MapSize = uvec2(2u);
 		//round to 1 d.p.
 		const auto Location = GENERATE(take(3, chunk(2, map<float>([](auto f) { return roundf(f * 10.0f) / 10.0f; }, random(-6666.666f, 6666.666f)))));
-		const vec2 InsertLocation = vec2(Location[0], Location[1]);
+		const vec2 InsertLocation = glm::make_vec2(Location.data());
 
 		THEN("A newly created chunk storage is empty") {
 			REQUIRE(this->size() == 0ull);
@@ -189,6 +208,10 @@ SCENARIO_METHOD(STPChunkStorage, "STPChunkStorage stores chunks and we can retri
 				AND_THEN("The inserted chunk can be retrieved") {
 					auto* RetrievedChunk = (*this)[InsertLocation];
 					REQUIRE(RetrievedChunk == chunk);
+				}
+
+				AND_THEN("Chunk storage can be cleared") {
+					REQUIRE_NOTHROW(this->clear());
 				}
 
 			}

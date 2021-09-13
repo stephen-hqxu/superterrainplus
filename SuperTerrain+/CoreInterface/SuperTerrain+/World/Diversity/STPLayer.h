@@ -41,14 +41,17 @@ namespace SuperTerrainPlus {
 
 			private:
 
+				//Layer seed for a particular layer implementation
+				const Seed LayerSeed;
 				//local seed varies from world coordinate, but the same coord will always yeild the same local seed
-				const Seed LocalSeed;
+				mutable Seed LocalSeed;
 
 				/**
 				 * @brief Init rng for each local coordinate
-				 * @param local_seed Local seed that is unique to each world coordinate
+				 * @param layer_seed Layer seed that is unique to each layer
+				 * @param local_seed Local seed that is unique to each world coordinate for every layer
 				*/
-				STPLocalRNG(Seed);
+				STPLocalRNG(Seed, Seed);
 
 			public:
 

@@ -125,7 +125,7 @@ int main() {
 	//Init camera and the master renderer
 	Camera = dynamic_cast<SglToolkit::SgTCamera*>(new SglToolkit::SgTSpectatorCamera(90.0f, 0.0f, 
 		(engineINILoader->get())("movementSpeed").to<float>(), (engineINILoader->get())("mouseSensitivity").to<float>(), 
-		60.0f, SglToolkit::SgTvec3(0.0f, 500.0f, 0.0f)));//facing towards positive-x
+		60.0f, SglToolkit::SgTvec3(0.0f, 600.0f, 0.0f)));//facing towards positive-x
 	engine = new STPMasterRenderer(Camera, WINDOW_SIZE, engineINILoader->get(), BiomeINILoader->get());
 
 	//welcome

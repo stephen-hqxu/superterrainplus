@@ -4,7 +4,7 @@
 
 using namespace SuperTerrainPlus::STPDiversity;
 
-STPLayer::STPLocalRNG::STPLocalRNG(Seed local_seed) : LocalSeed(local_seed) {
+STPLayer::STPLocalRNG::STPLocalRNG(Seed layer_seed, Seed local_seed) : LayerSeed(layer_seed), LocalSeed(local_seed) {
 
 }
 
@@ -15,19 +15,12 @@ STPLayer::STPLocalRNG::~STPLocalRNG() {
 Sample STPLayer::STPLocalRNG::nextVal(Sample range) const {
 	//TODO: feel free to use your own algorithm to generate a random number
 	//Please do not use standard library rng, it will trash the performance
-	static auto floorMod = [](Seed x, Seed y) -> Sample {
-		return static_cast<Sample>(x - (static_cast<Seed>(__floor(1.0 * x / y * 1.0)) * y));
-	};
-	//since our local seed is a constant
-	static Seed modified_local_seed = this->LocalSeed;
-	Sample val = floorMod(this->LocalSeed >> 24ull, static_cast<unsigned long long>(range));
+	
+	//the original Minecraft implementation uses floorMod, which produces the same result as "%" when both inputs have the same sign
+	const Sample val = static_cast<Sample>((this->LocalSeed >> 24ull) % static_cast<Seed>(range));
 
-	if (val < 0u) {
-		val += range;
-	}
 	//advance to the next sequence
-	modified_local_seed = STPSeedMixer::mixSeed(modified_local_seed, modified_local_seed);
-
+	this->LocalSeed = STPSeedMixer::mixSeed(this->LocalSeed, this->LayerSeed);
 	return val;
 }
 
@@ -68,7 +61,7 @@ size_t STPLayer::cacheSize() const {
 }
 
 STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) const {
-	return STPLayer::STPLocalRNG(local_seed);
+	return STPLayer::STPLocalRNG(this->LayerSeed, local_seed);
 }
 
 Sample STPLayer::retrieve(int x, int y, int z) {

@@ -16,10 +16,14 @@
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Utility/Exception/STPUnsupportedFunctionality.h>
 
+#include <glm/gtc/type_ptr.hpp>
+
+using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
 using SuperTerrainPlus::STPDiversity::Sample;
 using SuperTerrainPlus::STPDiversity::Seed;
 
+using glm::ivec2;
 using glm::uvec2;
 using glm::ivec3;
 using glm::uvec3;
@@ -157,6 +161,83 @@ public:
 
 };
 
+class RandomLayer : public STPLayer {
+private:
+
+	Sample sample(int x, int y, int z) {
+		return static_cast<Sample>(this->genLocalSeed(x, z));
+	}
+
+protected:
+
+	inline Sample getValue(ivec2 coord) {
+		return this->sample(coord.x, 0, coord.y);
+	}
+
+	inline ivec2 getRandomCoord() const {
+		const auto RandomCoord = GENERATE(take(2, chunk(2, random(-6666666, 66666666))));
+		return glm::make_vec2(RandomCoord.data());
+	}
+
+public:
+
+	RandomLayer() : STPLayer(19657483ull, 48321567ull) {
+		
+	}
+
+};
+
+SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG", "[Diversity][STPLayer][!mayfail]") {
+
+	GIVEN("An implementation of STPLayer") {
+		const ivec2 Coord = this->getRandomCoord();
+
+		WHEN("Local seed is retrieved from the layer") {
+			const Sample Value1 = this->getValue(Coord);
+
+			THEN("Seed should be determinisitic when the input is the same") {
+				const Sample Value2 = this->getValue(Coord);
+				CHECK(Value2 == Value1);
+			}
+
+			THEN("Seed should be random when the inputs are different") {
+				const ivec2 NewCoord = this->getRandomCoord();
+				const Sample Value2 = this->getValue(NewCoord);
+
+				const bool result = Value2 == Value1;
+				CHECKED_IF(result) {
+					WARN("Assertion involves comparison of random values and it might fail due to RNG, run the test again with a different seed value.");
+				}
+				CHECK_FALSE(result);
+			}
+
+		}
+
+		WHEN("Asking for a local random number generator from the layer") {
+			const Seed LocalSeed = this->genLocalSeed(Coord.x, Coord.y);
+
+			THEN("The RNG loaded with the same local seed should produce the same sequence of output") {
+				constexpr static unsigned int BucketSize = 16u;
+				constexpr static Sample Bound = std::numeric_limits<Sample>::max();
+
+				const STPLayer::STPLocalRNG RNG1 = this->getRNG(LocalSeed),
+					RNG2 = this->getRNG(LocalSeed);
+
+				bool equalNextval = true, equalChoose = true;
+				for (unsigned int i = 0u; i < BucketSize && (equalNextval || equalChoose); i++) {
+					equalNextval &= RNG1.nextVal(Bound) == RNG2.nextVal(Bound);
+					equalChoose &= RNG1.choose(0u, 1u, 2u, 3u) == RNG2.choose(0u, 1u, 2u, 3u);
+				}
+				CHECK(equalNextval);
+				CHECK(equalChoose);
+			}
+			
+		}
+
+	}
+
+}
+
 #define FAST_SAMPLE(LAYER, COOR) LAYER->retrieve(COOR[0], COOR[1], COOR[2])
 
 SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for biome genereation", "[Diversity][STPLayerManager][!mayfail]") {
@@ -167,11 +248,19 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 			REQUIRE(this->getLayerCount() == 0ull);
 		}
 
-		AND_GIVEN("Some random numbers") {
+		AND_GIVEN("Some random numbers as seeds") {
 			using std::make_pair;
 			//we are not using RNG, so doesn't matter
 			constexpr Seed RandomSeed = 0ull;
 			constexpr Seed Salt = 0ull;
+
+			WHEN("Insert one layer with the unsupported cache size") {
+
+				THEN("Layer manager does not allow such layer to bu inserted") {
+					REQUIRE_THROWS_AS((this->insert<RootLayer, 3ull>(RandomSeed, Salt)), STPException::STPBadNumericRange);
+				}
+
+			}
 
 			WHEN("Insert one simple layer without cache") {
 				auto FirstLayer = this->insert<RootLayer>(RandomSeed, Salt);
@@ -271,6 +360,7 @@ class BiomeFactoryTester : protected STPBiomeFactory {
 protected:
 
 	constexpr static uvec2 Dimension = uvec2(4u);
+	constexpr static unsigned int PixelCount = Dimension.x * Dimension.y;
 	constexpr static Seed RandomSeed = 0ull;
 	constexpr static Seed Salt = 0ull;
 
@@ -289,6 +379,10 @@ protected:
 		return Mgr;
 	}
 
+	inline Sample getExpected(unsigned int index, const ivec3& offset) const {
+		return static_cast<Sample>(((index % BiomeFactoryTester::Dimension.x) + (index / BiomeFactoryTester::Dimension.y) + offset.x + offset.z + 1) * 2);
+	}
+
 public:
 
 	BiomeFactoryTester() : STPBiomeFactory(BiomeFactoryTester::Dimension) {
@@ -297,6 +391,10 @@ public:
 
 	BiomeFactoryTester(uvec3 dimension) : STPBiomeFactory(dimension) {
 
+	}
+
+	void generateMap(Sample* biomemap, const ivec3& offset) {
+		(*this)(biomemap, offset);
 	}
 
 };
@@ -321,27 +419,39 @@ SCENARIO_METHOD(BiomeFactoryTester, "STPBiomeFactory can be used to produce biom
 		AND_GIVEN("A world coordinate for generation") {
 			using std::unique_ptr;
 			using std::make_unique;
+			unique_ptr<Sample[]> BiomeMap = make_unique<Sample[]>(BiomeFactoryTester::PixelCount);
+			unique_ptr<Sample[]> AnotherBiomeMap = make_unique<Sample[]>(BiomeFactoryTester::PixelCount);
+
+			WHEN("Asking the factory to generate a volumetric biomemap") {
+
+				THEN("Biome factory current does not support such texture") {
+					BiomeFactoryTester BrokenFactory(uvec3(2u, 128u, 2u));
+					REQUIRE_THROWS_AS(BrokenFactory.generateMap(BiomeMap.get(), ivec3(-564738, 476329, -659843)), STPException::STPUnsupportedFunctionality);
+				}
+
+			}
 
 			const auto Coordinate = GENERATE(take(1, chunk(2, random(-666666666, 666666666))));
 			const ivec3 Offset = ivec3(Coordinate[0], GENERATE(values({ 0, 16974382 })), Coordinate[1]);
-			unique_ptr<Sample[]> BiomeMap = make_unique<Sample[]>(BiomeFactoryTester::Dimension.x * BiomeFactoryTester::Dimension.y);
-
-			WHEN("Asking the factory to generate a new " << (Offset.y == 0 ? "2" : "3") << "D biome") {
+			WHEN("Asking the factory to generate a new " << (Offset.y == 0 ? "2" : "3") << "D flat biomemap") {
 
 				THEN("Generation should be successful") {
 					REQUIRE_NOTHROW((*this)(BiomeMap.get(), Offset));
+					//because our biomemap has memory pool, just to test if the memory has been reused (coverage test will show it)
+					REQUIRE_NOTHROW((*this)(AnotherBiomeMap.get(), Offset));
 
 					AND_THEN("The biomemap should be validated") {
 						//root layer is ((x_offset + y_offset) + x + y + z + 1), normal layer simply uses the value from parent, merging layer adds the values
 						//and in 2D biome generator y is ignore (essentially treated as 0)
 						//3D biome, currently behaves the same as 2D biome because it's not yet implemented
 						const unsigned int Index = GENERATE(take(3, random(0u, 15u)));
-						REQUIRE(BiomeMap[Index] ==
-							static_cast<Sample>(((Index % BiomeFactoryTester::Dimension.x) + (Index / BiomeFactoryTester::Dimension.y) + Offset.x + Offset.z + 1) * 2));
+						REQUIRE(BiomeMap[Index] == this->getExpected(Index, Offset));
+						REQUIRE(AnotherBiomeMap[Index] == BiomeMap[Index]);
 					}
 				}
 
 			}
+
 		}
 
 	}
