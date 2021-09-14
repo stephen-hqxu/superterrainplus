@@ -133,7 +133,7 @@ GLuint STPProcedural2DINF::getTerrain2DINFProgram() const {
 	return this->Terrain2d_shader.getP();
 }
 
-void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& projection, const vec3& position) const {
+void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& projection, vec3 position) const {
 	const STPEnvironment::STPChunkSetting& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSetting();
 	mat4 model = identity<mat4>();
 	//move the terrain center to the camera

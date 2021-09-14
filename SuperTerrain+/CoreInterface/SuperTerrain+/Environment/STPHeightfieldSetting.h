@@ -2,7 +2,7 @@
 #ifndef _STP_HEIGHTFIELD_SETTING_H_
 #define _STP_HEIGHTFIELD_SETTING_H_
 
-#include "STPRainDropSetting.h"
+#include "STPRainDropSetting.cuh"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -31,10 +31,20 @@ namespace SuperTerrainPlus {
 
 			//Hydraulic Erosion Parameters are inherited from super class
 
+			//STPRainDropSetting is non-copiable
+
 			/**
 			 * @brief Init STPHeightfieldSetting with defaults
 			*/
 			STPHeightfieldSetting();
+
+			STPHeightfieldSetting(const STPHeightfieldSetting&) = delete;
+
+			STPHeightfieldSetting(STPHeightfieldSetting&&) noexcept = default;
+
+			STPHeightfieldSetting& operator=(const STPHeightfieldSetting&) = delete;
+
+			STPHeightfieldSetting& operator=(STPHeightfieldSetting&&) noexcept = default;
 
 			~STPHeightfieldSetting() = default;
 

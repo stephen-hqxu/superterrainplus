@@ -70,7 +70,7 @@ __host__ STPFreeSlipManager<T> STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<T
 template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<float>;
 template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<Sample>;
 
-__host__ STPFreeSlipGenerator::STPFreeSlipGenerator(const uvec2& range, const uvec2& mapSize) : 
+__host__ STPFreeSlipGenerator::STPFreeSlipGenerator(uvec2 range, uvec2 mapSize) : 
 	STPFreeSlipData{ nullptr, mapSize, range, range * mapSize } {
 	if (this->FreeSlipRange.x == 0u || this->FreeSlipRange.y == 0u) {
 		throw STPException::STPBadNumericRange("Dimension or/and free-slip chunk size should not be zero");

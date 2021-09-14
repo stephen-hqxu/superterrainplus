@@ -12,7 +12,7 @@
 //ADT
 #include <list>
 //Settings
-#include "../Environment/STPRainDropSetting.h"
+#include "../Environment/STPRainDropSetting.cuh"
 //Free slipper
 #include "./FreeSlip/STPFreeSlipManager.cuh"
 //GLM

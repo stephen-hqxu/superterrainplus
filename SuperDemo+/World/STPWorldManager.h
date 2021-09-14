@@ -53,9 +53,9 @@ namespace STPDemo {
 
 		/**
 		 * @brief Attach world settings to the current world manager.
-		 * @param settings All world settings, it will be copied under the object
+		 * @param settings All world settings, it will be moved under the object
 		*/
-		void attachSetting(SuperTerrainPlus::STPEnvironment::STPConfiguration*);
+		void attachSetting(SuperTerrainPlus::STPEnvironment::STPConfiguration&);
 
 		/**
 		 * @brief Attach the biome factory with this world manager

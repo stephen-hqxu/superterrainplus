@@ -104,7 +104,7 @@ namespace STPDemo {
 		 * @param projection - The camera projection matrix
 		 * @param position - The camera position
 		*/
-		void renderVisibleChunks(const glm::mat4&, const glm::mat4&, const glm::vec3&) const;
+		void renderVisibleChunks(const glm::mat4&, const glm::mat4&, glm::vec3) const;
 
 	};
 }

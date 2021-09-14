@@ -101,7 +101,7 @@ namespace SuperTerrainPlus {
 			 * @param range Free slip range in the unit of chunk
 			 * @param mapSize The size of the each heightmap
 			*/
-			__host__ STPFreeSlipGenerator(const glm::uvec2&, const glm::uvec2&);
+			__host__ STPFreeSlipGenerator(glm::uvec2, glm::uvec2);
 
 			__host__ ~STPFreeSlipGenerator();
 

@@ -670,7 +670,7 @@ void STPSingleHistogramFilter::filter_horizontal(STPPinnedHistogramBuffer* histo
 }
 
 void STPSingleHistogramFilter::filter
-	(const STPFreeSlipSampleManager& sample_map, STPPinnedHistogramBuffer* histogram_output, const uvec2& central_chunk_index, unsigned int radius) {
+	(const STPFreeSlipSampleManager& sample_map, STPPinnedHistogramBuffer* histogram_output, uvec2 central_chunk_index, unsigned int radius) {
 	using namespace std::placeholders;
 	using std::bind;
 	using std::future;

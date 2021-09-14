@@ -197,7 +197,7 @@ namespace STPDemo {
 			const auto& chunk_setting = config.getChunkSetting();
 			std::future noisePara_loader = this->command_pool.enqueue_future(STPTerrainParaLoader::getSimplex2DNoiseParameter, std::ref(this->biomeSettings["simplex"]));
 			//not quite sure why heightfield_settings isn't got copied to the config, it just share the pointer
-			config.getHeightfieldSetting() = STPTerrainParaLoader::getProcedural2DINFGeneratorParameter(this->engineSettings["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk);
+			config.getHeightfieldSetting() = std::move(STPTerrainParaLoader::getProcedural2DINFGeneratorParameter(this->engineSettings["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
 			SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting simplex = noisePara_loader.get();
 			biomePara_loader.get();
 
@@ -210,7 +210,7 @@ namespace STPDemo {
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer, this->command_pool);
 			//setting world manager
 			this->world_manager = new STPWorldManager();
-			this->world_manager->attachSetting(&config);
+			this->world_manager->attachSetting(config);
 			this->world_manager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
 			this->world_manager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(simplex, chunk_setting.MapSize, this->biomeSettings("interpolationRadius").to<unsigned int>());
 			this->world_manager->linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));

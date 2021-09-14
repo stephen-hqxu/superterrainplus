@@ -127,7 +127,7 @@ namespace SuperTerrainPlus {
 			 * @param central_chunk_index The local free-slip coordinate points to the central chunk.
 			 * @param radius The radius of the filter
 			*/
-			void filter(const STPFreeSlipSampleManager&, STPPinnedHistogramBuffer*, const glm::uvec2&, unsigned int);
+			void filter(const STPFreeSlipSampleManager&, STPPinnedHistogramBuffer*, glm::uvec2, unsigned int);
 
 		public:
 

@@ -4,9 +4,10 @@ STPEngineInitialiser.h
 # /Environment
 Environment/STPChunkSetting.h
 Environment/STPConfiguration.h
+Environment/STPErosionBrushGenerator.h
 Environment/STPHeightfieldSetting.h
 Environment/STPMeshSetting.h
-Environment/STPRainDropSetting.h
+Environment/STPRainDropSetting.cuh
 Environment/STPSetting.hpp
 # /GPGPU/FreeSlip
 GPGPU/FreeSlip/STPFreeSlipData.hpp

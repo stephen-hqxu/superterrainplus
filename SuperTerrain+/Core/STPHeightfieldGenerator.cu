@@ -290,7 +290,7 @@ __host__ void STPHeightfieldGenerator::copyNeighbourEdgeOnly(unsigned short* dev
 		bottom_horizontal = dimension.x * 4u * (dimension.y - 1u);
 
 	for (int i = 0; i < source.size(); i++) {
-		auto perform_copy = [device, stream, map = source[i], &pitch]__host__(size_t start, size_t width_byte, size_t height) -> void {
+		auto perform_copy = [device, stream, map = source[i], pitch]__host__(size_t start, size_t width_byte, size_t height) -> void {
 			STPcudaCheckErr(cudaMemcpy2DAsync(device + start, pitch, map + start, pitch, width_byte, height, cudaMemcpyHostToDevice, stream));
 		};
 
@@ -483,7 +483,7 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 	}
 
 	const uvec2& dimension = heightmap.Data->FreeSlipRange;
-	const static auto float2short = []__device__(float input) -> unsigned short {
+	auto float2short = []__device__(float input) -> unsigned short {
 		return static_cast<unsigned short>(input * 0xFFFFu);
 	};
 
@@ -523,7 +523,7 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 	//Cache index
 	const uvec2 cache = local_thread + 1u;
 	//no need to pass by reference since vec2 type a big as a pointer
-	const auto loadCache = [cacheIdx = cache, horizontalCacheSize = cacheSize.x]__device__(float* cache, ivec2 offset) -> float {
+	auto loadCache = [cacheIdx = cache, horizontalCacheSize = cacheSize.x]__device__(float* cache, ivec2 offset) -> float {
 		const uvec2 coord = static_cast<uvec2>(static_cast<ivec2>(cacheIdx) + offset);
 		return cache[coord.x + coord.y * horizontalCacheSize];
 	};

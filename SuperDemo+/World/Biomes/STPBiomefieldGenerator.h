@@ -70,7 +70,7 @@ namespace STPDemo {
 		 * @param dimension The size of the generated heightmap
 		 * @param interpolation_radius The radius for biome edge interpolation
 		*/
-		STPBiomefieldGenerator(SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&, const glm::uvec2&, unsigned int);
+		STPBiomefieldGenerator(SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&, glm::uvec2, unsigned int);
 
 		STPBiomefieldGenerator(const STPBiomefieldGenerator&) = delete;
 

@@ -66,13 +66,16 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 	int* brushIndices = reinterpret_cast<int*>(ErosionBrush);
 	float* brushWeights = reinterpret_cast<float*>(ErosionBrush + sizeof(int) * settings->getErosionBrushSize());
 	unsigned int iteration = 0u;
+
+	const int* erosionBrushIdx = settings->getErosionBrushIndices();
+	const float* erosionBrushWeight = settings->getErosionBrushWeights();
 	while (iteration < settings->getErosionBrushSize()) {
 		unsigned int idx = threadIdx.x + iteration;
 		if (idx < settings->getErosionBrushSize()) {
 			//check and make sure index is not out of bound
 			//otherwise we can utilise most threads and copy everything in parallel
-			brushIndices[idx] = settings->ErosionBrushIndices[idx];
-			brushWeights[idx] = settings->ErosionBrushWeights[idx];
+			brushIndices[idx] = erosionBrushIdx[idx];
+			brushWeights[idx] = erosionBrushWeight[idx];
 		}
 		//if erosion brush size is greater than number of thread in a block
 		//we need to warp around and reuse some threads to finish the rests
@@ -135,7 +138,7 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 
 			//use erode brush to erode from all nodes inside the droplet's erode radius
 			for (unsigned int brushPointIndex = 0u; brushPointIndex < settings->getErosionBrushSize(); brushPointIndex++) {
-				int erodeIndex = mapIndex + brushIndices[brushPointIndex];
+				const unsigned int erodeIndex = mapIndex + brushIndices[brushPointIndex];
 				const float weightederodeAmout = erodeAmout * brushWeights[brushPointIndex];
 				const float deltaSediment = (map[erodeIndex] < weightederodeAmout) ? map[erodeIndex] : weightederodeAmout;
 				//erode the map

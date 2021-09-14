@@ -12,13 +12,9 @@ STPWorldManager::STPWorldManager() {
 	this->linkStatus = false;
 }
 
-void STPWorldManager::attachSetting(STPEnvironment::STPConfiguration* settings) {
-	//make sure device memory is cleared otherwise it will result in undefined bebaviour
-	settings->getHeightfieldSetting().omitDeviceAvailable();
-	//copy
-	this->WorldSetting = make_unique<STPEnvironment::STPConfiguration>(*settings);
-	//and make managed copy device available
-	this->WorldSetting->getHeightfieldSetting().makeDeviceAvailable();
+void STPWorldManager::attachSetting(STPEnvironment::STPConfiguration& settings) {
+	//move
+	this->WorldSetting = make_unique<STPEnvironment::STPConfiguration>(std::move(settings));
 }
 
 void STPWorldManager::linkProgram(void* indirect_cmd) {

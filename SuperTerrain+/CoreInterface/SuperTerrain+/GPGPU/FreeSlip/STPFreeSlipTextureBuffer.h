@@ -143,10 +143,10 @@ namespace SuperTerrainPlus {
 			 * @brief Init STPFreeSlipTextureBuffer with texture buffer.
 			 * All reference will be retained and caller should guarantee their life-time.
 			 * @param texture The pointer to the pointers of ranged of free-slip texture per chunk which will be used to indexed in a free-slip manner.
-			 * @param data The pointer to texture buffer data, it will be copied to the current object
+			 * @param data The pointer to texture buffer data
 			 * @param attr Texture buffer attribute that will be used to make copy and sharing free-slip texture with other program
 			*/
-			STPFreeSlipTextureBuffer(typename STPFreeSlipTexture&, const STPFreeSlipTextureData&, const STPFreeSlipTextureAttribute&);
+			STPFreeSlipTextureBuffer(typename STPFreeSlipTexture&, STPFreeSlipTextureData, const STPFreeSlipTextureAttribute&);
 
 			STPFreeSlipTextureBuffer(const STPFreeSlipTextureBuffer&) = delete;
 

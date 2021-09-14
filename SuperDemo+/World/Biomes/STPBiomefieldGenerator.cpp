@@ -28,7 +28,7 @@ constexpr static char BiomePropertyFilename[] = "./STPBiomeProperty.hpp";
 const static string device_include = "-I " + string(SuperTerrainPlus::SuperAlgorithmPlus_DeviceInclude),
 core_include = "-I " + string(SuperTerrainPlus::SuperTerrainPlus_CoreInclude);
 
-STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_setting, const uvec2& dimension, unsigned int interpolation_radius)
+STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_setting, uvec2 dimension, unsigned int interpolation_radius)
 	: STPDiversityGeneratorRTC(), Noise_Setting(simplex_setting), MapSize(dimension), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
 	STPcudaCheckErr(cuCtxGetCurrent(&this->cudaCtx));
 	//init our device generator

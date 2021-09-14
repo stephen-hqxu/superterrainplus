@@ -24,12 +24,12 @@ namespace STPDemo {
 		const Seed voronoi_seed;
 
 		static double sqrtDist(Seed seed, int x, int y, int z, double xFrac, double yFrac, double zFrac) {
-			static auto distribute = [](Seed seed) -> double {
-				const double d = static_cast<double>(static_cast<int>((seed >> 24ull) % 1024ull)) / 1024.0;
+			auto distribute = [](Seed seed) -> double {
+				const double d = static_cast<double>(static_cast<unsigned int>(seed >> 24ull) % 1024u) / 1024.0;
 				return (d - 0.5) * 0.9;
 			};
 
-			static auto sqr = [](double n) -> double {
+			auto sqr = [](double n) -> double {
 				return n * n;
 			};
 
