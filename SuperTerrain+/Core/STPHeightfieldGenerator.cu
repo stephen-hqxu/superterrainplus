@@ -471,43 +471,61 @@ __global__ void performErosionKERNEL(STPFreeSlipFloatManager heightmap_storage, 
 	droplet.Erode(static_cast<const SuperTerrainPlus::STPEnvironment::STPRainDropSetting*>(heightfield_settings), heightmap_storage);
 }
 
+constexpr static unsigned short STPRenderingBufferLimit = std::numeric_limits<unsigned short>::max();
+
 __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap, float strength, unsigned short* heightfield) {
 	//the current working pixel
 	const uvec2 block = uvec2(blockIdx.x * blockDim.x, blockIdx.y * blockDim.y),
 		local_thread = uvec2(threadIdx.x, threadIdx.y),
 		thread = local_thread + block;
-	const unsigned int threadperblock = blockDim.x * blockDim.y;
 	const uvec2& freeslip_range = heightmap.Data->FreeSlipRange;
+	const unsigned int textureIndex = thread.x + thread.y * freeslip_range.x;
+	//range check
 	if (thread.x >= freeslip_range.x || thread.y >= freeslip_range.y) {
 		return;
 	}
 
-	const uvec2& dimension = heightmap.Data->FreeSlipRange;
 	auto float2short = []__device__(float input) -> unsigned short {
-		return static_cast<unsigned short>(input * 0xFFFFu);
+		return static_cast<unsigned short>(input * STPRenderingBufferLimit);
 	};
-
 	//Cache heightmap the current thread block needs since each pixel is accessed upto 9 times.
 	extern __shared__ float heightmapCache[];
 	//each thread needs to access a 3x3 matrix around the current pixel, so we need to take the edge into consideration
 	const uvec2 cacheSize = uvec2(blockDim.x, blockDim.y) + 2u;
-	unsigned int iteration = 0u;
-	const unsigned int cacheSize_total = cacheSize.x * cacheSize.y;
 
-	while (iteration < cacheSize_total) {
-		const unsigned int cacheIdx = (threadIdx.x + blockDim.x * threadIdx.y) + iteration;
-		const uvec2 worker = block + uvec2(cacheIdx % cacheSize.x, cacheIdx / cacheSize.x);
-		//worker index may be zero, and 0u - 1u will become UINT32_MAX, so we should cast it to int and it will be come -1 thus correctly clampped
-		const uvec2 clamppeWorkerIdx = static_cast<uvec2>(glm::clamp(static_cast<ivec2>(worker) - 1, ivec2(0), static_cast<ivec2>(dimension - 1u)));
-		const unsigned int workerIdx = clamppeWorkerIdx.x + clamppeWorkerIdx.y * dimension.x;
+	//load the central first
+	//because our cache starts from (x-1, y-1), we need to +1 to the local thread coord to locate the value of the current index
+	//this is the coordinate to grab the same pixel value on cache as on the texture
+	const uvec2 cacheCoord = local_thread + 1u;
+	{
+		const unsigned int cacheIdx = cacheCoord.x + cacheCoord.y * cacheSize.x;
+		heightmapCache[cacheIdx] = heightmap[textureIndex];
+	}
+	//load the halo
+	{
+		const unsigned int threadperblock = blockDim.x * blockDim.y;
+		unsigned int iteration = 0u;
+		const unsigned int cacheSize_total = cacheSize.x * cacheSize.y;
+		while (iteration < cacheSize_total) {
+			//index remapping, expand the freeslip_range to cacheSize
+			const unsigned int cacheIdx = (threadIdx.x + blockDim.x * threadIdx.y) + iteration;
+			const uvec2 remappedLocalWorker = uvec2(cacheIdx % cacheSize.x, cacheIdx / cacheSize.x);
 
-		if (cacheIdx < cacheSize_total) {
-			//make sure index don't get out of bound
-			//start caching from (x-1, y-1) until (x+1, y+1)
-			heightmapCache[cacheIdx] = heightmap[workerIdx];
+			if ((remappedLocalWorker.x == 0u || remappedLocalWorker.y == 0u || remappedLocalWorker.x == cacheSize.x - 1u || remappedLocalWorker.y == cacheSize.y - 1u)
+				&& cacheIdx < cacheSize_total) {
+				//worker index may be zero, and 0u - 1u will become UINT32_MAX, so we should cast it to int and it will be come -1 thus correctly clampped
+				//block + remappedLocalWorker will be called remappedGlobalWorker, and we need to clamp the value when index goes out of bound
+				const uvec2 clamppeGlobalWorkerIdx = static_cast<uvec2>(glm::clamp(static_cast<ivec2>(block + remappedLocalWorker) - 1, ivec2(0), static_cast<ivec2>(freeslip_range - 1u)));
+				const unsigned int remappedGlobalWorkerIdx = clamppeGlobalWorkerIdx.x + clamppeGlobalWorkerIdx.y * freeslip_range.x;
+
+				//we don't want to reload the center cache since we have done it
+				//make sure index don't get out of bound
+				//start caching from heightmap coordinate (x-1, y-1) until (x+1, y+1)
+				heightmapCache[cacheIdx] = heightmap[remappedGlobalWorkerIdx];
+			}
+			//warp around to reuse some threads to finish all compute
+			iteration += threadperblock;
 		}
-		//warp around to reuse some threads to finish all compute
-		iteration += threadperblock;
 	}
 	__syncthreads();
 
@@ -521,10 +539,9 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 	//load the cells from heightmap, remember the height map only contains one color channel
 	//using Sobel fitering
 	//Cache index
-	const uvec2 cache = local_thread + 1u;
 	//no need to pass by reference since vec2 type a big as a pointer
-	auto loadCache = [cacheIdx = cache, horizontalCacheSize = cacheSize.x]__device__(float* cache, ivec2 offset) -> float {
-		const uvec2 coord = static_cast<uvec2>(static_cast<ivec2>(cacheIdx) + offset);
+	auto loadCache = [cacheCoord, horizontalCacheSize = cacheSize.x]__device__(float* cache, ivec2 offset) -> float {
+		const uvec2 coord = static_cast<uvec2>(static_cast<ivec2>(cacheCoord) + offset);
 		return cache[coord.x + coord.y * horizontalCacheSize];
 	};
 
@@ -548,9 +565,9 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 	normal = (glm::clamp(normal, -1.0f, 1.0f) + 1.0f) / 2.0f;
 	
 	//copy to the output, RGBA32F
-	const unsigned int index = heightmap(thread.x + thread.y * dimension.x);
+	const unsigned int index = heightmap(textureIndex);
 	heightfield[index * 4] = float2short(normal.x);//R
 	heightfield[index * 4 + 1] = float2short(normal.y);//G
 	heightfield[index * 4 + 2] = float2short(normal.z);//B
-	heightfield[index * 4 + 3] = float2short(heightmapCache[cache.x + cache.y * cacheSize.x]);//A
+	heightfield[index * 4 + 3] = float2short(loadCache(heightmapCache, ivec2(0)));//A
 }

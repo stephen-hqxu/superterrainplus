@@ -129,13 +129,11 @@ SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk
 			}
 
 			THEN("Chunk state can be changed randomly") {
-				const auto target_state = GENERATE(take(3, values({
-					STPChunk::STPChunkState::Empty,
+				const auto target_state = GENERATE(values({
 					STPChunk::STPChunkState::Biomemap_Ready, 
 					STPChunk::STPChunkState::Heightmap_Ready, 
-					STPChunk::STPChunkState::Erosion_Ready,
-					STPChunk::STPChunkState::Complete
-				})));
+					STPChunk::STPChunkState::Erosion_Ready
+				}));
 				//change chunk status
 				this->markChunkState(target_state);
 				REQUIRE(this->getChunkState() == target_state);

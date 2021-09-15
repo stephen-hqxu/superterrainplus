@@ -1,6 +1,5 @@
 #pragma once
-#include <SuperTerrain+/Environment/STPRainDropSetting.cuh>
-
+//STPRainDropSetting header will be included by the private implementation header
 //Private implementation for the erosion brush generator
 #define STP_RAIN_DROP_SETTING_IMPL
 #include <SuperTerrain+/Environment/STPErosionBrushGenerator.h>

@@ -22,7 +22,7 @@
 #include <SuperTerrain+/Utility/Exception/STPDeadThreadPool.h>
 
 //CUDA
-#include <cuda_runtime.h>
+#include "STPTestInformation.h"
 #include <cuda.h>
 #include <nvrtc.h>
 
@@ -271,6 +271,8 @@ TEMPLATE_TEST_CASE_METHOD_SIG(STPMemoryPool, "STPMemoryPool reuses memory whenev
 
 }
 
+#define VERIFY_DATA() REQUIRE(std::all_of(ReturnedData.get(), ReturnedData.get() + 8, compareData))
+
 SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Utility][STPSmartDeviceMemory]") {
 	
 	GIVEN("A piece of host data that is needed to be copied to device memory") {
@@ -282,13 +284,25 @@ SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Util
 
 		WHEN("A smart device memory is requested") {
 			auto DeviceData = STPSmartDeviceMemory::makeDevice<unsigned int[]>(8);
+			auto StreamedDeviceData = STPSmartDeviceMemory::makeStreamedDevice<unsigned int[]>(STPTestInformation::TestDeviceMemoryPool, 0, 8);
 
 			THEN("Smart device memory can be used like normal memory") {
-				//copy back and forth
-				STPcudaCheckErr(cudaMemcpy(DeviceData.get(), HostData.get(), sizeof(unsigned int) * 8, cudaMemcpyHostToDevice));
-				STPcudaCheckErr(cudaMemcpy(ReturnedData.get(), DeviceData.get(), sizeof(unsigned int) * 8, cudaMemcpyDeviceToHost));
+				constexpr static size_t DataSize = sizeof(unsigned int) * 8ull;
+				auto compareData = [Data](auto i) {
+					return i == Data;
+				};
 
-				REQUIRE(std::all_of(ReturnedData.get(), ReturnedData.get() + 8, [Data](auto i) { return i == Data; }));
+				//copy back and forth
+				//regular device memory
+				STPcudaCheckErr(cudaMemcpy(DeviceData.get(), HostData.get(), DataSize, cudaMemcpyHostToDevice));
+				STPcudaCheckErr(cudaMemcpy(ReturnedData.get(), DeviceData.get(), DataSize, cudaMemcpyDeviceToHost));
+				VERIFY_DATA();
+
+				//stream-ordered device memory
+				STPcudaCheckErr(cudaMemcpyAsync(StreamedDeviceData.get(), HostData.get(), DataSize, cudaMemcpyHostToDevice, 0));
+				STPcudaCheckErr(cudaMemcpyAsync(ReturnedData.get(), StreamedDeviceData.get(), DataSize, cudaMemcpyDeviceToHost, 0));
+				STPcudaCheckErr(cudaStreamSynchronize(0));
+				VERIFY_DATA();
 			}
 
 		}

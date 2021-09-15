@@ -14,12 +14,18 @@
 #include <SuperTerrain+/Utility/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
+//Error
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+
+//Shared Test Data
+#include "STPTestInformation.h"
 
 #include <glm/gtc/type_ptr.hpp>
 
 #include <type_traits>
 #include <algorithm>
 #include <optional>
+#include <random>
 
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPCompute;
@@ -30,9 +36,21 @@ using glm::uvec2;
 
 using std::vector;
 using std::optional;
+using std::unique_ptr;
+using std::make_unique;
+using std::make_pair;
 
 template<typename T>
 class FreeSlipBufferTester {
+private:
+
+	T* CurrentMergedTexture;
+	//only for device memory location
+	T* MergedDevice;
+	unique_ptr<T[]> MergedHost;
+
+	STPFreeSlipLocation CurrentLocation;
+
 protected:
 
 	constexpr static uvec2 SmallDimension = uvec2(4u);
@@ -50,12 +68,55 @@ protected:
 	inline static STPFreeSlipTextureAttribute SmallAttribute{ SmallSize, STPPinnedMemoryPool(), 0 };
 
 	static T getRandomData() {
+		static std::mt19937_64 Generator(GENERATE(take(1, random(0ull, 6666666666ull))));
+
+		T value;
 		if constexpr (std::is_floating_point_v<T>) {
-			return GENERATE(take(1, random(-66666.0f, 66666.0f)));
+			static std::uniform_real_distribution<T> Distribution(-6666.66f, 6666.66f);
+			//2 d.p.
+			value = roundf(Distribution(Generator) * 100.0f) / 100.0f;
 		}
 		else {
-			return GENERATE(take(1, random(0u, 60000u)));
+			static std::uniform_int_distribution<T> Distribution(0u, 16666u);
+			value = Distribution(Generator);
 		}
+		return value;
+	}
+
+	void registerMergedBuffer(STPFreeSlipLocation location, T* buffer) {
+		this->CurrentMergedTexture = buffer;
+		this->CurrentLocation = location;
+
+		if (this->CurrentLocation == STPFreeSlipLocation::DeviceMemory) {
+			typedef FreeSlipBufferTester<T> FBT;
+			//if it's a device memory, we need to copy it to host before we can use it
+			this->MergedDevice = this->CurrentMergedTexture;
+			this->MergedHost = make_unique<T[]>(FBT::SmallSize);
+			STPcudaCheckErr(cudaMemcpyAsync(this->MergedHost.get(), this->MergedDevice, FBT::SmallSize * sizeof(T), cudaMemcpyDeviceToHost, 0));
+			STPcudaCheckErr(cudaStreamSynchronize(0));
+
+			//reassign pointer so later assertions can use it on host side
+			this->CurrentMergedTexture = MergedHost.get();
+		}
+	}
+
+	inline void compareHostDeviceBuffer(T* host_cache, TestMemoryMode mode) {
+		REQUIRE_FALSE(host_cache == this->MergedDevice);
+		CHECKED_ELSE(mode == TestMemoryMode::WriteOnly) {
+			//we can't gurantee the data on both ends is the same on write only mode
+			REQUIRE(std::equal(host_cache, host_cache + FreeSlipBufferTester<T>::SmallSize, this->MergedHost.get()));
+		}
+	}
+
+	inline T* getBuffer() {
+		return this->CurrentMergedTexture;
+	}
+
+	inline void updateDeviceBuffer() {
+		if (this->CurrentLocation == STPFreeSlipLocation::DeviceMemory) {
+			STPcudaCheckErr(cudaMemcpyAsync(this->MergedDevice, this->CurrentMergedTexture, FreeSlipBufferTester<T>::SmallSize * sizeof(T), cudaMemcpyHostToDevice, 0));
+		}
+		//there is no device buffer in host memory mode
 	}
 
 public:
@@ -68,14 +129,22 @@ public:
 		std::copy_n(this->Reference, FreeSlipBufferTester<T>::SmallSize, this->Texture);
 
 		this->TextureBuffer.emplace_back(this->Texture);
+
+		static bool AttrInit = false;
+		if (!AttrInit) {
+			FreeSlipBufferTester::SmallAttribute.DeviceMemPool = STPTestInformation::TestDeviceMemoryPool;
+			AttrInit = true;
+		}
 	}
 
 };
 
 #define WRITE_MERGED() \
-std::fill_n(Merged, CurrentTester::SmallSize, RandomData); \
+std::fill_n(OperatedMergedBuffer, CurrentTester::SmallSize, RandomData); \
+this->updateDeviceBuffer(); \
 REQUIRE_NOTHROW(TestBuffer.reset())
-#define MERGED_AVAILABLE() REQUIRE(Merged[index] == this->Texture[index])
+
+#define MERGED_AVAILABLE() REQUIRE(OperatedMergedBuffer[index] == this->Texture[index])
 #define TEXTURE_WRITTEN() REQUIRE(this->Texture[index] == RandomData)
 
 TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can merge and disintegrate per-chunk texture following the memory mode", 
@@ -98,7 +167,7 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 	}
 
 	GIVEN("A valid array of texture buffer and appropriate memory operation mode") {
-		TestMemoryMode Mode = GENERATE(values({
+		const TestMemoryMode Mode = GENERATE(values({
 			TestMemoryMode::ReadOnly,
 			TestMemoryMode::WriteOnly,
 			TestMemoryMode::ReadWrite
@@ -119,21 +188,42 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 		}
 
 		WHEN("Merge the texture with said memory mode") {
-			TestType* Merged;
+			const STPFreeSlipLocation ChosenLocation = GENERATE(values({
+				STPFreeSlipLocation::HostMemory,
+				STPFreeSlipLocation::DeviceMemory
+			}));
+			//When using device merged buffer, we need to copy it back to host to be able to test it
 
 			THEN("Merging should be successful and return a merged texture") {
-				REQUIRE_NOTHROW([&Merged, &TestBuffer]() {
-					Merged = (*TestBuffer)(STPFreeSlipLocation::HostMemory);
+				TestType* RawMergedBuffer;
+				REQUIRE_NOTHROW([&RawMergedBuffer, &TestBuffer, ChosenLocation]() {
+					RawMergedBuffer = (*TestBuffer)(ChosenLocation);
 				}());
+				this->registerMergedBuffer(ChosenLocation, RawMergedBuffer);
 
 				AND_THEN("Merge location is correct and no reallocation when the merging operation is called again, instead the previously returned memory should be returned") {
-					REQUIRE((*TestBuffer) == STPFreeSlipLocation::HostMemory);
-					REQUIRE((*TestBuffer)(STPFreeSlipLocation::HostMemory) == Merged);
+					REQUIRE((*TestBuffer) == ChosenLocation);
+					REQUIRE((*TestBuffer)(ChosenLocation) == RawMergedBuffer);
+
+					CHECKED_IF(ChosenLocation == STPFreeSlipLocation::DeviceMemory) {
+
+						AND_WHEN("Memory was allocated on device") {
+
+							THEN("A piece of host read-only cache can also be retrieved") {
+								//host memory buffer can be retrieved as well when we are on device mode, the buffer is read only
+								TestType* HostCache = (*TestBuffer)(STPFreeSlipLocation::HostMemory);
+								this->compareHostDeviceBuffer(HostCache, Mode);
+							}
+
+						}
+					}
+
 				}
 
 				AND_THEN("Manipulation on the texture data and disintegrating the data repects the memory mode") {
-					const auto index = GENERATE(take(3, random(0u, 63u)));
+					const auto index = GENERATE(take(2, random(0u, CurrentTester::SmallSize - 1u)));
 					const TestType RandomData = CurrentTester::getRandomData();
+					TestType* const OperatedMergedBuffer = this->getBuffer();
 
 					CHECKED_IF(Mode == TestMemoryMode::ReadOnly) {
 						//test if data is available
@@ -148,7 +238,7 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 					CHECKED_IF(Mode == TestMemoryMode::WriteOnly) {
 						//checking if the merged texture contains garbage data
 						//reading garbage data is a undefined behaviour, so good luck
-						const bool result = Merged[index] == this->Texture[index];
+						const bool result = OperatedMergedBuffer[index] == this->Texture[index];
 						CHECK_FALSE(result);
 						CHECKED_IF(result) {
 							WARN("This assertion involves reading un-initialised memory, re-run this test case a few more times to confirm");
@@ -175,7 +265,16 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 
 }
 
+template<typename T>
 class LocalIndexRef : protected STPFreeSlipGenerator {
+protected:
+
+	typedef SuperTerrainPlus::STPCompute::STPFreeSlipData FSD;
+
+private:
+
+	unique_ptr<FSD> HostDataCache;
+
 protected:
 
 	constexpr static uvec2 Dimension = uvec2(8u, 4u);
@@ -183,34 +282,54 @@ protected:
 	constexpr static uvec2 ChunkRange = Dimension * ChunkUnit;
 
 	inline static STPFreeSlipTextureAttribute IndexAttribute{ Dimension.x * Dimension.y, STPPinnedMemoryPool(), 0 };
-	constexpr static STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData IndexData
-		{ 1u, STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadOnly, 0 };
+	constexpr static typename STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureData IndexData
+		{ 1u, STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureData::STPMemoryMode::ReadOnly, 0 };
+
+	const FSD* prepareData(const STPFreeSlipManager<T>& manager, STPFreeSlipLocation location) {
+		const auto* rawdata = manager.Data;
+
+		if (location == STPFreeSlipLocation::DeviceMemory) {
+			//if the manager data is on device we need to copy it back to host before we can use it
+			this->HostDataCache = make_unique<FSD>();
+			STPcudaCheckErr(cudaMemcpy(this->HostDataCache.get(), rawdata, sizeof(FSD), cudaMemcpyDeviceToHost));
+
+			return this->HostDataCache.get();
+		}
+		return rawdata;
+	}
 
 public:
 
-	Sample Local[ChunkRange.y][ChunkRange.x];
-	vector<Sample*> LocalBuffer;
+	T Local[ChunkRange.y][ChunkRange.x];
+	vector<T*> LocalBuffer;
 
 	LocalIndexRef() : Local(), STPFreeSlipGenerator(LocalIndexRef::ChunkUnit, LocalIndexRef::Dimension) {
 
 		for (unsigned int y = 0u; y < ChunkRange.y; y++) {
 			for (unsigned int x = 0u; x < ChunkRange.x; x++) {
 				//generate a simple texture with local indices
-				this->Local[y][x] = (x + y * ChunkRange.x);
+				this->Local[y][x] = static_cast<T>(x + y * ChunkRange.x);
 			}
 			//push the texture of this chunk
 			this->LocalBuffer.emplace_back(Local[y]);
 		}
+
+		static bool AttrInit = false;
+		if (!AttrInit) {
+			LocalIndexRef::IndexAttribute.DeviceMemPool = STPTestInformation::TestDeviceMemoryPool;
+			AttrInit = true;
+		}
+
 	}
 
-	Sample locate(const uvec2& coordinate) const {
+	T locate(const uvec2& coordinate) const {
 		return this->Local[coordinate.y][coordinate.x];
 	}
 
 };
 
-SCENARIO_METHOD(LocalIndexRef, "STPFreeSlipGenerator generates global-local index table and exports data to STPFreeSlipManagerAdaptor", 
-	"[GPGPU][FreeSlip][STPFreeSlipGenerator]") {
+TEMPLATE_TEST_CASE_METHOD(LocalIndexRef, "STPFreeSlipGenerator generates global-local index table and exports data to STPFreeSlipManagerAdaptor",
+	"[GPGPU][FreeSlip][STPFreeSlipGenerator]", float, Sample) {
 
 	WHEN("Invalid data is given to the generator") {
 		constexpr uvec2 BadChunkUnit = uvec2(56u, 0u);
@@ -231,30 +350,42 @@ SCENARIO_METHOD(LocalIndexRef, "STPFreeSlipGenerator generates global-local inde
 		}
 
 		AND_GIVEN("A loaded free-slip texture buffer") {
-			STPFreeSlipSampleTextureBuffer TextureBuffer(this->LocalBuffer, LocalIndexRef::IndexData, LocalIndexRef::IndexAttribute);
+			STPFreeSlipTextureBuffer<TestType> TextureBuffer(this->LocalBuffer, LocalIndexRef::IndexData, LocalIndexRef::IndexAttribute);
 
 			WHEN("A free-slip adaptor is requested") {
 				auto Adaptor = (*this)(TextureBuffer);
 
 				AND_WHEN("A free-slip manager is generated from the adaptor") {
-					auto Manager = Adaptor(STPFreeSlipLocation::HostMemory);
+					const STPFreeSlipLocation ChosenLocation = GENERATE(values({
+						STPFreeSlipLocation::HostMemory,
+						STPFreeSlipLocation::DeviceMemory
+					}));
+					auto& Manager = Adaptor(ChosenLocation);
 					
 					THEN("Data included in the manager should be consistent") {
-						REQUIRE(Manager.Data->Dimension == LocalIndexRef::Dimension);
-						REQUIRE(Manager.Data->FreeSlipChunk == LocalIndexRef::ChunkUnit);
-						REQUIRE(Manager.Data->FreeSlipRange == LocalIndexRef::ChunkRange);
+						const auto* Data = this->prepareData(Manager, ChosenLocation);
 
-						AND_THEN("Texture can be indexed correctly using global-local index table, and the correctness of index table is verified") {
-							const auto IndexXY = GENERATE(take(5, chunk(2, random(0u, 31u))));
-							const uvec2 Coordinate = glm::make_vec2(IndexXY.data());
-							const unsigned int Local = this->locate(Coordinate);
+						REQUIRE(Data->Dimension == LocalIndexRef::Dimension);
+						REQUIRE(Data->FreeSlipChunk == LocalIndexRef::ChunkUnit);
+						REQUIRE(Data->FreeSlipRange == LocalIndexRef::ChunkRange);
 
-							//index table correctness, our texture simply converts 2D coordinate to 1D index
-							//when texture is flatten in the manager, the relationship is simply:
-							//Texture[Index] = Index ==Implies==> Manager[Local] == Texture[Manager(Local)]
-							REQUIRE(Manager[Local] == Manager(Local));
-							//symmetric, convert to global index and then back to local index
-							REQUIRE(Manager[Manager[Local]] == Local);
+						CHECKED_IF(ChosenLocation == STPFreeSlipLocation::HostMemory) {
+							//we don't need to check the device texture since we have tested free-slip texture buffer
+							//which guarantees the texture on device is the same as host
+
+							AND_THEN("Texture can be indexed correctly using global-local index table, and the correctness of index table is verified") {
+								const auto IndexXY = GENERATE(take(5, chunk(2, random(0u, 31u))));
+								const uvec2 Coordinate = glm::make_vec2(IndexXY.data());
+								const unsigned int Local = this->locate(Coordinate);
+
+								//index table correctness, our texture simply converts 2D coordinate to 1D index
+								//when texture is flatten in the manager, the relationship is simply:
+								//Texture[Index] = Index ==Implies==> Manager[Local] == Texture[Manager(Local)]
+								REQUIRE(Manager[Local] == Manager(Local));
+								//symmetric, convert to global index and then back to local index
+								REQUIRE(Manager[Manager[Local]] == Local);
+							}
+
 						}
 
 					}

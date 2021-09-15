@@ -8,11 +8,13 @@ find_package(Catch2 3 REQUIRED CONFIG)
 add_executable(${STP_UNIT_TEST}
 # Reporter/
 Reporter/STPConsoleReporter.cpp
+# Test engine starter
+STPTestInformation.h
+STPTestMain.cpp
 # Main test code
 STPTest2DBiome.cpp
 STPTest2DChunk.cpp
 STPTestFreeSlip.cpp
-STPTestMain.cpp
 STPTestRTC.cpp
 STPTestUtility.cpp
 # SuperAlgorithm+ test code
