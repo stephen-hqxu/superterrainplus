@@ -33,7 +33,7 @@ constexpr static __constant__ float H2 = static_cast<float>(-1.0 + 2.0 * G2);
  * @param v2y vector 2 y
  * @return The result
 */
-__device__ __forceinline__ float dot2D(float, float, float, float);
+__device__ __forceinline__ constexpr static float dot2D(float, float, float, float);
 
 __device__ STPSimplexNoise::STPSimplexNoise(const STPPermutation& permutation) : Permutation(permutation) {
 
@@ -115,6 +115,6 @@ __device__ float STPSimplexNoise::simplex2D(float x, float y) const {
 	return 70.0f * (corner[0] + corner[1] + corner[2]);
 }
 
-__device__ __forceinline__ float dot2D(float v1x, float v1y, float v2x, float v2y) {
+__device__ __forceinline__ constexpr static float dot2D(float v1x, float v1y, float v2x, float v2y) {
 	return v1x * v2x + v1y * v2y;
 }

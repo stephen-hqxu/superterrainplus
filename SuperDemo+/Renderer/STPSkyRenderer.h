@@ -184,9 +184,9 @@ namespace STPDemo {
 		 * PV matrix are sent via SSBO
 		 * @param frametime Time elapsed on each frame
 		*/
-		void render(const double& frametime) {
+		void render(double frametime) {
 			//timer for animations
-			auto getRotations = [frametime](const float rotatingSpeed, float& rotations) -> mat4 {
+			auto getRotations = [frametime](float rotatingSpeed, float& rotations) -> mat4 {
 				mat4 model = identity<mat4>();
 				rotations += rotatingSpeed * static_cast<float>(frametime);
 				//keeping the range [0,360], otherwise the float will become huge if the game keeps running
@@ -196,7 +196,7 @@ namespace STPDemo {
 
 				return glm::rotate(model, radians(rotations), vec3(0.0f, 1.0f, 0.0f));
 			};
-			auto getDayNightFactor = [&frametime](const float cyclingSpeed, int& tick) -> float {
+			auto getDayNightFactor = [frametime](float cyclingSpeed, int& tick) -> float {
 				float factor = 0.0f;
 				if (tick <= 11000) {//day
 					factor = glm::smoothstep<float>(8000.0f, 11000.0f, tick * 1.0f);

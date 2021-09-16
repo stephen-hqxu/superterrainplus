@@ -21,12 +21,9 @@ using namespace SuperTerrainPlus::STPCompute;
 using std::vector;
 using std::mutex;
 using std::unique_lock;
-using std::unique_ptr;
 using std::optional;
 using std::move;
 using std::make_unique;
-using std::current_exception;
-using std::rethrow_exception;
 
 //GLM
 #include <glm/vec3.hpp>
@@ -130,7 +127,7 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 
 	int Mingridsize, gridsize, blocksize;
 	//Retrieve all flags
-	auto isFlagged = []__host__(STPGeneratorOperation op, STPGeneratorOperation flag) -> bool {
+	static auto isFlagged = []__host__(STPGeneratorOperation op, STPGeneratorOperation flag) constexpr -> bool {
 		return (op & flag) != 0u;
 	};
 	const bool flag[3] = {
@@ -211,7 +208,8 @@ __host__ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGenera
 				STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData heightfield_data{ 4u, STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::WriteOnly, stream };
 				heightfield_buffer.emplace(args.Heightfield16UI, heightfield_data, this->TextureBufferAttr);
 
-				auto det_cacheSize = []__host__ __device__(int blockSize) -> size_t {
+				//cuda does not allow host device lambda to be constexpr
+				static auto det_cacheSize = []__host__ __device__(int blockSize) -> size_t {
 					return (blockSize + 2u) * sizeof(float);
 				};
 				STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSizeVariableSMem(&Mingridsize, &blocksize, &generateRenderingBufferKERNEL, det_cacheSize));
@@ -485,7 +483,7 @@ __global__ void generateRenderingBufferKERNEL(STPFreeSlipFloatManager heightmap,
 		return;
 	}
 
-	auto float2short = []__device__(float input) -> unsigned short {
+	static auto float2short = []__device__(float input) constexpr -> unsigned short {
 		return static_cast<unsigned short>(input * STPRenderingBufferLimit);
 	};
 	//Cache heightmap the current thread block needs since each pixel is accessed upto 9 times.

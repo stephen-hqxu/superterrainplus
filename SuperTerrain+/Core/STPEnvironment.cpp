@@ -41,9 +41,23 @@ STPChunkSetting::STPChunkSetting() : STPSetting(),
 }
 
 bool STPChunkSetting::validate() const {
-	return this->ChunkScaling > 0.0f
-		&& this->FreeSlipChunk.x >= 1u
-		&& this->FreeSlipChunk.y >= 1u;
+	static auto isOdd = [](uvec2 num) constexpr -> bool {
+		constexpr uvec2 VecOne = uvec2(1u);
+		return (num & VecOne) == VecOne;
+	};
+
+	return this->ChunkSize.x > 0u
+		&& this->ChunkSize.y > 0u
+		&& this->MapSize.x > 0u
+		&& this->MapSize.y > 0u
+		&& this->RenderedChunk.x > 0u
+		&& this->RenderedChunk.y > 0u
+		&& this->ChunkScaling > 0.0f
+		&& this->FreeSlipChunk.x > 0u
+		&& this->FreeSlipChunk.y > 0u
+		//number validation
+		&& isOdd(this->RenderedChunk)
+		&& isOdd(this->FreeSlipChunk);
 }
 
 //STPHeightfieldSetting.h
@@ -55,7 +69,7 @@ STPHeightfieldSetting::STPHeightfieldSetting() : STPRainDropSetting(),
 }
 
 bool STPHeightfieldSetting::validate() const {
-	static auto checkRange = [](float value, float lower, float upper) -> bool {
+	static auto checkRange = [](float value, float lower, float upper) constexpr -> bool {
 		return value >= lower && value <= upper;
 	};
 	//check the raindrop parameter plus also heightmap parameter

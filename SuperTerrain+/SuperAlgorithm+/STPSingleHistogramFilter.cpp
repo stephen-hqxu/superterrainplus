@@ -103,7 +103,7 @@ private:
 		const size_t current_size = this->size();
 
 		//allocate a cache
-		auto deleter = [](T* ptr, RebindAlloc alloc, size_t size) -> void {
+		static auto deleter = [](T* ptr, RebindAlloc alloc, size_t size) -> void {
 			//ptr is trivially destructor so we don't need to call destroy
 			AllocTr::deallocate(alloc, ptr, size);
 		};
@@ -503,7 +503,7 @@ STPSingleHistogramFilter::STPSingleHistogramFilter() : filter_worker(STPSingleHi
 STPSingleHistogramFilter::~STPSingleHistogramFilter() = default;
 
 void STPSingleHistogramFilter::copy_to_buffer(STPDefaultHistogramBuffer& target, STPAccumulator& acc, bool normalise) {
-	auto [acc_beg, acc_end] = acc();
+	const auto [acc_beg, acc_end] = acc();
 	target.HistogramStartOffset.emplace_back(static_cast<unsigned int>(target.Bin.size()));
 
 	//instead of using the slow back_inserter, we can resize the array first
@@ -518,7 +518,7 @@ void STPSingleHistogramFilter::copy_to_buffer(STPDefaultHistogramBuffer& target,
 			acc_beg,
 			acc_end,
 			target_dest_begin,
-			[sum](STPSingleHistogram::STPBin bin) {
+			[sum](auto bin) {
 				//we need to make a copy
 				bin.Data.Weight = 1.0f * bin.Data.Quantity / sum;
 				return bin;

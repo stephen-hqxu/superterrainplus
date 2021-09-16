@@ -28,7 +28,7 @@ namespace SuperTerrainPlus {
 		 * @brief STPFreeSlipGenerator provides a center chunk for erosion and some neighbour chunks that hold data access out of the center chunk.
 		 * It will the convert global index to local index, such that indeices can "free slip" out of the center chunk.
 		*/
-		class STP_API STPFreeSlipGenerator : private STPFreeSlipData {
+		class STP_API STPFreeSlipGenerator {
 		public:
 
 			/**
@@ -81,6 +81,7 @@ namespace SuperTerrainPlus {
 
 		private:
 
+			STPFreeSlipData Data;
 			//Make a copy of global-local index table on host side
 			std::unique_ptr<unsigned int[]> Index_Host;
 			//Same for device side

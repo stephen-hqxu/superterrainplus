@@ -14,6 +14,7 @@ STPTestMain.cpp
 # Main test code
 STPTest2DBiome.cpp
 STPTest2DChunk.cpp
+STPTestEnvironment.cpp
 STPTestFreeSlip.cpp
 STPTestRTC.cpp
 STPTestUtility.cpp

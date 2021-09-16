@@ -36,6 +36,10 @@ void STPRainDropSetting::STPErosionBrushGenerator::operator()(uvec2 slipRange, u
 		//radius must be greater than 0
 		throw STPException::STPBadNumericRange("Erosion brush radius must be a positive integer");
 	}
+	if (slipRange.x == 0u || slipRange.y == 0u) {
+		//none of the component should be zero
+		throw STPException::STPBadNumericRange("Both components in free-slip range should be positive");
+	}
 
 	const int radius = static_cast<int>(erodeRadius);
 	double weightSum = 0.0;
@@ -45,8 +49,9 @@ void STPRainDropSetting::STPErosionBrushGenerator::operator()(uvec2 slipRange, u
 	for (int brushY = -radius; brushY <= radius; brushY++) {
 		for (int brushX = -radius; brushX <= radius; brushX++) {
 			if (double sqrDst = 1.0 * brushX * brushX + brushY * brushY * 1.0; 
-				sqrDst < radius * radius) {//The brush lies within the erosion range
-				this->ErosionBrushIndicesCache.emplace_back(brushY * slipRange.x + brushX);
+				sqrDst < radius * radius) {
+				//The brush lies within the erosion range
+				this->ErosionBrushIndicesCache.emplace_back(brushY * static_cast<int>(slipRange.x) + brushX);
 				currentbrushWeight = 1 - sqrt(sqrDst) / radius;
 				weightSum += currentbrushWeight;
 				this->ErosionBrushWeightsCache.emplace_back(static_cast<float>(currentbrushWeight));

@@ -267,13 +267,9 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 
 template<typename T>
 class LocalIndexRef : protected STPFreeSlipGenerator {
-protected:
-
-	typedef SuperTerrainPlus::STPCompute::STPFreeSlipData FSD;
-
 private:
 
-	unique_ptr<FSD> HostDataCache;
+	unique_ptr<STPFreeSlipData> HostDataCache;
 
 protected:
 
@@ -285,13 +281,13 @@ protected:
 	constexpr static typename STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureData IndexData
 		{ 1u, STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureData::STPMemoryMode::ReadOnly, 0 };
 
-	const FSD* prepareData(const STPFreeSlipManager<T>& manager, STPFreeSlipLocation location) {
+	const STPFreeSlipData* prepareData(const STPFreeSlipManager<T>& manager, STPFreeSlipLocation location) {
 		const auto* rawdata = manager.Data;
 
 		if (location == STPFreeSlipLocation::DeviceMemory) {
 			//if the manager data is on device we need to copy it back to host before we can use it
-			this->HostDataCache = make_unique<FSD>();
-			STPcudaCheckErr(cudaMemcpy(this->HostDataCache.get(), rawdata, sizeof(FSD), cudaMemcpyDeviceToHost));
+			this->HostDataCache = make_unique<STPFreeSlipData>();
+			STPcudaCheckErr(cudaMemcpy(this->HostDataCache.get(), rawdata, sizeof(STPFreeSlipData), cudaMemcpyDeviceToHost));
 
 			return this->HostDataCache.get();
 		}

@@ -9,8 +9,6 @@
 
 //CUDA Runtime
 #include <cuda_runtime.h>
-//ADT
-#include <list>
 //Settings
 #include "../Environment/STPRainDropSetting.cuh"
 //Free slipper

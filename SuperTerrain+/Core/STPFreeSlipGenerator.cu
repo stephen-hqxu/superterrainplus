@@ -52,7 +52,7 @@ __host__ STPFreeSlipManager<T> STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<T
 	switch (location) {
 	case STPFreeSlipLocation::HostMemory:
 		//free-slip manager requires a host index table
-		data = dynamic_cast<const STPFreeSlipData*>(&this->Generator);
+		data = &this->Generator.Data;
 		break;
 	case STPFreeSlipLocation::DeviceMemory:
 		//free-slip manager requires a device index table
@@ -71,8 +71,8 @@ template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<float>;
 template class STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<Sample>;
 
 __host__ STPFreeSlipGenerator::STPFreeSlipGenerator(uvec2 range, uvec2 mapSize) : 
-	STPFreeSlipData{ nullptr, mapSize, range, range * mapSize } {
-	if (this->FreeSlipRange.x == 0u || this->FreeSlipRange.y == 0u) {
+	Data{ nullptr, mapSize, range, range * mapSize } {
+	if (this->Data.FreeSlipRange.x == 0u || this->Data.FreeSlipRange.y == 0u) {
 		throw STPException::STPBadNumericRange("Dimension or/and free-slip chunk size should not be zero");
 	}
 
@@ -85,7 +85,7 @@ __host__ STPFreeSlipGenerator::~STPFreeSlipGenerator() {
 }
 
 __host__ void STPFreeSlipGenerator::initLocalGlobalIndexCUDA() {
-	const uvec2& global_dimension = this->FreeSlipRange;
+	const uvec2& global_dimension = this->Data.FreeSlipRange;
 	const size_t index_count = global_dimension.x * global_dimension.y;
 	
 	//launch parameters
@@ -99,7 +99,8 @@ __host__ void STPFreeSlipGenerator::initLocalGlobalIndexCUDA() {
 	//allocation
 	this->Index_Device = STPSmartDeviceMemory::makeDevice<unsigned int[]>(index_count);
 	//compute
-	initGlobalLocalIndexKERNEL << <dim3(Dimgridsize.x, Dimgridsize.y), dim3(Dimblocksize.x, Dimblocksize.y) >> > (this->Index_Device.get(), global_dimension.x, this->FreeSlipChunk, global_dimension, this->Dimension);
+	initGlobalLocalIndexKERNEL << <dim3(Dimgridsize.x, Dimgridsize.y), dim3(Dimblocksize.x, Dimblocksize.y) >> > (
+		this->Index_Device.get(), global_dimension.x, this->Data.FreeSlipChunk, global_dimension, this->Data.Dimension);
 	STPcudaCheckErr(cudaGetLastError());
 	STPcudaCheckErr(cudaDeviceSynchronize());
 
@@ -107,24 +108,24 @@ __host__ void STPFreeSlipGenerator::initLocalGlobalIndexCUDA() {
 	//the copy that the generator inherited is a host copy, the host pointer is managed by unique_ptr
 	this->Index_Host = make_unique<unsigned int[]>(index_count);
 	STPcudaCheckErr(cudaMemcpy(this->Index_Host.get(), this->Index_Device.get(), sizeof(unsigned int) * index_count, cudaMemcpyDeviceToHost));
-	this->GlobalLocalIndex = this->Index_Host.get();
+	this->Data.GlobalLocalIndex = this->Index_Host.get();
 	//get a device version of free-slip data
-	STPFreeSlipData device_buffer(dynamic_cast<const STPFreeSlipData&>(*this));
+	STPFreeSlipData device_buffer(Data);
 	device_buffer.GlobalLocalIndex = this->Index_Device.get();
 	this->Data_Device = STPSmartDeviceMemory::makeDevice<STPFreeSlipData>();
 	STPcudaCheckErr(cudaMemcpy(this->Data_Device.get(), &device_buffer, sizeof(STPFreeSlipData), cudaMemcpyHostToDevice));
 }
 
 __host__ const uvec2& STPFreeSlipGenerator::getDimension() const {
-	return this->Dimension;
+	return this->Data.Dimension;
 }
 
 __host__ const uvec2& STPFreeSlipGenerator::getFreeSlipChunk() const {
-	return this->FreeSlipChunk;
+	return this->Data.FreeSlipChunk;
 }
 
 __host__ const uvec2& STPFreeSlipGenerator::getFreeSlipRange() const {
-	return this->FreeSlipRange;
+	return this->Data.FreeSlipRange;
 }
 
 #define GET_MANAGER(TYPE) \
