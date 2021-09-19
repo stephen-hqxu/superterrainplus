@@ -17,6 +17,7 @@ STPLayerManager.cpp
 STPMemoryPool.cpp
 STPSeedMixer.cpp
 STPSmartStream.cpp
+STPTextureDatabase.cpp
 STPThreadPool.cpp
 
 STPFreeSlipGenerator.cu

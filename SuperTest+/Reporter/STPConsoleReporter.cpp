@@ -3,6 +3,8 @@
 //System
 #include <iostream>
 #include <sstream>
+#include <string_view>
+#include <type_traits>
 //Base reporter
 #include <catch2/internal/catch_compiler_capabilities.hpp>
 #include <catch2/catch_reporter_registrars.hpp>
@@ -19,12 +21,19 @@ using std::endl;
 
 using std::string;
 using std::stringstream;
+using std::string_view;
 
 /**
  * @brief STPConsoleReporter is a test reporter for SuperTerrain+, it outputs a human-readable test report and is best suited for console output.
 */
-class STPConsoleReporter : public CumulativeReporterBase {
+class STPConsoleReporter final : public CumulativeReporterBase {
 private:
+
+	template<class S>
+	constexpr static inline string_view getView(const S& str) {
+		static_assert(std::disjunction_v<std::is_same<S, string>, std::is_same<S, Catch::StringRef>>);
+		return string_view(str.data());
+	}
 
 	/**
 	 * @brief Emit text that exceeds the width of the console and auto wrap it to the next line.
@@ -34,25 +43,25 @@ private:
 	 * If text does not exceed the line limit, it will simply emit the text
 	 * @return The last line of the wrap
 	*/
-	string emitWrapped(string text, size_t reserve = 0ull) const {
+	string_view emitWrapped(string_view text, size_t reserve = 0ull) const {
 		while (text.size() > CATCH_CONFIG_CONSOLE_WIDTH - reserve) {
 			//we do not wish to break a single word into half, instead of wrap it when it's a space
 			//find the last space in the emit string
 			const size_t emitStart = text.rfind(' ', CATCH_CONFIG_CONSOLE_WIDTH - reserve);
-			if (emitStart == string::npos) {
+			if (emitStart == string_view::npos) {
 				//the entire width of text has no space, simply break the text
 				const size_t breakLength = CATCH_CONFIG_CONSOLE_WIDTH - reserve - 1ull;
-				const string emit = text.substr(0ull, breakLength) + '-';
+				const string emit = string(text.substr(0ull, breakLength)) + '-';
 				//prune thet original string
-				text.erase(0ull, breakLength);
+				text.remove_prefix(breakLength);
 				
 				//output
 				this->stream << emit << endl;
 				continue;
 			}
-			const string emit = text.substr(0ull, emitStart + 1ull);
+			const string_view emit = text.substr(0ull, emitStart + 1ull);
 			//prune
-			text.erase(0ull, emit.size());
+			text.remove_prefix(emit.size());
 
 			//output
 			this->stream << emit << endl;
@@ -66,8 +75,8 @@ private:
 	 * @brief Emit a text to the stream that is centred at the console
 	 * @param text The text to be centred
 	*/
-	void emitCentreString(const string& text) const {
-		auto centreStr = [&stream = this->stream](const string& text) -> void {
+	void emitCentreString(const string_view& text) const {
+		auto centreStr = [&stream = this->stream](const string_view& text) -> void {
 			auto emit_border = [&stream](size_t border_size) -> void {
 				for (size_t i = 0ull; i < border_size / 2ull; i++) {
 					stream << ' ';
@@ -90,7 +99,7 @@ private:
 
 		if (text.size() > CATCH_CONFIG_CONSOLE_WIDTH) {
 			//cannot centre the tetx because it's too wide, wrap it
-			const string lastLine = this->emitWrapped(text);
+			const string_view lastLine = this->emitWrapped(text);
 			//and centre the last line
 			centreStr(lastLine);
 			return;
@@ -105,7 +114,7 @@ private:
 	 * @param text The text to be aligned right
 	 * @param color The color of the emited text
 	*/
-	inline void emitRightString(size_t border_size, const string& text, Colour color) const {
+	inline void emitRightString(size_t border_size, const string_view& text, Colour color) const {
 		const size_t emit_length = CATCH_CONFIG_CONSOLE_WIDTH - border_size - text.size();
 		for (size_t i = 0ull; i < emit_length; i++) {
 			this->stream << ' ';
@@ -144,7 +153,8 @@ private:
 	void writeSection(const CumulativeReporterBase::SectionNode* section, unsigned short depth = 0u) const {
 		const auto& sec_stats = section->stats;
 		//reserve some spaces some the status tag at the end
-		const string& sec_name = this->emitWrapped(sec_stats.sectionInfo.name, 6ull);
+		const string indented_sec = string(depth * 2u, '-') + "> " + sec_stats.sectionInfo.name;
+		const string_view sec_name = this->emitWrapped(STPConsoleReporter::getView(indented_sec), 6ull);
 
 		//print the current section
 		this->stream << sec_name;
@@ -185,7 +195,7 @@ private:
 						break;
 					}
 					this->stream << "==>" << Colour(output_color) << info.message << endl;
-					this->stream << "::" << info.lineInfo.line << '(' << info.lineInfo.file << ')' << endl;
+					this->stream << info.lineInfo << endl;
 				}
 			}
 			//bring up user's attention with error message
@@ -218,15 +228,11 @@ public:
 
 	~STPConsoleReporter() = default;
 
-	static string getDescription() {
+	constexpr static inline char* getDescription() {
 		return "The default reporter for project super terrain +, with a nice layout of all test cases and sections";
 	}
 
 	/* Override some functions in CumulativeReporterBase */
-
-	void noMatchingTestCases(const string& spec) override {
-		this->stream << spec << endl;
-	}
 
 	//emit all results after the test run
 	void testRunEndedCumulative() override {
@@ -235,7 +241,7 @@ public:
 
 		const auto* run = m_testRun.get();
 		//write the information about the current run
-		this->emitCentreString(run->value.runInfo.name);
+		this->emitCentreString(STPConsoleReporter::getView(run->value.runInfo.name));
 		this->emitSymbol('.');
 
 		//for each test case in a run
@@ -246,7 +252,7 @@ public:
 			this->emitSymbol('-');
 			stringstream testcase_ss;
 			testcase_ss << Colour(Colour::FileName) << testcase_info->name;
-			this->stream << this->emitWrapped(testcase_ss.str()) << endl;
+			this->stream << this->emitWrapped(STPConsoleReporter::getView(testcase_ss.str())) << endl;
 			this->emitSymbol('-');
 
 			//for each section in a test case
