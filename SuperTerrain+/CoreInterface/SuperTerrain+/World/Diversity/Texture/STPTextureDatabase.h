@@ -4,11 +4,13 @@
 
 #include <SuperTerrain+/STPCoreDefine.h>
 //Container
-#include <map>
 #include <unordered_map>
+#include <array>
 #include <utility>
 //System
 #include <string>
+#include <tuple>
+#include <type_traits>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -154,12 +156,24 @@ namespace SuperTerrainPlus {
 		private:
 
 			//Given a texture type, find the group ID associated with this texture ID with this type
-			typedef std::map<STPTextureType, STPTextureGroup::STPTextureGroupID> STPTypeGroupMapping;
+			typedef std::unordered_map<STPTextureType, STPTextureGroup::STPTextureGroupID> STPTypeGroupMapping;
 
 			//All textuer groups owned by the database
 			std::unordered_map<STPTextureGroup::STPTextureGroupID, STPTextureGroup> TextureGroupRecord;
 			//Given a textuer ID, find all textuer types related to this ID as well as the group ID where this type of textuer is in
 			std::unordered_map<STPTextureID, STPTypeGroupMapping> TextureTypeMapping;
+
+			/**
+			 * @brief Expand parameter packs for addTextures() template function and group parameters into callable arguments for non-template function
+			 * TODO: make this a lamda template in C++20
+			 * @tparam ...Arg All parameters passed as parameter pack
+			 * @param texture_id The texture ID to be operated on
+			 * @param Striding index sequence to index the tuple
+			 * @param args The argument to be expanded
+			 * @return An array of bool denoting the status
+			*/
+			template<size_t... Is, class... Arg>
+			auto expandAddTextures(STPTextureID, std::index_sequence<Is...>, std::tuple<Arg...>);
 
 		public:
 
@@ -212,7 +226,7 @@ namespace SuperTerrainPlus {
 			STPTextureGroup::STPTextureGroupID addGroup(const STPTextureDescription&);
 
 			/**
-			 * @brief Add a new texture data in the texture database
+			 * @brief Add a new texture data to the texture database
 			 * @param texture_id The ID of the texture, it may point to multiple texture of different types
 			 * @param type The type of the texture, to identify a specific texture for a texture ID
 			 * @param group_id The ID of the texture group. All texture in the same group must have the same texture description
@@ -223,8 +237,22 @@ namespace SuperTerrainPlus {
 			*/
 			bool addTexture(STPTextureID, STPTextureType, STPTextureGroup::STPTextureGroupID, const void*);
 
+			/**
+			 * @brief For a texture ID, add a sequence of texture data with different types to the texture to the texture database
+			 * @tparam ...Ret A tuple of booleans to indicate insert status
+			 * @tparam ...Arg Sequence of arguments for adding texture
+			 * @param texture_id The texture ID to be added
+			 * @param ...args A sequence of argument packs to add the texture data. See the non-template version of addTexture()
+			 * The last 3 arguments can be repeated
+			 * @return An array of insertion status in order.
+			 * False for an element if insertion did not take place for the parameter group
+			*/
+			template<class... Arg>
+			auto addTextures(STPTextureID, Arg&&...);
+
 		};
 
 	}
 }
+#include "STPTextureDatabase.inl"
 #endif//_STP_TEXTURE_DATABASE_H_

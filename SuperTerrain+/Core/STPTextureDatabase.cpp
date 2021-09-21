@@ -1,5 +1,4 @@
-#pragma once
-#include <SuperTerrain+/World/Diversity/STPTextureDatabase.h>
+#include <SuperTerrain+/World/Diversity/Texture/STPTextureDatabase.h>
 
 //Error
 #include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
