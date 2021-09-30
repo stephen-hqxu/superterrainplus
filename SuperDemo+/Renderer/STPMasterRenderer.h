@@ -67,7 +67,7 @@ namespace STPDemo {
 		//camera matrix
 		mat4 Projection, View;
 		GLuint PVmatrix;//ssbo, layout: view, view_notrans(for skybox), projection
-		char* PVblock_mapped = nullptr;//The persistent PVblock mapping
+		unsigned char* PVblock_mapped = nullptr;//The persistent PVblock mapping
 
 		SglToolkit::SgTCamera*& Camera;
 		SIMPLE::SIStorage& engineSettings;
@@ -95,7 +95,7 @@ namespace STPDemo {
 			//assign pvmatrix to ssbo block index 0
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, this->PVmatrix);
 			//each char uses 1 byte, that makes pointer arithmetric easier
-			PVblock_mapped = reinterpret_cast<char*>(glMapNamedBufferRange(this->PVmatrix, 0, sizeof(mat4) * 3, 
+			PVblock_mapped = reinterpret_cast<unsigned char*>(glMapNamedBufferRange(this->PVmatrix, 0, sizeof(mat4) * 3, 
 				GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
 		}
 

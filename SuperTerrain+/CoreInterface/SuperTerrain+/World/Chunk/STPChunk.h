@@ -75,11 +75,11 @@ namespace SuperTerrainPlus {
 
 		STPChunk(const STPChunk&) = delete;
 
-		STPChunk(STPChunk&&) = default;
+		STPChunk(STPChunk&&) noexcept = default;
 
 		STPChunk& operator=(const STPChunk&) = delete;
 
-		STPChunk& operator=(STPChunk&&) = default;
+		STPChunk& operator=(STPChunk&&) noexcept = default;
 
 		~STPChunk();
 

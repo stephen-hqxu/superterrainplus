@@ -29,25 +29,10 @@ namespace SuperTerrainPlus {
 		 * @brief The hash function for the glm::vec2
 		*/
 		struct STPHashvec2 {
-		private:
-
-			std::hash<float> hasher;
-
-			/**
-			 * @brief Hash one value, combining with the previous hash value
-			 * @param seed The previous seed value
-			 * @param value The current value to be hashed
-			*/
-			void hashSeed(size_t&, float) const;
-
 		public:
 
-			/**
-			 * @brief Hash function for the pair
-			 * @param position The position represented by the vector
-			 * @return The hash of the pair
-			*/
 			size_t operator()(const glm::vec2&) const;
+
 		};
 
 	private:

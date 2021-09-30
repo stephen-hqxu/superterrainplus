@@ -210,9 +210,9 @@ public:
 		if (it < this->cend() - 1ull) {
 			//it's not the last element, we need to move the memory forward
 			//there's nothing to move if it's the last element, plus it may trigger undefined behaviour because end pointer should not be dereferenced
-			STPArrayList_it move_start = it + 1ull;
-			//memmove will auto-manage the case when size == 0
-			memmove(it, move_start, (this->cend() - move_start) * sizeof(T));
+			//move_start is out of the range of [first, last) so we are good to use
+			//no need to use std::move because T is known to be a PoD
+			std::copy(const_cast<STPArrayList_cit>(it) + 1ull, this->cend(), it);
 		}
 		
 		//correct the internal iterator
@@ -454,12 +454,9 @@ public:
 		unsigned int& quant = bin.Data.Quantity;
 
 		if (quant <= count) {
-			//bin will become empty, erase this bin and dictionary entry
-			const unsigned int followed_index = this->Bin.erase(this->Bin.begin() + bin_index) - this->Bin.begin();
-			bin_index = NO_ENTRY;
-
 			//update the dictionary entries linearly, basically it's a rehash in hash table
-			std::transform(this->Dictionary.cbegin(), this->Dictionary.cend(), this->Dictionary.begin(), [followed_index](auto dic) {
+			std::transform(this->Dictionary.cbegin(), this->Dictionary.cend(), this->Dictionary.begin(), 
+				[followed_index = static_cast<unsigned int>(this->Bin.erase(this->Bin.begin() + bin_index) - this->Bin.begin())](auto dic) {
 				//since all subsequent indices followed by the erased bin has been advanced forward by one block
 				//we need to subtract the indices recorded in dictionary for those entries by one.
 				if (dic == NO_ENTRY || dic <= followed_index) {
@@ -467,6 +464,8 @@ public:
 				}
 				return dic - 1u;
 			});
+			//bin will become empty, erase this bin and dictionary entry
+			bin_index = NO_ENTRY;
 
 			return;
 		}

@@ -1,5 +1,8 @@
 #include <SuperTerrain+/World/Chunk/STPChunkStorage.h>
 
+//Hasher
+#include <SuperTerrain+/Utility/STPHashCombine.h>
+
 using glm::vec2;
 using glm::uvec2;
 
@@ -7,16 +10,11 @@ using std::make_pair;
 
 using namespace SuperTerrainPlus;
 
-void STPChunkStorage::STPHashvec2::hashSeed(size_t& seed, float value) const {
-	seed ^= this->hasher(value) + 0x9e3779b9ull + (seed << 6ull) + (seed >> 2ull);
-}
-
 size_t STPChunkStorage::STPHashvec2::operator()(const vec2& position) const {
 	size_t seed = 0ull;
 
-	//hash_combine in Boost library
-	this->hashSeed(seed, position.x);
-	this->hashSeed(seed, position.y);
+	//combine hash
+	STPHashCombine::combineAll(seed, position.x, position.y);
 
 	return seed;
 }
@@ -26,7 +24,7 @@ STPChunkStorage::STPChunkStorage() {
 }
 
 STPChunkStorage::STPChunkConstructed STPChunkStorage::construct(vec2 chunkPos, uvec2 mapSize) {
-	auto [it, inserted] = this->TerrainMap2D.emplace(chunkPos, mapSize);
+	auto [it, inserted] = this->TerrainMap2D.try_emplace(chunkPos, mapSize);
 	return make_pair(inserted, &it->second);
 }
 

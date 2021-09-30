@@ -10,6 +10,7 @@
 //Container
 #include <list>
 #include <map>
+#include <vector>
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -44,10 +45,18 @@ namespace SuperTerrainPlus {
 			//A structure to define layers of texture splatting using gradient rule
 			typedef std::list<STPGradientNode> STPGradientStructure;
 
+			//an array of non-owning biome structure
+			template<class S>
+			using STPStructureView = std::vector<std::pair<Sample, const S*>>;
+			//array of non-owning biome altitude structure
+			typedef STPStructureView<STPAltitudeStructure> STPAltitudeView;
+			//array of non-owning biome gradient structure
+			typedef STPStructureView<STPGradientStructure> STPGradientView;
+
 		private:
 
-			std::unordered_map<Sample, STPAltitudeStructure> STPBiomeAltitudeMapping;
-			std::unordered_map<Sample, STPGradientStructure> STPBiomeGradientMapping;
+			std::unordered_map<Sample, STPAltitudeStructure> BiomeAltitudeMapping;
+			std::unordered_map<Sample, STPGradientStructure> BiomeGradientMapping;
 
 			//TODO: template lambda...
 			/**
@@ -70,12 +79,31 @@ namespace SuperTerrainPlus {
 			template<size_t... Is, class... Arg>
 			void expandAddGradients(Sample, std::index_sequence<Is...>, std::tuple<Arg...>);
 
+			/**
+			 * @brief Sort the biome mapping and return it as a non-owning vector
+			 * @tparam View The type of view to be returned
+			 * @tparam Struct The type of biome structure
+			 * @tparam Mapping Mapping type to be sorted
+			 * @param mapping The mapping to be sorted
+			 * @return A vector of sorted biome structure mapping
+			*/
+			template<class S, class M>
+			STPStructureView<S> sortMapping(const M&) const;
+
 		public:
 
 			/**
 			 * @brief Init STPTextureSplatBuilder as default
 			*/
 			STPTextureSplatBuilder() = default;
+
+			STPTextureSplatBuilder(const STPTextureSplatBuilder&) = delete;
+
+			STPTextureSplatBuilder(STPTextureSplatBuilder&&) noexcept = default;
+
+			STPTextureSplatBuilder& operator=(const STPTextureSplatBuilder&) = delete;
+
+			STPTextureSplatBuilder& operator=(STPTextureSplatBuilder&&) noexcept = default;
 
 			~STPTextureSplatBuilder() = default;
 
@@ -86,6 +114,13 @@ namespace SuperTerrainPlus {
 			 * If no altitude is associated with said sample, exception is thrown
 			*/
 			const STPAltitudeStructure& getAltitude(Sample) const;
+
+			/**
+			 * @brief Sort biome altitude mapping structure by sample, i.e., biome ID.
+			 * @return A vector of sorted altitude mapping.
+			 * The vector contains pointer to altitude structure which is not owning, state might be changed if more altitudes are added later
+			*/
+			STPAltitudeView sortAltitude() const;
 			
 			/**
 			 * @brief Get the pointer to the gradient structure for the specified sample
@@ -94,6 +129,13 @@ namespace SuperTerrainPlus {
 			 * If no altitude is associated with said sample, exception is thrown
 			*/
 			const STPGradientStructure& getGradient(Sample) const;
+
+			/**
+			 * @brief Sort biome gradient mapping structure by sample.
+			 * @return A vector of sorted gradient mapping.
+			 * The vector contains pointer to gradient structure which is not owning, state might be chanegd if more gradients are added later
+			*/
+			STPGradientView sortGradient() const;
 
 			/**
 			 * @brief Add a new configuration for specified biome into altitude structure.

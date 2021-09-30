@@ -6,6 +6,8 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
+//Matchers
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 //Proto Code
 #include "Compute/SobelFilter.cuh"
@@ -75,7 +77,7 @@ protected:
 	void compareImage(float* reference, float* target) const {
 		const auto index = GENERATE(take(2, chunk(12, random(0u, PrototypeConvolution::ImagePixelCount - 1u))));
 		for (const auto i : index) {
-			CHECK(fabs(target[i] - reference[i]) < 10.0f * std::numeric_limits<float>::epsilon());
+			CHECK_THAT(target[i], Catch::Matchers::WithinRel(reference[i], 10.0f * std::numeric_limits<float>::epsilon()));
 		}
 	}
 

@@ -34,6 +34,8 @@ Utility/Exception/STPSerialisationError.h
 Utility/Exception/STPUnsupportedFunctionality.h
 # /Utility
 Utility/STPDeviceErrorHandler.h
+Utility/STPHashCombine.h
+Utility/STPHashCombine.inl
 Utility/STPMemoryPool.h
 Utility/STPSmartDeviceMemory.h
 Utility/STPSmartDeviceMemory.tpp
@@ -57,6 +59,8 @@ World/Diversity/STPSeedMixer.h
 # /World/Diversity/Texture
 World/Diversity/Texture/STPTextureDatabase.h
 World/Diversity/Texture/STPTextureDatabase.inl
+World/Diversity/Texture/STPTextureFactory.h
 World/Diversity/Texture/STPTextureSplatBuilder.h
 World/Diversity/Texture/STPTextureSplatBuilder.inl
+World/Diversity/Texture/STPTextureType.hpp
 )

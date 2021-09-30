@@ -1,7 +1,7 @@
 //PLEASE DO NOT INCLUDE THIS FILE SEPARATELY
 #ifdef _STP_TEXTURE_DATABASE_H_
 
-template<size_t ...Is, class ...Arg>
+template<size_t... Is, class... Arg>
 inline auto SuperTerrainPlus::STPDiversity::STPTextureDatabase::expandAddTextures(STPTextureID texture_id, std::index_sequence<Is...>, std::tuple<Arg...> args) {
 	using std::get;
 	

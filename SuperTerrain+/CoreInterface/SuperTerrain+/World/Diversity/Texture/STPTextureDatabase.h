@@ -17,6 +17,8 @@
 //GLAD
 #include <glad/glad.h>
 
+#include "STPTextureType.hpp"
+
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
  * including perlin noise generated height map, hydrology processing and marching cube algorithm.
@@ -39,28 +41,6 @@ namespace SuperTerrainPlus {
 
 			//Each texture collection has an string ID to uniquely identify a texture with different types in the database
 			typedef std::string STPTextureID;
-
-			/**
-			 * @brief STPTextureType defines the type of texture the texture group holds
-			*/
-			enum class STPTextureType : unsigned char {
-				//A texture that defines the base color of the mesh being textured
-				Albedo = 0x00u,
-				//A texture that defines the normal vector which is then used to calculate light reflection and refraction on the surface of the mesh
-				Normal = 0x01u,
-				//A texture that defines the perpendicular offset to the surface of the mesh at a pixel
-				Displacement = 0x02u,
-				//A texture that defines the amount of specular highlight at a pixel
-				Specular = 0x03u,
-				//A texture that defines how much light is scattered across the surface of the mesh
-				Glossiness = 0x10u,
-				//A texture that controls how much color from the albedo map contributes to the diffuse and brightness
-				Metalness = 0x11u,
-				//A texture that defines how a texture reacts to light during rendering
-				AmbientOcclusion = 0x12u,
-				//A texture that defines which part of the object emits light, as well as the light color of each pixel
-				Emissive = 0x13u
-			};
 
 			/**
 			 * @brief STPTextureDescription contains information about a texture
@@ -165,7 +145,7 @@ namespace SuperTerrainPlus {
 
 			/**
 			 * @brief Expand parameter packs for addTextures() template function and group parameters into callable arguments for non-template function
-			 * TODO: make this a lamda template in C++20
+			 * TODO: make this a lambda template in C++20
 			 * @tparam ...Arg All parameters passed as parameter pack
 			 * @param texture_id The texture ID to be operated on
 			 * @param Striding index sequence to index the tuple
@@ -184,11 +164,11 @@ namespace SuperTerrainPlus {
 
 			STPTextureDatabase(const STPTextureDatabase&) = delete;
 
-			STPTextureDatabase(STPTextureDatabase&&) = delete;
+			STPTextureDatabase(STPTextureDatabase&&) noexcept = default;
 
 			STPTextureDatabase& operator=(const STPTextureDatabase&) = delete;
 
-			STPTextureDatabase& operator=(STPTextureDatabase&&) = delete;
+			STPTextureDatabase& operator=(STPTextureDatabase&&) noexcept = default;
 
 			~STPTextureDatabase() = default;
 

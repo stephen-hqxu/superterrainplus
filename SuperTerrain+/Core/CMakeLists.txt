@@ -18,6 +18,7 @@ STPMemoryPool.cpp
 STPSeedMixer.cpp
 STPSmartStream.cpp
 STPTextureDatabase.cpp
+STPTextureFactory.cpp
 STPTextureSplatBuilder.cpp
 STPThreadPool.cpp
 

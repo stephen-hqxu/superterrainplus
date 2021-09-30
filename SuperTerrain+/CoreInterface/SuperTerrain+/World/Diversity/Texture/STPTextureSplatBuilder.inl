@@ -12,7 +12,7 @@ inline void SuperTerrainPlus::STPDiversity::STPTextureSplatBuilder::expandAddAlt
 	), ...);
 }
 
-template<size_t ...Is, class ...Arg>
+template<size_t... Is, class... Arg>
 inline void SuperTerrainPlus::STPDiversity::STPTextureSplatBuilder::expandAddGradients(Sample sample, std::index_sequence<Is...>, std::tuple<Arg...> args) {
 	using std::get();
 

@@ -7,8 +7,6 @@
 #include <catch2/generators/catch_generators_adapters.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
 //Matcher
-#include <catch2/matchers/catch_matchers.hpp>
-#include <catch2/matchers/catch_matchers_exception.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 //SuperTerrain+/GPGPU
@@ -127,14 +125,14 @@ protected:
 		};
 		CHECKED_IF(test_enable) {
 			CHECKED_IF(attach_header) {
-				REQUIRE_THROWS_WITH(startCompile(), Catch::Matchers::Contains("6.6.6") && Catch::Matchers::Contains("PASS"));
+				REQUIRE_THROWS_WITH(startCompile(), Catch::Matchers::ContainsSubstring("6.6.6") && Catch::Matchers::ContainsSubstring("PASS"));
 			}
 			CHECKED_ELSE(attach_header) {
 				REQUIRE_NOTHROW(startCompile());
 			}
 		}
 		CHECKED_ELSE(test_enable) {
-			REQUIRE_THROWS_WITH(startCompile(), Catch::Matchers::Contains("STP_TEST_ENABLE"));
+			REQUIRE_THROWS_WITH(startCompile(), Catch::Matchers::ContainsSubstring("STP_TEST_ENABLE"));
 		}
 	}
 

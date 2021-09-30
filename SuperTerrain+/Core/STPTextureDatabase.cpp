@@ -3,8 +3,6 @@
 //Error
 #include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
 
-#include <type_traits>
-
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
 
@@ -32,7 +30,7 @@ size_t STPTextureDatabase::STPTextureGroup::STPKeyHasher::operator()(const STPTe
 }
 
 bool STPTextureDatabase::STPTextureGroup::add(STPTextureKey key, const void* texture) {
-	return this->TextureDataRecord.emplace(key, texture).second;
+	return this->TextureDataRecord.try_emplace(key, texture).second;
 }
 
 const void* STPTextureDatabase::STPTextureGroup::operator[](STPTextureKey key) const {
@@ -78,7 +76,7 @@ const void* STPTextureDatabase::operator()(STPTextureID id, STPTextureType type)
 STPTextureDatabase::STPTextureGroup::STPTextureGroupID STPTextureDatabase::addGroup(const STPTextureDescription& desc) {
 	//emplace a new group into the record
 	//the current value of the accumulator will be the next value assigned to the new group
-	auto [it, inserted] = this->TextureGroupRecord.emplace(STPTextureGroup::ReferenceAccumulator, desc);
+	auto [it, inserted] = this->TextureGroupRecord.try_emplace(STPTextureGroup::ReferenceAccumulator, desc);
 	//accumulator is unique therefore insertion will be guaranteed to take place
 	//if the assertion fails it means something is wrong, probably the accumulator got hacked by user...
 	assert(inserted);
@@ -91,7 +89,7 @@ bool STPTextureDatabase::addTexture(STPTextureID texture_id, STPTextureType type
 	STPTypeGroupMapping& typeMapping = this->TextureTypeMapping[texture_id];
 	
 	//insert only if type does not exist
-	if (!typeMapping.emplace(type, group_id).second) {
+	if (!typeMapping.try_emplace(type, group_id).second) {
 		return false;
 	}
 	
