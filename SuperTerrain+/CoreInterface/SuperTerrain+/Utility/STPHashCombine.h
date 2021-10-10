@@ -23,9 +23,7 @@ namespace SuperTerrainPlus {
 
 		~STPHashCombine() = delete;
 
-	public:
-
-		//Forwarding is not necessary because only primitive types can be hashed, and primitive type is best suited for pass-by-value
+		//TODO: change to template lambda and put it inside combine()
 
 		/**
 		 * @brief Combine a hash with the next value
@@ -34,16 +32,21 @@ namespace SuperTerrainPlus {
 		 * @param value The next value to be hashed
 		*/
 		template<typename T>
-		static void combine(size_t&, T);
+		static void combineOne(size_t&, const T&);
+
+	public:
+
+		//Forwarding is not necessary because only primitive types can be hashed
 
 		/**
 		 * @brief Combine a hash with all values in the order specified
 		 * @tparam ...T All types of values
-		 * @param seed The old hash input, and resultant hash output that has been combined with all values
+		 * @param seed The old hash input
 		 * @param value... All values that will be hashed and combined
+		 * @return The resultant hash output that has been combined with all values
 		*/
 		template<typename... T>
-		static void combineAll(size_t&, T...);
+		static size_t combine(size_t, const T&...);
 
 	};
 

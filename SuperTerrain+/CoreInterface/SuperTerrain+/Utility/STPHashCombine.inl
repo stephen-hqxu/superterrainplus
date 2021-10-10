@@ -3,16 +3,15 @@
 #ifdef _STP_HASH_COMBINE_H_
 
 template<typename T>
-inline void SuperTerrainPlus::STPHashCombine::combine(size_t& seed, T value) {
-	std::hash<T> hasher;
-	
+inline void SuperTerrainPlus::STPHashCombine::combineOne(size_t& seed, const T& value) {
 	//The algorithm is based on boost::hash_combine
-	seed ^= hasher(value) + 0x9e3779b9ull + (seed << 6ull) + (seed >> 2ull);
+	seed ^= std::hash<T>()(value) + 0x9e3779b9ull + (seed << 6ull) + (seed >> 2ull);
 }
 
 template<typename ...T>
-inline void SuperTerrainPlus::STPHashCombine::combineAll(size_t& seed, T... value) {
-	(STPHashCombine::combine(seed, value), ...);
+inline size_t SuperTerrainPlus::STPHashCombine::combine(size_t seed, const T&... value) {
+	(STPHashCombine::combineOne(seed, value), ...);
+	return seed;
 }
 
 #endif//_STP_HASH_COMBINE_H_

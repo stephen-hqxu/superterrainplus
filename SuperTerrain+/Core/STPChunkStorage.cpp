@@ -11,12 +11,8 @@ using std::make_pair;
 using namespace SuperTerrainPlus;
 
 size_t STPChunkStorage::STPHashvec2::operator()(const vec2& position) const {
-	size_t seed = 0ull;
-
 	//combine hash
-	STPHashCombine::combineAll(seed, position.x, position.y);
-
-	return seed;
+	return STPHashCombine::combine(0ull, position.x, position.y);;
 }
 
 STPChunkStorage::STPChunkStorage() {

@@ -447,23 +447,20 @@ public:
 	 * @param sample The sample bin that will be operated on
 	 * @param count The number to decrement
 	*/
-	void dec(Sample sample, unsigned int count){
+	void dec(Sample sample, unsigned int count) {
 		//our algorithm guarantees the bin has been increment by this sample before, so no check is needed
 		unsigned int& bin_index = this->Dictionary[sample];
-		STPSingleHistogram::STPBin& bin = this->Bin[static_cast<unsigned int>(bin_index)];
-		unsigned int& quant = bin.Data.Quantity;
+		unsigned int& quant = this->Bin[static_cast<unsigned int>(bin_index)].Data.Quantity;
 
 		if (quant <= count) {
 			//update the dictionary entries linearly, basically it's a rehash in hash table
-			std::transform(this->Dictionary.cbegin(), this->Dictionary.cend(), this->Dictionary.begin(), 
-				[followed_index = static_cast<unsigned int>(this->Bin.erase(this->Bin.begin() + bin_index) - this->Bin.begin())](auto dic) {
+			auto followed_index = this->Bin.erase(this->Bin.begin() + bin_index);
+			std::for_each(followed_index, this->Bin.end(), [&Dic = this->Dictionary](const auto& bin) {
 				//since all subsequent indices followed by the erased bin has been advanced forward by one block
 				//we need to subtract the indices recorded in dictionary for those entries by one.
-				if (dic == NO_ENTRY || dic <= followed_index) {
-					return dic;
-				}
-				return dic - 1u;
+				Dic[bin.Item]--;
 			});
+
 			//bin will become empty, erase this bin and dictionary entry
 			bin_index = NO_ENTRY;
 

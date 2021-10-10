@@ -3,9 +3,10 @@
 #define _STP_TEXTURE_FACTORY_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
+//Memory
+#include "../../../Utility/STPSmartDeviceMemory.h"
 //Texture
 #include "STPTextureSplatBuilder.h"
-#include "STPTextureDatabase.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -23,90 +24,35 @@ namespace SuperTerrainPlus {
 		 * read such texture configuration to generate a terrain splat texture
 		*/
 		class STP_API STPTextureFactory {
-		public:
-
-			/**
-			 * @brief STPTextureDataLocation defines the location of a specific texture data in an array of layered texture
-			*/
-			struct STPTextureDataLocation {
-			public:
-
-				//The index to the layered texture.
-				unsigned int GroupIdx;
-				//The index to the texture in a layer.
-				unsigned int LayerIdx;
-
-			};
-
-			//A region provides data to locate texture types for a texture collection
-			typedef STPTextureDataLocation* STPRegion[static_cast<std::underlying_type_t<STPTextureType>>(STPTextureType::TYPE_COUNT)];
-
-			/**
-			 * @brief A base node for different types of structural regions
-			*/
-			struct STPStructureNode {
-			public:
-
-				//The index to the texture region array for this active region
-				unsigned int RegionIdx;
-
-			};
-
-			/**
-			 * @brief A single node which contains a configuration for an active region using altitude rule.
-			 * Instead of mapping upper bound to texture ID referencing the texture database, it maps to the index to a group of texture types, so called region.
-			*/
-			struct STPAltitudeNode : public STPStructureNode {
-			public:
-
-				//The upper bound of the altitude which makes the current texture region active for this sample
-				float UpperBound;
-
-			};
-
-			/**
-			 * @brief A single node which contains a configuration for an active region using gradient rule.
-			 * Instead of mapping each gradient configuration to texture ID, it maps to the index to a group of texture types, so called region.
-			*/
-			struct STPGradientNode : public STPStructureNode {
-			public:
-
-				//region starts from gradient higher than this value
-				float minGradient;
-				//region ends with gradient lower than this value
-				float maxGradient;
-				//region starts from altitude higher than this value
-				float LowerBound;
-				//region ends with altitude lower than this value
-				float UpperBound;
-
-			};
-
-			/**
-			 * @brief STPSplatRegistry contains information to the texture splat settings for a particular sample
-			*/
-			struct STPSplatRegistry {
-			public:
-
-				typedef Sample* STPRegistryDictionary;
-
-				//The pointer to the altitude setup for this sample. nullptr if there is no altitude configuration.
-				const STPAltitudeNode* AltitudeTable;
-				//The number of element in the altitude table. Zero if none.
-				unsigned int AltitudeSize;
-
-				//The pointer to the gradient setup for this sample. nullptr if there is no gradient configuration.
-				const STPGradientNode* GradientTable;
-				//The number of elemenet in the gradient table. Zero is none.
-				unsigned int GradientSize;
-
-			};
-
 		private:
 
+			//Array cache data defined in texture information
+			STPSmartDeviceMemory::STPDeviceMemory<Sample[]> RegistryLookup;
+			STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPSplatRegistry[]> Registry;
+			//A linear array that contains splat rules for all samples
+			STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPAltitudeNode[]> AltitudeCache;
+			STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPGradientNode[]> GradientCache;
+			//Locating texture data
+			STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPTextureDataLocation[]> TextureLocationCache;
+			STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPRegion[]> Region;
+
+			/**
+			 * @brief Format texture data in a texture database into texture region such that texture group and data can be referenced using index and texture type.
+			 * Texture type and group mapping must be sorted against texture ID, which must be unique.
+			 * @param type_mapping The pointer to texture type mapping view.
+			 * @param group_mapping The pointer to texture group ID mapping view.
+			*/
+			void formatRegion(const STPTextureDatabase::STPTypeMappingView&, const STPTextureDatabase::STPGroupView&);
 
 		public:
 
+			/**
+			 * @brief Setup texture factory, manufacture texture data provided and process it to the way that it can be used by texturing system.
+			 * After this function returns, all internal states are initialised and no further change can be made.
+			 * No reference is retained after the function returns.
+			 * @param builder The pointer to the splat builder
+			 * @param database The pointer to the texture database
+			*/
 			STPTextureFactory(const STPTextureSplatBuilder&, const STPTextureDatabase&);
 
 			STPTextureFactory(const STPTextureFactory&) = delete;

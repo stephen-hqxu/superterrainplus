@@ -60,6 +60,7 @@ World/Diversity/STPSeedMixer.h
 World/Diversity/Texture/STPTextureDatabase.h
 World/Diversity/Texture/STPTextureDatabase.inl
 World/Diversity/Texture/STPTextureFactory.h
+World/Diversity/Texture/STPTextureInformation.hpp
 World/Diversity/Texture/STPTextureSplatBuilder.h
 World/Diversity/Texture/STPTextureSplatBuilder.inl
 World/Diversity/Texture/STPTextureType.hpp

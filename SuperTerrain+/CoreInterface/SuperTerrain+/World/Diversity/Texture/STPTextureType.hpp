@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_TEXTURE_TYPE_H_
-#define _STP_TEXTURE_TYPE_H_
+#ifndef _STP_TEXTURE_TYPE_HPP_
+#define _STP_TEXTURE_TYPE_HPP_
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -41,4 +41,4 @@ namespace SuperTerrainPlus {
 
 	}
 }
-#endif//_STP_TEXTURE_TYPE_H_
+#endif//_STP_TEXTURE_TYPE_HPP_

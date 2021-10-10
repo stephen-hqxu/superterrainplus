@@ -4,11 +4,11 @@
 
 #include <SuperTerrain+/STPCoreDefine.h>
 //Container
-#include <unordered_map>
 #include <array>
+#include <vector>
+#include <unordered_map>
 #include <utility>
 //System
-#include <string>
 #include <tuple>
 #include <type_traits>
 
@@ -40,7 +40,9 @@ namespace SuperTerrainPlus {
 		public:
 
 			//Each texture collection has an string ID to uniquely identify a texture with different types in the database
-			typedef std::string STPTextureID;
+			typedef unsigned int STPTextureID;
+			//Each group has an ID to uniquely identify a texture group in the database
+			typedef unsigned int STPTextureGroupID;
 
 			/**
 			 * @brief STPTextureDescription contains information about a texture
@@ -58,90 +60,22 @@ namespace SuperTerrainPlus {
 
 			};
 
-			/**
-			 * @brief STPTextureGroup is a collection of texture data with the same property
-			*/
-			class STP_API STPTextureGroup {
-			public:
-
-				//Each group has an ID to uniquely identify a texture group in the database
-				typedef unsigned int STPTextureGroupID;
-				//A pair of texture ID and texture type to form a primary key to locate the texture data in the group
-				typedef std::pair<STPTextureID, STPTextureType> STPTextureKey;
-
-			private:
-
-				friend class STPTextureDatabase;
-
-				//A group ID counter, behaves the same as a texture ID
-				static STPTextureGroupID ReferenceAccumulator;
-
-				/**
-				 * @brief A hasher to hash a texture key
-				*/
-				struct STPKeyHasher {
-				public:
-
-					size_t operator()(const STPTextureKey&) const;
-
-				};
-
-				std::unordered_map<STPTextureKey, const void*, STPKeyHasher> TextureDataRecord;
-
-			public:
-
-				//The ID of the current group in the database
-				const STPTextureGroupID GroupID;
-				//The property of all texture in the current group
-				const STPTextureDescription TextureProperty;
-
-				/**
-				 * @brief Init a STPTextureGroup with specified texture property
-				 * @param desc The property of the group. It will be applied to all texture attached to this group.
-				 * Property will be copied to the group, no reference will be retained after the function returns
-				*/
-				STPTextureGroup(const STPTextureDescription&);
-
-				STPTextureGroup(const STPTextureGroup&) = delete;
-
-				STPTextureGroup(STPTextureGroup&&) = delete;
-
-				STPTextureGroup& operator=(const STPTextureGroup&) = delete;
-
-				STPTextureGroup& operator=(STPTextureGroup&&) = delete;
-
-				~STPTextureGroup() = default;
-
-				/**
-				 * @brief Add a new texture record with a given texture ID
-				 * @param key The primary key, must be unique in the texture group
-				 * @param texture The pointer to the texture. Note that the texture group is a non-owning texture manager, 
-				 * caller is responsible for their lifetime.
-				 * Texture data must be a valid pointer with format defined by the current group, or it will incur undefined behaviour.
-				 * @return True if the texture record is inserted.
-				 * False if texture ID is not unique in the group
-				*/
-				bool add(STPTextureKey, const void*);
-
-				/**
-				 * @brief Retrieve the texture data associated with this texture ID in the group
-				 * @param key The texture data with the primary key to be retrieved
-				 * @return The pointer to the texture data.
-				 * If no texture ID is found to be associated with this group, exception is thrown
-				*/
-				const void* operator[](STPTextureKey) const;
-
-			};
-
 		private:
 
-			//Given a texture type, find the group ID associated with this texture ID with this type
-			typedef std::unordered_map<STPTextureType, STPTextureGroup::STPTextureGroupID> STPTypeGroupMapping;
+			//ID counter
+			static size_t IDAccumulator;
 
-			//All textuer groups owned by the database
-			std::unordered_map<STPTextureGroup::STPTextureGroupID, STPTextureGroup> TextureGroupRecord;
-			//Given a textuer ID, find all textuer types related to this ID as well as the group ID where this type of textuer is in
-			std::unordered_map<STPTextureID, STPTypeGroupMapping> TextureTypeMapping;
+			//Given a texture type, check if the texture type is associated with a data
+			typedef std::unordered_map<STPTextureType, std::pair<const void*, STPTextureGroupID>> STPTypeInformation;
+
+			//Given a textuer ID, find all texture types related to this ID as well as the group ID where this type of textuer is in
+			std::unordered_map<STPTextureID, STPTypeInformation> TextureTypeMapping;
+			//All texture groups owned by the database
+			std::unordered_map<STPTextureGroupID, STPTextureDescription> TextureGroupRecord;
+
+			//An array of non-owning data structure contains texture information
+			template<typename ID, class S>
+			using STPTextureDataView = std::vector<std::pair<ID, const S*>>;
 
 			/**
 			 * @brief Expand parameter packs for addTextures() template function and group parameters into callable arguments for non-template function
@@ -155,7 +89,23 @@ namespace SuperTerrainPlus {
 			template<size_t... Is, class... Arg>
 			auto expandAddTextures(STPTextureID, std::index_sequence<Is...>, std::tuple<Arg...>);
 
+			/**
+			 * @brief A universal implementation to sort a texture data and put them into an array of non-owning view
+			 * @tparam ID The ID type
+			 * @tparam S The texture structure type of the output
+			 * @tparam M The texture structure type of the input
+			 * @param mapping The selected mapping to be sorted.
+			 * @return A sorted array aginsted ID value and pointer to each element in mapping
+			*/
+			template<typename ID, class S, class M>
+			static STPTextureDataView<ID, S> sortView(const M&);
+
 		public:
+
+			//An array of non-owning texture ID to type group mapping
+			typedef STPTextureDataView<STPTextureID, STPTypeInformation> STPTypeMappingView;
+			//An array of non-owning texture group record
+			typedef STPTextureDataView<STPTextureGroupID, STPTextureDescription> STPGroupView;
 
 			/**
 			 * @brief Init an empty texture database
@@ -178,7 +128,15 @@ namespace SuperTerrainPlus {
 			 * @param id The texture ID to be retrieved
 			 * @return The pointer to the mapping
 			*/
-			const STPTypeGroupMapping& getTypeMapping(STPTextureID) const;
+			const STPTypeInformation& getTypeMapping(STPTextureID) const;
+
+			/**
+			 * @brief Sort the texture type-groupID mapping based on texture ID.
+			 * This can be used to convert texture ID to index a texture mapping in an array.
+			 * @return A vector of texture ID and non-owning pointer to type group mapping.
+			 * Note that state of pointer may change and undefined if texture database is modified after this function returns
+			*/
+			STPTypeMappingView sortTypeMapping() const;
 
 			/**
 			 * @brief Get the pointer to the texture group, given a group ID
@@ -186,7 +144,15 @@ namespace SuperTerrainPlus {
 			 * @return The pointer to the group with that group ID.
 			 * If group ID is not found, exception is thrown.
 			*/
-			const STPTextureGroup& getGroup(STPTextureGroup::STPTextureGroupID) const;
+			const STPTextureDescription& getGroupDescription(STPTextureGroupID) const;
+
+			/**
+			 * @brief Sort the texture group record based on group ID.
+			 * This can be used to convert group ID to index a group in an array
+			 * @return A vector of group ID and non-owning pointer to group.
+			 * Note that the state of pointer may change and undefined if texture database is modified after this function returns
+			*/
+			STPGroupView sortGroup() const;
 
 			/**
 			 * @brief Retrieve the texture data with specific type stored in the database
@@ -203,19 +169,26 @@ namespace SuperTerrainPlus {
 			 * @return The group ID of the newly inserted texture.
 			 * A group will always be inserted since group ID is managed by the database and guaranteed to be unique
 			*/
-			STPTextureGroup::STPTextureGroupID addGroup(const STPTextureDescription&);
+			STPTextureGroupID addGroup(const STPTextureDescription&);
 
 			/**
-			 * @brief Add a new texture data to the texture database
-			 * @param texture_id The ID of the texture, it may point to multiple texture of different types
+			 * @brief Insert a new texture into the texture database. New texture has no content, and can be added by calling addTextureData().
+			 * A texture may have a collection of different types associated with the texture.
+			 * @return The texture ID that can be used to reference the texture
+			*/
+			STPTextureID addTexture();
+
+			/**
+			 * @brief Add a new texture data to the texture database for a particular texture
+			 * @param texture_id The ID of the texture to be added with data.
 			 * @param type The type of the texture, to identify a specific texture for a texture ID
 			 * @param group_id The ID of the texture group. All texture in the same group must have the same texture description
 			 * @param texture_data The pointer to the texture data. Texture data is not owned by the database, thus user should guarantees the lifetime; 
 			 * the texture data should match the property of the group when it was created it.
 			 * @return True if texture has been inserted into the database
-			 * False the pair of texture ID and texture type is not unique in the database, or the texture group ID cannot be found.
+			 * False if texture ID cannot be found, or the texture group ID cannot be found.
 			*/
-			bool addTexture(STPTextureID, STPTextureType, STPTextureGroup::STPTextureGroupID, const void*);
+			bool addTextureData(STPTextureID, STPTextureType, STPTextureGroupID, const void*);
 
 			/**
 			 * @brief For a texture ID, add a sequence of texture data with different types to the texture to the texture database
@@ -228,7 +201,7 @@ namespace SuperTerrainPlus {
 			 * False for an element if insertion did not take place for the parameter group
 			*/
 			template<class... Arg>
-			auto addTextures(STPTextureID, Arg&&...);
+			auto addTextureDatas(STPTextureID, Arg&&...);
 
 		};
 

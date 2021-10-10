@@ -6,7 +6,7 @@ inline auto SuperTerrainPlus::STPDiversity::STPTextureDatabase::expandAddTexture
 	using std::get;
 	
 	return std::array<bool, sizeof...(Is)>{
-		this->addTexture(texture_id,
+		this->addTextureData(texture_id,
 			get<3 * Is + 0>(args),
 			get<3 * Is + 1>(args),
 			get<3 * Is + 2>(args)
@@ -14,7 +14,7 @@ inline auto SuperTerrainPlus::STPDiversity::STPTextureDatabase::expandAddTexture
 }
 
 template<class... Arg>
-auto SuperTerrainPlus::STPDiversity::STPTextureDatabase::addTextures(STPTextureID texture_id, Arg&&... args) {
+auto SuperTerrainPlus::STPDiversity::STPTextureDatabase::addTextureDatas(STPTextureID texture_id, Arg&&... args) {
 	//no need to check for parameter pack size, compiler will throw an error if arguments are not multiple of 3, or there's no argument, etc.
 	//because addTexture() function requires the exact signature
 

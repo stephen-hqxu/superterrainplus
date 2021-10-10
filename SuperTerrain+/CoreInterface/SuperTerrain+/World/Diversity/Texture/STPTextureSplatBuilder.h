@@ -5,7 +5,7 @@
 #include <SuperTerrain+/STPCoreDefine.h>
 //Biome
 #include "../STPBiomeDefine.h"
-#include "STPTextureDatabase.h"
+#include "STPTextureInformation.hpp"
 
 //Container
 #include <list>
@@ -28,26 +28,20 @@ namespace SuperTerrainPlus {
 		 * Texture with a biome can be arranged either by altitude or gradient at any point on the terrain mesh.
 		*/
 		class STP_API STPTextureSplatBuilder {
-		public:
-
-			//A structure to define layers of texture splating using altitude rule
-			//Upper bound of the altitude is used as the key, the texture ID defines the texture used in the region
-			typedef std::map<float, STPTextureDatabase::STPTextureID> STPAltitudeStructure;
-
-			//A region will only be considered as active when all tuple conditions are satisfied
-			//0: minGradient: region starts from gradient higher than this value
-			//1: maxGradient: region ends with gradient lower than this value
-			//2: LowerBound: region starts from altitude higher than this value
-			//3: UpperBound: region ends with altitude lower than this value
-			typedef std::tuple<float, float, float, float> STPGradientData;
-			//A mapping defines which texture pack to use within a gradient region
-			typedef std::pair<STPGradientData, STPTextureDatabase::STPTextureID> STPGradientNode;
-			//A structure to define layers of texture splatting using gradient rule
-			typedef std::list<STPGradientNode> STPGradientStructure;
+		private:
 
 			//an array of non-owning biome structure
 			template<class S>
 			using STPStructureView = std::vector<std::pair<Sample, const S*>>;
+
+		public:
+
+			//A structure to define layers of texture splating using altitude rule
+			//Upper bound of the altitude is used as the key, the texture ID defines the texture used in the region
+			typedef std::map<float, STPTextureInformation::STPAltitudeNode> STPAltitudeStructure;
+			//A structure to define layers of texture splatting using gradient rule
+			typedef std::list<STPTextureInformation::STPGradientNode> STPGradientStructure;
+
 			//array of non-owning biome altitude structure
 			typedef STPStructureView<STPAltitudeStructure> STPAltitudeView;
 			//array of non-owning biome gradient structure
@@ -80,15 +74,15 @@ namespace SuperTerrainPlus {
 			void expandAddGradients(Sample, std::index_sequence<Is...>, std::tuple<Arg...>);
 
 			/**
-			 * @brief Sort the biome mapping and return it as a non-owning vector
+			 * @brief Get a view to the biome mapping and return it as a non-owning vector
 			 * @tparam View The type of view to be returned
 			 * @tparam Struct The type of biome structure
 			 * @tparam Mapping Mapping type to be sorted
 			 * @param mapping The mapping to be sorted
-			 * @return A vector of sorted biome structure mapping
+			 * @return A vector of biome structure mapping
 			*/
 			template<class S, class M>
-			STPStructureView<S> sortMapping(const M&) const;
+			static STPStructureView<S> visitMapping(const M&);
 
 		public:
 
@@ -116,11 +110,12 @@ namespace SuperTerrainPlus {
 			const STPAltitudeStructure& getAltitude(Sample) const;
 
 			/**
-			 * @brief Sort biome altitude mapping structure by sample, i.e., biome ID.
-			 * @return A vector of sorted altitude mapping.
-			 * The vector contains pointer to altitude structure which is not owning, state might be changed if more altitudes are added later
+			 * @brief Visit the altitude configuration registered with the current splat builder
+			 * @return A vector of read-only pointer to altitude mapping.
+			 * The vector contains pointer to altitude structure which is not owning, state might be changed if more altitudes are added later.
+			 * The returned vector is best suited for traversal, individual lookup may not be efficient since unsorted.
 			*/
-			STPAltitudeView sortAltitude() const;
+			STPAltitudeView visitAltitude() const;
 			
 			/**
 			 * @brief Get the pointer to the gradient structure for the specified sample
@@ -131,11 +126,12 @@ namespace SuperTerrainPlus {
 			const STPGradientStructure& getGradient(Sample) const;
 
 			/**
-			 * @brief Sort biome gradient mapping structure by sample.
-			 * @return A vector of sorted gradient mapping.
-			 * The vector contains pointer to gradient structure which is not owning, state might be chanegd if more gradients are added later
+			 * @brief Visit the gradient configuration registered with the current splat builder
+			 * @return A vector of read-only pointer to gradient mapping.
+			 * The vector contains pointer to gradient structure which is not owning, state might be chanegd if more gradients are added later.
+			 * The returned vector is best suited for traversal, individual lookup may not be efficient since unsorted.
 			*/
-			STPGradientView sortGradient() const;
+			STPGradientView visitGradient() const;
 
 			/**
 			 * @brief Add a new configuration for specified biome into altitude structure.

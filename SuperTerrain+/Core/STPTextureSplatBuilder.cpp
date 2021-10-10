@@ -12,16 +12,11 @@ using std::make_tuple;
 using std::make_pair;
 
 template<class S, class M>
-inline STPTextureSplatBuilder::STPStructureView<S> STPTextureSplatBuilder::sortMapping(const M& mapping) const {
+STPTextureSplatBuilder::STPStructureView<S> STPTextureSplatBuilder::visitMapping(const M& mapping) {
 	STPStructureView<S> table(mapping.size());
 	//copy the mapping to array
-	std::transform(mapping.cbegin(), mapping.cend(), table.begin(), [](const auto& alt) {
-		return make_pair(alt.first, const_cast<const S*>(&(alt.second)));
-	});
-
-	//sort the table
-	std::sort(table.begin(), table.end(), [](const auto& v1, const auto& v2) {
-		return v1.first < v2.first;
+	std::transform(mapping.cbegin(), mapping.cend(), table.begin(), [](const auto& mapping) {
+		return make_pair(mapping.first, const_cast<const S*>(&(mapping.second)));
 	});
 
 	return table;
@@ -35,8 +30,8 @@ const STPTextureSplatBuilder::STPAltitudeStructure& STPTextureSplatBuilder::getA
 	return it->second;
 }
 
-STPTextureSplatBuilder::STPAltitudeView STPTextureSplatBuilder::sortAltitude() const {
-	return this->sortMapping<STPAltitudeStructure>(this->BiomeAltitudeMapping);
+STPTextureSplatBuilder::STPAltitudeView STPTextureSplatBuilder::visitAltitude() const {
+	return STPTextureSplatBuilder::visitMapping<STPAltitudeStructure>(this->BiomeAltitudeMapping);
 }
 
 const STPTextureSplatBuilder::STPGradientStructure& STPTextureSplatBuilder::getGradient(Sample sample) const {
@@ -47,15 +42,18 @@ const STPTextureSplatBuilder::STPGradientStructure& STPTextureSplatBuilder::getG
 	return it->second;
 }
 
-STPTextureSplatBuilder::STPGradientView STPTextureSplatBuilder::sortGradient() const {
-	return this->sortMapping<STPGradientStructure>(this->BiomeGradientMapping);
+STPTextureSplatBuilder::STPGradientView STPTextureSplatBuilder::visitGradient() const {
+	return STPTextureSplatBuilder::visitMapping<STPGradientStructure>(this->BiomeGradientMapping);
 }
 
 void STPTextureSplatBuilder::addAltitude(Sample sample, float upperBound, STPTextureDatabase::STPTextureID texture_id) {
 	//get the biome altitude mapping; create one if it does not exist yet
 	STPAltitudeStructure& alt = this->BiomeAltitudeMapping[sample];
 	//same, replace the old texture ID if exists
-	alt[upperBound] = texture_id;
+	STPTextureInformation::STPAltitudeNode& altNode = alt[upperBound];
+	altNode = { { }, upperBound };
+	//TODO: we can use designated initialiser to init the base union in C++20
+	altNode.Reference.DatabaseKey = texture_id;
 }
 
 void STPTextureSplatBuilder::addGradient
@@ -64,6 +62,8 @@ void STPTextureSplatBuilder::addGradient
 	STPGradientStructure& gra = this->BiomeGradientMapping[sample];
 
 	//create the gradient data
-	STPGradientData newData = make_tuple(minGradient, maxGradient, lowerBound, upperBound);
-	gra.emplace_back(make_pair(newData, texture_id));
+	STPTextureInformation::STPGradientNode newData = { { }, minGradient, maxGradient, lowerBound, upperBound };
+	//TODO: the same here
+	newData.Reference.DatabaseKey = texture_id;
+	gra.emplace_back(newData);
 }
