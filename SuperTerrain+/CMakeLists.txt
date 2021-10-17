@@ -38,7 +38,8 @@ PRIVATE ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
 # library dependencies
 target_link_libraries(${STP_MAIN_ENGINE}
 # we don't need to link SuperAlgorithm+, this is a library left for developers
-PRIVATE ${STP_GLAD} OpenGL::GL
+# we do not plan to expose sqlite database in the header and to user, keep it private
+PRIVATE ${STP_GLAD} OpenGL::GL SQLite::SQLite3
 PUBLIC CUDA::cudart CUDA::cuda_driver CUDA::nvrtc glm::glm
 )
 target_link_libraries(${STP_ALGORITHM_HOST_ENGINE}

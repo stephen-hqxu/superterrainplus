@@ -27,7 +27,7 @@ cudaMemPool_t STPTestInformation::TestDeviceMemoryPool;
 int main(int argc, char* argv[]) {
 	//setup the engine
 	try {
-		STPEngineInitialiser::initCUDA(SelectedDevice);
+		STPEngineInitialiser::init(SelectedDevice);
 	}
 	catch (const STPException::STPCUDAError& cuda_err) {
 		cerr << cuda_err.what() << endl;

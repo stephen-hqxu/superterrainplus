@@ -2,13 +2,10 @@
 #ifndef _STP_TEXTURE_INFORMATION_HPP_
 #define _STP_TEXTURE_INFORMATION_HPP_
 
-//System
-#include <type_traits>
 //Biome
 #include "../STPBiomeDefine.h"
 //Texture
 #include "STPTextureType.hpp"
-#include "STPTextureDatabase.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -26,6 +23,11 @@ namespace SuperTerrainPlus {
 		*/
 		struct STPTextureInformation {
 		public:
+
+			//Each texture collection has a unique ID to uniquely identify a texture with different types in the database
+			typedef unsigned int STPTextureID;
+			//Each group has an ID to uniquely identify a texture group in the database
+			typedef unsigned int STPTextureGroupID;
 
 			/**
 			 * @brief STPTextureDataLocation defines the location of a specific texture data in an array of layered texture
@@ -57,7 +59,7 @@ namespace SuperTerrainPlus {
 					friend class STPTextureFactory;
 
 					//The texture ID referencing a texture entry in a texture database instance
-					STPTextureDatabase::STPTextureID DatabaseKey;
+					STPTextureID DatabaseKey;
 
 				public:
 

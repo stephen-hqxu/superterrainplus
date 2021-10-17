@@ -8,9 +8,9 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 **Design Lemma**
 
 - Realistic
-- Real-time capable
 - Procedural
-- Deterministically random
+- Pseudorandom generation
+- Real-time rendering
 
 ## :sparkler: Main Features
 
@@ -30,7 +30,8 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 - [x] Different terrain shape based on generated biome
 - [ ] Altitude, gradient and biome dependent texture splating
 - [ ] Biome feature generation
-- [ ] Real-time ray tracing rendering
+- [ ] Weather effect
+- [ ] Real-time ray traced rendering
 
 ### Procedural entity geneartion
 
@@ -46,9 +47,10 @@ No plan, yet.
 ### Language
 
 - C++ 17
-- CUDA 11.3
+- CUDA 11
+- SQL
 - OpenGL 4.6
-- CMake 3.18
+- CMake 3
 
 ### Internal libraries
 
@@ -66,6 +68,7 @@ Those are some third-party libraries used by this project, we always make sure t
 - [GLAD](https://github.com/Dav1dde/glad)
 - [stb](https://github.com/nothings/stb)
 - [Catch2 v3](https://github.com/catchorg/Catch2)
+- [SQLite3](https://www.sqlite.org/index.html)
 
 ## :building_construction: Project Structure
 

@@ -26,6 +26,7 @@ Utility/Exception/STPAsyncGenerationError.h
 Utility/Exception/STPBadNumericRange.h
 Utility/Exception/STPCompilationError.h
 Utility/Exception/STPCUDAError.h
+Utility/Exception/STPDatabaseError.h
 Utility/Exception/STPDeadThreadPool.h
 Utility/Exception/STPInvalidArgument.h
 Utility/Exception/STPInvalidEnvironment.h
@@ -40,6 +41,7 @@ Utility/STPMemoryPool.h
 Utility/STPSmartDeviceMemory.h
 Utility/STPSmartDeviceMemory.tpp
 Utility/STPSmartStream.h
+Utility/STPSQLite.h
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl
 # /World/Chunk
@@ -61,7 +63,5 @@ World/Diversity/Texture/STPTextureDatabase.h
 World/Diversity/Texture/STPTextureDatabase.inl
 World/Diversity/Texture/STPTextureFactory.h
 World/Diversity/Texture/STPTextureInformation.hpp
-World/Diversity/Texture/STPTextureSplatBuilder.h
-World/Diversity/Texture/STPTextureSplatBuilder.inl
 World/Diversity/Texture/STPTextureType.hpp
 )

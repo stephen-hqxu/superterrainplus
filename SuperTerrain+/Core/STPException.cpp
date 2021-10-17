@@ -3,6 +3,7 @@
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Utility/Exception/STPCompilationError.h>
 #include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Utility/Exception/STPDatabaseError.h>
 #include <SuperTerrain+/Utility/Exception/STPDeadThreadPool.h>
 #include <SuperTerrain+/Utility/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
@@ -39,6 +40,12 @@ STPCompilationError::STPCompilationError(const char* msg) : STPCUDAError(msg) {
 //STPCUDAError.h
 
 STPCUDAError::STPCUDAError(const char* msg) : runtime_error(msg) {
+
+}
+
+//STPDatabaseError.h
+
+STPDatabaseError::STPDatabaseError(const char* msg) : runtime_error(msg) {
 
 }
 

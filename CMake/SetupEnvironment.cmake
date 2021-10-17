@@ -5,6 +5,12 @@ find_package(OpenGL REQUIRED)
 # minimum supported CUDA versions
 set(STP_CUDA_MIN_VERSION 11.3)
 
+#setup SQLite3
+include(FindSQLite3)
+if(NOT ${SQLite3_FOUND})
+	message(FATAL_ERROR "SQLite3 is not found")
+endif()
+
 # setup CUDA
 include(FindCUDAToolkit)
 # error handling

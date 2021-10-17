@@ -6,7 +6,7 @@
 //Memory
 #include "../../../Utility/STPSmartDeviceMemory.h"
 //Texture
-#include "STPTextureSplatBuilder.h"
+#include "STPTextureDatabase.h"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -42,7 +42,7 @@ namespace SuperTerrainPlus {
 			 * @param type_mapping The pointer to texture type mapping view.
 			 * @param group_mapping The pointer to texture group ID mapping view.
 			*/
-			void formatRegion(const STPTextureDatabase::STPTypeMappingView&, const STPTextureDatabase::STPGroupView&);
+			//void formatRegion(const STPTextureDatabase::STPTypeMappingView&, const STPTextureDatabase::STPGroupView&);
 
 		public:
 
@@ -50,10 +50,9 @@ namespace SuperTerrainPlus {
 			 * @brief Setup texture factory, manufacture texture data provided and process it to the way that it can be used by texturing system.
 			 * After this function returns, all internal states are initialised and no further change can be made.
 			 * No reference is retained after the function returns.
-			 * @param builder The pointer to the splat builder
-			 * @param database The pointer to the texture database
+			 * @param database The pointer to the texture database which contains all texture information
 			*/
-			STPTextureFactory(const STPTextureSplatBuilder&, const STPTextureDatabase&);
+			STPTextureFactory(const STPTextureDatabase&);
 
 			STPTextureFactory(const STPTextureFactory&) = delete;
 

@@ -18,10 +18,6 @@ namespace SuperTerrainPlus {
 	class STP_API STPEngineInitialiser final {
 	private:
 
-		//Default state is false, once the engine is initialised it will become true.
-		static bool GLInited;
-		static bool CUDAInited;
-
 		/**
 		 * @brief A static-only class should not be constructed
 		*/
@@ -48,11 +44,10 @@ namespace SuperTerrainPlus {
 		static bool initGLexplicit(STPglProc);
 
 		/**
-		 * @brief Initialise CUDA primary context with best-suited parameters for this engine.
-		 * User should not adjust the parameters on primary context, if needed, use another context.
-		 * @param device The GPU to create a primary context
+		 * @brief Initialise super terrain plus engine
+		 * @param device Specify which CUDA-enabled GPU will be used for computing
 		*/
-		static void initCUDA(int);
+		static void init(int);
 
 		/**
 		 * @brief Check if the engine has been initialised
