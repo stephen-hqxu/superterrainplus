@@ -6,6 +6,7 @@
 //Container
 #include <vector>
 #include <utility>
+#include <tuple>
 //System
 #include <memory>
 
@@ -47,13 +48,14 @@ namespace SuperTerrainPlus {
 			struct STPTextureDescription {
 			public:
 
-				//Define the channel format, only supports format supported by OpenGL standard
-				typedef GLenum STPChannelFormat;
-
 				//The dimension of the texture
 				glm::uvec2 Dimension;
-				//The format of the texture, see OpenGL documentation for all supporting channel formats
-				STPChannelFormat Format;
+				//The internal format of the texture during memory allocation
+				GLenum InteralFormat;
+				//The channel format of each image in the group during memory transaction
+				GLenum ChannelFormat;
+				//The format of each pixel in each image
+				GLenum PixelFormat;
 
 			};
 
@@ -65,19 +67,6 @@ namespace SuperTerrainPlus {
 			private:
 
 				friend class STPTextureDatabase;
-
-				//an array of non-owning biome structure
-				template<class S>
-				using STPStructureView = std::vector<std::pair<Sample, const S*>>;
-
-			public:
-
-				//array of non-owning biome altitude structure
-				typedef STPStructureView<STPTextureInformation::STPAltitudeNode> STPAltitudeView;
-				//array of non-owning biome gradient structure
-				typedef STPStructureView<STPTextureInformation::STPGradientNode> STPGradientView;
-
-			private:
 
 				//A database from the parent texture database
 				STPTextureDatabase::STPTextureDatabaseImpl* const Database;
@@ -119,50 +108,12 @@ namespace SuperTerrainPlus {
 				template<size_t... Is, class... Arg>
 				void expandAddGradients(Sample, std::index_sequence<Is...>, std::tuple<Arg...>);
 
-				/**
-				 * @brief Get a view to the biome mapping and return it as a non-owning vector
-				 * @tparam View The type of view to be returned
-				 * @tparam Struct The type of biome structure
-				 * @tparam Mapping Mapping type to be sorted
-				 * @param mapping The mapping to be sorted
-				 * @return A vector of biome structure mapping
-				*/
-				template<class S, class M>
-				static STPStructureView<S> visitMapping(const M&);
-
 			public:
 
-				/**
-				 * @brief Get pointer to altitude structure for the specified sample
-				 * @param sample The altitude for the sample to be retrieved
-				 * @return The pointer to the altitude structure for the sample.
-				 * If no altitude is associated with said sample, exception is thrown
-				*/
-				//const STPAltitudeStructure& getAltitude(Sample) const;
-
-				/**
-				 * @brief Visit the altitude configuration registered with the current splat builder
-				 * @return A vector of read-only pointer to altitude mapping.
-				 * The vector contains pointer to altitude structure which is not owning, state might be changed if more altitudes are added later.
-				 * The returned vector is best suited for traversal, individual lookup may not be efficient since unsorted.
-				*/
-				STPAltitudeView visitAltitude() const;
-
-				/**
-				 * @brief Get the pointer to the gradient structure for the specified sample
-				 * @param sample The gradient for the sample to be retrieved
-				 * @return The pointer to the gradient structure for the sample
-				 * If no altitude is associated with said sample, exception is thrown
-				*/
-				//const STPGradientStructure& getGradient(Sample) const;
-
-				/**
-				 * @brief Visit the gradient configuration registered with the current splat builder
-				 * @return A vector of read-only pointer to gradient mapping.
-				 * The vector contains pointer to gradient structure which is not owning, state might be chanegd if more gradients are added later.
-				 * The returned vector is best suited for traversal, individual lookup may not be efficient since unsorted.
-				*/
-				STPGradientView visitGradient() const;
+				//A result set contains sample to each splat configuration mapping
+				typedef std::vector<std::pair<Sample, STPTextureInformation::STPAltitudeNode>> STPAltitudeRecord;
+				typedef std::vector<std::pair<Sample, STPTextureInformation::STPGradientNode>> STPGradientRecord;
+				typedef std::vector<Sample> STPSampleRecord;
 
 				/**
 				 * @brief Add a new configuration for specified biome into altitude structure.
@@ -181,6 +132,19 @@ namespace SuperTerrainPlus {
 				*/
 				template<class... Arg>
 				void addAltitudes(Sample, Arg&&...);
+
+				/**
+				 * @brief Get the number of altitude structure in the table
+				 * @return The number of altitude structure
+				*/
+				size_t altitudeSize() const;
+
+				/**
+				 * @brief Retrieve all stored altitude configurations.
+				 * Altitude records will be sorted by sample; if samples are the same it will be then sorted by upper bound
+				 * @return The sorted altitude record.
+				*/
+				STPAltitudeRecord getAltitudes() const;
 
 				/**
 				 * @brief Add a new configuration for specified biome into gradient structure
@@ -202,6 +166,26 @@ namespace SuperTerrainPlus {
 				template<class... Arg>
 				void addGradients(Sample, Arg&&...);
 
+				/**
+				 * @brief Get the number of gradient structure in the table
+				 * @return The number of gradient structure
+				*/
+				size_t gradientSize() const;
+
+				/**
+				 * @brief Retrieve all stored gradient configurations.
+				 * Gradient records will be sorted by sample.
+				 * @return The sorted gradient record.
+				*/
+				STPGradientRecord getGradients() const;
+
+				
+				/**
+				 * @brief Get an array of samples that have been registered with any splat configuration.
+				 * @return An array sample with any splat configuration.
+				*/
+				STPSampleRecord getPresentedSample() const;
+
 			};
 
 		private:
@@ -216,10 +200,6 @@ namespace SuperTerrainPlus {
 			//implementations that depend on the database
 			STPTextureSplatBuilder SplatBuilder;
 
-			//An array of non-owning data structure contains texture information
-			template<typename ID, class S>
-			using STPTextureDataView = std::vector<std::pair<ID, const S*>>;
-
 			/**
 			 * @brief Expand parameter packs for addTextures() template function and group parameters into callable arguments for non-template function.
 			 * TODO: make this a lambda template in C++20
@@ -231,23 +211,24 @@ namespace SuperTerrainPlus {
 			template<size_t... Is, class... Arg>
 			void expandAddTextures(STPTextureInformation::STPTextureID, std::index_sequence<Is...>, std::tuple<Arg...>);
 
-			/**
-			 * @brief A universal implementation to sort a texture data and put them into an array of non-owning view
-			 * @tparam ID The ID type
-			 * @tparam S The texture structure type of the output
-			 * @tparam M The texture structure type of the input
-			 * @param mapping The selected mapping to be sorted.
-			 * @return A sorted array aginsted ID value and pointer to each element in mapping
-			*/
-			template<typename ID, class S, class M>
-			static STPTextureDataView<ID, S> sortView(const M&);
-
 		public:
 
-			//An array of non-owning texture ID to type group mapping
-			//typedef STPTextureDataView<STPTextureID, STPTypeInformation> STPTypeMappingView;
-			//An array of non-owning texture group record
-			typedef STPTextureDataView<STPTextureInformation::STPTextureGroupID, STPTextureDescription> STPGroupView;
+			//A vector contains group ID with corresponding group properties
+			typedef std::vector<std::tuple<
+				STPTextureInformation::STPTextureGroupID, 
+				//The number of texture data in this group
+				size_t, 
+				const STPTextureDescription*
+			>> STPGroupRecord;
+			//A vector of texture ID
+			typedef std::vector<STPTextureInformation::STPTextureID> STPTextureCollectionRecord;
+			//A vector contains texture data
+			typedef std::vector<std::tuple<
+				STPTextureInformation::STPTextureGroupID, 
+				STPTextureInformation::STPTextureID, 
+				STPTextureType, 
+				const void*
+			>> STPTextureDataRecord;
 
 			/**
 			 * @brief Init an empty texture database
@@ -265,45 +246,16 @@ namespace SuperTerrainPlus {
 			~STPTextureDatabase();
 
 			/**
-			 * @brief Get the pointer to the texture type-groupID mapping.
-			 * That is, given a texture type, return the group ID the texture type with this texture ID it's in
-			 * @param id The texture ID to be retrieved
-			 * @return The pointer to the mapping
+			 * @brief Get the pointer to splat builder to configure terrain splating.
+			 * @return The pointer to splat builder managed by the texture database
 			*/
-			//const STPTypeInformation& getTypeMapping(STPTextureID) const;
+			STPTextureSplatBuilder& getSplatBuilder();
 
 			/**
-			 * @brief Sort the texture type-groupID mapping based on texture ID.
-			 * This can be used to convert texture ID to index a texture mapping in an array.
-			 * @return A vector of texture ID and non-owning pointer to type group mapping.
-			 * Note that state of pointer may change and undefined if texture database is modified after this function returns
+			 * @brief Get the pointer to splat builder to configure terrain splating.
+			 * @return The pointer to splat builder managed by the texture database
 			*/
-			//STPTypeMappingView sortTypeMapping() const;
-
-			/**
-			 * @brief Get the pointer to the texture group, given a group ID
-			 * @param id The texture group ID
-			 * @return The pointer to the group with that group ID.
-			 * If group ID is not found, exception is thrown.
-			*/
-			const STPTextureDescription& getGroupDescription(STPTextureInformation::STPTextureGroupID) const;
-
-			/**
-			 * @brief Sort the texture group record based on group ID.
-			 * This can be used to convert group ID to index a group in an array
-			 * @return A vector of group ID and non-owning pointer to group.
-			 * Note that the state of pointer may change and undefined if texture database is modified after this function returns
-			*/
-			STPGroupView sortGroup() const;
-
-			/**
-			 * @brief Retrieve the texture data with specific type stored in the database
-			 * @param id The ID of the texture that uniquely identifies a collection of texture with different types the database
-			 * @param type The type of the texture from the collection
-			 * @return The texture data with the ID and said type.
-			 * If texture ID is not found, or the the texture ID contains no associated type, exception is thrown
-			*/
-			const void* operator()(STPTextureInformation::STPTextureID, STPTextureType) const;
+			const STPTextureSplatBuilder& getSplatBuilder() const;
 
 			/**
 			 * @brief Insert a new texture group into the texture database
@@ -314,11 +266,41 @@ namespace SuperTerrainPlus {
 			STPTextureInformation::STPTextureGroupID addGroup(const STPTextureDescription&);
 
 			/**
+			 * @brief Get the pointer to the texture group, given a group ID
+			 * @param id The texture group ID
+			 * @return The pointer to the group with that group ID.
+			 * If group ID is not found, exception is thrown.
+			*/
+			const STPTextureDescription& getGroupDescription(STPTextureInformation::STPTextureGroupID) const;
+
+			/**
+			 * @brief Retrieve a record of all groups that have been referenced by some texture data, and their properties.
+			 * Note that group only being added to the database but not used does not count.
+			 * Results are sorted by group ID in ascending order.
+			 * @return An array of group record.
+			*/
+			STPGroupRecord getValidGroup() const;
+
+			/**
+			 * @brief Get the number of texture group registered
+			 * @return The number of registered texture group
+			*/
+			size_t groupSize() const;
+
+			/**
 			 * @brief Insert a new texture into the texture database. New texture has no content, and can be added by calling addTextureData().
 			 * A texture may have a collection of different types associated with the texture.
 			 * @return The texture ID that can be used to reference the texture
 			*/
 			STPTextureInformation::STPTextureID addTexture();
+
+			/**
+			 * @brief Retrieve a record of all texture collection ID in this database.
+			 * Result will be sorted in ascending order.
+			 * Any texture collection (represented by texture ID) with no texture data will be ignored.
+			 * @return An array of sorted texture ID
+			*/
+			STPTextureCollectionRecord getValidTexture() const;
 
 			/**
 			 * @brief Add a new texture data to the texture database for a particular texture.
@@ -342,6 +324,27 @@ namespace SuperTerrainPlus {
 			*/
 			template<class... Arg>
 			void addTextureDatas(STPTextureInformation::STPTextureID, Arg&&...);
+
+			/**
+			 * @brief Retrieve a record of all texture data in this database.
+			 * Result will be sorted in ascending order of texture group ID.
+			 * Any of the group with no texture references to, or texture ID with no data associated, will be ignored.
+			 * @return An array of sorted texture data
+			*/
+			STPTextureDataRecord getValidTextureData() const;
+
+			/**
+			 * @brief Get the number of texture data, that contains all texture collection and texture type, in the database.
+			 * @return The number of texture data.
+			*/
+			size_t textureDataSize() const;
+
+			/**
+			 * @brief Get the number of texture collection registered.
+			 * Note that one texture collection may contain multiple different texture types associated to different groups
+			 * @return The number of registered texture collection
+			*/
+			size_t textureCollectionSize() const;
 
 		};
 

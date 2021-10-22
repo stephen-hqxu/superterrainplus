@@ -36,7 +36,7 @@ namespace SuperTerrainPlus {
 			Emissive = 0x07u,
 
 			//The total number of type listed in the enum
-			TYPE_COUNT = 0x08u
+			TypeCount = 0x08u
 		};
 
 	}

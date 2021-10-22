@@ -54,9 +54,8 @@ namespace SuperTerrainPlus {
 				//A reference that tells where to find a structure, depends on context the key may behave differently
 				union {
 				private:
-
-					friend class STPTextureSplatBuilder;
-					friend class STPTextureFactory;
+					
+					friend class STPTextureDatabase;
 
 					//The texture ID referencing a texture entry in a texture database instance
 					STPTextureID DatabaseKey;
@@ -118,12 +117,14 @@ namespace SuperTerrainPlus {
 			};
 
 			//An array of sample, the index of a sample can be used to locate the sample in the splat registry.
-			Sample* RegistryDictionary;
+			Sample* SplatRegistryDictionary;
 			//An array that contains terrain splat configuration for each sample.
 			STPSplatRegistry* SplatRegistry;
 
+			//Given a region index, return indices for all texture type to the region to the region registry
+			unsigned int* RegionRegistryDictionary;
 			//An array of regions, each region constains a collection of texture.
-			STPRegion* RegionRegistry;
+			STPRegion RegionRegistry;
 
 		};
 

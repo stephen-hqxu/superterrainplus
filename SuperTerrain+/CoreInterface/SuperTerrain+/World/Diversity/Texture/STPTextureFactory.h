@@ -8,6 +8,12 @@
 //Texture
 #include "STPTextureDatabase.h"
 
+//Container
+#include <unordered_map>
+
+//GLAD
+#include <glad/glad.h>
+
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
  * including perlin noise generated height map, hydrology processing and marching cube algorithm.
@@ -26,23 +32,17 @@ namespace SuperTerrainPlus {
 		class STP_API STPTextureFactory {
 		private:
 
-			//Array cache data defined in texture information
-			STPSmartDeviceMemory::STPDeviceMemory<Sample[]> RegistryLookup;
-			STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPSplatRegistry[]> Registry;
-			//A linear array that contains splat rules for all samples
-			STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPAltitudeNode[]> AltitudeCache;
-			STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPGradientNode[]> GradientCache;
-			//Locating texture data
-			STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPTextureDataLocation[]> TextureLocationCache;
-			STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPRegion[]> Region;
+			//A collection of all texture data
+			std::vector<GLuint> Texture;
+			std::vector<STPTextureInformation::STPTextureDataLocation> TextureRegion;
+			//texture region lookup table, if region is not used equivalent -1 will be filled
+			std::vector<unsigned int> TextureRegionLookup;
 
-			/**
-			 * @brief Format texture data in a texture database into texture region such that texture group and data can be referenced using index and texture type.
-			 * Texture type and group mapping must be sorted against texture ID, which must be unique.
-			 * @param type_mapping The pointer to texture type mapping view.
-			 * @param group_mapping The pointer to texture group ID mapping view.
-			*/
-			//void formatRegion(const STPTextureDatabase::STPTypeMappingView&, const STPTextureDatabase::STPGroupView&);
+			//Convert an ID to index to the final array
+			template<typename T>
+			using STPIDConverter = std::unordered_map<T, unsigned int>;
+			STPIDConverter<STPTextureInformation::STPTextureID> TextureIDConverter;
+			STPIDConverter<STPTextureInformation::STPTextureGroupID> GroupIDConverter;
 
 		public:
 
@@ -62,7 +62,7 @@ namespace SuperTerrainPlus {
 
 			STPTextureFactory& operator=(STPTextureFactory&&) = delete;
 
-			~STPTextureFactory() = default;
+			~STPTextureFactory();
 
 		};
 

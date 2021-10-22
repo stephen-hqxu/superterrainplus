@@ -8,15 +8,11 @@
 #include <SuperTerrain+/Utility/STPSQLite.h>
 //System
 #include <string>
-#include <string_view>
 #include <algorithm>
-#include <array>
 
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
 
-using std::move;
-using std::make_tuple;
 using std::make_pair;
 using std::make_unique;
 using std::string;
@@ -45,19 +41,28 @@ private:
 
 	};
 
+public:
+
 	//An auto-managed SQL prepare statement
 	typedef unique_ptr<sqlite3_stmt, STPStmtFinaliser> STPSmartStmt;
+
+private:
+
 	//All reusable prepare statements
-	std::array<STPSmartStmt, 4> Statement;
+	//we try to reuse statements that are supposed to be called very frequently
+	STPSmartStmt Statement[6];
 
 public:
 
 	//prepare statement indexing
 	typedef unsigned int STPStatementID;
-	constexpr static STPStatementID AddAltitude = 0u;
-	constexpr static STPStatementID AddGradient = 1u;
-	constexpr static STPStatementID AddGroup = 2u;
-	constexpr static STPStatementID AddTextureData = 3u;
+	constexpr static STPStatementID
+		AddAltitude = 0u,
+		AddGradient = 1u,
+		AddGroup = 2u,
+		GetGroup = 3u,
+		AddTexture = 4u,
+		AddTextureData = 5u;
 
 	/**
 	 * @brief Init STPTextureDatabaseImpl, setup database connection
@@ -109,38 +114,68 @@ public:
 	}
 
 	/**
+	 * @brief Create a SQL prepare statement object, the statement is auto-managed for garbage collection
+	 * @param sql The SQL query used to create.
+	 * @param flag Optional prepare statement flag
+	 * @return The smart prepared statement
+	*/
+	STPSmartStmt createStmt(const string_view& sql, unsigned int flag = 0u) {
+		sqlite3_stmt* newStmt;
+		STPsqliteCheckErr(sqlite3_prepare_v3(this->SQL, sql.data(), sql.size(), flag, &newStmt, nullptr));
+		return STPSmartStmt(newStmt);
+	}
+
+	/**
 	 * @brief Get the prepared statement managed by the database.
 	 * It effectively creates and reuse the statement.
 	 * @param sid The ID of the statement to be retrieved, if has been previously created; or assigned, if needs to be created
 	 * @param sql The SQL query used to create. This argument is ignored if statement has been created previously.
-	 * @return The pointer to the statement
+	 * @return The pointer to the statement. The statement will be ready to be used.
 	*/
 	sqlite3_stmt* getStmt(STPStatementID sid, const string_view& sql) {
 		STPSmartStmt& stmt = this->Statement[sid];
 
 		if (!stmt) {
 			//if statement is not previously created, create one now
-			sqlite3_stmt* newStmt;
-			STPsqliteCheckErr(sqlite3_prepare_v3(this->SQL, sql.data(), sql.size(), SQLITE_PREPARE_PERSISTENT, &newStmt, nullptr));
-			stmt = STPSmartStmt(newStmt);
+			stmt = this->createStmt(sql, SQLITE_PREPARE_PERSISTENT);
 			//return the newly created and managed statement object
-			return newStmt;
+			return stmt.get();
 		}
 		//get the statement
-		return stmt.get();
+		sqlite3_stmt* currStmt = stmt.get();
+		//reset the statement before returning, since it may contain state from the previous call
+		STPsqliteCheckErr(sqlite3_clear_bindings(currStmt));
+		STPsqliteCheckErr(sqlite3_reset(currStmt));
+		return currStmt;
 	}
 
 	/**
 	 * @brief Execute a prepare statement once, throw exception if execution fails
 	 * @param stmt The pointer to prepare statement to be executed
-	 * @param operation_msg The message to be prefixed to the exeception message
+	 * @return True if the statement has another row ready, in other words, step status == SQLITE_ROW not SQLITE_DONE, and no error occurs
 	*/
-	inline void execStmt(sqlite3_stmt* stmt, const char* operation_msg) {
-		if (const int err_code = sqlite3_step(stmt);
-			err_code != SQLITE_DONE) {
-			const string err_msg = string(operation_msg) + "\nMessage: " + sqlite3_errstr(err_code);
-			throw STPException::STPDatabaseError(err_msg.c_str());
+	inline bool execStmt(sqlite3_stmt* stmt) {
+		const int err_code = sqlite3_step(stmt);
+		if (err_code != SQLITE_ROW && err_code != SQLITE_DONE) {
+			//error occurs
+			throw STPException::STPDatabaseError(sqlite3_errmsg(this->SQL));
 		}
+		return err_code == SQLITE_ROW;
+	}
+
+	/**
+	 * @brief A helper function for queries that contain a single output, for example COUNT()
+	 * @param sql The query that will return a single output
+	 * @return The only output from the query
+	*/
+	size_t getSingleOutput(const string_view& sql) {
+		STPTextureDatabaseImpl::STPSmartStmt smart_stmt = this->createStmt(sql);
+		sqlite3_stmt* const texture_stmt = smart_stmt.get();
+
+		//no data to be bound, exec
+		this->execStmt(texture_stmt);
+		//we only expect a single row and column
+		return sqlite3_column_int(texture_stmt, 0);
 	}
 
 };
@@ -163,7 +198,8 @@ STPTextureDatabase::STPTextureSplatBuilder::STPTextureSplatBuilder(STPTextureDat
 			"LowerBound FLOAT NOT NULL,"
 			"UpperBound FLOAT NOT NULL,"
 			"TID INT NOT NULL,"
-			"PRIMARY KEY(GSID), FOREIGN KEY(TID) REFERENCES Texture(TID) ON DELETE CASCADE"
+			"PRIMARY KEY(GSID), FOREIGN KEY(TID) REFERENCES Texture(TID) ON DELETE CASCADE,"
+			"CHECK(minGradient <= maxGradient AND LowerBound <= UpperBound)"
 		");";
 
 	//create table
@@ -173,25 +209,50 @@ STPTextureDatabase::STPTextureSplatBuilder::STPTextureSplatBuilder(STPTextureDat
 void STPTextureDatabase::STPTextureSplatBuilder::addAltitude(Sample sample, float upperBound, STPTextureInformation::STPTextureID texture_id) {
 	static constexpr string_view AddAltitude = 
 		"INSERT INTO AltitudeStructure (ASID, Sample, UpperBound, TID) VALUES(?, ?, ?, ?)";
-	sqlite3_stmt* altitude_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddAltitude, AddAltitude);
+	sqlite3_stmt* const altitude_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddAltitude, AddAltitude);
 
-	STPsqliteCheckErr(sqlite3_reset(altitude_stmt));
 	//insert new altitude configuration into altitude table
 	STPsqliteCheckErr(sqlite3_bind_int(altitude_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
 	STPsqliteCheckErr(sqlite3_bind_int(altitude_stmt, 2, static_cast<int>(sample)));
 	STPsqliteCheckErr(sqlite3_bind_double(altitude_stmt, 3, static_cast<double>(upperBound)));
 	STPsqliteCheckErr(sqlite3_bind_int(altitude_stmt, 4, static_cast<int>(texture_id)));
 	//execute
-	this->Database->execStmt(altitude_stmt, "Altitude cannot be added");
+	this->Database->execStmt(altitude_stmt);
+}
+
+size_t STPTextureDatabase::STPTextureSplatBuilder::altitudeSize() const {
+	static constexpr string_view GetAltitudeCount = 
+		"SELECT COUNT(ASID) FROM AltitudeStructure;";
+	
+	return this->Database->getSingleOutput(GetAltitudeCount);
+}
+
+STPTextureDatabase::STPTextureSplatBuilder::STPAltitudeRecord STPTextureDatabase::STPTextureSplatBuilder::getAltitudes() const {
+	static constexpr string_view GetAltitude = 
+		"SELECT Sample, UpperBound, TID FROM AltitudeStructure ORDER BY Sample ASC, UpperBound ASC;";
+	STPTextureDatabaseImpl::STPSmartStmt smart_altitude_stmt = this->Database->createStmt(GetAltitude);
+	sqlite3_stmt* const altitude_stmt = smart_altitude_stmt.get();
+	STPAltitudeRecord altitude_rec;
+	//preallocate memory
+	altitude_rec.reserve(this->altitudeSize());
+
+	//structure the altitude records and add them into the vector
+	while (this->Database->execStmt(altitude_stmt)) {
+		STPTextureInformation::STPAltitudeNode& newAlt = 
+			altitude_rec.emplace_back(static_cast<Sample>(sqlite3_column_int(altitude_stmt, 0)), STPTextureInformation::STPAltitudeNode()).second;
+		newAlt.UpperBound = static_cast<float>(sqlite3_column_double(altitude_stmt, 1));
+		newAlt.Reference.DatabaseKey = static_cast<STPTextureInformation::STPTextureID>(sqlite3_column_int(altitude_stmt, 2));
+	}
+
+	return altitude_rec;
 }
 
 void STPTextureDatabase::STPTextureSplatBuilder::addGradient
 	(Sample sample, float minGradient, float maxGradient, float lowerBound, float upperBound, STPTextureInformation::STPTextureID texture_id) {
 	static constexpr string_view AddGradient =
 		"INSERT INTO GradientStructure (GSID, Sample, minGradient, maxGradient, LowerBound, UpperBound, TID) VALUES(?, ?, ?, ?, ?, ?, ?);";
-	sqlite3_stmt* gradient_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddGradient, AddGradient);
+	sqlite3_stmt* const gradient_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddGradient, AddGradient);
 
-	STPsqliteCheckErr(sqlite3_reset(gradient_stmt));
 	//insert new gradient configuration into gradient table
 	STPsqliteCheckErr(sqlite3_bind_int(gradient_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
 	STPsqliteCheckErr(sqlite3_bind_int(gradient_stmt, 2, static_cast<int>(sample)));
@@ -201,26 +262,88 @@ void STPTextureDatabase::STPTextureSplatBuilder::addGradient
 	STPsqliteCheckErr(sqlite3_bind_double(gradient_stmt, 6, static_cast<double>(upperBound)));
 	STPsqliteCheckErr(sqlite3_bind_int(gradient_stmt, 7, static_cast<int>(texture_id)));
 
-	this->Database->execStmt(gradient_stmt, "Gradient cannot be added");
+	this->Database->execStmt(gradient_stmt);
+}
+
+size_t STPTextureDatabase::STPTextureSplatBuilder::gradientSize() const {
+	static constexpr string_view GetGradientCount = 
+		"SELECT COUNT(GSID) FROM GradientStructure;";
+	
+	return this->Database->getSingleOutput(GetGradientCount);
+}
+
+STPTextureDatabase::STPTextureSplatBuilder::STPGradientRecord STPTextureDatabase::STPTextureSplatBuilder::getGradients() const {
+	static constexpr string_view GetGradient = 
+		"SELECT Sample, minGradient, maxGradient, LowerBound, UpperBound, TID FROM GradientStructure ORDER BY Sample ASC;";
+	STPTextureDatabaseImpl::STPSmartStmt smart_gradient_stmt = this->Database->createStmt(GetGradient);
+	sqlite3_stmt* const gradient_stmt = smart_gradient_stmt.get();
+	STPGradientRecord gradient_rec;
+	//preallocate memory
+	gradient_rec.reserve(this->gradientSize());
+
+	//structure then add
+	while (this->Database->execStmt(gradient_stmt)) {
+		STPTextureInformation::STPGradientNode& newGra =
+			gradient_rec.emplace_back(static_cast<Sample>(sqlite3_column_int(gradient_stmt, 0)), STPTextureInformation::STPGradientNode()).second;
+		newGra.minGradient = static_cast<float>(sqlite3_column_double(gradient_stmt, 1));
+		newGra.maxGradient = static_cast<float>(sqlite3_column_double(gradient_stmt, 2));
+		newGra.LowerBound = static_cast<float>(sqlite3_column_double(gradient_stmt, 3));
+		newGra.UpperBound = static_cast<float>(sqlite3_column_double(gradient_stmt, 4));
+		newGra.Reference.DatabaseKey = static_cast<STPTextureInformation::STPTextureID>(sqlite3_column_int(gradient_stmt, 5));
+	}
+
+	return gradient_rec;
+}
+
+STPTextureDatabase::STPTextureSplatBuilder::STPSampleRecord STPTextureDatabase::STPTextureSplatBuilder::getPresentedSample() const {
+	//get sample ID that appears in both splat structures
+	static constexpr string_view GetAffectedSample =
+		//sqlite does not support full outer join, we can union two left outer joins to emulate the behaviour
+		"SELECT R.Sample FROM ("
+			"SELECT A.Sample FROM AltitudeStructure A "
+			"UNION "
+			"SELECT G.Sample FROM GradientStructure G"
+		") R "
+		"ORDER BY R.Sample ASC;";
+	STPTextureDatabaseImpl::STPSmartStmt smart_affected_stmt = this->Database->createStmt(GetAffectedSample);
+	sqlite3_stmt* const affected_stmt = smart_affected_stmt.get();
+	STPSampleRecord sample_rec;
+
+	//insert into sample array
+	while (this->Database->execStmt(affected_stmt)) {
+		sample_rec.emplace_back(static_cast<Sample>(sqlite3_column_int(affected_stmt, 0)));
+	}
+	
+	//the array will probably be read-only once returned, to avoid wasting memory we shrink it
+	sample_rec.shrink_to_fit();
+	return sample_rec;
 }
 
 STPTextureDatabase::STPTextureDatabase() : Database(make_unique<STPTextureDatabaseImpl>()), SplatBuilder(this->Database.get()) {
 	//setup database schema for texture database
 	//no need to drop table since database is freshly created
 	static constexpr string_view TextureDatabaseSchema =
-		"CREATE TABLE Texture("
+		"CREATE TABLE TextureCollection("
 			"TID INT NOT NULL,"
-			"TextureType TINYINT NOT NULL,"
-			"TGID INT NOT NULL,"
-			//store temp-pointer (yes a pointer, not the actual texture data) to texture data
-			"TextureData BLOB NOT NULL,"
-			"PRIMARY KEY(TID, TextureType) FOREIGN KEY(TGID) REFERENCES TextureGroup(TGID) ON DELETE CASCADE"
+			"Name VARCHAR(10),"
+			"PRIMARY KEY(TID)"
 		");"
 		"CREATE TABLE TextureGroup("
 			"TGID INT NOT NULL,"
 			//STPTextureDescription
 			"TextureDescription BLOB NOT NULL,"
 			"PRIMARY KEY(TGID)"
+		");"
+		"CREATE TABLE TextureData("
+			"TDID INT NOT NULL,"
+			"TextureType TINYINT NOT NULL,"
+			"TGID INT NOT NULL,"
+			//store temp-pointer (yes a pointer, not the actual texture data) to texture data
+			"Data BLOB NOT NULL,"
+			"TID INT NOT NULL,"
+			"PRIMARY KEY(TDID),"
+			"UNIQUE(TID, TextureType),"
+			"FOREIGN KEY(TID) REFERENCES TextureCollection(TID) ON DELETE CASCADE, FOREIGN KEY(TGID) REFERENCES TextureGroup(TGID) ON DELETE CASCADE"
 		");";
 
 	//create table
@@ -231,40 +354,152 @@ STPTextureDatabase::STPTextureDatabase() : Database(make_unique<STPTextureDataba
 
 STPTextureDatabase::~STPTextureDatabase() = default;
 
+STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::getSplatBuilder() {
+	return const_cast<STPTextureSplatBuilder&>(const_cast<const STPTextureDatabase*>(this)->getSplatBuilder());
+}
+
+const STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::getSplatBuilder() const {
+	return this->SplatBuilder;
+}
+
 STPTextureInformation::STPTextureGroupID STPTextureDatabase::addGroup(const STPTextureDescription& desc) {
 	static constexpr string_view AddGroup =
 		"INSERT INTO TextureGroup (TGID, TextureDescription) VALUES(?, ?);";
-	sqlite3_stmt* group_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddGroup, AddGroup);
+	sqlite3_stmt* const group_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddGroup, AddGroup);
 
-	STPsqliteCheckErr(sqlite3_reset(group_stmt));
 	//insert texture desc as a binary
 	STPsqliteCheckErr(sqlite3_bind_int(group_stmt, 1, static_cast<int>(++STPTextureDatabase::GroupIDAccumulator)));
 	//we tell sqlite to copy the object and it will manage its lifetime for us
 	STPsqliteCheckErr(sqlite3_bind_blob(group_stmt, 2, &desc, sizeof(desc), SQLITE_TRANSIENT));
 
-	this->Database->execStmt(group_stmt, "Group cannot be added due to database error");
+	this->Database->execStmt(group_stmt);
 	return STPTextureDatabase::GroupIDAccumulator;
 }
 
+const STPTextureDatabase::STPTextureDescription& STPTextureDatabase::getGroupDescription(STPTextureInformation::STPTextureGroupID id) const {
+	static constexpr string_view GetGroup = 
+		"SELECT TextureDescription FROM TextureGroup WHERE TGID = ?;";
+	sqlite3_stmt* const group_stmt = this->Database->getStmt(STPTextureDatabaseImpl::GetGroup, GetGroup);
+
+	STPsqliteCheckErr(sqlite3_bind_int(group_stmt, 1, static_cast<int>(id)));
+	//now we need to retrieve the the blob data, since group ID is a primary key, we expect a unique result
+	this->Database->execStmt(group_stmt);
+	const STPTextureDatabase::STPTextureDescription& desc = *reinterpret_cast<const STPTextureDatabase::STPTextureDescription*>(sqlite3_column_blob(group_stmt, 0));
+	return desc;
+}
+
+STPTextureDatabase::STPGroupRecord STPTextureDatabase::getValidGroup() const {
+	//we are only interested in group that is used by some texture data, for groups that are not referenced, ignore them.
+	static constexpr string_view GetAllGroup = 
+		"SELECT TG.TGID, COUNT(TD.TGID), TG.TextureDescription FROM TextureGroup TG "
+		"INNER JOIN TextureData TD ON TG.TGID = TD.TGID GROUP BY TD.TGID ORDER BY TG.TGID ASC;";
+	STPTextureDatabaseImpl::STPSmartStmt smart_group_stmt = this->Database->createStmt(GetAllGroup);
+	sqlite3_stmt* const group_stmt = smart_group_stmt.get();
+	STPGroupRecord group_rc;
+	//estimate the size, the number of valid group must be less than or equal to the total number of group
+	group_rc.reserve(this->groupSize());
+
+	//loop through all group data and emplace them into a strutured array
+	while (this->Database->execStmt(group_stmt)) {
+		group_rc.emplace_back(
+			static_cast<STPTextureInformation::STPTextureGroupID>(sqlite3_column_int(group_stmt, 0)),
+			static_cast<size_t>(sqlite3_column_int(group_stmt, 1)),
+			reinterpret_cast<const STPTextureDescription*>(sqlite3_column_blob(group_stmt, 2))
+		);
+	}
+
+	//clear up unused data
+	group_rc.shrink_to_fit();
+	return group_rc;
+}
+
+size_t STPTextureDatabase::groupSize() const {
+	static constexpr string_view GetGroupCount = 
+		"SELECT COUNT(TGID) FROM TextureGroup;";
+
+	return this->Database->getSingleOutput(GetGroupCount);
+}
+
 STPTextureInformation::STPTextureID STPTextureDatabase::addTexture() {
-	return STPTextureDatabase::TextureIDAccumulator++;
+	static constexpr string_view AddTexture = 
+		"INSERT INTO TextureCollection (TID) VALUES(?);";
+	sqlite3_stmt* texture_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddTexture, AddTexture);
+
+	//assign a new texture ID
+	const STPTextureInformation::STPTextureID newTextureID = STPTextureDatabase::TextureIDAccumulator++;
+	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(newTextureID)));
+
+	this->Database->execStmt(texture_stmt);
+	return newTextureID;
+}
+
+STPTextureDatabase::STPTextureCollectionRecord STPTextureDatabase::getValidTexture() const {
+	static constexpr string_view GetAllTexture = 
+		"SELECT TID FROM TextureData ORDER BY TID ASC;";
+	STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Database->createStmt(GetAllTexture);
+	sqlite3_stmt* const texture_stmt = smart_texture_stmt.get();
+	STPTextureCollectionRecord collection_rec;
+	collection_rec.reserve(this->textureCollectionSize());
+
+	while (this->Database->execStmt(texture_stmt)) {
+		//add texture ID into the array
+		collection_rec.emplace_back(static_cast<STPTextureInformation::STPTextureID>(sqlite3_column_int(texture_stmt, 0)));
+	}
+
+	return collection_rec;
 }
 
 void STPTextureDatabase::addTextureData
 	(STPTextureInformation::STPTextureID texture_id, STPTextureType type, STPTextureInformation::STPTextureGroupID group_id, const void* texture_data) {
 	static constexpr string_view AddTextureData =
-		"INSERT INTO Texture (TID, TextureType, TGID, TextureData) VALUES(?, ?, ?, ?);";
-	sqlite3_stmt* texture_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddTextureData, AddTextureData);
+		"INSERT INTO TextureData (TDID, TextureType, TGID, Data, TID) VALUES(?, ?, ?, ?, ?);";
+	sqlite3_stmt* const texture_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddTextureData, AddTextureData);
 
-	STPsqliteCheckErr(sqlite3_reset(texture_stmt));
 	//set data
-	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(texture_id)));
+	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
 	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 2, static_cast<int>(type)));
 	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 3, static_cast<int>(group_id)));
 	//send the pointer as a blob
 	//here we have told user to manage the lifetime of texture for us, so sqlite doesn't need to worry about that
 	//never assume the size of a pointer
 	STPsqliteCheckErr(sqlite3_bind_blob(texture_stmt, 4, texture_data, sizeof(texture_data), SQLITE_STATIC));
+	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 5, static_cast<int>(texture_id)));
 
-	this->Database->execStmt(texture_stmt, "Texture data cannot be added for the specified texture ID and type");
+	this->Database->execStmt(texture_stmt);
+}
+
+STPTextureDatabase::STPTextureDataRecord STPTextureDatabase::getValidTextureData() const {
+	static constexpr string_view GetAllTextureData = 
+		"SELECT TGID, TID, TextureType, Data FROM TextureData ORDER BY TGID ASC;";
+	STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Database->createStmt(GetAllTextureData);
+	sqlite3_stmt* const texture_stmt = smart_texture_stmt.get();
+	STPTextureDataRecord texture_rec;
+	//reserve data, since we are retrieving all texture data, the size is exact
+	texture_rec.reserve(this->textureDataSize());
+
+	while (this->Database->execStmt(texture_stmt)) {
+		texture_rec.emplace_back(
+			static_cast<STPTextureInformation::STPTextureGroupID>(sqlite3_column_int(texture_stmt, 0)),
+			static_cast<STPTextureInformation::STPTextureID>(sqlite3_column_int(texture_stmt, 1)),
+			static_cast<STPTextureType>(sqlite3_column_int(texture_stmt, 2)),
+			sqlite3_column_blob(texture_stmt, 3)
+		);
+	}
+
+	//no need to clean up, because the reserved size is exact
+	return texture_rec;
+}
+
+size_t STPTextureDatabase::textureDataSize() const {
+	static constexpr string_view GetTextureDataCount = 
+		"SELECT COUNT(TDID) FROM TextureData;";
+
+	return this->Database->getSingleOutput(GetTextureDataCount);
+}
+
+size_t STPTextureDatabase::textureCollectionSize() const {
+	static constexpr string_view GetTextureCount = 
+		"SELECT COUNT(TID) FROM TextureCollection;";
+	
+	return this->Database->getSingleOutput(GetTextureCount);
 }
