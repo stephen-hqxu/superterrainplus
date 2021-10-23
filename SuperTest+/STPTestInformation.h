@@ -7,17 +7,10 @@
 /**
  * @brief STPTestInformation contains data to be shared within the test program
 */
-struct STPTestInformation {
-private:
-
-	STPTestInformation() = delete;
-
-	~STPTestInformation() = delete;
-
-public:
+namespace STPTestInformation {
 
 	//CUDA device default memory pool
-	static cudaMemPool_t TestDeviceMemoryPool;
+	extern cudaMemPool_t TestDeviceMemoryPool;
 
 };
 

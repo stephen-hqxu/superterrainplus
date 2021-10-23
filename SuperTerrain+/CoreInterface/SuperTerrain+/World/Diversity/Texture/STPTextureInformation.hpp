@@ -4,8 +4,6 @@
 
 //Biome
 #include "../STPBiomeDefine.h"
-//Texture
-#include "STPTextureType.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -21,8 +19,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPTextureInformation stores texture data and essential information for how to apply texture to the generated terrain
 		*/
-		struct STPTextureInformation {
-		public:
+		namespace STPTextureInformation {
 
 			//Each texture collection has a unique ID to uniquely identify a texture with different types in the database
 			typedef unsigned int STPTextureID;
@@ -53,14 +50,9 @@ namespace SuperTerrainPlus {
 
 				//A reference that tells where to find a structure, depends on context the key may behave differently
 				union {
-				private:
-					
-					friend class STPTextureDatabase;
 
 					//The texture ID referencing a texture entry in a texture database instance
 					STPTextureID DatabaseKey;
-
-				public:
 
 					//The index to the texture region registry for this active region
 					unsigned int RegionIndex;
@@ -104,27 +96,32 @@ namespace SuperTerrainPlus {
 			struct STPSplatRegistry {
 			public:
 
-				//The pointer to the altitude setup for this sample. nullptr if there is no altitude configuration.
-				const STPAltitudeNode* AltitudeEntry = nullptr;
+				//The index to the altitude setup for this sample. If there is no altitude configuration, denoted by size, value will be undefined.
+				unsigned int AltitudeEntry,
 				//The number of element in the altitude table. Zero if none.
-				unsigned int AltitudeSize = 0u;
+					AltitudeSize = 0u;
 
-				//The pointer to the gradient setup for this sample. nullptr if there is no gradient configuration.
-				const STPGradientNode* GradientEntry = nullptr;
+				//The index to the gradient setup for this sample. If there is no gradient configuration, denoted by size, value will be undefined.
+				unsigned int GradientEntry,
 				//The number of elemenet in the gradient table. Zero is none.
-				unsigned int GradientSize = 0u;
+					GradientSize = 0u;
 
 			};
 
+			//All data will be sent to OpenGL so we don't need to compile them on C++
 			//An array of sample, the index of a sample can be used to locate the sample in the splat registry.
-			Sample* SplatRegistryDictionary;
+			//Sample* SplatRegistryDictionary;
 			//An array that contains terrain splat configuration for each sample.
-			STPSplatRegistry* SplatRegistry;
+			//STPSplatRegistry* SplatRegistry;
+
+			//Array of splat rules
+			//STPAltitudeNode* AltitudeRegistry;
+			//STPGradientNode* GradientRegistry;
 
 			//Given a region index, return indices for all texture type to the region to the region registry
-			unsigned int* RegionRegistryDictionary;
+			//unsigned int* RegionRegistryDictionary;
 			//An array of regions, each region constains a collection of texture.
-			STPRegion RegionRegistry;
+			//STPRegion RegionRegistry;
 
 		};
 

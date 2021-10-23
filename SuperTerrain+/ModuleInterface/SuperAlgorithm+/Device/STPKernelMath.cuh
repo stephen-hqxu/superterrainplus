@@ -24,17 +24,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief STPKernelMath is a library contains common math functions. It only serves to kernel
 		*/
-		class STPKernelMath {
-		private:
-
-			/**
-			 * @brief It's a static-only class so don't initialise
-			*/
-			__device__ STPKernelMath() = delete;
-
-			__device__ ~STPKernelMath() = delete;
-
-		public:
+		namespace STPKernelMath {
 
 			/**
 			 * @brief Perform linear interpolation of two data points.
@@ -45,7 +35,7 @@ namespace SuperTerrainPlus {
 			 * It must be [0,1]
 			 * @return The lerp value of two points with factor
 			*/
-			__device__ static float lerp(float, float, float);
+			__device__ float lerp(float, float, float);
 
 			/**
 			 * @brief Perform inverse linear interpolation for each value to scale it within [0,1]
@@ -54,7 +44,7 @@ namespace SuperTerrainPlus {
 			 * @param value The input value
 			 * @return The interpolated value
 			*/
-			__device__ static float Invlerp(float, float, float);
+			__device__ float Invlerp(float, float, float);
 
 			/**
 			 * @brief Perform cosine interpolation for two data points.
@@ -64,7 +54,7 @@ namespace SuperTerrainPlus {
 			 * @param factor The normalised distance to p2.
 			 * @return The cosrp value of two points with factor
 			*/
-			__device__ static float cosrp(float, float, float);
+			__device__ float cosrp(float, float, float);
 
 			/**
 			 * @brief Clamp the value between two ranges.
@@ -75,7 +65,7 @@ namespace SuperTerrainPlus {
 			 * If value is greater than upper, upper is returned.
 			 * If value is less than lower, lower is returned.
 			*/
-			__device__ static float clamp(float, float, float);
+			__device__ float clamp(float, float, float);
 
 		};
 

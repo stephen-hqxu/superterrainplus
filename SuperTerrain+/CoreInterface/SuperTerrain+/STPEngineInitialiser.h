@@ -15,17 +15,7 @@ namespace SuperTerrainPlus {
 	 * @brief STPEngineInitialiser initialises SuperTerrain+ main engine.
 	 * Making any function call before engine is initialised will result in underfined behaviour
 	*/
-	class STP_API STPEngineInitialiser final {
-	private:
-
-		/**
-		 * @brief A static-only class should not be constructed
-		*/
-		STPEngineInitialiser() = delete;
-
-		~STPEngineInitialiser() = delete;
-
-	public:
+	namespace STPEngineInitialiser {
 
 		//Indicate the process with OpenGL context
 		typedef void* (*STPglProc)(const char* name);
@@ -34,26 +24,26 @@ namespace SuperTerrainPlus {
 		 * @brief Initialise OpenGL context with the current process.
 		 * @return True if OpenGL init is successful
 		*/
-		static bool initGLcurrent();
+		STP_API bool initGLcurrent();
 
 		/**
 		 * @brief Initialise OpenGL context with explictly specified process
 		 * @param process The process to use
 		 * @return True if OpenGL init is successful
 		*/
-		static bool initGLexplicit(STPglProc);
+		STP_API bool initGLexplicit(STPglProc);
 
 		/**
 		 * @brief Initialise super terrain plus engine
 		 * @param device Specify which CUDA-enabled GPU will be used for computing
 		*/
-		static void init(int);
+		STP_API void init(int);
 
 		/**
 		 * @brief Check if the engine has been initialised
 		 * @return True if engien has been initialised completely.
 		*/
-		static bool hasInit();
+		STP_API bool hasInit();
 
 	};
 

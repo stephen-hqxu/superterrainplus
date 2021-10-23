@@ -38,11 +38,28 @@ namespace SuperTerrainPlus {
 			//texture region lookup table, if region is not used equivalent -1 will be filled
 			std::vector<unsigned int> TextureRegionLookup;
 
+			//Convert sample to index in spalt registry
+			std::vector<Sample> SplatLookup;
+			std::vector<STPTextureInformation::STPSplatRegistry> SplatRegistry;
+
+			//Splat configurations
+			std::vector<STPTextureInformation::STPAltitudeNode> AltitudeRegistry;
+			std::vector<STPTextureInformation::STPGradientNode> GradientRegistry;
+
 			//Convert an ID to index to the final array
 			template<typename T>
 			using STPIDConverter = std::unordered_map<T, unsigned int>;
 			STPIDConverter<STPTextureInformation::STPTextureID> TextureIDConverter;
 			STPIDConverter<STPTextureInformation::STPTextureGroupID> GroupIDConverter;
+
+			/**
+			 * @brief Convert texture ID to index to texture region.
+			 * @tparam N The node type
+			 * @param node The splat structure to be converted.
+			 * @parm reg The splat registry output after the convertion
+			*/
+			template<typename N>
+			void convertSplatID(const STPTextureDatabase::STPDatabaseView::STPNodeRecord<N>&, std::vector<N>&);
 
 		public:
 
@@ -50,9 +67,9 @@ namespace SuperTerrainPlus {
 			 * @brief Setup texture factory, manufacture texture data provided and process it to the way that it can be used by texturing system.
 			 * After this function returns, all internal states are initialised and no further change can be made.
 			 * No reference is retained after the function returns.
-			 * @param database The pointer to the texture database which contains all texture information
+			 * @param database_view The pointer to the texture database view which contains all texture information
 			*/
-			STPTextureFactory(const STPTextureDatabase&);
+			STPTextureFactory(const STPTextureDatabase::STPDatabaseView&);
 
 			STPTextureFactory(const STPTextureFactory&) = delete;
 

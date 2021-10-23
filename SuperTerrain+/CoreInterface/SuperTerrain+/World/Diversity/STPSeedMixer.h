@@ -16,18 +16,11 @@ namespace SuperTerrainPlus {
 	 * @brief STPDiversity is a series of biome generation algorithm that allows user to define their own implementations
 	*/
 	namespace STPDiversity {
+
 		/**
 		 * @brief STPSeedMixer mixes two seeds together to form a new seed
 		*/
-		class STP_API STPSeedMixer final {
-		private:
-
-			//No initialisation for a class with static functions only
-			STPSeedMixer() = delete;
-
-			~STPSeedMixer() = delete;
-
-		public:
+		namespace STPSeedMixer {
 
 			/**
 			 * @brief Mix seed with a factor to achieve a degree of randomness to form a new seed. This function guaratees that if two same values are the same,
@@ -36,7 +29,7 @@ namespace SuperTerrainPlus {
 			 * @param fac The factor that is used to mix
 			 * @return The mixed seed
 			*/
-			static Seed mixSeed(Seed, long long);
+			STP_API Seed mixSeed(Seed, long long);
 
 		};
 	}

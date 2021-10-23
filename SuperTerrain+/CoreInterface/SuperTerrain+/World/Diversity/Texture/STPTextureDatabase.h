@@ -15,7 +15,9 @@
 //GLAD
 #include <glad/glad.h>
 
+//Texture
 #include "STPTextureInformation.hpp"
+#include "STPTextureType.hpp"
 
 /**
  * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
@@ -110,11 +112,6 @@ namespace SuperTerrainPlus {
 
 			public:
 
-				//A result set contains sample to each splat configuration mapping
-				typedef std::vector<std::pair<Sample, STPTextureInformation::STPAltitudeNode>> STPAltitudeRecord;
-				typedef std::vector<std::pair<Sample, STPTextureInformation::STPGradientNode>> STPGradientRecord;
-				typedef std::vector<Sample> STPSampleRecord;
-
 				/**
 				 * @brief Add a new configuration for specified biome into altitude structure.
 				 * If the upper bound already exists, the old texture ID will be replaced.
@@ -138,13 +135,6 @@ namespace SuperTerrainPlus {
 				 * @return The number of altitude structure
 				*/
 				size_t altitudeSize() const;
-
-				/**
-				 * @brief Retrieve all stored altitude configurations.
-				 * Altitude records will be sorted by sample; if samples are the same it will be then sorted by upper bound
-				 * @return The sorted altitude record.
-				*/
-				STPAltitudeRecord getAltitudes() const;
 
 				/**
 				 * @brief Add a new configuration for specified biome into gradient structure
@@ -172,6 +162,76 @@ namespace SuperTerrainPlus {
 				*/
 				size_t gradientSize() const;
 
+			};
+
+			/**
+			 * @brief STPDatabaseView is a visitor to a database instance, and allows quering large result sets from database.
+			*/
+			class STP_API STPDatabaseView {
+			public:
+
+				//A database from the parent texture database
+				const STPTextureDatabase& Database;
+
+			private:
+
+				//The pointer from the database, store them just for convenience
+				STPTextureDatabase::STPTextureDatabaseImpl* const Impl;
+				const STPTextureDatabase::STPTextureSplatBuilder& SplatBuilder;
+
+			public:
+
+				//A result set contains sample to each splat configuration mapping
+				template<class N>
+				using STPNodeRecord = std::vector<std::pair<Sample, N>>;
+				typedef STPNodeRecord<STPTextureInformation::STPAltitudeNode> STPAltitudeRecord;
+				typedef STPNodeRecord<STPTextureInformation::STPGradientNode> STPGradientRecord;
+				typedef std::vector<std::tuple<Sample, size_t, size_t>> STPSampleRecord;
+
+				//A vector contains group ID with corresponding group properties
+				typedef std::vector<std::tuple<
+					STPTextureInformation::STPTextureGroupID,
+					//The number of texture data in this group
+					size_t,
+					const STPTextureDescription*
+				>> STPGroupRecord;
+				//A vector of texture ID
+				typedef std::vector<STPTextureInformation::STPTextureID> STPTextureCollectionRecord;
+				//A vector contains texture data
+				typedef std::vector<std::tuple<
+					STPTextureInformation::STPTextureGroupID,
+					STPTextureInformation::STPTextureID,
+					STPTextureType,
+					const void*
+				>> STPTextureDataRecord;
+				//A vector of texture type
+				typedef std::vector<STPTextureType> STPTextureTypeRecord;
+
+				/**
+				 * @brief Init STPDatabaseView with a database instance
+				 * @param db The pointer to the database. Note that the database view is a non-owning object of database, all copy operations will be shallow.
+				*/
+				STPDatabaseView(const STPTextureDatabase&);
+
+				STPDatabaseView(const STPDatabaseView&) = default;
+
+				STPDatabaseView(STPDatabaseView&&) = default;
+
+				STPDatabaseView& operator=(const STPDatabaseView&) = default;
+
+				STPDatabaseView& operator=(STPDatabaseView&&) = default;
+
+				~STPDatabaseView() = default;
+
+				/* -- Splat Builder --*/
+
+				/**
+				 * @brief Retrieve all stored altitude configurations.
+				 * Altitude records will be sorted by sample; if samples are the same it will be then sorted by upper bound
+				 * @return The sorted altitude record.
+				*/
+				STPAltitudeRecord getAltitudes() const;
+
 				/**
 				 * @brief Retrieve all stored gradient configurations.
 				 * Gradient records will be sorted by sample.
@@ -179,12 +239,48 @@ namespace SuperTerrainPlus {
 				*/
 				STPGradientRecord getGradients() const;
 
-				
+
 				/**
 				 * @brief Get an array of samples that have been registered with any splat configuration.
+				 * Also return the number of rule each sample owns.
+				 * @param hint An optional prediction of the number of possible presented sample to speed up memory allocation
 				 * @return An array sample with any splat configuration.
 				*/
-				STPSampleRecord getPresentedSample() const;
+				STPSampleRecord getValidSample(unsigned int = 0u) const;
+
+				/* -- Database -- */
+
+				/**
+				 * @brief Retrieve a record of all groups that have been referenced by some texture data, and their properties.
+				 * Note that group only being added to the database but not used does not count.
+				 * Results are sorted by group ID in ascending order.
+				 * @return An array of group record.
+				*/
+				STPGroupRecord getValidGroup() const;
+
+				/**
+				 * @brief Retrieve a record of all texture collection ID in this database.
+				 * Result will be sorted in ascending order.
+				 * Any texture collection (represented by texture ID) with no texture data will be ignored.
+				 * @return An array of sorted texture ID
+				*/
+				STPTextureCollectionRecord getValidTexture() const;
+
+				/**
+				 * @brief Retrieve a record of all texture data in this database.
+				 * Result will be sorted in ascending order of texture group ID.
+				 * Any of the group with no texture references to, or texture ID with no data associated, will be ignored.
+				 * @return An array of sorted texture data
+				*/
+				STPTextureDataRecord getValidTextureData() const;
+
+				/**
+				 * @brief Retrieve a record of all texture type being used in this database.
+				 * Type will be sorted by their defined numeric value, which can be used as indices.
+				 * @param hint An optional prediction on how many types will be used, this can be used to speed up memory allocation.
+				 * @return An array of sorted texture type.
+				*/
+				STPTextureTypeRecord getValidTextureType(unsigned int = 0u) const;
 
 			};
 
@@ -212,23 +308,6 @@ namespace SuperTerrainPlus {
 			void expandAddTextures(STPTextureInformation::STPTextureID, std::index_sequence<Is...>, std::tuple<Arg...>);
 
 		public:
-
-			//A vector contains group ID with corresponding group properties
-			typedef std::vector<std::tuple<
-				STPTextureInformation::STPTextureGroupID, 
-				//The number of texture data in this group
-				size_t, 
-				const STPTextureDescription*
-			>> STPGroupRecord;
-			//A vector of texture ID
-			typedef std::vector<STPTextureInformation::STPTextureID> STPTextureCollectionRecord;
-			//A vector contains texture data
-			typedef std::vector<std::tuple<
-				STPTextureInformation::STPTextureGroupID, 
-				STPTextureInformation::STPTextureID, 
-				STPTextureType, 
-				const void*
-			>> STPTextureDataRecord;
 
 			/**
 			 * @brief Init an empty texture database
@@ -258,6 +337,12 @@ namespace SuperTerrainPlus {
 			const STPTextureSplatBuilder& getSplatBuilder() const;
 
 			/**
+			 * @brief Get the database view
+			 * @return The database view object
+			*/
+			STPDatabaseView visit() const;
+
+			/**
 			 * @brief Insert a new texture group into the texture database
 			 * @param desc The texture format description, it will be applied to all texture data in this group
 			 * @return The group ID of the newly inserted texture.
@@ -274,14 +359,6 @@ namespace SuperTerrainPlus {
 			const STPTextureDescription& getGroupDescription(STPTextureInformation::STPTextureGroupID) const;
 
 			/**
-			 * @brief Retrieve a record of all groups that have been referenced by some texture data, and their properties.
-			 * Note that group only being added to the database but not used does not count.
-			 * Results are sorted by group ID in ascending order.
-			 * @return An array of group record.
-			*/
-			STPGroupRecord getValidGroup() const;
-
-			/**
 			 * @brief Get the number of texture group registered
 			 * @return The number of registered texture group
 			*/
@@ -293,14 +370,6 @@ namespace SuperTerrainPlus {
 			 * @return The texture ID that can be used to reference the texture
 			*/
 			STPTextureInformation::STPTextureID addTexture();
-
-			/**
-			 * @brief Retrieve a record of all texture collection ID in this database.
-			 * Result will be sorted in ascending order.
-			 * Any texture collection (represented by texture ID) with no texture data will be ignored.
-			 * @return An array of sorted texture ID
-			*/
-			STPTextureCollectionRecord getValidTexture() const;
 
 			/**
 			 * @brief Add a new texture data to the texture database for a particular texture.
@@ -324,14 +393,6 @@ namespace SuperTerrainPlus {
 			*/
 			template<class... Arg>
 			void addTextureDatas(STPTextureInformation::STPTextureID, Arg&&...);
-
-			/**
-			 * @brief Retrieve a record of all texture data in this database.
-			 * Result will be sorted in ascending order of texture group ID.
-			 * Any of the group with no texture references to, or texture ID with no data associated, will be ignored.
-			 * @return An array of sorted texture data
-			*/
-			STPTextureDataRecord getValidTextureData() const;
 
 			/**
 			 * @brief Get the number of texture data, that contains all texture collection and texture type, in the database.
