@@ -1,5 +1,3 @@
-#pragma once
-
 //Catch2
 #include <catch2/catch_session.hpp>
 

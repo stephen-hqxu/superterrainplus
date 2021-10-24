@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperTerrain+/Utility/Exception/STPAsyncGenerationError.h>
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Utility/Exception/STPCompilationError.h>

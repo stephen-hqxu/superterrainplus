@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperAlgorithm+/STPPermutationGenerator.h>
 #include <memory>
 #include <stdexcept>

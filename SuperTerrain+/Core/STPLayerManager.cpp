@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperTerrain+/World/Diversity/STPLayerManager.h>
 
 using namespace SuperTerrainPlus::STPDiversity;

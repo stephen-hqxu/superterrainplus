@@ -6,32 +6,21 @@
 //Exception
 #include <stdexcept>
 
-/**
- * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
- * including perlin noise generated height map, hydrology processing and marching cube algorithm.
- * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
-*/
-namespace SuperTerrainPlus {
+namespace SuperTerrainPlus::STPException {
+
 	/**
-	 * @brief STPException provides a variety of exception classes for Super Terrain + engine.
+	 * @brief STPCUDAError specifies error thrown from CUDA API.
 	*/
-	namespace STPException {
+	class STP_API STPCUDAError : public std::runtime_error {
+	public:
 
 		/**
-		 * @brief STPCUDAError specifies error thrown from CUDA API.
+		 * @brief Init STPCUDAError
+		 * @param msg The CUDA error message
 		*/
-		class STP_API STPCUDAError : public std::runtime_error {
-		public:
+		explicit STPCUDAError(const char*);
 
-			/**
-			 * @brief Init STPCUDAError
-			 * @param msg The CUDA error message
-			*/
-			explicit STPCUDAError(const char*);
+	};
 
-		};
-
-	}
 }
-
 #endif//_STP_CUDA_ERROR_H_

@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperAlgorithm+/Device/STPSingleHistogramWrapper.cuh>
 
 using namespace SuperTerrainPlus::STPCompute;

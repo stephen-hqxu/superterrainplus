@@ -1,4 +1,3 @@
-#pragma once
 #include "STPBiomefieldGenerator.h"
 #include <STPAlgorithmDeviceInfoDebug.h>
 //Error

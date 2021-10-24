@@ -1,4 +1,3 @@
-#pragma once
 #pragma warning(disable:26812)//Enum unsafe, use enum class instead
 #include <SuperTerrain+/GPGPU/STPDiversityGeneratorRTC.h>
 

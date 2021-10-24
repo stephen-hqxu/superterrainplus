@@ -1,4 +1,3 @@
-#pragma once
 #define _STP_START_CPP_
 #include "../Renderer/STPMasterRenderer.h"
 #include <SuperTerrain+/STPEngineInitialiser.h>

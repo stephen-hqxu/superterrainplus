@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperAlgorithm+/Device/STPSimplexNoise.cuh>
 
 #include <cassert>

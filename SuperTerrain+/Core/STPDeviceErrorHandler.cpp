@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //SQLite
@@ -19,8 +18,6 @@ using std::stringstream;
 using std::cerr;
 using std::endl;
 
-using namespace SuperTerrainPlus;
-
 //always throw an exception
 template<class E>
 inline void printError(stringstream& msg, bool no_msg) noexcept(false) {
@@ -32,7 +29,7 @@ inline void printError(stringstream& msg, bool no_msg) noexcept(false) {
 }
 
 //Helpers to cut down coding efforts
-#define ASSERT_FUNCTION(ERR) template<> STP_API void STPEngineAssert<ERR>(ERR err_code, const char* __restrict file, const char* __restrict function, int line, bool no_msg) noexcept(false)
+#define ASSERT_FUNCTION(ERR) template<> STP_API void SuperTerrainPlus::STPEngineAssert<ERR>(ERR err_code, const char* __restrict file, const char* __restrict function, int line, bool no_msg) noexcept(false)
 #define WRITE_ERR_STRING(SS) SS << file << "(" << function << "):" << line
 #define CALL_PROGRAM_DECISION_CUDA(SS) printError<STPException::STPCUDAError>(SS, no_msg)
 #define CALL_PROGRAM_DECISION_SQLITE(SS) printError<STPException::STPDatabaseError>(SS, no_msg)

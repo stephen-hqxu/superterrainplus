@@ -11,58 +11,48 @@
 //Device Memory Management
 #include <SuperTerrain+/Utility/STPSmartDeviceMemory.h>
 
-/**
- * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
- * including perlin noise generated height map, hydrology processing and marching cube algorithm.
- * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
-*/
-namespace SuperTerrainPlus {
+namespace SuperTerrainPlus::STPCompute {
+
 	/**
-	 * @brief GPGPU compute suites for Super Terrain + program, powered by CUDA
+	 * @brief Generate a random permutaion and gradient table for simplex noise generator
 	*/
-	namespace STPCompute {
+	class STPALGORITHMPLUS_HOST_API STPPermutationGenerator : private STPPermutation {
+	private:
+
+		//TODO Choose your prefered rng here!!!
+		typedef std::mt19937_64 STPPermutationRNG;
+
+		//Manage the memory smartly and only pass the pointer to the STPPermutation
+		STPSmartDeviceMemory::STPDeviceMemory<unsigned char[]> ManagedPermutation;
+		STPSmartDeviceMemory::STPDeviceMemory<float[]> ManagedGradient2D;
+
+	public:
 
 		/**
-		 * @brief Generate a random permutaion and gradient table for simplex noise generator
+		 * @brief Init thhe permutation generator
+		 * @param simplex_setting Arguments to specify the generator behaviour
 		*/
-		class STPALGORITHMPLUS_HOST_API STPPermutationGenerator : private STPPermutation {
-		private:
+		STPPermutationGenerator(const STPEnvironment::STPSimplexNoiseSetting&);
 
-			//TODO Choose your prefered rng here!!!
-			typedef std::mt19937_64 STPPermutationRNG;
+		//Copy permutation generator, deep copy for generated gradient and permutation will be performed.
+		STPPermutationGenerator(const STPPermutationGenerator&) = delete;
 
-			//Manage the memory smartly and only pass the pointer to the STPPermutation
-			STPSmartDeviceMemory::STPDeviceMemory<unsigned char[]> ManagedPermutation;
-			STPSmartDeviceMemory::STPDeviceMemory<float[]> ManagedGradient2D;
+		STPPermutationGenerator(STPPermutationGenerator&&) = delete;
 
-		public:
+		//Copy the permutation to the destination class, deep copy for generated gradient and permutation will be performed.
+		STPPermutationGenerator& operator=(const STPPermutationGenerator&) = delete;
 
-			/**
-			 * @brief Init thhe permutation generator
-			 * @param simplex_setting Arguments to specify the generator behaviour
-			*/
-			STPPermutationGenerator(const STPEnvironment::STPSimplexNoiseSetting&);
+		STPPermutationGenerator& operator=(STPPermutationGenerator&&) = delete;
 
-			//Copy permutation generator, deep copy for generated gradient and permutation will be performed.
-			STPPermutationGenerator(const STPPermutationGenerator&) = delete;
+		~STPPermutationGenerator() = default;
 
-			STPPermutationGenerator(STPPermutationGenerator&&) = delete;
+		/**
+		 * @brief Get the generated permutation table.
+		 * The table returned is bounded to the current generator, if generator is destroyed result will become undefined.
+		 * @return Pointer to the permutation table.
+		*/
+		const STPPermutation& operator()() const;
 
-			//Copy the permutation to the destination class, deep copy for generated gradient and permutation will be performed.
-			STPPermutationGenerator& operator=(const STPPermutationGenerator&) = delete;
-
-			STPPermutationGenerator& operator=(STPPermutationGenerator&&) = delete;
-
-			~STPPermutationGenerator() = default;
-
-			/**
-			 * @brief Get the generated permutation table.
-			 * The table returned is bounded to the current generator, if generator is destroyed result will become undefined.
-			 * @return Pointer to the permutation table.
-			*/
-			const STPPermutation& operator()() const;
-
-		};
-	}
+	};
 }
 #endif//_STP_PERMUTATION_GENERATOR_H_

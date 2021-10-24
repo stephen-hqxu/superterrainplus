@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 
 //Error

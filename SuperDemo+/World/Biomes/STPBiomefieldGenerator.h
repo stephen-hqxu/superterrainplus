@@ -15,10 +15,6 @@
 //GLM
 #include <glm/vec2.hpp>
 
-/**
- * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
- * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
-*/
 namespace STPDemo {
 	using SuperTerrainPlus::STPDiversity::Sample;
 

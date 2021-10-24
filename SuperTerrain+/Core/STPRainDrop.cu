@@ -1,4 +1,3 @@
-#pragma once
 #pragma warning(disable:26495)//Alarm for un-init variables
 #include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
 

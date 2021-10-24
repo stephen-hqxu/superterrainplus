@@ -1,4 +1,3 @@
-#pragma once
 #include "STPTextureStorage.h"
 
 using namespace STPDemo;

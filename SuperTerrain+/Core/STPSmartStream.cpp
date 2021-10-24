@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperTerrain+/Utility/STPSmartStream.h>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>

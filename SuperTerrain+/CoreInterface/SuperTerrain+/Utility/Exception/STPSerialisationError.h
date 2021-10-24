@@ -6,31 +6,21 @@
 //Exception
 #include <ios>
 
-/**
- * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
- * including perlin noise generated height map, hydrology processing and marching cube algorithm.
- * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
-*/
-namespace SuperTerrainPlus {
+namespace SuperTerrainPlus::STPException {
+
 	/**
-	 * @brief STPException provides a variety of exception classes for Super Terrain + engine.
+	 * @brief STPSerialisationError will be thrown when serialisation fails to operate.
 	*/
-	namespace STPException {
+	class STP_API STPSerialisationError : public std::ios_base::failure {
+	public:
 
 		/**
-		 * @brief STPSerialisationError will be thrown when serialisation fails to operate.
+		 * @brief Init STPSerialisationError
+		 * @param msg Message for serialisation error
 		*/
-		class STP_API STPSerialisationError : public std::ios_base::failure {
-		public:
+		explicit STPSerialisationError(const char*);
 
-			/**
-			 * @brief Init STPSerialisationError
-			 * @param msg Message for serialisation error
-			*/
-			explicit STPSerialisationError(const char*);
+	};
 
-		};
-
-	}
 }
 #endif //_STP_SERIALISATION_ERROR_H_

@@ -1,4 +1,3 @@
-#pragma once
 //Filter optimisation mode
 #include "SobelFilter.cuh"
 

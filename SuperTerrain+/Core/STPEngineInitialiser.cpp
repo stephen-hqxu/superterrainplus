@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperTerrain+/STPEngineInitialiser.h>
 
 //GLAD

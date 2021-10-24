@@ -8,80 +8,70 @@
 //Layer Node
 #include "STPLayer.h"
 
-/**
- * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
- * including perlin noise generated height map, hydrology processing and marching cube algorithm.
- * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
-*/
-namespace SuperTerrainPlus {
+namespace SuperTerrainPlus::STPDiversity {
+
 	/**
-	 * @brief STPDiversity is a series of biome generation algorithm that allows user to define their own implementations
+	 * @brief STPLayerManager is a graph structured class that manages all STPLayers as nodes.
+	 * It makes layer creation and destroy easier.
 	*/
-	namespace STPDiversity {
+	class STP_API STPLayerManager {
+	private:
+
+		//An array pointers to every layer.
+		//STPLayerManager owns the pointer to each layer so vertices can be deleted with ease
+		std::vector<std::unique_ptr<STPLayer, void(*)(STPLayer*)>> Vertex;
 
 		/**
-		 * @brief STPLayerManager is a graph structured class that manages all STPLayers as nodes.
-		 * It makes layer creation and destroy easier.
+		 * @brief Delete a internally stored layer
+		 * Since STPLayerManager is friend of STPLayer and STPLayerRecycler is friend of STPLayerManager, such that STPLayerRecycler can access deleter of STPLayer.
+		 * @param layer The pointer to the layer to be deleted
 		*/
-		class STP_API STPLayerManager {
-		private:
+		static void recycleLayer(STPLayer*);
 
-			//An array pointers to every layer.
-			//STPLayerManager owns the pointer to each layer so vertices can be deleted with ease
-			std::vector<std::unique_ptr<STPLayer, void(*)(STPLayer*)>> Vertex;
+	public:
 
-			/**
-			 * @brief Delete a internally stored layer
-			 * Since STPLayerManager is friend of STPLayer and STPLayerRecycler is friend of STPLayerManager, such that STPLayerRecycler can access deleter of STPLayer.
-			 * @param layer The pointer to the layer to be deleted
-			*/
-			static void recycleLayer(STPLayer*);
+		/**
+		 * @brief Init STPLayerManager
+		*/
+		STPLayerManager() = default;
 
-		public:
+		STPLayerManager(const STPLayerManager&) = delete;
 
-			/**
-			 * @brief Init STPLayerManager
-			*/
-			STPLayerManager() = default;
+		STPLayerManager(STPLayerManager&&) = default;
 
-			STPLayerManager(const STPLayerManager&) = delete;
+		STPLayerManager& operator=(const STPLayerManager&) = delete;
 
-			STPLayerManager(STPLayerManager&&) = default;
+		STPLayerManager& operator=(STPLayerManager&&) = default;
 
-			STPLayerManager& operator=(const STPLayerManager&) = delete;
+		~STPLayerManager() = default;
 
-			STPLayerManager& operator=(STPLayerManager&&) = default;
+		/**
+		 * @brief Construct a new layer instance and add to the layer chain structure and let the current layer manager manage this layer.
+		 * @tparam L A layer instance
+		 * @tparam C Cache size for this layer, it should be in the power of 2
+		 * @tparam Arg A list of arguments for the child layer class
+		 * @param args All other arguments for the created layer to be used in their constructor.
+		 * @return A pointer new layer instance with the type of the specified child layer. The pointer is owned by the current manager and will be freed automatically.
+		*/
+		template <class L, size_t C = 0ull, class... Arg>
+		STPLayer* insert(Arg&&...);
 
-			~STPLayerManager() = default;
+		/**
+		 * @brief Get the pointer to layer where the layer structure start.
+		 * It's the last layer being added to the graph.
+		 * During biome generation, this is the first layer to be called, and ascendant layers will be called from this layer recursively.
+		 * @return The pointer to the starting layer.
+		*/
+		STPLayer* start();
 
-			/**
-			 * @brief Construct a new layer instance and add to the layer chain structure and let the current layer manager manage this layer.
-			 * @tparam L A layer instance
-			 * @tparam C Cache size for this layer, it should be in the power of 2
-			 * @tparam Arg A list of arguments for the child layer class
-			 * @param args All other arguments for the created layer to be used in their constructor.
-			 * @return A pointer new layer instance with the type of the specified child layer. The pointer is owned by the current manager and will be freed automatically.
-			*/
-			template <class L, size_t C = 0ull, class... Arg>
-			STPLayer* insert(Arg&&...);
+		/**
+		 * @brief Get the number of layer, i.e., the number of vertices presented in thsi graph, managed by manager.
+		 * @return The number of layer
+		*/
+		size_t getLayerCount() const;
 
-			/**
-			 * @brief Get the pointer to layer where the layer structure start.
-			 * It's the last layer being added to the graph.
-			 * During biome generation, this is the first layer to be called, and ascendant layers will be called from this layer recursively.
-			 * @return The pointer to the starting layer.
-			*/
-			STPLayer* start();
+	};
 
-			/**
-			 * @brief Get the number of layer, i.e., the number of vertices presented in thsi graph, managed by manager.
-			 * @return The number of layer
-			*/
-			size_t getLayerCount() const;
-
-		};
-
-	}
 }
 #include "STPLayerManager.inl"
 #endif//_STP_LAYER_MANAGER_H_
