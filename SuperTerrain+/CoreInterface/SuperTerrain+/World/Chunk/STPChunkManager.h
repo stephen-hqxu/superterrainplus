@@ -6,9 +6,9 @@
 //GLM
 #include <glm/gtc/type_ptr.hpp>
 //OpenGL
-#include <glad/glad.h>
+#include <SuperTerrain+/STPOpenGL.h>
 //CUDA
-#include <cuda_gl_interop.h>//used to upload to opengl texture in multithread
+#include <cuda_runtime.h>
 #include "../../Utility/STPSmartStream.h"
 
 //Chunks
@@ -52,7 +52,7 @@ namespace SuperTerrainPlus {
 		//Heightfield
 		//index 0: R16UI biome map
 		//index 1: RGBA16 with normal map in RGB and heightmap in A
-		GLuint terrain_heightfield[2];
+		STPOpenGL::STPuint terrain_heightfield[2];
 		//registered buffer and texture
 		cudaGraphicsResource_t heightfield_texture_res[2];
 		//empty buffer (using cuda pinned memory) that is used to clear a chunk data, quad_clear is RGBA16
@@ -170,7 +170,7 @@ namespace SuperTerrainPlus {
 		 * @type The type of rendering buffer to retrieve
 		 * @return The current rendering buffer
 		*/
-		GLuint getCurrentRenderingBuffer(STPRenderingBufferType) const;
+		STPOpenGL::STPuint getCurrentRenderingBuffer(STPRenderingBufferType) const;
 
 	};
 }

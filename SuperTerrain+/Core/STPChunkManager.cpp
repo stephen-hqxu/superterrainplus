@@ -3,6 +3,11 @@
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
+//GLAD
+#include <glad/glad.h>
+//CUDA + GL
+#include <cuda_gl_interop.h>
+
 using glm::uvec2;
 using glm::ivec2;
 using glm::vec2;

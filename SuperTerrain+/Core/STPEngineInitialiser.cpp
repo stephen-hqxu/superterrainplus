@@ -6,7 +6,7 @@
 #include <cuda_runtime.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 //SQLite3
-#include <SuperTerrain+/Utility/STPSQLite.h>
+#include <SuperTerrain+/STPSQLite.h>
 
 using namespace SuperTerrainPlus;
 

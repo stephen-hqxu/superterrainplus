@@ -1,6 +1,8 @@
 target_sources(${STP_MAIN_ENGINE} PRIVATE
 STPCoreDefine.h
 STPEngineInitialiser.h
+STPOpenGL.h
+STPSQLite.h
 # /Environment
 Environment/STPChunkSetting.h
 Environment/STPConfiguration.h
@@ -18,9 +20,9 @@ GPGPU/FreeSlip/STPFreeSlipManager.inl
 GPGPU/FreeSlip/STPFreeSlipTextureBuffer.h
 # /GPGPU
 GPGPU/STPDiversityGenerator.hpp
-GPGPU/STPDiversityGeneratorRTC.h
 GPGPU/STPHeightfieldGenerator.cuh
 GPGPU/STPRainDrop.cuh
+GPGPU/STPRuntimeCompilable.h
 # /Utility/Exception
 Utility/Exception/STPAsyncGenerationError.h
 Utility/Exception/STPBadNumericRange.h
@@ -41,7 +43,6 @@ Utility/STPMemoryPool.h
 Utility/STPSmartDeviceMemory.h
 Utility/STPSmartDeviceMemory.tpp
 Utility/STPSmartStream.h
-Utility/STPSQLite.h
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl
 # /World/Chunk

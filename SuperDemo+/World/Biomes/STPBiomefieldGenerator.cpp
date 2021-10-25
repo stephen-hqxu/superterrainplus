@@ -28,7 +28,7 @@ const static string device_include = "-I " + string(SuperTerrainPlus::SuperAlgor
 core_include = "-I " + string(SuperTerrainPlus::SuperTerrainPlus_CoreInclude);
 
 STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_setting, uvec2 dimension, unsigned int interpolation_radius)
-	: STPDiversityGeneratorRTC(), Noise_Setting(simplex_setting), MapSize(dimension), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
+	: STPDiversityGenerator(), STPRuntimeCompilable(), Noise_Setting(simplex_setting), MapSize(dimension), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
 	STPcudaCheckErr(cuCtxGetCurrent(&this->cudaCtx));
 	//init our device generator
 	//our heightfield setting only available in OCEAN biome for now
@@ -60,7 +60,7 @@ void STPBiomefieldGenerator::initGenerator() {
 	//attach device algorithm library
 	this->attachArchive("SuperAlgorithm+Device", SuperTerrainPlus::SuperAlgorithmPlus_DeviceLibrary);
 	//attach source code
-	STPDiversityGeneratorRTC::STPSourceInformation multiheightfield_info;
+	STPRuntimeCompilable::STPSourceInformation multiheightfield_info;
 	multiheightfield_info.NameExpression
 		//global function
 		["generateMultiBiomeHeightmap"]
@@ -97,7 +97,7 @@ void STPBiomefieldGenerator::initGenerator() {
 	constexpr unsigned int LinkerLogSize = 1024u;
 	char linker_info_log[LinkerLogSize], linker_error_log[LinkerLogSize];
 	char module_info_log[LinkerLogSize], module_error_log[LinkerLogSize];
-	STPDiversityGeneratorRTC::STPLinkerInformation link_info;
+	STPRuntimeCompilable::STPLinkerInformation link_info;
 	link_info.LinkerOption
 	(CU_JIT_INFO_LOG_BUFFER, linker_info_log)
 		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)LinkerLogSize)

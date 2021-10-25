@@ -10,8 +10,6 @@ namespace STPDemo {
 
 		//drawing command
 		const void* const command;
-		//thread pool from the main drawing thread
-		SuperTerrainPlus::STPThreadPool& rendering_pool;
 
 		SglToolkit::SgTShaderProc skyShader;
 		//buffers
@@ -33,7 +31,7 @@ namespace STPDemo {
 		float rotations = 0.0f;//in degree
 		int tick = 0;
 		//loading cubemaps in multi-thread
-		std::future<STPTextureStorage*> Texloader_day[6], Texloader_night[6];
+		STPTextureStorage* Texloader_day[6], *Texloader_night[6];
 
 		/**
 		 * @brief Get uniform location of the sky renderer
@@ -101,19 +99,19 @@ namespace STPDemo {
 			glTextureParameteri(this->tbo_sky, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 			//the get() will auto-wait
-			STPTextureStorage* reader = this->Texloader_day[0].get();//all textures must have the same size in cube map array so we choose an arbitary one
+			STPTextureStorage* reader = this->Texloader_day[0];//all textures must have the same size in cube map array so we choose an arbitary one
 			//allocation
 			glTextureStorage3D(this->tbo_sky, 1, GL_RGB8, reader->Width, reader->Height, 12);//6 faces * 2 layer
 			for (int i = 0; i < 6; i++) {
 				//day texture, stored in layer 0-5
 				if (i != 0) {//we have already got index 0 at day time, we can only get() once
-					reader = this->Texloader_day[i].get();
+					reader = this->Texloader_day[i];
 				}
 				glTextureSubImage3D(this->tbo_sky, 0, 0, 0, i, reader->Width, reader->Height, 1, GL_RGB, GL_UNSIGNED_BYTE, reader->Texture);
 				delete reader;//The class needs to be deleted
 
 				//night texture stored in layer 6-11
-				reader = this->Texloader_night[i].get();
+				reader = this->Texloader_night[i];
 				glTextureSubImage3D(this->tbo_sky, 0, 0, 0, i + 6, reader->Width, reader->Height, 1, GL_RGB, GL_UNSIGNED_BYTE, reader->Texture);
 				delete reader;
 			}
@@ -139,10 +137,9 @@ namespace STPDemo {
 		 * @param night The cubemap for nighttime
 		 * @param globalPreset Glbal parameters
 		 * @param sky_cmd The indrect rendering command for sky renderer
-		 * @param pool The thread pool for multi-threaded texture loading
 		*/
-		STPSkyRenderer(const SIMPLE::SISection& day, const SIMPLE::SISection& night, const SIMPLE::SISection& globalPreset, const DrawElementsIndirectCommand* sky_cmd, SuperTerrainPlus::STPThreadPool& pool)
-			: rotaingSpeed(globalPreset("rotationSpeed").to<float>()), cyclingSpeed(globalPreset("DaytimeSpeed").to<float>()), command(reinterpret_cast<const void*>(sky_cmd)), rendering_pool(pool) {
+		STPSkyRenderer(const SIMPLE::SISection& day, const SIMPLE::SISection& night, const SIMPLE::SISection& globalPreset, const DrawElementsIndirectCommand* sky_cmd)
+			: rotaingSpeed(globalPreset("rotationSpeed").to<float>()), cyclingSpeed(globalPreset("DaytimeSpeed").to<float>()), command(reinterpret_cast<const void*>(sky_cmd)) {
 			cout << "....Loading STPSkyRenderer....";
 			
 			//get the filename from the ini file
@@ -152,8 +149,8 @@ namespace STPDemo {
 			}
 			//loading textures in multiple threads
 			for (int i = 0; i < 6; i++) {
-				this->Texloader_day[i] = this->rendering_pool.enqueue_future(STPTextureStorage::loadTexture, this->path_day[i].c_str(), 3);//we don't need alpha channel for skybox
-				this->Texloader_night[i] = this->rendering_pool.enqueue_future(STPTextureStorage::loadTexture, this->path_night[i].c_str(), 3);
+				this->Texloader_day[i] = STPTextureStorage::loadTexture(this->path_day[i].c_str(), 3);//we don't need alpha channel for skybox
+				this->Texloader_night[i] = STPTextureStorage::loadTexture(this->path_night[i].c_str(), 3);
 			}
 			
 			if (this->compileShader()) {
@@ -207,15 +204,14 @@ namespace STPDemo {
 
 				return factor;
 			};
-			//multithreading, why wasting our powerful CPU?
-			static std::future<mat4> rotationCalc;
-			static std::future<float> daynightCalc;
-			rotationCalc = this->rendering_pool.enqueue_future(getRotations, this->rotaingSpeed, std::ref(this->rotations));
-			daynightCalc = this->rendering_pool.enqueue_future(getDayNightFactor, this->cyclingSpeed, std::ref(this->tick));
+			mat4 rotationCalc;
+			float daynightCalc;
+			rotationCalc = getRotations(this->rotaingSpeed, this->rotations);
+			daynightCalc = getDayNightFactor(this->cyclingSpeed, this->tick);
 
 			//sending uniforms
-			glProgramUniformMatrix4fv(this->skyShader.getP(), this->getLoc("Rotations"), 1, GL_FALSE, value_ptr(rotationCalc.get()));
-			glProgramUniform1f(this->skyShader.getP(), this->getLoc("factor"), daynightCalc.get());
+			glProgramUniformMatrix4fv(this->skyShader.getP(), this->getLoc("Rotations"), 1, GL_FALSE, value_ptr(rotationCalc));
+			glProgramUniform1f(this->skyShader.getP(), this->getLoc("factor"), daynightCalc);
 
 			//render
 			glBindTextureUnit(0, this->tbo_sky);

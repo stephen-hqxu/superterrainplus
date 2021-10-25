@@ -8,7 +8,7 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 //SuperTerrain+/GPGPU
-#include <SuperTerrain+/GPGPU/STPDiversityGeneratorRTC.h>
+#include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
 
 //Utils
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
@@ -43,7 +43,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-class RTCTester : protected STPDiversityGeneratorRTC {
+class RTCTester : protected STPRuntimeCompilable {
 private:
 
 	constexpr static char SourceLocation[] = "./TestData/MatrixArithmetic.rtc";
@@ -243,7 +243,7 @@ protected:
 
 public:
 
-	RTCTester() : STPDiversityGeneratorRTC() {
+	RTCTester() : STPRuntimeCompilable() {
 		//context has been init at the start of the test program
 		const unsigned int matSize = RTCTester::MatDim.x * RTCTester::MatDim.y;
 		this->MatA = STPSmartDeviceMemory::makeDevice<float[]>(matSize);
@@ -252,15 +252,11 @@ public:
 		this->MatBuffer = STPSmartDeviceMemory::makeDevice<float[]>(matSize);
 	}
 
-	void operator()(STPFreeSlipFloatTextureBuffer& heightmap, const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor& biomemap, vec2 offset, cudaStream_t stream) const override {
-		WARN(__FUNCTION__ << "is not supposed to be called");
-	}
-
 };
 
 static constexpr char Nonsense[] = "Blah.blah";
 
-SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA scripts and runs the kernel", "[GPGPU][STPDiversityGeneratorRTC]") {
+SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA scripts and runs the kernel", "[GPGPU][STPRuntimeCompilable]") {
 
 	GIVEN("A RTC version of diversity generator with custom implementation and runtime script") {
 

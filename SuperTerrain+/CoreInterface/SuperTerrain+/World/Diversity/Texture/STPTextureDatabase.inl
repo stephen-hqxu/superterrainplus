@@ -37,10 +37,10 @@ void SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPTextureSplatBuilder:
 }
 
 template<size_t... Is, class... Arg>
-inline void SuperTerrainPlus::STPDiversity::STPTextureDatabase::expandAddTextures(STPTextureInformation::STPTextureID texture_id, std::index_sequence<Is...>, std::tuple<Arg...> args) {
+inline void SuperTerrainPlus::STPDiversity::STPTextureDatabase::expandAddMaps(STPTextureInformation::STPTextureID texture_id, std::index_sequence<Is...>, std::tuple<Arg...> args) {
 	using std::get;
 	
-	(this->addTextureData(texture_id,
+	(this->addMap(texture_id,
 		get<3 * Is + 0>(args),
 		get<3 * Is + 1>(args),
 		get<3 * Is + 2>(args)
@@ -48,12 +48,12 @@ inline void SuperTerrainPlus::STPDiversity::STPTextureDatabase::expandAddTexture
 }
 
 template<class... Arg>
-void SuperTerrainPlus::STPDiversity::STPTextureDatabase::addTextureDatas(STPTextureInformation::STPTextureID texture_id, Arg&&... args) {
+void SuperTerrainPlus::STPDiversity::STPTextureDatabase::addMaps(STPTextureInformation::STPTextureID texture_id, Arg&&... args) {
 	//no need to check for parameter pack size, compiler will throw an error if arguments are not multiple of 3, or there's no argument, etc.
 	//because addTexture() function requires the exact signature
 
 	//convert parameter packs into a tuple so we can index it
-	this->expandAddTextures(texture_id, std::make_index_sequence<sizeof...(Arg) / 3ull>(), std::forward_as_tuple(args...));
+	this->expandAddMaps(texture_id, std::make_index_sequence<sizeof...(Arg) / 3ull>(), std::forward_as_tuple(args...));
 }
 
 #endif//_STP_TEXTURE_DATABASE_H_

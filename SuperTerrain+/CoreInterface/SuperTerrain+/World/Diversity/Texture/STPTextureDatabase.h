@@ -12,8 +12,8 @@
 
 //GLM
 #include <glm/vec2.hpp>
-//GLAD
-#include <glad/glad.h>
+//GL
+#include <SuperTerrain+/STPOpenGL.h>
 
 //Texture
 #include "STPTextureInformation.hpp"
@@ -44,11 +44,11 @@ namespace SuperTerrainPlus::STPDiversity {
 			//The dimension of the texture
 			glm::uvec2 Dimension;
 			//The internal format of the texture during memory allocation
-			GLenum InteralFormat;
+			STPOpenGL::STPenum InteralFormat;
 			//The channel format of each image in the group during memory transaction
-			GLenum ChannelFormat;
+			STPOpenGL::STPenum ChannelFormat;
 			//The format of each pixel in each image
-			GLenum PixelFormat;
+			STPOpenGL::STPenum PixelFormat;
 
 		};
 
@@ -187,7 +187,7 @@ namespace SuperTerrainPlus::STPDiversity {
 				const STPTextureDescription*
 			>> STPGroupRecord;
 			//A vector of texture ID
-			typedef std::vector<STPTextureInformation::STPTextureID> STPTextureCollectionRecord;
+			typedef std::vector<STPTextureInformation::STPTextureID> STPTextureRecord;
 			//A vector contains texture data
 			typedef std::vector<std::tuple<
 				STPTextureInformation::STPTextureGroupID,
@@ -250,28 +250,27 @@ namespace SuperTerrainPlus::STPDiversity {
 			STPGroupRecord getValidGroup() const;
 
 			/**
-			 * @brief Retrieve a record of all texture collection ID in this database.
+			 * @brief Retrieve a record of all texture ID in this database.
 			 * Result will be sorted in ascending order.
-			 * Any texture collection (represented by texture ID) with no texture data will be ignored.
+			 * Any texture (represented by texture ID) with no texture map will be ignored.
 			 * @return An array of sorted texture ID
 			*/
-			STPTextureCollectionRecord getValidTexture() const;
+			STPTextureRecord getValidTexture() const;
 
 			/**
-			 * @brief Retrieve a record of all texture data in this database.
+			 * @brief Retrieve a record of all texture map in this database.
 			 * Result will be sorted in ascending order of texture group ID.
-			 * Any of the group with no texture references to, or texture ID with no data associated, will be ignored.
-			 * @return An array of sorted texture data
+			 * @return An array of map sorted by group ID
 			*/
-			STPTextureDataRecord getValidTextureData() const;
+			STPTextureDataRecord getValidMap() const;
 
 			/**
-			 * @brief Retrieve a record of all texture type being used in this database.
+			 * @brief Retrieve a record of all texture map type being used in this database.
 			 * Type will be sorted by their defined numeric value, which can be used as indices.
 			 * @param hint An optional prediction on how many types will be used, this can be used to speed up memory allocation.
 			 * @return An array of sorted texture type.
 			*/
-			STPTextureTypeRecord getValidTextureType(unsigned int = 0u) const;
+			STPTextureTypeRecord getValidMapType(unsigned int = 0u) const;
 
 		};
 
@@ -288,7 +287,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPTextureSplatBuilder SplatBuilder;
 
 		/**
-		 * @brief Expand parameter packs for addTextures() template function and group parameters into callable arguments for non-template function.
+		 * @brief Expand parameter packs for addMaps() template function and group parameters into callable arguments for non-template function.
 		 * TODO: make this a lambda template in C++20
 		 * @tparam ...Arg All parameters passed as parameter pack
 		 * @param texture_id The texture ID to be operated on
@@ -296,9 +295,12 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param args The argument to be expanded.
 		*/
 		template<size_t... Is, class... Arg>
-		void expandAddTextures(STPTextureInformation::STPTextureID, std::index_sequence<Is...>, std::tuple<Arg...>);
+		void expandAddMaps(STPTextureInformation::STPTextureID, std::index_sequence<Is...>, std::tuple<Arg...>);
 
 	public:
+
+		//An array of texture ID
+		typedef std::unique_ptr<STPTextureInformation::STPTextureID[]> STPTextureIDArray;
 
 		/**
 		 * @brief Init an empty texture database
@@ -342,6 +344,13 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPTextureInformation::STPTextureGroupID addGroup(const STPTextureDescription&);
 
 		/**
+		 * @brief Remove a texture group from the texture database, all texture maps in the group will be dropped.
+		 * No operation will be performed if group ID is invalid.
+		 * @param group_id The group with ID to be removed
+		*/
+		void removeGroup(STPTextureInformation::STPTextureGroupID);
+
+		/**
 		 * @brief Get the pointer to the texture group, given a group ID
 		 * @param id The texture group ID
 		 * @return The pointer to the group with that group ID.
@@ -356,47 +365,55 @@ namespace SuperTerrainPlus::STPDiversity {
 		size_t groupSize() const;
 
 		/**
-		 * @brief Insert a new texture into the texture database. New texture has no content, and can be added by calling addTextureData().
-		 * A texture may have a collection of different types associated with the texture.
-		 * @return The texture ID that can be used to reference the texture
+		 * @brief Insert a new texture into the texture database. New texture has no map, and can be added by calling addMap().
+		 * A texture may have a collection of different type of maps associated with the texture.
+		 * @param count The number of texture ID to be added.
+		 * @return The texture ID(s) that can be used to reference the texture
 		*/
-		STPTextureInformation::STPTextureID addTexture();
+		STPTextureIDArray addTexture(unsigned int = 1u);
 
 		/**
-		 * @brief Add a new texture data to the texture database for a particular texture.
-		 * Exception will be thrown if insertion fails.
-		 * @param texture_id The ID of the texture to be added with data.
-		 * @param type The type of the texture, to identify a specific texture for a texture ID
+		 * @brief Remove a texture from the texture database. 
+		 * All texture maps owned by this texture will be dropped, all splat rules using the texture ID will be dropped.
+		 * No operation will be performed if texture ID is invalid
+		 * @param texture_id The texture ID to be removed
+		*/
+		void removeTexture(STPTextureInformation::STPTextureID);
+
+		/**
+		 * @brief Add a new map to the texture database for a particular texture.
+		 * @param texture_id The ID of the texture to be added with map.
+		 * @param type The type of the map for this texture, to identify a specific texture for a texture ID
 		 * @param group_id The ID of the texture group. All texture in the same group must have the same texture description
 		 * @param texture_data The pointer to the texture data. Texture data is not owned by the database, thus user should guarantees the lifetime;
 		 * the texture data should match the property of the group when it was created it.
 		*/
-		void addTextureData(STPTextureInformation::STPTextureID, STPTextureType, STPTextureInformation::STPTextureGroupID, const void*);
+		void addMap(STPTextureInformation::STPTextureID, STPTextureType, STPTextureInformation::STPTextureGroupID, const void*);
 
 		/**
-		 * @brief For a texture ID, add a sequence of texture data with different types to the texture to the texture database.
+		 * @brief For a texture, add a sequence of texture map with different types to the texture to the texture database.
 		 * If any of the insert texture data operation fails, exception will be thrown immediately and subsequent operations will be halted.
 		 * @tparam ...Ret A tuple of booleans to indicate insert status
 		 * @tparam ...Arg Sequence of arguments for adding texture
 		 * @param texture_id The texture ID to be added
-		 * @param ...args A sequence of argument packs to add the texture data. See the non-template version of addTexture()
+		 * @param ...args A sequence of argument packs to add the texture data. See the non-template version of addMap()
 		 * The last 3 arguments can be repeated.
 		*/
 		template<class... Arg>
-		void addTextureDatas(STPTextureInformation::STPTextureID, Arg&&...);
+		void addMaps(STPTextureInformation::STPTextureID, Arg&&...);
 
 		/**
-		 * @brief Get the number of texture data, that contains all texture collection and texture type, in the database.
-		 * @return The number of texture data.
+		 * @brief Get the number of texture map, that contains all texture with all types, in the database.
+		 * @return The number of texture map.
 		*/
-		size_t textureDataSize() const;
+		size_t mapSize() const;
 
 		/**
-		 * @brief Get the number of texture collection registered.
-		 * Note that one texture collection may contain multiple different texture types associated to different groups
-		 * @return The number of registered texture collection
+		 * @brief Get the number of texture registered.
+		 * Note that one texture may contain multiple maps of different types associated to different groups
+		 * @return The number of registered texture
 		*/
-		size_t textureCollectionSize() const;
+		size_t textureSize() const;
 
 	};
 

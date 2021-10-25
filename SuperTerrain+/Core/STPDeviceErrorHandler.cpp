@@ -1,7 +1,7 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //SQLite
-#include <SuperTerrain+/Utility/STPSQLite.h>
+#include <SuperTerrain+/STPSQLite.h>
 //CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>

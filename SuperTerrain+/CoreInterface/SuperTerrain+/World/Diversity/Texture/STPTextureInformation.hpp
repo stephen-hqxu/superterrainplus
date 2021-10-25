@@ -30,9 +30,6 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		};
 
-		//A region provides data to locate texture types for a texture collection
-		typedef STPTextureDataLocation* STPRegion;
-
 		/**
 		 * @brief A base node for different types of structural regions
 		*/
@@ -98,21 +95,6 @@ namespace SuperTerrainPlus::STPDiversity {
 				GradientSize = 0u;
 
 		};
-
-		//All data will be sent to OpenGL so we don't need to compile them on C++
-		//An array of sample, the index of a sample can be used to locate the sample in the splat registry.
-		//Sample* SplatRegistryDictionary;
-		//An array that contains terrain splat configuration for each sample.
-		//STPSplatRegistry* SplatRegistry;
-
-		//Array of splat rules
-		//STPAltitudeNode* AltitudeRegistry;
-		//STPGradientNode* GradientRegistry;
-
-		//Given a region index, return indices for all texture type to the region to the region registry
-		//unsigned int* RegionRegistryDictionary;
-		//An array of regions, each region constains a collection of texture.
-		//STPRegion RegionRegistry;
 
 	};
 }

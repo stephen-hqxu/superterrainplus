@@ -1,10 +1,8 @@
 #pragma once
-#ifndef _STP_DIVERSITY_GENERATOR_RTC_H_
-#define _STP_DIVERSITY_GENERATOR_RTC_H_
+#ifndef _STP_RUNTIME_COMPILABLE_H_
+#define _STP_RUNTIME_COMPILABLE_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-//Base Generator
-#include "STPDiversityGenerator.hpp"
 //System
 #include <unordered_map>
 #include <list>
@@ -18,10 +16,9 @@
 namespace SuperTerrainPlus::STPCompute {
 
 	/**
-	 * @brief STPDiversityGeneratorRTC provides a runtime-programmable multi-biome heightmap generation interface and
-	 * allows users to develop their biome-specific algorithms and parameters sets.
+	 * @brief STPRuntimeCompilable provides a device-side runtime-programmable interface and toolsets with NVRTC.
 	*/
-	class STP_API STPDiversityGeneratorRTC : public STPDiversityGenerator {
+	class STP_API STPRuntimeCompilable {
 	protected:
 
 		//Store multiple string arguments that can be recognised by CUDA functions
@@ -44,7 +41,7 @@ namespace SuperTerrainPlus::STPCompute {
 		struct STP_API STPSourceInformation {
 		public:
 
-			friend class STPDiversityGeneratorRTC;
+			friend class STPRuntimeCompilable;
 
 			/**
 			 * @brief A helper argument setter for easy configuration
@@ -52,7 +49,7 @@ namespace SuperTerrainPlus::STPCompute {
 			struct STP_API STPSourceArgument : private STPStringArgument {
 			private:
 
-				friend class STPDiversityGeneratorRTC;
+				friend class STPRuntimeCompilable;
 
 			public:
 
@@ -86,7 +83,7 @@ namespace SuperTerrainPlus::STPCompute {
 		struct STP_API STPLinkerInformation {
 		public:
 
-			friend class STPDiversityGeneratorRTC;
+			friend class STPRuntimeCompilable;
 
 			/**
 			 * @brief Parameter sets for individual data in the linker
@@ -94,7 +91,7 @@ namespace SuperTerrainPlus::STPCompute {
 			struct STP_API STPDataJitOption {
 			public:
 
-				friend class STPDiversityGeneratorRTC;
+				friend class STPRuntimeCompilable;
 
 			private:
 
@@ -189,15 +186,15 @@ namespace SuperTerrainPlus::STPCompute {
 		/**
 		 * @brief Init a new STPDiversityGenerator
 		*/
-		STPDiversityGeneratorRTC();
+		STPRuntimeCompilable();
 
-		STPDiversityGeneratorRTC(const STPDiversityGeneratorRTC&) = delete;
+		STPRuntimeCompilable(const STPRuntimeCompilable&) = delete;
 
-		STPDiversityGeneratorRTC(STPDiversityGeneratorRTC&&) = delete;
+		STPRuntimeCompilable(STPRuntimeCompilable&&) = delete;
 
-		STPDiversityGeneratorRTC& operator=(const STPDiversityGeneratorRTC&) = delete;
+		STPRuntimeCompilable& operator=(const STPRuntimeCompilable&) = delete;
 
-		STPDiversityGeneratorRTC& operator=(STPDiversityGeneratorRTC&&) = delete;
+		STPRuntimeCompilable& operator=(STPRuntimeCompilable&&) = delete;
 
 		/**
 		 * @brief Read source code given a filename as input
@@ -292,8 +289,8 @@ namespace SuperTerrainPlus::STPCompute {
 
 	public:
 
-		virtual ~STPDiversityGeneratorRTC() = default;
+		virtual ~STPRuntimeCompilable() = default;
 
 	};
 }
-#endif//_STP_DIVERSITY_GENERATOR_RTC_H_
+#endif//_STP_RUNTIME_COMPILABLE_H_
