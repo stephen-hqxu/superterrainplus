@@ -14,7 +14,7 @@ inline void SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPTextureSplatB
 
 template<size_t... Is, class... Arg>
 inline void SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPTextureSplatBuilder::expandAddGradients(Sample sample, std::index_sequence<Is...>, std::tuple<Arg...> args) {
-	using std::get();
+	using std::get;
 
 	(this->addGradient(sample,
 		get<5 * Is + 0>(args),
@@ -28,12 +28,12 @@ inline void SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPTextureSplatB
 template<class... Arg>
 void SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPTextureSplatBuilder::addAltitudes(Sample sample, Arg&&... args) {
 	//static assert is not required
-	this->expandAddAltitudes(sample, std::make_index_sequence<sizeof...(Arg) / 2>, std::forward_as_tuple(args...));
+	this->expandAddAltitudes(sample, std::make_index_sequence<sizeof...(Arg) / 2ull>(), std::forward_as_tuple(args...));
 }
 
 template<class... Arg>
 void SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPTextureSplatBuilder::addGradients(Sample sample, Arg&&... args) {
-	this->expandAddGradients(sample, std::make_index_sequence<sizeof...(Arg) / 5>, std::forward_as_tuple(args...));
+	this->expandAddGradients(sample, std::make_index_sequence<sizeof...(Arg) / 5ull>(), std::forward_as_tuple(args...));
 }
 
 template<size_t... Is, class... Arg>

@@ -37,7 +37,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 		//get the data
 		const STPTextureDatabase::STPDatabaseView::STPGroupRecord group = database_view.getValidGroup();
 		const STPTextureDatabase::STPDatabaseView::STPTextureRecord texture = database_view.getValidTexture();
-		const STPTextureDatabase::STPDatabaseView::STPTextureDataRecord texture_map = database_view.getValidMap();
+		const STPTextureDatabase::STPDatabaseView::STPMapRecord texture_map = database_view.getValidMap();
 
 		//this is the total number of layered texture we will have
 		this->Texture.resize(group.size());
@@ -47,10 +47,10 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 		groupID_converter.rehash(group.size());
 		for (auto [group_it, gl_texture_it, group_index] = make_tuple(group.cbegin(), this->Texture.cbegin(), 0u);
 			group_it != group.cend() && gl_texture_it != this->Texture.cend(); group_it++, gl_texture_it++, group_index++) {
-			const auto [group_id, member_count, group_props] = *group_it;
+			const auto& [group_id, member_count, group_props] = *group_it;
 
 			//allocate memory for each layer
-			glTextureStorage3D(*gl_texture_it, 1, group_props->InteralFormat, group_props->Dimension.x, group_props->Dimension.y, member_count);
+			glTextureStorage3D(*gl_texture_it, 1, group_props.InteralFormat, group_props.Dimension.x, group_props.Dimension.y, member_count);
 
 			//build group ID converter
 			groupID_converter.emplace(group_id, group_index);
@@ -80,11 +80,11 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			const unsigned int group_idx = groupID_converter[group_id],
 				texture_idx = textureID_converter[texture_id];
 			const TEXTYPE_TYPE type_idx = TEXTYPE_VALUE(type);
-			const STPTextureDatabase::STPTextureDescription* const desc = std::get<2>(group[group_idx]);
-			const uvec2 dimension = desc->Dimension;
+			const STPTextureDatabase::STPTextureDescription& desc = std::get<2>(group[group_idx]);
+			const uvec2 dimension = desc.Dimension;
 
 			//populate memory for each layer
-			glTextureSubImage3D(this->Texture[group_idx], 0, 0, 0, layer_idx, dimension.x, dimension.y, 1, desc->ChannelFormat, desc->PixelFormat, img);
+			glTextureSubImage3D(this->Texture[group_idx], 0, 0, 0, layer_idx, dimension.x, dimension.y, 1, desc.ChannelFormat, desc.PixelFormat, img);
 
 			//build data for renderer
 			STPTextureInformation::STPTextureDataLocation& data_loc = this->TextureRegion.emplace_back(STPTextureInformation::STPTextureDataLocation());

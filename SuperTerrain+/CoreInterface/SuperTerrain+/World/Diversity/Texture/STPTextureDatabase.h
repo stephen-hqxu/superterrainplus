@@ -62,7 +62,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			friend class STPTextureDatabase;
 
 			//A database from the parent texture database
-			STPTextureDatabase::STPTextureDatabaseImpl* const Database;
+			STPTextureDatabase::STPTextureDatabaseImpl* Database;
 
 			/**
 			 * @brief Init STPTextureSplatBuilder.
@@ -72,11 +72,11 @@ namespace SuperTerrainPlus::STPDiversity {
 
 			STPTextureSplatBuilder(const STPTextureSplatBuilder&) = delete;
 
-			STPTextureSplatBuilder(STPTextureSplatBuilder&&) = delete;
+			STPTextureSplatBuilder(STPTextureSplatBuilder&&) noexcept;
 
 			STPTextureSplatBuilder& operator=(const STPTextureSplatBuilder&) = delete;
 
-			STPTextureSplatBuilder& operator=(STPTextureSplatBuilder&&) = delete;
+			STPTextureSplatBuilder& operator=(STPTextureSplatBuilder&&) noexcept;
 
 			~STPTextureSplatBuilder() = default;
 
@@ -184,7 +184,7 @@ namespace SuperTerrainPlus::STPDiversity {
 				STPTextureInformation::STPTextureGroupID,
 				//The number of texture data in this group
 				size_t,
-				const STPTextureDescription*
+				STPTextureDescription
 			>> STPGroupRecord;
 			//A vector of texture ID
 			typedef std::vector<STPTextureInformation::STPTextureID> STPTextureRecord;
@@ -194,7 +194,7 @@ namespace SuperTerrainPlus::STPDiversity {
 				STPTextureInformation::STPTextureID,
 				STPTextureType,
 				const void*
-			>> STPTextureDataRecord;
+			>> STPMapRecord;
 			//A vector of texture type
 			typedef std::vector<STPTextureType> STPTextureTypeRecord;
 
@@ -243,7 +243,7 @@ namespace SuperTerrainPlus::STPDiversity {
 
 			/**
 			 * @brief Retrieve a record of all groups that have been referenced by some texture data, and their properties.
-			 * Note that group only being added to the database but not used does not count.
+			 * Note that group only being added to the database but not referenced by any splat rule does not count.
 			 * Results are sorted by group ID in ascending order.
 			 * @return An array of group record.
 			*/
@@ -252,7 +252,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			/**
 			 * @brief Retrieve a record of all texture ID in this database.
 			 * Result will be sorted in ascending order.
-			 * Any texture (represented by texture ID) with no texture map will be ignored.
+			 * Any texture (represented by texture ID) with no splat rule referenced to it will be ignored.
 			 * @return An array of sorted texture ID
 			*/
 			STPTextureRecord getValidTexture() const;
@@ -260,9 +260,10 @@ namespace SuperTerrainPlus::STPDiversity {
 			/**
 			 * @brief Retrieve a record of all texture map in this database.
 			 * Result will be sorted in ascending order of texture group ID.
+			 * Only map from the texture which is valid will be included.
 			 * @return An array of map sorted by group ID
 			*/
-			STPTextureDataRecord getValidMap() const;
+			STPMapRecord getValidMap() const;
 
 			/**
 			 * @brief Retrieve a record of all texture map type being used in this database.
@@ -299,9 +300,6 @@ namespace SuperTerrainPlus::STPDiversity {
 
 	public:
 
-		//An array of texture ID
-		typedef std::unique_ptr<STPTextureInformation::STPTextureID[]> STPTextureIDArray;
-
 		/**
 		 * @brief Init an empty texture database
 		*/
@@ -309,11 +307,11 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		STPTextureDatabase(const STPTextureDatabase&) = delete;
 
-		STPTextureDatabase(STPTextureDatabase&&) = delete;
+		STPTextureDatabase(STPTextureDatabase&&) noexcept;
 
 		STPTextureDatabase& operator=(const STPTextureDatabase&) = delete;
 
-		STPTextureDatabase& operator=(STPTextureDatabase&&) = delete;
+		STPTextureDatabase& operator=(STPTextureDatabase&&) noexcept;
 
 		~STPTextureDatabase();
 
@@ -353,10 +351,10 @@ namespace SuperTerrainPlus::STPDiversity {
 		/**
 		 * @brief Get the pointer to the texture group, given a group ID
 		 * @param id The texture group ID
-		 * @return The pointer to the group with that group ID.
+		 * @return The group description for requested group
 		 * If group ID is not found, exception is thrown.
 		*/
-		const STPTextureDescription& getGroupDescription(STPTextureInformation::STPTextureGroupID) const;
+		STPTextureDescription getGroupDescription(STPTextureInformation::STPTextureGroupID) const;
 
 		/**
 		 * @brief Get the number of texture group registered
@@ -365,12 +363,19 @@ namespace SuperTerrainPlus::STPDiversity {
 		size_t groupSize() const;
 
 		/**
-		 * @brief Insert a new texture into the texture database. New texture has no map, and can be added by calling addMap().
+		 * @brief Insert a new texture into texture database. New texture has no map, and can be added by calling addMap().
 		 * A texture may have a collection of different type of maps associated with the texture.
-		 * @param count The number of texture ID to be added.
 		 * @return The texture ID(s) that can be used to reference the texture
 		*/
-		STPTextureIDArray addTexture(unsigned int = 1u);
+		STPTextureInformation::STPTextureID addTexture();
+
+		/**
+		 * @brief Insert a few new texture containers into the texture database. New texture has no map, and can be added by calling addMap().
+		 * A texture may have a collection of different type of maps associated with the texture.
+		 * @param count The number of texture ID to be added.
+		 * @param texture_id The pointer to the returning texture ID, must have the same of greater size than count.
+		*/
+		void addTexture(unsigned int, STPTextureInformation::STPTextureID*);
 
 		/**
 		 * @brief Remove a texture from the texture database. 

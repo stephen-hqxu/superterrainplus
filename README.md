@@ -1,5 +1,16 @@
 <h1 align="center"> Super Terrain + </h1>
-<p align="center"> An open source real-time realistic terrain engine </p>
+<p align="center"> A modern open source real-time realistic terrain engine </p>
+
+<p align="center">
+	<img src="https://img.shields.io/badge/C%2B%2B_17-00599C?style=flat&logo=c%2B%2B&logoColor=white" />
+	<img src="https://img.shields.io/badge/NVIDIA-CUDA_11-76B900?style=flat&logo=nvidia&logoColor=white" />
+	<img src="https://img.shields.io/badge/SQLite_3-07405E?style=flat&logo=sqlite&logoColor=white" />
+	<img src="https://img.shields.io/badge/OpenGL_4.6-FFFFFF?style=flat&logo=opengl" />
+	</br>
+	<img src="https://img.shields.io/badge/CMake_3-064F8C?style=flat&logo=cmake&logoColor=white" />
+	<img src="https://img.shields.io/badge/Visual_Studio_2019-5C2D91?style=flat&logo=visual%20studio&logoColor=white" />
+	<img src="https://img.shields.io/badge/Git-F05032?style=flat&logo=git&logoColor=white" />
+</p>
 
 ## :eyes: Overview
 
@@ -43,14 +54,6 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 No plan, yet.
 
 ## :bricks: Middleware
-
-### Language
-
-- C++ 17
-- CUDA 11
-- SQL
-- OpenGL 4.6
-- CMake 3
 
 ### Internal libraries
 
@@ -104,23 +107,32 @@ Those are some third-party libraries used by this project, we always make sure t
 
 **Hardware requirement**
 
-- CPU: Intel i5-8400/AMD r5-2400G
-- GPU-RT: Nvidia RTX 2060
+- CPU
+<p align="left">
+	<img src="https://img.shields.io/badge/Intel-Core_i5_8400-0071C5?style=flat&logo=intel&logoColor=white" />
+	<img src="https://img.shields.io/badge/AMD-Ryzen_5_2400G-ED1C24?style=flat&logo=amd&logoColor=white" />
+</p>
 
-> Supported compute capability >= 7.5. Nvidia Optix ray-tracing enabled.
-
-- GPU-Legacy: Nvidia GTX 1050
+- GPU-Legacy
+<p align="left">
+	<img src="https://img.shields.io/badge/NVIDIA-GTX_1050-76B900?style=flat&logo=nvidia&logoColor=white" />
+</p>
 
 > Supported compute capability >= 6.1. Intel/AMD not available.
 
+- GPU-RT
+<p align="left">
+	<img src="https://img.shields.io/badge/NVIDIA-RTX_2060-76B900?style=flat&logo=nvidia&logoColor=white" />
+</p>
+
+> Supported compute capability >= 7.5. Nvidia Optix ray-tracing enabled.
+
 - RAM: 4GB
-- OS: x64 Windows 10/Linux
-
-**Software requirement**
-
-- OpenGL 4.5 compatible renderer
-- CUDA 11.2 with NVRTC (Nvidia Runtime Complication)
-- CMake 3.18
+- OS
+<p align="left">
+	<img src="https://img.shields.io/badge/Linux-FCC624?style=flat&logo=linux&logoColor=black" />
+	<img src="https://img.shields.io/badge/Windows_10-0078D6?style=flat&logo=windows&logoColor=white" />
+</p>
 
 ### :gear: Installation
 
