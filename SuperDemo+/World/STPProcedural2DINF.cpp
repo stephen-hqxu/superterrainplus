@@ -1,4 +1,3 @@
-#pragma once
 #include "STPProcedural2DINF.h"
 
 using std::cout;

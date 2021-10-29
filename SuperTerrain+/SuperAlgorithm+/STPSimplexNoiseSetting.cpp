@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
 
 using namespace SuperTerrainPlus::STPEnvironment;

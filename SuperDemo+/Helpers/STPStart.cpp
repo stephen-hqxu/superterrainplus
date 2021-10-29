@@ -1,4 +1,3 @@
-#pragma once
 #define _STP_START_CPP_
 #include "../Renderer/STPMasterRenderer.h"
 #include <SuperTerrain+/STPEngineInitialiser.h>
@@ -81,7 +80,7 @@ namespace STPDemo {
 			return false;
 		}
 		//cuda context init on device 0 (only one GPU)
-		SuperTerrainPlus::STPEngineInitialiser::initCUDA(0);
+		SuperTerrainPlus::STPEngineInitialiser::init(0);
 
 		return SuperTerrainPlus::STPEngineInitialiser::hasInit();
 	}

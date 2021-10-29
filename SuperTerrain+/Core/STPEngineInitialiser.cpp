@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperTerrain+/STPEngineInitialiser.h>
 
 //GLAD
@@ -6,39 +5,46 @@
 //CUDA
 #include <cuda_runtime.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+//SQLite3
+#include <SuperTerrain+/STPSQLite.h>
 
 using namespace SuperTerrainPlus;
 
-bool STPEngineInitialiser::GLInited = false;
-bool STPEngineInitialiser::CUDAInited = false;
+//Default state is false, once the engine is initialised it will become true.
+static bool GLInit = false;
+static bool EngineInit = false;
 
 bool STPEngineInitialiser::initGLcurrent() {
 	if (!gladLoadGL()) {
 		return false;
 	}
-	STPEngineInitialiser::GLInited = true;
-	return true;
+	GLInit = true;
+	return GLInit;
 }
 
 bool STPEngineInitialiser::initGLexplicit(STPglProc process) {
 	if (!gladLoadGLLoader(process)) {
 		return false;
 	}
-	STPEngineInitialiser::GLInited = true;
-	return true;
+	GLInit = true;
+	return GLInit;
 }
 
-void STPEngineInitialiser::initCUDA(int device) {
+void STPEngineInitialiser::init(int device) {
+	//CUDA
 	STPcudaCheckErr(cudaSetDevice(device));
 	//init context in case the first call is CUDA driver API
 	STPcudaCheckErr(cudaFree(0));
 	//setup
 	STPcudaCheckErr(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 	STPcudaCheckErr(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte));
-	STPEngineInitialiser::CUDAInited = true;
+
+	//SQLite3
+	STPsqliteCheckErr(sqlite3_enable_shared_cache(false));
+
+	EngineInit = true;
 }
 
 bool STPEngineInitialiser::hasInit() {
-	return STPEngineInitialiser::GLInited && 
-		STPEngineInitialiser::CUDAInited;
+	return GLInit && EngineInit;
 }

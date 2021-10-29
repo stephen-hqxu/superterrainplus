@@ -1,6 +1,8 @@
 target_sources(${STP_MAIN_ENGINE} PRIVATE
 STPCoreDefine.h
 STPEngineInitialiser.h
+STPOpenGL.h
+STPSQLite.h
 # /Environment
 Environment/STPChunkSetting.h
 Environment/STPConfiguration.h
@@ -18,14 +20,15 @@ GPGPU/FreeSlip/STPFreeSlipManager.inl
 GPGPU/FreeSlip/STPFreeSlipTextureBuffer.h
 # /GPGPU
 GPGPU/STPDiversityGenerator.hpp
-GPGPU/STPDiversityGeneratorRTC.h
 GPGPU/STPHeightfieldGenerator.cuh
 GPGPU/STPRainDrop.cuh
+GPGPU/STPRuntimeCompilable.h
 # /Utility/Exception
 Utility/Exception/STPAsyncGenerationError.h
 Utility/Exception/STPBadNumericRange.h
 Utility/Exception/STPCompilationError.h
 Utility/Exception/STPCUDAError.h
+Utility/Exception/STPDatabaseError.h
 Utility/Exception/STPDeadThreadPool.h
 Utility/Exception/STPInvalidArgument.h
 Utility/Exception/STPInvalidEnvironment.h
@@ -34,6 +37,8 @@ Utility/Exception/STPSerialisationError.h
 Utility/Exception/STPUnsupportedFunctionality.h
 # /Utility
 Utility/STPDeviceErrorHandler.h
+Utility/STPHashCombine.h
+Utility/STPHashCombine.inl
 Utility/STPMemoryPool.h
 Utility/STPSmartDeviceMemory.h
 Utility/STPSmartDeviceMemory.tpp
@@ -54,4 +59,10 @@ World/Diversity/STPLayerCache.h
 World/Diversity/STPLayerManager.h
 World/Diversity/STPLayerManager.inl
 World/Diversity/STPSeedMixer.h
+# /World/Diversity/Texture
+World/Diversity/Texture/STPTextureDatabase.h
+World/Diversity/Texture/STPTextureDatabase.inl
+World/Diversity/Texture/STPTextureFactory.h
+World/Diversity/Texture/STPTextureInformation.hpp
+World/Diversity/Texture/STPTextureType.hpp
 )

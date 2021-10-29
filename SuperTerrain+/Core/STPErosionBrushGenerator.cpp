@@ -1,4 +1,3 @@
-#pragma once
 //Enable including the header
 #define STP_RAIN_DROP_SETTING_IMPL
 #include <SuperTerrain+/Environment/STPErosionBrushGenerator.h>

@@ -27,7 +27,7 @@ using namespace SuperTerrainPlus;
 
 STPChunkProvider::STPChunkProvider(const STPEnvironment::STPChunkSetting& chunk_settings, STPChunkStorage& storage,
 	STPDiversity::STPBiomeFactory& biome_factory, STPCompute::STPHeightfieldGenerator& heightfield_generator)
-	: ChunkSetting(chunk_settings), ChunkStorage(storage), generateBiome(biome_factory), generateHeightfield(heightfield_generator), kernel_launch_pool(5u){
+	: ChunkSetting(chunk_settings), ChunkStorage(storage), generateBiome(biome_factory), generateHeightfield(heightfield_generator), kernel_launch_pool(5u) {
 	if (!chunk_settings.validate()) {
 		throw STPException::STPInvalidEnvironment("Values from STPChunkSetting are not validated");
 	}
@@ -40,7 +40,9 @@ STPChunkProvider::~STPChunkProvider() {
 }
 
 unsigned int STPChunkProvider::calculateMaxConcurrency(uvec2 rendered_range, uvec2 freeslip_range) {
-	const uvec2 max_used = uvec2((rendered_range + (freeslip_range / 2u) * 2u) / freeslip_range);
+	//multiply by 4: free slip calculation comes with two stages: biomemap and heightmap
+	//generate a heightmap require free-slip biomemap, and eroding heightmap require free-slip heightmap, so we come with "double banding"
+	const uvec2 max_used = uvec2((rendered_range + (freeslip_range / 2u) * 4u) / freeslip_range);
 	return max_used.x * max_used.y;
 }
 

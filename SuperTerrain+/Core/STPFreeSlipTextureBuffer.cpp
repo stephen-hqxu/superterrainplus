@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperTerrain+/GPGPU/FreeSlip/STPFreeSlipTextureBuffer.h>
 
 //Error

@@ -20,28 +20,24 @@ STPBiomeFactory::STPBiomeFactory(uvec2 dimension) : STPBiomeFactory(uvec3(dimens
 }
 
 STPBiomeFactory::STPLayerManager_t STPBiomeFactory::requestProductionLine() {
-	{
-		std::unique_lock lock(this->ProductionLock);
-		STPLayerManager_t line;
+	std::unique_lock lock(this->ProductionLock);
+	STPLayerManager_t line;
 
-		if (this->LayerProductionLine.empty()) {
-			//no more idling line? Create a new one
-			line = STPLayerManager_t(this->supply());
-			return line;
-		}
-		//otherwise simply pop from the idling queue
-		line = move(this->LayerProductionLine.front());
-		this->LayerProductionLine.pop();
+	if (this->LayerProductionLine.empty()) {
+		//no more idling line? Create a new one
+		line = STPLayerManager_t(this->supply());
 		return line;
 	}
+	//otherwise simply pop from the idling queue
+	line = move(this->LayerProductionLine.front());
+	this->LayerProductionLine.pop();
+	return line;
 }
 
 void STPBiomeFactory::returnProductionLine(STPLayerManager_t& line) {
-	{
-		std::unique_lock lock(this->ProductionLock);
-		//simply put it back
-		this->LayerProductionLine.emplace(move(line));
-	}
+	std::unique_lock lock(this->ProductionLock);
+	//simply put it back
+	this->LayerProductionLine.emplace(move(line));
 }
 
 void STPBiomeFactory::operator()(Sample* biomemap, ivec3 offset) {

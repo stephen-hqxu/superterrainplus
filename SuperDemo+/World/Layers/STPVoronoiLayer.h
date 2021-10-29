@@ -4,10 +4,6 @@
 #include <SuperTerrain+/World/Diversity/STPLayer.h>
 #include "../Biomes/STPBiomeRegistry.h"
 
-/**
- * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
- * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
-*/
 namespace STPDemo {
 	using SuperTerrainPlus::STPDiversity::Seed;
 	using SuperTerrainPlus::STPDiversity::Sample;
@@ -18,12 +14,13 @@ namespace STPDemo {
 	class STPVoronoiLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	private:
 
-		typedef SuperTerrainPlus::STPDiversity::STPSeedMixer STPSeedMixer;
 		const bool is3D;
 
 		const Seed voronoi_seed;
 
 		static double sqrtDist(Seed seed, int x, int y, int z, double xFrac, double yFrac, double zFrac) {
+			namespace STPSeedMixer = SuperTerrainPlus::STPDiversity::STPSeedMixer;
+
 			static auto distribute = [](Seed seed) constexpr -> double {
 				const double d = static_cast<double>(static_cast<unsigned int>((seed >> 24ull) % 1024ull)) / 1024.0;
 				return (d - 0.5) * 0.9;

@@ -3,6 +3,10 @@ add_library(${STP_GLAD} SHARED
 glad/glad.c
 )
 
+# GLAD is only a symol importer, it's usually used along with GL (the definition of all drawing API functions)
+target_link_libraries(${STP_GLAD}
+INTERFACE OpenGL::GL
+)
 target_include_directories(${STP_GLAD}
 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 )

@@ -1,9 +1,5 @@
 #pragma once
 
-/**
- * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
- * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
-*/
 namespace STPDemo {
 
 	/**
@@ -19,49 +15,31 @@ namespace STPDemo {
 
 		/**
 		 * @brief Init the STPRendererCommander, and getting all drawing commands ready
-		 * @param pool The thread pool for multi-threaded rendering command
 		 * @param terrain2d_unitplane_count specify the number of unit plane for the procedural 2d infinite terrain renderer.
 		 * The value is equavalent to CHUNK_SIZE.x * CHUNK_SIZE.y * RENDERED_CHUNK.x * RENDERED_CHUNK.y;
 		*/
-		STPRendererCommander(SuperTerrainPlus::STPThreadPool& pool, unsigned int terrain2d_unitplane_count) {
-			//Initialise rendering command in multi-thread
-			//Sky renderer
-			std::future<DrawElementsIndirectCommand*> skycmd_generator = pool.enqueue_future([]() -> DrawElementsIndirectCommand* {
-				DrawElementsIndirectCommand* skycmd = new DrawElementsIndirectCommand{
+		STPRendererCommander(unsigned int terrain2d_unitplane_count) {
+			//Initialise rendering command
+			this->Command_SkyRenderer = new DrawElementsIndirectCommand{
 					SglToolkit::SgTUtil::UNITBOX_INDICES_SIZE,
 					1,
 					0,
 					0,
 					0
-				};
-				return skycmd;
-				});
-			//Quad renderer
-			std::future<DrawArraysIndirectCommand*> quadcmd_generator = pool.enqueue_future([]() -> DrawArraysIndirectCommand* {
-				DrawArraysIndirectCommand* quadcmd = new DrawArraysIndirectCommand{
+			};
+			this->Command_Quad = new DrawArraysIndirectCommand{
 					6,
 					1,
 					0,
 					0
-				};
-				return quadcmd;
-				});
-			//Procedural 2D infinite terrain renderer
-			std::future<DrawElementsIndirectCommand*> procedural2dinf_generator = pool.enqueue_future([terrain2d_unitplane_count]() -> DrawElementsIndirectCommand* {
-				DrawElementsIndirectCommand* procedural2dinfcmd = new DrawElementsIndirectCommand{
+			};
+			this->Command_Procedural2DINF = new DrawElementsIndirectCommand{
 					SglToolkit::SgTUtil::UNITPLANE_INDICES_SIZE,
 					terrain2d_unitplane_count,
 					0,
 					0,
 					0
-				};
-				return  procedural2dinfcmd;
-				});
-
-			//retrieve all results
-			this->Command_SkyRenderer = skycmd_generator.get();
-			this->Command_Quad = quadcmd_generator.get();
-			this->Command_Procedural2DINF = procedural2dinf_generator.get();
+			};
 		}
 
 		~STPRendererCommander() {

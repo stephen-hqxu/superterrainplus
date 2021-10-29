@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 
 //Error
@@ -113,7 +112,7 @@ private:
 		std::copy(this->cbegin(), this->cend(), cache.get());
 		
 		//reassign data
-		this->Begin = move(cache);
+		this->Begin = std::move(cache);
 		this->End = this->begin() + current_size;
 		this->Last = this->begin() + new_capacity;
 	}
@@ -123,15 +122,26 @@ private:
 	 * @param count The number of new elements are going to be inserted
 	*/
 	inline void insert_back_realloc_check(size_t count) {
-		if (this->cend() + count >= this->Last) {
+		if (this->cend() + count > this->Last) {
 			//not enough room, reallocation
 			this->expand((this->size() + count) * 2ull);
 		}
 	}
 
+	/**
+	 * @brief Insert count many elements at the end without initialisation
+	 * @param count The number of element to be inserted
+	*/
+	inline void insert_back_n(size_t count) {
+		this->insert_back_realloc_check(count);
+
+		//simply move the end iterator ahead
+		this->End += count;
+	}
+
 public:
 
-	STPArrayList() noexcept : End(nullptr), Last(nullptr) {
+	constexpr STPArrayList() noexcept : End(nullptr), Last(nullptr) {
 
 	}
 
@@ -171,32 +181,25 @@ public:
 	}
 
 	/**
-	 * @brief Insert count many elements at the end without initialisation
-	 * @param count The number of element to be inserted
-	*/
-	void insert_back_n(size_t count) {
-		this->insert_back_realloc_check(count);
-
-		//simply move the end iterator ahead
-		this->End += count;
-	}
-
-	/**
 	 * @brief Insert count many elements at the end with initialisation
 	 * @param count The number of element to be inserted
 	 * @param value The value to be filled for every new element
+	 * @return The iterator to the last inserted element
 	*/
-	void insert_back_n(size_t count, const T& value) {
+	STPArrayList_it insert_back_n(size_t count, const T& value) {
 		this->insert_back_realloc_check(count);
 
 		//init
 		std::fill(this->end(), this->end() + count, value);
 
 		this->End += count;
+
+		return this->end() - 1;
 	}
 
 	/**
 	 * @brief Erase the item pointed by the iterator
+	 * Erasure of an empty container is undefined behaviour
 	 * @param it The item to be erased
 	 * @return The iterator to the item following the iterator provided
 	*/
@@ -205,9 +208,10 @@ public:
 
 		if (it < this->cend() - 1ull) {
 			//it's not the last element, we need to move the memory forward
-			STPArrayList_it move_start = it + 1ull;
-			//memmove will auto-manage the case when size == 0
-			memmove(it, move_start, (this->cend() - move_start) * sizeof(T));
+			//there's nothing to move if it's the last element, plus it may trigger undefined behaviour because end pointer should not be dereferenced
+			//move_start is out of the range of [first, last) so we are good to use
+			//no need to use std::move because T is known to be a PoD
+			std::copy(const_cast<STPArrayList_cit>(it) + 1ull, this->cend(), it);
 		}
 		
 		//correct the internal iterator
@@ -384,14 +388,11 @@ private:
 	inline STPSingleHistogram::STPBin& operator[](Sample sample) {
 		//check if the sample is in the dictionary
 		const int diff = static_cast<int>(this->Dictionary.size() - sample);
-		if (diff <= 0) {
-			//if not we need to insert that many extra entries so we can use sample to index the dictionary directly
-			this->Dictionary.insert_back_n(static_cast<size_t>((-diff) + 1u), NO_ENTRY);
-		}
 
 		//get the biome using the index from dictionary
-		unsigned int& bin_index = this->Dictionary[sample];
-		if (bin_index == NO_ENTRY) {
+		//if not we need to insert that many extra entries so we can use sample to index the dictionary directly
+		if (unsigned int& bin_index = diff <= 0 ? *this->Dictionary.insert_back_n(static_cast<size_t>((-diff) + 1u), NO_ENTRY) : this->Dictionary[sample]; 
+			bin_index == NO_ENTRY) {
 			//biome not exist, add and initialise
 			STPSingleHistogram::STPBin& bin = this->Bin.emplace_back();
 			bin.Item = sample;
@@ -400,7 +401,9 @@ private:
 			bin_index = this->Bin.size() - 1;
 			return bin;
 		}
-		return this->Bin[bin_index];
+		else {
+			return this->Bin[bin_index];
+		}
 	}
 
 public:
@@ -443,26 +446,22 @@ public:
 	 * @param sample The sample bin that will be operated on
 	 * @param count The number to decrement
 	*/
-	void dec(Sample sample, unsigned int count){
+	void dec(Sample sample, unsigned int count) {
 		//our algorithm guarantees the bin has been increment by this sample before, so no check is needed
 		unsigned int& bin_index = this->Dictionary[sample];
-		STPSingleHistogram::STPBin& bin = this->Bin[static_cast<unsigned int>(bin_index)];
-		unsigned int& quant = bin.Data.Quantity;
+		unsigned int& quant = this->Bin[static_cast<unsigned int>(bin_index)].Data.Quantity;
 
 		if (quant <= count) {
-			//bin will become empty, erase this bin and dictionary entry
-			const unsigned int followed_index = this->Bin.erase(this->Bin.begin() + bin_index) - this->Bin.begin();
-			bin_index = NO_ENTRY;
-
 			//update the dictionary entries linearly, basically it's a rehash in hash table
-			for (unsigned int& dic_index : this->Dictionary) {
+			auto followed_index = this->Bin.erase(this->Bin.begin() + bin_index);
+			std::for_each(followed_index, this->Bin.end(), [&Dic = this->Dictionary](const auto& bin) {
 				//since all subsequent indices followed by the erased bin has been advanced forward by one block
 				//we need to subtract the indices recorded in dictionary for those entries by one.
-				if (dic_index == NO_ENTRY || dic_index <= followed_index) {
-					continue;
-				}
-				dic_index--;
-			}
+				Dic[bin.Item]--;
+			});
+
+			//bin will become empty, erase this bin and dictionary entry
+			bin_index = NO_ENTRY;
 
 			return;
 		}

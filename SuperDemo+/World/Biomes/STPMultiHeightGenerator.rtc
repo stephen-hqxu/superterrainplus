@@ -1,5 +1,3 @@
-#pragma once
-
 //SuperAlgorithm+ Device library
 #include <STPSimplexNoise.cuh>
 #include <STPKernelMath.cuh>

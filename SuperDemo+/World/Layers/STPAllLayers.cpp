@@ -1,4 +1,3 @@
-#pragma once
 #include "STPAllLayers.h"
 
 //All layers are for demo purposes, developers are free to implement their own version with the interface

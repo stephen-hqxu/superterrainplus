@@ -1,6 +1,5 @@
-#pragma once
 #pragma warning(disable:26812)//Enum unsafe, use enum class instead
-#include <SuperTerrain+/GPGPU/STPDiversityGeneratorRTC.h>
+#include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Utility/Exception/STPSerialisationError.h>
@@ -26,41 +25,41 @@ using std::exception_ptr;
 
 using namespace SuperTerrainPlus::STPCompute;
 
-STPDiversityGeneratorRTC::STPSourceInformation::STPSourceArgument& STPDiversityGeneratorRTC::STPSourceInformation::STPSourceArgument::operator[](const char arg[]) {
+STPRuntimeCompilable::STPSourceInformation::STPSourceArgument& STPRuntimeCompilable::STPSourceInformation::STPSourceArgument::operator[](const char arg[]) {
 	//inserting a string literal will not cause undefined behaviour
 	//string is a better choice but CUDA API only takes char array, so for simplicity store string literal.
 	this->emplace_back(arg);
 	return *this;
 }
 
-STPDiversityGeneratorRTC::STPLinkerInformation::STPDataJitOption& STPDiversityGeneratorRTC::STPLinkerInformation::STPDataJitOption::operator()(CUjit_option flag, void* value) {
+STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption& STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption::operator()(CUjit_option flag, void* value) {
 	this->OptionFlag.emplace_back(flag);
 	this->OptionValue.emplace_back(value);
 	return *this;
 }
 
-STPDiversityGeneratorRTC::STPLinkerInformation::STPDataJitOption& STPDiversityGeneratorRTC::STPLinkerInformation::getDataOption(string source_name) {
+STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption& STPRuntimeCompilable::STPLinkerInformation::getDataOption(string source_name) {
 	//it will insert a new entry automatically if source_name is not found
 	return this->DataOption[source_name];
 }
 
-STPDiversityGeneratorRTC::STPDiversityGeneratorRTC() : STPDiversityGenerator(), GeneratorProgram(nullptr, &STPDiversityGeneratorRTC::deleteModule) {
+STPRuntimeCompilable::STPRuntimeCompilable() : GeneratorProgram(nullptr, &STPRuntimeCompilable::deleteModule) {
 
 }
 
-void STPDiversityGeneratorRTC::deleteProgram(nvrtcProgram program) {
+void STPRuntimeCompilable::deleteProgram(nvrtcProgram program) {
 	STPcudaCheckErr(nvrtcDestroyProgram(&program));
 }
 
-void STPDiversityGeneratorRTC::deleteModule(CUmodule module) {
+void STPRuntimeCompilable::deleteModule(CUmodule module) {
 	STPcudaCheckErr(cuModuleUnload(module));
 }
 
-void STPDiversityGeneratorRTC::deleteLink(CUlinkState link) {
+void STPRuntimeCompilable::deleteLink(CUlinkState link) {
 	STPcudaCheckErr(cuLinkDestroy(link));
 }
 
-string STPDiversityGeneratorRTC::readSource(string filename) {
+string STPRuntimeCompilable::readSource(string filename) {
 	using std::ifstream;
 	using std::stringstream;
 
@@ -75,24 +74,24 @@ string STPDiversityGeneratorRTC::readSource(string filename) {
 	return buffer.str();
 }
 
-bool STPDiversityGeneratorRTC::attachHeader(string header_name, const string& header_code) {
+bool STPRuntimeCompilable::attachHeader(string header_name, const string& header_code) {
 	//simply add the header
 	return this->ExternalHeader.emplace(header_name, header_code).second;
 }
 
-bool STPDiversityGeneratorRTC::detachHeader(string header_name) {
+bool STPRuntimeCompilable::detachHeader(string header_name) {
 	return this->ExternalHeader.erase(header_name) == 1ull;
 }
 
-bool STPDiversityGeneratorRTC::attachArchive(string archive_name, string archive_filename) {
+bool STPRuntimeCompilable::attachArchive(string archive_name, string archive_filename) {
 	return this->ExternalArchive.emplace(archive_name, archive_filename).second;
 }
 
-bool STPDiversityGeneratorRTC::detachArchive(string archive_name) {
+bool STPRuntimeCompilable::detachArchive(string archive_name) {
 	return this->ExternalArchive.erase(archive_name) == 1ull;
 }
 
-string STPDiversityGeneratorRTC::compileSource(string source_name, const string& source_code, const STPSourceInformation& source_info) {
+string STPRuntimeCompilable::compileSource(string source_name, const string& source_code, const STPSourceInformation& source_info) {
 	//make sure the source name is unique
 	if (this->CompilationDatabase.find(source_name) != this->CompilationDatabase.end()) {
 		throw STPException::STPMemoryError(
@@ -106,7 +105,7 @@ string STPDiversityGeneratorRTC::compileSource(string source_name, const string&
 
 	//search each external header in our database
 	for (auto header_name = source_info.ExternalHeader.begin(); header_name != source_info.ExternalHeader.end(); header_name++) {
-		if (const auto header_code = this->ExternalHeader.find(*header_name); 
+		if (const auto header_code = this->ExternalHeader.find(*header_name);
 			header_code != this->ExternalHeader.end()) {
 			//code is found, add source of header
 			external_header.emplace_back(*header_name);
@@ -120,7 +119,7 @@ string STPDiversityGeneratorRTC::compileSource(string source_name, const string&
 	nvrtcProgram program_cache;
 	STPcudaCheckErr(nvrtcCreateProgram(&program_cache, source_code.c_str(), source_name.c_str(),
 		static_cast<int>(external_header.size()), external_header_code.data(), external_header.data()));
-	ManagednvrtcProgram program(program_cache, &STPDiversityGeneratorRTC::deleteProgram);
+	ManagednvrtcProgram program(program_cache, &STPRuntimeCompilable::deleteProgram);
 	try {
 		//add name expression
 		for (auto expr : source_info.NameExpression) {
@@ -148,7 +147,7 @@ string STPDiversityGeneratorRTC::compileSource(string source_name, const string&
 	//if no error appears grab the lowered name expression from compiled program
 	STPLoweredName& current_source_name = this->CompilationNameDatabase[source_name];
 	for (auto expr : source_info.NameExpression) {
-		if (const char* current_lowered_name; 
+		if (const char* current_lowered_name;
 			nvrtcGetLoweredName(program_cache, expr, &current_lowered_name) == NVRTC_SUCCESS) {
 			//we got the name, add to the database
 			current_source_name[expr] = current_lowered_name;
@@ -162,8 +161,8 @@ string STPDiversityGeneratorRTC::compileSource(string source_name, const string&
 	return log;
 }
 
-bool STPDiversityGeneratorRTC::discardSource(string source_name) {
-	if (auto source = this->CompilationDatabase.find(source_name); 
+bool STPRuntimeCompilable::discardSource(string source_name) {
+	if (auto source = this->CompilationDatabase.find(source_name);
 		source != this->CompilationDatabase.end()) {
 		//make sure the source exists
 		//and destroy the program effectively
@@ -175,7 +174,7 @@ bool STPDiversityGeneratorRTC::discardSource(string source_name) {
 	return false;
 }
 
-void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CUjitInputType input_type) {
+void STPRuntimeCompilable::linkProgram(STPLinkerInformation& linker_info, CUjitInputType input_type) {
 	exception_ptr exptr;
 	void* program_cubin = nullptr;
 	//we can make sure the number of option flag is the same as that of value
@@ -183,7 +182,7 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 	CUlinkState linker_cache;
 	STPLinkerInformation::STPDataJitOption& linkerOption = linker_info.LinkerOption;
 	STPcudaCheckErr(cuLinkCreate(static_cast<int>(linkerOption.OptionFlag.size()), linkerOption.OptionFlag.data(), linkerOption.OptionValue.data(), &linker_cache));
-	ManagedCUlinkState linker(linker_cache, &STPDiversityGeneratorRTC::deleteLink);
+	ManagedCUlinkState linker(linker_cache, &STPRuntimeCompilable::deleteLink);
 
 	//for each entry, add compiled data to the linker
 	for (auto compiled = this->CompilationDatabase.cbegin(); compiled != this->CompilationDatabase.cend(); compiled++) {
@@ -247,12 +246,12 @@ void STPDiversityGeneratorRTC::linkProgram(STPLinkerInformation& linker_info, CU
 	STPcudaCheckErr(cuModuleLoadDataEx(&newModule, program_cubin,
 		static_cast<int>(moduleOption.OptionFlag.size()), moduleOption.OptionFlag.data(), moduleOption.OptionValue.data()));
 	//if there's any previous loaded module, it will be unloaded
-	this->GeneratorProgram = std::move(ManagedCUmodule(newModule, &STPDiversityGeneratorRTC::deleteModule));
+	this->GeneratorProgram = std::move(ManagedCUmodule(newModule, &STPRuntimeCompilable::deleteModule));
 
 	//link will be destroy automatically
 }
 
-const STPDiversityGeneratorRTC::STPLoweredName& STPDiversityGeneratorRTC::retrieveSourceLoweredName(string source_name) const {
+const STPRuntimeCompilable::STPLoweredName& STPRuntimeCompilable::retrieveSourceLoweredName(string source_name) const {
 	auto name_expression = this->CompilationNameDatabase.find(source_name);
 	if (name_expression == this->CompilationNameDatabase.end()) {
 		throw STPException::STPMemoryError((string(__FILE__) + "::" + string(__FUNCTION__) + "\nSource name cannot be found in source database.").c_str());
@@ -260,7 +259,7 @@ const STPDiversityGeneratorRTC::STPLoweredName& STPDiversityGeneratorRTC::retrie
 	return name_expression->second;
 }
 
-CUmodule STPDiversityGeneratorRTC::getGeneratorModule() const {
+CUmodule STPRuntimeCompilable::getGeneratorModule() const {
 	return this->GeneratorProgram.get();
 }
 

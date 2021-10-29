@@ -5,7 +5,6 @@ STPChunkManager.cpp
 STPChunkProvider.cpp
 STPChunkStorage.cpp
 STPDeviceErrorHandler.cpp
-STPDiversityGeneratorRTC.cpp
 STPEngineInitialiser.cpp
 STPEnvironment.cpp
 STPErosionBrushGenerator.cpp
@@ -15,8 +14,11 @@ STPLayer.cpp
 STPLayerCache.cpp
 STPLayerManager.cpp
 STPMemoryPool.cpp
+STPRuntimeCompilable.cpp
 STPSeedMixer.cpp
 STPSmartStream.cpp
+STPTextureDatabase.cpp
+STPTextureFactory.cpp
 STPThreadPool.cpp
 
 STPFreeSlipGenerator.cu

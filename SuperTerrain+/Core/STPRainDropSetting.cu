@@ -1,4 +1,3 @@
-#pragma once
 //STPRainDropSetting header will be included by the private implementation header
 //Private implementation for the erosion brush generator
 #define STP_RAIN_DROP_SETTING_IMPL

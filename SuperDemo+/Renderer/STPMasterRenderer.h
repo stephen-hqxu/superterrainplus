@@ -9,8 +9,8 @@ using std::cerr;
 using std::cout;
 using std::endl;
 
-#include <future>
 #include <string>
+#include <algorithm>
 //Math library
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -38,8 +38,6 @@ using glm::value_ptr;
 #include <SglToolkit/SgTCamera/SgTSpectatorCamera.h>
 #include <SglToolkit/SgTShaderProc.h>
 #include <SglToolkit/SgTUtil.h>
-//Multithreadding engine
-#include <SuperTerrain+/Utility/STPThreadPool.h>
 
 //Invididual rendering engine
 #include "../Helpers/STPIndirectCommands.h"
@@ -52,10 +50,6 @@ using glm::value_ptr;
 #include "../World/Layers/STPAllLayers.h"
 #include "../World/Biomes/STPBiomefieldGenerator.h"
 
-/**
- * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
- * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
-*/
 namespace STPDemo {
 
 	/**
@@ -67,7 +61,7 @@ namespace STPDemo {
 		//camera matrix
 		mat4 Projection, View;
 		GLuint PVmatrix;//ssbo, layout: view, view_notrans(for skybox), projection
-		char* PVblock_mapped = nullptr;//The persistent PVblock mapping
+		unsigned char* PVblock_mapped = nullptr;//The persistent PVblock mapping
 
 		SglToolkit::SgTCamera*& Camera;
 		SIMPLE::SIStorage& engineSettings;
@@ -80,9 +74,6 @@ namespace STPDemo {
 		STPRendererCommander* command = nullptr;
 		//terrain renderers
 		STPWorldManager* world_manager = nullptr;
-		//thread pool
-		//thread pool must be the last one to be destroyed
-		SuperTerrainPlus::STPThreadPool command_pool;
 
 		/**
 		 * @brief Set up the shader storage buffer for pv matrix
@@ -95,7 +86,7 @@ namespace STPDemo {
 			//assign pvmatrix to ssbo block index 0
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, this->PVmatrix);
 			//each char uses 1 byte, that makes pointer arithmetric easier
-			PVblock_mapped = reinterpret_cast<char*>(glMapNamedBufferRange(this->PVmatrix, 0, sizeof(mat4) * 3, 
+			PVblock_mapped = reinterpret_cast<unsigned char*>(glMapNamedBufferRange(this->PVmatrix, 0, sizeof(mat4) * 3, 
 				GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
 		}
 
@@ -110,17 +101,11 @@ namespace STPDemo {
 			//calculate the view matrix without translation
 			const mat4 View_notrans = mat4(mat3(this->View));
 
-			//copy buffer in multithreads
-			static std::future<void*> bufferUploaders[3];
+			//copy buffer
 			//increasing char* will shift 1 byte so we can manipulate the pure address
-			
-			bufferUploaders[0] = this->command_pool.enqueue_future(memcpy, PVblock_mapped, &this->View, sizeof(mat4));
-			bufferUploaders[1] = this->command_pool.enqueue_future(memcpy, PVblock_mapped + sizeof(mat4), &View_notrans, sizeof(mat4));
-			bufferUploaders[2] = this->command_pool.enqueue_future(memcpy, PVblock_mapped + 2 * sizeof(mat4), &this->Projection, sizeof(mat4));
-			//wait
-			for (int i = 0; i < 3; i++) {
-				bufferUploaders[i].get();
-			}
+			memcpy(PVblock_mapped, &this->View, sizeof(mat4));
+			memcpy(PVblock_mapped + sizeof(mat4), &View_notrans, sizeof(mat4));
+			memcpy(PVblock_mapped + 2 * sizeof(mat4), &this->Projection, sizeof(mat4));
 			//we are using coherent bit, modifications are good to go
 		}
 
@@ -147,7 +132,7 @@ namespace STPDemo {
 		 * @param ini The ini setting file for the engine
 		*/
 		STPMasterRenderer(SglToolkit::SgTCamera*& camera, const int windowSize[2], SIMPLE::SIStorage& ini, SIMPLE::SIStorage& biome) : 
-			Camera(camera), engineSettings(ini), biomeSettings(biome), command_pool(3u) {
+			Camera(camera), engineSettings(ini), biomeSettings(biome) {
 			this->SCR_SIZE[0] = windowSize[0];
 			this->SCR_SIZE[1] = windowSize[1];
 		}
@@ -188,26 +173,22 @@ namespace STPDemo {
 
 			//loading terrain 2d inf parameters
 			SuperTerrainPlus::STPEnvironment::STPConfiguration config;
-			std::future chunksPara_loader = this->command_pool.enqueue_future(STPTerrainParaLoader::getProcedural2DINFChunksParameter, std::ref(this->engineSettings["Generators"]));
-			std::future renderPara_loader = this->command_pool.enqueue_future(STPTerrainParaLoader::getProcedural2DINFRenderingParameter, std::ref(this->engineSettings["2DTerrainINF"]));
-			std::future biomePara_loader = this->command_pool.enqueue_future(STPTerrainParaLoader::loadBiomeParameters, std::ref(this->biomeSettings));
-			config.getChunkSetting() = chunksPara_loader.get();
-			config.getMeshSetting() = renderPara_loader.get();
+			config.getChunkSetting() = STPTerrainParaLoader::getProcedural2DINFChunksParameter(this->engineSettings["Generators"]);
+			config.getMeshSetting() = STPTerrainParaLoader::getProcedural2DINFRenderingParameter(this->engineSettings["2DTerrainINF"]);
+			STPTerrainParaLoader::loadBiomeParameters(this->biomeSettings);
 			
 			const auto& chunk_setting = config.getChunkSetting();
-			std::future noisePara_loader = this->command_pool.enqueue_future(STPTerrainParaLoader::getSimplex2DNoiseParameter, std::ref(this->biomeSettings["simplex"]));
 			//not quite sure why heightfield_settings isn't got copied to the config, it just share the pointer
 			config.getHeightfieldSetting() = std::move(STPTerrainParaLoader::getProcedural2DINFGeneratorParameter(this->engineSettings["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
-			SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting simplex = noisePara_loader.get();
-			biomePara_loader.get();
+			SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplex2DNoiseParameter(this->biomeSettings["simplex"]);
 
 			assert(config.validate());
 			const unsigned int unitplane_count = chunk_setting.ChunkSize.x * chunk_setting.ChunkSize.y * chunk_setting.RenderedChunk.x * chunk_setting.RenderedChunk.y;
 			
 			//rendering commands generation
-			this->command = new STPRendererCommander(this->command_pool, unitplane_count);
+			this->command = new STPRendererCommander(unitplane_count);
 			//setting up renderers
-			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer, this->command_pool);
+			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer);
 			//setting world manager
 			this->world_manager = new STPWorldManager();
 			this->world_manager->attachSetting(config);
@@ -271,7 +252,7 @@ namespace STPDemo {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 			//update the view matrix and projection matrix
 			this->View = this->Camera->getViewMat();
-			this->Projection = perspective(radians(this->Camera->getZoomDeg()), (1.0f * this->SCR_SIZE[0]) / (this->SCR_SIZE[1] * 1.0f), 1.0f, 1500.0f);
+			this->Projection = perspective(radians(this->Camera->getZoomDeg()), (1.0f * this->SCR_SIZE[0]) / (this->SCR_SIZE[1] * 1.0f), 1.0f, 2000.0f);
 			this->updatePVmatrix();
 
 			//rendering sky

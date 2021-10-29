@@ -6,7 +6,8 @@
 #include <queue>
 #include <mutex>
 //Multi-biome Heightfield Generator
-#include <SuperTerrain+/GPGPU/STPDiversityGeneratorRTC.h>
+#include <SuperTerrain+/GPGPU/STPDiversityGenerator.hpp>
+#include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
 #include <SuperAlgorithm+/STPPermutationGenerator.h>
 #include "STPBiomeSettings.hpp"
 //Biome Interpolation
@@ -15,10 +16,6 @@
 //GLM
 #include <glm/vec2.hpp>
 
-/**
- * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
- * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.
-*/
 namespace STPDemo {
 	using SuperTerrainPlus::STPDiversity::Sample;
 
@@ -27,7 +24,7 @@ namespace STPDemo {
 	 * It generates different heightfield based on biome settings.
 	 * Heightfield generator uses NVRTC
 	*/
-	class STPBiomefieldGenerator : public SuperTerrainPlus::STPCompute::STPDiversityGeneratorRTC {
+	class STPBiomefieldGenerator final : public SuperTerrainPlus::STPCompute::STPDiversityGenerator, private SuperTerrainPlus::STPCompute::STPRuntimeCompilable {
 	private:
 
 		//all parameters for the noise generator, stored on host, passing value to device

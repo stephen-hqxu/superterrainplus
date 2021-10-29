@@ -3,6 +3,11 @@
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
+//GLAD
+#include <glad/glad.h>
+//CUDA + GL
+#include <cuda_gl_interop.h>
+
 using glm::uvec2;
 using glm::ivec2;
 using glm::vec2;
@@ -116,7 +121,6 @@ void STPChunkManager::clearRenderingBuffer(cudaArray_t destination, size_t pixel
 	STPcudaCheckErr(cudaMemcpy2DToArrayAsync(destination, 0, 0, this->quad_clear,
 		buffer_size.x * pixel_size, buffer_size.x * pixel_size,
 		buffer_size.y, cudaMemcpyHostToDevice, this->buffering_stream));
-	STPcudaCheckErr(cudaStreamSynchronize(this->buffering_stream));
 }
 
 void STPChunkManager::generateMipmaps() {
@@ -156,15 +160,13 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 				num_chunkLoaded++;
 			}
 		}
-		//wait until everything is finished
-		STPcudaCheckErr(cudaStreamSynchronize(this->buffering_stream));
 		
 		return num_chunkLoaded;
 	};
 
 	//texture storage
 	//map the texture, all opengl related work must be done on the main contexted thread
-	STPcudaCheckErr(cudaGraphicsMapResources(2, this->heightfield_texture_res));
+	STPcudaCheckErr(cudaGraphicsMapResources(2, this->heightfield_texture_res, this->buffering_stream));
 	cudaArray_t biomemap_ptr, heightfield_ptr;
 	//we only have one texture, so index is always zero
 	STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&biomemap_ptr, this->heightfield_texture_res[0], 0, 0));
@@ -238,8 +240,8 @@ int STPChunkManager::SyncloadChunks() {
 	if (this->ChunkLoader.valid()) {
 		//wait for finish first
 		const unsigned int res = this->ChunkLoader.get();
-		//unmap the chunk
-		STPcudaCheckErr(cudaGraphicsUnmapResources(2, this->heightfield_texture_res));
+		//sync the stream that modifies the texture and unmap the chunk
+		STPcudaCheckErr(cudaGraphicsUnmapResources(2, this->heightfield_texture_res, this->buffering_stream));
 		return static_cast<int>(res);
 	}
 	else {

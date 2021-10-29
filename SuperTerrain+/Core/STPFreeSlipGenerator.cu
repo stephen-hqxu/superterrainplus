@@ -1,4 +1,3 @@
-#pragma once
 #include <SuperTerrain+/GPGPU/FreeSlip/STPFreeSlipGenerator.cuh>
 #include <device_launch_parameters.h>
 

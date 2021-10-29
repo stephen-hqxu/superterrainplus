@@ -1,11 +1,11 @@
-#pragma once
-
 //Catch2
 #include <catch2/catch_test_macros.hpp>
 //Generator
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
+//Matcher
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 //SuperAlgorithm+Host
 #include <SuperAlgorithm+/STPPermutationGenerator.h>
@@ -77,11 +77,11 @@ public:
 };
 
 //increase epsilon to allow some margin of error
-#define FLOAT_EQUAL(X, Y) std::fabs(X - (Y)) < (std::numeric_limits<float>::epsilon() * 10.0f)
+#define FLOAT_EQUAL(X) Catch::Matchers::WithinRel(X, std::numeric_limits<float>::epsilon() * 10.0f)
 #define GET_GRADX(D) glm::cos(radians(D))
 #define GET_GRADY(D) glm::sin(radians(D))
-#define CHECK_GRAD(I, D) CHECK(FLOAT_EQUAL(this->HostGrad2D[I], GET_GRADX(D))); \
-CHECK(FLOAT_EQUAL(this->HostGrad2D[I + 1], GET_GRADY(D)))
+#define CHECK_GRAD(I, D) CHECK_THAT(this->HostGrad2D[I], FLOAT_EQUAL(GET_GRADX(D))); \
+CHECK_THAT(this->HostGrad2D[I + 1], FLOAT_EQUAL(GET_GRADY(D)))
 
 SCENARIO_METHOD(PermutationGenTester, "STPPermutationGenerator can a generate deterministically random permutation table", 
 	"[AlgorithmHost][STPPermutationGenerator][!mayfail]") {
