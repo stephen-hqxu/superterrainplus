@@ -1,5 +1,4 @@
 #version 460 core
-#extension GL_ARB_bindless_texture : require
 
 //Input
 layout (location = 0) in vec3 Position;

@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_HEIGHTFIELD_GENERATOR_CUH_
-#define _STP_HEIGHTFIELD_GENERATOR_CUH_
+#ifndef _STP_HEIGHTFIELD_GENERATOR_H_
+#define _STP_HEIGHTFIELD_GENERATOR_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
 //System
@@ -13,12 +13,12 @@
 #include <curand_kernel.h>
 //Engine
 #include "STPDiversityGenerator.hpp"
-#include "./FreeSlip/STPFreeSlipGenerator.cuh"
-#include "../Utility/STPSmartStream.h"
-#include "../Utility/STPSmartDeviceMemory.h"
+#include "./FreeSlip/STPFreeSlipGenerator.h"
+#include "../../Utility/STPSmartStream.h"
+#include "../../Utility/STPSmartDeviceMemory.h"
 //Settings
-#include "../Environment/STPHeightfieldSetting.h"
-#include "../Environment/STPChunkSetting.h"
+#include "../../Environment/STPHeightfieldSetting.h"
+#include "../../Environment/STPChunkSetting.h"
 
 //GLM
 #include <glm/vec2.hpp>
@@ -70,18 +70,13 @@ namespace SuperTerrainPlus::STPCompute {
 			//The x vector specify the offset on x direction of the map and and z on y direction of the map.
 			//The offset parameter will only be applied on the heightmap generation.
 			glm::vec2 HeightmapOffset = glm::vec2(0.0f);
-			//A INT16 array that will be used to stored the heightmap and normalmap after formation. The final format will become RGBA.
+			//A INT16 array that will be used to stored the heightmap and normalmap after formation. The final format will become R16.
 			//The number of pointer provided should be the same as the number of heightmap and normalmap.
 			std::vector<unsigned short*> Heightfield16UI;
 
 		};
 
 	private:
-
-		/**
-		 * @brief STPEdgeArrangement specifies the edge arrangement type when performing edge copy operations
-		*/
-		enum class STPEdgeArrangement : unsigned char;
 
 		//multi-biome heightmap generator linked with external
 		const STPDiversityGenerator& generateHeightmap;
@@ -94,33 +89,11 @@ namespace SuperTerrainPlus::STPCompute {
 		//free-slip index table generator
 		STPFreeSlipGenerator FreeSlipTable;
 		STPFreeSlipTextureAttribute TextureBufferAttr;
-		//A lookup table that, given a chunkID, determine the edge type of this chunk within the neighbour chunk logic
-		std::unique_ptr<STPEdgeArrangement[]> EdgeArrangementTable;
 
 		//Temp cache on device for heightmap computation
 		mutable std::mutex StreamPool_lock;
 		mutable cudaMemPool_t MapCacheDevice;
 		mutable std::queue<STPSmartStream, std::list<STPSmartStream>> StreamPool;
-
-		/**
-		 * @brief Set the number of raindrop to spawn for each hydraulic erosion run, each time the function is called some recalculation needs to be re-done.
-		 * Determine the number of raindrop to summon, the higher the more accurate but slower
-		*/
-		__host__ void setErosionIterationCUDA();
-
-		/**
-		 * @brief Initialise edge arrangement lookup table
-		*/
-		__host__ void initEdgeArrangementTable();
-
-		/**
-		 * @brief Copy the border of the texture using neighbour logic. Used mainly for rendering buffer edge synchronisation
-		 * @param device - Device destination memory
-		 * @param souce - The source chunks
-		 * @param element_count - The number of pixel in one chunk
-		 * @param stream - Async CUDA stream
-		*/
-		__host__ void copyNeighbourEdgeOnly(unsigned short*, const std::vector<unsigned short*>&, size_t, cudaStream_t) const;
 
 	public:
 
@@ -132,18 +105,18 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @param hint_level_of_concurrency The average numebr of thread that will be used to issue commands to this class.
 		 * It's used to assume the size of memory pool to allocate.
 		*/
-		__host__ STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting&, const STPEnvironment::STPHeightfieldSetting&,
+		STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting&, const STPEnvironment::STPHeightfieldSetting&,
 			const STPDiversityGenerator&, unsigned int);
 
-		__host__ ~STPHeightfieldGenerator();
+		~STPHeightfieldGenerator();
 
-		__host__ STPHeightfieldGenerator(const STPHeightfieldGenerator&) = delete;
+		STPHeightfieldGenerator(const STPHeightfieldGenerator&) = delete;
 
-		__host__ STPHeightfieldGenerator(STPHeightfieldGenerator&&) = delete;
+		STPHeightfieldGenerator(STPHeightfieldGenerator&&) = delete;
 
-		__host__ STPHeightfieldGenerator& operator=(const STPHeightfieldGenerator&) = delete;
+		STPHeightfieldGenerator& operator=(const STPHeightfieldGenerator&) = delete;
 
-		__host__ STPHeightfieldGenerator& operator=(STPHeightfieldGenerator&&) = delete;
+		STPHeightfieldGenerator& operator=(STPHeightfieldGenerator&&) = delete;
 
 		/**
 		 * @brief Generate the terrain heightfield maps, each heightfield contains four maps, being heightmap and normalmap.
@@ -158,9 +131,9 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @param operation Control what type of operation generator does
 		 * @return True if all operations are successful without any errors
 		*/
-		__host__ void operator()(STPMapStorage&, STPGeneratorOperation) const;
+		void operator()(STPMapStorage&, STPGeneratorOperation) const;
 
 	};
 
 }
-#endif//_STP_HEIGHTFIELD_GENERATOR_CUH_
+#endif//_STP_HEIGHTFIELD_GENERATOR_H_

@@ -7,14 +7,14 @@
 #include <optional>
 //Data Structure
 #include <vector>
-#include "../../Utility/STPMemoryPool.h"
+#include "../../../Utility/STPMemoryPool.h"
 //CUDA
 #include <cuda_runtime.h>
 //Free-Slip Data
 #include "STPFreeSlipLocation.hpp"
-#include "../../World/Diversity/STPBiomeDefine.h"
+#include "../../Diversity/STPBiomeDefine.h"
 //Memory
-#include "../../Utility/STPSmartDeviceMemory.h"
+#include "../../../Utility/STPSmartDeviceMemory.h"
 
 namespace SuperTerrainPlus::STPCompute {
 

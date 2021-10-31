@@ -153,9 +153,10 @@ namespace STPDemo {
 				this->Texloader_night[i] = STPTextureStorage::loadTexture(this->path_night[i].c_str(), 3);
 			}
 			
-			if (this->compileShader()) {
-				cout << "Shader loaded :)" << endl;
+			if (!this->compileShader()) {
+				std::terminate();
 			}
+			cout << "Shader loaded :)" << endl;
 			this->loadCube();
 			cout << "....Done...." << endl;
 		}

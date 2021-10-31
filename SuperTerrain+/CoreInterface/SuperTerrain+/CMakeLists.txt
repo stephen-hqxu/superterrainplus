@@ -11,16 +11,8 @@ Environment/STPHeightfieldSetting.h
 Environment/STPMeshSetting.h
 Environment/STPRainDropSetting.cuh
 Environment/STPSetting.hpp
-# /GPGPU/FreeSlip
-GPGPU/FreeSlip/STPFreeSlipData.hpp
-GPGPU/FreeSlip/STPFreeSlipGenerator.cuh
-GPGPU/FreeSlip/STPFreeSlipLocation.hpp
-GPGPU/FreeSlip/STPFreeSlipManager.cuh
-GPGPU/FreeSlip/STPFreeSlipManager.inl
-GPGPU/FreeSlip/STPFreeSlipTextureBuffer.h
 # /GPGPU
-GPGPU/STPDiversityGenerator.hpp
-GPGPU/STPHeightfieldGenerator.cuh
+GPGPU/STPHeightfieldKernel.cuh
 GPGPU/STPRainDrop.cuh
 GPGPU/STPRuntimeCompilable.h
 # /Utility/Exception
@@ -45,11 +37,20 @@ Utility/STPSmartDeviceMemory.tpp
 Utility/STPSmartStream.h
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl
+# /World/Chunk/FreeSlip
+World/Chunk/FreeSlip/STPFreeSlipData.hpp
+World/Chunk/FreeSlip/STPFreeSlipGenerator.h
+World/Chunk/FreeSlip/STPFreeSlipLocation.hpp
+World/Chunk/FreeSlip/STPFreeSlipManager.cuh
+World/Chunk/FreeSlip/STPFreeSlipManager.inl
+World/Chunk/FreeSlip/STPFreeSlipTextureBuffer.h
 # /World/Chunk
 World/Chunk/STPChunk.h
 World/Chunk/STPChunkManager.h
 World/Chunk/STPChunkProvider.h
 World/Chunk/STPChunkStorage.h
+World/Chunk/STPDiversityGenerator.hpp
+World/Chunk/STPHeightfieldGenerator.h
 # /World/Diversity
 World/Diversity/STPBiomeDefine.h
 World/Diversity/STPBiomeFactory.h

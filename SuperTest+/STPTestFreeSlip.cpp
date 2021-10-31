@@ -7,7 +7,7 @@
 #include <catch2/generators/catch_generators_random.hpp>
 
 //SuperTerrain+/GPGPU/FreeSlip
-#include <SuperTerrain+/GPGPU/FreeSlip/STPFreeSlipGenerator.cuh>
+#include <SuperTerrain+/World/Chunk/FreeSlip/STPFreeSlipGenerator.h>
 
 #include <SuperTerrain+/Utility/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>

@@ -1,5 +1,4 @@
 #version 460 core
-#extension GL_ARB_bindless_texture : require
 
 //patches output
 layout (vertices = 3) out;
@@ -47,7 +46,7 @@ uniform TessLevel tessParameters;
 //2.0 is the default value, mesh will half its original LoD at 50% of tessllation distance
 uniform float shiftFactor;
 
-//Heightfield, RGB is normalmap, A is heightmap
+//Heightfield, R channel denotes the terrain height factor
 layout (binding = 1) uniform sampler2D Heightfield;
 
 //Functions
@@ -78,7 +77,7 @@ float[3] calcPatchDistance(vec3 origin){
 	//calculate distance from origin to each vertex
 	for(int i = 0; i < 3; i++){
 		//calculate the vertex position on the actual terrain
-		vec3 terrainVertexPos = gl_out[i].gl_Position.xyz + normalize(tcs_out[i].normal) * altitude * texture(Heightfield, tcs_out[i].texCoord).a;
+		vec3 terrainVertexPos = gl_out[i].gl_Position.xyz + normalize(tcs_out[i].normal) * altitude * texture(Heightfield, tcs_out[i].texCoord).r;
 		//calculate distance
 		patch_distance[i] = distance(origin, terrainVertexPos);
 	}

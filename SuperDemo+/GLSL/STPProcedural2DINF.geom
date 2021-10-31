@@ -1,5 +1,4 @@
 #version 460 core
-#extension GL_ARB_bindless_texture : require
 
 layout (triangles) in;
 layout (triangle_strip, max_vertices = 3) out;
@@ -35,13 +34,16 @@ out VertexGS{
 	vec4 position_world;
 	vec4 position_clip;
 	vec2 texCoord;
+	vec3 normal;
 } gs_out;
 
 //Uniforms
 uniform mat4 Model;
 uniform vec3 cameraPos;
+//The strength of the z component on normalmap
+uniform float NormalStrength;
+uniform uvec2 HeightfieldDim;
 
-//Heightfield, RGB is normalmap, A is heightmap
 layout (binding = 1) uniform sampler2D Heightfield;
 
 //Functions
@@ -50,47 +52,53 @@ void emitFace(int);
 mat2x3 calcTangentBitangent(vec3[3], vec2[3]);
 mat3 calcTerrainTBN(mat2x3, vec3);
 
+const ivec2 ConvolutionKernelOffset[8] = {
+	{ -1, -1 },
+	{  0, -1 },
+	{ +1, -1 },
+	{ -1,  0 },
+	{ +1,  0 },
+	{ -1, +1 },
+	{  0, +1 },
+	{ +1, +1 },
+};
+
 void main(){
 	//no layer rendering by now, I will add that later
 	emitFace(0);
 }
 
 void emitFace(int layer){
-	//calculate tangent and bitangent for each vertices
-	const mat2x3 tangent_bitangent = calcTangentBitangent(
-	vec3[3](gl_in[0].gl_Position.xyz, gl_in[1].gl_Position.xyz, gl_in[2].gl_Position.xyz),
-	vec2[3](gs_in[0].texCoord, gs_in[1].texCoord, gs_in[2].texCoord)
-	);
-
 	/*
-	We have three normal systems for terrain, plane normal, terrain normal and terrain texture normal.
-	- plane normal is simply (0,1,0), that's how our model is defined (model space normal)
-	- terrain normal is the vector that perpendicular to the tessellated terrain
-	- terrain texture normal is the normal comes along with the texture on the terrain later in the fragment shader,
-	  each texture has its own dedicated normal map
+		We have three normal systems for terrain, plane normal, terrain normal and terrain texture normal.
+		- plane normal is simply (0,1,0), that's how our model is defined (model space normal)
+		- terrain normal is the vector that perpendicular to the tessellated terrain
+		- terrain texture normal is the normal comes along with the texture on the terrain later in the fragment shader,
+		  each texture has its own dedicated normal map
 
-	So we need to do the TBN transform twice: plane->terrain normal then terrain normal->terrain texture normal
+		So we need to do the TBN transform twice: plane->terrain normal then terrain normal->terrain texture normal
 	*/
 	for(int i = 0; i < gl_in.length; i++){
-		mat3 TBN_terrain;
-		vec3 terrain_normal;
-		{
-			//The TBN for plane normal->terrain normal is shown below
-			const mat3 normalMat = transpose(inverse(mat3(Model)));
-			//this function will auto normalised all vectors and re-orthgonalise the tangent specifically
-			const mat3 TBN_plane = calcTerrainTBN(//tangent to world
-			mat2x3(
-			normalMat * gs_in[i].tangent, 
-			normalMat * gs_in[i].bitangent), 
-			normalMat * gs_in[i].normal);//tangent space to world space
+		//calculate terrain normal from the heightfield
+		//the uv increment for each pixel on the heightfield
+		const vec2 unit_uv = 1.0f / vec2(HeightfieldDim);
 
-			//We need to calculate TBN terrain normal->terrain texture normal
-			//calculate the terrain normal. We need to translate it from [0,1] to [-1,1] first then transform it to world space
-			terrain_normal = TBN_plane * (texture(Heightfield, gs_in[i].texCoord).rgb * 2.0f - 1.0f);
-			TBN_terrain = transpose(calcTerrainTBN(tangent_bitangent, terrain_normal));//world to tangent
+		float cell[ConvolutionKernelOffset.length()];
+		//convolve a 3x3 kernel with Sobel operator
+		for(int a = 0; a < cell.length(); a++){
+			const vec2 uv_offset = unit_uv * ConvolutionKernelOffset[a];
+			cell[a] = texture(Heightfield, gs_in[i].texCoord + uv_offset).r;
 		}
+		//apply filter
+		gs_out.normal = normalize(vec3(
+			cell[0] + 2 * cell[3] + cell[5] - (cell[2] + 2 * cell[4] + cell[7]), 
+			cell[0] + 2 * cell[1] + cell[2] - (cell[5] + 2 * cell[6] + cell[7]),
+			1.0f / NormalStrength
+		));
+		//transfer the range from [-1,1] to [0,1]
+		gs_out.normal = (clamp(gs_out.normal, -1.0f, 1.0f) + 1.0f) / 2.0f;
 
-		//output
+		//output the primitive information
 		gl_Position = gl_in[i].gl_Position;
 		gs_out.position_world = gl_Position;
 		gl_Position = Projection * View * gl_Position;

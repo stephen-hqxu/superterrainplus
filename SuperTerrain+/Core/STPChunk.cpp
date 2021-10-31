@@ -28,8 +28,8 @@ STPChunk::STPChunk(uvec2 size) : PixelSize(size), State(STPChunkState::Empty), i
 	this->Heightmap = make_unique<float[]>(num_pixel);
 	//biomemap is R16UI format
 	this->Biomemap = make_unique<STPDiversity::Sample[]>(num_pixel);
-	//rendering buffer is RGBA16 format, contains heightmap and normalmap
-	this->TerrainRenderingBuffer = make_unique<unsigned short[]>(num_pixel * 4);
+	//rendering buffer is R16 format heightmap
+	this->HeightmapRenderingBuffer = make_unique<unsigned short[]>(num_pixel);
 }
 
 STPChunk::~STPChunk() {
@@ -61,7 +61,7 @@ float* STPChunk::getHeightmap() {
 }
 
 unsigned short* STPChunk::getRenderingBuffer() {
-	return this->TerrainRenderingBuffer.get();
+	return this->HeightmapRenderingBuffer.get();
 }
 
 STPDiversity::Sample* STPChunk::getBiomemap() {

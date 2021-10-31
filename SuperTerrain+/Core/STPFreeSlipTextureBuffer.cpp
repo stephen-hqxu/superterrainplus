@@ -1,4 +1,4 @@
-#include <SuperTerrain+/GPGPU/FreeSlip/STPFreeSlipTextureBuffer.h>
+#include <SuperTerrain+/World/Chunk/FreeSlip/STPFreeSlipTextureBuffer.h>
 
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>

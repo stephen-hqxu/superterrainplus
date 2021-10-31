@@ -5,7 +5,7 @@
 #include <SuperAlgorithm+/STPAlgorithmDefine.h>
 //Engine Components
 #include <SuperTerrain+/Utility/STPThreadPool.h>
-#include <SuperTerrain+/GPGPU/FreeSlip/STPFreeSlipManager.cuh>
+#include <SuperTerrain+/World/Chunk/FreeSlip/STPFreeSlipManager.cuh>
 //GLM
 #include <glm/vec2.hpp>
 //Single Histogram Data Structure

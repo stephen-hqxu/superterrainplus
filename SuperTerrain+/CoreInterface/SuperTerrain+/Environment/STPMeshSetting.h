@@ -51,6 +51,10 @@ namespace SuperTerrainPlus::STPEnvironment {
 
 		};
 
+		//Mesh Normal Parameters
+		//Control the strength of z component of the normal map, the greater, the more the normal pointing towards the surface
+		float Strength;
+
 		//Tessellation Control
 		/**
 		 * @brief Specify the height multiplier on the heightmap

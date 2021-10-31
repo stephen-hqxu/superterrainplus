@@ -52,8 +52,8 @@ namespace SuperTerrainPlus {
 		//Cache that OpenGL can use to render directly, it's converted from 32 bit internal texture to 16 bit.
 		//We need to keep the 32 bit copy for later chunk computations, e.g., chunk-chunk interpolation.
 		//Storing them separately can avoid re-converting format everytime the chunks get updated
-		//Rendering buffer contain RGB channel for normal map and A channel for heightmap
-		std::unique_ptr<unsigned short[]> TerrainRenderingBuffer;
+		//Rendering buffer contain R channel only for heightmap
+		std::unique_ptr<unsigned short[]> HeightmapRenderingBuffer;
 
 		//Flags
 		//Determine if there is another thread copied the current chunk for generation, meaning we can't use right now

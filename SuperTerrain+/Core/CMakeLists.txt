@@ -9,7 +9,9 @@ STPEngineInitialiser.cpp
 STPEnvironment.cpp
 STPErosionBrushGenerator.cpp
 STPException.cpp
+STPFreeSlipGenerator.cpp
 STPFreeSlipTextureBuffer.cpp
+STPHeightfieldGenerator.cpp
 STPLayer.cpp
 STPLayerCache.cpp
 STPLayerManager.cpp
@@ -21,8 +23,7 @@ STPTextureDatabase.cpp
 STPTextureFactory.cpp
 STPThreadPool.cpp
 
-STPFreeSlipGenerator.cu
-STPHeightfieldGenerator.cu
+STPHeightfieldKernel.cu
 STPRainDrop.cu
 STPRainDropSetting.cu
 )

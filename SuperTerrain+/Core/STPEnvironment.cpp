@@ -62,8 +62,7 @@ bool STPChunkSetting::validate() const {
 //STPHeightfieldSetting.h
 
 STPHeightfieldSetting::STPHeightfieldSetting() : STPRainDropSetting(), 
-	Seed(0ull), 
-	Strength(1.0f) {
+	Seed(0ull) {
 
 }
 
@@ -72,8 +71,7 @@ bool STPHeightfieldSetting::validate() const {
 		return value >= lower && value <= upper;
 	};
 	//check the raindrop parameter plus also heightmap parameter
-	return this->STPRainDropSetting::validate()
-		&& this->Strength > 0.0f;
+	return this->STPRainDropSetting::validate();
 }
 
 //STPMeshSetting.h
@@ -97,13 +95,15 @@ bool STPMeshSetting::STPTessellationSetting::validate() const {
 }
 
 STPMeshSetting::STPMeshSetting() : 
+	Strength(1.0f),
 	Altitude(1.0f), 
 	LoDShiftFactor(2.0f) {
 
 }
 
 bool STPMeshSetting::validate() const {
-	return this->Altitude > 0.0f
+	return this->Strength > 0.0f 
+		&& this->Altitude > 0.0f
 		&& this->LoDShiftFactor > 0.0f
 		&& this->TessSetting.validate();
 }

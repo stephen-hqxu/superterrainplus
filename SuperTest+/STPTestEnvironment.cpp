@@ -51,7 +51,6 @@ SCENARIO_METHOD(STPRainDropSetting, "STPRainDropSetting can generate an erosion 
 }
 
 static void fillHeightfieldSetting(STPHeightfieldSetting* env) {
-	env->Strength = 12.0f;
 	env->Seed = 66661313ull;
 	//raindrop setting
 	env->RainDropCount = 614400u;
@@ -99,7 +98,7 @@ SCENARIO_METHOD(STPHeightfieldSetting, "STPHeightfieldSetting stores setting for
 				switch (trial) {
 				case 0u:
 					//strength is negative?
-					this->Strength = -9.8f;
+					this->minSedimentCapacity = -9.8f;
 					break;
 				case 1u:
 					//water volume is zero?
@@ -160,6 +159,7 @@ SCENARIO_METHOD(STPHeightfieldSetting, "STPHeightfieldSetting stores setting for
 
 static auto& fillMeshSetting(STPMeshSetting* env) {
 	//fill in some correct values
+	env->Strength = 12.0f;
 	env->Altitude = 8848.86f;
 	env->LoDShiftFactor = 8.0f;
 	auto& tessellation = env->TessSetting;
@@ -189,8 +189,8 @@ SCENARIO_METHOD(STPMeshSetting, "STPMeshSetting stores setting for terrain mesh 
 				const unsigned char trial = GENERATE(range(0u, 3u));
 				switch (trial) {
 				case 0u:
-					//altitude is negative?
-					this->Altitude = -1234.0f;
+					//strength is negative?
+					this->Strength = -2.5f;
 					break;
 				case 1u:
 					//level is negative?

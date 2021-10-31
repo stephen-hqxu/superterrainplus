@@ -9,7 +9,6 @@ add_executable(${STP_UNIT_TEST}
 # Reporter/
 Reporter/STPConsoleReporter.cpp
 # Test engine starter
-STPTestInformation.h
 STPTestMain.cpp
 # Main test code
 STPTest2DBiome.cpp
@@ -22,12 +21,9 @@ STPTestUtility.cpp
 # SuperAlgorithm+ test code
 STPTestHistogram.cpp
 STPTestPermutation.cpp
-# Prototype testing
-STPPrototypeCachedConvolution.cpp
-Compute/SobelFilter.cu
 )
 target_sources(${STP_UNIT_TEST} PRIVATE
-Compute/SobelFilter.cuh
+STPTestInformation.h
 )
 
 if(MSVC)

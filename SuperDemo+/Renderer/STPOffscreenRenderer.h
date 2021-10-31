@@ -90,9 +90,10 @@ namespace STPDemo {
 		*/
 		STPOffscreenRenderer(const DrawArraysIndirectCommand* quad_cmd) : command(reinterpret_cast<const void*>(quad_cmd)) {
 			cout << "....Loading STPQuadRenderer....";
-			if (this->compileShader()) {
-				cout << "Shader loaded :)" << endl;
+			if (!this->compileShader()) {
+				std::terminate();
 			}
+			cout << "Shader loaded :)" << endl;
 
 			this->loadQuad();
 			cout << "....Done...." << endl;

@@ -12,7 +12,7 @@
 //Settings
 #include "../Environment/STPRainDropSetting.cuh"
 //Free slipper
-#include "./FreeSlip/STPFreeSlipManager.cuh"
+#include "../World/Chunk/FreeSlip/STPFreeSlipManager.cuh"
 //GLM
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>

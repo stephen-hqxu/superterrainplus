@@ -51,7 +51,7 @@ namespace SuperTerrainPlus {
 
 		//Heightfield
 		//index 0: R16UI biome map
-		//index 1: RGBA16 with normal map in RGB and heightmap in A
+		//index 1: R16 height map
 		STPOpenGL::STPuint terrain_heightfield[2];
 		//registered buffer and texture
 		cudaGraphicsResource_t heightfield_texture_res[2];
@@ -82,10 +82,11 @@ namespace SuperTerrainPlus {
 
 		/**
 		 * @brief Clear up the rendering buffer of the chunk map
+		 * @tparam S The size of one pixel in byte
 		 * @param destination The loaction to store all loaded maps, and it will be erased.
-		 * @param pixel_size The size of one pixel in byte
 		*/
-		void clearRenderingBuffer(cudaArray_t, size_t);
+		template<size_t S>
+		void clearRenderingBuffer(cudaArray_t);
 
 	public:
 

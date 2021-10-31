@@ -6,7 +6,7 @@
 #include <queue>
 #include <mutex>
 //Multi-biome Heightfield Generator
-#include <SuperTerrain+/GPGPU/STPDiversityGenerator.hpp>
+#include <SuperTerrain+/World/Chunk/STPDiversityGenerator.hpp>
 #include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
 #include <SuperAlgorithm+/STPPermutationGenerator.h>
 #include "STPBiomeSettings.hpp"

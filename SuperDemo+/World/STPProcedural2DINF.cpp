@@ -7,6 +7,7 @@ using std::endl;
 using std::make_unique;
 
 using glm::ivec2;
+using glm::uvec2;
 using glm::vec2;
 using glm::vec3;
 using glm::mat4;
@@ -54,6 +55,7 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Heightfield"), 1);
 	//those parameters won't change, there is no need to resend them in rendering loop
 	const vec2 base_chunk_position = this->calcBaseChunkPosition();
+	const uvec2 rendering_buffer_size = chunk_settings.RenderedChunk * chunk_settings.MapSize;
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("rendered_chunk_num"), 1, value_ptr(chunk_settings.RenderedChunk));
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("chunk_dimension"), 1, value_ptr(chunk_settings.ChunkSize));
 	glProgramUniform2fv(this->Terrain2d_shader.getP(), this->getLoc("base_chunk_position"), 1, value_ptr(base_chunk_position));
@@ -63,6 +65,9 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.NEAREST_TESS_DISTANCE"), this->MeshSetting.TessSetting.NearestTessDistance);
 	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("altitude"), this->MeshSetting.Altitude);
 	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("shiftFactor"), this->MeshSetting.LoDShiftFactor);
+	//Geometry shader for normalmap calculation
+	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("NormalStrength"), this->MeshSetting.Strength);
+	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("HeightfieldDim"), 1, value_ptr(rendering_buffer_size));
 
 	//create pipeline
 	glCreateProgramPipelines(1, &this->Terrain2d_pipeline);

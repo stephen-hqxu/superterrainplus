@@ -17,7 +17,7 @@
 #include "STPChunkStorage.h"
 //2D terrain compute engine
 #include "../Diversity/STPBiomeFactory.h"
-#include "../../GPGPU/STPHeightfieldGenerator.cuh"
+#include "STPHeightfieldGenerator.h"
 
 //Settings
 #include "../../Environment/STPConfiguration.h"

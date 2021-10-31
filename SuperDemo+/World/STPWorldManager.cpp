@@ -27,25 +27,21 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 		throw invalid_argument("Biome factory not attached.");
 	}
 
-	try {
-		const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldSetting->getChunkSetting();
-		//create generator and storage unit first
-		this->ChunkGenerator = make_unique<STPCompute::STPHeightfieldGenerator>(
-			chunk_settings,
-			this->WorldSetting->getHeightfieldSetting(),
-			*this->DiversityGenerator,
-			STPChunkProvider::calculateMaxConcurrency(chunk_settings.RenderedChunk, chunk_settings.FreeSlipChunk));
-		this->ChunkStorage = make_unique<STPChunkStorage>();
-		//create provider using generator and storage unit
-		this->ChunkProvider = make_unique<STPChunkProvider>(chunk_settings, *this->ChunkStorage, *this->BiomeFactory, *this->ChunkGenerator);
-		//create manager using provider
-		this->ChunkManager = make_unique<STPChunkManager>(*this->ChunkProvider);
-		//create renderer using manager
-		this->WorldRenderer = make_unique<STPProcedural2DINF>(this->WorldSetting->getMeshSetting(), *this->ChunkManager, indirect_cmd);
-	}
-	catch (std::exception e) {
-		std::cerr << e.what() << std::endl;
-	}
+	const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldSetting->getChunkSetting();
+	//create generator and storage unit first
+	this->ChunkGenerator = make_unique<STPCompute::STPHeightfieldGenerator>(
+		chunk_settings,
+		this->WorldSetting->getHeightfieldSetting(),
+		*this->DiversityGenerator,
+		STPChunkProvider::calculateMaxConcurrency(chunk_settings.RenderedChunk, chunk_settings.FreeSlipChunk));
+	this->ChunkStorage = make_unique<STPChunkStorage>();
+	//create provider using generator and storage unit
+	this->ChunkProvider = make_unique<STPChunkProvider>(chunk_settings, *this->ChunkStorage, *this->BiomeFactory, *this->ChunkGenerator);
+	//create manager using provider
+	this->ChunkManager = make_unique<STPChunkManager>(*this->ChunkProvider);
+	//create renderer using manager
+	this->WorldRenderer = make_unique<STPProcedural2DINF>(this->WorldSetting->getMeshSetting(), *this->ChunkManager, indirect_cmd);
+
 	this->linkStatus = true;
 }
 

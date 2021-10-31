@@ -1,17 +1,15 @@
 #pragma once
-#ifndef _STP_FREESLIP_GENERATOR_CUH_
-#define _STP_FREESLIP_GENERATOR_CUH_
+#ifndef _STP_FREESLIP_GENERATOR_H_
+#define _STP_FREESLIP_GENERATOR_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
 //System
 #include <memory>
-//CUDA
-#include <cuda_runtime.h>
 //Free-slip Data
 #include "STPFreeSlipLocation.hpp"
 #include "STPFreeSlipTextureBuffer.h"
 #include "STPFreeSlipManager.cuh"
-#include "../../Utility/STPSmartDeviceMemory.h"
+#include "../../../Utility/STPSmartDeviceMemory.h"
 
 namespace SuperTerrainPlus::STPCompute {
 
@@ -44,11 +42,11 @@ namespace SuperTerrainPlus::STPCompute {
 			 * @param generator The free-slip generator that the adaptor will be bounded to.
 			 * It will export data to free-slip manager based on the generator chosen
 			*/
-			__host__ STPFreeSlipManagerAdaptor(STPFreeSlipTextureBuffer<T>&, const STPFreeSlipGenerator&);
+			STPFreeSlipManagerAdaptor(STPFreeSlipTextureBuffer<T>&, const STPFreeSlipGenerator&);
 
 		public:
 
-			__host__ ~STPFreeSlipManagerAdaptor();
+			~STPFreeSlipManagerAdaptor() = default;
 
 			/**
 			 * @brief Get the free-slip manager adaptor can retrieve different types of free-slip manager based on usage.
@@ -62,7 +60,7 @@ namespace SuperTerrainPlus::STPCompute {
 			 * meaning all underlying contents will be managed and become invalid once they are deleted.
 			 * @see STPFreeSlipTextureBuffer to read the effect of requesting multiple STPFreeSlipManagers from the same adaptor.
 			*/
-			__host__ STPFreeSlipManager<T> operator()(STPFreeSlipLocation) const;
+			STPFreeSlipManager<T> operator()(STPFreeSlipLocation) const;
 
 		};
 
@@ -80,11 +78,6 @@ namespace SuperTerrainPlus::STPCompute {
 		//Freeslip data copy on device side, the device index table is contained
 		STPSmartDeviceMemory::STPDeviceMemory<STPFreeSlipData> Data_Device;
 
-		/**
-		 * @brief Initialise the local global index lookup table
-		*/
-		__host__ void initLocalGlobalIndexCUDA();
-
 	public:
 
 		/**
@@ -93,35 +86,35 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @param range Free slip range in the unit of chunk
 		 * @param mapSize The size of the each heightmap
 		*/
-		__host__ STPFreeSlipGenerator(glm::uvec2, glm::uvec2);
+		STPFreeSlipGenerator(glm::uvec2, glm::uvec2);
 
-		__host__ ~STPFreeSlipGenerator();
+		~STPFreeSlipGenerator() = default;
 
-		__host__ STPFreeSlipGenerator(const STPFreeSlipGenerator&) = delete;
+		STPFreeSlipGenerator(const STPFreeSlipGenerator&) = delete;
 
-		__host__ STPFreeSlipGenerator(STPFreeSlipGenerator&&) = delete;
+		STPFreeSlipGenerator(STPFreeSlipGenerator&&) = delete;
 
-		__host__ STPFreeSlipGenerator& operator=(const STPFreeSlipGenerator&) = delete;
+		STPFreeSlipGenerator& operator=(const STPFreeSlipGenerator&) = delete;
 
-		__host__ STPFreeSlipGenerator& operator=(STPFreeSlipGenerator&&) = delete;
+		STPFreeSlipGenerator& operator=(STPFreeSlipGenerator&&) = delete;
 
 		/**
 		 * @brief Get the dimension of each texture.
 		 * @return The pointer to dimension
 		*/
-		__host__ const glm::uvec2& getDimension() const;
+		const glm::uvec2& getDimension() const;
 
 		/**
 		 * @brief Get the number of free-slip chunk
 		 * @return The poiner to free-slip chunk
 		*/
-		__host__ const glm::uvec2& getFreeSlipChunk() const;
+		const glm::uvec2& getFreeSlipChunk() const;
 
 		/**
 		 * @brief Get the number of pixel in total in free-slip logic
 		 * @return The pointer to the free-slip range
 		*/
-		__host__ const glm::uvec2& getFreeSlipRange() const;
+		const glm::uvec2& getFreeSlipRange() const;
 
 		/**
 		 * @brief Get the free-slip manager adaptor, which will dynamically determine free-slip configuration to use from the generator based on chosen type.
@@ -133,9 +126,9 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @return The free-slip manager adaptor which will be bounded to the current generator
 		*/
 		template<typename T>
-		__host__ STPFreeSlipManagerAdaptor<T> operator()(STPFreeSlipTextureBuffer<T>&) const;
+		STPFreeSlipManagerAdaptor<T> operator()(STPFreeSlipTextureBuffer<T>&) const;
 
 	};
 
 }
-#endif//_STP_FREESLIP_GENERATOR_CUH_
+#endif//_STP_FREESLIP_GENERATOR_H_

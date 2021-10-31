@@ -5,9 +5,9 @@
 //CUDA Runtime
 #include <cuda_runtime.h>
 //Biome Defines
-#include "../World/Diversity/STPBiomeDefine.h"
+#include "../Diversity/STPBiomeDefine.h"
 //Sample Map Free-Slip
-#include "../GPGPU/FreeSlip/STPFreeSlipGenerator.cuh"
+#include "./FreeSlip/STPFreeSlipGenerator.h"
 //GLM
 #include <glm/vec2.hpp>
 
