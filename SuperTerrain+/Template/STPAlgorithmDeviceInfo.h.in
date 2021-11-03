@@ -2,15 +2,10 @@
 #ifndef _STP_ALGORITHM_DEVICE_INFO_$<CONFIG>_H_
 #define _STP_ALGORITHM_DEVICE_INFO_$<CONFIG>_H_
 
-/**
- * @brief Super Terrain + is an open source, procedural terrain engine running on OpenGL 4.6, which utilises most modern terrain rendering techniques
- * including perlin noise generated height map, hydrology processing and marching cube algorithm.
- * Super Terrain + uses GLFW library for display and GLAD for opengl contexting.
-*/
 namespace SuperTerrainPlus {
 	
 	/**
-	 * @brief
+	 * @brief Denotes the SuperTerrain+ include path
 	*/
 	constexpr static char SuperTerrainPlus_CoreInclude[] = "@SuperTerrain+CoreInclude@";
 	/**
@@ -23,5 +18,4 @@ namespace SuperTerrainPlus {
 	constexpr static char SuperAlgorithmPlus_DeviceInclude[] = "@SuperAlgorithm+DeviceInclude@";
 
 }
-
 #endif//_STP_ALGORITHM_DEVICE_INFO_$<CONFIG>_H_

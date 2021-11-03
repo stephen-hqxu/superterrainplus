@@ -1,4 +1,3 @@
-#pragma warning(disable : 4267)//implicit conversion may lose data warning (actually it won't)
 #include <SuperTerrain+/World/Chunk/STPChunkManager.h>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
@@ -8,6 +7,8 @@
 //CUDA + GL
 #include <cuda_gl_interop.h>
 
+#include <type_traits>
+
 using glm::uvec2;
 using glm::ivec2;
 using glm::vec2;
@@ -15,7 +16,7 @@ using glm::vec3;
 using glm::vec4;
 using glm::value_ptr;
 
-using std::queue;
+using std::vector;
 using std::bind;
 using std::unique_ptr;
 using std::make_unique;
@@ -29,28 +30,33 @@ using namespace SuperTerrainPlus;
 STPChunkManager::STPChunkManager(STPChunkProvider& provider) : ChunkProvider(provider), trigger_clearBuffer(false), compute_pool(1u), buffering_stream(cudaStreamNonBlocking) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkProvider.getChunkSetting();
 	const ivec2 buffer_size(chunk_setting.RenderedChunk * chunk_setting.MapSize);
+	auto setupTex = [buffer_size](GLuint texture, GLint min_filter, GLint mag_filter, GLsizei levels, GLenum internalFormat) -> void {
+		//set texture parameter
+		glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTextureParameteri(texture, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, min_filter);
+		glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, mag_filter);
+		//allocation
+		glTextureStorage2D(texture, levels, internalFormat, buffer_size.x, buffer_size.y);
+	};
+	auto regTex = [](GLuint texture, cudaGraphicsResource_t* res, unsigned int reg_flag = cudaGraphicsRegisterFlagsNone) -> void {
+		//register cuda texture
+		STPcudaCheckErr(cudaGraphicsGLRegisterImage(res, texture, GL_TEXTURE_2D, reg_flag));
+		STPcudaCheckErr(cudaGraphicsResourceSetMapFlags(*res, cudaGraphicsMapFlagsNone));
+	};
 
 	//creating texture
-	glCreateTextures(GL_TEXTURE_2D, 2, this->terrain_heightfield);
-	//allocate for biomemap
-	glTextureParameteri(this->terrain_heightfield[0], GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(this->terrain_heightfield[0], GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(this->terrain_heightfield[0], GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(this->terrain_heightfield[0], GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTextureParameteri(this->terrain_heightfield[0], GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	//R format
-	glTextureStorage2D(this->terrain_heightfield[0], 1, GL_R16UI, buffer_size.x, buffer_size.y);
-	STPcudaCheckErr(cudaGraphicsGLRegisterImage(this->heightfield_texture_res, this->terrain_heightfield[0], GL_TEXTURE_2D, cudaGraphicsRegisterFlagsWriteDiscard));
-
-	//allocate space for heightfield
-	glTextureParameteri(this->terrain_heightfield[1], GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(this->terrain_heightfield[1], GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(this->terrain_heightfield[1], GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(this->terrain_heightfield[1], GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTextureParameteri(this->terrain_heightfield[1], GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	//RGBA format
-	glTextureStorage2D(this->terrain_heightfield[1], 1, GL_R16, buffer_size.x, buffer_size.y);
-	STPcudaCheckErr(cudaGraphicsGLRegisterImage(this->heightfield_texture_res + 1, this->terrain_heightfield[1], GL_TEXTURE_2D, cudaGraphicsRegisterFlagsWriteDiscard));
+	glCreateTextures(GL_TEXTURE_2D, 3, this->terrain_heightfield);
+	//biomemap in R format
+	setupTex(this->terrain_heightfield[0], GL_NEAREST, GL_NEAREST, 1, GL_R16UI);
+	regTex(this->terrain_heightfield[0], this->heightfield_texture_res);
+	//heightfield in R format
+	setupTex(this->terrain_heightfield[1], GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, 1, GL_R16);
+	regTex(this->terrain_heightfield[1], this->heightfield_texture_res + 1);
+	//splatmap in R format
+	setupTex(this->terrain_heightfield[2], GL_NEAREST, GL_NEAREST, 1, GL_R8UI);
+	regTex(this->terrain_heightfield[2], this->heightfield_texture_res + 2, cudaGraphicsRegisterFlagsSurfaceLoadStore);
 
 	//init clear buffers that are used to clear texture when new rendered chunks are loaded (we need to clear the previous chunk data)
 	const int totaltexture_size = buffer_size.x * buffer_size.y * sizeof(unsigned short);//1 channel
@@ -70,16 +76,17 @@ STPChunkManager::~STPChunkManager() {
 	STPcudaCheckErr(cudaStreamSynchronize(this->buffering_stream));
 
 	//unregister resource
-	STPcudaCheckErr(cudaGraphicsUnregisterResource(this->heightfield_texture_res[0]));
-	STPcudaCheckErr(cudaGraphicsUnregisterResource(this->heightfield_texture_res[1]));
+	for (int i = 0; i < 3; i++) {
+		STPcudaCheckErr(cudaGraphicsUnregisterResource(this->heightfield_texture_res[i]));
+	}
 	//delete texture
-	glDeleteTextures(2, this->terrain_heightfield);
+	glDeleteTextures(3, this->terrain_heightfield);
 
 	//delete clear buffer
 	STPcudaCheckErr(cudaFreeHost(this->quad_clear));
 }
 
-bool STPChunkManager::renderingBufferChunkSubData(cudaArray_t buffer[2], vec2 chunkPos, unsigned int chunkID) {
+bool STPChunkManager::renderingBufferChunkSubData(const STPRenderingBufferMemory& buffer, vec2 chunkPos, unsigned int chunkID) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkProvider.getChunkSetting();
 	//ask provider if we can get the chunk
 	STPChunk* chunk = this->ChunkProvider.requestChunk(chunkPos);
@@ -90,45 +97,80 @@ bool STPChunkManager::renderingBufferChunkSubData(cudaArray_t buffer[2], vec2 ch
 
 	//chunk is ready, copy to rendering buffer
 	const uvec2& rendered_chunk = chunk_setting.RenderedChunk,
-		& dimension = chunk_setting.MapSize;
+		 &dimension = chunk_setting.MapSize;
 	auto calcBufferOffset = [&rendered_chunk](unsigned int chunkID, const uvec2& dimension) -> uvec2 {
 		//calculate global offset, basically
 		const uvec2 chunkIdx(chunkID % rendered_chunk.x, chunkID / rendered_chunk.x);
 		return dimension * chunkIdx;
 	};
-	const uvec2 buffer_offset = calcBufferOffset(chunkID, dimension);
+	auto copy_buffer = [this, &dimension, buffer_offset = calcBufferOffset(chunkID, dimension)](cudaArray_t dest, const void* src, size_t channelSize) -> void {
+		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(dest, buffer_offset.x * channelSize, buffer_offset.y, src,
+			dimension.x * channelSize, dimension.x * channelSize,
+			dimension.y, cudaMemcpyHostToDevice, this->buffering_stream));
+	};
 
-	size_t pixel_size;
-	//copy biomemap
-	pixel_size = sizeof(STPDiversity::Sample);
-	STPcudaCheckErr(cudaMemcpy2DToArrayAsync(buffer[0], buffer_offset.x * pixel_size, buffer_offset.y, chunk->getBiomemap(),
-		dimension.x * pixel_size, dimension.x * pixel_size,
-		dimension.y, cudaMemcpyHostToDevice, this->buffering_stream));
-	//copy heightfield
-	pixel_size = sizeof(unsigned short);
-	STPcudaCheckErr(cudaMemcpy2DToArrayAsync(buffer[1], buffer_offset.x * pixel_size, buffer_offset.y, chunk->getRenderingBuffer(),
-		dimension.x * pixel_size, dimension.x * pixel_size,
-		dimension.y, cudaMemcpyHostToDevice, this->buffering_stream));
+	//copy buffer to GL texture
+	copy_buffer(buffer.Biomemap, chunk->getBiomemap(), STPRenderingBufferMemory::BiomemapChannel);
+	copy_buffer(buffer.Heightfield, chunk->getRenderingBuffer(), STPRenderingBufferMemory::HeightfieldChannel);
 
 	return true;
 }
 
-template<size_t S>
-void STPChunkManager::clearRenderingBuffer(cudaArray_t destination) {
+void STPChunkManager::prepareSplatmap(const STPRenderingBufferMemory& buffer, const STPDiversity::STPTextureFactory::STPRequestingChunkInfo& requesting_chunk) {
+	//prepare texture and surface object
+	cudaTextureObject_t biomemap, heightfield;
+	cudaSurfaceObject_t splatmap;
+	//make sure all description are zero init
+	cudaResourceDesc res_desc = { };
+	res_desc.resType = cudaResourceTypeArray;
+	cudaTextureDesc tex_desc = { };
+	tex_desc.addressMode[0] = cudaAddressModeClamp;
+	tex_desc.addressMode[1] = cudaAddressModeClamp;
+	tex_desc.addressMode[2] = cudaAddressModeClamp;
+
+	//biomemap
+	res_desc.res.array.array = buffer.Biomemap;
+	tex_desc.filterMode = cudaFilterModePoint;
+	tex_desc.readMode = cudaReadModeElementType;
+	STPcudaCheckErr(cudaCreateTextureObject(&biomemap, &res_desc, &tex_desc, nullptr));
+
+	//heightfield
+	res_desc.res.array.array = buffer.Heightfield;
+	tex_desc.filterMode = cudaFilterModeLinear;
+	tex_desc.readMode = cudaReadModeNormalizedFloat;
+	STPcudaCheckErr(cudaCreateTextureObject(&heightfield, &res_desc, &tex_desc, nullptr));
+
+	//splatmap
+	res_desc.res.array.array = buffer.Splatmap;
+	STPcudaCheckErr(cudaCreateSurfaceObject(&splatmap, &res_desc));
+
+	//TODO: launch splatmap computer
+
+	//finish up, we have to delete it everytime because resource array may change every time we re-map it
+	STPcudaCheckErr(cudaDestroyTextureObject(biomemap));
+	STPcudaCheckErr(cudaDestroyTextureObject(heightfield));
+	STPcudaCheckErr(cudaDestroySurfaceObject(splatmap));
+}
+
+void STPChunkManager::clearRenderingBuffer(const STPRenderingBufferMemory& destination) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkProvider.getChunkSetting();
-	const ivec2 buffer_size(chunk_setting.RenderedChunk * chunk_setting.MapSize);
+	auto erase_buffer = [this, buffer_size = chunk_setting.RenderedChunk * chunk_setting.MapSize](cudaArray_t data, size_t channelSize) -> void {
+		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(data, 0, 0, this->quad_clear,
+			buffer_size.x * channelSize, buffer_size.x * channelSize,
+			buffer_size.y, cudaMemcpyHostToDevice, this->buffering_stream));
+	};
 
 	//clear unloaded chunk, so the engine won't display the chunk from previous rendered chunks
-	STPcudaCheckErr(cudaMemcpy2DToArrayAsync(destination, 0, 0, this->quad_clear,
-		buffer_size.x * S, buffer_size.x * S,
-		buffer_size.y, cudaMemcpyHostToDevice, this->buffering_stream));
+	erase_buffer(destination.Biomemap, STPRenderingBufferMemory::BiomemapChannel);
+	erase_buffer(destination.Heightfield, STPRenderingBufferMemory::HeightfieldChannel);
+	erase_buffer(destination.Splatmap, STPRenderingBufferMemory::SplatmapChannel);
 }
 
 void STPChunkManager::generateMipmaps() {
 	glGenerateTextureMipmap(this->terrain_heightfield[1]);
 }
 
-bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
+bool STPChunkManager::loadChunksAsync(STPLocalChunkStatus& loading_chunks) {
 	//waiting for the previous worker to finish(if any)
 	//make sure there isn't any worker accessing the loading_chunks, otherwise undefined behaviour warning
 	this->SyncloadChunks();
@@ -137,10 +179,13 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 	}
 
 	//async chunk loader
-	auto asyncChunkLoader = [this, &loading_chunks](cudaArray_t biomemap_data, cudaArray_t heightfield_data) -> unsigned int {
+	auto asyncChunkLoader = [this, &loading_chunks](STPRenderingBufferMemory map_data) -> unsigned int {
+		const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkProvider.getChunkSetting();
 		//requesting rendering buffer
 		unsigned int num_chunkLoaded = 0u;
-		for (int i = 0; i < loading_chunks.size(); i++) {
+		//keep a record of which chunk's rendering buffer has been updated
+		STPDiversity::STPTextureFactory::STPRequestingChunkInfo updated_chunk;
+		for (unsigned int i = 0u; i < loading_chunks.size(); i++) {
 			auto& [chunkPos, chunkLoaded] = loading_chunks[i];
 
 			if (chunkLoaded) {
@@ -154,12 +199,27 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 			}
 			
 			//load chunk into rendering buffer
-			cudaArray_t chunk_data[2] = { biomemap_data, heightfield_data };
-			if (this->renderingBufferChunkSubData(chunk_data, chunkPos, i)) {
+			if (this->renderingBufferChunkSubData(map_data, chunkPos, i)) {
 				//loaded
 				chunkLoaded = true;
 				num_chunkLoaded++;
+				//mark updated rendering buffer
+				//we need to use the chunk normalised coordinate to get the splatmap offset, splatmap offset needs to be consistent with the heightmap and biomemap
+				updated_chunk.emplace_back(STPDiversity::STPTextureFactory::STPLocalChunkInformation{
+					i,
+					STPChunk::calcChunkMapOffset(
+					chunkPos,
+					chunk_setting.ChunkSize,
+					chunk_setting.MapSize,
+					chunk_setting.MapOffset,
+					chunk_setting.ChunkScaling)
+				});
 			}
+		}
+		if (!updated_chunk.empty()) {
+			//there exists chunk that has rendering buffer updated, we need to update splatmap as well
+			//TODO: enable splatmap generation
+			//this->prepareSplatmap(map_data, updated_chunk);
 		}
 		
 		return num_chunkLoaded;
@@ -167,20 +227,20 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunks& loading_chunks) {
 
 	//texture storage
 	//map the texture, all opengl related work must be done on the main contexted thread
-	STPcudaCheckErr(cudaGraphicsMapResources(2, this->heightfield_texture_res, this->buffering_stream));
-	cudaArray_t biomemap_ptr, heightfield_ptr;
+	STPcudaCheckErr(cudaGraphicsMapResources(3, this->heightfield_texture_res, this->buffering_stream));
+	STPRenderingBufferMemory buffer_ptr;
 	//we only have one texture, so index is always zero
-	STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&biomemap_ptr, this->heightfield_texture_res[0], 0, 0));
-	STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&heightfield_ptr, this->heightfield_texture_res[1], 0, 0));
+	STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&buffer_ptr.Biomemap, this->heightfield_texture_res[0], 0, 0));
+	STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&buffer_ptr.Heightfield, this->heightfield_texture_res[1], 0, 0));
+	STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&buffer_ptr.Splatmap, this->heightfield_texture_res[2], 0, 0));
 	//clear up the render buffer for every chunk
 	if (this->trigger_clearBuffer) {
-		this->clearRenderingBuffer<sizeof(STPDiversity::Sample)>(biomemap_ptr);
-		this->clearRenderingBuffer<sizeof(unsigned short)>(heightfield_ptr);
+		this->clearRenderingBuffer(buffer_ptr);
 		this->trigger_clearBuffer = false;
 	}
 
-	//start loading chunk
-	this->ChunkLoader = this->compute_pool.enqueue_future(asyncChunkLoader, biomemap_ptr, heightfield_ptr);
+	//group mapped data together and start loading chunk
+	this->ChunkLoader = this->compute_pool.enqueue_future(asyncChunkLoader, buffer_ptr);
 	return true;
 }
 
@@ -207,10 +267,9 @@ bool STPChunkManager::loadChunksAsync(vec3 cameraPos) {
 			chunk_setting.ChunkScaling);
 		
 		//we also need chunkID, which is just the index of the visible chunk from top-left to bottom-right
-		int chunkID = 0;
-		for (auto it = allChunks.begin(); it != allChunks.end(); it++) {
+		for (auto [it, chunkID] = make_pair(allChunks.begin(), 0u); it != allChunks.end(); it++, chunkID++) {
 			this->renderingLocals.emplace_back(*it, false);
-			this->renderingLocals_lookup.emplace(*it, chunkID++);
+			this->renderingLocals_lookup.emplace(*it, chunkID);
 		}
 
 		this->lastCentralPos = thisCentralPos;
@@ -242,7 +301,7 @@ int STPChunkManager::SyncloadChunks() {
 		//wait for finish first
 		const unsigned int res = this->ChunkLoader.get();
 		//sync the stream that modifies the texture and unmap the chunk
-		STPcudaCheckErr(cudaGraphicsUnmapResources(2, this->heightfield_texture_res, this->buffering_stream));
+		STPcudaCheckErr(cudaGraphicsUnmapResources(3, this->heightfield_texture_res, this->buffering_stream));
 		return static_cast<int>(res);
 	}
 	else {
@@ -256,17 +315,5 @@ STPChunkProvider& STPChunkManager::getChunkProvider() {
 }
 
 GLuint STPChunkManager::getCurrentRenderingBuffer(STPRenderingBufferType type) const {
-	unsigned int index;
-
-	switch (type) {
-	case STPRenderingBufferType::BIOME: index = 0u;
-		break;
-	case STPRenderingBufferType::HEIGHTFIELD: index = 1u;
-		break;
-	default:
-		//impossible
-		break;
-	}
-	return this->terrain_heightfield[index];
+	return this->terrain_heightfield[static_cast<std::underlying_type_t<STPRenderingBufferType>>(type)];
 }
-#pragma warning(default : 4267)

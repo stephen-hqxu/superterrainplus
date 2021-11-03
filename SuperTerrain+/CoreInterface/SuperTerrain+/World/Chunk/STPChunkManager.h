@@ -13,6 +13,11 @@
 
 //Chunks
 #include "STPChunkProvider.h"
+//Rendering Buffer Generator
+#include "../Diversity/Texture/STPTextureFactory.h"
+
+//Container
+#include <list>
 
 namespace SuperTerrainPlus {
 
@@ -25,20 +30,42 @@ namespace SuperTerrainPlus {
 	public:
 
 		//Vector that stored rendered chunk world position and loading status (True is loaded, false otherwise)
-		typedef std::vector<std::pair<glm::vec2, bool>> STPLocalChunks;
-		typedef std::unordered_map<glm::vec2, int, STPChunkStorage::STPHashvec2> STPLocalChunksTable;
+		typedef std::vector<std::pair<glm::vec2, bool>> STPLocalChunkStatus;
 
 		/**
 		 * @brief STPRenderingBufferType specifies the type of rendering buffer to retrieve
 		*/
-		enum class STP_API STPRenderingBufferType : unsigned char {
+		enum class STPRenderingBufferType : unsigned char {
 			//Biomemap
 			BIOME = 0x00u,
-			//Heightmap and normalmap
-			HEIGHTFIELD = 0x01u
+			//Heightmap
+			HEIGHTFIELD = 0x01u,
+			//Splatmap
+			SPLAT = 0x02u
 		};
 
 	private:
+
+		/**
+		 * @brief STPRenderingBufferMemory contains data to mapped GL texture data.
+		*/
+		struct STPRenderingBufferMemory {
+		public:
+
+			//Channel size in byte (not bit) for each map
+			//Remember to update this value in case OpenGL buffer changes internal channel format
+			constexpr static size_t 
+				BiomemapChannel = sizeof(STPDiversity::Sample), 
+				HeightfieldChannel = sizeof(unsigned short), 
+				SplatmapChannel = sizeof(unsigned char);
+
+			//Map data
+			cudaArray_t Biomemap, Heightfield, Splatmap;
+
+		};
+
+		//Use chunk world coordinate to lookup chunk ID
+		typedef std::unordered_map<glm::vec2, unsigned int, STPChunkStorage::STPHashvec2> STPLocalChunkDictionary;
 
 		//cuda stream
 		STPSmartStream buffering_stream;
@@ -52,9 +79,10 @@ namespace SuperTerrainPlus {
 		//Heightfield
 		//index 0: R16UI biome map
 		//index 1: R16 height map
-		STPOpenGL::STPuint terrain_heightfield[2];
+		//index 2: R8UI splat map
+		STPOpenGL::STPuint terrain_heightfield[3];
 		//registered buffer and texture
-		cudaGraphicsResource_t heightfield_texture_res[2];
+		cudaGraphicsResource_t heightfield_texture_res[3];
 		//empty buffer (using cuda pinned memory) that is used to clear a chunk data, quad_clear is RGBA16
 		unsigned short *quad_clear = nullptr;
 
@@ -67,8 +95,8 @@ namespace SuperTerrainPlus {
 		//Whenever camera changes location, all previous rendering buffers are dumpped
 		bool trigger_clearBuffer;
 		//determine which chunks to render and whether it's loaded, index of element denotes chunk local ID
-		STPLocalChunks renderingLocals;
-		STPLocalChunksTable renderingLocals_lookup;
+		STPLocalChunkStatus renderingLocals;
+		STPLocalChunkDictionary renderingLocals_lookup;
 
 		/**
 		 * @brief Transfer rendering buffer on host side to device (OpenGL) rendering buffer by local chunk.
@@ -78,15 +106,21 @@ namespace SuperTerrainPlus {
 		 * @param chunkID Local chunk ID that specified which chunk in rendering buffer will be overwritten.
 		 * @return True if request has been submitted, false if given chunk is not available
 		*/
-		bool renderingBufferChunkSubData(cudaArray_t[2], glm::vec2, unsigned int);
+		bool renderingBufferChunkSubData(const STPRenderingBufferMemory&, glm::vec2, unsigned int);
+
+		/**
+		 * @brief Prepare and generate splatmap for rendering.
+		 * @param buffer Rendering buffer on device side, a mapped OpenGL pointer.
+		 * @param requesting_chunk Specify chunks that need to have splatmap generated.
+		 * Note that the coordinate of local chunk should specify chunk map offset rather than chunk world position
+		*/
+		void prepareSplatmap(const STPRenderingBufferMemory&, const STPDiversity::STPTextureFactory::STPRequestingChunkInfo&);
 
 		/**
 		 * @brief Clear up the rendering buffer of the chunk map
-		 * @tparam S The size of one pixel in byte
 		 * @param destination The loaction to store all loaded maps, and it will be erased.
 		*/
-		template<size_t S>
-		void clearRenderingBuffer(cudaArray_t);
+		void clearRenderingBuffer(const STPRenderingBufferMemory&);
 
 	public:
 
@@ -112,9 +146,9 @@ namespace SuperTerrainPlus {
 		void generateMipmaps();
 
 		/**
-		 * @brief Load the texture for chunks that are specified in the STPLocalChunks. The program will check if the maps are available for this chunk, and if so, texture will be loaded to the internal buffer
+		 * @brief Load the texture for chunks that are specified in the STPLocalChunkStatus. The program will check if the maps are available for this chunk, and if so, texture will be loaded to the internal buffer
 		 * and ready to transfer to chunk texture for rendering. Otherwise(chunk is new, there is no texture stored), compute will be dispatched and the chunkID for which
-		 * chunks that are not available will remain in the STPLocalChunks, loaded chunks will be removed from the list. In order to achieve asynchronous loading,
+		 * chunks that are not available will remain in the STPLocalChunkStatus, loaded chunks will be removed from the list. In order to achieve asynchronous loading,
 		 * it is recommend to re-pass the same list everyframe so the program can check the status of computing chunks and load on demand.
 		 * If the map is available and ready to use the engine will load the heightmap and normal map in the texture.
 		 * Otherwise the it will start computing, and load next time the function get called.
@@ -129,10 +163,10 @@ namespace SuperTerrainPlus {
 		 * If previous worker has yet finished, function will be blocked until the previous returned, then it will be proceed.
 		 * @return True if loading worker has been dispatched, false if there is no chunks specified in the list.
 		*/
-		bool loadChunksAsync(STPLocalChunks&);
+		bool loadChunksAsync(STPLocalChunkStatus&);
 
 		/**
-		 * @brief Similar to "void loadChunksAsync(STPLocalChunks&)", but will automatically load the chunks based on camera position, visible range and chunk size.
+		 * @brief Similar to "void loadChunksAsync(STPLocalChunkStatus&)", but will automatically load the chunks based on camera position, visible range and chunk size.
 		 * It will handle whether the central chunk has been changed compare to last time it was called, and determine whether or not to reload or continue waiting for loading 
 		 * for the current chunk.
 		 * If previous worker has yet finished, function will be blocked until the previous returned, then it will be proceed.

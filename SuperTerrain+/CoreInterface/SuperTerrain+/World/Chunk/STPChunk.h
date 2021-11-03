@@ -91,6 +91,27 @@ namespace SuperTerrainPlus {
 		static glm::vec2 getChunkPosition(glm::vec3, glm::uvec2, float = 1.0f);
 
 		/**
+		 * @brief Get the chunk position in chunk coordinate, i.e., normalised chunk world coordinate by chunk size.
+		 * We define the chunk with top-left corner world position of (0, 0) with (0, 0) chunk coordinate.
+		 * @param chunkPos The current chunk position (x,z) in world coordinate
+		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x,z) direction
+		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
+		 * @return The chunk coordinate (x,z).
+		*/
+		static glm::vec2 getChunkCoordinate(glm::vec2, glm::uvec2, float = 1.0f);
+
+		/**
+		 * @brief Calculate the terrain map offset for a particular chunk, such that each sucessive map can seamlessly connect to the neighbour chunks.
+		 * @param chunkPos The current chunk position (x,z) in world coordinate.
+		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x,z) direction
+		 * @param mapSize The dimension of terrain map in one chunk.
+		 * @param mapOffset The global offset of the terrain map.
+		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
+		 * @return The terrain map offset of a particular chunk.
+		*/
+		static glm::vec2 calcChunkMapOffset(glm::vec2, glm::uvec2, glm::uvec2, glm::vec2, float = 1.0f);
+
+		/**
 		 * @brief Move the chunk by chunk position
 		 * @param chunkPos The current chunk position (x,z) in world coordinate
 		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x,z) direction

@@ -84,6 +84,16 @@ vec2 STPChunk::getChunkPosition(vec3 cameraPos, uvec2 chunkSize, float scaling) 
 	return glm::floor(cameraPos_2d / scaled_chunkSize) * scaled_chunkSize;
 }
 
+vec2 STPChunk::getChunkCoordinate(vec2 chunkPos, uvec2 chunkSize, float scaling) {
+	ASSERT_POSITION_SCALE(scaling);
+	return chunkPos / (static_cast<vec2>(chunkSize) * scaling);
+}
+
+vec2 STPChunk::calcChunkMapOffset(vec2 chunkPos, uvec2 chunkSize, uvec2 mapSize, vec2 mapOffset, float scaling) {
+	ASSERT_POSITION_SCALE(scaling);
+	return static_cast<vec2>(mapSize) * STPChunk::getChunkCoordinate(chunkPos, chunkSize, scaling) + mapOffset;
+}
+
 vec2 STPChunk::offsetChunk(vec2 chunkPos, uvec2 chunkSize, ivec2 offset, float scaling) {
 	ASSERT_POSITION_SCALE(scaling);
 	return chunkPos + scaling * static_cast<vec2>(chunkSize) * static_cast<vec2>(offset);

@@ -5,15 +5,20 @@
 #include <SuperTerrain+/STPCoreDefine.h>
 //Container
 #include <unordered_map>
+#include <vector>
 //Memory
 #include "../../../Utility/STPSmartDeviceMemory.h"
 //Texture
 #include "STPTextureDatabase.h"
 
+#include "../../../Environment/STPChunkSetting.h"
+
 //GL
 #include <SuperTerrain+/STPOpenGL.h>
 //CUDA
 #include <cuda_runtime.h>
+//GLM
+#include <glm/vec2.hpp>
 
 namespace SuperTerrainPlus::STPDiversity {
 
@@ -22,7 +27,66 @@ namespace SuperTerrainPlus::STPDiversity {
 	 * read such texture configuration to generate a terrain splat texture
 	*/
 	class STP_API STPTextureFactory {
+	public:
+
+		//The dimension of terrain map in one chunk
+		const glm::uvec2 MapDimension;
+		//The total number of chunk being rendered
+		const unsigned int RenderedChunkCount;
+
+		/**
+		 * @brief STPLocalChunkInformation stores information about rendered local chunks
+		*/
+		struct STPLocalChunkInformation {
+		public:
+
+			//local chunk ID needs to be generated with splatmap.
+			unsigned int LocalChunkID;
+			//local chunk offset in world coordinate
+			glm::vec2 ChunkWorldOffset;
+
+		};
+
+		//An array of chunk requesting for splatmap generation
+		typedef std::vector<STPLocalChunkInformation> STPRequestingChunkInfo;
+
+	protected:
+
+		/**
+		 * @brief STPSplatDatabase contains arrays of splat rules for terrain splat texture generation on device.
+		*/
+		struct STPSplatDatabase {
+		public:
+
+			//An array of sample, the index of a sample can be used to locate the sample in the splat registry.
+			Sample* SplatRegistryDictionary;
+			unsigned int DictionaryEntryCount;
+			//An array that contains terrain splat configuration for each sample.
+			STPTextureInformation::STPSplatRegistry* SplatRegistry;
+
+			//An array containing all altitude splating rules.
+			STPTextureInformation::STPAltitudeNode* AltitudeRegistry;
+			//An array containing all gradient splating rules.
+			STPTextureInformation::STPGradientNode* GradientRegistry;
+
+		};
+
+		/**
+		 * @brief STPSplatInformation contains information for generating splatmap in device kernel
+		*/
+		struct STPSplatInformation {
+		public:
+
+			//An array of local chunk information to chunk requesting to generate splatmap, device memory
+			STPLocalChunkInformation* RequestingLocalInfo;
+			unsigned int LocalCount;
+
+		};
+
 	private:
+
+		//stores local chunk information
+		STPSmartDeviceMemory::STPDeviceMemory<STPLocalChunkInformation[]> LocalChunkInfo;
 
 		//A collection of all texture data
 		std::vector<STPOpenGL::STPuint> Texture;
@@ -32,6 +96,7 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		//Convert sample to index in spalt registry
 		STPSmartDeviceMemory::STPDeviceMemory<Sample[]> SplatLookup_d;
+		size_t SplatLookupCount;
 		STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPSplatRegistry[]> SplatRegistry_d;
 		//Splat configurations
 		STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPAltitudeNode[]> AltitudeRegistry_d;
@@ -61,25 +126,19 @@ namespace SuperTerrainPlus::STPDiversity {
 		template<typename T>
 		static STPSmartDeviceMemory::STPDeviceMemory<T[]> copyToDevice(const std::vector<T>&);
 
-	protected:
-
 		/**
-		 * @brief STPSplatDatabase contains arrays of splat rules for terrain splat texture generation on device.
+		 * @brief Launch a device kernel to generate rule-based biome-dependent terrain splatmap 
+		 * @param biomemap_tex The biomemap texture object.
+		 * @param heightmap_tex The heightmap texture object.
+		 * @param splatmap_surf The terrain splatmap surface object. 
+		 * @param info The information about the launching kernel.
+		 * In addition getSplatDatabase() can be called to retrieve all splat rules.
+		 * Moreover information about chunks such as map dimension are available in the base class.
+		 * @param stream The kernel stream generation work will be sent to.
 		*/
-		struct STPSplatDatabase {
-		public:
+		virtual void splat(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t, const STPSplatInformation&, cudaStream_t) const = 0;
 
-			//An array of sample, the index of a sample can be used to locate the sample in the splat registry.
-			Sample* SplatRegistryDictionary;
-			//An array that contains terrain splat configuration for each sample.
-			STPTextureInformation::STPSplatRegistry* SplatRegistry;
-
-			//An array containing all altitude splating rules.
-			STPTextureInformation::STPAltitudeNode* AltitudeRegistry;
-			//An array containing all gradient splating rules.
-			STPTextureInformation::STPGradientNode* GradientRegistry;
-
-		};
+	protected:
 
 		/**
 		 * @brief Get a data structure containing spalt data.
@@ -95,8 +154,9 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * After this function returns, all internal states are initialised and no further change can be made.
 		 * No reference is retained after the function returns.
 		 * @param database_view The pointer to the texture database view which contains all texture information
+		 * @param chunk_setting The configuration about terrain chunk
 		*/
-		STPTextureFactory(const STPTextureDatabase::STPDatabaseView&);
+		STPTextureFactory(const STPTextureDatabase::STPDatabaseView&, const STPEnvironment::STPChunkSetting&);
 
 		STPTextureFactory(const STPTextureFactory&) = delete;
 
@@ -108,7 +168,19 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		virtual ~STPTextureFactory();
 
-		virtual void operator()(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t) const = 0;
+		/**
+		 * @brief Generate a terrain texture splatmap based on all splat rules set.
+		 * For input texture objects addressing mode must be non-repeating.
+		 * Invalid texture and surface objects will result in undefined behaviour.
+		 * @param biomemap_tex The biomemap texture object.
+		 * @param heightmap_tex The heightmap texture object.
+		 * @param splatmap_surf The terrain splatmap surface object.
+		 * @param requesting_local An array of local chunk information that need to have splatmap computed/updated
+		 * If the array size is 0 no operation is performed.
+		 * If array size is greater than the intended rendered chunk, exception will be thrown.
+		 * @param stream The CUDA stream generation work will be sent to
+		*/
+		void operator()(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t, const STPRequestingChunkInfo&, cudaStream_t) const;
 
 	};
 

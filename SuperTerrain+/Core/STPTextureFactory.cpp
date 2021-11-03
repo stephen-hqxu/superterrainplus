@@ -1,6 +1,7 @@
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureFactory.h>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 //Import implementation
 #include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
 
@@ -27,7 +28,9 @@ using glm::uvec2;
 #define TEXTYPE_TYPE std::underlying_type_t<STPTextureType>
 #define TEXTYPE_VALUE(TYPE) static_cast<TEXTYPE_TYPE>(TYPE)
 
-STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& database_view) {
+STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& database_view, const STPEnvironment::STPChunkSetting& terrain_chunk) :
+	MapDimension(terrain_chunk.MapSize), RenderedChunkCount(terrain_chunk.RenderedChunk.x * terrain_chunk.RenderedChunk.y),
+	LocalChunkInfo(STPSmartDeviceMemory::makeDevice<STPLocalChunkInformation[]>(RenderedChunkCount)) {
 	//temporary cache
 	STPIDConverter<STPTextureInformation::STPTextureID> textureID_converter;
 	STPIDConverter<STPTextureInformation::STPTextureGroupID> groupID_converter;
@@ -134,6 +137,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 
 		//copy those memory to device
 		this->SplatLookup_d = move(STPTextureFactory::copyToDevice(spalt_lookup));
+		this->SplatLookupCount = spalt_lookup.size();
 		this->SplatRegistry_d = move(STPTextureFactory::copyToDevice(splat_reg));
 		this->AltitudeRegistry_d = move(STPTextureFactory::copyToDevice(alt_reg));
 		this->GradientRegistry_d = move(STPTextureFactory::copyToDevice(gra_reg));
@@ -171,8 +175,31 @@ STPSmartDeviceMemory::STPDeviceMemory<T[]> STPTextureFactory::copyToDevice(const
 STPTextureFactory::STPSplatDatabase STPTextureFactory::getSplatDatabase() const {
 	return STPSplatDatabase{
 		this->SplatLookup_d.get(),
+		static_cast<unsigned int>(this->SplatLookupCount),
 		this->SplatRegistry_d.get(),
 		this->AltitudeRegistry_d.get(),
 		this->GradientRegistry_d.get()
 	};
+}
+
+void STPTextureFactory::operator()(cudaTextureObject_t biomemap_tex, cudaTextureObject_t heightmap_tex, cudaSurfaceObject_t splatmap_surf, 
+	const STPRequestingChunkInfo& requesting_local, cudaStream_t stream) const {
+	if (requesting_local.size() == 0ull) {
+		//nothing needs to be done
+		return;
+	}
+	if (requesting_local.size() > this->RenderedChunkCount) {
+		//too many rendered chunk than the memory we have allocation
+		throw STPException::STPBadNumericRange("The number of requesting local is more than the total number of rendered chunk.");
+	}
+
+	//prepare the request
+	STPcudaCheckErr(cudaMemcpyAsync(this->LocalChunkInfo.get(), requesting_local.data(), requesting_local.size() * sizeof(STPLocalChunkInformation), cudaMemcpyHostToDevice, stream));
+	//the LocalChunkID array is overallocated, so we also need to send the size of actual data to device
+
+	//launch
+	this->splat(biomemap_tex, heightmap_tex, splatmap_surf, STPSplatInformation{
+		this->LocalChunkInfo.get(),
+		static_cast<unsigned int>(requesting_local.size())
+	}, stream);
 }

@@ -46,9 +46,9 @@ unsigned int STPChunkProvider::calculateMaxConcurrency(uvec2 rendered_range, uve
 	return max_used.x * max_used.y;
 }
 
-vec2 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
-	//first convert chunk world position to relative chunk position, then multiply by the map size, such that the generated map will be seamless
-	return static_cast<vec2>(this->ChunkSetting.MapSize) * chunkPos / (static_cast<vec2>(this->ChunkSetting.ChunkSize) * this->ChunkSetting.ChunkScaling) + this->ChunkSetting.MapOffset;
+inline vec2 STPChunkProvider::calcChunkOffset(vec2 chunkPos) const {
+	const STPEnvironment::STPChunkSetting& chk_config = this->ChunkSetting;
+	return STPChunk::calcChunkMapOffset(chunkPos, chk_config.ChunkSize, chk_config.MapSize, chk_config.MapOffset, chk_config.ChunkScaling);
 }
 
 STPChunk::STPChunkPositionCache STPChunkProvider::getNeighbour(vec2 chunkPos) const {
