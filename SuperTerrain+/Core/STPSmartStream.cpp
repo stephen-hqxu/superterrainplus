@@ -1,4 +1,4 @@
-#include <SuperTerrain+/Utility/STPSmartStream.h>
+#include <SuperTerrain+/Utility/Memory/STPSmartStream.h>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
@@ -35,6 +35,6 @@ STPSmartStream::STPStreamPriorityRange STPSmartStream::getStreamPriorityRange() 
 	return make_pair(greatest, least);
 }
 
-STPSmartStream::operator cudaStream_t() const {
+cudaStream_t STPSmartStream::operator*() const {
 	return this->Stream.get();
 }

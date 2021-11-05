@@ -10,10 +10,10 @@
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 #define STP_DEVICE_ERROR_SUPPRESS_CERR
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/STPSmartStream.h>
-#include <SuperTerrain+/Utility/STPMemoryPool.h>
-#include <SuperTerrain+/Utility/STPSmartDeviceMemory.h>
-#include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
+#include <SuperTerrain+/Utility/Memory/STPSmartStream.h>
+#include <SuperTerrain+/Utility/Memory/STPMemoryPool.h>
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 //SuperTerrain+/SuperTerrain+/Utility/Exception
 #include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
@@ -213,7 +213,7 @@ TEMPLATE_TEST_CASE_METHOD_SIG(SmartStreamTester, "STPSmartStream manages CUDA st
 	}
 
 	GIVEN("A smart stream object") {
-		cudaStream_t stream = static_cast<cudaStream_t>(*dynamic_cast<const STPSmartStream*>(this));
+		cudaStream_t stream = *dynamic_cast<const STPSmartStream&>(*this);
 
 		WHEN("Some data needs to be done by CUDA") {
 			const unsigned long long Original = GENERATE(take(3u, random(0ull, 1313131313ull)));

@@ -1,4 +1,4 @@
-#include <SuperTerrain+/Utility/STPMemoryPool.h>
+#include <SuperTerrain+/Utility/Memory/STPMemoryPool.h>
 
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>

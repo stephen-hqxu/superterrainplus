@@ -8,7 +8,7 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
 
-#include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
 //Kernel Implementation
 #include <SuperTerrain+/GPGPU/STPHeightfieldKernel.cuh>

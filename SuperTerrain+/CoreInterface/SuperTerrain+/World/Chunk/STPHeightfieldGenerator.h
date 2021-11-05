@@ -14,8 +14,8 @@
 //Engine
 #include "STPDiversityGenerator.hpp"
 #include "./FreeSlip/STPFreeSlipGenerator.h"
-#include "../../Utility/STPSmartStream.h"
-#include "../../Utility/STPSmartDeviceMemory.h"
+#include "../../Utility/Memory/STPSmartStream.h"
+#include "../../Utility/Memory/STPSmartDeviceMemory.h"
 //Settings
 #include "../../Environment/STPHeightfieldSetting.h"
 #include "../../Environment/STPChunkSetting.h"

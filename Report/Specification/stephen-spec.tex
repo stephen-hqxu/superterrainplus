@@ -1,0 +1,207 @@
+\documentclass[oneside, a4paper]{article}
+
+\usepackage{enumitem}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[font=large,labelfont=bf]{caption}
+\usepackage{fancyhdr}
+\usepackage[compact]{titlesec}
+
+\graphicspath{{./img/}}
+
+\setlength{\parskip}{0.4cm}
+\renewcommand{\baselinestretch}{1.1}
+
+\setlist[description]{style=nextline}
+
+% Fancyhdr
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Stephen Xu}
+\chead{\thepage}
+\rhead{CS310 Project Specification}
+
+\begin{document}
+    \begin{titlepage}
+        \begin{center}
+            \huge
+            \vspace*{4cm}
+            \textbf{SuperTerrain+:}
+            
+            \vspace*{1cm}
+            A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering.
+
+            \LARGE
+            \vspace*{2cm}
+            Project Specification
+
+            \vspace*{1cm}
+            Stephen Xu [u1919771] \\
+            14 Oct 2021
+        \end{center}
+    \end{titlepage}
+    \newpage
+    \large
+    \flushleft
+    
+    \section{Problem}
+
+    Procedural terrain generation has been widely implemented in the industry over the last few decades. While the applications can be adpated for different purposes, generally terrain generators are either performance-biased for video games and allow generator to run in real-time with significant realism degradation, or realism-biased for 3D artists, movies and geographical simulations and take a few seconds even minutes on a workstation system to render one frame in order to produce a physically accurate image.
+
+    There are many games that implement terrain generation aiming for performance like Minecraft \cite{mc} and No Man's Sky \cite{no_mans_sky}, they produce an infinite world that allows player to explore endlessly. Terrain in Minecraft is built using voxels which are large cubes whereas in No Man's Sky it is a low-polygon mesh; in general it seems to be not practical to generate and render realistic scenery for such applications.
+    
+    There are also many commercial software for terrain generation built for realism like Terragen \cite{terragen} and Picogen \cite{picogen}, and they serve as an interactive procedural terrain generator thus require some manual operations like defining where exactly a mountain or lake should appear on the landscape, with minimal programmable interface therefore limited. Like most other modern terrain generators, with the use of one of the most popular techniques for photorealistic rendering called ray-tracing, a partial solution to the global illumination problem, they aim to produce photorealistic images and videos rather than a world where user can explore freely.
+
+    Modern computers are equipped with relatively powerful hardware that should allow fast procedural terrain generation in real-time without the need of doing manual production in third-party modelling software. For developers it is not feasible to build an all-purpose software from the point of business and project management since there is a limited amount of time and fund for development, as well as available technology. Consequently making use of powerful hardware like multi-threaded CPU, SIMD instruction sets and even GPGPU is uncommon in terrain engine and even more rarely seen in modern games.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{mc_2.png}
+        \caption{A screenshot taken by myself in Minecraft. Even with the help of texture pack that augments rendering quality, adding smooth lighting and shadows with water reflection, the terrain is still consist of voxels and gives a strange and unrealisitc feeling in general, not to mention the floating rocks and trees show in the background. The average FPS achieved on a normal domestic computer is 17, being below 24, the minimum framerate that does not create noticeable discontinuity, and well below 60, the ideal framerate accepted by game industry.}
+    \end{figure}
+
+    \subsection{Techniques}
+
+    Heightmap-based model is yet the state-of-the-art approach of procedural terrain generation \cite{kang_sim_han_2018}. Mesh-based model can certainly make controlling the terrain shape easier, however it is not easy to change the mesh once it has been generated, making terrain manipulation such as level-of-detail switching difficult, and the entire mesh needs to be regenerated almost every frame.
+
+    The most popular way of heightmap synthesis is fractal noise \cite{texturing_modeling}, a technique that combines outputs from one or more noise functions and produces the final output, with increase in noise frequency and decrease in amplitude in each successive iteration, called octave, developer can control the amount of detail on the terrain. Interesting terrain effects like rigid mountains and ravines can also be shaped out by applying certain transformation functions for different octaves.
+    
+    The classic algorithm for terrain mesh generation with heightmap-based model is to sample a normalised value from a heightmap, use the value as a weight, offset vertices on the terrain mesh based on the pre-set altitude multiplier. A more advanced algorithm \cite{gems3} uses a volumetric heightmap and samples each pixel as density and place a voxel at the location where the density exceeds a pre-defined limit, and finally shape the terrain with meshing algorithms. Volumetric mesh generation technique was first used by medical imaging \cite{marching_cubes}, when it is used for real-time terrain generation although it can produce more realisitc landscape features like overhangs, the memory requirement and access time can grow significantly as the mesh quality increases; thus, certain trade-off between quality and efficiency needs to be considered.
+
+    \section{Objectives}
+    The main objective of this project is to gather, combine, refine and implement exisiting algorithms for both fast and detailed terrain generation, use high performance computing techniques, optimise, and deliver a terrain engine \textbf{SuperTerrain+}, which should be:
+    \begin{itemize}[label=\(\diamond\)]
+        \item Pseudorandom: terrain should be generated using pseudorandom algorithms. Given a different initial state to the generator, the output terrain should have no observable pattern; when the initial state remains unchanged, the generated terrain should always be the same.
+        \item Procedural: generation of terrain should be done purely algorithmically instead of using external model editors.
+        \item Infinite: terrain should be borderless\footnote{Within the memory and disk limit on the computer}.
+        \item Multi-purpose: developer should be able to generate a world based on their applications, and the engine should be programmable.
+        \item Real-time capable: rendering should be done in real-time. Since terrain generation is a slow process, the generator should minimise the latency between generation and rendering.
+        \item Detailed: the terrain model should be a high-polygon mesh.
+        \item Photorealistic: engine should maximise rendering quality within the real-time requirement, engine should make use of some physically-based rendering techniques.
+        \item Diverse: generated world should have a multi-biome system, each biome should look visually different, with different terrain shapes and texture.
+    \end{itemize}
+
+    \subsection{Implementation objectives}
+    To achieve functional objectives specified, the following sub-components should also be implemented:
+    \begin{itemize}[label=\(\diamond\)]
+        \item A world management engine that should split the infinite world into chunks.
+        \item An algorithmic engine that should be consist of a, or a collection of procedural generation algorithm(s) for terrain generation.
+        \item A biome management system that should generate a biome map which allows the engine to pick different mesh generator.
+        \item A programmable pipeline that should allow clients to implement their generation procedures.
+        \item A tessellation engine that should generate a seamlessly connected terrain mesh and allow level-of-detail switching.
+        \item A rendering engine that should do photorealistic lighting, shadows and water.
+        \item An error engine that should be responsible for monitoring the entire system and report to user when exception is detected, as the main engine will be highly customisable hence susceptible to faulty user inputs.
+    \end{itemize}
+
+    \subsection{Extensions}
+    The following features and techniques can be selectively integrated if there is extra time after completion of the main objectives, or as future works:
+    \begin{itemize}[label=\(\diamond\)]
+        \item Procedural foliage generation. Populating trees, flowers and bushes is not the main focused of this project, however it must be a pleasant experience to explore a living world. Procedural model generation, compared to pre-edited models, it can make every foliage unique.
+        \item Weather effect. To make the world more vivid, natural weather effects like day-night cycle, rainfall/snowfall, lightening can be rendered in conjunction with the terrain, which makes the engine not only suitable for game, but also cinematic demo.
+        \item Real-time global illumination. It's the state-of-the-art technology being recently introduced in computer graphics industry, being first brought by Microsoft shipped with DirectX Ray-tracing in 2018 \cite{dxr_release}, and later Vulkan Ray-tracing by Khronos Group \cite{vulkan_rt_release} for gaming; Optix 7 by Nvidia \cite{optix} for production. With hardware support, it's possible to render the scene in real-time using said APIs to significantly augment the image quality.
+        \item Volumetric terrain generation. The the major drawback of tessellating a 2D map to 3D mesh is the lack of features like overhang and cave. It's possible to re-implement from Minecraft's methodology and render the terrain using voxels, but with much higher resolution to produce a smooth terrain.
+        \item Procedural planet generation. The idea of volumetric terrain generation can be further extended, instead of generating flat terrain, a sphere can be generated and the same algorithm can be applied to the surface of the sphere to shape the terrain.
+    \end{itemize}
+
+    \section{Methodology}
+
+    Project will be devleoped using agile method, minor update includes improvement and bug fix should be released every week whereas major update contains completed objectives should be expected once or twice per month, project will undergo continuous refactoring in every development iteration to maintain the best software programming practice and for easier integration of new features in the next cycle. Prior to release engine will be tested, basic functionalities of the engine will be unit-tested while other subjective categories like rendering quality will be examined and evaluated by myself. Git will be used for version control and GitHub for remote which serves as a backup. Release will be managed using utilities provided by GitHub such as Releases, Issues and Projects and should be briefly documented.
+
+    Project will be writen in C++, a low-level objective-oriented programming language; compared to Java, C++ facilitates optimisation for software involves high-performance computing. After examining different C++ standards, project will be built based on ISO C++ 17 which brings new standard libraries and functional programming features that would greatly simplify development process. While ISO C++ 20 is available, most compilers have yet finialised the support, it will be the best to avoid using unstable features and delaying the development.
+
+    Project will also involve use of GPU for both rendering and computing. For rendering, OpenGL 4.6 will be used, the latest version of OpenGL provides useful functionalities such as hardware tessellation and error report callbacks. For computing, OpenCL had been considered, yet due to the poor support on Nvidia's GPU up until recently and thus unstable, CUDA will be used for GPU computing.
+
+    For general project development, Visual Studio 2019 will be used as an IDE; even though Visual Studio itself serves as a build system, I generally prefer and more familiar with CMake, and Visual Studio 2019 has CMake integration which greatly simplify the build process. A high level build system makes porting the project to a newer IDE environment like Visual Studio 2022 in the future easier.
+
+    \section{Development}
+
+    \subsection{Timetable}
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{timetable.png}
+        \caption{The project timeline. The red bar indicates the term time while the green bar shows important deadlines. Yellow bar is the major objectives for the project whereas the blue bar is the sub-goals to be achieved for the dependent objective.}
+    \end{figure}
+
+    \subsection{Resources}
+
+    \subsubsection{Software resources}
+
+    The following is the list of all external software that the project will depend on:
+    \begin{description}
+        \item[GLM \cite{glm}] \hfill \\
+            A header-only library that brings GLSL syntax and built-in functions to C++ and CUDA, greatly simplified mathmatical operations.
+        \item[GLFW \cite{glfw}] \hfill \\
+            A cross-platform graphical application development API for creating window, context, handling IO and event.
+        \item[GLAD \cite{glad}] \hfill \\
+            An OpenGL API loader that registers OpenGL API functions and load them into context.
+        \item[stb \cite{stb}] \hfill \\
+            A collection of useful utilites, the most notable functionality is the \textit{stb\_image.h}, a simple image loader and decoder.
+        \item[Catch2 v3 \cite{catch2}] \hfill \\
+            One of the most popular C++ unit-test frameworks with useful additional utilites for product pre-release evaluation.
+    \end{description}
+
+    \subsubsection{Hardware resources}
+
+    The development of project will involve use of multi-core CPU and CUDA-enabled GPU, although the final deliverable should not require a very high end machine to be run on. CUDA, as developed by Nvidia, can be only be executed on Nvidia's GPU, whereas some API functions in OpenGL introduced recently require certain hardware and vendor support.
+
+    Following is a list of system components, hardware including development environment, will be used during the development of project:
+
+    \begin{description}
+        \item[CPU] \hfill \\
+            Intel Core i9-9900K 8 Cores @ 3.6 GHz
+        \item[GPU] \hfill \\
+            Nvidia GeForce RTX 2080, CUDA compute capability 7.5, OpenGL version support 4.6, GLSL version support 4.6
+        \item[OS] \hfill \\
+            Windows 10 version 2004
+    \end{description}
+
+    \subsection{Risk Assessment}
+
+    The following risks can be identified, and proposed mitigation for each:
+
+    \begin{center}
+        \begin{tabular}{ | p{7.5cm} || p{7.5cm} | }
+            \hline
+            Risk & Mitigation \\
+            \hline
+            \hline
+            My personal computer will be the main location of development, break down of my machine will halt the development process and may potentially cause loss of progression. & 
+            GitHub will be used as the remote which serves as a backup system. Additionally backups of source code and report should be made manually and regularly on an external hard drive as well as on DCS machine. Although Windows 10 will be the main OS for the development, our choice of tools allow the development to be continued on another OS. \\
+            \hline
+            External software maintainer may abandon their projects, leaving the libraries broken thus not usable. &
+            Generally speaking the chance of happening during this one year of development period is cconsidered to be very low. In case it happens, all external software we are using are mostly compatible with other libraries. For instance in case GLAD and GLFW are abandoned I can switch to similar libraries like GLEW or glut; or Catch2 is abandoned I can switch to BoostTest or GoogleTest, which all have similar syntax when writing unit-tests and minimal changes are required. \\
+            \hline
+            The project development takes place during the COVID-19 pandemic, I, as the only developer, may get infected and thus unable to carry on the development. &
+            Stick to safety guidelines and protect myself to avoid getting the project interrupted. \\
+            \hline
+        \end{tabular}
+    \end{center}
+
+    \section{Legal, social, ethical and professional issues}
+    The project will be open-sourced, distributed under MIT license and will become public after the the submission of final report. All programming language, API and toolkit are legal to be used for individual open-sourced project. The project will involve no survey, interview or external testing so should not interact with other people. The program will not connect to, or send any information over the internet so no privacy issue will be related.
+
+    \section{Abbreviation}
+
+    \begin{description}
+        \item[CPU] \hfill \\
+            Central Processing Unit
+        \item[SIMD] \hfill \\
+            Single Instruction Multiple Data
+        \item[GPU] \hfill \\
+            Graphics Processing Unit
+        \item[GPGPU] \hfill \\
+            General-Purpose computing on Graphics Processing Units
+        \item[OS] \hfill \\
+            Operating System
+        \item[CUDA] \hfill \\
+            Compute Unified Device Architecture
+        \item[IDE] \hfill \\
+            Integrated Development Environment
+    \end{description}
+
+    \bibliographystyle{unsrt}
+    \bibliography{stephen-spec}
+
+\end{document}

@@ -9,7 +9,7 @@
 #include "STPFreeSlipLocation.hpp"
 #include "STPFreeSlipTextureBuffer.h"
 #include "STPFreeSlipManager.cuh"
-#include "../../../Utility/STPSmartDeviceMemory.h"
+#include "../../../Utility/Memory/STPSmartDeviceMemory.h"
 
 namespace SuperTerrainPlus::STPCompute {
 

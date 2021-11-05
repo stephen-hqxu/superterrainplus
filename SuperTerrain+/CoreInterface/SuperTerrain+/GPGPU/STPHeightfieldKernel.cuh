@@ -11,7 +11,7 @@
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
 //Memory
-#include "../Utility/STPSmartDeviceMemory.h"
+#include "../Utility/Memory/STPSmartDeviceMemory.h"
 
 //GLM
 #include <glm/vec2.hpp>

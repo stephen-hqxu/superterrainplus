@@ -13,7 +13,7 @@
 #include <SuperTerrain+/GPGPU/STPHeightfieldKernel.cuh>
 
 //Template definition for the smart device memory
-#include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
 using namespace SuperTerrainPlus::STPCompute;
 
@@ -124,7 +124,7 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 				this->StreamPool.pop();
 			}
 		}
-		stream = *stream_buffer;
+		stream = **stream_buffer;
 
 		//Flag: HeightmapGeneration
 		if (flag[0]) {

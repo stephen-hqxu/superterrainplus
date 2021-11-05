@@ -180,7 +180,7 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 		WHEN("Texture buffer is unmerged") {
 
 			THEN("Merge location is not available") {
-				REQUIRE_THROWS_AS((*TestBuffer) == STPFreeSlipLocation::HostMemory, STPException::STPMemoryError);
+				REQUIRE_THROWS_AS(TestBuffer->where() == STPFreeSlipLocation::HostMemory, STPException::STPMemoryError);
 			}
 
 		}
@@ -200,7 +200,7 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 				this->registerMergedBuffer(ChosenLocation, RawMergedBuffer);
 
 				AND_THEN("Merge location is correct and no reallocation when the merging operation is called again, instead the previously returned memory should be returned") {
-					REQUIRE((*TestBuffer) == ChosenLocation);
+					REQUIRE(TestBuffer->where() == ChosenLocation);
 					REQUIRE((*TestBuffer)(ChosenLocation) == RawMergedBuffer);
 
 					CHECKED_IF(ChosenLocation == STPFreeSlipLocation::DeviceMemory) {

@@ -9,7 +9,7 @@
 #include <SuperTerrain+/STPOpenGL.h>
 //CUDA
 #include <cuda_runtime.h>
-#include "../../Utility/STPSmartStream.h"
+#include "../../Utility/Memory/STPSmartStream.h"
 
 //Chunks
 #include "STPChunkProvider.h"

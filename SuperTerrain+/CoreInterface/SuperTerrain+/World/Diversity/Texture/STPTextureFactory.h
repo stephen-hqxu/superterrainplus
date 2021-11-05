@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <vector>
 //Memory
-#include "../../../Utility/STPSmartDeviceMemory.h"
+#include "../../../Utility/Memory/STPSmartDeviceMemory.h"
 //Texture
 #include "STPTextureDatabase.h"
 

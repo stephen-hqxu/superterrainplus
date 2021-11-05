@@ -69,9 +69,10 @@ namespace SuperTerrainPlus {
 		static STPStreamPriorityRange getStreamPriorityRange();
 
 		/**
-		 * @brief Obtained the underlying stream
+		 * @brief Retrieve the underlying managed CUDA stream
+		 * @return The managed CUDA stream
 		*/
-		operator cudaStream_t() const;
+		cudaStream_t operator*() const;
 
 	};
 

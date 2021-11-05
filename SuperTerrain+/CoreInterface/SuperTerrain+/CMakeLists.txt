@@ -27,14 +27,15 @@ Utility/Exception/STPInvalidEnvironment.h
 Utility/Exception/STPMemoryError.h
 Utility/Exception/STPSerialisationError.h
 Utility/Exception/STPUnsupportedFunctionality.h
+# /Utility/Memory
+Utility/Memory/STPMemoryPool.h
+Utility/Memory/STPSmartDeviceMemory.h
+Utility/Memory/STPSmartDeviceMemory.tpp
+Utility/Memory/STPSmartStream.h
 # /Utility
 Utility/STPDeviceErrorHandler.h
 Utility/STPHashCombine.h
 Utility/STPHashCombine.inl
-Utility/STPMemoryPool.h
-Utility/STPSmartDeviceMemory.h
-Utility/STPSmartDeviceMemory.tpp
-Utility/STPSmartStream.h
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl
 # /World/Chunk/FreeSlip

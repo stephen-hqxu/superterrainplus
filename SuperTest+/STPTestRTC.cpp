@@ -12,8 +12,8 @@
 
 //Utils
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/STPSmartDeviceMemory.h>
-#include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
 #include <SuperTerrain+/Utility/Exception/STPCompilationError.h>
 #include <SuperTerrain+/Utility/Exception/STPSerialisationError.h>

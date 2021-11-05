@@ -8,7 +8,7 @@
 #include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
 
 //Template Def
-#include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
 #include <type_traits>
 
@@ -199,7 +199,7 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 }
 
 template<typename T>
-STPFreeSlipTextureBuffer<T>::operator STPFreeSlipLocation() const {
+STPFreeSlipLocation STPFreeSlipTextureBuffer<T>::where() const {
 	if (!this->Integration) {
 		throw STPException::STPMemoryError("no memory location has been specified as no memory has been allocated");
 	}

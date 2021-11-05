@@ -164,7 +164,7 @@ void STPBiomefieldGenerator::initGenerator() {
 }
 
 //Memory Pool
-#include <SuperTerrain+/Utility/STPMemoryPool.h>
+#include <SuperTerrain+/Utility/Memory/STPMemoryPool.h>
 
 using namespace SuperTerrainPlus::STPCompute;
 

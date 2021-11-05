@@ -7,14 +7,14 @@
 #include <optional>
 //Data Structure
 #include <vector>
-#include "../../../Utility/STPMemoryPool.h"
+#include "../../../Utility/Memory/STPMemoryPool.h"
 //CUDA
 #include <cuda_runtime.h>
 //Free-Slip Data
 #include "STPFreeSlipLocation.hpp"
 #include "../../Diversity/STPBiomeDefine.h"
 //Memory
-#include "../../../Utility/STPSmartDeviceMemory.h"
+#include "../../../Utility/Memory/STPSmartDeviceMemory.h"
 
 namespace SuperTerrainPlus::STPCompute {
 
@@ -168,9 +168,10 @@ namespace SuperTerrainPlus::STPCompute {
 
 		/**
 		 * @brief Get the location of memory that the buffer has been allocated.
-		 * If no allocation has happned, exception is thrown
+		 * If no allocation has happned, exception is thrown.
+		 * @return The location of memory has been allocated
 		*/
-		operator STPFreeSlipLocation() const;
+		STPFreeSlipLocation where() const;
 
 	};
 

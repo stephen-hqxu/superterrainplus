@@ -7,7 +7,7 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //Definition for smart memory
-#include <SuperTerrain+/Utility/STPSmartDeviceMemory.tpp>
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
 #include <algorithm>
 

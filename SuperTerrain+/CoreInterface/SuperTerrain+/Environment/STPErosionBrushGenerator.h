@@ -12,7 +12,7 @@
 //Base RainDrop Setting
 #include "STPRainDropSetting.cuh"
 //Smart Memory
-#include <SuperTerrain+/Utility/STPSmartDeviceMemory.h>
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 
 //System ADT
 #include <vector>

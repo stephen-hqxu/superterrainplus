@@ -9,7 +9,7 @@
 //Permutation Table
 #include "STPPermutation.hpp"
 //Device Memory Management
-#include <SuperTerrain+/Utility/STPSmartDeviceMemory.h>
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 
 namespace SuperTerrainPlus::STPCompute {
 

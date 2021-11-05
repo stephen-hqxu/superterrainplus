@@ -73,7 +73,7 @@ STPChunkManager::~STPChunkManager() {
 	}
 
 	//wait for the stream to finish
-	STPcudaCheckErr(cudaStreamSynchronize(this->buffering_stream));
+	STPcudaCheckErr(cudaStreamSynchronize(*this->buffering_stream));
 
 	//unregister resource
 	for (int i = 0; i < 3; i++) {
@@ -106,7 +106,7 @@ bool STPChunkManager::renderingBufferChunkSubData(const STPRenderingBufferMemory
 	auto copy_buffer = [this, &dimension, buffer_offset = calcBufferOffset(chunkID, dimension)](cudaArray_t dest, const void* src, size_t channelSize) -> void {
 		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(dest, buffer_offset.x * channelSize, buffer_offset.y, src,
 			dimension.x * channelSize, dimension.x * channelSize,
-			dimension.y, cudaMemcpyHostToDevice, this->buffering_stream));
+			dimension.y, cudaMemcpyHostToDevice, *this->buffering_stream));
 	};
 
 	//copy buffer to GL texture
@@ -157,7 +157,7 @@ void STPChunkManager::clearRenderingBuffer(const STPRenderingBufferMemory& desti
 	auto erase_buffer = [this, buffer_size = chunk_setting.RenderedChunk * chunk_setting.MapSize](cudaArray_t data, size_t channelSize) -> void {
 		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(data, 0, 0, this->quad_clear,
 			buffer_size.x * channelSize, buffer_size.x * channelSize,
-			buffer_size.y, cudaMemcpyHostToDevice, this->buffering_stream));
+			buffer_size.y, cudaMemcpyHostToDevice, *this->buffering_stream));
 	};
 
 	//clear unloaded chunk, so the engine won't display the chunk from previous rendered chunks
@@ -227,7 +227,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunkStatus& loading_chunks) {
 
 	//texture storage
 	//map the texture, all opengl related work must be done on the main contexted thread
-	STPcudaCheckErr(cudaGraphicsMapResources(3, this->heightfield_texture_res, this->buffering_stream));
+	STPcudaCheckErr(cudaGraphicsMapResources(3, this->heightfield_texture_res, *this->buffering_stream));
 	STPRenderingBufferMemory buffer_ptr;
 	//we only have one texture, so index is always zero
 	STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&buffer_ptr.Biomemap, this->heightfield_texture_res[0], 0, 0));
@@ -301,7 +301,7 @@ int STPChunkManager::SyncloadChunks() {
 		//wait for finish first
 		const unsigned int res = this->ChunkLoader.get();
 		//sync the stream that modifies the texture and unmap the chunk
-		STPcudaCheckErr(cudaGraphicsUnmapResources(3, this->heightfield_texture_res, this->buffering_stream));
+		STPcudaCheckErr(cudaGraphicsUnmapResources(3, this->heightfield_texture_res, *this->buffering_stream));
 		return static_cast<int>(res);
 	}
 	else {
