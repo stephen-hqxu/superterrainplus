@@ -5,14 +5,24 @@
 //CUDA
 #include <cuda_runtime.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-//SQLite3
+//Compatibility
+#include <SuperTerrain+/STPOpenGL.h>
 #include <SuperTerrain+/STPSQLite.h>
 
+#include <type_traits>
+
 using namespace SuperTerrainPlus;
+
+using std::is_same;
+using std::conjunction_v;
 
 //Default state is false, once the engine is initialised it will become true.
 static bool GLInit = false;
 static bool EngineInit = false;
+
+//Compatibility checking
+static_assert(conjunction_v<is_same<STPOpenGL::STPenum, GLenum>, is_same<STPOpenGL::STPuint, GLuint>>,
+	"OpenGL specification is no longer compatible with SuperTerrain+, please contact the maintainer.");
 
 bool STPEngineInitialiser::initGLcurrent() {
 	if (!gladLoadGL()) {

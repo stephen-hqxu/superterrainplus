@@ -58,6 +58,36 @@ namespace SuperTerrainPlus::STPCompute {
 		*/
 		__device__ float clamp(float, float, float);
 
+		/**
+		 * @brief Perform lower bound binary search
+		 * @tparam It The iterator of the searching array
+		 * @tparam T The type to be searched
+		 * @param first The pointer to the beginning of the array
+		 * @param last The pointer to the end of the array
+		 * @param value The value to be searched
+		 * @return The pointer to the value pointing to the first element in the range [first, last) that is not less than (i.e. greater or equal to) value, 
+		 * or last if no such element is found.
+		*/
+		template<class It, typename T>
+		__device__ const It* lower_bound(const It*, const It*, T);
+
+		/**
+		 * @brief Perform lower bound binary search with custom comparator
+		 * @tparam It The iterator of the searching array
+		 * @tparam T The type to be searched
+		 * @tparam Comp The comparator, it must guarantee the obejct is strictly less than
+		 * @param first The pointer to the beginning of the array
+		 * @param last The pointer to the end of the array
+		 * @param value The value to be searched
+		 * @param comparator The custom comparator for "less than". See C++ specification to learn the comparator signature
+		 * @return The pointer to the value pointing to the first element in the range [first, last) that is not less than (i.e. greater or equal to) value, 
+		 * or last if no such element is found.
+		*/
+		template<class It, typename T, class Comp>
+		__device__ const It* lower_bound(const It*, const It*, T, Comp);
+
 	};
 }
+//Template Definition
+#include "STPKernelMath.inl"
 #endif//_STP_KERNEL_MATH_CUH_

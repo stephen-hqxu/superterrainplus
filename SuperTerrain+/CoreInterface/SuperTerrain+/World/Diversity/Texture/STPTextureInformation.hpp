@@ -96,6 +96,25 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		};
 
+		/**
+		 * @brief STPSplatRuleDatabase contains arrays of all splat rules and other important information for terrain splat texture generation on device.
+		*/
+		struct STPSplatRuleDatabase {
+		public:
+
+			//An array of sample, the index of a sample can be used to locate the sample in the splat registry.
+			Sample* SplatRegistryDictionary;
+			unsigned int DictionaryEntryCount;
+			//An array that contains terrain splat configuration for each sample.
+			STPTextureInformation::STPSplatRegistry* SplatRegistry;
+
+			//An array containing all altitude splating rules.
+			STPTextureInformation::STPAltitudeNode* AltitudeRegistry;
+			//An array containing all gradient splating rules.
+			STPTextureInformation::STPGradientNode* GradientRegistry;
+
+		};
+
 	};
 }
 #endif//_STP_TEXTURE_INFORMATION_HPP_

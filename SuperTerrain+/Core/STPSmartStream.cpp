@@ -35,6 +35,6 @@ STPSmartStream::STPStreamPriorityRange STPSmartStream::getStreamPriorityRange() 
 	return make_pair(greatest, least);
 }
 
-cudaStream_t STPSmartStream::operator*() const {
+cudaStream_t STPSmartStream::operator*() const noexcept {
 	return this->Stream.get();
 }

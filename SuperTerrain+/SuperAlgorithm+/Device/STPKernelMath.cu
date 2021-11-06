@@ -11,12 +11,12 @@ __device__ float STPKernelMath::Invlerp(float minVal, float maxVal, float value)
 	return __saturatef((value - minVal) / (maxVal - minVal));
 }
 
-__device__ float STPKernelMath::cosrp(float p1, float p2, float factor){
+__device__ float STPKernelMath::cosrp(float p1, float p2, float factor) {
 	factor = __saturatef(factor);
 	const float cos_factor = (1.0f - cospif(factor)) / 2.0f;
 	return STPKernelMath::lerp(p1, p2, cos_factor);
 }
 
-__device__ float STPKernelMath::clamp(float value, float min, float max){
+__device__ float STPKernelMath::clamp(float value, float min, float max) {
 	return fmaxf(min, fminf(value, max));
 }

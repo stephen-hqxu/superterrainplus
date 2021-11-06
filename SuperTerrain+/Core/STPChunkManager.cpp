@@ -227,6 +227,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunkStatus& loading_chunks) {
 
 	//texture storage
 	//map the texture, all opengl related work must be done on the main contexted thread
+	//CUDA will make sure all previous graphics API calls are finished before stream begins
 	STPcudaCheckErr(cudaGraphicsMapResources(3, this->heightfield_texture_res, *this->buffering_stream));
 	STPRenderingBufferMemory buffer_ptr;
 	//we only have one texture, so index is always zero
@@ -301,6 +302,7 @@ int STPChunkManager::SyncloadChunks() {
 		//wait for finish first
 		const unsigned int res = this->ChunkLoader.get();
 		//sync the stream that modifies the texture and unmap the chunk
+		//CUDA will make sure all previous pending works in the stream has finished before graphics API can be called
 		STPcudaCheckErr(cudaGraphicsUnmapResources(3, this->heightfield_texture_res, *this->buffering_stream));
 		return static_cast<int>(res);
 	}
@@ -314,6 +316,6 @@ STPChunkProvider& STPChunkManager::getChunkProvider() {
 	return this->ChunkProvider;
 }
 
-GLuint STPChunkManager::getCurrentRenderingBuffer(STPRenderingBufferType type) const {
+STPOpenGL::STPuint STPChunkManager::getCurrentRenderingBuffer(STPRenderingBufferType type) const {
 	return this->terrain_heightfield[static_cast<std::underlying_type_t<STPRenderingBufferType>>(type)];
 }

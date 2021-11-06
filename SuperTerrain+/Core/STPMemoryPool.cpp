@@ -6,10 +6,13 @@
 //CUDA
 #include <cuda_runtime.h>
 
+#include <algorithm>
+
 using namespace SuperTerrainPlus;
 
 using std::unique_lock;
 using std::mutex;
+using std::make_pair;
 
 //Allocate different types of memory
 template<STPMemoryPoolType T>
@@ -48,6 +51,19 @@ typename STPMemoryPool<T>::STPHeader STPMemoryPool<T>::decodeHeader(unsigned cha
 }
 
 template<STPMemoryPoolType T>
+typename STPMemoryPool<T>::STPMemoryBlock& STPMemoryPool<T>::getBlock(size_t size) {
+	auto entry_it = std::lower_bound(this->BlockPoolEntry.begin(), this->BlockPoolEntry.end(), size, [](const auto& p, const auto& val){ return p.first < val; });
+	if (entry_it == this->BlockPoolEntry.end() || size != entry_it->first) {
+		//no entry exists, create one
+		auto new_entry = this->BlockPool.emplace(this->BlockPool.end(), STPMemoryBlock());
+		this->BlockPoolEntry.emplace(entry_it, make_pair(size, new_entry));
+		return *new_entry;
+	}
+	//entry found
+	return *entry_it->second;
+}
+
+template<STPMemoryPoolType T>
 void* STPMemoryPool<T>::request(size_t size) {
 	if (size == 0ull) {
 		throw STPException::STPBadNumericRange("The memory size should be a position integer");
@@ -57,7 +73,7 @@ void* STPMemoryPool<T>::request(size_t size) {
 	{
 		unique_lock<mutex> lock(this->PoolLock);
 		//try to find the memory pool with this size
-		STPMemoryUnitPool& pool = this->Collection[size];
+		STPMemoryBlock& pool = this->getBlock(size);
 		if (pool.empty()) {
 			//no memory in it, new allocation
 			//need to allocate memory for the header
@@ -86,7 +102,7 @@ void STPMemoryPool<T>::release(void* memory) {
 	{
 		unique_lock<mutex> lock(this->PoolLock);
 		//put it into the collection
-		STPMemoryUnitPool& pool = this->Collection[size];
+		STPMemoryBlock& pool = this->getBlock(size);
 		//offset the memory so it points to the header
 		pool.emplace(static_cast<void*>(raw_memory - STPMemoryPool::HEADER_SIZE));
 	}

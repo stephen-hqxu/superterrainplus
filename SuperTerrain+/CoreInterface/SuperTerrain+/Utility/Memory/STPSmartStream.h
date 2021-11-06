@@ -72,7 +72,7 @@ namespace SuperTerrainPlus {
 		 * @brief Retrieve the underlying managed CUDA stream
 		 * @return The managed CUDA stream
 		*/
-		cudaStream_t operator*() const;
+		cudaStream_t operator*() const noexcept;
 
 	};
 

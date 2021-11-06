@@ -11,4 +11,5 @@ add_library(${STP_ALGORITHM_DEVICE_ENGINE} STATIC
 Device/STPKernelMath.cu
 Device/STPSimplexNoise.cu
 Device/STPSingleHistogramWrapper.cu
+Device/STPTextureSplatRuleWrapper.cu
 )

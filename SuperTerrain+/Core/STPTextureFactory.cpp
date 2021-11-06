@@ -172,8 +172,8 @@ STPSmartDeviceMemory::STPDeviceMemory<T[]> STPTextureFactory::copyToDevice(const
 	return device;
 }
 
-STPTextureFactory::STPSplatDatabase STPTextureFactory::getSplatDatabase() const {
-	return STPSplatDatabase{
+STPTextureInformation::STPSplatRuleDatabase STPTextureFactory::getSplatDatabase() const {
+	return STPTextureInformation::STPSplatRuleDatabase{
 		this->SplatLookup_d.get(),
 		static_cast<unsigned int>(this->SplatLookupCount),
 		this->SplatRegistry_d.get(),
