@@ -127,6 +127,7 @@ void STPChunkManager::prepareSplatmap(const STPRenderingBufferMemory& buffer, co
 	tex_desc.addressMode[0] = cudaAddressModeClamp;
 	tex_desc.addressMode[1] = cudaAddressModeClamp;
 	tex_desc.addressMode[2] = cudaAddressModeClamp;
+	tex_desc.normalizedCoords = 1;
 
 	//biomemap
 	res_desc.res.array.array = buffer.Biomemap;
@@ -205,15 +206,16 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunkStatus& loading_chunks) {
 				num_chunkLoaded++;
 				//mark updated rendering buffer
 				//we need to use the chunk normalised coordinate to get the splatmap offset, splatmap offset needs to be consistent with the heightmap and biomemap
-				updated_chunk.emplace_back(STPDiversity::STPTextureFactory::STPLocalChunkInformation{
-					i,
-					STPChunk::calcChunkMapOffset(
+				const vec2 offset = STPChunk::calcChunkMapOffset(
 					chunkPos,
 					chunk_setting.ChunkSize,
 					chunk_setting.MapSize,
 					chunk_setting.MapOffset,
-					chunk_setting.ChunkScaling)
-				});
+					chunk_setting.ChunkScaling);
+				//local chunk coordinate
+				const uvec2 local_coord = STPChunk::getLocalChunkCoordinate(i, chunk_setting.RenderedChunk);
+				updated_chunk.emplace_back(STPDiversity::STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation
+					{ local_coord.x, local_coord.y, offset.x, offset.y });
 			}
 		}
 		if (!updated_chunk.empty()) {

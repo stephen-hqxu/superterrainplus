@@ -37,6 +37,7 @@
 #include "STPSmoothScaleLayer.h"
 
 using namespace STPDemo;
+using namespace SuperTerrainPlus::STPDiversity;
 
 using glm::uvec2;
 
@@ -47,8 +48,7 @@ STPLayerChainBuilder::STPLayerChainBuilder(uvec2 dimension, Seed global) : Globa
 
 }
 
-SuperTerrainPlus::STPDiversity::STPLayerManager* STPLayerChainBuilder::supply() const {
-	using namespace SuperTerrainPlus::STPDiversity;
+STPLayerManager* STPLayerChainBuilder::supply() const {
 	//create a new manager, don't worry about deletion because our engine will manage it pretty well
 	STPLayerManager* chain = new STPLayerManager();
 	STPLayer* base;

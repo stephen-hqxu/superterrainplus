@@ -115,6 +115,32 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		};
 
+		/**
+		 * @brief Contains information for generating splatmap in device kernel
+		*/
+		struct STPSplatGeneratorInformation {
+		public:
+
+			/**
+			 * @brief Stores information about rendered local chunks
+			*/
+			struct STPLocalChunkInformation {
+			public:
+
+				//local chunk coordinate needs to be generated with splatmap.
+				unsigned int LocalChunkCoordinateX, LocalChunkCoordinateY;
+				//local chunk offset of each map in for the current world coordinate
+				float ChunkMapOffsetX, ChunkMapOffsetY;
+
+			};
+			
+			//An array of local chunk information to chunk requesting to generate splatmap, device memory
+			STPLocalChunkInformation* RequestingLocalInfo;
+			//The number of local chunk needs to be generated with splatmap
+			unsigned int LocalCount;
+
+		};
+
 	};
 }
 #endif//_STP_TEXTURE_INFORMATION_HPP_

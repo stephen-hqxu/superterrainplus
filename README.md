@@ -9,7 +9,6 @@
 	</br>
 	<img src="https://img.shields.io/badge/CMake_3-064F8C?style=flat&logo=cmake&logoColor=white" />
 	<img src="https://img.shields.io/badge/Visual_Studio_2019-5C2D91?style=flat&logo=visual%20studio&logoColor=white" />
-	<img src="https://img.shields.io/badge/Git-F05032?style=flat&logo=git&logoColor=white" />
 </p>
 
 ## :eyes: Overview
@@ -30,28 +29,25 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 - [x] Tile-based infinite chunk
 - [x] Improved simplex noise algorithm
 - [x] Hardware instancing and tessellation
-- [x] Dynamic Level-of-Detail
+- [x] Continuous Level-of-Detail
 - [x] Concurrent rendering and generation
 - [x] Particle-based free-slip hydraulic erosion
-- [x] Selective edge copy from rendering buffer
+- [x] ~~Selective edge copy from rendering buffer~~
 - [x] Programmable generator pipeline stage
 - [x] Static-compiled pipeline stage
 - [x] Runtime-compiled pipeline stage
 - [x] Biome generation with classic Minecraft scaling algorithm
-- [x] Different terrain shape based on generated biome
-- [ ] Altitude, gradient and biome dependent texture splating
-- [ ] Biome feature generation
-- [ ] Weather effect
+- [x] Multi-biome heightfield generation with smooth transition
+- [ ] Rule-based biome-dependent terrain texture splatting with smooth transition
+- [ ] River and lake generation
+- [ ] Weather and seasonal effect
 - [ ] Real-time raster-ray tracing hybrid rendering
 
-### Procedural entity geneartion
+### Procedural geometry generation
 
-- [ ] Volumetric cloud rendering
-- [ ] Procedural foilage generation and placement
-
-### Procedural 3D (volumetric) infinite terrain
-
-No plan, yet.
+- [ ] Animated geometric meadow rendering
+- [ ] Procedural parameter-based tree generation
+- [ ] Volumetric clound rendering
 
 ## :bricks: Middleware
 
@@ -134,7 +130,15 @@ Those are some third-party libraries used by this project, we always make sure t
 	<img src="https://img.shields.io/badge/Windows_10-0078D6?style=flat&logo=windows&logoColor=white" />
 </p>
 
-### :gear: Installation
+**OpenGL extensions**
+
+Your GPU must support the following OpenGL extensions:
+
+- All extensions from OpenGL 4.6 core profile specification
+- GL_ARB_bindless_texture
+- GL_ARB_shading_language_include
+
+### :gear: How to build
 
 1. Master branch is not guaranteed to be stable, so make sure you have grabbed the latest stable source code from [**Releases**](https://github.com/stephen-hqxu/superterrainplus/releases) :point_left: :grinning:
 
@@ -171,11 +175,13 @@ Executables:
 - `SuperDemo+` if demo build is enabled
 - `SuperTest+` if test build is enabled
 
-## :world_map: Road Map
+## :world_map: Project Management
 
-### [Project Board](https://github.com/stephen-hqxu/superterrainplus/projects)
+[Project Roadmap](https://github.com/stephen-hqxu/superterrainplus/projects)
 
-### [Release Note](https://github.com/stephen-hqxu/superterrainplus/releases)
+[Release Note](https://github.com/stephen-hqxu/superterrainplus/releases)
+
+[Dissertation](https://github.com/stephen-hqxu/superterrainplus/tree/master/Report)
 
 ## :seedling: Contribution
 

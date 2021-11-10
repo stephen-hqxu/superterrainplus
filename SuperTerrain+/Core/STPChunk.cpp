@@ -74,7 +74,7 @@ const uvec2& STPChunk::getSize() const {
 
 #define ASSERT_POSITION_SCALE(S) \
 if(S <= 0.0f) { \
-	throw STPException::STPBadNumericRange("Scale should be a positive floating point number"); \
+	throw STPException::STPBadNumericRange("Scale should be a positive floating point number."); \
 }
 
 vec2 STPChunk::getChunkPosition(vec3 cameraPos, uvec2 chunkSize, float scaling) {
@@ -87,6 +87,11 @@ vec2 STPChunk::getChunkPosition(vec3 cameraPos, uvec2 chunkSize, float scaling) 
 vec2 STPChunk::getChunkCoordinate(vec2 chunkPos, uvec2 chunkSize, float scaling) {
 	ASSERT_POSITION_SCALE(scaling);
 	return chunkPos / (static_cast<vec2>(chunkSize) * scaling);
+}
+
+uvec2 STPChunk::getLocalChunkCoordinate(unsigned int chunkID, uvec2 chunkRange) {
+	//checking for invalid chunkID is relatively expensive, so we don't...
+	return uvec2(chunkID % chunkRange.x, chunkID / chunkRange.y);
 }
 
 vec2 STPChunk::calcChunkMapOffset(vec2 chunkPos, uvec2 chunkSize, uvec2 mapSize, vec2 mapOffset, float scaling) {
@@ -116,7 +121,7 @@ STPChunk::STPChunkPositionCache STPChunk::getRegion(vec2 centerPos, uvec2 chunkS
 		//The latter one refers to the world coordinate
 
 		//Basically it converts 1D chunk ID to 2D local chunk position, btw chunk position must be a positive integer
-		const uvec2 local_chunk_offset = uvec2(i % regionSize.x, i / regionSize.y);
+		const uvec2 local_chunk_offset = STPChunk::getLocalChunkCoordinate(i, regionSize);
 		//Then convert local to world coordinate
 		//arranged from top-left to bottom right
 		results.emplace_back(STPChunk::offsetChunk(base_position, chunkSize, local_chunk_offset, scaling));

@@ -1,5 +1,4 @@
 #include "STPBiomefieldGenerator.h"
-#include <STPAlgorithmDeviceInfoDebug.h>
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
@@ -9,11 +8,15 @@
 //System
 #include <iostream>
 
+//GLM
+#include <glm/gtc/type_ptr.hpp>
+
 using namespace STPDemo;
 using namespace SuperTerrainPlus::STPEnvironment;
 
 using glm::uvec2;
 using glm::vec2;
+using glm::value_ptr;
 
 using std::string;
 using std::unique_lock;
@@ -21,15 +24,16 @@ using std::move;
 using std::mutex;
 using std::to_string;
 
+using std::cout;
+using std::cerr;
+using std::endl;
+
 //File name of the generator script
-constexpr static char GeneratorFilename[] = "./STPMultiHeightGenerator.rtc";
+constexpr static char GeneratorFilename[] = "./Script/STPMultiHeightGenerator.cu";
 constexpr static char BiomePropertyFilename[] = "./STPBiomeProperty.hpp";
-const static string device_include = "-I " + string(SuperTerrainPlus::SuperAlgorithmPlus_DeviceInclude),
-core_include = "-I " + string(SuperTerrainPlus::SuperTerrainPlus_CoreInclude);
 
 STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_setting, uvec2 dimension, unsigned int interpolation_radius)
-	: STPDiversityGenerator(), STPRuntimeCompilable(), Noise_Setting(simplex_setting), MapSize(dimension), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
-	STPcudaCheckErr(cuCtxGetCurrent(&this->cudaCtx));
+	: STPDiversityGenerator(), STPCommonCompiler(), Noise_Setting(simplex_setting), MapSize(dimension), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
 	//init our device generator
 	//our heightfield setting only available in OCEAN biome for now
 	this->initGenerator();
@@ -57,78 +61,44 @@ void STPBiomefieldGenerator::initGenerator() {
 	const string biomeprop_hdr = this->readSource(BiomePropertyFilename);
 	//attach biome property
 	this->attachHeader("STPBiomeProperty", biomeprop_hdr);
-	//attach device algorithm library
-	this->attachArchive("SuperAlgorithm+Device", SuperTerrainPlus::SuperAlgorithmPlus_DeviceLibrary);
-	//attach source code
-	STPRuntimeCompilable::STPSourceInformation multiheightfield_info;
+	//attach source code and load up default compiler options, it returns a copy
+	STPRuntimeCompilable::STPSourceInformation multiheightfield_info = this->getCompilerOptions();
+	//we only need to adjust options that are unique to different sources
 	multiheightfield_info.NameExpression
 		//global function
 		["generateMultiBiomeHeightmap"]
-	//constant
-	["BiomeTable"]
-	["Permutation"]
-	["Dimension"]
-	["HalfDimension"];
-	multiheightfield_info.Option
-		["-std=c++17"]
-	["-fmad=false"]
-	["-arch=compute_75"]
-	["-rdc=true"]
-#ifdef _DEBUG
-	["-G"]
-	["-lineinfo"]
-#endif
-	["-maxrregcount=80"]
-	//include path
-	[core_include.c_str()]
-	[device_include.c_str()];
+		//constant
+		["BiomeTable"]
+		["Permutation"]
+		["Dimension"]
+		["HalfDimension"];
+	//options are all set
 	multiheightfield_info.ExternalHeader
 		["STPBiomeProperty"];
 	try {
 		const string log = this->compileSource("STPMultiHeightGenerator", multiheightfield_source, multiheightfield_info);
-		std::cout << log << std::endl;
+		if (!log.empty()) {
+			cout << log << endl;
+		}
 	}
 	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
-		std::cerr << error.what() << std::endl;
-		exit(-1);
+		cerr << error.what() << endl;
+		std::terminate();
 	}
 	//link
 	//linker log output
-	constexpr unsigned int LinkerLogSize = 1024u;
-	char linker_info_log[LinkerLogSize], linker_error_log[LinkerLogSize];
-	char module_info_log[LinkerLogSize], module_error_log[LinkerLogSize];
-	STPRuntimeCompilable::STPLinkerInformation link_info;
-	link_info.LinkerOption
-	(CU_JIT_INFO_LOG_BUFFER, linker_info_log)
-		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)LinkerLogSize)
-		(CU_JIT_ERROR_LOG_BUFFER, linker_error_log)
-		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)LinkerLogSize)
-#ifdef _DEBUG
-		//if debug has turned on, optimisation must be 0 or linker will be crying...
-		(CU_JIT_OPTIMIZATION_LEVEL, (void*)0u)
-#else
-		(CU_JIT_OPTIMIZATION_LEVEL, (void*)3u)
-#endif
-		(CU_JIT_LOG_VERBOSE, (void*)1);
-	//no need to generate debug info anymore since our library and runtime script all contain that
-	link_info.ModuleOption
-#ifdef _DEBUG
-	(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
-#endif
-		(CU_JIT_INFO_LOG_BUFFER, module_info_log)
-		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)LinkerLogSize)
-		(CU_JIT_ERROR_LOG_BUFFER, module_error_log)
-		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)LinkerLogSize);
+	STPCommonCompiler::STPCompilerLog log;
+	STPRuntimeCompilable::STPLinkerInformation link_info = this->getLinkerOptions(log);
 	try {
 		this->linkProgram(link_info, CU_JIT_INPUT_PTX);
-		std::cout << linker_info_log << std::endl;
-		std::cout << module_info_log << std::endl;
+		cout << log.linker_info_log << endl;
+		cout << log.module_info_log << endl;
 	}
-	catch (const SuperTerrainPlus::STPException::STPCUDAError& e) {
-		std::cerr << e.what() << std::endl;
-		std::cerr << linker_error_log << std::endl;
-		std::cerr << module_error_log << std::endl;
-		exit(-1);
+	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
+		cerr << error.what() << std::endl;
+		cerr << log.linker_error_log << endl;
+		cerr << log.module_error_log << endl;
+		std::terminate();
 	}
 
 	//global pointers
@@ -143,9 +113,9 @@ void STPBiomefieldGenerator::initGenerator() {
 	STPcudaCheckErr(cuModuleGetGlobal(&half_dimension, &half_dimensionSize, program, name.at("HalfDimension")));
 	STPcudaCheckErr(cuModuleGetGlobal(&permutation, &permutationSize, program, name.at("Permutation")));
 	//copy variables
-	const float2 halfSize = make_float2(this->MapSize.x * 0.5f, this->MapSize.y * 0.5f);
-	STPcudaCheckErr(cuMemcpyHtoD(dimension, &this->MapSize, dimensionSize));
-	STPcudaCheckErr(cuMemcpyHtoD(half_dimension, &halfSize, half_dimensionSize));
+	const vec2 halfSize = static_cast<vec2>(this->MapSize) * 0.5f;
+	STPcudaCheckErr(cuMemcpyHtoD(dimension, value_ptr(this->MapSize), dimensionSize));
+	STPcudaCheckErr(cuMemcpyHtoD(half_dimension, value_ptr(halfSize), half_dimensionSize));
 	//note that we are copying permutation to device, the underlying pointers are managed by this class
 	STPcudaCheckErr(cuMemcpyHtoD(permutation, &this->Simplex_Permutation(), permutationSize));
 
@@ -260,9 +230,13 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	float2 gpu_offset = make_float2(offset.x, offset.y);
 	size_t bufferSize = 32ull;
 	unsigned char buffer[32];
-	memcpy(buffer, &heightmap, sizeof(heightmap));
-	memcpy(buffer + 8, &histogram_d, sizeof(histogram_d));
-	memcpy(buffer + 24, &gpu_offset, sizeof(gpu_offset));
+
+	unsigned char* current_buffer = buffer;
+	memcpy(current_buffer, &heightmap, sizeof(heightmap));
+	current_buffer += sizeof(heightmap);
+	memcpy(current_buffer, &histogram_d, sizeof(histogram_d));
+	current_buffer += sizeof(histogram_d);
+	memcpy(current_buffer, &gpu_offset, sizeof(gpu_offset));
 
 	void* config[] = {
 		CU_LAUNCH_PARAM_BUFFER_POINTER, buffer,

@@ -32,42 +32,16 @@ namespace SuperTerrainPlus::STPDiversity {
 		//The dimension of terrain map in one chunk
 		const glm::uvec2 MapDimension;
 		//The total number of chunk being rendered
+		const glm::uvec2 RenderedChunk;
 		const unsigned int RenderedChunkCount;
 
-		/**
-		 * @brief STPLocalChunkInformation stores information about rendered local chunks
-		*/
-		struct STPLocalChunkInformation {
-		public:
-
-			//local chunk ID needs to be generated with splatmap.
-			unsigned int LocalChunkID;
-			//local chunk offset in world coordinate
-			glm::vec2 ChunkWorldOffset;
-
-		};
-
 		//An array of chunk requesting for splatmap generation
-		typedef std::vector<STPLocalChunkInformation> STPRequestingChunkInfo;
-
-	protected:
-
-		/**
-		 * @brief STPSplatInformation contains information for generating splatmap in device kernel
-		*/
-		struct STPSplatInformation {
-		public:
-
-			//An array of local chunk information to chunk requesting to generate splatmap, device memory
-			STPLocalChunkInformation* RequestingLocalInfo;
-			unsigned int LocalCount;
-
-		};
+		typedef std::vector<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation> STPRequestingChunkInfo;
 
 	private:
 
 		//stores local chunk information
-		STPSmartDeviceMemory::STPDeviceMemory<STPLocalChunkInformation[]> LocalChunkInfo;
+		STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation[]> LocalChunkInfo;
 
 		//A collection of all texture data
 		std::vector<STPOpenGL::STPuint> Texture;
@@ -117,7 +91,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * Moreover information about chunks such as map dimension are available in the base class.
 		 * @param stream The kernel stream generation work will be sent to.
 		*/
-		virtual void splat(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t, const STPSplatInformation&, cudaStream_t) const = 0;
+		virtual void splat(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t, const STPTextureInformation::STPSplatGeneratorInformation&, cudaStream_t) const = 0;
 
 	protected:
 

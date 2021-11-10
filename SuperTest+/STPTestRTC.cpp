@@ -149,7 +149,7 @@ protected:
 			(CU_JIT_ERROR_LOG_BUFFER, linker_error)
 			(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize);
 		link_info.getDataOption(RTCTester::SourceName)
-			(CU_JIT_MAX_REGISTERS, (void*)(uintptr_t)72u);
+			(CU_JIT_MAX_REGISTERS, (void*)72u);
 		link_info.ModuleOption
 		(CU_JIT_INFO_LOG_BUFFER, module_info)
 			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize)

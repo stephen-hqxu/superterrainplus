@@ -101,6 +101,15 @@ namespace SuperTerrainPlus {
 		static glm::vec2 getChunkCoordinate(glm::vec2, glm::uvec2, float = 1.0f);
 
 		/**
+		 * @brief Convert local chunk index to local chunk coordinate
+		 * @param chunkID The local chunk ID, starting from top-left corner as 0.
+		 * @param chunkRange The number of chunk in x and z direction
+		 * @return The local chunk coordinate, starting from top-left corner as (0,0).
+		 * If chunkID is greater than (chunkRange.x * chunkRange.y - 1u), returned result is undefined.
+		*/
+		static glm::uvec2 getLocalChunkCoordinate(unsigned int, glm::uvec2);
+
+		/**
 		 * @brief Calculate the terrain map offset for a particular chunk, such that each sucessive map can seamlessly connect to the neighbour chunks.
 		 * @param chunkPos The current chunk position (x,z) in world coordinate.
 		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x,z) direction

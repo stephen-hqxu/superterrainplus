@@ -2,6 +2,7 @@
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
 //Import implementation
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
@@ -29,27 +30,36 @@ using glm::uvec2;
 #define TEXTYPE_VALUE(TYPE) static_cast<TEXTYPE_TYPE>(TYPE)
 
 STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& database_view, const STPEnvironment::STPChunkSetting& terrain_chunk) :
-	MapDimension(terrain_chunk.MapSize), RenderedChunkCount(terrain_chunk.RenderedChunk.x * terrain_chunk.RenderedChunk.y),
-	LocalChunkInfo(STPSmartDeviceMemory::makeDevice<STPLocalChunkInformation[]>(RenderedChunkCount)) {
+	MapDimension(terrain_chunk.MapSize), RenderedChunk(terrain_chunk.RenderedChunk), RenderedChunkCount(terrain_chunk.RenderedChunk.x * terrain_chunk.RenderedChunk.y),
+	LocalChunkInfo(STPSmartDeviceMemory::makeDevice<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation[]>(RenderedChunkCount)) {
 	//temporary cache
 	STPIDConverter<STPTextureInformation::STPTextureID> textureID_converter;
 	STPIDConverter<STPTextureInformation::STPTextureGroupID> groupID_converter;
 
+	typedef STPTextureDatabase::STPDatabaseView DbView;
+	//get all the data
+	const DbView::STPGroupRecord group_rec = database_view.getValidGroup();
+	const DbView::STPTextureRecord texture_rec = database_view.getValidTexture();
+	const DbView::STPMapRecord texture_map_rec = database_view.getValidMap();
+	const DbView::STPSampleRecord sample_rec = database_view.getValidSample();
+	const DbView::STPAltitudeRecord altitude_rec = database_view.getAltitudes();
+	const DbView::STPGradientRecord gradient_rec = database_view.getGradients();
+	//checking if data are valid
+	if (group_rec.empty() || texture_rec.empty() || texture_map_rec.empty() || sample_rec.empty()) {
+		//sample not empty implies we have at least one splat rule of any
+		throw STPException::STPMemoryError("Database contains empty thus invalid data and/or rules.");
+	}
+
 	//we build the data structure that holds all texture in groups first
 	{
-		//get the data
-		const STPTextureDatabase::STPDatabaseView::STPGroupRecord group = database_view.getValidGroup();
-		const STPTextureDatabase::STPDatabaseView::STPTextureRecord texture = database_view.getValidTexture();
-		const STPTextureDatabase::STPDatabaseView::STPMapRecord texture_map = database_view.getValidMap();
-
 		//this is the total number of layered texture we will have
-		this->Texture.resize(group.size());
+		this->Texture.resize(group_rec.size());
 		glCreateTextures(GL_TEXTURE_2D_ARRAY, this->Texture.size(), this->Texture.data());
 		//loop through all groups
 		//we can also iterate through the GL texture array at the same time since they have the same dimension
-		groupID_converter.rehash(group.size());
-		for (auto [group_it, gl_texture_it, group_index] = make_tuple(group.cbegin(), this->Texture.cbegin(), 0u);
-			group_it != group.cend() && gl_texture_it != this->Texture.cend(); group_it++, gl_texture_it++, group_index++) {
+		groupID_converter.rehash(group_rec.size());
+		for (auto [group_it, gl_texture_it, group_index] = make_tuple(group_rec.cbegin(), this->Texture.cbegin(), 0u);
+			group_it != group_rec.cend() && gl_texture_it != this->Texture.cend(); group_it++, gl_texture_it++, group_index++) {
 			const auto& [group_id, member_count, group_props] = *group_it;
 
 			//allocate memory for each layer
@@ -61,18 +71,18 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 
 		//now we build the texture ID to index converter
 		//loop through all texture collection
-		textureID_converter.rehash(texture.size());
-		for (auto [texture_it, texture_index] = make_pair(texture.cbegin(), 0u); texture_it != texture.cend(); texture_it++, texture_index++) {
+		textureID_converter.rehash(texture_rec.size());
+		for (auto [texture_it, texture_index] = make_pair(texture_rec.cbegin(), 0u); texture_it != texture_rec.cend(); texture_it++, texture_index++) {
 			textureID_converter.emplace(*texture_it, texture_index);
 		}
 
 		//each texture ID contains some number of type as stride, if type is not use we set the index to 
-		this->TextureRegion.reserve(texture_map.size());
+		this->TextureRegion.reserve(texture_map_rec.size());
 		this->TextureRegionLookup.resize(database_view.Database.textureSize() * TEXTYPE_VALUE(STPTextureType::TypeCount), numeric_limits<unsigned int>::max());
 		//loop through all texture data
 		STPTextureInformation::STPTextureGroupID prev_group = numeric_limits<STPTextureInformation::STPTextureGroupID>::max();
 		unsigned int layer_idx = 0u;
-		for (const auto [group_id, texture_id, type, img] : texture_map) {
+		for (const auto [group_id, texture_id, type, img] : texture_map_rec) {
 			//we know texture data has group index sorted in ascending order, the same as the group array
 			//texture data is basically an "expanded" group array, they aligned in the same order
 			if (prev_group != group_id) {
@@ -83,7 +93,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			const unsigned int group_idx = groupID_converter[group_id],
 				texture_idx = textureID_converter[texture_id];
 			const TEXTYPE_TYPE type_idx = TEXTYPE_VALUE(type);
-			const STPTextureDatabase::STPTextureDescription& desc = std::get<2>(group[group_idx]);
+			const STPTextureDatabase::STPTextureDescription& desc = std::get<2>(group_rec[group_idx]);
 			const uvec2 dimension = desc.Dimension;
 
 			//populate memory for each layer
@@ -102,21 +112,15 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 	{
 		vector<Sample> spalt_lookup;
 		vector<STPTextureInformation::STPSplatRegistry> splat_reg;
-		//get all data
-		const STPTextureDatabase::STPDatabaseView::STPSampleRecord sample = database_view.getValidSample();
-		const STPTextureDatabase::STPDatabaseView::STPAltitudeRecord altitude = database_view.getAltitudes();
-		const STPTextureDatabase::STPDatabaseView::STPGradientRecord gradient = database_view.getGradients();
 
 		//loop through sample used
-		spalt_lookup.reserve(sample.size());
-		splat_reg.resize(sample.size());
+		spalt_lookup.reserve(sample_rec.size());
+		splat_reg.resize(sample_rec.size());
 		//index counter
 		unsigned int alt_acc = 0u, gra_acc = 0u;
-		for (auto [sample_it, sample_index] = make_pair(sample.cbegin(), 0u); sample_it != sample.cend(); sample_it++, sample_index++) {
+		for (auto [sample_it, sample_index] = make_pair(sample_rec.cbegin(), 0u); sample_it != sample_rec.cend(); sample_it++, sample_index++) {
 			//our sample is sorted in asc order, and all splat tables are "expanded" version of sorted samples
 			const auto [sample_id, alt_count, gra_count] = *sample_it;
-
-			//build splat data table
 
 			//build lookup table
 			spalt_lookup.emplace_back(sample_id);
@@ -132,8 +136,8 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 		}
 
 		//build the splat texture and replace texture ID with index to the texture database
-		const vector<STPTextureInformation::STPAltitudeNode> alt_reg = STPTextureFactory::convertSplatID(altitude, textureID_converter);
-		const vector<STPTextureInformation::STPGradientNode> gra_reg = STPTextureFactory::convertSplatID(gradient, textureID_converter);
+		const vector<STPTextureInformation::STPAltitudeNode> alt_reg = STPTextureFactory::convertSplatID(altitude_rec, textureID_converter);
+		const vector<STPTextureInformation::STPGradientNode> gra_reg = STPTextureFactory::convertSplatID(gradient_rec, textureID_converter);
 
 		//copy those memory to device
 		this->SplatLookup_d = move(STPTextureFactory::copyToDevice(spalt_lookup));
@@ -194,11 +198,12 @@ void STPTextureFactory::operator()(cudaTextureObject_t biomemap_tex, cudaTexture
 	}
 
 	//prepare the request
-	STPcudaCheckErr(cudaMemcpyAsync(this->LocalChunkInfo.get(), requesting_local.data(), requesting_local.size() * sizeof(STPLocalChunkInformation), cudaMemcpyHostToDevice, stream));
+	STPcudaCheckErr(cudaMemcpyAsync(this->LocalChunkInfo.get(), requesting_local.data(), 
+		requesting_local.size() * sizeof(STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation), cudaMemcpyHostToDevice, stream));
 	//the LocalChunkID array is overallocated, so we also need to send the size of actual data to device
 
 	//launch
-	this->splat(biomemap_tex, heightmap_tex, splatmap_surf, STPSplatInformation{
+	this->splat(biomemap_tex, heightmap_tex, splatmap_surf, STPTextureInformation::STPSplatGeneratorInformation{
 		this->LocalChunkInfo.get(),
 		static_cast<unsigned int>(requesting_local.size())
 	}, stream);

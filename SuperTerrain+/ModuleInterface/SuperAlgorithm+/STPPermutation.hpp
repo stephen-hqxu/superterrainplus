@@ -11,10 +11,10 @@ namespace SuperTerrainPlus::STPCompute {
 
 		//Generated permutation table, it will be shuffled by rng
 		//stored on device
-		unsigned char* Permutation = nullptr;
+		unsigned char* Permutation;
 
 		//Gradient table for simplex noise 2D, the modular of the offset will equal to 1.0
-		float* Gradient2D = nullptr;
+		float* Gradient2D;
 
 		//The size of the gradient table
 		unsigned int Gradient2DSize;

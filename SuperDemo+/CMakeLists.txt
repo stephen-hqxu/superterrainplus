@@ -13,6 +13,8 @@ add_executable(${STP_DEMO_PROGRAM}
 World/Layers/STPAllLayers.cpp
 World/Biomes/STPBiome.cpp
 World/Biomes/STPBiomefieldGenerator.cpp
+World/Biomes/STPCommonCompiler.cpp
+World/Biomes/STPSplatmapGenerator.cpp
 World/STPProcedural2DINF.cpp
 Helpers/STPStart.cpp
 Helpers/STPTerrainParaLoader.cpp
@@ -46,11 +48,10 @@ $<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>/GLSL
 
 # copy runtime generator script
 add_custom_command(
-TARGET ${STP_DEMO_PROGRAM} POST_BUILD
-COMMAND ${CMAKE_COMMAND} -E copy_if_different
-${CMAKE_CURRENT_SOURCE_DIR}/World/Biomes/STPMultiHeightGenerator.rtc
-${CMAKE_CURRENT_SOURCE_DIR}/World/Biomes/STPBiomeProperty.hpp
-$<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>
+TARGET ${STP_DEMO_PROGRAM} POST_BUILD      
+COMMAND ${CMAKE_COMMAND} -E copy_directory
+${CMAKE_CURRENT_SOURCE_DIR}/Script
+$<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>/Script
 )
 
 # copy resource

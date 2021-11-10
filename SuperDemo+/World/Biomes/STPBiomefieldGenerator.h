@@ -7,7 +7,7 @@
 #include <mutex>
 //Multi-biome Heightfield Generator
 #include <SuperTerrain+/World/Chunk/STPDiversityGenerator.hpp>
-#include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
+#include "STPCommonCompiler.h"
 #include <SuperAlgorithm+/STPPermutationGenerator.h>
 #include "STPBiomeSettings.hpp"
 //Biome Interpolation
@@ -24,7 +24,7 @@ namespace STPDemo {
 	 * It generates different heightfield based on biome settings.
 	 * Heightfield generator uses NVRTC
 	*/
-	class STPBiomefieldGenerator final : public SuperTerrainPlus::STPCompute::STPDiversityGenerator, private SuperTerrainPlus::STPCompute::STPRuntimeCompilable {
+	class STPBiomefieldGenerator final : public SuperTerrainPlus::STPCompute::STPDiversityGenerator, private STPCommonCompiler {
 	private:
 
 		//all parameters for the noise generator, stored on host, passing value to device
@@ -36,7 +36,6 @@ namespace STPDemo {
 		mutable std::mutex HistogramFilterLock;
 		mutable SuperTerrainPlus::STPCompute::STPSingleHistogramFilter biome_histogram;
 
-		CUcontext cudaCtx;
 		//The entry global function to generate the heightmap
 		CUfunction GeneratorEntry;
 		CUmemoryPool HistogramCacheDevice;

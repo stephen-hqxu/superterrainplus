@@ -1,3 +1,7 @@
+#ifndef __CUDACC_RTC__
+#error __FILE__ can only be compiled in NVRTC
+#endif//__CUDACC_RTC__
+
 //SuperAlgorithm+ Device library
 #include <STPSimplexNoise.cuh>
 #include <STPKernelMath.cuh>
@@ -13,7 +17,7 @@ __constant__ uint2 Dimension[1];
 __constant__ float2 HalfDimension[1];
 
 __constant__ STPDemo::STPBiomeProperty BiomeTable[2];
-__constant__ unsigned char Permutation[sizeof(STPPermutation)];
+__constant__ STPPermutation Permutation[1];
 
 /**
  * @brief Use pure simplex noise to sample a point fractally.
@@ -24,16 +28,14 @@ __constant__ unsigned char Permutation[sizeof(STPPermutation)];
 */
 __device__ float sampleSimplexNoise(uint2, const STPDemo::STPBiomeProperty&, float2);
 
+//--------------------- Definition --------------------------
+
 /**
  * @brief Generate our epic height map using simplex noise function within the CUDA kernel
  * @param height_storage - The pointer to a location where the heightmap will be stored
  * @param biomemap_histogram - The biomemap histogram to decide the weight of each biome in a pixel
  * @param offset - Controlling the offset on x, y directions
 */
-__global__ void generateMultiBiomeHeightmap(float*, STPSingleHistogram, float2);
-
-//--------------------- Definition --------------------------
-
 __global__ void generateMultiBiomeHeightmap(float* height_storage, STPSingleHistogram biomemap_histogram, float2 offset) {
 	//the current thread index, starting from top-left corner
 	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
@@ -59,9 +61,9 @@ __global__ void generateMultiBiomeHeightmap(float* height_storage, STPSingleHist
 	
 }
 
-__device__ float sampleSimplexNoise(uint2 coord, const STPDemo::STPBiomeProperty& parameter, float2 offset){
+__device__ float sampleSimplexNoise(uint2 coord, const STPDemo::STPBiomeProperty& parameter, float2 offset) {
 	//get simplex noise generator
-	const STPSimplexNoise Simplex(*reinterpret_cast<STPPermutation*>(Permutation));
+	const STPSimplexNoise Simplex(*Permutation);
 
 	float amplitude = 1.0f, frequency = 1.0f, noiseheight = 0.0f;
 	float min = 0.0f, max = 0.0f;//The min and max indicates the range of the multi-phased simplex function, not the range of the output texture
