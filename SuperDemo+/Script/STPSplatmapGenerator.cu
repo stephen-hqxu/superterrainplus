@@ -16,6 +16,16 @@ __constant__ uint2 MapDimension[1];
 __constant__ uint2 TotalBufferDimension[1];
 
 __constant__ STPTI::STPSplatRuleDatabase SplatDatabase[1];
+__constant__ float GradientBias[1];
+
+//A simple 2x2 Sobel kernel
+constexpr static unsigned int GradientSize = 4u;
+constexpr static int2 GradientKernel[GradientSize] = {
+	int2{ 0, -1 },//front, 0
+	int2{ 1, 0 },//right, 1
+	int2{ 0, 1 },//back, 2
+	int2{ -1, 0 }//left, 3
+};
 
 //--------------------- Definition --------------------------
 
@@ -41,14 +51,56 @@ __global__ void generateTextureSplatmap
 	const STPTI::STPSplatGeneratorInformation::STPLocalChunkInformation& local_info = splat_info.RequestingLocalInfo[z];
 
 	//coordinates are normalised
-	const uint2 SamplingPosition = uint2(
+	const uint2 SamplingPosition = make_uint2(
 		x + MapDimension->x * local_info.LocalChunkCoordinateX,
 		y + MapDimension->y * local_info.LocalChunkCoordinateY
 	);
-	const float2 UV = float2(
-		1.0f * SamplingPosition.x / TotalBufferDimension->x,
-		1.0f * SamplingPosition.y / TotalBufferDimension->y
+	const float2 unitUV = make_float2(
+		1.0f / (1.0f * TotalBufferDimension->x),
+		1.0f / (1.0f * TotalBufferDimension->y)
 	);
+	const float2 UV = make_float2(
+		1.0f * SamplingPosition.x * unitUV.x,
+		1.0f * SamplingPosition.y * unitUV.y
+	);
+
+	float cell[GradientSize];
+	//calculate heightmap gradient
+	for (unsigned int = 0u; i < GradientSize; i++) {
+		const int2& currentKernel = GradientKernel[i];
+		const float2 offsetUV = make_float2(
+			unitUV.x * currentKernel.x,
+			unitUV.y * currentKernel.y
+		);
+		const float2 SamplingUV = make_float2(
+			UV.x + offsetUV.x,
+			UV.y + offsetUV.y
+		);
+		//sample this heightmap value
+		cell[i] = tex2D<float>(heightmap_tex, SamplingUV.x, SamplingUV.y);
+	}
+
+	//calculate gradient using a very simple 2x2 filter, ranged [-1,1]
+	const float2 gradient = make_float2(
+		cell[3] - cell[1],
+		cell[0] - cell[2];
+	);
+	const float L2norm = gradient.x * gradient.x + (*GradientBias) * (*GradientBias) + gradient.y * gradient.y;
+	const float slopFactor = 1.0f - (*GradientBias * rsqrtf(L2norm));
+
 	//get information about the current position
 	const Sample biome = tex2D<Sample>(biomemap_tex, UV.x, UV.y);
+	const float height = tex2D<float>(heightmap_tex, UV.x, UV.y);
+	const STPTextureSplatRuleWrapper splatWrapper(SplatDatabase[0]);
+	//get regions, we define gradient region outweights altitude region if they overlap
+	//TODO: later we can add some simplex noise to the slopFactor and height value
+	unsigned int region = splatWrapper.gradientRegion(biome, slopFactor, height);
+	if (region == STPTextureSplatRuleWrapper::NoRegion) {
+		//no gradient region is being defined, switch to altitude region
+		region = splatWrapper.altitudeRegion(biome, height);
+		//we don't need to check for null altitude region, if there is none, there is none...
+	}
+	//write whatever region to the splatmap
+	//out-of-boundary write will be caught by CUDA (safely) and will crash the program with error
+	surf2Dwrite(region, splatmap_surf, SamplingPosition.x, SamplingPosition.y, cudaBoundaryModeTrap);
 }

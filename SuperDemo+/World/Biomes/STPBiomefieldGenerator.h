@@ -24,7 +24,7 @@ namespace STPDemo {
 	 * It generates different heightfield based on biome settings.
 	 * Heightfield generator uses NVRTC
 	*/
-	class STPBiomefieldGenerator final : public SuperTerrainPlus::STPCompute::STPDiversityGenerator, private STPCommonCompiler {
+	class STPBiomefieldGenerator final : public SuperTerrainPlus::STPCompute::STPDiversityGenerator {
 	private:
 
 		//all parameters for the noise generator, stored on host, passing value to device
@@ -36,6 +36,7 @@ namespace STPDemo {
 		mutable std::mutex HistogramFilterLock;
 		mutable SuperTerrainPlus::STPCompute::STPSingleHistogramFilter biome_histogram;
 
+		const STPCommonCompiler& KernelProgram;
 		//The entry global function to generate the heightmap
 		CUfunction GeneratorEntry;
 		CUmemoryPool HistogramCacheDevice;
@@ -61,12 +62,13 @@ namespace STPDemo {
 	public:
 
 		/**
-		 * @brief Init the demo biomefield generator
+		 * @brief Init the demo biomefield generator.
+		 * @param program The compiler that holds the program to the complete biomefield generator kernel
 		 * @param simplex_setting The settings for the simplex noise generator
 		 * @param dimension The size of the generated heightmap
 		 * @param interpolation_radius The radius for biome edge interpolation
 		*/
-		STPBiomefieldGenerator(SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&, glm::uvec2, unsigned int);
+		STPBiomefieldGenerator(const STPCommonCompiler&, SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&, glm::uvec2, unsigned int);
 
 		STPBiomefieldGenerator(const STPBiomefieldGenerator&) = delete;
 

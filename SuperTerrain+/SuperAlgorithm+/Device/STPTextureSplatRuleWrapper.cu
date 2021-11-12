@@ -33,7 +33,7 @@ __device__ const STPTI::STPSplatRegistry* STPTextureSplatRuleWrapper::getSplatRe
 	return this->SplatRule.SplatRegistry + registry_index;
 }
 
-__device__ STPTextureSplatRuleWrapper::STPRegionIndex STPTextureSplatRuleWrapper::altitudeRegion(Sample sample, float alt) const {
+__device__ unsigned int STPTextureSplatRuleWrapper::altitudeRegion(Sample sample, float alt) const {
 	//get the splat registry first
 	const STPTI::STPSplatRegistry* const reg = this->getSplatRegistry(sample);
 	if(reg == nullptr) {
@@ -56,7 +56,7 @@ __device__ STPTextureSplatRuleWrapper::STPRegionIndex STPTextureSplatRuleWrapper
 	return alt_it->Reference.RegionIndex;
 }
 
-__device__ STPTextureSplatRuleWrapper::STPRegionIndex STPTextureSplatRuleWrapper::gradientRegion
+__device__ unsigned int STPTextureSplatRuleWrapper::gradientRegion
 	(STPDiversity::Sample sample, float gra, float alt) const {
 	//get registry
 	const STPTI::STPSplatRegistry* const reg = this->getSplatRegistry(sample);

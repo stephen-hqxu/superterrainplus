@@ -5,13 +5,16 @@
 //Runtime Compiler
 #include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
 
+//System
+#include <string>
+
 namespace STPDemo {
 
 	/**
 	 * @brief STPCommonCompiler is a even-higher-level wrapper to runtime compilable framework which provides default compiler settings that can be 
 	 * shared across different translation units.
 	*/
-	class STPCommonCompiler : protected SuperTerrainPlus::STPCompute::STPRuntimeCompilable {
+	class STPCommonCompiler final : private SuperTerrainPlus::STPCompute::STPRuntimeCompilable {
 	private:
 
 		//Contains compiler options (only) for source codes, external headers and named expr are not set
@@ -19,7 +22,21 @@ namespace STPDemo {
 		//Contains linker options
 		STPRuntimeCompilable::STPLinkerInformation LinkInfo;
 
-	protected:
+		/**
+		 * @brief Compile source codes for biomefield generator
+		*/
+		void setupBiomefieldGenerator();
+
+		/**
+		 * @brief Compile source codes for splatmap generator
+		*/
+		void setupSplatmapGenerator();
+
+		/**
+		 * @brief Finish the program by linking all source codes into a complete program.
+		 * Any linking error will cause the program to terminate with error message printed to standard error stream.
+		*/
+		void finalise();
 
 		/**
 		 * @brief STPCompilerLog contains allocated memory for compiler and linker logs
@@ -34,12 +51,6 @@ namespace STPDemo {
 			char module_info_log[LogSize], module_error_log[LogSize];
 
 		};
-
-		/**
-		 * @brief Init STPCommonCompiler to its default state.
-		 * SuperAlgorithm+Device library will be linked automatically
-		*/
-		STPCommonCompiler();
 
 		/**
 		 * @brief Get common compiler options.
@@ -58,6 +69,12 @@ namespace STPDemo {
 
 	public:
 
+		/**
+		 * @brief Init STPCommonCompiler to its default state.
+		 * SuperAlgorithm+Device library will be linked automatically
+		*/
+		STPCommonCompiler();
+
 		STPCommonCompiler(const STPCommonCompiler&) = delete;
 
 		STPCommonCompiler(STPCommonCompiler&&) = delete;
@@ -67,6 +84,19 @@ namespace STPDemo {
 		STPCommonCompiler& operator=(STPCommonCompiler&&) = delete;
 
 		~STPCommonCompiler() = default;
+
+		/**
+		 * @brief Get the linked program
+		 * @return The module to the program
+		*/
+		CUmodule getProgram() const;
+
+		/**
+		 * @brief Get the dictionary which contains all lowered name for a particular source.
+		 * @param name The name of the source code.
+		 * @return The pointer to the source lowered name dictionary
+		*/
+		const STPRuntimeCompilable::STPLoweredName& getLoweredNameDictionary(const std::string&) const;
 
 	};
 

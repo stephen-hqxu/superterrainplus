@@ -4,25 +4,9 @@
 
 using namespace SuperTerrainPlus::STPCompute;
 
-constexpr static double csqrt(double x) {
-	assert(x >= 0);
-	if (x == 0) {
-		return 0;
-	}
-
-	//For small numbers small iteration is enough for a good approximation
-	constexpr unsigned char Iteration = 5u;
-
-	//Newton-Rhapson's method
-	double guess = x;
-	for (unsigned char i = 0u; i < Iteration; i++) {
-		guess -= (guess * guess - x) / (2 * guess);
-	}
-	return guess;
-}
-constexpr static __constant__ float F2 = static_cast<float>(0.5 * (csqrt(3.0) - 1.0));
-constexpr static __constant__ float G2 = static_cast<float>((3.0 - csqrt(3.0)) / 6.0);
-constexpr static __constant__ float H2 = static_cast<float>(-1.0 + 2.0 * G2);
+constexpr static float F2 = 0.3660254038;// 0.5 * (sqrt(3.0) - 1.0)
+constexpr static float G2 = 0.2113248654;// (3.0 - sqrt(3.0)) / 6.0
+constexpr static float H2 = -1.0 + 2.0 * G2;
 
 /**
  * @brief Perform 2D vector dot product

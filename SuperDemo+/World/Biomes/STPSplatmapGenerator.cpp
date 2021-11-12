@@ -13,9 +13,6 @@
 using namespace STPDemo;
 using namespace SuperTerrainPlus::STPDiversity;
 
-//File name of the generator script
-constexpr static char GeneratorFilename[] = "./Script/STPSplatmapGenerator.cu";
-
 using std::string;
 
 using std::cout;
@@ -27,57 +24,19 @@ using glm::uvec3;
 using glm::value_ptr;
 
 STPSplatmapGenerator::STPSplatmapGenerator
-	(const STPTextureDatabase::STPDatabaseView& database_view, const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting) :
-	STPTextureFactory(database_view, chunk_setting), STPCommonCompiler() {
+	(const STPCommonCompiler& program, const STPTextureDatabase::STPDatabaseView& database_view, const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting) :
+	STPTextureFactory(database_view, chunk_setting), KernelProgram(program) {
 	//compile source code
 	this->initGenerator();
 }
 
 void STPSplatmapGenerator::initGenerator() {
-	//read source code
-	const string splatmap_source = this->readSource(GeneratorFilename);
-	//load default compiler settings
-	STPCommonCompiler::STPSourceInformation source_info = this->getCompilerOptions();
-	source_info.NameExpression
-		["SplatDatabase"]
-		["MapDimension"]
-		["TotalBufferDimension"]
-		//global function
-		["generateTextureSplatmap"];
-	//compile
-	try {
-		const string log = this->compileSource("STPSplatmapGenerator", splatmap_source, source_info);
-		if (!log.empty()) {
-			cout << log << endl;
-		}
-	}
-	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
-		cerr << error.what() << endl;
-		std::terminate();
-	}
-
-	//link
-	//load default linker settings
-	STPCommonCompiler::STPCompilerLog log;
-	STPCommonCompiler::STPLinkerInformation linker_info = this->getLinkerOptions(log);
-	try {
-		this->linkProgram(linker_info, CU_JIT_INPUT_PTX);
-		cout << log.linker_info_log << endl;
-		cout << log.module_info_log << endl;
-	}
-	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
-		cerr << error.what() << std::endl;
-		cerr << log.linker_error_log << endl;
-		cerr << log.module_error_log << endl;
-		std::terminate();
-	}
-
 	//copy memory to the program
-	CUmodule program = this->getGeneratorModule();
+	CUmodule program = this->KernelProgram.getProgram();
 	CUdeviceptr splat_database, mapDim, totalmapDim;
 	size_t splat_databaseSize, mapDimSize, totalmapDimSize;
 	//get variable names
-	const auto& name = this->retrieveSourceLoweredName("STPSplatmapGenerator");
+	const auto& name = this->KernelProgram.getLoweredNameDictionary("STPSplatmapGenerator");
 	STPcudaCheckErr(cuModuleGetFunction(&this->SplatmapEntry, program, name.at("generateTextureSplatmap")));
 	STPcudaCheckErr(cuModuleGetGlobal(&splat_database, &splat_databaseSize, program, name.at("SplatDatabase")));
 	STPcudaCheckErr(cuModuleGetGlobal(&mapDim, &mapDimSize, program, name.at("MapDimension")));
@@ -86,6 +45,7 @@ void STPSplatmapGenerator::initGenerator() {
 	STPcudaCheckErr(cuMemcpyHtoD(mapDim, value_ptr(this->MapDimension), mapDimSize));
 	const uvec2 totalBufferSize = this->MapDimension * this->RenderedChunk;
 	STPcudaCheckErr(cuMemcpyHtoD(totalmapDim, value_ptr(totalBufferSize), totalmapDimSize));
+	//TODO: add spla-database and gradient bias
 }
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;

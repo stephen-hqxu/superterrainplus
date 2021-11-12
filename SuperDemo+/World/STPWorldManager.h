@@ -4,6 +4,8 @@
 
 //World
 #include "STPProcedural2DINF.h"
+//Compiler
+#include "./Biomes/STPCommonCompiler.h"
 
 namespace STPDemo {
 
@@ -11,6 +13,11 @@ namespace STPDemo {
 	 * @brief STPWorldManager is a high-level binding that allows user to generate and render any infinite procedural world within minimal efforts.
 	*/
 	class STPWorldManager {
+	public:
+
+		//A compiler contains all runtime scripts
+		const STPDemo::STPCommonCompiler SharedProgram;
+
 	private:
 
 		//Denote the linking status of the current world manager.

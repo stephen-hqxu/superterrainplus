@@ -1,12 +1,8 @@
 #include "STPBiomefieldGenerator.h"
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
 //Biome
 #include "STPBiomeRegistry.h"
-
-//System
-#include <iostream>
 
 //GLM
 #include <glm/gtc/type_ptr.hpp>
@@ -18,22 +14,12 @@ using glm::uvec2;
 using glm::vec2;
 using glm::value_ptr;
 
-using std::string;
 using std::unique_lock;
 using std::move;
 using std::mutex;
-using std::to_string;
 
-using std::cout;
-using std::cerr;
-using std::endl;
-
-//File name of the generator script
-constexpr static char GeneratorFilename[] = "./Script/STPMultiHeightGenerator.cu";
-constexpr static char BiomePropertyFilename[] = "./STPBiomeProperty.hpp";
-
-STPBiomefieldGenerator::STPBiomefieldGenerator(STPSimplexNoiseSetting& simplex_setting, uvec2 dimension, unsigned int interpolation_radius)
-	: STPDiversityGenerator(), STPCommonCompiler(), Noise_Setting(simplex_setting), MapSize(dimension), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
+STPBiomefieldGenerator::STPBiomefieldGenerator(const STPCommonCompiler& program, STPSimplexNoiseSetting& simplex_setting, uvec2 dimension, unsigned int interpolation_radius)
+	: STPDiversityGenerator(), KernelProgram(program), Noise_Setting(simplex_setting), MapSize(dimension), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
 	//init our device generator
 	//our heightfield setting only available in OCEAN biome for now
 	this->initGenerator();
@@ -56,57 +42,12 @@ STPBiomefieldGenerator::~STPBiomefieldGenerator() {
 }
 
 void STPBiomefieldGenerator::initGenerator() {
-	//read script
-	const string multiheightfield_source = this->readSource(GeneratorFilename);
-	const string biomeprop_hdr = this->readSource(BiomePropertyFilename);
-	//attach biome property
-	this->attachHeader("STPBiomeProperty", biomeprop_hdr);
-	//attach source code and load up default compiler options, it returns a copy
-	STPRuntimeCompilable::STPSourceInformation multiheightfield_info = this->getCompilerOptions();
-	//we only need to adjust options that are unique to different sources
-	multiheightfield_info.NameExpression
-		//global function
-		["generateMultiBiomeHeightmap"]
-		//constant
-		["BiomeTable"]
-		["Permutation"]
-		["Dimension"]
-		["HalfDimension"];
-	//options are all set
-	multiheightfield_info.ExternalHeader
-		["STPBiomeProperty"];
-	try {
-		const string log = this->compileSource("STPMultiHeightGenerator", multiheightfield_source, multiheightfield_info);
-		if (!log.empty()) {
-			cout << log << endl;
-		}
-	}
-	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
-		cerr << error.what() << endl;
-		std::terminate();
-	}
-	//link
-	//linker log output
-	STPCommonCompiler::STPCompilerLog log;
-	STPRuntimeCompilable::STPLinkerInformation link_info = this->getLinkerOptions(log);
-	try {
-		this->linkProgram(link_info, CU_JIT_INPUT_PTX);
-		cout << log.linker_info_log << endl;
-		cout << log.module_info_log << endl;
-	}
-	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
-		cerr << error.what() << std::endl;
-		cerr << log.linker_error_log << endl;
-		cerr << log.module_error_log << endl;
-		std::terminate();
-	}
-
 	//global pointers
-	CUmodule program = this->getGeneratorModule();
+	CUmodule program = this->KernelProgram.getProgram();
 	CUdeviceptr biome_prop, dimension, half_dimension, permutation;
 	size_t biome_propSize, dimensionSize, half_dimensionSize, permutationSize;
 	//get names and start copying
-	const auto& name = this->retrieveSourceLoweredName("STPMultiHeightGenerator");
+	const auto& name = this->KernelProgram.getLoweredNameDictionary("STPMultiHeightGenerator");
 	STPcudaCheckErr(cuModuleGetFunction(&this->GeneratorEntry, program, name.at("generateMultiBiomeHeightmap")));
 	STPcudaCheckErr(cuModuleGetGlobal(&biome_prop, &biome_propSize, program, name.at("BiomeTable")));
 	STPcudaCheckErr(cuModuleGetGlobal(&dimension, &dimensionSize, program, name.at("Dimension")));

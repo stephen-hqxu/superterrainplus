@@ -48,6 +48,8 @@ namespace SuperTerrainPlus::STPDiversity {
 		std::vector<STPTextureInformation::STPTextureDataLocation> TextureRegion;
 		//texture region lookup table, if region is not used equivalent -1 will be filled
 		std::vector<unsigned int> TextureRegionLookup;
+		//texture type being used
+		STPTextureDatabase::STPDatabaseView::STPTextureTypeRecord ValidType;
 
 		//Convert sample to index in spalt registry
 		STPSmartDeviceMemory::STPDeviceMemory<Sample[]> SplatLookup_d;

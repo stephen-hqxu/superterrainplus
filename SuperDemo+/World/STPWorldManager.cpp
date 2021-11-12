@@ -8,7 +8,7 @@ using std::make_unique;
 using namespace STPDemo;
 using namespace SuperTerrainPlus;
 
-STPWorldManager::STPWorldManager() {
+STPWorldManager::STPWorldManager() : SharedProgram() {
 	this->linkStatus = false;
 }
 

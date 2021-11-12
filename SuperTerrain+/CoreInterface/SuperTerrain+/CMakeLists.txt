@@ -24,6 +24,7 @@ Utility/Exception/STPDatabaseError.h
 Utility/Exception/STPDeadThreadPool.h
 Utility/Exception/STPInvalidArgument.h
 Utility/Exception/STPInvalidEnvironment.h
+Utility/Exception/STPInvalidSyntax.h
 Utility/Exception/STPMemoryError.h
 Utility/Exception/STPSerialisationError.h
 Utility/Exception/STPUnsupportedFunctionality.h
@@ -64,6 +65,7 @@ World/Diversity/STPSeedMixer.h
 # /World/Diversity/Texture
 World/Diversity/Texture/STPTextureDatabase.h
 World/Diversity/Texture/STPTextureDatabase.inl
+World/Diversity/Texture/STPTextureDefinitionLanguage.h
 World/Diversity/Texture/STPTextureFactory.h
 World/Diversity/Texture/STPTextureInformation.hpp
 World/Diversity/Texture/STPTextureType.hpp

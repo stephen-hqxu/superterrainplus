@@ -31,9 +31,11 @@ using glm::uvec2;
 
 STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& database_view, const STPEnvironment::STPChunkSetting& terrain_chunk) :
 	MapDimension(terrain_chunk.MapSize), RenderedChunk(terrain_chunk.RenderedChunk), RenderedChunkCount(terrain_chunk.RenderedChunk.x * terrain_chunk.RenderedChunk.y),
-	LocalChunkInfo(STPSmartDeviceMemory::makeDevice<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation[]>(RenderedChunkCount)) {
+	LocalChunkInfo(STPSmartDeviceMemory::makeDevice<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation[]>(RenderedChunkCount)), 
+	ValidType(database_view.getValidMapType()) {
 	//temporary cache
 	STPIDConverter<STPTextureInformation::STPTextureID> textureID_converter;
+	STPIDConverter<STPTextureType> textureType_converter;
 	STPIDConverter<STPTextureInformation::STPTextureGroupID> groupID_converter;
 
 	typedef STPTextureDatabase::STPDatabaseView DbView;
@@ -45,10 +47,11 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 	const DbView::STPAltitudeRecord altitude_rec = database_view.getAltitudes();
 	const DbView::STPGradientRecord gradient_rec = database_view.getGradients();
 	//checking if data are valid
-	if (group_rec.empty() || texture_rec.empty() || texture_map_rec.empty() || sample_rec.empty()) {
+	if (group_rec.empty() || texture_rec.empty() || texture_map_rec.empty() || this->ValidType.empty() || sample_rec.empty()) {
 		//sample not empty implies we have at least one splat rule of any
 		throw STPException::STPMemoryError("Database contains empty thus invalid data and/or rules.");
 	}
+	const size_t UsedTypeCount = this->ValidType.size();
 
 	//we build the data structure that holds all texture in groups first
 	{
@@ -76,9 +79,16 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			textureID_converter.emplace(*texture_it, texture_index);
 		}
 
+		//build texture type converter
+		//the purpose of the type converter is to eliminate unused type
+		textureType_converter.rehash(UsedTypeCount);
+		for (auto [type_it, type_index] = make_pair(this->ValidType.cbegin(), 0u); type_it != this->ValidType.cend(); type_it++, type_index++) {
+			textureType_converter.emplace(*type_it, type_index);
+		}
+
 		//each texture ID contains some number of type as stride, if type is not use we set the index to 
 		this->TextureRegion.reserve(texture_map_rec.size());
-		this->TextureRegionLookup.resize(database_view.Database.textureSize() * TEXTYPE_VALUE(STPTextureType::TypeCount), numeric_limits<unsigned int>::max());
+		this->TextureRegionLookup.resize(database_view.Database.textureSize() * UsedTypeCount, numeric_limits<unsigned int>::max());
 		//loop through all texture data
 		STPTextureInformation::STPTextureGroupID prev_group = numeric_limits<STPTextureInformation::STPTextureGroupID>::max();
 		unsigned int layer_idx = 0u;
@@ -90,9 +100,9 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 				prev_group = group_id;
 				layer_idx = 0u;
 			}
-			const unsigned int group_idx = groupID_converter[group_id],
-				texture_idx = textureID_converter[texture_id];
-			const TEXTYPE_TYPE type_idx = TEXTYPE_VALUE(type);
+			const unsigned int group_idx = groupID_converter.at(group_id),
+				texture_idx = textureID_converter.at(texture_id);
+			const TEXTYPE_TYPE type_idx = textureType_converter.at(type);
 			const STPTextureDatabase::STPTextureDescription& desc = std::get<2>(group_rec[group_idx]);
 			const uvec2 dimension = desc.Dimension;
 
@@ -103,7 +113,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			STPTextureInformation::STPTextureDataLocation& data_loc = this->TextureRegion.emplace_back(STPTextureInformation::STPTextureDataLocation());
 			data_loc.GroupIndex = group_idx;
 			data_loc.LayerIndex = layer_idx++;
-			this->TextureRegionLookup[texture_idx * TEXTYPE_VALUE(STPTextureType::TypeCount) + type_idx] =
+			this->TextureRegionLookup[texture_idx * UsedTypeCount + type_idx] =
 				static_cast<unsigned int>(this->TextureRegion.size()) - 1u;
 		}
 	}

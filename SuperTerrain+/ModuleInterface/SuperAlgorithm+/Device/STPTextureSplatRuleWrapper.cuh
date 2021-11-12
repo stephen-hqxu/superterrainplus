@@ -35,10 +35,8 @@ namespace SuperTerrainPlus::STPCompute {
 
 	public:
 	
-		//The index to the active rule region
-		typedef unsigned int STPRegionIndex;
 		//Denotes there is no active region for this rule
-		constexpr static STPRegionIndex NoRegion = std::numeric_limits<STPRegionIndex>::max();
+		constexpr static unsigned int NoRegion = std::numeric_limits<unsigned int>::max();
 
 		/**
 		 * @brief Initialise a texture splat rule wrapper
@@ -63,7 +61,7 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @return The region index, which is basically the index to the texture for this active region.
 		 * If no region available for this sample and rule, NoRegion will be returned
 		*/
-		__device__ STPRegionIndex altitudeRegion(STPDiversity::Sample, float) const;
+		__device__ unsigned int altitudeRegion(STPDiversity::Sample, float) const;
 
 		/**
 		 * @brief Get the active region for this sample and gradient
@@ -74,7 +72,7 @@ namespace SuperTerrainPlus::STPCompute {
 		 * If no region avilable for this sample and rule, NoRegion will be returned.
 		 * Due to the speciality of gradient rule, it will return the region index to the first region that meets all rules.
 		*/
-		__device__ STPRegionIndex gradientRegion(STPDiversity::Sample, float, float) const;
+		__device__ unsigned int gradientRegion(STPDiversity::Sample, float, float) const;
 
 	};
 

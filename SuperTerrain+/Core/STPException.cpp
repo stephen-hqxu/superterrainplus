@@ -6,6 +6,7 @@
 #include <SuperTerrain+/Utility/Exception/STPDeadThreadPool.h>
 #include <SuperTerrain+/Utility/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Utility/Exception/STPInvalidSyntax.h>
 #include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
 #include <SuperTerrain+/Utility/Exception/STPSerialisationError.h>
 #include <SuperTerrain+/Utility/Exception/STPUnsupportedFunctionality.h>
@@ -63,6 +64,13 @@ STPInvalidArgument::STPInvalidArgument(const char* msg) : invalid_argument(msg) 
 //STPInvalidEnvironment.h
 
 STPInvalidEnvironment::STPInvalidEnvironment(const char* msg) : STPInvalidArgument(msg) {
+
+}
+
+//STPInvalidSyntax.h
+
+STPInvalidSyntax::STPInvalidSyntax(const char* msg) : runtime_error(msg) {
+
 }
 
 //STPMemoryError.h
