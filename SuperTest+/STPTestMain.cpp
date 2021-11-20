@@ -3,7 +3,7 @@
 
 //Setup Engine
 #include <SuperTerrain+/STPEngineInitialiser.h>
-#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/STPCUDAError.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //Test Engine

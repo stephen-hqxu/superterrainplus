@@ -2,7 +2,7 @@
 
 #include <iostream>
 //Error
-#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/STPCUDAError.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //GLM

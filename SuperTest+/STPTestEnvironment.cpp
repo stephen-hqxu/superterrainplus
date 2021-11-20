@@ -9,7 +9,7 @@
 #include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
 
 //Error
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPEnvironment;

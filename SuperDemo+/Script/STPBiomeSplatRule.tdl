@@ -1,0 +1,10 @@
+#texture [granite, grass, moss, sand, soil, stone];
+
+#rule altitude {
+	0u := (1.0f -> soil),
+	1u := (0.5f -> sand, 0.6f -> moss, 1.0 -> grass)
+}
+
+#rule gradient {
+	1u := (0.75f, 0.85f, 0.66f, 1.0f -> stone, 0.85f, 1.0f, 0.66f, 1.0f -> granite)
+}

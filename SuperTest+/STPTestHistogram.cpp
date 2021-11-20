@@ -4,7 +4,7 @@
 //SuperAlgorithm+Host
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 //System
 #include <utility>

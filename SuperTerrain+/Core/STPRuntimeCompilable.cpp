@@ -2,10 +2,10 @@
 #include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/Exception/STPSerialisationError.h>
-#include <SuperTerrain+/Utility/Exception/STPCompilationError.h>
-#include <SuperTerrain+/Utility/Exception/STPUnsupportedFunctionality.h>
-#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPSerialisationError.h>
+#include <SuperTerrain+/Exception/STPCompilationError.h>
+#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 //IO
 #include <fstream>

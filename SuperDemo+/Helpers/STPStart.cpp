@@ -2,6 +2,9 @@
 #include "../Renderer/STPMasterRenderer.h"
 #include <SuperTerrain+/STPEngineInitialiser.h>
 
+//Image Loader
+#include <stb_image.h>
+
 /**
  * @brief STPDemo is a sample implementation of super terrain + application, it's not part of the super terrain + api library.
  * Every thing in the STPDemo namespace is modifiable and re-implementable by developers.

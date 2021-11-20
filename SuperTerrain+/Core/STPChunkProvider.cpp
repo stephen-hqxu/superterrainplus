@@ -1,8 +1,8 @@
 #include <SuperTerrain+/World/Chunk/STPChunkProvider.h>
 
-#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
-#include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
-#include <SuperTerrain+/Utility/Exception/STPAsyncGenerationError.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Exception/STPAsyncGenerationError.h>
 
 #include <algorithm>
 #include <sstream>

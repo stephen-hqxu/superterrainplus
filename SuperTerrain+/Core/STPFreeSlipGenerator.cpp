@@ -6,7 +6,7 @@
 
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 

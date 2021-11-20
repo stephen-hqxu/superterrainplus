@@ -5,7 +5,7 @@
 #include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
 #include <type_traits>
 #include <memory>

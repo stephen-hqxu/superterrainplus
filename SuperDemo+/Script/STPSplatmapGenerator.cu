@@ -19,12 +19,13 @@ __constant__ STPTI::STPSplatRuleDatabase SplatDatabase[1];
 __constant__ float GradientBias[1];
 
 //A simple 2x2 Sobel kernel
-constexpr static unsigned int GradientSize = 4u;
+constexpr static unsigned int GradientSize = 5u;
 constexpr static int2 GradientKernel[GradientSize] = {
-	int2{ 0, -1 },//front, 0
-	int2{ 1, 0 },//right, 1
-	int2{ 0, 1 },//back, 2
-	int2{ -1, 0 }//left, 3
+	int2{ 0, -1 },//top, 0
+	int2{ -1, 0 },//left, 1
+	int2{ 0, 0 },//centre, 2
+	int2{ 1, 0 },//right, 3
+	int2{ 0, 1 }//bottom, 4
 };
 
 //--------------------- Definition --------------------------
@@ -81,12 +82,12 @@ __global__ void generateTextureSplatmap
 	}
 
 	//calculate gradient using a very simple 2x2 filter, ranged [-1,1]
-	const float2 gradient = make_float2(
-		cell[3] - cell[1],
-		cell[0] - cell[2];
-	);
-	const float L2norm = gradient.x * gradient.x + (*GradientBias) * (*GradientBias) + gradient.y * gradient.y;
-	const float slopFactor = 1.0f - (*GradientBias * rsqrtf(L2norm));
+	const float gradient[3] = {
+		((cell[1] - cell[2]) + (cell[2] - cell[3])) * 0.5f,
+		((cell[4] - cell[2]) + (cell[2] - cell[0])) * 0.5f,
+		*GradientBias
+	};
+	const float slopFactor = 1.0f - (*GradientBias * rnormf(3, gradient));
 
 	//get information about the current position
 	const Sample biome = tex2D<Sample>(biomemap_tex, UV.x, UV.y);

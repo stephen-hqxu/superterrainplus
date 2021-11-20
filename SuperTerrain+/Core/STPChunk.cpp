@@ -1,6 +1,6 @@
 #include <SuperTerrain+/World/Chunk/STPChunk.h>
 
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 using glm::vec2;
 using glm::uvec2;

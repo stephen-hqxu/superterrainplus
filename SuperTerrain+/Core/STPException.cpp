@@ -1,15 +1,15 @@
-#include <SuperTerrain+/Utility/Exception/STPAsyncGenerationError.h>
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Utility/Exception/STPCompilationError.h>
-#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
-#include <SuperTerrain+/Utility/Exception/STPDatabaseError.h>
-#include <SuperTerrain+/Utility/Exception/STPDeadThreadPool.h>
-#include <SuperTerrain+/Utility/Exception/STPInvalidArgument.h>
-#include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
-#include <SuperTerrain+/Utility/Exception/STPInvalidSyntax.h>
-#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
-#include <SuperTerrain+/Utility/Exception/STPSerialisationError.h>
-#include <SuperTerrain+/Utility/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Exception/STPAsyncGenerationError.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPCompilationError.h>
+#include <SuperTerrain+/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/STPDatabaseError.h>
+#include <SuperTerrain+/Exception/STPDeadThreadPool.h>
+#include <SuperTerrain+/Exception/STPInvalidArgument.h>
+#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Exception/STPInvalidSyntax.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPSerialisationError.h>
+#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 
 using namespace SuperTerrainPlus::STPException;
 

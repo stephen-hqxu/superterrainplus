@@ -1,7 +1,7 @@
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureDefinitionLanguage.h>
 
 //Error
-#include <SuperTerrain+/Utility/Exception/STPInvalidSyntax.h>
+#include <SuperTerrain+/Exception/STPInvalidSyntax.h>
 
 //Matching
 #include <ctype.h>
@@ -17,11 +17,15 @@ using namespace SuperTerrainPlus::STPDiversity;
 
 using std::string;
 using std::string_view;
+using std::stringstream;
 using std::make_unique;
+using std::make_pair;
+using std::unique_ptr;
 
 using std::distance;
 
 using std::ostream;
+using std::endl;
 
 class STPTextureDefinitionLanguage::STPTDLLexer {
 public:
@@ -61,7 +65,7 @@ public:
 			//A - symbol
 			Minus = '-',
 			//A > symbol
-			Right = '>',
+			RightArrow = '>',
 			//A : symbol
 			Colon = ':',
 			//A = symbol
@@ -246,7 +250,7 @@ private:
 		case ',': return this->atom(STPToken::STPType::Comma);
 		case ';': return this->atom(STPToken::STPType::Semicolon);
 		case '-': return this->atom(STPToken::STPType::Minus);
-		case '>': return this->atom(STPToken::STPType::Right);
+		case '>': return this->atom(STPToken::STPType::RightArrow);
 		case ':': return this->atom(STPToken::STPType::Colon);
 		case '=': return this->atom(STPToken::STPType::Equal);
 		default:
@@ -259,6 +263,7 @@ private:
 				//attempt to read the whole number
 				return this->readNumber();
 			}
+
 			//none of the above? must be a syntax error
 			return this->atom(STPToken::STPType::Invalid);
 		}
@@ -285,6 +290,17 @@ public:
 	~STPTDLLexer() = default;
 
 	/**
+	 * @brief Compose initial error message about the parsing error, which contains line number and character location.
+	 * @param str The pointer to the input stringstream.
+	 * @param error_type A string to represent the type of error.
+	 * @return The same stringstream.
+	*/
+	stringstream& composeInitialErrorInfo(stringstream& str, const char* error_type) const {
+		str << "Texture Deinition Language(" << this->Line << ',' << this->Ch << "): " << error_type << endl;
+		return str;
+	}
+
+	/**
 	 * @brief Expect the next token to be some types.
 	 * @tparam Type The collection of types expected.
 	 * @param expected_type The type to be expected.
@@ -295,10 +311,10 @@ public:
 	STPToken expect(Type... expected_type) const {
 		const STPToken nextToken = this->next();
 		if (((nextToken.getType() != expected_type) && ...)) {
-			using std::endl;
-			std::stringstream msg;
-			msg << "Texture Deinition Language(" << this->Line << ',' << this->Ch << "): error" << endl;
-			msg << "Was expecting: " << endl;
+			//throw errors to indicate unexpected token.
+			stringstream msg;
+			this->composeInitialErrorInfo(msg, "unexpected token") 
+				<< "Was expecting: " << endl;
 			((msg << '\'' << expected_type << "\' "), ...) << endl;
 			msg << "Got: " << endl;
 			msg << '\'' << nextToken.getLexeme() << '\'' << endl;
@@ -311,16 +327,7 @@ public:
 };
 
 STPTextureDefinitionLanguage::STPTextureDefinitionLanguage(const string& source) : Lexer(make_unique<STPTDLLexer>(source)) {
-	typedef STPTDLLexer::STPToken Token;
-	typedef Token::STPType TokenType;
-	auto stoSample = [](const string_view& str) -> Sample {
-		//one disadvantage of this method is it will create a string from the string_view
-		return static_cast<Sample>(std::stoull(str.data()));
-	};
-	auto stoFloat = [](const string_view& str) -> float {
-		return std::stof(str.data());
-	};
-
+	typedef STPTDLLexer::STPToken::STPType TokenType;
 	//start doing lexical analysis and parsing
 	while (true) {
 		//check while identifier is it
@@ -330,79 +337,146 @@ STPTextureDefinitionLanguage::STPTextureDefinitionLanguage(const string& source)
 		}
 		const string_view operation = this->Lexer->expect(TokenType::String).getLexeme();
 
+		//depends on opereations, we process them differently
 		if (operation == "texture") {
-			//declare some texture variables for texture ID
-			this->Lexer->expect(TokenType::LeftSquare);
-
-			while (true) {
-				const string_view textureName = this->Lexer->expect(TokenType::String).getLexeme();
-				//a texture variable, store it
-				this->DeclaredTextureVariable.emplace_back(textureName);
-
-				if (this->Lexer->expect(TokenType::Comma, TokenType::RightSquare).getType() == TokenType::RightSquare) {
-					//no more texture
-					break;
-				}
-				//a comma means more texture are coming...
-			}
-
-			this->Lexer->expect(TokenType::Semicolon);
+			this->processTexture();
 		}
 		else if (operation == "rule") {
-			//define a rule
-			const string_view rule_type = this->Lexer->expect(TokenType::String).getLexeme();
-			this->Lexer->expect(TokenType::LeftCurly);
-
-			while (true) {
-				//we got a sample ID
-				const Sample rule4Sample = stoSample(this->Lexer->expect(TokenType::Number).getLexeme());
-				this->Lexer->expect(TokenType::Colon);
-				this->Lexer->expect(TokenType::Equal);
-				this->Lexer->expect(TokenType::LeftBracket);
-
-				//start parsing rule
-				while (true) {
-
-					//check which type of type we are parsing
-					if (rule_type == "altitude") {
-						const float altitude = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
-						this->Lexer->expect(TokenType::Minus);
-						this->Lexer->expect(TokenType::Right);
-						const string_view map2Texture = this->Lexer->expect(TokenType::String).getLexeme();
-
-						//store an altitude rule
-						this->Altitude.emplace_back(rule4Sample, altitude, map2Texture);
-					}
-					else if (rule_type == "gradient") {
-						const float minG = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
-						this->Lexer->expect(TokenType::Comma);
-						const float maxG = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
-						this->Lexer->expect(TokenType::Comma);
-						const float LB = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
-						this->Lexer->expect(TokenType::Comma);
-						const float UB = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
-						this->Lexer->expect(TokenType::Minus);
-						this->Lexer->expect(TokenType::Right);
-						const string_view map2Texture = this->Lexer->expect(TokenType::String).getLexeme();
-						
-						//store a gradient rule
-						this->Gradient.emplace_back(rule4Sample, minG, maxG, LB, UB, map2Texture);
-					}
-
-					if (this->Lexer->expect(TokenType::Comma, TokenType::RightBracket).getType() == TokenType::RightBracket) {
-						//no more rule setting
-						break;
-					}
-				}
-
-				if (this->Lexer->expect(TokenType::Comma, TokenType::RightCurly).getType() == TokenType::RightCurly) {
-					//no more rule
-					break;
-				}
-			}
+			this->processRule();
+		}
+		else {
+			//invalid operation
+			stringstream msg;
+			this->Lexer->composeInitialErrorInfo(msg, "unknown operation") 
+				<< "Operation code \'" << operation << "\' is undefined by Texture Definition Language." << endl;
+			throw STPException::STPInvalidSyntax(msg.str().c_str());
 		}
 	}
 	
 }
 
 STPTextureDefinitionLanguage::~STPTextureDefinitionLanguage() = default;
+
+void STPTextureDefinitionLanguage::checkTextureDeclared(const string_view& texture) const {
+	if (this->DeclaredTexture.find(texture) == this->DeclaredTexture.cend()) {
+		//texture variable not found, throw error
+		stringstream msg;
+		this->Lexer->composeInitialErrorInfo(msg, "unknown texture") 
+			<< "Texture \'" << texture << "\' is not declared before it is being referenced" << endl;
+		throw STPException::STPInvalidSyntax(msg.str().c_str());
+	}
+}
+
+void STPTextureDefinitionLanguage::processTexture() {
+	typedef STPTDLLexer::STPToken::STPType TokenType;
+	//declare some texture variables for texture ID
+	this->Lexer->expect(TokenType::LeftSquare);
+
+	while (true) {
+		const string_view textureName = this->Lexer->expect(TokenType::String).getLexeme();
+		//found a texture, store it
+		this->DeclaredTexture.emplace(textureName);
+
+		if (this->Lexer->expect(TokenType::Comma, TokenType::RightSquare).getType() == TokenType::RightSquare) {
+			//no more texture
+			break;
+		}
+		//a comma means more texture are coming...
+	}
+
+	this->Lexer->expect(TokenType::Semicolon);
+}
+
+void STPTextureDefinitionLanguage::processRule() {
+	auto stoSample = [](const string_view& str) -> Sample {
+		//one disadvantage of this method is it will create a string from the string_view
+		return static_cast<Sample>(std::stoul(str.data()));
+	};
+	auto stoFloat = [](const string_view& str) -> float {
+		return std::stof(str.data());
+	};
+	typedef STPTDLLexer::STPToken::STPType TokenType;
+
+	//define a rule
+	const string_view rule_type = this->Lexer->expect(TokenType::String).getLexeme();
+	this->Lexer->expect(TokenType::LeftCurly);
+
+	while (true) {
+		//we got a sample ID
+		const Sample rule4Sample = stoSample(this->Lexer->expect(TokenType::Number).getLexeme());
+		this->Lexer->expect(TokenType::Colon);
+		this->Lexer->expect(TokenType::Equal);
+		this->Lexer->expect(TokenType::LeftBracket);
+
+		//start parsing rule
+		while (true) {
+
+			//check which type of type we are parsing
+			if (rule_type == "altitude") {
+				const float altitude = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
+				this->Lexer->expect(TokenType::Minus);
+				this->Lexer->expect(TokenType::RightArrow);
+				const string_view map2Texture = this->Lexer->expect(TokenType::String).getLexeme();
+				this->checkTextureDeclared(map2Texture);
+
+				//store an altitude rule
+				this->Altitude.emplace_back(rule4Sample, altitude, map2Texture);
+			}
+			else if (rule_type == "gradient") {
+				const float minG = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
+				this->Lexer->expect(TokenType::Comma);
+				const float maxG = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
+				this->Lexer->expect(TokenType::Comma);
+				const float LB = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
+				this->Lexer->expect(TokenType::Comma);
+				const float UB = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
+				this->Lexer->expect(TokenType::Minus);
+				this->Lexer->expect(TokenType::RightArrow);
+				const string_view map2Texture = this->Lexer->expect(TokenType::String).getLexeme();
+				this->checkTextureDeclared(map2Texture);
+
+				//store a gradient rule
+				this->Gradient.emplace_back(rule4Sample, minG, maxG, LB, UB, map2Texture);
+			}
+
+			if (this->Lexer->expect(TokenType::Comma, TokenType::RightBracket).getType() == TokenType::RightBracket) {
+				//no more rule setting
+				break;
+			}
+		}
+
+		if (this->Lexer->expect(TokenType::Comma, TokenType::RightCurly).getType() == TokenType::RightCurly) {
+			//no more rule
+			break;
+		}
+	}
+}
+
+STPTextureDefinitionLanguage::STPTextureVariable STPTextureDefinitionLanguage::operator()(STPTextureDatabase& database) const {
+	//prepare variable dictionary for return
+	STPTextureVariable varDic;
+	const size_t textureCount = this->DeclaredTexture.size();
+	varDic.reserve(textureCount);
+
+	//requesting texture
+	auto textureID = make_unique<STPTextureInformation::STPTextureID[]>(textureCount);
+	database.addTexture(textureCount, textureID.get());
+	//assigne each variable with those texture ID
+	for (auto [texture_it, i] = make_pair(this->DeclaredTexture.cbegin(), 0u); texture_it != this->DeclaredTexture.cend(); texture_it++, i++) {
+		varDic.try_emplace(*texture_it, textureID[i]);
+	}
+
+	//add splat rules into the database
+	//when we were parsing the TDL, we have already checked all used texture are declared, so we are sure textureName can be located in the dictionary
+	STPTextureDatabase::STPTextureSplatBuilder& splat_builder = database.getSplatBuilder();
+	for (const auto& [sample, ub, textureName] : this->Altitude) {
+		//one way to call function using tuple is std::apply, however we need to replace textureName with textureID in this database.
+		splat_builder.addAltitude(sample, ub, varDic[textureName]);
+	}
+	for (const auto& [sample, minG, maxG, lb, ub, textureName] : this->Gradient) {
+		splat_builder.addGradient(sample, minG, maxG, lb, ub, varDic[textureName]);
+	}
+
+	//DONE!!!
+	return varDic;
+}

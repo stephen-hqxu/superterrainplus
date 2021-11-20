@@ -11,8 +11,8 @@
 #include <SuperTerrain+/World/Diversity/STPLayerManager.h>
 #include <SuperTerrain+/World/Diversity/STPBiomeFactory.h>
 
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Utility/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 
 #include <glm/gtc/type_ptr.hpp>
 

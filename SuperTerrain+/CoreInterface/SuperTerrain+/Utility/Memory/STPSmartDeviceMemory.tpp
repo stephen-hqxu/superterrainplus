@@ -3,7 +3,7 @@
 
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 template<typename T>
 inline void SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemoryDeleter<T>::operator()(T* ptr) const {

@@ -12,6 +12,7 @@
 #include <string_view>
 //Container
 #include <vector>
+#include <unordered_set>
 #include <unordered_map>
 #include <tuple>
 
@@ -31,13 +32,30 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		std::unique_ptr<STPTDLLexer> Lexer;
 
-		//Information from the source code after lexing
-		std::vector<std::string_view> DeclaredTextureVariable;
+		//Information from the source code after lexing and parsing
+		std::unordered_set<std::string_view> DeclaredTexture;
 		std::vector<std::tuple<Sample, float, std::string_view>> Altitude;
 		std::vector<std::tuple<Sample, float, float, float, float, std::string_view>> Gradient;
 
-	public:
+		/**
+		 * @brief Check if the parsing texture variable has been declared before it is used.
+		 * If texture is not declared, exception will be thrown
+		 * @param texture The texture variable being tesed.
+		*/
+		void checkTextureDeclared(const std::string_view&) const;
 
+		/**
+		 * @brief Process identifier texture.
+		*/
+		void processTexture();
+
+		/**
+		 * @brief Process identifier rule
+		*/
+		void processRule();
+
+	public:
+		
 		//A table of texture variable, corresponds to texture ID
 		typedef std::unordered_map<std::string_view, STPTextureInformation::STPTextureID> STPTextureVariable;
 
@@ -58,7 +76,13 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		~STPTextureDefinitionLanguage();
 
-		STPTextureVariable operator()(const STPTextureDatabase&) const;
+		/**
+		 * @brief Parse all defined texture rules into a texture database.
+		 * Note that if any textue rule has been defined in the database exception will be thrown since no duplicated rules can exist.
+		 * @param database The pointer to the database for which rules will be added.
+		 * @return A table of variable name to texture ID within this database, it can be used to uploaded texture data and assign texture group.
+		*/
+		STPTextureVariable operator()(STPTextureDatabase&) const;
 
 	};
 

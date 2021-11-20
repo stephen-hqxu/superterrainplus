@@ -15,9 +15,9 @@
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
-#include <SuperTerrain+/Utility/Exception/STPCompilationError.h>
-#include <SuperTerrain+/Utility/Exception/STPSerialisationError.h>
-#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPCompilationError.h>
+#include <SuperTerrain+/Exception/STPSerialisationError.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 //CUDA
 #include <cuda_runtime.h>

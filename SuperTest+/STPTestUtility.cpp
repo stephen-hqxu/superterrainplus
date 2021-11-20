@@ -14,10 +14,10 @@
 #include <SuperTerrain+/Utility/Memory/STPMemoryPool.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
-//SuperTerrain+/SuperTerrain+/Utility/Exception
-#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Utility/Exception/STPDeadThreadPool.h>
+//SuperTerrain+/SuperTerrain+/Exception
+#include <SuperTerrain+/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPDeadThreadPool.h>
 
 //CUDA
 #include "STPTestInformation.h"

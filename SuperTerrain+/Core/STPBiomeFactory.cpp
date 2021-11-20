@@ -1,7 +1,7 @@
 #include <SuperTerrain+/World/Diversity/STPBiomeFactory.h>
 
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Utility/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 
 using glm::uvec2;
 using glm::uvec3;

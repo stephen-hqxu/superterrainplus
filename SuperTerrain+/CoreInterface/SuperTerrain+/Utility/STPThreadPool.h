@@ -5,6 +5,7 @@
 #include <SuperTerrain+/STPCoreDefine.h>
 //ADT
 #include <queue>
+#include <list>
 //Multi-threading
 #include <future>
 #include <shared_mutex>
@@ -13,7 +14,7 @@
 #include <functional>
 #include <type_traits>
 
-#include "./Exception/STPDeadThreadPool.h"
+#include "../Exception/STPDeadThreadPool.h"
 
 namespace SuperTerrainPlus {
 
@@ -29,11 +30,11 @@ namespace SuperTerrainPlus {
 
 		//task queue
 		mutable std::shared_mutex task_queue_locker;
-		std::queue<std::function<void(void)>> task;
+		std::queue<std::function<void(void)>, std::list<std::function<void(void)>>> task;
 		mutable std::condition_variable_any condition;
 
 		//worker
-		std::vector<std::thread> worker;
+		std::list<std::thread> worker;
 		
 	public:
 

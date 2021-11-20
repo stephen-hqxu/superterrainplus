@@ -3,7 +3,7 @@
 #include <SuperTerrain+/Environment/STPErosionBrushGenerator.h>
 
 //Error
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //Definition for smart memory

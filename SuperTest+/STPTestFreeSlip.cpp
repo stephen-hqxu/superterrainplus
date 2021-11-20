@@ -9,9 +9,9 @@
 //SuperTerrain+/GPGPU/FreeSlip
 #include <SuperTerrain+/World/Chunk/FreeSlip/STPFreeSlipGenerator.h>
 
-#include <SuperTerrain+/Utility/Exception/STPInvalidArgument.h>
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPInvalidArgument.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 

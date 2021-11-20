@@ -1,8 +1,8 @@
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureFactory.h>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 //Import implementation
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
@@ -60,7 +60,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 		glCreateTextures(GL_TEXTURE_2D_ARRAY, this->Texture.size(), this->Texture.data());
 		//loop through all groups
 		//we can also iterate through the GL texture array at the same time since they have the same dimension
-		groupID_converter.rehash(group_rec.size());
+		groupID_converter.reserve(group_rec.size());
 		for (auto [group_it, gl_texture_it, group_index] = make_tuple(group_rec.cbegin(), this->Texture.cbegin(), 0u);
 			group_it != group_rec.cend() && gl_texture_it != this->Texture.cend(); group_it++, gl_texture_it++, group_index++) {
 			const auto& [group_id, member_count, group_props] = *group_it;
@@ -74,14 +74,14 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 
 		//now we build the texture ID to index converter
 		//loop through all texture collection
-		textureID_converter.rehash(texture_rec.size());
+		textureID_converter.reserve(texture_rec.size());
 		for (auto [texture_it, texture_index] = make_pair(texture_rec.cbegin(), 0u); texture_it != texture_rec.cend(); texture_it++, texture_index++) {
 			textureID_converter.emplace(*texture_it, texture_index);
 		}
 
 		//build texture type converter
 		//the purpose of the type converter is to eliminate unused type
-		textureType_converter.rehash(UsedTypeCount);
+		textureType_converter.reserve(UsedTypeCount);
 		for (auto [type_it, type_index] = make_pair(this->ValidType.cbegin(), 0u); type_it != this->ValidType.cend(); type_it++, type_index++) {
 			textureType_converter.emplace(*type_it, type_index);
 		}

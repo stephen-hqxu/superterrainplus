@@ -11,23 +11,23 @@ Environment/STPHeightfieldSetting.h
 Environment/STPMeshSetting.h
 Environment/STPRainDropSetting.cuh
 Environment/STPSetting.hpp
+# /Exception
+Exception/STPAsyncGenerationError.h
+Exception/STPBadNumericRange.h
+Exception/STPCompilationError.h
+Exception/STPCUDAError.h
+Exception/STPDatabaseError.h
+Exception/STPDeadThreadPool.h
+Exception/STPInvalidArgument.h
+Exception/STPInvalidEnvironment.h
+Exception/STPInvalidSyntax.h
+Exception/STPMemoryError.h
+Exception/STPSerialisationError.h
+Exception/STPUnsupportedFunctionality.h
 # /GPGPU
 GPGPU/STPHeightfieldKernel.cuh
 GPGPU/STPRainDrop.cuh
 GPGPU/STPRuntimeCompilable.h
-# /Utility/Exception
-Utility/Exception/STPAsyncGenerationError.h
-Utility/Exception/STPBadNumericRange.h
-Utility/Exception/STPCompilationError.h
-Utility/Exception/STPCUDAError.h
-Utility/Exception/STPDatabaseError.h
-Utility/Exception/STPDeadThreadPool.h
-Utility/Exception/STPInvalidArgument.h
-Utility/Exception/STPInvalidEnvironment.h
-Utility/Exception/STPInvalidSyntax.h
-Utility/Exception/STPMemoryError.h
-Utility/Exception/STPSerialisationError.h
-Utility/Exception/STPUnsupportedFunctionality.h
 # /Utility/Memory
 Utility/Memory/STPMemoryPool.h
 Utility/Memory/STPSmartDeviceMemory.h

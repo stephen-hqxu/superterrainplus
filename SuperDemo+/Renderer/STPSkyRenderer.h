@@ -1,5 +1,9 @@
 #pragma once
 
+//Parallel
+#include <execution>
+#include <algorithm>
+
 namespace STPDemo {
 
 	/**
@@ -17,7 +21,9 @@ namespace STPDemo {
 		GLuint tbo_sky;//cubemap array of 2
 		//filenames to the textures
 		//we will load the filename from ini when the constructor is called
-		std::string path_day[6], path_night[6];
+		constexpr static size_t CubemapFaceCount = 12ull;
+		//An index and the string filename
+		std::pair<unsigned int, std::string> cubemap_path[STPSkyRenderer::CubemapFaceCount];
 		const std::string LOADING_ORDER[6] = {
 			"right",
 			"left",
@@ -30,8 +36,6 @@ namespace STPDemo {
 		const float rotaingSpeed, cyclingSpeed;
 		float rotations = 0.0f;//in degree
 		int tick = 0;
-		//loading cubemaps in multi-thread
-		STPTextureStorage* Texloader_day[6], *Texloader_night[6];
 
 		/**
 		 * @brief Get uniform location of the sky renderer
@@ -69,6 +73,8 @@ namespace STPDemo {
 		 * @brief Load the skybox cube model and textures
 		*/
 		void loadCube() {
+			using glm::ivec3;
+
 			//buffers
 			glCreateBuffers(1, &this->box_vbo);
 			glCreateBuffers(1, &this->box_indirect);
@@ -98,22 +104,23 @@ namespace STPDemo {
 			glTextureParameteri(this->tbo_sky, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTextureParameteri(this->tbo_sky, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-			//the get() will auto-wait
-			STPTextureStorage* reader = this->Texloader_day[0];//all textures must have the same size in cube map array so we choose an arbitary one
-			//allocation
-			glTextureStorage3D(this->tbo_sky, 1, GL_RGB8, reader->Width, reader->Height, 12);//6 faces * 2 layer
-			for (int i = 0; i < 6; i++) {
-				//day texture, stored in layer 0-5
-				if (i != 0) {//we have already got index 0 at day time, we can only get() once
-					reader = this->Texloader_day[i];
-				}
-				glTextureSubImage3D(this->tbo_sky, 0, 0, 0, i, reader->Width, reader->Height, 1, GL_RGB, GL_UNSIGNED_BYTE, reader->Texture);
-				delete reader;//The class needs to be deleted
-
-				//night texture stored in layer 6-11
-				reader = this->Texloader_night[i];
-				glTextureSubImage3D(this->tbo_sky, 0, 0, 0, i + 6, reader->Width, reader->Height, 1, GL_RGB, GL_UNSIGNED_BYTE, reader->Texture);
-				delete reader;
+			//load all texture first
+			STPTextureStorage texture[STPSkyRenderer::CubemapFaceCount];
+			std::for_each_n(std::execution::par, this->cubemap_path, STPSkyRenderer::CubemapFaceCount, [&texture](const auto& filename) {
+				//load texture from file, all textures are loading in the same order as the filename
+				//we don't need alpha channel for skybox
+				texture[filename.first] = STPTextureStorage(filename.second, 3);
+			});
+			{
+				const ivec3 props = texture[0].property();
+				//allocate storage in the first iteration
+				//all textures must have the same size in cube map array so we choose an arbitary one
+				glTextureStorage3D(this->tbo_sky, 1, GL_RGB8, props.x, props.y, STPSkyRenderer::CubemapFaceCount);//6 faces * 2 layer
+			}
+			for (unsigned int i = 0u; i < STPSkyRenderer::CubemapFaceCount; i++) {
+				const STPTextureStorage& currTexture = texture[i];
+				const ivec3& props = currTexture.property();
+				glTextureSubImage3D(this->tbo_sky, 0, 0, 0, i, props.x, props.y, 1, GL_RGB, GL_UNSIGNED_BYTE, currTexture.texture());
 			}
 		}
 
@@ -143,14 +150,11 @@ namespace STPDemo {
 			cout << "....Loading STPSkyRenderer....";
 			
 			//get the filename from the ini file
-			for (int i = 0; i < 6; i++) {
-				this->path_day[i] = "./Resource/" + day("folder")() + "/" + day(this->LOADING_ORDER[i])() + "." + day("suffix")();
-				this->path_night[i] = "./Resource/" + night("folder")() + "/" + night(this->LOADING_ORDER[i])() + "." + night("suffix")();
-			}
-			//loading textures in multiple threads
-			for (int i = 0; i < 6; i++) {
-				this->Texloader_day[i] = STPTextureStorage::loadTexture(this->path_day[i].c_str(), 3);//we don't need alpha channel for skybox
-				this->Texloader_night[i] = STPTextureStorage::loadTexture(this->path_night[i].c_str(), 3);
+			const size_t halfFaceCount = STPSkyRenderer::CubemapFaceCount / 2u;
+			for (unsigned int i = 0u; i < STPSkyRenderer::CubemapFaceCount; i++) {
+				this->cubemap_path[i] = std::make_pair(i, (i < halfFaceCount) ?
+					"./Resource/" + day("folder")() + "/" + day(this->LOADING_ORDER[i])() + "." + day("suffix")() :
+					"./Resource/" + night("folder")() + "/" + night(this->LOADING_ORDER[i - halfFaceCount])() + "." + night("suffix")());
 			}
 			
 			if (!this->compileShader()) {

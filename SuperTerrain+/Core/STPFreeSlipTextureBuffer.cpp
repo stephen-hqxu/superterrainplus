@@ -2,10 +2,10 @@
 
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/Exception/STPInvalidArgument.h>
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Utility/Exception/STPMemoryError.h>
-#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/STPInvalidArgument.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPCUDAError.h>
 
 //Template Def
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>

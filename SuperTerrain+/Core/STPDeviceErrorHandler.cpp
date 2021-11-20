@@ -11,8 +11,8 @@
 #include <sstream>
 #include <typeinfo>
 
-#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
-#include <SuperTerrain+/Utility/Exception/STPDatabaseError.h>
+#include <SuperTerrain+/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/STPDatabaseError.h>
 
 using std::stringstream;
 using std::cerr;

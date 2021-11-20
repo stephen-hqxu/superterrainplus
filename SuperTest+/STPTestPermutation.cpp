@@ -11,7 +11,7 @@
 #include <SuperAlgorithm+/STPPermutationGenerator.h>
 
 //Exceptions
-#include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
 #include <cuda_runtime.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>

@@ -2,7 +2,7 @@
 
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 //CUDA
 #include <cuda_runtime.h>
 
@@ -729,13 +729,20 @@ void STPSingleHistogramFilter::filter
 		//our loop in the filter ends at less than (no equal)
 		//we had already make sure radius is an even number to ensure divisibility, also it's not too large to go out of memory bound
 		const unsigned int width_start = central_starting_coordinate.x - radius,
-			width_step = (dimension.x + 2u * radius) / STPSingleHistogramFilter::DEGREE_OF_PARALLELISM;
+			total_width = dimension.x + 2u * radius,
+			width_step = total_width / STPSingleHistogramFilter::DEGREE_OF_PARALLELISM;
 		uvec2 w_range(width_start, width_start + width_step);
 		for (unsigned char w = 0u; w < STPSingleHistogramFilter::DEGREE_OF_PARALLELISM; w++) {
 			workgroup[w] = this->filter_worker.enqueue_future(vertical, cref(sample_map), central_starting_coordinate.y, w_range, w, radius);
 			//increment
 			w_range.x = w_range.y;
-			w_range.y += width_step;
+			if (w == STPSingleHistogramFilter::DEGREE_OF_PARALLELISM - 2u) {
+				//calculate the range for the last thread, to ensure all remaining columns are all done by the last thread
+				w_range.y = width_start + total_width;
+			}
+			else {
+				w_range.y += width_step;
+			}
 		}
 		//sync get the total length of all buffers and copy buffer to output
 		sync_then_copy_to_output();
@@ -750,7 +757,12 @@ void STPSingleHistogramFilter::filter
 			workgroup[w] = this->filter_worker.enqueue_future(horizontal, histogram_output, cref(dimension), h_range, w, radius);
 			//increment range
 			h_range.x = h_range.y;
-			h_range.y += height_step;
+			if (w == STPSingleHistogramFilter::DEGREE_OF_PARALLELISM - 2u) {
+				h_range.y = dimension.y;
+			}
+			else {
+				h_range.y += height_step;
+			}
 		}
 		//sync, do the same thing as what vertical did
 		sync_then_copy_to_output();

@@ -89,13 +89,13 @@ Those are some third-party libraries used by this project, we always make sure t
 
 ### :ballot_box_with_check: CMake options
 
-| Option | Explaination |
-| ------ | ----- |
-| STP_CUDA_RUNTIME_LIBRARY | Set the global `nvcc` compiler flag `-cudart=` to the value set |
-| STP_CUDA_VERBOSE_PTX | Append to the global `nvcc` compiler flag with `--ptxas-options=-v` |
-| STP_USE_AVX2 | Use AVX2 instruction sets on all vector operations |
-| STP_BUILD_DEMO | Enable build SuperDemo+ program |
-| STP_BUILD_TEST | Enable build SuperTest+ program |
+| Option | Explaination | Default |
+| ------ | ------------ | ------- |
+| STP_CUDA_RUNTIME_LIBRARY | Set the global `nvcc` compiler flag `-cudart=` to the value set | "Static" |
+| STP_CUDA_VERBOSE_PTX | Append to the global `nvcc` compiler flag with `--ptxas-options=-v` | OFF |
+| STP_USE_AVX2 | Use AVX2 instruction sets on all vector operations | ON |
+| STP_BUILD_DEMO | Enable build SuperDemo+ program | ON |
+| STP_BUILD_TEST | Enable build SuperTest+ program | OFF |
 
 ## :bookmark_tabs: Getting Started
 

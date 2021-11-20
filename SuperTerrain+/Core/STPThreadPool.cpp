@@ -1,6 +1,6 @@
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 using namespace SuperTerrainPlus;
 
@@ -13,7 +13,6 @@ STPThreadPool::STPThreadPool(unsigned int count) {
 	this->running = true;
 
 	//adding non-stopping threads
-	this->worker.reserve(static_cast<size_t>(count));
 	for (unsigned int i = 0u; i < count; i++) {
 		this->worker.emplace_back([this] {
 			while (true) {//threads will spin forever

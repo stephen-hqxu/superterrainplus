@@ -9,8 +9,8 @@
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureDatabase.h>
 
 //Exception
-#include <SuperTerrain+/Utility/Exception/STPDatabaseError.h>
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPDatabaseError.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 #include <algorithm>
 

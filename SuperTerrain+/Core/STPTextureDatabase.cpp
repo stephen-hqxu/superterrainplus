@@ -2,8 +2,8 @@
 
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/Exception/STPDatabaseError.h>
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPDatabaseError.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 //Database
 #include <SuperTerrain+/STPSQLite.h>

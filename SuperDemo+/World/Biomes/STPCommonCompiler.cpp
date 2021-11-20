@@ -8,7 +8,7 @@
 #endif//_DEBUG
 
 //Error
-#include <SuperTerrain+/Utility/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/STPCUDAError.h>
 
 //IO
 #include <iostream>

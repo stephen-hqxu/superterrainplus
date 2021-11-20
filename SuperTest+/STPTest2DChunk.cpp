@@ -9,7 +9,7 @@
 #include <SuperTerrain+/World/Chunk/STPChunk.h>
 #include <SuperTerrain+/World/Chunk/STPChunkStorage.h>
 
-#include <SuperTerrain+/Utility/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 //GLM
 #include <glm/gtc/type_ptr.hpp>

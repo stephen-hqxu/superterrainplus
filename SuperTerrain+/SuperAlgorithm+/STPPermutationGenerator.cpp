@@ -3,7 +3,7 @@
 #include <stdexcept>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
 //Import definition
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>

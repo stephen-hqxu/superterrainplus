@@ -27,11 +27,6 @@ using glm::value_ptr;
 //OpenGL engine
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-//Image loader by stb_image
-#ifndef STBI_INCLUDE_STB_IMAGE_H
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-#endif
 //INI loader
 #include <SIMPLE/SIParser.h>
 //OpenGL utilities
@@ -190,7 +185,7 @@ namespace STPDemo {
 			//setting up renderers
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer);
 			//setting world manager
-			this->world_manager = new STPWorldManager();
+			this->world_manager = new STPWorldManager(this->biomeSettings("texture_path_prefix")());
 			this->world_manager->attachSetting(config);
 			this->world_manager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
 			this->world_manager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(this->world_manager->SharedProgram, simplex, chunk_setting.MapSize, this->biomeSettings("interpolationRadius").to<unsigned int>());
@@ -240,7 +235,7 @@ namespace STPDemo {
 		void draw(const double& frametime) {
 			//start loading terrain 2d inf async
 			try {
-				const_cast<SuperTerrainPlus::STPChunkManager*>(this->world_manager->getChunkManager())->loadChunksAsync(this->Camera->getPosition());
+				const_cast<SuperTerrainPlus::STPChunkManager&>(this->world_manager->getChunkManager()).loadChunksAsync(this->Camera->getPosition());
 			}
 			catch (const std::exception& e) {
 				cerr << e.what() << endl;
@@ -264,7 +259,7 @@ namespace STPDemo {
 			//terrain renderer, choose whichever terrain renderer you like
 			glDepthFunc(GL_LESS);
 			glEnable(GL_CULL_FACE);
-			this->world_manager->getChunkRenderer()->renderVisibleChunks(this->View, this->Projection, this->Camera->getPosition());
+			this->world_manager->getChunkRenderer().renderVisibleChunks(this->View, this->Projection, this->Camera->getPosition());
 		}
 
 		/**
