@@ -33,7 +33,6 @@ namespace STPDemo {
 		//The size of the generated heightmap
 		const glm::uvec2 MapSize;
 		//Generate a histogram to retrieve weights for biomes in a range
-		mutable std::mutex HistogramFilterLock;
 		mutable SuperTerrainPlus::STPCompute::STPSingleHistogramFilter biome_histogram;
 
 		const STPCommonCompiler& KernelProgram;

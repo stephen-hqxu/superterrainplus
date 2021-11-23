@@ -22,6 +22,18 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 - Pseudorandom generation
 - Real-time rendering
 
+:x: Unfortunately, due to the limited allocated development time (as a school project), this project currently has absolutely zero backward compatibility and may not be ready for production code rather than using with the demo program.
+
+:heavy_check_mark: However source codes are all documented and feel free to explore them for learning some of the key concepts used in this project, like:
+
+- Latest features brought by OpenGL 4 such as tessellation shader and direct-state access.
+- Latest features brought by C++ 17 and how to effectively use them in an application.
+- High-performance application optimisation techniques involving multithread CPU and GPU.
+- Procedural texture synthesis.
+- Various algorithms for procedural terrain generation.
+
+> And don't worry, this project is still alive and I will keep maintaining it.
+
 ## :sparkler: Main Features
 
 ### Procedural 2D infinite terrain

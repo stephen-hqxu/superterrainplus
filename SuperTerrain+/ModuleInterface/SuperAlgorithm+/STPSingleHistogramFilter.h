@@ -3,6 +3,14 @@
 #define _STP_SINGLE_HISTOGRAM_FILTER_H_
 
 #include <SuperAlgorithm+/STPAlgorithmDefine.h>
+//Container
+#include <queue>
+#include <list>
+#include <array>
+#include <utility>
+//Thread Safety
+#include <mutex>
+
 //Engine Components
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 #include <SuperTerrain+/World/Chunk/FreeSlip/STPFreeSlipManager.cuh>
@@ -22,7 +30,6 @@ namespace SuperTerrainPlus::STPCompute {
 	 * The filter also contains an internal adaptive memory pool that serves as a cache during computation, the first few executions will be slower due to the first-time allocation,
 	 * but once reused for repetitive filter calls little to no memory allocation should happen and performance will go to summit.
 	 * so memory can be reused and no re-allocation is required.
-	 * Please be warned that this class is NOT multi-thread safe.
 	*/
 	class STPALGORITHMPLUS_HOST_API STPSingleHistogramFilter {
 	private:
@@ -56,14 +63,36 @@ namespace SuperTerrainPlus::STPCompute {
 		class STPAccumulator;
 
 		//After some experiment, we found out 4 parallel workers is the sweet spot.
-		constexpr static unsigned char DEGREE_OF_PARALLELISM = 4u;
-
+		constexpr static unsigned char Parallelism = 4u;
 		//A multi-thread worker for concurrent per-pixel histogram generation
 		STPThreadPool filter_worker;
 
-		//Each worker will be assigned a cache, and join them together when synced.
-		std::unique_ptr<STPDefaultHistogramBuffer[]> Cache;
-		std::unique_ptr<STPAccumulator[]> Accumulator;
+		//A workplace is some available memory for a complete histogram generation
+		typedef std::pair<STPDefaultHistogramBuffer, STPAccumulator> STPWorkplace;
+		typedef std::unique_ptr<STPWorkplace[]> STPDepartment;
+		typedef std::list<STPDepartment> STPOrganisation;
+		typedef STPOrganisation::iterator STPOrganisation_it;
+		//All available workplace.
+		//list of pointers
+		STPOrganisation Organisation;
+		std::queue<STPOrganisation_it, std::list<STPOrganisation_it>> FreeWorkingMemory;
+		std::shared_mutex WorkplaceLock;
+
+		//A pair of index to the department and to the workplace, respectively
+		typedef std::pair<STPOrganisation_it, unsigned char> STPAssignment;
+
+		/**
+		 * @brief Request an available workplace for workers to generate histogram.
+		 * Workplace guarantees critical access, meaning all memory resides will not be modified by other workers until it is returned.
+		 * @return The iterator to the free workplace.
+		*/
+		STPOrganisation_it requestWorkplace();
+
+		/**
+		 * @brief Return a workplace back to the system so it can be used by other tasks later.
+		 * @param it The iterator of workplace to be returned.
+		*/
+		void returnWorkplace(STPOrganisation_it);
 
 		/**
 		 * @brief Copy the content in accumulator to the histogram buffer.
@@ -83,20 +112,20 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @param w_range Denotes the width start and end that will be computed by the current function call.
 		 * The range should start from the halo (central image x index minus radius), and should use global index.
 		 * The range end applies as well (central image x index plus dimension plus radius)
-		 * @param threadID the ID of the CPU thread that is calling this function
+		 * @param workingID The ID to the allocated working memory, an of the CPU thread that is calling this function.
 		 * @param radius The radius of the filter.
 		*/
-		void filter_vertical(const STPFreeSlipSampleManager&, unsigned int, glm::uvec2, unsigned char, unsigned int);
+		void filter_vertical(const STPFreeSlipSampleManager&, unsigned int, glm::uvec2, STPAssignment, unsigned int);
 
 		/**
 		 * @brief Merge buffers from each thread into a large chunk of output data.
 		 * It will perform offset correction for HistogramStartOffset.
 		 * @param buffer The histogram buffer that will be merged to
-		 * @param threadID The buffer from that threadID to copy.
+		 * @param workingID The ID to the allocated working memory, and the buffer from that threadID to copy.
 		 * Note that threadID 0 doesn't require offset correction.
 		 * @param output_base The base start index from the beginning of output container for each thread for bin and histogram offset
 		*/
-		void copy_to_output(STPPinnedHistogramBuffer*, unsigned char, glm::uvec2);
+		void copy_to_output(STPPinnedHistogramBuffer*, STPAssignment, glm::uvec2);
 
 		/**
 		 * @brief Perform horizontal pass histogram filter.
@@ -106,10 +135,10 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @param h_range Denotes the height start and end that will be computed by the current function call.
 		 * The range should start from 0.
 		 * The range end at the height of the texture
-		 * @param threadID the ID of the CPU thread that is calling this function
+		 * @param workingID The ID to the allocated working memory, an of the CPU thread that is calling this function.
 		 * @param radius The radius of the filter
 		*/
-		void filter_horizontal(STPPinnedHistogramBuffer*, const glm::uvec2&, glm::uvec2, unsigned char, unsigned int);
+		void filter_horizontal(STPPinnedHistogramBuffer*, const glm::uvec2&, glm::uvec2, STPAssignment, unsigned int);
 
 		/**
 		 * @brief Performa a complete histogram filter

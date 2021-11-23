@@ -28,14 +28,15 @@ namespace STPDemo {
 		bool linkStatus;
 
 		/**
-		 * @brief STPExternalTextureManager manages external texture data so they can be used for terrain texturing
+		 * @brief STPWorldSplattingAgent manages external texture data so they can be used for terrain texturing,
+		 * as well as building splat rules and database.
 		*/
-		class STPExternalTextureManager;
-		std::unique_ptr<STPExternalTextureManager> Texture;
+		class STPWorldSplattingAgent;
+		std::unique_ptr<STPWorldSplattingAgent> Texture;
 
 		//Order of declaration is very important
 		//settings
-		std::optional<SuperTerrainPlus::STPEnvironment::STPConfiguration> WorldSetting;
+		SuperTerrainPlus::STPEnvironment::STPConfiguration WorldSetting;
 		//generators
 		std::optional<SuperTerrainPlus::STPCompute::STPHeightfieldGenerator> ChunkGenerator;
 		std::unique_ptr<SuperTerrainPlus::STPDiversity::STPBiomeFactory> BiomeFactory;
@@ -52,8 +53,9 @@ namespace STPDemo {
 		/**
 		 * @brief Init the world manager.
 		 * @param tex_filename_prefix The prefix for all texture filenames. It will be used as "<prefix>/<texture filename>".
+		 * @param settings All world settings, it will be moved under the object
 		*/
-		STPWorldManager(std::string);
+		STPWorldManager(std::string, SuperTerrainPlus::STPEnvironment::STPConfiguration&);
 
 		~STPWorldManager();
 
@@ -64,12 +66,6 @@ namespace STPDemo {
 		STPWorldManager& operator=(const STPWorldManager&) = delete;
 
 		STPWorldManager& operator=(STPWorldManager&&) = delete;
-
-		/**
-		 * @brief Attach world settings to the current world manager.
-		 * @param settings All world settings, it will be moved under the object
-		*/
-		void attachSetting(SuperTerrainPlus::STPEnvironment::STPConfiguration&);
 
 		/**
 		 * @brief Attach the biome factory with this world manager

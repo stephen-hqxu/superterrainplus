@@ -1,6 +1,4 @@
-#ifndef __CUDACC_RTC__
-#error __FILE__ can only be compiled in NVRTC
-#endif//__CUDACC_RTC__
+#include "./Script/STPCommonGenerator.cuh"
 
 //SuperAlgorithm+ Device library
 #include <STPSimplexNoise.cuh>
@@ -12,9 +10,6 @@
 
 using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;
-
-__constant__ uint2 Dimension[1];
-__constant__ float2 HalfDimension[1];
 
 __constant__ STPDemo::STPBiomeProperty BiomeTable[2];
 __constant__ STPPermutation Permutation[1];
@@ -30,6 +25,8 @@ __device__ float sampleSimplexNoise(uint2, const STPDemo::STPBiomeProperty&, flo
 
 //--------------------- Definition --------------------------
 
+using namespace STPCommonGenerator;
+
 /**
  * @brief Generate our epic height map using simplex noise function within the CUDA kernel
  * @param height_storage - The pointer to a location where the heightmap will be stored
@@ -40,11 +37,11 @@ __global__ void generateMultiBiomeHeightmap(float* height_storage, STPSingleHist
 	//the current thread index, starting from top-left corner
 	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y;
-	if (x >= Dimension->x || y >= Dimension->y) {
+	if (x >= mapDimension().x || y >= mapDimension().y) {
 		return;
 	}
 	//current working pixel
-	const unsigned int index = x + y * Dimension->x;
+	const unsigned int index = x + y * mapDimension().x;
 	STPSingleHistogramWrapper interpolator(biomemap_histogram);
 	
 	//grab the current biome setting
@@ -70,8 +67,8 @@ __device__ float sampleSimplexNoise(uint2 coord, const STPDemo::STPBiomeProperty
 	//multiple phases of noise
 	#pragma unroll
 	for (int i = 0; i < parameter.Octave; i++) {
-		float sampleX = ((1.0 * coord.x - HalfDimension->x) + offset.x) / parameter.Scale * frequency, //subtract the half width and height can make the scaling focus at the center
-			sampleY = ((1.0 * coord.y - HalfDimension->y) + offset.y) / parameter.Scale * frequency;//since the y is inverted we want to filp it over
+		float sampleX = ((1.0 * coord.x - mapDimensionHalf().x) + offset.x) / parameter.Scale * frequency, //subtract the half width and height can make the scaling focus at the center
+			sampleY = ((1.0 * coord.y - mapDimensionHalf().y) + offset.y) / parameter.Scale * frequency;//since the y is inverted we want to filp it over
 		noiseheight += Simplex.simplex2D(sampleX, sampleY) * amplitude;
 
 		//calculate the min and max

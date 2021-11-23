@@ -150,7 +150,7 @@ private:
 
 	const string Source;
 	//The input parsing string sequence in a string stream
-	mutable string_view Sequence;
+	mutable const char* Sequence;
 	mutable size_t Line = 1ull;
 	mutable size_t Ch = 1ull;
 
@@ -159,7 +159,7 @@ private:
 	 * @return The first character in the string sequence.
 	*/
 	constexpr char peek() const {
-		return this->Sequence.front();
+		return *this->Sequence;
 	}
 
 	/**
@@ -167,7 +167,7 @@ private:
 	*/
 	constexpr void pop() const {
 		this->Ch++;
-		this->Sequence.remove_prefix(1ull);
+		this->Sequence++;
 	}
 
 	/**
@@ -176,7 +176,7 @@ private:
 	 * @return A single character token
 	*/
 	constexpr STPToken atom(STPToken::STPType type) const {
-		const char* character = this->Sequence.data();
+		const char* character = this->Sequence;
 		//we can safely move the pointer forward because the pointer in the character is not owned by the view
 		this->pop();
 		return STPToken(type, character);
@@ -187,14 +187,14 @@ private:
 	 * @return A complete string token
 	*/
 	STPToken readString() const {
-		const char* start = this->Sequence.data();
+		const char* start = this->Sequence;
 		this->pop();
 
 		//keep pushing pointer forward until we see something
 		while (isalpha(this->peek())) {
 			this->pop();
 		}
-		return STPToken(STPToken::STPType::String, start, this->Sequence.data());
+		return STPToken(STPToken::STPType::String, start, this->Sequence);
 	}
 
 	/**
@@ -202,7 +202,7 @@ private:
 	 * @return A complete string token of valid number
 	*/
 	STPToken readNumber() const {
-		const char* start = this->Sequence.data();
+		const char* start = this->Sequence;
 		this->pop();
 
 		char identifier;
@@ -212,7 +212,7 @@ private:
 			this->pop();
 			identifier = this->peek();
 		}
-		return STPToken(STPToken::STPType::Number, start, this->Sequence.data());
+		return STPToken(STPToken::STPType::Number, start, this->Sequence);
 	}
 
 	/**
@@ -237,7 +237,7 @@ private:
 		//checking for single character identifier
 		switch (identifier) {
 			//End of parser input
-		case '\0': return STPToken(STPToken::STPType::End, this->Sequence.data());
+		case '\0': return STPToken(STPToken::STPType::End, this->Sequence);
 
 		case '[': return this->atom(STPToken::STPType::LeftSquare);
 		case ']': return this->atom(STPToken::STPType::RightSquare);
@@ -275,7 +275,7 @@ public:
 	 * @brief Init the TDL lexer with source code
 	 * @param source The source code to TDL
 	*/
-	STPTDLLexer(const string& source) : Source(source), Sequence(this->Source.data()) {
+	STPTDLLexer(const string& source) : Source(source), Sequence(this->Source.c_str()) {
 
 	}
 

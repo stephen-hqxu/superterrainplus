@@ -8,10 +8,13 @@
 #endif//_DEBUG
 
 //Error
-#include <SuperTerrain+/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/STPCompilationError.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //IO
 #include <iostream>
+
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace SuperTerrainPlus::STPCompute;
 using namespace STPDemo;
@@ -22,11 +25,16 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+using glm::vec2;
+using glm::uvec2;
+using glm::value_ptr;
+
 //Include dir of the engines
 const static string device_include = "-I " + string(SuperTerrainPlus::SuperAlgorithmPlus_DeviceInclude),
 core_include = "-I " + string(SuperTerrainPlus::SuperTerrainPlus_CoreInclude);
 
-STPCommonCompiler::STPCommonCompiler() {
+STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk) : 
+	Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk) {
 	//setup compiler options
 	this->SourceInfo.Option
 		["-std=c++17"]
@@ -63,13 +71,43 @@ STPCommonCompiler::STPCommonCompiler() {
 	//attach device algorithm library
 	this->attachArchive("SuperAlgorithm+Device", SuperTerrainPlus::SuperAlgorithmPlus_DeviceLibrary);
 
+	this->setupCommonGenerator();
 	//compile individual source codes
 	this->setupBiomefieldGenerator();
-	//TODO: enable splatmap generator
-	//this->setupSplatmapGenerator();
+	this->setupSplatmapGenerator();
 
 	//link all source codes
 	this->finalise();
+}
+
+#define HANDLE_COMPILE(FUNC) \
+try { \
+	const string log = FUNC; \
+	if (!log.empty()) { \
+		cout << log << endl; \
+	} \
+} \
+catch (const SuperTerrainPlus::STPException::STPCompilationError& error) { \
+	cerr << error.what() << endl; \
+	std::terminate(); \
+}
+
+void STPCommonCompiler::setupCommonGenerator() {
+	//Filename
+	constexpr static char CommonGeneratorFilename[] = "./Script/STPCommonGenerator.cu";
+
+	//load source code
+	const string commongen_source = this->readSource(CommonGeneratorFilename);
+	//set compiler options
+	STPRuntimeCompilable::STPSourceInformation commongen_info = this->getCompilerOptions();
+	//this common generator only contains a few shared variables
+	commongen_info.NameExpression
+		["Dimension"]
+	["HalfDimension"]
+	["RenderedDimension"];
+	//compile
+	HANDLE_COMPILE(this->compileSource("STPCommonGenerator", commongen_source, commongen_info))
+	
 }
 
 void STPCommonCompiler::setupBiomefieldGenerator() {
@@ -90,22 +128,11 @@ void STPCommonCompiler::setupBiomefieldGenerator() {
 		["generateMultiBiomeHeightmap"]
 	//constant
 	["BiomeTable"]
-	["Permutation"]
-	["Dimension"]
-	["HalfDimension"];
+	["Permutation"];
 	//options are all set
 	multiheightfield_info.ExternalHeader
 		["STPBiomeProperty"];
-	try {
-		const string log = this->compileSource("STPMultiHeightGenerator", multiheightfield_source, multiheightfield_info);
-		if (!log.empty()) {
-			cout << log << endl;
-		}
-	}
-	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
-		cerr << error.what() << endl;
-		std::terminate();
-	}
+	HANDLE_COMPILE(this->compileSource("STPMultiHeightGenerator", multiheightfield_source, multiheightfield_info))
 }
 
 void STPCommonCompiler::setupSplatmapGenerator() {
@@ -118,21 +145,11 @@ void STPCommonCompiler::setupSplatmapGenerator() {
 	STPCommonCompiler::STPSourceInformation source_info = this->getCompilerOptions();
 	source_info.NameExpression
 		["SplatDatabase"]
-	["MapDimension"]
-	["TotalBufferDimension"]
+	["GradientBias"]
 	//global function
 	["generateTextureSplatmap"];
 	//compile
-	try {
-		const string log = this->compileSource("STPSplatmapGenerator", splatmap_source, source_info);
-		if (!log.empty()) {
-			cout << log << endl;
-		}
-	}
-	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
-		cerr << error.what() << endl;
-		std::terminate();
-	}
+	HANDLE_COMPILE(this->compileSource("STPSplatmapGenerator", splatmap_source, source_info))
 }
 
 void STPCommonCompiler::finalise() {
@@ -143,6 +160,22 @@ void STPCommonCompiler::finalise() {
 		this->linkProgram(link_info, CU_JIT_INPUT_PTX);
 		cout << log.linker_info_log << endl;
 		cout << log.module_info_log << endl;
+
+		//setup some variables
+		CUdeviceptr dimension, half_dimension, rendered_dimension;
+		size_t dimensionSize, half_dimensionSize, rendered_dimensionSize;
+		//source information
+		const auto& name = this->retrieveSourceLoweredName("STPCommonGenerator");
+		CUmodule program = this->getGeneratorModule();
+		STPcudaCheckErr(cuModuleGetGlobal(&dimension, &dimensionSize, program, name.at("Dimension")));
+		STPcudaCheckErr(cuModuleGetGlobal(&half_dimension, &half_dimensionSize, program, name.at("HalfDimension")));
+		STPcudaCheckErr(cuModuleGetGlobal(&rendered_dimension, &rendered_dimensionSize, program, name.at("RenderedDimension")));
+		//send data
+		const vec2 halfDim = static_cast<vec2>(this->Dimension) / 2.0f;
+		const uvec2 RenderedDim = this->RenderingRange * this->Dimension;
+		STPcudaCheckErr(cuMemcpyHtoD(dimension, value_ptr(this->Dimension), dimensionSize));
+		STPcudaCheckErr(cuMemcpyHtoD(half_dimension, value_ptr(halfDim), half_dimensionSize));
+		STPcudaCheckErr(cuMemcpyHtoD(rendered_dimension, value_ptr(RenderedDim), rendered_dimensionSize));
 	}
 	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
 		cerr << error.what() << std::endl;

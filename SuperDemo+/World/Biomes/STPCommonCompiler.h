@@ -5,8 +5,14 @@
 //Runtime Compiler
 #include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
 
+//Setting
+#include <SuperTerrain+/Environment/STPChunkSetting.h>
+
 //System
 #include <string>
+
+//GLM
+#include <glm/vec2.hpp>
 
 namespace STPDemo {
 
@@ -22,13 +28,21 @@ namespace STPDemo {
 		//Contains linker options
 		STPRuntimeCompilable::STPLinkerInformation LinkInfo;
 
+		//The chunk setting of each map used by each generator.
+		const glm::uvec2 Dimension, RenderingRange;
+
+		/**
+		 * @brief Compile source codes that contain shared data.
+		*/
+		void setupCommonGenerator();
+
 		/**
 		 * @brief Compile source codes for biomefield generator
 		*/
 		void setupBiomefieldGenerator();
 
 		/**
-		 * @brief Compile source codes for splatmap generator
+		 * @brief Compile source codes for splatmap generator.
 		*/
 		void setupSplatmapGenerator();
 
@@ -71,9 +85,10 @@ namespace STPDemo {
 
 		/**
 		 * @brief Init STPCommonCompiler to its default state.
-		 * SuperAlgorithm+Device library will be linked automatically
+		 * SuperAlgorithm+Device library will be linked automatically.
+		 * @param chunk The pointer to the chunk settings
 		*/
-		STPCommonCompiler();
+		STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting&);
 
 		STPCommonCompiler(const STPCommonCompiler&) = delete;
 

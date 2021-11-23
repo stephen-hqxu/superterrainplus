@@ -13,8 +13,6 @@
 //Texture Splat Rule
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureInformation.hpp>
 
-#include <limits>
-
 namespace SuperTerrainPlus::STPCompute {
 
 	/**
@@ -36,7 +34,7 @@ namespace SuperTerrainPlus::STPCompute {
 	public:
 	
 		//Denotes there is no active region for this rule
-		constexpr static unsigned int NoRegion = std::numeric_limits<unsigned int>::max();
+		constexpr static unsigned int NoRegion = 0xFFFFFFFFu;
 
 		/**
 		 * @brief Initialise a texture splat rule wrapper

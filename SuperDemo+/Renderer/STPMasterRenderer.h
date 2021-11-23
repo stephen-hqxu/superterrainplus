@@ -45,6 +45,9 @@ using glm::value_ptr;
 #include "../World/Layers/STPAllLayers.h"
 #include "../World/Biomes/STPBiomefieldGenerator.h"
 
+//Error
+#include <SuperTerrain+/Exception/STPInvalidSyntax.h>
+
 namespace STPDemo {
 
 	/**
@@ -184,14 +187,21 @@ namespace STPDemo {
 			this->command = new STPRendererCommander(unitplane_count);
 			//setting up renderers
 			this->sky = new STPSkyRenderer(this->engineSettings["SkyboxDay"], this->engineSettings["SkyboxNight"], this->engineSettings["Global"], this->command->Command_SkyRenderer);
+			
 			//setting world manager
-			this->world_manager = new STPWorldManager(this->biomeSettings("texture_path_prefix")());
-			this->world_manager->attachSetting(config);
-			this->world_manager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
-			this->world_manager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(this->world_manager->SharedProgram, simplex, chunk_setting.MapSize, this->biomeSettings("interpolationRadius").to<unsigned int>());
-			this->world_manager->linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
-			if (!this->world_manager) {
-				//do not proceed if it fails
+			try {
+				this->world_manager = new STPWorldManager(this->biomeSettings("texture_path_prefix")(), config);
+				this->world_manager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
+				this->world_manager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(this->world_manager->SharedProgram, simplex, chunk_setting.MapSize, this->biomeSettings("interpolationRadius").to<unsigned int>());
+				this->world_manager->linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
+				if (!this->world_manager) {
+					//do not proceed if it fails
+					terminate();
+				}
+			}
+			catch (const SuperTerrainPlus::STPException::STPInvalidSyntax& se) {
+				//catch TDL compilation error
+				cerr << se.what() << endl;
 				terminate();
 			}
 

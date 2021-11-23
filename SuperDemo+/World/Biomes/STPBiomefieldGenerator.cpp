@@ -44,19 +44,13 @@ STPBiomefieldGenerator::~STPBiomefieldGenerator() {
 void STPBiomefieldGenerator::initGenerator() {
 	//global pointers
 	CUmodule program = this->KernelProgram.getProgram();
-	CUdeviceptr biome_prop, dimension, half_dimension, permutation;
-	size_t biome_propSize, dimensionSize, half_dimensionSize, permutationSize;
+	CUdeviceptr biome_prop, permutation;
+	size_t biome_propSize, permutationSize;
 	//get names and start copying
 	const auto& name = this->KernelProgram.getLoweredNameDictionary("STPMultiHeightGenerator");
 	STPcudaCheckErr(cuModuleGetFunction(&this->GeneratorEntry, program, name.at("generateMultiBiomeHeightmap")));
 	STPcudaCheckErr(cuModuleGetGlobal(&biome_prop, &biome_propSize, program, name.at("BiomeTable")));
-	STPcudaCheckErr(cuModuleGetGlobal(&dimension, &dimensionSize, program, name.at("Dimension")));
-	STPcudaCheckErr(cuModuleGetGlobal(&half_dimension, &half_dimensionSize, program, name.at("HalfDimension")));
 	STPcudaCheckErr(cuModuleGetGlobal(&permutation, &permutationSize, program, name.at("Permutation")));
-	//copy variables
-	const vec2 halfSize = static_cast<vec2>(this->MapSize) * 0.5f;
-	STPcudaCheckErr(cuMemcpyHtoD(dimension, value_ptr(this->MapSize), dimensionSize));
-	STPcudaCheckErr(cuMemcpyHtoD(half_dimension, value_ptr(halfSize), half_dimensionSize));
 	//note that we are copying permutation to device, the underlying pointers are managed by this class
 	STPcudaCheckErr(cuMemcpyHtoD(permutation, &this->Simplex_Permutation(), permutationSize));
 
@@ -141,10 +135,7 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	//start execution
 	//host to host memory copy is always synchornous, so the host memory should be available now
 	STPSingleHistogram histogram_h;
-	{
-		unique_lock<mutex> filter_lock(this->HistogramFilterLock);
-		histogram_h = this->biome_histogram(biomemap_manager, histogram_buffer, this->InterpolationRadius);
-	}
+	histogram_h = this->biome_histogram(biomemap_manager, histogram_buffer, this->InterpolationRadius);
 	//copy histogram to device
 	STPSingleHistogram histogram_d;
 	//calculate the size of allocation

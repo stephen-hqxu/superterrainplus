@@ -23,6 +23,9 @@ using glm::uvec2;
 using glm::uvec3;
 using glm::value_ptr;
 
+//TODO: Don't hardcode it.
+constexpr static float GradientBias = 7.5f;
+
 STPSplatmapGenerator::STPSplatmapGenerator
 	(const STPCommonCompiler& program, const STPTextureDatabase::STPDatabaseView& database_view, const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting) :
 	STPTextureFactory(database_view, chunk_setting), KernelProgram(program) {
@@ -33,19 +36,17 @@ STPSplatmapGenerator::STPSplatmapGenerator
 void STPSplatmapGenerator::initGenerator() {
 	//copy memory to the program
 	CUmodule program = this->KernelProgram.getProgram();
-	CUdeviceptr splat_database, mapDim, totalmapDim;
-	size_t splat_databaseSize, mapDimSize, totalmapDimSize;
+	CUdeviceptr splat_database, gradientBias;
+	size_t splat_databaseSize, gradientBiasSize;
 	//get variable names
 	const auto& name = this->KernelProgram.getLoweredNameDictionary("STPSplatmapGenerator");
 	STPcudaCheckErr(cuModuleGetFunction(&this->SplatmapEntry, program, name.at("generateTextureSplatmap")));
 	STPcudaCheckErr(cuModuleGetGlobal(&splat_database, &splat_databaseSize, program, name.at("SplatDatabase")));
-	STPcudaCheckErr(cuModuleGetGlobal(&mapDim, &mapDimSize, program, name.at("MapDimension")));
-	STPcudaCheckErr(cuModuleGetGlobal(&totalmapDim, &totalmapDimSize, program, name.at("TotalBufferDimension")));
-	//copy to device variables
-	STPcudaCheckErr(cuMemcpyHtoD(mapDim, value_ptr(this->MapDimension), mapDimSize));
-	const uvec2 totalBufferSize = this->MapDimension * this->RenderedChunk;
-	STPcudaCheckErr(cuMemcpyHtoD(totalmapDim, value_ptr(totalBufferSize), totalmapDimSize));
-	//TODO: add spla-database and gradient bias
+	STPcudaCheckErr(cuModuleGetGlobal(&gradientBias, &gradientBiasSize, program, name.at("GradientBias")));
+	//add splat-database and gradient bias
+	const STPTextureInformation::STPSplatRuleDatabase splatDb = this->getSplatDatabase();
+	STPcudaCheckErr(cuMemcpyHtoD(splat_database, &splatDb, splat_databaseSize));
+	STPcudaCheckErr(cuMemcpyHtoD(gradientBias, &GradientBias, gradientBiasSize));
 }
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;

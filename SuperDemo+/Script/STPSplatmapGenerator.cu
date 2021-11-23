@@ -1,6 +1,4 @@
-#ifndef __CUDACC_RTC__
-#error __FILE__ can only be compiled in NVRTC
-#endif//__CUDACC_RTC__
+#include "./Script/STPCommonGenerator.cuh"
 
 //SuperAlgorithm+ Device library
 #include <STPTextureSplatRuleWrapper.cuh>
@@ -9,11 +7,6 @@ using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
-
-//This is the dimension of map of one chunk
-__constant__ uint2 MapDimension[1];
-//This is the dimension of map in the entire rendered chunk
-__constant__ uint2 TotalBufferDimension[1];
 
 __constant__ STPTI::STPSplatRuleDatabase SplatDatabase[1];
 __constant__ float GradientBias[1];
@@ -30,6 +23,8 @@ constexpr static int2 GradientKernel[GradientSize] = {
 
 //--------------------- Definition --------------------------
 
+using namespace STPCommonGenerator;
+
 /**
  * @brief Launch kernel to start splatmap generation.
  * All texture objects are non-layered 2D.
@@ -44,7 +39,7 @@ __global__ void generateTextureSplatmap
 		y = (blockIdx.y * blockDim.y) + threadIdx.y,
 		//block is in 2D, so threadIdx.z is always 0 and blockDim.z is always 1
 		z = blockIdx.z;
-	if (x >= Dimension->x || y >= Dimension->y || z >= splat_info.LocalCount) {
+	if (x >= mapDimension().x || y >= mapDimension().y || z >= splat_info.LocalCount) {
 		return;
 	}
 	//working pixel
@@ -53,12 +48,12 @@ __global__ void generateTextureSplatmap
 
 	//coordinates are normalised
 	const uint2 SamplingPosition = make_uint2(
-		x + MapDimension->x * local_info.LocalChunkCoordinateX,
-		y + MapDimension->y * local_info.LocalChunkCoordinateY
+		x + mapDimension().x * local_info.LocalChunkCoordinateX,
+		y + mapDimension().y * local_info.LocalChunkCoordinateY
 	);
 	const float2 unitUV = make_float2(
-		1.0f / (1.0f * TotalBufferDimension->x),
-		1.0f / (1.0f * TotalBufferDimension->y)
+		1.0f / (1.0f * mapDimensionRendered().x),
+		1.0f / (1.0f * mapDimensionRendered().y)
 	);
 	const float2 UV = make_float2(
 		1.0f * SamplingPosition.x * unitUV.x,
@@ -67,7 +62,7 @@ __global__ void generateTextureSplatmap
 
 	float cell[GradientSize];
 	//calculate heightmap gradient
-	for (unsigned int = 0u; i < GradientSize; i++) {
+	for (unsigned int i = 0u; i < GradientSize; i++) {
 		const int2& currentKernel = GradientKernel[i];
 		const float2 offsetUV = make_float2(
 			unitUV.x * currentKernel.x,
