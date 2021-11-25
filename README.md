@@ -50,7 +50,7 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 - [x] Runtime-compiled pipeline stage
 - [x] Biome generation with classic Minecraft scaling algorithm
 - [x] Multi-biome heightfield generation with smooth transition
-- [ ] Rule-based biome-dependent terrain texture splatting with smooth transition
+- [x] Rule-based biome-dependent terrain texture splatting with smooth transition
 - [ ] River and lake generation
 - [ ] Weather and seasonal effect
 - [ ] Real-time raster-ray tracing hybrid rendering

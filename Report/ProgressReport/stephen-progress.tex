@@ -1,0 +1,258 @@
+\documentclass[oneside, a4paper]{article}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{fancyhdr}
+\usepackage[compact]{titlesec}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage[font=large,labelfont=bf]{caption}
+\usepackage{url}
+\usepackage{amssymb}
+
+\graphicspath{{./img/}}
+
+\setlength{\parskip}{0.4cm}
+\renewcommand{\baselinestretch}{1.1}
+
+\setlist[description]{style=nextline}
+
+% Fancyhdr
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Stephen Xu}
+\chead{\thepage}
+\rhead{CS310 Progress Report}
+
+\begin{document}
+    \begin{titlepage}
+        \begin{center}
+            \huge
+            \vspace*{4cm}
+            \textbf{SuperTerrain+:}
+
+            \vspace*{1cm}
+            A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering.
+
+            \LARGE
+            \vspace*{2cm}
+            Progress Report
+
+            \vspace*{1cm}
+            Stephen Xu [u1919771] \\
+            29 Nov 2021
+        \end{center}
+    \end{titlepage}
+    \newpage
+    \large
+    \flushleft
+
+    \section{Introduction}
+    Procedural generation of landscape (or terrain) is a widely researched topic in the field of computer graphics and has been applied to either game industries like Minecraft \cite{mc} and No Man's Sky \cite{no_mans_sky}, or software for 3D artists like Terragen \cite{terragen} and Picogen \cite{picogen}. However for project developers it is difficult to include all terrain generation features in their software within a limited amount of time and money, consequently terrain generators are usually built in an application-specific manner with reduced flexibility therefore customisability. So the question arises, is there an all-purpose terrain engine exists that allows user to change the world based on their needs? For instance, if we are generating terrain for a game it should be done efficiently; or for a movie scene it should maximise for realism. Either way, an adaptive tool should be useful so developers do not need to recreate a scenary generators from scratch.
+
+    Therefore, this project aims to deliver a modern, flexible and real-time capable with photorealistic rendering terrain engine, \textbf{SuperTerrain+}. As discussed in the background research section in project specification, the engine generates a high-poly terrain mesh by tessellating a flat surface with a heightmap-based approach. More advanced algorithms do exist for terrain generation but under the consideration of feasibility within the time limit it is better to start from the basics and deliver features incrementally in the future.
+
+    \section{Development}
+    I spent the summer on background research so I was able to start the development when term 1 started. The following list provides a brief summary for features completed during the first 9 weeks of development.
+
+    \begin{itemize}[label=\(\diamond\)]
+        \item Tile-based chunk system.
+        \item Improved Simplex noise algorithm on GPU device.
+        \item Hardware instancing and tessellation.
+        \item Continuous level-of-detail.
+        \item Concurrent pipelined terrain generation.
+        \item Static-and-runtime compilable pipeline stages.
+        \item Particle-based free-slip hydraulic erosion.
+        \item Biomemap generation.
+        \item Multi-biome heightfield generation with smooth cross-biome transition.
+        \item Rule-based biome-dependent terrain texture splatting with smooth cross-biome transition.
+    \end{itemize}
+
+    As planned, the engine is being developed using C++ (under ISO C++ 17 standard) on Windows 10, as well as CUDA as GPU programming and OpenGL (against OpenGL 4.6 core profile) as rendering API.
+
+    \subsection{Interativity}
+
+    GLFW \cite{glfw} is used to create a window with canvas that allows OpenGL to draw on, it also provides functionalities for handling mouse and keyboard inputs, which are then used to calculate view matrix to move the camera. Currently only a spectator camera is implemented and it allows user to freely move all over the terrain instead of being constrained on the ground, allowing easier navigation and visual inspection during early stage of development.
+
+    \subsection{Terrain chunk model generation}
+
+    As it is an infinite terrain, the mesh needs to be split into discrete units so the computer can render each chunk on-demand, i.e., only draw the parts of the terrain visible by camera. The discrete unit is usually referred as \textit{chunk}, each chunk is basically a rectangle with 4 vertices.
+
+    The conventional method of creating a plane is by connecting chunks together and generates more vertices based on The level-of-detail. However one disadvantage is it will put too much load onto a single pipeline stage while others are waiting; also, if the chunk is very big, to achieve the same amout of LoD, it might exceed the tessellation limit OpenGL allows. In order to evenly spread the computational complexity to other stages, a new method is developed in this project. A chunk is further divided into a smaller unit called \textit{tile}, a chunk is then be created from a number of tiles using hardware instancing in the vertex shader, and each tile will be tessellated lightly in the tessellation shader.
+
+    In order to make the world feels like infinite, rendered chunks need to move along with the camera. The position of each chunk is denoted by the world coordinate of the top-left vertex; compared to assigning coordinate of the chunk centre, it avoids performing floating point division which is considered to be slow on GPU. The central chunk position can be then calculated based on the camera position, and instancing the surrounding chunks accordingly.
+
+    \subsection{Terrain heightmap synthesis}
+
+    The state-of-the-art heightmap generation algorithm is by using noise. There are a range of different types of noise algorithms, from valued noise, to gradient noise, to celluar. Simplex noise \cite{simplex_noise}, as a successor to Perlin noise \cite{perlin_noise} which has been using for heightmap synthesis for a long time, is more robust to visual artifacts and efficient \cite{improved_perlin}. The engine features a hybrid of simplex nosie and Perlin noise \cite{simplex_demystified} algorithms with customisation, it allows better controls to terrain generation.
+
+    With heightmap, each vertex on the terrain mesh is offset in the y-direction by an amount based on the value on the heightmap and a altitude multiplier. By now the terrain looks too smooth, to make it more natural, multiple phases of simplex noise are combined. As lighting and shading is not yet carried out, a normalmap is generated from heightmap and used as terrain texture so shape of the mesh can be observed.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{no_shading_showcase7.jpg}
+        \caption{Shows a portion of a multi-fractal simplex noise-generated terrain.}
+    \end{figure}
+
+    \subsubsection{Hydraulic erosion}
+
+    Although there are more details on the terrain with the help of multi-fractal noise, the mesh now looks too rough to be realistic. Therefore, a simple physical simulation is performed once the heightmap is generated. By performing hydraulic erosion, the computer simulates rains on the landscape. When the raindrop flows descents towards lower altitude, it carries sediment from the ground, called erosion; when the raindrop evaporates, all carried sediment are left at where it dries out, called deposition.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{no_shading_showcase3.jpg}
+        \caption{Shows a portion of the terrain with smooth erosion crest and ravine after being eroded by 80k water droplets. The frame freezes for a second on Debug mode. Although the generation pipeline is done with muti-threaded CPU, GPU is budy doing simulation and therefore it cannot responds to draw calls from OpenGL which causes rendering delays. On Release mode the effect is unnoticeable, however the performance is still depended on erosion settings.}
+    \end{figure}
+
+    There exists two types of hydraulic erosion algorithms, being cell-based (also known as hydrostatic pipe-model) \cite{cell_based_erosion} and particle-based \cite{particle_based_erosion}. Compared to cell-based approach which requires a permanent body of water, particle-based erosion allows undefined water source and all water droplets are randomly generated on the terrain, therefore it is more suitable for procedural terrain generation.
+
+    The original hydraulic erosion algorithm was performed on a finite terrain. For an infinite terrain, simply reimplement the origin algorithm without making any modification caused a visual artifacts around the chunk edges. This is because each erosion simulation is performed on a single chunk without knowing all its neighbours, and raindrops are simply terminated when they go out-of-bound.
+
+    Thus, following the idea from one of the particle-based hydraulic erosion implementation \cite{cell_based_erosion}, a \textit{free-slip range} can be defined to indicate how far we want the raindrop to go beyond the current chunk. Then the pipeline checks if all chunks within that \textit{free-slip range} are available, and lock the chunk to avoid being used by other simulators to avoid data racing, and copy all heightmaps onto a large texture. During the simulation raindrops can free-slip to the neighbour chunks as if there is no border. After the simulation the process is reversed and unlock all chunks finally so they can be used further. The particle-based algorithm is further improved using a parameter-based approach \cite{parameter_particle_based} to allow further customisation to the erosion.
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[width=0.8\textwidth]{comparison1.jpg}
+        \includegraphics[width=0.8\textwidth]{comparison2.jpg}
+        \caption{The improved erosion algorithm compared to the classic erosion. Notice that in classic erosion terrain around the edge of chunks is rough, the border shows a thick lump. Although the shape of landscape is more refined with our free-slip erosion algorithm, there is still some discoloration on the normalmap showing which will be discussed and fixed later in this progress report.}
+    \end{figure}
+
+    The overhead occurs when merging all small heightmaps into a large texture, which requires a number of sparse memory transaction between CPU and GPU. Some optimisations are done including use of page-locked memory to cut down the number of host-device communication from N to 1 where N denotes the number of free-slip chunk; also to improve speed of memory copy, a look-up table called Global-Local Index Table is pre-computed, so instead of performing a more expensive matrix-copy operation, a linear memory copy can be used. The look-up table still guarantees coalesced memory access on GPU thus introduces little additional overhead.
+
+    \subsubsection{Seams}
+
+    Seam is the effect of visual discontinuity appears at the chunk border, disconnecting the terrain.
+
+    Multiple chunk tessellation algorithms were developed in this project. The first version uses chunk ID to identify local chunks within rendering range, heightmaps are stored in a layered texture (a.k.a. texture array), and chunk ID can be used as an index to the layered texture to locate heightmap for transformation. During heightmap generation using simplex noise texture is offset by certain amount to ensure there is no disconnectivity. This worked well until hydraulic erosion was added, as the process is pretty random, the erosion algorithm cannot promise the height value at the edge of the heightmap to be the same, therefore seam occurs.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{illustrate_seams.jpg}
+        \caption{Illustrates the reason for seams using this chunk model. Each vertex is assigned with a chunk ID it belongs to, and transform it using the heightmap for a specific chunk. If two or more overlapping vertices are assigned with different chunk ID they are transformed differently. Therefore, a new tessellation algorithm that guarantees vertices at the same location are transformed equally, is required.}
+    \end{figure}
+
+    Various methods were investigated including doing manual edge alignment, so called selective edge copy, to force the edge pixel to have the same value. Additionally layered texture is replaced with a single map, and the idea of using chunk ID can therefore be eliminated as well; vertices with the same position are always assigned with the same texture coordinate therefore the pixel being looked up is the same, which effectively removed seams from the terrain. 
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{tile_based.jpg}
+        \caption{Shows how chunks are instanced from tiles for a terrain with rendered chunk count of 3x3 and chunk size of 3x3. Each small square is a tile and large square with thick edges is a chunk. The old instancing model aimed to recreate a chunk from tiles however it introduces chunk border seams. The new instancing model completely ignore the existence of chunk and instances tiles pure horizontally.}
+
+        \includegraphics[width=\textwidth]{erosion4.0.jpg}
+        \caption{Demonstrates different stages during the development of this algorithm. Geometric chunk seams is not shown in these figures, but can be observed from the normalmap. As of previously each texture is separated into layers thus OpenGL cannot do linear filtering across different layers. After merging all texture layers into a single buffer so image filtering can be exploited.}
+    \end{figure}
+
+    Terrain seams can also occur when different chunk has different level-of-detail. The original method simply assigned the central chunk (the chunk where the camera is located) with the highest LoD factor, and neighbour chunks have LoD decreases exponentially. This brings the problem back where vertices share the same position does not guarantee to read the same height value. The new solution involves deriving a blending function that smoothly determines the LoD factor for each chunk, which ensures the same vertex location is assigned with the same LoD. Also, manual alignment of the heightmap edge in the selective-edge copy algorithm generally achieves the goal but it is highly redundant and slow on GPU as it involves warp divergence thus can be abandoned and replaced by this more efficient approach.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{lod.jpg}
+        \caption{Compares the old approach with the new one. Chunk-based switching does not work well when the number of rendered chunk is small, such that most chunks are still being assigned with relatively high LoD, and the same factor is broadcasted across all primitives (triangles) within the chunk. In the new approach the LoD factor is dynamically determined using a blending function, taking the distance from camera to each primitive as input; one of the major drawback is terrain shape varies as the camera moves, one solution is to clamp the value to make sure close-range terrain is not shifted dynamically.}
+    \end{figure}
+
+    \subsection{Terrain diversity}
+
+    So far the terrain is generated using one noise generator, consequently the landscape is very plain.
+
+    \subsubsection{Biome}
+
+    Multi-biome terrain generation is a technique that allows a combination of different heightmap generators to collaborate and produce a single heightmap with varitions. Biomes are represented by biome IDs, which are stored on a texture called biomemap, and can then be used to look up generator parameters for the current biome.
+
+    There are a number of different biomemap generation techniques, including use of noise to generate temperature and precipitation classification to determine biome, for instance hot and dry area becomes the desert while hot and humid area turns to be a jungle; or to generate regions biome will be in, like using Voronoi diagram. In this project, an algorithm which is similar to what Minecraft has implemented is used \cite{mc_biome}; compared to algorithms specified, I find it more controllable and flexible thus enabling user to reprogram the biome generator if needed.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{twobiomes.jpg}
+        \caption{Shows 2 biomes on the biomemap. One key feature of this generator has compared other techniques is the naturally jagged biome border.}
+    \end{figure}
+
+    \subsubsection{Biome-edge transition}
+
+    The problem arises when multiple heightmap generators are collaborating. Since each generators are independent of each other therefore a sharp cut-off can be observed at the edge of each biome when a different generator is used for the next biome.
+
+    Biomemap is an integer-format texture therefore no image filtering can be done otherwise the biome ID represented will no longer be correct. Instead, filtering can be applied to the heightmap after it has been generated. Various techniques were considered like using Gaussian filter, yet it will also smooth out details on the terrain like multi-fractal noises and erosion marks being discussed earlier. Therefore a filter that only interpolate between biome edges but leaves other regions on the terrain unchanged, is required.
+
+    A new technique has been developed in this project. Instead of summing up all height values nearby and calculate the mean, a histogram of biome IDs can be generated for a pixel on the biomemap. The quantities of each biome within a radius are recorded and put into bins, and normalise the histogram at the end, such that each bin represents the weight of height value belongs to this biome and heightmap generators can work together.
+
+    It is a slow process to generate biome histogram for each pixel on the biomemap as the runtime is approximately \(\Theta (Nr^{2})\) where \(N\) is the number of pixel and \(r\) is the filter radius; in practice, it takes 2 seconds to generate such histogram for a 512x512 biomemap with kernel radius of 64 using 4 parallel CPU threads. By following an optimisation technique originally applies to Gaussian filter \cite{fast_gaussian}, the single-bin histogram filter is in fact separable and a sum variable can be used to record the previous state to avoid recomputing the kernel. This effectively reduces time complexity to \(\Theta (N)\) and \(r\) no longer contributes. More optimisations are done based on the free-slip system used in hydraulic erosion, such that the final runtime is about \(O (N + 2r)\); as radius is a relatively small number compared to the number of pixel, the effect is negligible; the runtime reduces to only 28 milliseconds with the same settings.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{system_comparison2.jpg}
+        \caption{Shows comparisons of noise-generated, hydraulic-eroded and histogram-filtered terrains at the same location. Notice that with the histogram filter terrain features such as fractals and erosion marks are preserved.}
+    \end{figure}
+
+    \section{Project management}
+    Although the development time estimations for some features are not accurate and actually took either longer or shorter than planned, in general the project is current ahead of schedule by a month, shading and rendering was started at the end of October instead of the originally planned mid-December.
+
+    As planned, project is being developed using agile method, which has been showing to be flexible and adaptive when my project plan keeps changing. The software is currently at its \(8^{th}\) sprint cycle (version 0.8.8 at this point). Each cycle produces a release, which is logged to indicate what has been accomplished. The following list provides a brief summary of what features were delivered in each cycle, with the addition of continuous refactoring and optimisation guarantee in each cycle:
+
+    \begin{enumerate}[label=v0.\arabic*]
+        \item The initial release contains setup of project framework such as CUDA and OpenGL rendering context.
+        \item Terrain chunk model generation, noise function implemented on GPU.
+        \item Hydraulic erosion and free-slip system.
+        \item Biome generator.
+        \item Project migration from Visual Studio 2019 to CMake.
+        \item Implement single histogram filter for smooth biome transition.
+        \item Add unit tests.
+        \item Terrain texture splatting.
+    \end{enumerate}
+
+    Project is being tracked using Kanban board and development cycles are logged.
+    
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{kanban.png}
+        \includegraphics[width=\textwidth]{issues.png}
+        \caption{Shows the Kanban board featuring 5 categories at the current stage of development, using GitHub Projects; and how project is back-logged to keep track on any issue and new ideas for the upcoming development, using Github Issues.}
+        \label{log}
+    \end{figure}
+
+    \subsection{Risk assessment}
+    So far no risk identified in the project specification has been observed. However there was a unforeseen risk which manifested on 7th, April, as shown in Figure \ref{log}. CUDA SDK was updated from 11.0 to 11.2 as some new features in this release can be helpful for future development, however after performing the update the program crashed, and the exception handling engine within the main engine reported a \textit{cudaErrorIllegalAddress} error. Project was completely halted until a defect report related to MSVC and NVCC was found \cite{cuda1102_defect}, NVCC mistakenly handled double-precision floating point as single-precision in CUDA math functions and caused either program link error or runtime overflow. After patching the CUDA SDK issue was resolved.
+
+    The following table is a updated version of risk assessment, with proposed mitigation:
+
+    \begin{center}
+        \begin{tabular}{ | p{7.5cm} || p{7.5cm} | }
+            \hline
+            Risk & Mitigation \\
+            \hline
+            \hline
+            Updates of external library may bring unexpected bugs to the engine, making tracking down the issue harder, causing project delay. &
+            From this point towards the end of the project, fix all external libraries to a specific version and avoid update. In case updates are indeed necessary, note down the last working version and test the program after update, perform version roll-back if needed. \\
+            \hline
+        \end{tabular}
+    \end{center}
+
+    In the Gantt chart shows in project specification I did not take into account of other works need to be done apart from this project, such as assignments from other course in my degree. It has proven to be a underestimation and causes rushing to complete schedules during the first 9 weeks of development. However subsequent development is expected to be less intense as schedules for other activities are planned to be relaxed, therefore the project timetable can remain unchanged.
+
+    % Shows a updated timetable
+
+    \subsubsection{Plan}
+
+    Project is following the original plan, and as identified in the project specification, with some modifications, there are a few possible extensions may be achieved:
+
+    \begin{itemize}[label=\(\diamond\)]
+        \item Procedural geometric foliage generation.
+        \item Weather effect.
+        \item Real-time hybrid ray traced-raster rendeing. Being modified slightly from the original real-time global illumination, as doing pure ray-tracing even with hardware support in real-time is yet to be feasible. By combining classic rasterisation and ray-tracing into the rendering pipeline, rendering targets can be selective.
+        \item Volumetric terrain generation.
+        \item Procedural planet generation.
+        \item Volumetric cloud generation. This is a newly identified extension, currently the world uses cubemap for cloud and is being very unrealistic. By using volumetric rendering techniques cloud models with light scattering can be implemented to achieve higher level of photorealism.
+    \end{itemize}
+
+    I am planning to complete at least one extension from the list considering the current development progress. Real-time hybrid ray traced-raster rendeing was originally identified as an objective, however as more research was conducted the complexity seems to be very high thus being unfeasible given the time constraint. Volumetric terrain and planet generations are also identified to be unfeasible as they require a re-implementation of the generation pipeline, basically equivalent to restarting the project from the beginning.
+
+    Procedural foliage generation is now the candidate as texture is currently being used to mimic the effect of having foliage, as a result it is very unrealistic. A number of research was done and the difficulty of this objective depends on what foliage to be generated, simple geometries like grass can be done in a short amount of time while complex ones like high-poly trees requires some amount of work; it is even possible to implement animation to foliage such as waving in the wind, in real-time. I should start from the basics and increment the complexity within time allowance. Based on this idea, the terrain engine will be developed with layers of realism being built up, therefore each development cycle should improve the generation quality by some amount.
+
+    \section{Resources}
+    The resource usage of project generally remains the same, with the addition of the following external libraries:
+
+    \begin{description}
+        \item[SQLite3] \hfill \\
+            A light-weight SQL, non-database-server API for multiple programming languages including C++.
+    \end{description}
+
+    \section{Legal, social, ethical and professional issues}
+    Ethical status remains the same as being declared in the project specification, the project involves no legal, social, ethical and professional issue.
+
+    All external libraries include the updated list are allowed to be used for open source, non-profit individual project.
+
+    \bibliographystyle{unsrt}
+    \bibliography{stephen-progress}
+
+\end{document}

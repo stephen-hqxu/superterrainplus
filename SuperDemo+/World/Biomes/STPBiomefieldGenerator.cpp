@@ -68,41 +68,7 @@ void STPBiomefieldGenerator::initGenerator() {
 	STPcudaCheckErr(cuMemFreeHost(biomeTable_buffer));
 }
 
-//Memory Pool
-#include <SuperTerrain+/Utility/Memory/STPMemoryPool.h>
-
 using namespace SuperTerrainPlus::STPCompute;
-
-//As a reminder, this is thread-safe
-static SuperTerrainPlus::STPRegularMemoryPool CallbackDataPool;
-
-struct STPBiomefieldGenerator::STPBufferReleaseData {
-public:
-
-	//The pool that the buffer will be returned to
-	STPBiomefieldGenerator::STPHistogramBufferPool* Pool;
-	//The buffer to be returned
-	STPSingleHistogramFilter::STPHistogramBuffer_t Buffer;
-	//The pool lock
-	mutex* Lock;
-
-};
-
-void STPBiomefieldGenerator::returnBuffer(void* buffer_data) {
-	STPBufferReleaseData* data = reinterpret_cast<STPBufferReleaseData*>(buffer_data);
-
-	//return buffer to the buffer pool safely
-	{
-		unique_lock<mutex> buffer_lock(*data->Lock);
-		data->Pool->emplace(move(data->Buffer));
-	}
-
-	if constexpr (!std::is_trivially_destructible_v<STPBufferReleaseData>) {
-		data->~STPBufferReleaseData();
-	}
-	//free the data
-	CallbackDataPool.release(buffer_data);
-}
 	
 void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap_buffer, const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor& biomemap_adaptor, vec2 offset, cudaStream_t stream) const {
 	int Mingridsize, blocksize;
@@ -149,14 +115,12 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	//and copy
 	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.Bin, histogram_h.Bin, bin_size, cudaMemcpyHostToDevice, stream));
 	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset, offset_size, cudaMemcpyHostToDevice, stream));
-
-	//returning the buffer requires a stream callback
-	//do a placement new call to construct since STPBufferReleaseData is not trivial
-	STPBufferReleaseData* release_data = new(CallbackDataPool.request(sizeof(STPBufferReleaseData))) STPBufferReleaseData();
-	release_data->Buffer = move(histogram_buffer);
-	release_data->Lock = &this->BufferPoolLock;
-	release_data->Pool = &this->BufferPool;
-	STPcudaCheckErr(cuLaunchHostFunc(stream, &STPBiomefieldGenerator::returnBuffer, release_data));
+	//returning the buffer back to the pool, make sure all copies are done
+	STPcudaCheckErr(cudaStreamSynchronize(stream));
+	{
+		unique_lock<mutex> buffer_lock(this->BufferPoolLock);
+		this->BufferPool.emplace(move(histogram_buffer));
+	}
 
 	//launch kernel
 	float2 gpu_offset = make_float2(offset.x, offset.y);

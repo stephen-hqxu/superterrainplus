@@ -44,6 +44,7 @@ using glm::value_ptr;
 #include "../World/STPWorldManager.h"
 #include "../World/Layers/STPAllLayers.h"
 #include "../World/Biomes/STPBiomefieldGenerator.h"
+#include "../World/Biomes/STPSplatmapGenerator.h"
 
 //Error
 #include <SuperTerrain+/Exception/STPInvalidSyntax.h>
@@ -169,8 +170,9 @@ namespace STPDemo {
 			
 			glPatchParameteri(GL_PATCH_VERTICES, 3);//barycentric coordinate system
 
+			using namespace SuperTerrainPlus;
 			//loading terrain 2d inf parameters
-			SuperTerrainPlus::STPEnvironment::STPConfiguration config;
+			STPEnvironment::STPConfiguration config;
 			config.getChunkSetting() = STPTerrainParaLoader::getProcedural2DINFChunksParameter(this->engineSettings["Generators"]);
 			config.getMeshSetting() = STPTerrainParaLoader::getProcedural2DINFRenderingParameter(this->engineSettings["2DTerrainINF"]);
 			STPTerrainParaLoader::loadBiomeParameters(this->biomeSettings);
@@ -178,7 +180,7 @@ namespace STPDemo {
 			const auto& chunk_setting = config.getChunkSetting();
 			//not quite sure why heightfield_settings isn't got copied to the config, it just share the pointer
 			config.getHeightfieldSetting() = std::move(STPTerrainParaLoader::getProcedural2DINFGeneratorParameter(this->engineSettings["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
-			SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplex2DNoiseParameter(this->biomeSettings["simplex"]);
+			STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplex2DNoiseParameter(this->biomeSettings["simplex"]);
 
 			assert(config.validate());
 			const unsigned int unitplane_count = chunk_setting.ChunkSize.x * chunk_setting.ChunkSize.y * chunk_setting.RenderedChunk.x * chunk_setting.RenderedChunk.y;
@@ -191,15 +193,22 @@ namespace STPDemo {
 			//setting world manager
 			try {
 				this->world_manager = new STPWorldManager(this->biomeSettings("texture_path_prefix")(), config);
-				this->world_manager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
-				this->world_manager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>(this->world_manager->SharedProgram, simplex, chunk_setting.MapSize, this->biomeSettings("interpolationRadius").to<unsigned int>());
+				const auto& world_chunkSetting = const_cast<STPEnvironment::STPConfiguration&>(this->world_manager->getWorldSetting()).getChunkSetting();
+
+				this->world_manager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(world_chunkSetting.MapSize, simplex.Seed);
+				this->world_manager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>
+					(this->world_manager->SharedProgram, simplex, chunk_setting.MapSize, this->biomeSettings("interpolationRadius").to<unsigned int>());
+				this->world_manager->attachTextureFactory<STPDemo::STPSplatmapGenerator>
+					(this->world_manager->SharedProgram, this->world_manager->getTextureDatabase(), world_chunkSetting, 
+						this->biomeSettings("splat_gradient_bias").to<float>());
+
 				this->world_manager->linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 				if (!this->world_manager) {
 					//do not proceed if it fails
 					terminate();
 				}
 			}
-			catch (const SuperTerrainPlus::STPException::STPInvalidSyntax& se) {
+			catch (const STPException::STPInvalidSyntax& se) {
 				//catch TDL compilation error
 				cerr << se.what() << endl;
 				terminate();

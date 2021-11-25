@@ -53,6 +53,7 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 	//binding sampler
 	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Biomemap"), 0);
 	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Heightfield"), 1);
+	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Splatmap"), 2);
 	//those parameters won't change, there is no need to resend them in rendering loop
 	const vec2 base_chunk_position = this->calcBaseChunkPosition();
 	const uvec2 rendering_buffer_size = chunk_settings.RenderedChunk * chunk_settings.MapSize;
@@ -161,8 +162,10 @@ void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& proje
 		std::terminate();
 	}
 	this->ChunkManager.generateMipmaps();
-	glBindTextureUnit(0, this->ChunkManager.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::BIOME));//biomemap
-	glBindTextureUnit(1, this->ChunkManager.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::HEIGHTFIELD));//heightfield
+	const STPChunkManager& chunkMgr = this->ChunkManager;
+	glBindTextureUnit(0, chunkMgr.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::BIOME));//biomemap
+	glBindTextureUnit(1, chunkMgr.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::HEIGHTFIELD));//heightfield
+	glBindTextureUnit(2, chunkMgr.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::SPLAT));//splatmap
 	//terrain surface texture isn't ready yet
 	//const unsigned int instance_count = this->CHUNK_SIZE.x * this->CHUNK_SIZE.y * this->RENDERED_CHUNK.x * this->RENDERED_CHUNK.y;
 	glBindVertexArray(this->plane_vao);

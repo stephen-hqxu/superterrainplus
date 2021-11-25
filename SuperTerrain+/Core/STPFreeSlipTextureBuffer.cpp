@@ -17,37 +17,8 @@
 using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;
 
-static SuperTerrainPlus::STPRegularMemoryPool CallbackMemPool;
-
 using std::make_pair;
 using std::unique_ptr;
-
-/**
- * @brief Essential data for stream-ordered host memory release
-*/
-struct STPHostReleaseData {
-public:
-
-	//Memory to be returned
-	void* ReleasingHostMemory;
-	//Memory pool where the memory will be returned to
-	SuperTerrainPlus::STPPinnedMemoryPool* ReleasingHostMemPool;
-
-};
-
-//A CUDA stream callback function to release host memory
-static void releaseHostMemory(void* release_data) {
-	STPHostReleaseData* data = reinterpret_cast<STPHostReleaseData*>(release_data);
-	auto [memory, pool] = *data;
-	pool->release(memory);
-
-	//free-up memory
-	if constexpr (!std::is_trivially_destructible_v<STPHostReleaseData>) {
-		//we need to call the destructor if it has user-defined destructor before returning to the thread pool.
-		data->~STPHostReleaseData();
-	}
-	CallbackMemPool.release(release_data);
-}
 
 template<typename T>
 STPFreeSlipTextureBuffer<T>::STPHostCallbackDeleter::STPHostCallbackDeleter(cudaStream_t stream, STPPinnedMemoryPool* memPool) : Data(make_pair(stream, memPool)) {
@@ -64,13 +35,10 @@ void STPFreeSlipTextureBuffer<T>::STPHostCallbackDeleter::operator()(T* ptr) con
 	auto [stream, pool] = *this->Data;
 	//deallocation
 	//host memory will always be allocated
-	//we need to add a callback because we don't want the host memory to be released right now as unfinished works may be still using it.
+	//we need to wait for the stream because we don't want the host memory to be released right now as unfinished works may be still using it.
 	//all pointers we provide are guaranteed to be valid until the stream has synced.
-	//use placement new to init STPHostReleaseData after allocating raw memory
-	STPHostReleaseData* release_data = new(CallbackMemPool.request(sizeof(STPHostReleaseData))) STPHostReleaseData();
-	release_data->ReleasingHostMemory = static_cast<void*>(ptr);
-	release_data->ReleasingHostMemPool = pool;
-	STPcudaCheckErr(cudaLaunchHostFunc(stream, &releaseHostMemory, static_cast<void*>(release_data)));
+	STPcudaCheckErr(cudaStreamSynchronize(stream));
+	pool->release(ptr);
 	//if texture is in host the pointer is the same as PinnedMemoryBuffer
 }
 

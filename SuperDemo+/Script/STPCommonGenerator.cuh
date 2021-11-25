@@ -7,23 +7,12 @@
 
 namespace STPCommonGenerator {
 
-	/**
-	 * @brief Get the dimension of a texture map.
-	 * @return The 2D dimension of a single texture map, in x, z direction.
-	*/
-	__device__ const uint2& mapDimension();
-
-	/**
-	 * @brief Get the half dimension of a texture map.
-	 * @return The 2D half dimension of a single texture map. It's equalvalent to mapDimension() / 2.
-	*/
-	__device__ const float2& mapDimensionHalf();
-
-	/**
-	 * @brief Get the rendered dimension of a texture map.
-	 * @return The 2D rendered dimension of a single texture map. It's equivalent to mapDimension() * RenderChunk.xy.
-	*/
-	__device__ const uint2& mapDimensionRendered();
+	//This is the dimension of map of one chunk
+	extern __constant__ uint2 Dimension[1];
+	//Dimension / 2
+	extern __constant__ float2 HalfDimension[1];
+	//This is the dimension of map in the entire rendered chunk
+	extern __constant__ uint2 RenderedDimension[1];
 }
 
 #endif//_STP_COMMON_GENERATOR_CUH_

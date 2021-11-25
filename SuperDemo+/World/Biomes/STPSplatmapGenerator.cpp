@@ -23,12 +23,11 @@ using glm::uvec2;
 using glm::uvec3;
 using glm::value_ptr;
 
-//TODO: Don't hardcode it.
-constexpr static float GradientBias = 7.5f;
-
 STPSplatmapGenerator::STPSplatmapGenerator
-	(const STPCommonCompiler& program, const STPTextureDatabase::STPDatabaseView& database_view, const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting) :
-	STPTextureFactory(database_view, chunk_setting), KernelProgram(program) {
+	(const STPCommonCompiler& program, const STPTextureDatabase::STPDatabaseView& database_view, 
+		const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting, float gradient_bias) :
+	//bias is a scaling value, we need to calculate the reciprocal.
+	STPTextureFactory(database_view, chunk_setting), KernelProgram(program), GradientBias(1.0f / gradient_bias) {
 	//compile source code
 	this->initGenerator();
 }
@@ -46,7 +45,7 @@ void STPSplatmapGenerator::initGenerator() {
 	//add splat-database and gradient bias
 	const STPTextureInformation::STPSplatRuleDatabase splatDb = this->getSplatDatabase();
 	STPcudaCheckErr(cuMemcpyHtoD(splat_database, &splatDb, splat_databaseSize));
-	STPcudaCheckErr(cuMemcpyHtoD(gradientBias, &GradientBias, gradientBiasSize));
+	STPcudaCheckErr(cuMemcpyHtoD(gradientBias, &this->GradientBias, gradientBiasSize));
 }
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
@@ -78,8 +77,8 @@ void STPSplatmapGenerator::splat
 		CU_LAUNCH_PARAM_END
 	};
 	STPcudaCheckErr(cuLaunchKernel(this->SplatmapEntry,
-		Dimgridsize.x, Dimgridsize.y, 1u,
-		Dimblocksize.x, Dimblocksize.y, Dimgridsize.z,
+		Dimgridsize.x, Dimgridsize.y, Dimgridsize.z,
+		Dimblocksize.x, Dimblocksize.y, 1u,
 		0u, stream, nullptr, config));
 	STPcudaCheckErr(cudaGetLastError());
 }

@@ -27,7 +27,8 @@ using std::make_pair;
 
 using namespace SuperTerrainPlus;
 
-STPChunkManager::STPChunkManager(STPChunkProvider& provider) : ChunkProvider(provider), trigger_clearBuffer(false), compute_pool(1u), buffering_stream(cudaStreamNonBlocking) {
+STPChunkManager::STPChunkManager(STPChunkProvider& provider, const STPDiversity::STPTextureFactory& tex_factory) : 
+	ChunkProvider(provider), trigger_clearBuffer(false), compute_pool(1u), buffering_stream(cudaStreamNonBlocking), generateSplatmap(tex_factory) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkProvider.getChunkSetting();
 	const ivec2 buffer_size(chunk_setting.RenderedChunk * chunk_setting.MapSize);
 	auto setupTex = [buffer_size](GLuint texture, GLint min_filter, GLint mag_filter, GLsizei levels, GLenum internalFormat) -> void {
@@ -145,7 +146,8 @@ void STPChunkManager::prepareSplatmap(const STPRenderingBufferMemory& buffer, co
 	res_desc.res.array.array = buffer.Splatmap;
 	STPcudaCheckErr(cudaCreateSurfaceObject(&splatmap, &res_desc));
 
-	//TODO: launch splatmap computer
+	//launch splatmap computer
+	this->generateSplatmap(biomemap, heightfield, splatmap, requesting_chunk, *this->buffering_stream);
 
 	//finish up, we have to delete it everytime because resource array may change every time we re-map it
 	STPcudaCheckErr(cudaDestroyTextureObject(biomemap));
@@ -220,8 +222,7 @@ bool STPChunkManager::loadChunksAsync(STPLocalChunkStatus& loading_chunks) {
 		}
 		if (!updated_chunk.empty()) {
 			//there exists chunk that has rendering buffer updated, we need to update splatmap as well
-			//TODO: enable splatmap generation
-			//this->prepareSplatmap(map_data, updated_chunk);
+			this->prepareSplatmap(map_data, updated_chunk);
 		}
 		
 		return num_chunkLoaded;

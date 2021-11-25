@@ -75,6 +75,8 @@ namespace SuperTerrainPlus {
 
 		//chunk data provider
 		STPChunkProvider& ChunkProvider;
+		//terrain splatmap generator
+		const STPDiversity::STPTextureFactory& generateSplatmap;
 
 		//Heightfield
 		//index 0: R16UI biome map
@@ -126,9 +128,10 @@ namespace SuperTerrainPlus {
 
 		/**
 		 * @brief Init the chunk manager. Allocating spaces for opengl texture.
-		 * @param provider The chunk provider link with this chunk manager
+		 * @param provider The chunk provider link with this chunk manager.
+		 * @param tex_factory The texture factory that handles terrain texture splatmap generation and texture data.
 		*/
-		STPChunkManager(STPChunkProvider&);
+		STPChunkManager(STPChunkProvider&, const STPDiversity::STPTextureFactory&);
 
 		~STPChunkManager();
 

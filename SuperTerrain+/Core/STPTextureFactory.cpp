@@ -125,10 +125,10 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 
 		//loop through sample used
 		spalt_lookup.reserve(sample_rec.size());
-		splat_reg.resize(sample_rec.size());
+		splat_reg.reserve(sample_rec.size());
 		//index counter
 		unsigned int alt_acc = 0u, gra_acc = 0u;
-		for (auto [sample_it, sample_index] = make_pair(sample_rec.cbegin(), 0u); sample_it != sample_rec.cend(); sample_it++, sample_index++) {
+		for (auto sample_it = sample_rec.cbegin(); sample_it != sample_rec.cend(); sample_it++) {
 			//our sample is sorted in asc order, and all splat tables are "expanded" version of sorted samples
 			const auto [sample_id, alt_count, gra_count] = *sample_it;
 

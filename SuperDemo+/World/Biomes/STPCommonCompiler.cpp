@@ -102,9 +102,9 @@ void STPCommonCompiler::setupCommonGenerator() {
 	STPRuntimeCompilable::STPSourceInformation commongen_info = this->getCompilerOptions();
 	//this common generator only contains a few shared variables
 	commongen_info.NameExpression
-		["Dimension"]
-	["HalfDimension"]
-	["RenderedDimension"];
+		["STPCommonGenerator::Dimension"]
+	["STPCommonGenerator::HalfDimension"]
+	["STPCommonGenerator::RenderedDimension"];
 	//compile
 	HANDLE_COMPILE(this->compileSource("STPCommonGenerator", commongen_source, commongen_info))
 	
@@ -167,9 +167,9 @@ void STPCommonCompiler::finalise() {
 		//source information
 		const auto& name = this->retrieveSourceLoweredName("STPCommonGenerator");
 		CUmodule program = this->getGeneratorModule();
-		STPcudaCheckErr(cuModuleGetGlobal(&dimension, &dimensionSize, program, name.at("Dimension")));
-		STPcudaCheckErr(cuModuleGetGlobal(&half_dimension, &half_dimensionSize, program, name.at("HalfDimension")));
-		STPcudaCheckErr(cuModuleGetGlobal(&rendered_dimension, &rendered_dimensionSize, program, name.at("RenderedDimension")));
+		STPcudaCheckErr(cuModuleGetGlobal(&dimension, &dimensionSize, program, name.at("STPCommonGenerator::Dimension")));
+		STPcudaCheckErr(cuModuleGetGlobal(&half_dimension, &half_dimensionSize, program, name.at("STPCommonGenerator::HalfDimension")));
+		STPcudaCheckErr(cuModuleGetGlobal(&rendered_dimension, &rendered_dimensionSize, program, name.at("STPCommonGenerator::RenderedDimension")));
 		//send data
 		const vec2 halfDim = static_cast<vec2>(this->Dimension) / 2.0f;
 		const uvec2 RenderedDim = this->RenderingRange * this->Dimension;

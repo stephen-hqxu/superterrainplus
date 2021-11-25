@@ -39,7 +39,7 @@ __global__ void generateTextureSplatmap
 		y = (blockIdx.y * blockDim.y) + threadIdx.y,
 		//block is in 2D, so threadIdx.z is always 0 and blockDim.z is always 1
 		z = blockIdx.z;
-	if (x >= mapDimension().x || y >= mapDimension().y || z >= splat_info.LocalCount) {
+	if (x >= Dimension->x || y >= Dimension->y || z >= splat_info.LocalCount) {
 		return;
 	}
 	//working pixel
@@ -48,12 +48,12 @@ __global__ void generateTextureSplatmap
 
 	//coordinates are normalised
 	const uint2 SamplingPosition = make_uint2(
-		x + mapDimension().x * local_info.LocalChunkCoordinateX,
-		y + mapDimension().y * local_info.LocalChunkCoordinateY
+		x + Dimension->x * local_info.LocalChunkCoordinateX,
+		y + Dimension->y * local_info.LocalChunkCoordinateY
 	);
 	const float2 unitUV = make_float2(
-		1.0f / (1.0f * mapDimensionRendered().x),
-		1.0f / (1.0f * mapDimensionRendered().y)
+		1.0f / (1.0f * RenderedDimension->x),
+		1.0f / (1.0f * RenderedDimension->y)
 	);
 	const float2 UV = make_float2(
 		1.0f * SamplingPosition.x * unitUV.x,
@@ -82,7 +82,7 @@ __global__ void generateTextureSplatmap
 		((cell[4] - cell[2]) + (cell[2] - cell[0])) * 0.5f,
 		*GradientBias
 	};
-	const float slopFactor = 1.0f - (*GradientBias * rnormf(3, gradient));
+	const float slopFactor = 1.0f - (gradient[2] * rnormf(3, gradient));
 
 	//get information about the current position
 	const Sample biome = tex2D<Sample>(biomemap_tex, UV.x, UV.y);
@@ -98,5 +98,5 @@ __global__ void generateTextureSplatmap
 	}
 	//write whatever region to the splatmap
 	//out-of-boundary write will be caught by CUDA (safely) and will crash the program with error
-	surf2Dwrite(region, splatmap_surf, SamplingPosition.x, SamplingPosition.y, cudaBoundaryModeTrap);
+	surf2Dwrite(static_cast<unsigned char>(region), splatmap_surf, SamplingPosition.x, SamplingPosition.y, cudaBoundaryModeTrap);
 }

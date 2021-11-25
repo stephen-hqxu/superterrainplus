@@ -37,11 +37,11 @@ __global__ void generateMultiBiomeHeightmap(float* height_storage, STPSingleHist
 	//the current thread index, starting from top-left corner
 	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y;
-	if (x >= mapDimension().x || y >= mapDimension().y) {
+	if (x >= Dimension->x || y >= Dimension->y) {
 		return;
 	}
 	//current working pixel
-	const unsigned int index = x + y * mapDimension().x;
+	const unsigned int index = x + y * Dimension->x;
 	STPSingleHistogramWrapper interpolator(biomemap_histogram);
 	
 	//grab the current biome setting
@@ -67,8 +67,8 @@ __device__ float sampleSimplexNoise(uint2 coord, const STPDemo::STPBiomeProperty
 	//multiple phases of noise
 	#pragma unroll
 	for (int i = 0; i < parameter.Octave; i++) {
-		float sampleX = ((1.0 * coord.x - mapDimensionHalf().x) + offset.x) / parameter.Scale * frequency, //subtract the half width and height can make the scaling focus at the center
-			sampleY = ((1.0 * coord.y - mapDimensionHalf().y) + offset.y) / parameter.Scale * frequency;//since the y is inverted we want to filp it over
+		float sampleX = ((1.0 * coord.x - HalfDimension->x) + offset.x) / parameter.Scale * frequency, //subtract the half width and height can make the scaling focus at the center
+			sampleY = ((1.0 * coord.y - HalfDimension->y) + offset.y) / parameter.Scale * frequency;//since the y is inverted we want to filp it over
 		noiseheight += Simplex.simplex2D(sampleX, sampleY) * amplitude;
 
 		//calculate the min and max

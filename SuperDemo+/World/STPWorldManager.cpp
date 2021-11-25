@@ -52,7 +52,6 @@ private:
 
 	//Splatting
 	STPDiversity::STPTextureDefinitionLanguage TDLParser;
-	STPDiversity::STPTextureDatabase Database;
 
 	constexpr static char TDLFilename[] = "./Script/STPBiomeSplatRule.tdl";
 
@@ -74,6 +73,9 @@ private:
 	}
 
 public:
+
+	//A texture database preloaded with configurations.
+	STPDiversity::STPTextureDatabase Database;
 
 	/**
 	 * @brief Init STPWorldSplattingAgent.
@@ -102,9 +104,9 @@ public:
 		//create group
 		STPTextureDatabase::STPTextureDescription tex_desc;
 		tex_desc.Dimension = uvec2(1024u);
-		tex_desc.PixelFormat = GL_BYTE;
-		tex_desc.ChannelFormat = GL_RGB8;
-		tex_desc.InteralFormat = GL_RGB;
+		tex_desc.PixelFormat = GL_UNSIGNED_BYTE;
+		tex_desc.ChannelFormat = GL_RGB;
+		tex_desc.InteralFormat = GL_RGB8;
 		const STPTextureInformation::STPTextureGroupID x1024_rgb = this->Database.addGroup(tex_desc);
 
 		//build texture splatting rules
@@ -160,7 +162,7 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 	//create provider using generator and storage unit
 	this->ChunkProvider.emplace(chunk_settings, *this->ChunkStorage, *this->BiomeFactory, *this->ChunkGenerator);
 	//create manager using provider
-	this->ChunkManager.emplace(*this->ChunkProvider);
+	this->ChunkManager.emplace(*this->ChunkProvider, *this->TextureFactory);
 	//create renderer using manager
 	this->WorldRenderer.emplace(this->WorldSetting.getMeshSetting(), *this->ChunkManager, indirect_cmd);
 
@@ -171,24 +173,12 @@ STPWorldManager::operator bool() const {
 	return this->linkStatus;
 }
 
+SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPDatabaseView STPWorldManager::getTextureDatabase() const {
+	return this->Texture->Database.visit();
+}
+
 const STPEnvironment::STPConfiguration& STPWorldManager::getWorldSetting() const {
 	return this->WorldSetting;
-}
-
-const STPCompute::STPHeightfieldGenerator& STPWorldManager::getChunkGenerator() const {
-	return *this->ChunkGenerator;
-}
-
-const STPDiversity::STPBiomeFactory& STPWorldManager::getBiomeFactory() const {
-	return *this->BiomeFactory;
-}
-
-const STPChunkStorage& STPWorldManager::getChunkStorage() const {
-	return *this->ChunkStorage;
-}
-
-const STPChunkProvider& STPWorldManager::getChunkProvider() const {
-	return *this->ChunkProvider;
 }
 
 const STPChunkManager& STPWorldManager::getChunkManager() const {

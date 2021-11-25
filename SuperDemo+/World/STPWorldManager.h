@@ -41,12 +41,24 @@ namespace STPDemo {
 		std::optional<SuperTerrainPlus::STPCompute::STPHeightfieldGenerator> ChunkGenerator;
 		std::unique_ptr<SuperTerrainPlus::STPDiversity::STPBiomeFactory> BiomeFactory;
 		std::unique_ptr<SuperTerrainPlus::STPCompute::STPDiversityGenerator> DiversityGenerator;
+		std::unique_ptr<SuperTerrainPlus::STPDiversity::STPTextureFactory> TextureFactory;
 		//world management agents
 		std::optional<SuperTerrainPlus::STPChunkStorage> ChunkStorage;
 		//make sure provider is destroyed (it will auto sync) before all generators and storage because it's the multi-threaded commander to call all other generators
 		std::optional<SuperTerrainPlus::STPChunkProvider> ChunkProvider;
 		std::optional<SuperTerrainPlus::STPChunkManager> ChunkManager;
 		std::optional<STPProcedural2DINF> WorldRenderer;
+
+		/**
+		 * @brief Attach a type of custom attachment.
+		 * @tparam Base The base instance where the attachment inherited from.
+		 * @tparam Ins The instance of attachment to be added to the world manager.
+		 * @tparam ...Arg Arguments to create a concrete instance of specific type of attachment.
+		 * @param arg... Parameters to create a concrete instance of attachment.
+		 * @return The smart pointer to the concrete instance in base class.
+		*/
+		template<class Base, class Ins, typename... Arg>
+		auto attach(Arg&&...);
 
 	public:
 
@@ -86,6 +98,15 @@ namespace STPDemo {
 		void attachDiversityGenerator(Arg&&...);
 
 		/**
+		 * @brief Attach the texture factory with this world managaer.
+		 * @tparam Tex The instance of the texture factory.
+		 * @tparam ...Arg Arguments to create a concrete instance of the texture factory.
+		 * @param arg... Parameter set to create a concrete instance of texture factory.
+		*/
+		template<class Tex, typename... Arg>
+		void attachTextureFactory(Arg&&...);
+
+		/**
 		 * @brief Link all pipeline stages together
 		 * @param indirect_cmd The indrect rendering command for renderer
 		*/
@@ -98,34 +119,16 @@ namespace STPDemo {
 		operator bool() const;
 
 		/**
+		 * @brief Get a view to the texture database with preload settings.
+		 * @return The view to the texture database.
+		*/
+		SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPDatabaseView getTextureDatabase() const;
+
+		/**
 		 * @brief Get the world settings 
 		 * @return The world settings managed by the current world manager. If world manager is not linked, nullptr is returned.
 		*/
 		const SuperTerrainPlus::STPEnvironment::STPConfiguration& getWorldSetting() const;
-
-		/**
-		 * @brief Get the chunk generator.
-		 * @return The heightfield generator managed by the current world manager. If world manager is not linked, nullptr is returned.
-		*/
-		const SuperTerrainPlus::STPCompute::STPHeightfieldGenerator& getChunkGenerator() const;
-
-		/**
-		 * @brief Get the biome factory
-		 * @return The biome factory managed by the current world manager. If no biome factory is attached, nullptr is returned
-		*/
-		const SuperTerrainPlus::STPDiversity::STPBiomeFactory& getBiomeFactory() const;
-
-		/**
-		 * @brief Get the chunk storage
-		 * @return The chunk storage managed by the current world manager. If world manager is not linked, nullptr is returned.
-		*/
-		const SuperTerrainPlus::STPChunkStorage& getChunkStorage() const;
-
-		/**
-		 * @brief Get the chunk provider
-		 * @return The chunk provider managed by the current world manager. If world manager is not linked, nullptr is returned.
-		*/
-		const SuperTerrainPlus::STPChunkProvider& getChunkProvider() const;
 
 		/**
 		 * @brief Get the chunk manager
