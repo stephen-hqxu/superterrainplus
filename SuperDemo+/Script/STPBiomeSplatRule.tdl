@@ -6,5 +6,6 @@
 }
 
 #rule gradient {
-	1u := (0.1f, 0.35f, 0.66f, 1.0f -> darkrock, 0.85f, 1.0f, 0.66f, 1.0f -> redrock)
+	0u := (0.0f, 0.2f, 0.0f, 0.24f -> sand),
+	1u := (0.4f, 0.65f, 0.55f, 0.8f -> darkrock, 0.625f, 1.0f, 0.65f, 1.0f -> redrock)
 }

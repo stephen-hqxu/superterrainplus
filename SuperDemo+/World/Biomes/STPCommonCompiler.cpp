@@ -16,6 +16,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPCompute;
 using namespace STPDemo;
 
@@ -33,8 +34,9 @@ using glm::value_ptr;
 const static string device_include = "-I " + string(SuperTerrainPlus::SuperAlgorithmPlus_DeviceInclude),
 core_include = "-I " + string(SuperTerrainPlus::SuperTerrainPlus_CoreInclude);
 
-STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk) : 
-	Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk) {
+STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk, 
+	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : 
+	Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk), SimplexPermutation(simplex_setting) {
 	//setup compiler options
 	this->SourceInfo.Option
 		["-std=c++17"]
@@ -104,7 +106,8 @@ void STPCommonCompiler::setupCommonGenerator() {
 	commongen_info.NameExpression
 		["STPCommonGenerator::Dimension"]
 	["STPCommonGenerator::HalfDimension"]
-	["STPCommonGenerator::RenderedDimension"];
+	["STPCommonGenerator::RenderedDimension"]
+	["STPCommonGenerator::Permutation"];
 	//compile
 	HANDLE_COMPILE(this->compileSource("STPCommonGenerator", commongen_source, commongen_info))
 	
@@ -127,8 +130,7 @@ void STPCommonCompiler::setupBiomefieldGenerator() {
 		//global function
 		["generateMultiBiomeHeightmap"]
 	//constant
-	["BiomeTable"]
-	["Permutation"];
+	["BiomeTable"];
 	//options are all set
 	multiheightfield_info.ExternalHeader
 		["STPBiomeProperty"];
@@ -145,7 +147,6 @@ void STPCommonCompiler::setupSplatmapGenerator() {
 	STPCommonCompiler::STPSourceInformation source_info = this->getCompilerOptions();
 	source_info.NameExpression
 		["SplatDatabase"]
-	["GradientBias"]
 	//global function
 	["generateTextureSplatmap"];
 	//compile
@@ -162,20 +163,23 @@ void STPCommonCompiler::finalise() {
 		cout << log.module_info_log << endl;
 
 		//setup some variables
-		CUdeviceptr dimension, half_dimension, rendered_dimension;
-		size_t dimensionSize, half_dimensionSize, rendered_dimensionSize;
+		CUdeviceptr dimension, half_dimension, rendered_dimension, perm;
+		size_t dimensionSize, half_dimensionSize, rendered_dimensionSize, permSize;
 		//source information
 		const auto& name = this->retrieveSourceLoweredName("STPCommonGenerator");
 		CUmodule program = this->getGeneratorModule();
 		STPcudaCheckErr(cuModuleGetGlobal(&dimension, &dimensionSize, program, name.at("STPCommonGenerator::Dimension")));
 		STPcudaCheckErr(cuModuleGetGlobal(&half_dimension, &half_dimensionSize, program, name.at("STPCommonGenerator::HalfDimension")));
 		STPcudaCheckErr(cuModuleGetGlobal(&rendered_dimension, &rendered_dimensionSize, program, name.at("STPCommonGenerator::RenderedDimension")));
+		STPcudaCheckErr(cuModuleGetGlobal(&perm, &permSize, program, name.at("STPCommonGenerator::Permutation")));
 		//send data
 		const vec2 halfDim = static_cast<vec2>(this->Dimension) / 2.0f;
 		const uvec2 RenderedDim = this->RenderingRange * this->Dimension;
 		STPcudaCheckErr(cuMemcpyHtoD(dimension, value_ptr(this->Dimension), dimensionSize));
 		STPcudaCheckErr(cuMemcpyHtoD(half_dimension, value_ptr(halfDim), half_dimensionSize));
 		STPcudaCheckErr(cuMemcpyHtoD(rendered_dimension, value_ptr(RenderedDim), rendered_dimensionSize));
+		//note that we are copying permutation to device, the underlying pointers are managed by this class
+		STPcudaCheckErr(cuMemcpyHtoD(perm, &(*this->SimplexPermutation), permSize));
 	}
 	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
 		cerr << error.what() << std::endl;

@@ -25,9 +25,9 @@ using glm::value_ptr;
 
 STPSplatmapGenerator::STPSplatmapGenerator
 	(const STPCommonCompiler& program, const STPTextureDatabase::STPDatabaseView& database_view, 
-		const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting, float gradient_bias) :
+		const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting) :
 	//bias is a scaling value, we need to calculate the reciprocal.
-	STPTextureFactory(database_view, chunk_setting), KernelProgram(program), GradientBias(1.0f / gradient_bias) {
+	STPTextureFactory(database_view, chunk_setting), KernelProgram(program) {
 	//compile source code
 	this->initGenerator();
 }
@@ -35,17 +35,15 @@ STPSplatmapGenerator::STPSplatmapGenerator
 void STPSplatmapGenerator::initGenerator() {
 	//copy memory to the program
 	CUmodule program = this->KernelProgram.getProgram();
-	CUdeviceptr splat_database, gradientBias;
-	size_t splat_databaseSize, gradientBiasSize;
+	CUdeviceptr splat_database;
+	size_t splat_databaseSize;
 	//get variable names
 	const auto& name = this->KernelProgram.getLoweredNameDictionary("STPSplatmapGenerator");
 	STPcudaCheckErr(cuModuleGetFunction(&this->SplatmapEntry, program, name.at("generateTextureSplatmap")));
 	STPcudaCheckErr(cuModuleGetGlobal(&splat_database, &splat_databaseSize, program, name.at("SplatDatabase")));
-	STPcudaCheckErr(cuModuleGetGlobal(&gradientBias, &gradientBiasSize, program, name.at("GradientBias")));
 	//add splat-database and gradient bias
 	const STPTextureInformation::STPSplatRuleDatabase splatDb = this->getSplatDatabase();
 	STPcudaCheckErr(cuMemcpyHtoD(splat_database, &splatDb, splat_databaseSize));
-	STPcudaCheckErr(cuMemcpyHtoD(gradientBias, &this->GradientBias, gradientBiasSize));
 }
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;

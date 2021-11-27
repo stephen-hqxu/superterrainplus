@@ -1,4 +1,5 @@
 #version 460 core
+#extension ARB_bindless_texture: require
 
 //patches output
 layout (vertices = 3) out;

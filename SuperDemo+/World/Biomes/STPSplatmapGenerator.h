@@ -26,8 +26,6 @@ namespace STPDemo {
 		void splat(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t, 
 			const SuperTerrainPlus::STPDiversity::STPTextureInformation::STPSplatGeneratorInformation&, cudaStream_t) const override;
 
-		const float GradientBias;
-
 	public:
 
 		/**
@@ -35,10 +33,9 @@ namespace STPDemo {
 		 * @param program The program contains the kernel source codes
 		 * @param database_view A view to the texture database that has all texture data and splat rules loaded.
 		 * @param chunk_setting The pointer to the chunk setting.
-		 * @param gradient_bias The bias value to the gradient; higer value means more sensitive to gradient change.
 		*/
 		STPSplatmapGenerator(const STPCommonCompiler& program, const SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPDatabaseView&, 
-			const SuperTerrainPlus::STPEnvironment::STPChunkSetting&, float);
+			const SuperTerrainPlus::STPEnvironment::STPChunkSetting&);
 
 		STPSplatmapGenerator(const STPSplatmapGenerator&) = delete;
 

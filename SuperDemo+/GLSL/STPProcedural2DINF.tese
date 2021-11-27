@@ -1,4 +1,5 @@
 #version 460 core
+#extension ARB_bindless_texture: require
 
 //patches input
 layout (triangles, fractional_odd_spacing, cw) in;

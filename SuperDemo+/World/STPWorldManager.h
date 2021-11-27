@@ -65,9 +65,10 @@ namespace STPDemo {
 		/**
 		 * @brief Init the world manager.
 		 * @param tex_filename_prefix The prefix for all texture filenames. It will be used as "<prefix>/<texture filename>".
-		 * @param settings All world settings, it will be moved under the object
+		 * @param settings All world settings, it will be moved under the object.
+		 * @parm simplex_setting Setting for simplex noise generator.
 		*/
-		STPWorldManager(std::string, SuperTerrainPlus::STPEnvironment::STPConfiguration&);
+		STPWorldManager(std::string, SuperTerrainPlus::STPEnvironment::STPConfiguration&, const SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&);
 
 		~STPWorldManager();
 

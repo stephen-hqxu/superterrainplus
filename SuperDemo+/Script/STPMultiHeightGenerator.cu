@@ -1,8 +1,6 @@
 #include "./Script/STPCommonGenerator.cuh"
 
 //SuperAlgorithm+ Device library
-#include <STPSimplexNoise.cuh>
-#include <STPKernelMath.cuh>
 #include <STPSingleHistogramWrapper.cuh>
 
 //Biome parameters
@@ -12,7 +10,6 @@ using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;
 
 __constant__ STPDemo::STPBiomeProperty BiomeTable[2];
-__constant__ STPPermutation Permutation[1];
 
 /**
  * @brief Use pure simplex noise to sample a point fractally.

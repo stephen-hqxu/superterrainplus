@@ -45,6 +45,9 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		//A collection of all texture data
 		std::vector<STPOpenGL::STPuint> Texture;
+		//this is a 1-to-1 mapping to the texture, group to a texture buffer.
+		std::unordered_map<STPTextureInformation::STPTextureGroupID, STPOpenGL::STPuint> TextureOwnership;
+
 		std::vector<STPTextureInformation::STPTextureDataLocation> TextureRegion;
 		//texture region lookup table, if region is not used equivalent -1 will be filled
 		std::vector<unsigned int> TextureRegionLookup;
@@ -95,15 +98,6 @@ namespace SuperTerrainPlus::STPDiversity {
 		*/
 		virtual void splat(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t, const STPTextureInformation::STPSplatGeneratorInformation&, cudaStream_t) const = 0;
 
-	protected:
-
-		/**
-		 * @brief Get a data structure containing spalt data.
-		 * All pointers within are managed by the calling texture factory, and can only be access from device.
-		 * @return The splat database with all splat data.
-		*/
-		STPTextureInformation::STPSplatRuleDatabase getSplatDatabase() const;
-
 	public:
 
 		/**
@@ -135,9 +129,32 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param requesting_local An array of local chunk information that need to have splatmap computed/updated
 		 * If the array size is 0 no operation is performed.
 		 * If array size is greater than the intended rendered chunk, exception will be thrown.
-		 * @param stream The CUDA stream generation work will be sent to
+		 * @param stream The CUDA stream generation work will be sent to.
 		*/
 		void operator()(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t, const STPRequestingChunkInfo&, cudaStream_t) const;
+
+		/**
+		 * @brief Obtain the texture buffer object associated with a group.
+		 * @param group_id Texture buffer owned.
+		 * @return The textuer buffer object associating with the group ID specified.
+		 * If group ID is not valid, exception will eb thrown.
+		*/
+		STPOpenGL::STPuint operator[](STPTextureInformation::STPTextureGroupID) const;
+
+		/**
+		 * @brief Get a data structure containing spalt data.
+		 * All pointers within are managed by the calling texture factory, and can only be accessed from device.
+		 * @return The splat database with all splat data.
+		*/
+		STPTextureInformation::STPSplatRuleDatabase getSplatDatabase() const;
+
+		/**
+		 * @brief Get a data structure containing splat texture.
+		 * All pointers within are managed by the calling texture factory, and can only be accessed from host.
+		 * It can then be sent to renderer.
+		 * @return The splat texture database with all splat texture.
+		*/
+		STPTextureInformation::STPSplatTextureDatabase getSplatTexture() const;
 
 	};
 

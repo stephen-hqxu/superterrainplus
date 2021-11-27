@@ -40,10 +40,9 @@ namespace STPDemo {
 		SuperTerrainPlus::STPChunkManager& ChunkManager;
 
 		/**
-		 * @brief Compile the 2D terrain shader
-		 * @return True if successfully compiled
+		 * @brief Compile the 2D terrain shader.
 		*/
-		const bool compile2DTerrainShader();
+		void compile2DTerrainShader();
 
 		/**
 		 * @brief Calculate the base chunk position (the coordinate of top-left corner) for the most top-left corner chunk

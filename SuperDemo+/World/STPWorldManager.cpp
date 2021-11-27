@@ -18,6 +18,7 @@
 
 using namespace STPDemo;
 using namespace SuperTerrainPlus;
+using namespace SuperTerrainPlus::STPDiversity;
 
 using std::invalid_argument;
 using std::make_optional;
@@ -49,10 +50,6 @@ private:
 		"sand_color.jpg",
 		"soil_color.jpg"
 	};
-
-	//Splatting
-	STPDiversity::STPTextureDefinitionLanguage TDLParser;
-
 	constexpr static char TDLFilename[] = "./Script/STPBiomeSplatRule.tdl";
 
 	/**
@@ -72,6 +69,9 @@ private:
 		return buffer.str();
 	}
 
+	//Group ID recording
+	STPTextureInformation::STPTextureGroupID x1024_rgb;
+
 public:
 
 	//A texture database preloaded with configurations.
@@ -81,9 +81,7 @@ public:
 	 * @brief Init STPWorldSplattingAgent.
 	 * @param prefix The filename prefix for all texture filenames.
 	*/
-	STPWorldSplattingAgent(string prefix) : TDLParser(STPWorldSplattingAgent::readTDL()) {
-		using namespace SuperTerrainPlus::STPDiversity;
-
+	STPWorldSplattingAgent(string prefix) {
 		array<pair<unsigned int, const char*>, STPWorldSplattingAgent::TextureCount> IndexedFilename;
 		//load up indices
 		unsigned int index = 0u;
@@ -107,10 +105,11 @@ public:
 		tex_desc.PixelFormat = GL_UNSIGNED_BYTE;
 		tex_desc.ChannelFormat = GL_RGB;
 		tex_desc.InteralFormat = GL_RGB8;
-		const STPTextureInformation::STPTextureGroupID x1024_rgb = this->Database.addGroup(tex_desc);
+		this->x1024_rgb = this->Database.addGroup(tex_desc);
 
+		STPDiversity::STPTextureDefinitionLanguage TDLParser(STPWorldSplattingAgent::readTDL());
 		//build texture splatting rules
-		const STPTextureDefinitionLanguage::STPTextureVariable textureName = this->TDLParser(this->Database);
+		const STPTextureDefinitionLanguage::STPTextureVariable textureName = TDLParser(this->Database);
 		//build database with texture data
 		for (unsigned int i = 0u; i < STPWorldSplattingAgent::TextureCount; i++) {
 			//grab the texture ID using the texture name
@@ -132,10 +131,30 @@ public:
 
 	~STPWorldSplattingAgent() = default;
 
+	/**
+	 * @brief Set the texture parameter for a all texture groups.
+	 * @param factory The pointer to the texture factory where texture parameters will be set.
+	*/
+	void setTextureParameter(const STPTextureFactory& factory) const {
+		//get the TBO based on group ID, currently we only have one group
+		const GLuint tbo = factory[this->x1024_rgb];
+
+		glTextureParameteri(tbo, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTextureParameteri(tbo, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTextureParameteri(tbo, GL_TEXTURE_WRAP_R, GL_REPEAT);
+		glTextureParameteri(tbo, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTextureParameteri(tbo, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		//TODO: don't hard-code anisotropy filtering value, read from INI
+		glTextureParameterf(tbo, GL_TEXTURE_MAX_ANISOTROPY, 8.0f);
+
+		glGenerateTextureMipmap(tbo);
+	}
+
 };
 
-STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STPConfiguration& settings) :
-	SharedProgram(settings.getChunkSetting()), WorldSetting(std::move(settings)), 
+STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STPConfiguration& settings, 
+	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
+	SharedProgram(settings.getChunkSetting(), simplex_setting), WorldSetting(std::move(settings)),
 	Texture(make_unique<STPWorldManager::STPWorldSplattingAgent>(tex_filename_prefix)), linkStatus(false) {
 	if (!this->WorldSetting.validate()) {
 		throw invalid_argument("World settings are not valid.");
@@ -150,6 +169,12 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 	if (!this->BiomeFactory) {
 		throw invalid_argument("Biome factory not attached.");
 	}
+	if (!this->TextureFactory) {
+		throw invalid_argument("Texture factory not attached.");
+	}
+
+	//finish up texture settings
+	this->Texture->setTextureParameter(*this->TextureFactory);
 
 	const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldSetting.getChunkSetting();
 	//create generator and storage unit first
@@ -165,7 +190,7 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 	this->ChunkManager.emplace(*this->ChunkProvider, *this->TextureFactory);
 	//create renderer using manager
 	this->WorldRenderer.emplace(this->WorldSetting.getMeshSetting(), *this->ChunkManager, indirect_cmd);
-
+	
 	this->linkStatus = true;
 }
 

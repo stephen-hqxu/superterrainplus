@@ -55,7 +55,7 @@ protected:
 
 	void copyTable() {
 		//copy device table back to host
-		const auto& table_d = this->Gen();
+		const auto& table_d = *this->Gen;
 		//allocation
 		this->HostPerm = make_unique<unsigned char[]>(512);
 		this->HostGrad2D = make_unique<float[]>(table_d.Gradient2DSize * 2);
@@ -99,7 +99,7 @@ SCENARIO_METHOD(PermutationGenTester, "STPPermutationGenerator can a generate de
 	GIVEN("A correct simplex noise setting") {
 
 		WHEN("Permutation is retrieved from generation") {
-			const auto& permutation = this->Gen();
+			const auto& permutation = *this->Gen;
 
 			THEN("Correctness of the gradient table should be verified") {
 				REQUIRE(permutation.Gradient2DSize == this->Args.Distribution);

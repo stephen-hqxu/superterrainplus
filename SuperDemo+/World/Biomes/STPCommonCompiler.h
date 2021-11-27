@@ -7,6 +7,8 @@
 
 //Setting
 #include <SuperTerrain+/Environment/STPChunkSetting.h>
+//Generator
+#include <SuperAlgorithm+/STPPermutationGenerator.h>
 
 //System
 #include <string>
@@ -27,6 +29,9 @@ namespace STPDemo {
 		STPRuntimeCompilable::STPSourceInformation SourceInfo;
 		//Contains linker options
 		STPRuntimeCompilable::STPLinkerInformation LinkInfo;
+
+		//all parameters for the noise generator, stored on host, passing value to device
+		SuperTerrainPlus::STPCompute::STPPermutationGenerator SimplexPermutation;
 
 		//The chunk setting of each map used by each generator.
 		const glm::uvec2 Dimension, RenderingRange;
@@ -86,9 +91,10 @@ namespace STPDemo {
 		/**
 		 * @brief Init STPCommonCompiler to its default state.
 		 * SuperAlgorithm+Device library will be linked automatically.
-		 * @param chunk The pointer to the chunk settings
+		 * @param chunk The pointer to the chunk settings.
+		 * @param simplex_setting The pointer to simplex noise setting.
 		*/
-		STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting&);
+		STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting&, const SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&);
 
 		STPCommonCompiler(const STPCommonCompiler&) = delete;
 

@@ -5,6 +5,9 @@
 //Biome
 #include "../STPBiomeDefine.h"
 
+//Compatibility
+#include <SuperTerrain+/STPOpenGL.h>
+
 namespace SuperTerrainPlus::STPDiversity {
 
 	/**
@@ -103,15 +106,29 @@ namespace SuperTerrainPlus::STPDiversity {
 		public:
 
 			//An array of sample, the index of a sample can be used to locate the sample in the splat registry.
-			Sample* SplatRegistryDictionary;
+			const Sample* SplatRegistryDictionary;
 			unsigned int DictionaryEntryCount;
 			//An array that contains terrain splat configuration for each sample.
-			STPTextureInformation::STPSplatRegistry* SplatRegistry;
+			const STPTextureInformation::STPSplatRegistry* SplatRegistry;
 
 			//An array containing all altitude splating rules.
-			STPTextureInformation::STPAltitudeNode* AltitudeRegistry;
+			const STPTextureInformation::STPAltitudeNode* AltitudeRegistry;
 			//An array containing all gradient splating rules.
-			STPTextureInformation::STPGradientNode* GradientRegistry;
+			const STPTextureInformation::STPGradientNode* GradientRegistry;
+
+		};
+
+		/**
+		 * @brief STPSplatTextureDatabase contains arrays of all splat texture for terrain texture splatting in the renderer.
+		*/
+		struct STPSplatTextureDatabase {
+
+			//An array of OpenGL texture buffer objects in the form of texture 2D array.
+			const STPOpenGL::STPuint* TextureBufferObject;
+			//An array of struct of indices to locate a specific type of texture for a region in the texture buffer array.
+			const STPTextureDataLocation* LocationRegistry;
+			//An array of indices to locate a region in the location registry.
+			const unsigned int* LocationRegistryDictionary;
 
 		};
 
@@ -135,7 +152,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			};
 			
 			//An array of local chunk information to chunk requesting to generate splatmap, device memory
-			STPLocalChunkInformation* RequestingLocalInfo;
+			const STPLocalChunkInformation* RequestingLocalInfo;
 			//The number of local chunk needs to be generated with splatmap
 			unsigned int LocalCount;
 

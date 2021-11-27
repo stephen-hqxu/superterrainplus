@@ -18,8 +18,8 @@ using std::unique_lock;
 using std::move;
 using std::mutex;
 
-STPBiomefieldGenerator::STPBiomefieldGenerator(const STPCommonCompiler& program, STPSimplexNoiseSetting& simplex_setting, uvec2 dimension, unsigned int interpolation_radius)
-	: STPDiversityGenerator(), KernelProgram(program), Noise_Setting(simplex_setting), MapSize(dimension), Simplex_Permutation(this->Noise_Setting), InterpolationRadius(interpolation_radius) {
+STPBiomefieldGenerator::STPBiomefieldGenerator(const STPCommonCompiler& program, uvec2 dimension, unsigned int interpolation_radius)
+	: STPDiversityGenerator(), KernelProgram(program), MapSize(dimension), InterpolationRadius(interpolation_radius) {
 	//init our device generator
 	//our heightfield setting only available in OCEAN biome for now
 	this->initGenerator();
@@ -44,15 +44,12 @@ STPBiomefieldGenerator::~STPBiomefieldGenerator() {
 void STPBiomefieldGenerator::initGenerator() {
 	//global pointers
 	CUmodule program = this->KernelProgram.getProgram();
-	CUdeviceptr biome_prop, permutation;
-	size_t biome_propSize, permutationSize;
+	CUdeviceptr biome_prop;
+	size_t biome_propSize;
 	//get names and start copying
 	const auto& name = this->KernelProgram.getLoweredNameDictionary("STPMultiHeightGenerator");
 	STPcudaCheckErr(cuModuleGetFunction(&this->GeneratorEntry, program, name.at("generateMultiBiomeHeightmap")));
 	STPcudaCheckErr(cuModuleGetGlobal(&biome_prop, &biome_propSize, program, name.at("BiomeTable")));
-	STPcudaCheckErr(cuModuleGetGlobal(&permutation, &permutationSize, program, name.at("Permutation")));
-	//note that we are copying permutation to device, the underlying pointers are managed by this class
-	STPcudaCheckErr(cuMemcpyHtoD(permutation, &this->Simplex_Permutation(), permutationSize));
 
 	//copy biome properties
 	//currently we have two biomes

@@ -1,3 +1,18 @@
+//-------------------- Constants ----------------------------
+constexpr static float 
+	//Control the gradient change, greater decreases gradient in general.
+	GradientBias = 5.5f, 
+	//Control the distance of pixels in the filter kernel.
+	KernelRadius = 2.5f, 
+	//Control the scale of noise, greater denominator gives smoother noise.
+	NoiseScale = 1.0f / 82.5f,
+	//Control how much the noise can affect the height value
+	NoiseContribution = 0.05f,
+	//A.k.a. altitude, but it does not have to be the same as altitude of the terrain.
+	//Control sensitivity of gradient responds to altitude change.
+	HeightFactor = 875.5f;
+
+//--------------------- Program Start ------------------------
 #include "./Script/STPCommonGenerator.cuh"
 
 //SuperAlgorithm+ Device library
@@ -9,16 +24,14 @@ using SuperTerrainPlus::STPDiversity::Sample;
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
 
 __constant__ STPTI::STPSplatRuleDatabase SplatDatabase[1];
-__constant__ float GradientBias[1];
 
 //A simple 2x2 Sobel kernel
-constexpr static unsigned int GradientSize = 5u;
+constexpr static unsigned int GradientSize = 4u;
 constexpr static int2 GradientKernel[GradientSize] = {
 	int2{ 0, -1 },//top, 0
 	int2{ -1, 0 },//left, 1
-	int2{ 0, 0 },//centre, 2
-	int2{ 1, 0 },//right, 3
-	int2{ 0, 1 }//bottom, 4
+	int2{ 1, 0 },//right, 2
+	int2{ 0, 1 }//bottom, 3
 };
 
 //--------------------- Definition --------------------------
@@ -46,6 +59,8 @@ __global__ void generateTextureSplatmap
 	//we need to convert z-coord of thread to chunk local ID
 	const STPTI::STPSplatGeneratorInformation::STPLocalChunkInformation& local_info = splat_info.RequestingLocalInfo[z];
 
+	const STPSimplexNoise Simplex(*Permutation);
+
 	//coordinates are normalised
 	const uint2 SamplingPosition = make_uint2(
 		x + Dimension->x * local_info.LocalChunkCoordinateX,
@@ -65,31 +80,36 @@ __global__ void generateTextureSplatmap
 	for (unsigned int i = 0u; i < GradientSize; i++) {
 		const int2& currentKernel = GradientKernel[i];
 		const float2 offsetUV = make_float2(
-			unitUV.x * currentKernel.x,
-			unitUV.y * currentKernel.y
+			unitUV.x * currentKernel.x * KernelRadius,
+			unitUV.y * currentKernel.y * KernelRadius
 		);
 		const float2 SamplingUV = make_float2(
 			UV.x + offsetUV.x,
 			UV.y + offsetUV.y
 		);
 		//sample this heightmap value
-		cell[i] = tex2D<float>(heightmap_tex, SamplingUV.x, SamplingUV.y);
+		cell[i] = tex2D<float>(heightmap_tex, SamplingUV.x, SamplingUV.y) * HeightFactor;
 	}
 
 	//calculate gradient using a very simple 2x2 filter, ranged [-1,1]
 	const float gradient[3] = {
-		((cell[1] - cell[2]) + (cell[2] - cell[3])) * 0.5f,
-		((cell[4] - cell[2]) + (cell[2] - cell[0])) * 0.5f,
-		*GradientBias
+		cell[0] - cell[3],
+		GradientBias,
+		cell[1] - cell[2]
 	};
-	const float slopFactor = 1.0f - (gradient[2] * rnormf(3, gradient));
+	const float slopFactor = 1.0f - (gradient[1] * rnormf(3, gradient));
 
+	//add some simplex noise to the slopFactor and height value, reminder: range is [-1,1]
+	const float noise = Simplex.simplex2D(
+		(x + local_info.ChunkMapOffsetX) * NoiseScale,
+		(y + local_info.ChunkMapOffsetY) * NoiseScale
+	) * NoiseContribution;
 	//get information about the current position
 	const Sample biome = tex2D<Sample>(biomemap_tex, UV.x, UV.y);
-	const float height = tex2D<float>(heightmap_tex, UV.x, UV.y);
+	const float height = STPKernelMath::clamp(tex2D<float>(heightmap_tex, UV.x, UV.y) + noise, 0.0f, 1.0f);
+
 	const STPTextureSplatRuleWrapper splatWrapper(SplatDatabase[0]);
 	//get regions, we define gradient region outweights altitude region if they overlap
-	//TODO: later we can add some simplex noise to the slopFactor and height value
 	unsigned int region = splatWrapper.gradientRegion(biome, slopFactor, height);
 	if (region == STPTextureSplatRuleWrapper::NoRegion) {
 		//no gradient region is being defined, switch to altitude region

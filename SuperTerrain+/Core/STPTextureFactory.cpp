@@ -57,6 +57,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 	{
 		//this is the total number of layered texture we will have
 		this->Texture.resize(group_rec.size());
+		this->TextureOwnership.reserve(group_rec.size());
 		glCreateTextures(GL_TEXTURE_2D_ARRAY, this->Texture.size(), this->Texture.data());
 		//loop through all groups
 		//we can also iterate through the GL texture array at the same time since they have the same dimension
@@ -67,6 +68,8 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 
 			//allocate memory for each layer
 			glTextureStorage3D(*gl_texture_it, 1, group_props.InteralFormat, group_props.Dimension.x, group_props.Dimension.y, member_count);
+			//build texture ownership table, so we can lookup texture buffer using group ID later
+			this->TextureOwnership.try_emplace(group_id, *gl_texture_it);
 
 			//build group ID converter
 			groupID_converter.emplace(group_id, group_index);
@@ -186,16 +189,6 @@ STPSmartDeviceMemory::STPDeviceMemory<T[]> STPTextureFactory::copyToDevice(const
 	return device;
 }
 
-STPTextureInformation::STPSplatRuleDatabase STPTextureFactory::getSplatDatabase() const {
-	return STPTextureInformation::STPSplatRuleDatabase{
-		this->SplatLookup_d.get(),
-		static_cast<unsigned int>(this->SplatLookupCount),
-		this->SplatRegistry_d.get(),
-		this->AltitudeRegistry_d.get(),
-		this->GradientRegistry_d.get()
-	};
-}
-
 void STPTextureFactory::operator()(cudaTextureObject_t biomemap_tex, cudaTextureObject_t heightmap_tex, cudaSurfaceObject_t splatmap_surf, 
 	const STPRequestingChunkInfo& requesting_local, cudaStream_t stream) const {
 	if (requesting_local.size() == 0ull) {
@@ -217,4 +210,26 @@ void STPTextureFactory::operator()(cudaTextureObject_t biomemap_tex, cudaTexture
 		this->LocalChunkInfo.get(),
 		static_cast<unsigned int>(requesting_local.size())
 	}, stream);
+}
+
+STPOpenGL::STPuint STPTextureFactory::operator[](STPTextureInformation::STPTextureGroupID group_id) const {
+	return this->TextureOwnership.at(group_id);
+}
+
+STPTextureInformation::STPSplatRuleDatabase STPTextureFactory::getSplatDatabase() const {
+	return STPTextureInformation::STPSplatRuleDatabase{
+		this->SplatLookup_d.get(),
+		static_cast<unsigned int>(this->SplatLookupCount),
+		this->SplatRegistry_d.get(),
+		this->AltitudeRegistry_d.get(),
+		this->GradientRegistry_d.get()
+	};
+}
+
+STPTextureInformation::STPSplatTextureDatabase STPTextureFactory::getSplatTexture() const {
+	return STPTextureInformation::STPSplatTextureDatabase{
+		this->Texture.data(),
+		this->TextureRegion.data(),
+		this->TextureRegionLookup.data()
+	};
 }

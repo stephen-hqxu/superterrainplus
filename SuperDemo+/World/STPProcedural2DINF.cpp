@@ -19,9 +19,8 @@ using namespace SuperTerrainPlus;
 STPProcedural2DINF::STPProcedural2DINF(const STPEnvironment::STPMeshSetting& mesh_settings, STPChunkManager& manager, void* procedural2dinf_cmd)
 	: ChunkManager(manager), command(procedural2dinf_cmd), MeshSetting(mesh_settings) {
 	cout << "....Loading STPProcedural2DINF, An Infinite Terrain Renderer....";
-	if (this->compile2DTerrainShader()) {
-		cout << "Shader Loaded :)" << endl;
-	}
+	this->compile2DTerrainShader();
+	cout << "Shader Loaded :)" << endl;
 	this->loadPlane();
 	cout << "....Done...." << endl;
 }
@@ -30,7 +29,7 @@ STPProcedural2DINF::~STPProcedural2DINF() {
 	this->clearup();
 }
 
-const bool STPProcedural2DINF::compile2DTerrainShader() {
+void STPProcedural2DINF::compile2DTerrainShader() {
 	const STPEnvironment::STPChunkSetting& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSetting();
 	//log
 	GLchar log[1024];
@@ -48,7 +47,7 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 		cerr << log << endl;
 		cerr << "-------------------------------------------------------------------------------" << endl;
 		//exit
-		return false;
+		std::terminate();
 	}
 	//binding sampler
 	glProgramUniform1i(this->Terrain2d_shader.getP(), this->getLoc("Biomemap"), 0);
@@ -73,8 +72,6 @@ const bool STPProcedural2DINF::compile2DTerrainShader() {
 	//create pipeline
 	glCreateProgramPipelines(1, &this->Terrain2d_pipeline);
 	glUseProgramStages(this->Terrain2d_pipeline, GL_ALL_SHADER_BITS, this->Terrain2d_shader.getP());
-	
-	return true;
 }
 
 vec2 STPProcedural2DINF::calcBaseChunkPosition() {

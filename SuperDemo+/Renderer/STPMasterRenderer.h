@@ -192,15 +192,14 @@ namespace STPDemo {
 			
 			//setting world manager
 			try {
-				this->world_manager = new STPWorldManager(this->biomeSettings("texture_path_prefix")(), config);
+				this->world_manager = new STPWorldManager(this->biomeSettings("texture_path_prefix")(), config, simplex);
 				const auto& world_chunkSetting = const_cast<STPEnvironment::STPConfiguration&>(this->world_manager->getWorldSetting()).getChunkSetting();
 
 				this->world_manager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(world_chunkSetting.MapSize, simplex.Seed);
 				this->world_manager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>
-					(this->world_manager->SharedProgram, simplex, chunk_setting.MapSize, this->biomeSettings("interpolationRadius").to<unsigned int>());
+					(this->world_manager->SharedProgram, chunk_setting.MapSize, this->biomeSettings("interpolationRadius").to<unsigned int>());
 				this->world_manager->attachTextureFactory<STPDemo::STPSplatmapGenerator>
-					(this->world_manager->SharedProgram, this->world_manager->getTextureDatabase(), world_chunkSetting, 
-						this->biomeSettings("splat_gradient_bias").to<float>());
+					(this->world_manager->SharedProgram, this->world_manager->getTextureDatabase(), world_chunkSetting);
 
 				this->world_manager->linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
 				if (!this->world_manager) {

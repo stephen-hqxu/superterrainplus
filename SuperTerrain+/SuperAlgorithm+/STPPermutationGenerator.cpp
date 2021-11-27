@@ -96,6 +96,6 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	//finishing up
 }
 
-const STPPermutation& STPPermutationGenerator::operator()() const {
+const STPPermutation& STPPermutationGenerator::operator*() const {
 	return dynamic_cast<const STPPermutation&>(*this);
 }

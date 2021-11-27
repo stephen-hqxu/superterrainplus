@@ -51,7 +51,7 @@ namespace SuperTerrainPlus::STPCompute {
 		 * The table returned is bounded to the current generator, if generator is destroyed result will become undefined.
 		 * @return Pointer to the permutation table.
 		*/
-		const STPPermutation& operator()() const;
+		const STPPermutation& operator*() const;
 
 	};
 }

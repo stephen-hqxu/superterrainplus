@@ -149,6 +149,8 @@ void STPChunkManager::prepareSplatmap(const STPRenderingBufferMemory& buffer, co
 	//launch splatmap computer
 	this->generateSplatmap(biomemap, heightfield, splatmap, requesting_chunk, *this->buffering_stream);
 
+	//before deallocation happens make sure everything has finished.
+	STPcudaCheckErr(cudaStreamSynchronize(*this->buffering_stream));
 	//finish up, we have to delete it everytime because resource array may change every time we re-map it
 	STPcudaCheckErr(cudaDestroyTextureObject(biomemap));
 	STPcudaCheckErr(cudaDestroyTextureObject(heightfield));
