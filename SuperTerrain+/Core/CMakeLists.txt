@@ -1,8 +1,6 @@
 add_library(${STP_MAIN_ENGINE} SHARED
 STPBiomeFactory.cpp
 STPChunk.cpp
-STPChunkManager.cpp
-STPChunkProvider.cpp
 STPChunkStorage.cpp
 STPDeviceErrorHandler.cpp
 STPEngineInitialiser.cpp
@@ -23,6 +21,7 @@ STPTextureDatabase.cpp
 STPTextureDefinitionLanguage.cpp
 STPTextureFactory.cpp
 STPThreadPool.cpp
+STPWorldPipeline.cpp
 
 STPHeightfieldKernel.cu
 STPRainDrop.cu

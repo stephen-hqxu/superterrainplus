@@ -253,7 +253,7 @@ namespace STPDemo {
 		void draw(const double& frametime) {
 			//start loading terrain 2d inf async
 			try {
-				const_cast<SuperTerrainPlus::STPChunkManager&>(this->world_manager->getChunkManager()).loadChunksAsync(this->Camera->getPosition());
+				this->world_manager->getPipeline().load(this->Camera->getPosition());
 			}
 			catch (const std::exception& e) {
 				cerr << e.what() << endl;

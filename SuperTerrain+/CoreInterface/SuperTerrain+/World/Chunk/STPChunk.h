@@ -171,10 +171,22 @@ namespace SuperTerrainPlus {
 		float* getHeightmap();
 
 		/**
+		 * @brief Return the reference to the 32bit heightmap of this chunk
+		 * @return The reference to the heightmap
+		*/
+		const float* getHeightmap() const;
+
+		/**
 		 * @brief Return the reference to the 16bit integer map for rendering of this chunk
 		 * @return The reference to the rendering map
 		*/
 		unsigned short* getRenderingBuffer();
+
+		/**
+		 * @brief Return the reference to the 16bit integer map for rendering of this chunk
+		 * @return The reference to the rendering map
+		*/
+		const unsigned short* getRenderingBuffer() const;
 
 		/**
 		 * @brief Return the reference to the biomemap of this chunk
@@ -183,10 +195,16 @@ namespace SuperTerrainPlus {
 		STPDiversity::Sample* getBiomemap();
 
 		/**
+		 * @brief Return the reference to the biomemap of this chunk
+		 * @return The reference to the biomemap
+		*/
+		const STPDiversity::Sample* getBiomemap() const;
+
+		/**
 		 * @brief Return the reference to the size of the pixels for all maps
 		 * @return The reference to the size of the pixels for all maps
 		*/
-		const glm::uvec2& getSize() const;
+		const glm::uvec2& size() const;
 
 	};
 }

@@ -4,6 +4,7 @@
 
 //World
 #include "STPProcedural2DINF.h"
+#include <SuperTerrain+/Environment/STPConfiguration.h>
 //Compiler
 #include "./Biomes/STPCommonCompiler.h"
 
@@ -42,11 +43,8 @@ namespace STPDemo {
 		std::unique_ptr<SuperTerrainPlus::STPDiversity::STPBiomeFactory> BiomeFactory;
 		std::unique_ptr<SuperTerrainPlus::STPCompute::STPDiversityGenerator> DiversityGenerator;
 		std::unique_ptr<SuperTerrainPlus::STPDiversity::STPTextureFactory> TextureFactory;
-		//world management agents
-		std::optional<SuperTerrainPlus::STPChunkStorage> ChunkStorage;
-		//make sure provider is destroyed (it will auto sync) before all generators and storage because it's the multi-threaded commander to call all other generators
-		std::optional<SuperTerrainPlus::STPChunkProvider> ChunkProvider;
-		std::optional<SuperTerrainPlus::STPChunkManager> ChunkManager;
+		//make sure pipeline is destroyed (it will auto sync) before all generators and storage because it's the multi-threaded commander to call all other generators
+		std::optional<SuperTerrainPlus::STPWorldPipeline> Pipeline;
 		std::optional<STPProcedural2DINF> WorldRenderer;
 
 		/**
@@ -132,10 +130,10 @@ namespace STPDemo {
 		const SuperTerrainPlus::STPEnvironment::STPConfiguration& getWorldSetting() const;
 
 		/**
-		 * @brief Get the chunk manager
-		 * @return The chunk manager managed by the current world manager. If world manager is not linked, nullptr is returned.
+		 * @brief Get the world pipeline
+		 * @return The world pipeline managed by the current world manager. If world manager is not linked, nullptr is returned.
 		*/
-		const SuperTerrainPlus::STPChunkManager& getChunkManager() const;
+		SuperTerrainPlus::STPWorldPipeline& getPipeline();
 
 		/**
 		 * @brief Get the chunk renderer

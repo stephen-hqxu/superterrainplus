@@ -182,14 +182,18 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 		chunk_settings,
 		this->WorldSetting.getHeightfieldSetting(),
 		*this->DiversityGenerator,
-		STPChunkProvider::calculateMaxConcurrency(chunk_settings.RenderedChunk, chunk_settings.FreeSlipChunk));
-	this->ChunkStorage.emplace();
-	//create provider using generator and storage unit
-	this->ChunkProvider.emplace(chunk_settings, *this->ChunkStorage, *this->BiomeFactory, *this->ChunkGenerator);
-	//create manager using provider
-	this->ChunkManager.emplace(*this->ChunkProvider, *this->TextureFactory);
+		//TODO: fix the occupancy calculator
+		1u);
+	//create the world pipeline
+	STPWorldPipeline::STPPipelineSetup pipeStage;
+	pipeStage.BiomemapGenerator = this->BiomeFactory.get();
+	pipeStage.HeightfieldGenerator = &(*this->ChunkGenerator);
+	pipeStage.SplatmapGenerator = this->TextureFactory.get();
+	pipeStage.ChunkSetting = &chunk_settings;
+	this->Pipeline.emplace(pipeStage);
+
 	//create renderer using manager
-	this->WorldRenderer.emplace(this->WorldSetting.getMeshSetting(), *this->ChunkManager, indirect_cmd);
+	this->WorldRenderer.emplace(this->WorldSetting.getMeshSetting(), *this->Pipeline, indirect_cmd);
 	
 	this->linkStatus = true;
 }
@@ -206,8 +210,8 @@ const STPEnvironment::STPConfiguration& STPWorldManager::getWorldSetting() const
 	return this->WorldSetting;
 }
 
-const STPChunkManager& STPWorldManager::getChunkManager() const {
-	return *this->ChunkManager;
+STPWorldPipeline& STPWorldManager::getPipeline() {
+	return *this->Pipeline;
 }
 
 const STPProcedural2DINF& STPWorldManager::getChunkRenderer() const {

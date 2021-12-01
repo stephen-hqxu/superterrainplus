@@ -6,6 +6,8 @@ using std::endl;
 
 using std::make_unique;
 
+#include <glm/gtc/type_ptr.hpp>
+
 using glm::ivec2;
 using glm::uvec2;
 using glm::vec2;
@@ -16,8 +18,8 @@ using glm::identity;
 using namespace STPDemo;
 using namespace SuperTerrainPlus;
 
-STPProcedural2DINF::STPProcedural2DINF(const STPEnvironment::STPMeshSetting& mesh_settings, STPChunkManager& manager, void* procedural2dinf_cmd)
-	: ChunkManager(manager), command(procedural2dinf_cmd), MeshSetting(mesh_settings) {
+STPProcedural2DINF::STPProcedural2DINF(const STPEnvironment::STPMeshSetting& mesh_settings, STPWorldPipeline& pipeline, void* procedural2dinf_cmd)
+	: WorldPipeline(pipeline), command(procedural2dinf_cmd), MeshSetting(mesh_settings) {
 	cout << "....Loading STPProcedural2DINF, An Infinite Terrain Renderer....";
 	this->compile2DTerrainShader();
 	cout << "Shader Loaded :)" << endl;
@@ -30,7 +32,7 @@ STPProcedural2DINF::~STPProcedural2DINF() {
 }
 
 void STPProcedural2DINF::compile2DTerrainShader() {
-	const STPEnvironment::STPChunkSetting& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSetting();
+	const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldPipeline.ChunkSetting;
 	//log
 	GLchar log[1024];
 	
@@ -75,7 +77,7 @@ void STPProcedural2DINF::compile2DTerrainShader() {
 }
 
 vec2 STPProcedural2DINF::calcBaseChunkPosition() {
-	const STPEnvironment::STPChunkSetting& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSetting();
+	const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldPipeline.ChunkSetting;
 	//calculate offset
 	const ivec2 chunk_offset(-glm::floor(vec2(chunk_settings.RenderedChunk) / 2.0f));
 	return STPChunk::offsetChunk(vec2(chunk_settings.ChunkOffset.x, chunk_settings.ChunkOffset.z), chunk_settings.ChunkSize, chunk_offset);
@@ -136,7 +138,7 @@ GLuint STPProcedural2DINF::getTerrain2DINFProgram() const {
 }
 
 void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& projection, vec3 position) const {
-	const STPEnvironment::STPChunkSetting& chunk_settings = this->ChunkManager.getChunkProvider().getChunkSetting();
+	const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldPipeline.ChunkSetting;
 	mat4 model = identity<mat4>();
 	//move the terrain center to the camera
 	vec2 chunk_center_position = STPChunk::getChunkPosition(
@@ -152,17 +154,15 @@ void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& proje
 	
 	//render, sync textures to make sure they are all ready before loading
 	try {
-		this->ChunkManager.SyncloadChunks();
+		this->WorldPipeline.wait();
 	}
 	catch (const std::exception& e) {
 		cerr << e.what() << endl;
 		std::terminate();
 	}
-	this->ChunkManager.generateMipmaps();
-	const STPChunkManager& chunkMgr = this->ChunkManager;
-	glBindTextureUnit(0, chunkMgr.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::BIOME));//biomemap
-	glBindTextureUnit(1, chunkMgr.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::HEIGHTFIELD));//heightfield
-	glBindTextureUnit(2, chunkMgr.getCurrentRenderingBuffer(STPChunkManager::STPRenderingBufferType::SPLAT));//splatmap
+	glBindTextureUnit(0, this->WorldPipeline[STPWorldPipeline::STPRenderingBufferType::BIOME]);//biomemap
+	glBindTextureUnit(1, this->WorldPipeline[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);//heightfield
+	glBindTextureUnit(2, this->WorldPipeline[STPWorldPipeline::STPRenderingBufferType::SPLAT]);//splatmap
 	//terrain surface texture isn't ready yet
 	//const unsigned int instance_count = this->CHUNK_SIZE.x * this->CHUNK_SIZE.y * this->RENDERED_CHUNK.x * this->RENDERED_CHUNK.y;
 	glBindVertexArray(this->plane_vao);

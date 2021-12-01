@@ -48,8 +48,6 @@ World/Chunk/FreeSlip/STPFreeSlipManager.inl
 World/Chunk/FreeSlip/STPFreeSlipTextureBuffer.h
 # /World/Chunk
 World/Chunk/STPChunk.h
-World/Chunk/STPChunkManager.h
-World/Chunk/STPChunkProvider.h
 World/Chunk/STPChunkStorage.h
 World/Chunk/STPDiversityGenerator.hpp
 World/Chunk/STPHeightfieldGenerator.h
@@ -69,4 +67,6 @@ World/Diversity/Texture/STPTextureDefinitionLanguage.h
 World/Diversity/Texture/STPTextureFactory.h
 World/Diversity/Texture/STPTextureInformation.hpp
 World/Diversity/Texture/STPTextureType.hpp
+# /World
+World/STPWorldPipeline.h
 )

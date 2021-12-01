@@ -9,8 +9,9 @@
 //My Own Library
 #include <SglToolkit/SgTShaderProc.h>
 #include <SglToolkit/SgTUtil.h>
-//Processing data with chunk manager so we can use the map directly
-#include <SuperTerrain+/World/Chunk/STPChunkManager.h>
+//Processing data with pipeline so we can use the map directly
+#include <SuperTerrain+/World/STPWorldPipeline.h>
+#include <SuperTerrain+/Environment/STPMeshSetting.h>
 
 namespace STPDemo {
 
@@ -37,7 +38,7 @@ namespace STPDemo {
 		const SuperTerrainPlus::STPEnvironment::STPMeshSetting& MeshSetting;
 
 		//chunk manager for this renderer
-		SuperTerrainPlus::STPChunkManager& ChunkManager;
+		SuperTerrainPlus::STPWorldPipeline& WorldPipeline;
 
 		/**
 		 * @brief Compile the 2D terrain shader.
@@ -72,10 +73,10 @@ namespace STPDemo {
 		/**
 		 * @brief Init the chunk manager
 		 * @param mesh_settings Stored all parameters for the heightmap calculation launch, settings are linked to this renderer so lifetime must be guaranteed.
-		 * @param manager Chunk manager to be linked with this renderer
+		 * @param pipeline World pipeline to be linked with this renderer
 		 * @param procedural2dinf_cmd The indirect rendering command for prodecural 2d inf terrain renderer
 		*/
-		STPProcedural2DINF(const SuperTerrainPlus::STPEnvironment::STPMeshSetting&, SuperTerrainPlus::STPChunkManager&, void*);
+		STPProcedural2DINF(const SuperTerrainPlus::STPEnvironment::STPMeshSetting&, SuperTerrainPlus::STPWorldPipeline&, void*);
 
 		STPProcedural2DINF(const STPProcedural2DINF&) = delete;
 

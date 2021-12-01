@@ -109,7 +109,7 @@ SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk
 		THEN("New chunk should be usable and empty with fixed size") {
 			REQUIRE_FALSE(this->isOccupied());
 			REQUIRE(this->getChunkState() == no_state);
-			REQUIRE(this->getSize() == ChunkTester::Size);
+			REQUIRE(this->size() == ChunkTester::Size);
 		}
 
 		WHEN("Changing the chunk status flags") {

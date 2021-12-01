@@ -57,18 +57,30 @@ void STPChunk::markChunkState(STPChunkState state) {
 }
 
 float* STPChunk::getHeightmap() {
+	return const_cast<float*>(const_cast<const STPChunk*>(this)->getHeightmap());
+}
+
+const float* STPChunk::getHeightmap() const {
 	return this->Heightmap.get();
 }
 
 unsigned short* STPChunk::getRenderingBuffer() {
+	return const_cast<unsigned short*>(const_cast<const STPChunk*>(this)->getRenderingBuffer());
+}
+
+const unsigned short* STPChunk::getRenderingBuffer() const {
 	return this->HeightmapRenderingBuffer.get();
 }
 
 STPDiversity::Sample* STPChunk::getBiomemap() {
+	return const_cast<STPDiversity::Sample*>(const_cast<const STPChunk*>(this)->getBiomemap());
+}
+
+const STPDiversity::Sample* STPChunk::getBiomemap() const {
 	return this->Biomemap.get();
 }
 
-const uvec2& STPChunk::getSize() const {
+const uvec2& STPChunk::size() const {
 	return this->PixelSize;
 }
 
