@@ -91,16 +91,6 @@ namespace SuperTerrainPlus {
 		static glm::vec2 getChunkPosition(glm::vec3, glm::uvec2, float = 1.0f);
 
 		/**
-		 * @brief Get the chunk position in chunk coordinate, i.e., normalised chunk world coordinate by chunk size.
-		 * We define the chunk with top-left corner world position of (0, 0) with (0, 0) chunk coordinate.
-		 * @param chunkPos The current chunk position (x,z) in world coordinate
-		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x,z) direction
-		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
-		 * @return The chunk coordinate (x,z).
-		*/
-		static glm::vec2 getChunkCoordinate(glm::vec2, glm::uvec2, float = 1.0f);
-
-		/**
 		 * @brief Convert local chunk index to local chunk coordinate
 		 * @param chunkID The local chunk ID, starting from top-left corner as 0.
 		 * @param chunkRange The number of chunk in x and z direction

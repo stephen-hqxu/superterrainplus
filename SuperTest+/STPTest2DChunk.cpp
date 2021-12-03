@@ -35,6 +35,18 @@ SCENARIO("STPChunk static functions can compute chunk coordinate correctly", "[C
 		THEN("The chunk world position should be correctly calculated") {
 			constexpr vec2 ChunkPosition = vec2(-765.0f, 765.0f);
 			CHECK(STPChunk::getChunkPosition(CameraPosition, ChunkSize, ChunkScaling) == ChunkPosition);
+
+			WHEN("Trying to generate some map for a chunk with this world coordinate") {
+
+				THEN("Chunk should report the correct map offset to ensure seamless generated texture.") {
+					constexpr uvec2 MapSize = uvec2(512u);
+					constexpr vec2 MapOfffset = vec2(25.5f, -57.5f);
+
+					constexpr vec2 ChunkMapOffset = vec2(-1510.5f, 1478.5f);
+					CHECK(STPChunk::calcChunkMapOffset(ChunkPosition, ChunkSize, MapSize, MapOfffset, ChunkScaling) == ChunkMapOffset);
+				}
+
+			}
 		}
 
 		WHEN("Chunk is offset") {
@@ -49,6 +61,12 @@ SCENARIO("STPChunk static functions can compute chunk coordinate correctly", "[C
 
 		WHEN("Asking for a region of chunks") {
 			constexpr uvec2 RegionSize = uvec2(5u, 5u);
+
+			THEN("Chunk index can be converted to local coordinate") {
+				CHECK(STPChunk::getLocalChunkCoordinate(7u, RegionSize) == uvec2(2u, 1u));
+				CHECK(STPChunk::getLocalChunkCoordinate(12u, RegionSize) == uvec2(2u));
+				CHECK(STPChunk::getLocalChunkCoordinate(20u, RegionSize) == uvec2(0u, 4u));
+			}
 
 			THEN("All chunk world positions within this region should be correct") {
 				constexpr vec2 ChunkCentre = vec2(-35.5f, 89.5f);

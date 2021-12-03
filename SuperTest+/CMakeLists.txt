@@ -16,6 +16,7 @@ STPTest2DChunk.cpp
 STPTestEnvironment.cpp
 STPTestFreeSlip.cpp
 STPTestRTC.cpp
+STPTestTDL.cpp
 STPTestTexture.cpp
 STPTestUtility.cpp
 # SuperAlgorithm+ test code

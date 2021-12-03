@@ -1,0 +1,12 @@
+#texture [gravel, dirt, grass, stone];
+
+#rule altitude {
+	100u := (0.2f -> gravel, 0.7f -> grass, 1.0f -> dirt),
+	101u := (0.45f -> dirt, 1.0f -> stone),
+	105u := (1.0f -> stone)
+}
+
+#rule gradient {
+	100u := (0.25f, 0.75f, 0.3f, 0.7f -> stone),
+	105u := (0.6f, 1.0f, 0.77f, 1.0f -> grass, 0.2f, 0.5f, 0.2f, 0.55f -> gravel)
+}

@@ -96,11 +96,6 @@ vec2 STPChunk::getChunkPosition(vec3 cameraPos, uvec2 chunkSize, float scaling) 
 	return glm::floor(cameraPos_2d / scaled_chunkSize) * scaled_chunkSize;
 }
 
-vec2 STPChunk::getChunkCoordinate(vec2 chunkPos, uvec2 chunkSize, float scaling) {
-	ASSERT_POSITION_SCALE(scaling);
-	return chunkPos / (static_cast<vec2>(chunkSize) * scaling);
-}
-
 uvec2 STPChunk::getLocalChunkCoordinate(unsigned int chunkID, uvec2 chunkRange) {
 	//checking for invalid chunkID is relatively expensive, so we don't...
 	return uvec2(chunkID % chunkRange.x, chunkID / chunkRange.y);
@@ -108,7 +103,7 @@ uvec2 STPChunk::getLocalChunkCoordinate(unsigned int chunkID, uvec2 chunkRange) 
 
 vec2 STPChunk::calcChunkMapOffset(vec2 chunkPos, uvec2 chunkSize, uvec2 mapSize, vec2 mapOffset, float scaling) {
 	ASSERT_POSITION_SCALE(scaling);
-	return static_cast<vec2>(mapSize) * STPChunk::getChunkCoordinate(chunkPos, chunkSize, scaling) + mapOffset;
+	return static_cast<vec2>(mapSize) * (chunkPos / (static_cast<vec2>(chunkSize) * scaling)) + mapOffset;
 }
 
 vec2 STPChunk::offsetChunk(vec2 chunkPos, uvec2 chunkSize, ivec2 offset, float scaling) {
