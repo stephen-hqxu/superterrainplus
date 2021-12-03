@@ -191,6 +191,13 @@ namespace SuperTerrainPlus {
 		*/
 		STPOpenGL::STPuint operator[](STPRenderingBufferType) const;
 
+		/**
+		 * @brief Retrieve the pointer to splatmap generator.
+		 * This can be used by the renderer for rule-based multi-biome terrain texture splatting.
+		 * @return The splatmap generator.
+		*/
+		STPDiversity::STPTextureFactory& splatmapGenerator() const;
+
 	};
 
 }

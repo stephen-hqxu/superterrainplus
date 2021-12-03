@@ -17,6 +17,7 @@ using glm::identity;
 
 using namespace STPDemo;
 using namespace SuperTerrainPlus;
+using namespace SuperTerrainPlus::STPDiversity;
 
 STPProcedural2DINF::STPProcedural2DINF(const STPEnvironment::STPMeshSetting& mesh_settings, STPWorldPipeline& pipeline, void* procedural2dinf_cmd)
 	: WorldPipeline(pipeline), command(procedural2dinf_cmd), MeshSetting(mesh_settings) {
@@ -24,6 +25,7 @@ STPProcedural2DINF::STPProcedural2DINF(const STPEnvironment::STPMeshSetting& mes
 	this->compile2DTerrainShader();
 	cout << "Shader Loaded :)" << endl;
 	this->loadPlane();
+	this->loadTexture();
 	cout << "....Done...." << endl;
 }
 
@@ -58,9 +60,11 @@ void STPProcedural2DINF::compile2DTerrainShader() {
 	//those parameters won't change, there is no need to resend them in rendering loop
 	const vec2 base_chunk_position = this->calcBaseChunkPosition();
 	const uvec2 rendering_buffer_size = chunk_settings.RenderedChunk * chunk_settings.MapSize;
+	const vec2 chunk_horizontal_offset = vec2(chunk_settings.ChunkOffset.x, chunk_settings.ChunkOffset.z);
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("rendered_chunk_num"), 1, value_ptr(chunk_settings.RenderedChunk));
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("chunk_dimension"), 1, value_ptr(chunk_settings.ChunkSize));
 	glProgramUniform2fv(this->Terrain2d_shader.getP(), this->getLoc("base_chunk_position"), 1, value_ptr(base_chunk_position));
+	glProgramUniform2fv(this->Terrain2d_shader.getP(), this->getLoc("chunk_offset"), 1, value_ptr(chunk_horizontal_offset));
 	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MAX_TESS_LEVEL"), this->MeshSetting.TessSetting.MaxTessLevel);
 	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.MIN_TESS_LEVEL"), this->MeshSetting.TessSetting.MinTessLevel);
 	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("tessParameters.FURTHEST_TESS_DISTANCE"), this->MeshSetting.TessSetting.FurthestTessDistance);
@@ -70,6 +74,10 @@ void STPProcedural2DINF::compile2DTerrainShader() {
 	//Geometry shader for normalmap calculation
 	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("NormalStrength"), this->MeshSetting.Strength);
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("HeightfieldDim"), 1, value_ptr(rendering_buffer_size));
+	//Fragment shader for texture splatting
+	const STPTextureFactory& splatGen = this->WorldPipeline.splatmapGenerator();
+	//texture type indexer
+	glProgramUniform1ui(this->Terrain2d_shader.getP(), this->getLoc("ALBEDO"), splatGen.convertType(STPTextureType::Albedo));
 
 	//create pipeline
 	glCreateProgramPipelines(1, &this->Terrain2d_pipeline);
@@ -119,11 +127,37 @@ void STPProcedural2DINF::loadPlane() {
 	return;
 }
 
+void STPProcedural2DINF::loadTexture() {
+	const STPTextureFactory& splatGen = this->WorldPipeline.splatmapGenerator();
+	//get all splatmap dataset
+	const auto [tbo, tbo_count, reg, reg_count, dict, dict_count] = splatGen.getSplatTexture();
+	
+	//prepare bindless texture
+	this->SplatTextureHandle.reserve(tbo_count);
+	for (unsigned int i = 0u; i < tbo_count; i++) {
+		const GLuint64 handle = glGetTextureHandleARB(tbo[i]);
+		this->SplatTextureHandle.emplace_back(handle);
+		//make the handle active
+		glMakeTextureHandleResidentARB(handle);
+	}
+	glProgramUniformHandleui64vARB(this->Terrain2d_shader.getP(), this->getLoc("RegionalTexture"), tbo_count, this->SplatTextureHandle.data());
+
+	//prepare registry
+	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("RegionLocation"), reg_count, reinterpret_cast<const unsigned int*>(reg));
+	//prepare dictionary for registry
+	glProgramUniform1uiv(this->Terrain2d_shader.getP(), this->getLoc("RegionLocationDictionary"), dict_count, dict);
+}
+
 GLint STPProcedural2DINF::getLoc(const GLchar* const name) const {
 	return glGetUniformLocation(this->Terrain2d_shader.getP(), name);
 }
 
 void STPProcedural2DINF::clearup() {
+	//free bindless handles
+	for (const auto handle : this->SplatTextureHandle) {
+		glMakeTextureHandleNonResidentARB(handle);
+	}
+
 	//clearup
 	this->Terrain2d_shader.deleteShader();
 	glDeleteBuffers(1, &this->plane_vbo);
@@ -160,6 +194,7 @@ void STPProcedural2DINF::renderVisibleChunks(const mat4& view, const mat4& proje
 		cerr << e.what() << endl;
 		std::terminate();
 	}
+
 	glBindTextureUnit(0, this->WorldPipeline[STPWorldPipeline::STPRenderingBufferType::BIOME]);//biomemap
 	glBindTextureUnit(1, this->WorldPipeline[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);//heightfield
 	glBindTextureUnit(2, this->WorldPipeline[STPWorldPipeline::STPRenderingBufferType::SPLAT]);//splatmap

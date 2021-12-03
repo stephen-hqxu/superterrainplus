@@ -4,11 +4,10 @@
 /* ------------------ Texture Splatting ---------------------------- */
 #define TEXTURE_COUNT 1
 #define TEXTURE_LOCATION_COUNT 6
-#define TEXTURE_LOLCATION_DICTIONARY_COUNT 18
+#define TEXTURE_LOCATION_DICTIONARY_COUNT 6
 
-struct TextureLocation{
-	uint Group, Layer;
-};
+//texture type indexing
+uniform uint ALBEDO;
 
 /* ----------------------------- ---------------------------- */
 
@@ -28,18 +27,12 @@ layout (binding = 2) uniform usampler2D Splatmap;
 
 //Rule-based texturing system
 layout (bindless_sampler) uniform sampler2DArray RegionalTexture[TEXTURE_COUNT];
-uniform TextureLocation RegionLocation[TEXTURE_LOCATION_COUNT];
-uniform uint RegionLocationDictionary[TEXTURE_LOLCATION_DICTIONARY_COUNT];
+//x: array index, y: layer index
+uniform uvec2 RegionLocation[TEXTURE_LOCATION_COUNT];
+uniform uint RegionLocationDictionary[TEXTURE_LOCATION_DICTIONARY_COUNT];
 
-//A temporary color array for visualising regions
-const vec3 RegionColor[6] = {
-	vec3(0.568f, 0.204f, 0.176f),
-	vec3(0.298f, 0.78f, 0.384f),
-	vec3(0.215f, 0.329f, 0.106f),
-	vec3(0.859f, 0.753f, 0.267f),
-	vec3(0.42f, 0.251f, 0.043f),
-	vec3(0.235f)
-};
+uniform uvec2 rendered_chunk_num;
+uniform vec2 chunk_offset;
 
 vec3 getRegionTexture(vec2, vec3);
 
@@ -51,9 +44,21 @@ void main(){
 }
 
 vec3 getRegionTexture(vec2 uv, vec3 replacement){
-	//visualise region
-	const uint Region = texture(Splatmap, uv).r;
+	const uint region = texture(Splatmap, uv).r;
+	if(region >= TEXTURE_LOCATION_DICTIONARY_COUNT){
+		//no region is defined
+		return replacement;
+	}
+
+	//find albedo texture for this region, currently the stride is 1
+	const uint regionLoc = RegionLocationDictionary[region + ALBEDO];
+	//currently we don't need to handle the case when texture type is not used
+	const uvec2 textureLoc = RegionLocation[regionLoc];
+
+	//this formula make sure the UV is stable when the rendered chunk shifts
+	const vec2 world_uv = uv * rendered_chunk_num + chunk_offset;
+	const vec3 terrainColor = texture(RegionalTexture[textureLoc.x], vec3(world_uv * 10.0f, textureLoc.y)).rgb;
 
 	//region is valid, can be visualised, otherwise we display a replacement color
-	return (Region < RegionColor.length()) ? RegionColor[Region] : replacement;
+	return terrainColor;
 }

@@ -125,10 +125,13 @@ namespace SuperTerrainPlus::STPDiversity {
 
 			//An array of OpenGL texture buffer objects in the form of texture 2D array.
 			const STPOpenGL::STPuint* TextureBufferObject;
+			size_t TextureBufferCount;
 			//An array of struct of indices to locate a specific type of texture for a region in the texture buffer array.
 			const STPTextureDataLocation* LocationRegistry;
+			size_t LocationRegistryCount;
 			//An array of indices to locate a region in the location registry.
 			const unsigned int* LocationRegistryDictionary;
+			size_t LocationRegistryDictionaryCount;
 
 		};
 

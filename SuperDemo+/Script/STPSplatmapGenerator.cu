@@ -61,18 +61,10 @@ __global__ void generateTextureSplatmap
 
 	const STPSimplexNoise Simplex(*Permutation);
 
-	//coordinates are normalised
+	//coordinates are unnormalised
 	const uint2 SamplingPosition = make_uint2(
 		x + Dimension->x * local_info.LocalChunkCoordinateX,
 		y + Dimension->y * local_info.LocalChunkCoordinateY
-	);
-	const float2 unitUV = make_float2(
-		1.0f / (1.0f * RenderedDimension->x),
-		1.0f / (1.0f * RenderedDimension->y)
-	);
-	const float2 UV = make_float2(
-		1.0f * SamplingPosition.x * unitUV.x,
-		1.0f * SamplingPosition.y * unitUV.y
 	);
 
 	float cell[GradientSize];
@@ -80,12 +72,12 @@ __global__ void generateTextureSplatmap
 	for (unsigned int i = 0u; i < GradientSize; i++) {
 		const int2& currentKernel = GradientKernel[i];
 		const float2 offsetUV = make_float2(
-			unitUV.x * currentKernel.x * KernelRadius,
-			unitUV.y * currentKernel.y * KernelRadius
+			currentKernel.x * KernelRadius,
+			currentKernel.y * KernelRadius
 		);
 		const float2 SamplingUV = make_float2(
-			UV.x + offsetUV.x,
-			UV.y + offsetUV.y
+			SamplingPosition.x + offsetUV.x,
+			SamplingPosition.y + offsetUV.y
 		);
 		//sample this heightmap value
 		cell[i] = tex2D<float>(heightmap_tex, SamplingUV.x, SamplingUV.y) * HeightFactor;
@@ -105,8 +97,8 @@ __global__ void generateTextureSplatmap
 		(y + local_info.ChunkMapOffsetY) * NoiseScale
 	) * NoiseContribution;
 	//get information about the current position
-	const Sample biome = tex2D<Sample>(biomemap_tex, UV.x, UV.y);
-	const float height = STPKernelMath::clamp(tex2D<float>(heightmap_tex, UV.x, UV.y) + noise, 0.0f, 1.0f);
+	const Sample biome = tex2D<Sample>(biomemap_tex, SamplingPosition.x, SamplingPosition.y);
+	const float height = STPKernelMath::clamp(tex2D<float>(heightmap_tex, SamplingPosition.x, SamplingPosition.y) + noise, 0.0f, 1.0f);
 
 	const STPTextureSplatRuleWrapper splatWrapper(SplatDatabase[0]);
 	//get regions, we define gradient region outweights altitude region if they overlap

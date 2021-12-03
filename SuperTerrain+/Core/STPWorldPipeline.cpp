@@ -56,7 +56,12 @@ private:
 	//all terrain map generators
 	STPBiomeFactory& generateBiomemap;
 	STPHeightfieldGenerator& generateHeightfield;
+
+public:
+
 	STPTextureFactory& generateSplatmap;
+
+private:
 
 	STPWorldPipeline* const Pipeline;
 
@@ -311,7 +316,7 @@ public:
 		tex_desc.addressMode[0] = cudaAddressModeClamp;
 		tex_desc.addressMode[1] = cudaAddressModeClamp;
 		tex_desc.addressMode[2] = cudaAddressModeClamp;
-		tex_desc.normalizedCoords = 1;
+		tex_desc.normalizedCoords = 0;
 
 		//biomemap
 		res_desc.res.array.array = buffer.Biomemap;
@@ -609,4 +614,8 @@ void STPWorldPipeline::wait() {
 
 STPOpenGL::STPuint STPWorldPipeline::operator[](STPRenderingBufferType type) const {
 	return this->TerrainMap[static_cast<std::underlying_type_t<STPRenderingBufferType>>(type)];
+}
+
+STPDiversity::STPTextureFactory& STPWorldPipeline::splatmapGenerator() const {
+	return this->Generator->generateSplatmap;
 }

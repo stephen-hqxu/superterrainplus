@@ -39,6 +39,8 @@ namespace STPDemo {
 
 		//chunk manager for this renderer
 		SuperTerrainPlus::STPWorldPipeline& WorldPipeline;
+		//use splat texture as bindless
+		std::vector<GLuint64> SplatTextureHandle;
 
 		/**
 		 * @brief Compile the 2D terrain shader.
@@ -55,6 +57,11 @@ namespace STPDemo {
 		 * @brief Load the unit plane
 		*/
 		void loadPlane();
+
+		/**
+		 * @brief Load the terrain texture.
+		*/
+		void loadTexture();
 
 		/**
 		 * @brief Get uniform location of the 2D infinite terrain renderer

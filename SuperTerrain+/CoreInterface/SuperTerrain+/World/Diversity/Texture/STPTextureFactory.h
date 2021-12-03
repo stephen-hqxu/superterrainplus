@@ -98,7 +98,18 @@ namespace SuperTerrainPlus::STPDiversity {
 		*/
 		virtual void splat(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t, const STPTextureInformation::STPSplatGeneratorInformation&, cudaStream_t) const = 0;
 
+	protected:
+
+		/**
+		 * @brief Get a data structure containing spalt data.
+		 * All pointers within are managed by the calling texture factory, and can only be accessed from device.
+		 * @return The splat database with all splat data.
+		*/
+		STPTextureInformation::STPSplatRuleDatabase getSplatDatabase() const;
+	
 	public:
+
+		typedef std::underlying_type_t<STPTextureType> STPTextureType_t;
 
 		/**
 		 * @brief Setup texture factory, manufacture texture data provided and process it to the way that it can be used by texturing system.
@@ -142,19 +153,20 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPOpenGL::STPuint operator[](STPTextureInformation::STPTextureGroupID) const;
 
 		/**
-		 * @brief Get a data structure containing spalt data.
-		 * All pointers within are managed by the calling texture factory, and can only be accessed from device.
-		 * @return The splat database with all splat data.
-		*/
-		STPTextureInformation::STPSplatRuleDatabase getSplatDatabase() const;
-
-		/**
 		 * @brief Get a data structure containing splat texture.
 		 * All pointers within are managed by the calling texture factory, and can only be accessed from host.
 		 * It can then be sent to renderer.
 		 * @return The splat texture database with all splat texture.
 		*/
 		STPTextureInformation::STPSplatTextureDatabase getSplatTexture() const;
+
+		/**
+		 * @brief Convert texture type to index that can be used to locate in the texture registry.
+		 * @param type The type to be converted.
+		 * @return The index correspond to this type.
+		 * If the texture type is not used by texture factory, exception is thrown.
+		*/
+		STPTextureType_t convertType(STPTextureType) const;
 
 	};
 

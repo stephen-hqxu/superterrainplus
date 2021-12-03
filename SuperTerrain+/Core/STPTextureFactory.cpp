@@ -180,6 +180,16 @@ vector<N> STPTextureFactory::convertSplatID
 	return reg;
 }
 
+STPTextureInformation::STPSplatRuleDatabase STPTextureFactory::getSplatDatabase() const {
+	return STPTextureInformation::STPSplatRuleDatabase{
+		this->SplatLookup_d.get(),
+		static_cast<unsigned int>(this->SplatLookupCount),
+		this->SplatRegistry_d.get(),
+		this->AltitudeRegistry_d.get(),
+		this->GradientRegistry_d.get()
+	};
+}
+
 template<typename T>
 STPSmartDeviceMemory::STPDeviceMemory<T[]> STPTextureFactory::copyToDevice(const std::vector<T>& data) {
 	STPSmartDeviceMemory::STPDeviceMemory<T[]> device = STPSmartDeviceMemory::makeDevice<T[]>(data.size());
@@ -216,20 +226,27 @@ STPOpenGL::STPuint STPTextureFactory::operator[](STPTextureInformation::STPTextu
 	return this->TextureOwnership.at(group_id);
 }
 
-STPTextureInformation::STPSplatRuleDatabase STPTextureFactory::getSplatDatabase() const {
-	return STPTextureInformation::STPSplatRuleDatabase{
-		this->SplatLookup_d.get(),
-		static_cast<unsigned int>(this->SplatLookupCount),
-		this->SplatRegistry_d.get(),
-		this->AltitudeRegistry_d.get(),
-		this->GradientRegistry_d.get()
-	};
-}
-
 STPTextureInformation::STPSplatTextureDatabase STPTextureFactory::getSplatTexture() const {
 	return STPTextureInformation::STPSplatTextureDatabase{
 		this->Texture.data(),
+		this->Texture.size(),
+
 		this->TextureRegion.data(),
-		this->TextureRegionLookup.data()
+		this->TextureRegion.size(),
+
+		this->TextureRegionLookup.data(),
+		this->TextureRegionLookup.size()
 	};
+}
+
+STPTextureFactory::STPTextureType_t STPTextureFactory::convertType(STPTextureType type) const {
+	auto type_beg = this->ValidType.cbegin();
+	//find this type
+	const size_t type_index = std::lower_bound(type_beg, this->ValidType.cend(), type) - type_beg;
+
+	if (this->ValidType[type_index] != type) {
+		//type not found
+		throw STPException::STPMemoryError("Type is not used by the texture splatting system since it was not defined in the rules.");
+	}
+	return static_cast<STPTextureType_t>(type_index);
 }
