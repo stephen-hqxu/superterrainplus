@@ -134,8 +134,9 @@ public:
 	/**
 	 * @brief Set the texture parameter for a all texture groups.
 	 * @param factory The pointer to the texture factory where texture parameters will be set.
+	 * @param anisotropy_filter The level of anisotropy filtering to be used for each texture.
 	*/
-	void setTextureParameter(const STPTextureFactory& factory) const {
+	void setTextureParameter(const STPTextureFactory& factory, float anisotropy_filter) const {
 		//get the TBO based on group ID, currently we only have one group
 		const GLuint tbo = factory[this->x1024_rgb];
 
@@ -144,8 +145,7 @@ public:
 		glTextureParameteri(tbo, GL_TEXTURE_WRAP_R, GL_REPEAT);
 		glTextureParameteri(tbo, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTextureParameteri(tbo, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		//TODO: don't hard-code anisotropy filtering value, read from INI
-		glTextureParameterf(tbo, GL_TEXTURE_MAX_ANISOTROPY, 8.0f);
+		glTextureParameterf(tbo, GL_TEXTURE_MAX_ANISOTROPY, anisotropy_filter);
 
 		glGenerateTextureMipmap(tbo);
 	}
@@ -163,7 +163,7 @@ STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STP
 
 STPWorldManager::~STPWorldManager() = default;
 
-void STPWorldManager::linkProgram(void* indirect_cmd) {
+void STPWorldManager::linkProgram(void* indirect_cmd, float anisotropy) {
 	this->linkStatus = false;
 	//error checking
 	if (!this->BiomeFactory) {
@@ -174,7 +174,7 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 	}
 
 	//finish up texture settings
-	this->Texture->setTextureParameter(*this->TextureFactory);
+	this->Texture->setTextureParameter(*this->TextureFactory, anisotropy);
 
 	const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldSetting.getChunkSetting();
 	//create generator and storage unit first

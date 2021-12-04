@@ -128,6 +128,7 @@ namespace SuperTerrainPlus {
 		cudaGraphicsResource_t TerrainMapRes[STPWorldPipeline::BufferCount];
 		//empty buffer (using cuda pinned memory) that is used to clear a chunk data
 		void* TerrainMapClearBuffer;
+		size_t TerrainMapClearBufferPitch;
 		//A cache that holds the previous rendered chunk memory to update the new rendered chunk
 		STPRenderingBufferCache TerrainMapExchangeCache;
 
@@ -158,10 +159,11 @@ namespace SuperTerrainPlus {
 		void backupBuffer(const STPRenderingBufferMemory&);
 
 		/**
-		 * @brief Clear up the rendering buffer of the chunk map
+		 * @brief Clear up the rendering buffer of the chunk map.
 		 * @param destination The loaction to store all loaded maps, and it will be erased.
+		 * @param dest_idx The local chunk index to the destination rendering sub-buffer to be cleared.
 		*/
-		void clearBuffer(const STPRenderingBufferMemory&);
+		void clearBuffer(const STPRenderingBufferMemory&, unsigned int);
 
 		/**
 		 * @brief Transfer rendering buffer on host side to device (OpenGL) rendering buffer by local chunk.

@@ -5,12 +5,17 @@ constexpr static float
 	//Control the distance of pixels in the filter kernel.
 	KernelRadius = 2.5f, 
 	//Control the scale of noise, greater denominator gives smoother noise.
-	NoiseScale = 1.0f / 82.5f,
+	NoiseScale = 91.5f,
 	//Control how much the noise can affect the height value
-	NoiseContribution = 0.05f,
+	NoiseContribution = 0.15f,
 	//A.k.a. altitude, but it does not have to be the same as altitude of the terrain.
 	//Control sensitivity of gradient responds to altitude change.
 	HeightFactor = 875.5f;
+
+//Simplex noise fractal settings
+constexpr static float
+	Per = 0.7f,
+	Lac = 1.88f;
 
 //--------------------- Program Start ------------------------
 #include "./Script/STPCommonGenerator.cuh"
@@ -33,6 +38,15 @@ constexpr static int2 GradientKernel[GradientSize] = {
 	int2{ 1, 0 },//right, 2
 	int2{ 0, 1 }//bottom, 3
 };
+
+/**
+ * @brief Generate some simplex noise for an input.
+ * @param x The x coordinate
+ * @param y The y coordinate
+ * @param offset The noise offset
+ * @return The normalised noise with noise contribution applied.
+*/
+__device__ static float generateNoise(unsigned int, unsigned int, float2);
 
 //--------------------- Definition --------------------------
 
@@ -58,8 +72,6 @@ __global__ void generateTextureSplatmap
 	//working pixel
 	//we need to convert z-coord of thread to chunk local ID
 	const STPTI::STPSplatGeneratorInformation::STPLocalChunkInformation& local_info = splat_info.RequestingLocalInfo[z];
-
-	const STPSimplexNoise Simplex(*Permutation);
 
 	//coordinates are unnormalised
 	const uint2 SamplingPosition = make_uint2(
@@ -92,10 +104,7 @@ __global__ void generateTextureSplatmap
 	const float slopFactor = 1.0f - (gradient[1] * rnormf(3, gradient));
 
 	//add some simplex noise to the slopFactor and height value, reminder: range is [-1,1]
-	const float noise = Simplex.simplex2D(
-		(x + local_info.ChunkMapOffsetX) * NoiseScale,
-		(y + local_info.ChunkMapOffsetY) * NoiseScale
-	) * NoiseContribution;
+	const float noise = generateNoise(x, y, make_float2(local_info.ChunkMapOffsetX, local_info.ChunkMapOffsetY));
 	//get information about the current position
 	const Sample biome = tex2D<Sample>(biomemap_tex, SamplingPosition.x, SamplingPosition.y);
 	const float height = STPKernelMath::clamp(tex2D<float>(heightmap_tex, SamplingPosition.x, SamplingPosition.y) + noise, 0.0f, 1.0f);
@@ -111,4 +120,21 @@ __global__ void generateTextureSplatmap
 	//write whatever region to the splatmap
 	//out-of-boundary write will be caught by CUDA (safely) and will crash the program with error
 	surf2Dwrite(static_cast<unsigned char>(region), splatmap_surf, SamplingPosition.x, SamplingPosition.y, cudaBoundaryModeTrap);
+}
+
+__device__ float generateNoise(unsigned int x, unsigned int y, float2 offset) {
+	//use simplex noise to generate fractals
+	const STPSimplexNoise simplex(*Permutation);
+	STPSimplexNoise::STPFractalSimplexInformation fractal_info;
+	fractal_info.Persistence = Per;
+	fractal_info.Lacunarity = Lac;
+	fractal_info.Octave = 3u;
+	fractal_info.HalfDimension = *HalfDimension;
+	fractal_info.Offset = offset;
+	fractal_info.Scale = NoiseScale;
+
+	const float3 result = simplex.simplex2DFractal(1.0f * x, 1.0f * y, fractal_info);
+
+	//interpolation
+	return STPKernelMath::Invlerp(result.y, result.z, result.x) * NoiseContribution;
 }

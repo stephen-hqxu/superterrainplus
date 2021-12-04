@@ -58,6 +58,36 @@ namespace SuperTerrainPlus::STPCompute {
 	public:
 
 		/**
+		 * @brief STPFractalSimplexInformation specifies parameters for computing fractal simplex noise.
+		*/
+		struct STPFractalSimplexInformation {
+		public:
+
+			//Persistence controls the amplitude multiplier of each octave.
+			float Persistence;
+			//Lacunarity controls the frequency multiplier of each octave.
+			float Lacunarity;
+			//Octave denotes the number phase to be performned in a fractal operation.
+			unsigned int Octave;
+			//The half dimension of the generated texture using simplex noise fractal.
+			//By using half dimension, noise is scaled at the centre of the image instead of the edge.
+			float2 HalfDimension;
+			//Specify the offset of the noise.
+			float2 Offset;
+			//Specify the scale of the noise.
+			float Scale;
+
+			/* The following variables will be changed at the end of the execution, as outputs */
+			
+			//The initial amplitude of the fractal.
+			//In each octave this value will be multiplied by persistence.
+			float Amplitude = 1.0f;
+			//The initial freqency of the fractal.
+			//In each octave this value will be multiplied by lacunarity.
+			float Frequency = 1.0f;
+		};
+
+		/**
 		 * @brief Init the simplex noise generator.
 		 * @param permutation Provide the permutation table for simplex noise.
 		*/
@@ -80,6 +110,16 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @return The simplex noise output
 		*/
 		__device__ float simplex2D(float, float) const;
+
+		/**
+		 * @brief Generate fractal 2D simplex noise.
+		 * @param x The X input.
+		 * @param y The Y input.
+		 * @param desc The pointer to the launch information of the simplex fractal
+		 * @return The resultant unnormalised fractal noise as the first component, with min and max value of the noise for the rests.
+		 * The min and max value can be used for clampping the noise value.
+		*/
+		__device__ float3 simplex2DFractal(float, float, STPFractalSimplexInformation&) const;
 
 	};
 }

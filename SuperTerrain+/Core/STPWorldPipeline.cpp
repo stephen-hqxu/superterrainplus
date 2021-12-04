@@ -394,7 +394,7 @@ public:
 STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : PipelineWorker(1u), Generator(make_unique<STPGeneratorManager>(setup, this)), 
 	ChunkSetting(*setup.ChunkSetting) {
 	const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
-	const ivec2 buffer_size(setting.RenderedChunk * setting.MapSize);
+	const uvec2 buffer_size(setting.RenderedChunk * setting.MapSize);
 	auto setupTex = [buffer_size](GLuint texture, GLint min_filter, GLint mag_filter, GLsizei levels, GLenum internalFormat) -> void {
 		//set texture parameter
 		glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -424,9 +424,9 @@ STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : PipelineWorker(1u)
 	regTex(this->TerrainMap[2], this->TerrainMapRes + 2, cudaGraphicsRegisterFlagsSurfaceLoadStore);
 
 	//init clear buffers that are used to clear texture when new rendered chunks are loaded (we need to clear the previous chunk data)
-	const int totaltexture_size = buffer_size.x * buffer_size.y * sizeof(unsigned short);//1 channel
-	STPcudaCheckErr(cudaMallocHost(&this->TerrainMapClearBuffer, totaltexture_size));
-	memset(this->TerrainMapClearBuffer, 0x88, totaltexture_size);
+	const uvec2 clearBuffer_format = buffer_size * uvec2(sizeof(unsigned short), 1u);
+	STPcudaCheckErr(cudaMallocPitch(&this->TerrainMapClearBuffer, &this->TerrainMapClearBufferPitch, clearBuffer_format.x, clearBuffer_format.y));
+	STPcudaCheckErr(cudaMemset2D(this->TerrainMapClearBuffer, this->TerrainMapClearBufferPitch, 0x88u, clearBuffer_format.x, clearBuffer_format.y));
 
 	//init rendering back buffer cache
 	auto allocate_cache = [&buffer_size](size_t& pitch, size_t channelSize) -> void* {
@@ -458,8 +458,7 @@ STPWorldPipeline::~STPWorldPipeline() {
 	glDeleteTextures(3, this->TerrainMap);
 
 	//delete clear buffer
-	STPcudaCheckErr(cudaFreeHost(this->TerrainMapClearBuffer));
-	
+	STPcudaCheckErr(cudaFree(this->TerrainMapClearBuffer));
 	//delete rendering back buffer cache
 	FOR_EACH_BUFFER(cudaFree(this->TerrainMapExchangeCache.MapCache[i]))
 }
@@ -495,13 +494,12 @@ void STPWorldPipeline::backupBuffer(const STPRenderingBufferMemory& buffer) {
 		buffer.Map[i], STPRenderingBufferMemory::Format[i]))
 }
 
-void STPWorldPipeline::clearBuffer(const STPRenderingBufferMemory& destination) {
-	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
-	auto erase_buffer = [stream = *this->BufferStream, clearBuffer = this->TerrainMapClearBuffer, 
-		buffer_size = chunk_setting.RenderedChunk * chunk_setting.MapSize](cudaArray_t data, size_t channelSize) -> void {
-		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(data, 0, 0, clearBuffer,
-			buffer_size.x * channelSize, buffer_size.x * channelSize,
-			buffer_size.y, cudaMemcpyHostToDevice, stream));
+void STPWorldPipeline::clearBuffer(const STPRenderingBufferMemory& destination, unsigned int dest_idx) {
+	auto erase_buffer = [stream = *this->BufferStream, clearBuffer = this->TerrainMapClearBuffer, clearBufferPitch = this->TerrainMapClearBufferPitch,
+		&dimension = this->ChunkSetting.MapSize, buffer_offset = this->calcBufferOffset(dest_idx)](cudaArray_t dest, size_t channelSize) -> void {
+		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(dest, buffer_offset.x * channelSize, buffer_offset.y, 
+			clearBuffer, clearBufferPitch, 
+			dimension.x * channelSize, dimension.y, cudaMemcpyDeviceToDevice, stream));
 	};
 
 	//clear unloaded chunk, so the engine won't display the chunk from previous rendered chunks
@@ -635,20 +633,22 @@ bool STPWorldPipeline::load(vec3 cameraPos) {
 	if (this->shouldClearBuffer) {
 		//backup the current buffer before clearing
 		this->backupBuffer(buffer_ptr);
-		this->clearBuffer(buffer_ptr);
 
 		const STPLocalChunkDictionary& cacheDict = this->TerrainMapExchangeCache.RenderingLocal;
 		//here we perform an optimisation: reuse chunk that has been rendered previously from the old rendering buffer
 		for (auto& [chunkPos, loaded] : this->renderingLocal) {
 			//check in the new rendered chunk, is there any old chunk has the same world coordinate as the new chunk?
 			auto pos_it = cacheDict.find(chunkPos);
+
+			const unsigned int buffer_chunkID = this->renderingLocalLookup.at(chunkPos);
 			if (pos_it == cacheDict.cend()) {
 				//the current new chunk is not found in the old rendering buffer, we need to load it from chunk storage later
+				//clear this chunk
+				this->clearBuffer(buffer_ptr, buffer_chunkID);
 				continue;
 			}
 			//found, copy it from the old buffer
-			const unsigned int buffer_chunkID = this->renderingLocalLookup.at(chunkPos), 
-				cache_chunkID = pos_it->second;
+			const unsigned int cache_chunkID = pos_it->second;
 			this->copySubBufferFromSubCache(buffer_ptr, buffer_chunkID, cache_chunkID);
 			//mark this chunk as loaded
 			loaded = true;

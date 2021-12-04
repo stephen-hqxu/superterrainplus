@@ -106,10 +106,11 @@ namespace STPDemo {
 		void attachTextureFactory(Arg&&...);
 
 		/**
-		 * @brief Link all pipeline stages together
-		 * @param indirect_cmd The indrect rendering command for renderer
+		 * @brief Link all pipeline stages together.
+		 * @param indirect_cmd The indrect rendering command for renderer.
+		 * @param anisotropy The level of anisotropy filtering to be used for textures.
 		*/
-		void linkProgram(void*);
+		void linkProgram(void*, float);
 
 		/**
 		 * @brief Get the link status of the current world manager.

@@ -201,7 +201,7 @@ namespace STPDemo {
 				this->world_manager->attachTextureFactory<STPDemo::STPSplatmapGenerator>
 					(this->world_manager->SharedProgram, this->world_manager->getTextureDatabase(), world_chunkSetting);
 
-				this->world_manager->linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF));
+				this->world_manager->linkProgram(reinterpret_cast<void*>(this->command->Command_Procedural2DINF), this->engineSettings("Anisotropy", "Global").to<float>());
 				if (!this->world_manager) {
 					//do not proceed if it fails
 					terminate();

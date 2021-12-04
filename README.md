@@ -52,14 +52,20 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 - [x] Multi-biome heightfield generation with smooth transition
 - [x] Rule-based biome-dependent terrain texture splatting with smooth transition
 - [ ] River and lake generation
-- [ ] Weather and seasonal effect
-- [ ] Real-time raster-ray tracing hybrid rendering
 
 ### Procedural geometry generation
 
-- [ ] Animated geometric meadow rendering
+- [ ] Animated geometric grassland rendering
 - [ ] Procedural parameter-based tree generation
 - [ ] Volumetric clound rendering
+
+### Real-time realistic rendering
+
+- [ ] Procedural sky rendering
+- [ ] Procedural atomspheric effect rendering
+- [ ] Day-night cycle
+- [ ] Weather and seasonal effect
+- [ ] ~~Real-time raster-ray tracing hybrid rendering~~
 
 ## :bricks: Middleware
 
