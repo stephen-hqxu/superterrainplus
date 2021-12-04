@@ -11,8 +11,12 @@ namespace SuperTerrainPlus {
 	namespace STPOpenGL {
 		//GLuint
 		typedef unsigned int STPuint;
+		//GLint
+		typedef int STPint;
 		//GLenum
 		typedef unsigned int STPenum;
+		//GLbitfield
+		typedef unsigned int STPbitfield;
 	}
 
 }

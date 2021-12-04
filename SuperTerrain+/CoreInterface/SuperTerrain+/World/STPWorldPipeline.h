@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _STP_WORLD_PIPELINE_H_
 #define _STP_WORLD_PIPELINE_H_
 

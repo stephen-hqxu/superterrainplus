@@ -7,6 +7,9 @@ add_subdirectory(${STP_CORE_INCLUDE}/${STP_MAIN_ENGINE})
 # Add SuperAlgorithm+
 add_subdirectory(${STP_ALGORITHM_ENGINE})
 add_subdirectory(${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})
+# Add SuperRealism+ (basically it is our rendering engine)
+add_subdirectory(${STP_REALISM_ENGINE})
+add_subdirectory(${STP_MODULE_INCLUDE}/${STP_REALISM_ENGINE})
 
 # config file for algorithm engine
 # tell the static library location so CUDA runtime compiler can find it easily (if developer wants to)
@@ -21,11 +24,10 @@ INPUT ${STP_ALGORITHM_DEFINE_INCLUDE}/STPAlgorithmDeviceInfoRaw.h
 
 # dependencies
 target_include_directories(${STP_MAIN_ENGINE}
-PRIVATE ${STP_MODULE_INCLUDE}
 PUBLIC ${STP_CORE_INCLUDE}
 )
 target_include_directories(${STP_ALGORITHM_HOST_ENGINE}
-PUBLIC ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
+PUBLIC ${STP_MODULE_INCLUDE}
 # info about the algorithm device engine, which may not be linked by the actual application if one chooses to use runtime comilation.
 # however if algorithm device engine is linked (developer decides to not use RTC), then device info header is useless since the target has all info needed.
 INTERFACE ${STP_ALGORITHM_DEFINE_INCLUDE}
@@ -33,6 +35,9 @@ INTERFACE ${STP_ALGORITHM_DEFINE_INCLUDE}
 target_include_directories(${STP_ALGORITHM_DEVICE_ENGINE} # algorithm device engine do not expose any external header in its public headers
 # we only include some define symbols from the core engine, no implementations are used
 PRIVATE ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
+)
+target_include_directories(${STP_REALISM_ENGINE}
+PUBLIC ${STP_MODULE_INCLUDE}
 )
 
 # library dependencies
@@ -43,5 +48,9 @@ PRIVATE ${STP_GLAD} SQLite::SQLite3
 PUBLIC CUDA::cudart CUDA::cuda_driver CUDA::nvrtc glm::glm
 )
 target_link_libraries(${STP_ALGORITHM_HOST_ENGINE}
-PRIVATE ${STP_MAIN_ENGINE} # main engine has all CUDA drivers linked as public
+PUBLIC ${STP_MAIN_ENGINE} # main engine has all CUDA drivers linked as public
+)
+target_link_libraries(${STP_REALISM_ENGINE}
+PRIVATE ${STP_GLAD}
+PUBLIC ${STP_MAIN_ENGINE}
 )

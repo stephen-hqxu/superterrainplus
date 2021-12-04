@@ -21,7 +21,12 @@ static bool GLInit = false;
 static bool EngineInit = false;
 
 //Compatibility checking
-static_assert(conjunction_v<is_same<STPOpenGL::STPenum, GLenum>, is_same<STPOpenGL::STPuint, GLuint>>,
+static_assert(conjunction_v<
+	is_same<STPOpenGL::STPenum, GLenum>, 
+	is_same<STPOpenGL::STPuint, GLuint>, 
+	is_same<STPOpenGL::STPint, GLint>,
+	is_same<STPOpenGL::STPbitfield, GLbitfield>
+>,
 	"OpenGL specification is no longer compatible with SuperTerrain+, please contact the maintainer.");
 
 bool STPEngineInitialiser::initGLcurrent() {

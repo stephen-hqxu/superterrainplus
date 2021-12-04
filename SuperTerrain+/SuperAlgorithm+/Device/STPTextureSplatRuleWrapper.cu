@@ -68,7 +68,7 @@ __device__ unsigned int STPTextureSplatRuleWrapper::gradientRegion
 	const unsigned int start = reg->GradientEntry, 
 		end = start + reg->GradientSize;
 	for(unsigned int i = start; i < end; i++) {
-		STPTI::STPGradientNode& curr_gra = this->SplatRule.GradientRegistry[i];
+		const STPTI::STPGradientNode& curr_gra = this->SplatRule.GradientRegistry[i];
 		//check all rules
 		if(gra >= curr_gra.minGradient && gra <= curr_gra.maxGradient &&
 			alt >= curr_gra.LowerBound && alt <= curr_gra.UpperBound) {
