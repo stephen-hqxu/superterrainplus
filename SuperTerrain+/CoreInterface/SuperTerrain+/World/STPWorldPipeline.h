@@ -65,6 +65,10 @@ namespace SuperTerrainPlus {
 
 	private:
 
+		//The total number of rendering buffer we have currently.
+		//Biomemap, heightfield and splatmap
+		static constexpr size_t BufferCount = 3ull;
+
 		//Vector that stored rendered chunk world position and loading status (True is loaded, false otherwise)
 		typedef std::vector<std::pair<glm::vec2, bool>> STPLocalChunkStatus;
 		//Use chunk world coordinate to lookup chunk ID
@@ -78,13 +82,30 @@ namespace SuperTerrainPlus {
 
 			//Channel size in byte (not bit) for each map
 			//Remember to update this value in case OpenGL buffer changes internal channel format
-			constexpr static size_t
-				BiomemapFormat = sizeof(STPDiversity::Sample),
-				HeightfieldFormat = sizeof(unsigned short),
-				SplatmapFormat = sizeof(unsigned char);
+			constexpr static size_t Format[STPWorldPipeline::BufferCount] = {
+				sizeof(STPDiversity::Sample),
+				sizeof(unsigned short),
+				sizeof(unsigned char)
+			};
 
 			//Map data
-			cudaArray_t Biomemap, Heightfield, Splatmap;
+			cudaArray_t Map[STPWorldPipeline::BufferCount];
+
+		};
+
+		/**
+		 * @brief STPRenderingBufferCache contains data as a backup of rendering buffer memory
+		*/
+		struct STPRenderingBufferCache {
+		public:
+
+			//Map cache data
+			void* MapCache[STPWorldPipeline::BufferCount];
+			//pitch size
+			size_t Pitch[STPWorldPipeline::BufferCount];
+
+			//A record of rendering locals for the current rendering buffer
+			STPLocalChunkDictionary RenderingLocal;
 
 		};
 
@@ -102,11 +123,13 @@ namespace SuperTerrainPlus {
 		//index 0: R16UI biome map
 		//index 1: R16 height map
 		//index 2: R8UI splat map
-		STPOpenGL::STPuint TerrainMap[3];
+		STPOpenGL::STPuint TerrainMap[STPWorldPipeline::BufferCount];
 		//registered buffer and texture
-		cudaGraphicsResource_t TerrainMapRes[3];
-		//empty buffer (using cuda pinned memory) that is used to clear a chunk data, quad_clear is RGBA16
-		unsigned short* TerrainMapClearBuffer;
+		cudaGraphicsResource_t TerrainMapRes[STPWorldPipeline::BufferCount];
+		//empty buffer (using cuda pinned memory) that is used to clear a chunk data
+		void* TerrainMapClearBuffer;
+		//A cache that holds the previous rendered chunk memory to update the new rendered chunk
+		STPRenderingBufferCache TerrainMapExchangeCache;
 
 		//async chunk loader
 		std::future<void> MapLoader;
@@ -119,6 +142,20 @@ namespace SuperTerrainPlus {
 		//determine which chunks to render and whether it's loaded, index of element denotes chunk local ID
 		STPLocalChunkStatus renderingLocal;
 		STPLocalChunkDictionary renderingLocalLookup;
+
+		/**
+		 * @brief Copy from a portion of rendering buffer to another portion of rendering buffer.
+		 * @param dest The destination of the rendering buffer to be copied to.
+		 * @param dest_idx The local chunk index to the destination rendering sub-buffer.
+		 * @param src_idx The local chunk index to the source rendering sub-buffer.
+		*/
+		void copySubBufferFromSubCache(const STPRenderingBufferMemory&, unsigned int, unsigned int);
+
+		/**
+		 * @brief Copy the given rendering buffer to a backup buffer in the current pipeline.
+		 * @param buffer The rendering buffer to be backed-up.
+		*/
+		void backupBuffer(const STPRenderingBufferMemory&);
 
 		/**
 		 * @brief Clear up the rendering buffer of the chunk map
@@ -135,6 +172,13 @@ namespace SuperTerrainPlus {
 		 * @return True if request has been submitted, false if given chunk is not available.
 		*/
 		bool mapSubData(const STPRenderingBufferMemory&, glm::vec2, unsigned int);
+
+		/**
+		 * @brief Get the chunk offset on a rendering buffer given a local chunk index.
+		 * @param index The local chunk index.
+		 * @return The chunk index offset on the rendering buffer.
+		*/
+		glm::uvec2 calcBufferOffset(unsigned int) const;
 
 	public:
 

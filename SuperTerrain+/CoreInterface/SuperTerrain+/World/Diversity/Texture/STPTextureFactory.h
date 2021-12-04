@@ -20,6 +20,8 @@
 //GLM
 #include <glm/vec2.hpp>
 
+#include <limits>
+
 namespace SuperTerrainPlus::STPDiversity {
 
 	/**
@@ -37,6 +39,9 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		//An array of chunk requesting for splatmap generation
 		typedef std::vector<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation> STPRequestingChunkInfo;
+
+		//Denote the current texture type is not used in this region
+		static constexpr unsigned int UnuseTextureType = std::numeric_limits<unsigned int>::max();
 
 	private:
 

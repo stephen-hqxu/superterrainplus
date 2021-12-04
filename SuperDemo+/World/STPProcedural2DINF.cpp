@@ -74,6 +74,7 @@ void STPProcedural2DINF::compile2DTerrainShader() {
 	//Geometry shader for normalmap calculation
 	glProgramUniform1f(this->Terrain2d_shader.getP(), this->getLoc("NormalStrength"), this->MeshSetting.Strength);
 	glProgramUniform2uiv(this->Terrain2d_shader.getP(), this->getLoc("HeightfieldDim"), 1, value_ptr(rendering_buffer_size));
+	glProgramUniform1ui(this->Terrain2d_shader.getP(), this->getLoc("NullType"), STPTextureFactory::UnuseTextureType);
 	//Fragment shader for texture splatting
 	const STPTextureFactory& splatGen = this->WorldPipeline.splatmapGenerator();
 	//texture type indexer

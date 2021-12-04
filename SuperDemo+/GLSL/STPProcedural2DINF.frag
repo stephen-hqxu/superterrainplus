@@ -9,6 +9,9 @@
 //texture type indexing
 uniform uint ALBEDO;
 
+//An indentifier to shows this texture type is not used
+uniform uint NullType;
+
 /* ----------------------------- ---------------------------- */
 
 //Input
@@ -52,8 +55,11 @@ vec3 getRegionTexture(vec2 uv, vec3 replacement){
 
 	//find albedo texture for this region, currently the stride is 1
 	const uint regionLoc = RegionLocationDictionary[region + ALBEDO];
-	//currently we don't need to handle the case when texture type is not used
 	const uvec2 textureLoc = RegionLocation[regionLoc];
+	if(textureLoc == NullType){
+		//handle the case when texture type is not used
+		return replacement;
+	}
 
 	//this formula make sure the UV is stable when the rendered chunk shifts
 	const vec2 world_uv = uv * rendered_chunk_num + chunk_offset;

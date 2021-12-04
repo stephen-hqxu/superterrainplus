@@ -10,7 +10,6 @@
 #include <glad/glad.h>
 
 #include <algorithm>
-#include <limits>
 
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
@@ -19,7 +18,6 @@ using std::unique_ptr;
 using std::make_unique;
 using std::make_pair;
 using std::make_tuple;
-using std::numeric_limits;
 using std::move;
 
 using std::vector;
@@ -91,9 +89,9 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 
 		//each texture ID contains some number of type as stride, if type is not use we set the index to 
 		this->TextureRegion.reserve(texture_map_rec.size());
-		this->TextureRegionLookup.resize(database_view.Database.textureSize() * UsedTypeCount, numeric_limits<unsigned int>::max());
+		this->TextureRegionLookup.resize(database_view.Database.textureSize() * UsedTypeCount, STPTextureFactory::UnuseTextureType);
 		//loop through all texture data
-		STPTextureInformation::STPTextureGroupID prev_group = numeric_limits<STPTextureInformation::STPTextureGroupID>::max();
+		STPTextureInformation::STPTextureGroupID prev_group = std::numeric_limits<STPTextureInformation::STPTextureGroupID>::max();
 		unsigned int layer_idx = 0u;
 		for (const auto [group_id, texture_id, type, img] : texture_map_rec) {
 			//we know texture data has group index sorted in ascending order, the same as the group array
