@@ -37,6 +37,7 @@ Utility/Memory/STPSmartStream.h
 Utility/STPDeviceErrorHandler.h
 Utility/STPHashCombine.h
 Utility/STPHashCombine.inl
+Utility/STPNullablePrimitive.h
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl
 # /World/Chunk/FreeSlip

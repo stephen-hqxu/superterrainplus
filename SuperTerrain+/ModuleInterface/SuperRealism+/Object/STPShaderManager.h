@@ -3,16 +3,12 @@
 #define _STP_SHADER_MANAGER_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
-//GL Compatibility
-#include <SuperTerrain+/STPOpenGL.h>
+//GL Object Management
+#include <SuperTerrain+/Utility/STPNullablePrimitive.h>
 
 //System
 #include <string>
-#include <string_view>
 #include <vector>
-#include <optional>
-
-#include <memory>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -24,14 +20,25 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		//Any log that comes from the compilation.
-		std::unique_ptr<char[]> Log;
+		std::string Log;
 		//Indication of compilation status
 		bool Valid;
 
+		/**
+		 * @brief STPShaderDeleter calls glDeleteShader to remove a shader.
+		*/
+		struct STP_REALISM_API STPShaderDeleter {
+		public:
+
+			void operator()(STPOpenGL::STPuint) const;
+
+		};
+		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPShaderDeleter>> STPSmartShaderObject;
+		//An OpenGL shader object
+		const STPSmartShaderObject Shader;
+
 	public:
 
-		//An OpenGL shader object
-		const STPOpenGL::STPuint Shader;
 		//Type of the shader currently managed by the shader manager.
 		const STPOpenGL::STPenum Type;
 
@@ -52,25 +59,31 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPShaderManager(const STPShaderManager&) = delete;
 
-		STPShaderManager(STPShaderManager&&) = delete;
+		STPShaderManager(STPShaderManager&&) noexcept = default;
 
 		STPShaderManager& operator=(const STPShaderManager&) = delete;
 
-		STPShaderManager& operator=(STPShaderManager&&) = delete;
+		STPShaderManager& operator=(STPShaderManager&&) noexcept = default;
 
-		~STPShaderManager();
+		~STPShaderManager() = default;
 
 		/**
 		 * @brief Get the compilation log from the shader object.
 		 * @return The compilation log.
 		 * If there is no compilation log, nothing is returned.
 		*/
-		std::optional<std::string_view> getLog() const;
+		const std::string& getLog() const;
 
 		/**
 		 * @brief Check if the current shader manager is valid.
 		*/
 		explicit operator bool() const;
+
+		/**
+		 * @brief Get the underlying shader object.
+		 * @return The shader object.
+		*/
+		STPOpenGL::STPuint operator*() const;
 
 	};
 

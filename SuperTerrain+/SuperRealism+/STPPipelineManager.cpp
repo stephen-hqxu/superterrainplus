@@ -3,13 +3,14 @@
 //GLAD
 #include <glad/glad.h>
 
-using std::string_view;
-using std::optional;
-
+using std::string;
 using std::make_unique;
-using std::make_optional;
 
 using namespace SuperTerrainPlus::STPRealism;
+
+void STPPipelineManager::STPPipelineDeleter::operator()(GLuint pipeline) const {
+	glDeleteProgramPipelines(1u, &pipeline);
+}
 
 inline static GLuint createOnePipeline() {
 	GLuint pipeline;
@@ -20,28 +21,28 @@ inline static GLuint createOnePipeline() {
 STPPipelineManager::STPPipelineManager(const STPShaderSelection& stages) : Pipeline(createOnePipeline()) {
 	//assign shader stages
 	for (const auto [bit, program] : stages) {
-		glUseProgramStages(this->Pipeline, bit, program->Program);
+		glUseProgramStages(this->Pipeline.get(), bit, **program);
 	}
 
 	//check for log
 	GLint logLength;
-	glGetProgramPipelineiv(this->Pipeline, GL_INFO_LOG_LENGTH, &logLength);
+	glGetProgramPipelineiv(this->Pipeline.get(), GL_INFO_LOG_LENGTH, &logLength);
 	if (logLength > 0) {
-		this->Log = make_unique<char[]>(logLength);
-		glGetProgramPipelineInfoLog(this->Pipeline, logLength, NULL, this->Log.get());
+		this->Log.resize(logLength);
+		glGetProgramPipelineInfoLog(this->Pipeline.get(), logLength, NULL, this->Log.data());
 	}
 }
 
-STPPipelineManager::~STPPipelineManager() {
-	glDeleteProgramPipelines(1u, &this->Pipeline);
+SuperTerrainPlus::STPOpenGL::STPuint STPPipelineManager::operator*() const {
+	return this->Pipeline.get();
 }
 
-optional<string_view> STPPipelineManager::getLog() const {
-	return this->Log ? make_optional<string_view>(string_view(this->Log.get())) : optional<string_view>();
+const string& STPPipelineManager::getLog() const {
+	return this->Log;
 }
 
 void STPPipelineManager::bind() const {
-	glBindProgramPipeline(this->Pipeline);
+	glBindProgramPipeline(this->Pipeline.get());
 }
 
 void STPPipelineManager::unbind() {

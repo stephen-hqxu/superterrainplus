@@ -4,20 +4,21 @@
 #include <glad/glad.h>
 
 using std::string;
-using std::string_view;
 using std::list;
 using std::unique_ptr;
-using std::optional;
 
 using std::make_unique;
-using std::make_optional;
 
 using namespace SuperTerrainPlus::STPRealism;
+
+void STPProgramManager::STPProgramDeleter::operator()(GLuint program) const {
+	glDeleteProgram(program);
+}
 
 STPProgramManager::STPProgramManager(const STPShaderGroup& shader_group, const STPProgramParameteri& parameter) : Program(glCreateProgram()) {
 	//apply program parameters if any
 	for (const auto [pname, value] : parameter) {
-		glProgramParameteri(this->Program, pname, value);
+		glProgramParameteri(this->Program.get(), pname, value);
 	}
 
 	//attach all shaders to the program
@@ -26,12 +27,12 @@ STPProgramManager::STPProgramManager(const STPShaderGroup& shader_group, const S
 			//skip any failed shader
 			continue;
 		}
-		glAttachShader(this->Program, shader->Shader);
+		glAttachShader(this->Program.get(), **shader);
 	}
 	//link
-	glLinkProgram(this->Program);
+	glLinkProgram(this->Program.get());
 
-	auto handle_error = [pro = this->Program](GLenum status_request, unique_ptr<char[]>& log, bool& final_status) -> void {
+	auto handle_error = [pro = this->Program.get()](GLenum status_request, string& log, bool& final_status) -> void {
 		//link status error handling
 		GLint logLength, status;
 		glGetProgramiv(pro, GL_INFO_LOG_LENGTH, &logLength);
@@ -41,8 +42,8 @@ STPProgramManager::STPProgramManager(const STPShaderGroup& shader_group, const S
 		//get any log
 		if (logLength > 0) {
 			//shader compilation has log
-			log = make_unique<char[]>(logLength);
-			glGetProgramInfoLog(pro, logLength, NULL, log.get());
+			log.resize(logLength);
+			glGetProgramInfoLog(pro, logLength, NULL, log.data());
 			return;
 		}
 	};
@@ -53,37 +54,31 @@ STPProgramManager::STPProgramManager(const STPShaderGroup& shader_group, const S
 	handle_error(GL_VALIDATE_STATUS, this->ValidationLog, this->Valid);
 }
 
-STPProgramManager::~STPProgramManager() {
-	glDeleteProgram(this->Program);
-	//deletion of program also detaches all shaders.
-}
-
 SuperTerrainPlus::STPOpenGL::STPint STPProgramManager::uniformLocation(const char* uni) const {
-	return glGetUniformLocation(this->Program, uni);
+	return glGetUniformLocation(this->Program.get(), uni);
 }
 
-optional<string_view> STPProgramManager::getLog(STPLogType log_type) const {
-	const char* log;
+const string& STPProgramManager::getLog(STPLogType log_type) const {
+	static string Dummy = "If you get this message, there is something wrong with the terrain engine, report to the maintainer.";
 
 	//if there is no such log type, unique_ptr should return nullptr
 	switch (log_type) {
-	case STPLogType::Link: log = this->LinkLog.get();
-		break;
-	case STPLogType::Validation: log = this->ValidationLog.get();
-		break;
-	default:
-		//impossible
-		break;
+	case STPLogType::Link: return this->LinkLog;
+	case STPLogType::Validation: return this->ValidationLog;
+	default: return Dummy;
 	}
-	return log != nullptr ? make_optional<string_view>(string_view(log)) : optional<string_view>();
 }
 
 STPProgramManager::operator bool() const {
 	return this->Linked && this->Valid;
 }
 
+SuperTerrainPlus::STPOpenGL::STPuint STPProgramManager::operator*() const {
+	return this->Program.get();
+}
+
 void STPProgramManager::use() const {
-	glUseProgram(this->Program);
+	glUseProgram(this->Program.get());
 }
 
 void STPProgramManager::unuse() {

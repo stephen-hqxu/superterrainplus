@@ -18,16 +18,26 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPPipelineManager {
 	private:
 
+		/**
+		 * @brief STPPipelineDeleter calls glDeleteProgramPipeline to remove a pipeline.
+		*/
+		struct STP_REALISM_API STPPipelineDeleter {
+		public:
+
+			void operator()(STPOpenGL::STPuint) const;
+
+		};
+		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPPipelineDeleter>> STPSmartPipeline;
+		//A program pipeline
+		const STPSmartPipeline Pipeline;
+
 		//Pipeline linking log
-		std::unique_ptr<char[]> Log;
+		std::string Log;
 
 	public:
 
 		//STPShaderSelection records the shader stages being picked from various programs
 		typedef std::list<std::pair<STPOpenGL::STPbitfield, const STPProgramManager*>> STPShaderSelection;
-
-		//Pipeline object managed.
-		const STPOpenGL::STPuint Pipeline;
 
 		/**
 		 * @brief Initialise a new program pipeline object.
@@ -38,19 +48,25 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPPipelineManager(const STPPipelineManager&) = delete;
 
-		STPPipelineManager(STPPipelineManager&&) = delete;
+		STPPipelineManager(STPPipelineManager&&) noexcept = default;
 
 		STPPipelineManager& operator=(const STPPipelineManager&) = delete;
 
-		STPPipelineManager& operator=(STPPipelineManager&&) = delete;
+		STPPipelineManager& operator=(STPPipelineManager&&) noexcept = default;
 
-		~STPPipelineManager();
+		~STPPipelineManager() = default;
+
+		/**
+		 * @brief Get the underlying program pipeline object.
+		 * @return The program pipeline object.
+		*/
+		STPOpenGL::STPuint operator*() const;
 
 		/**
 		 * @brief Retrieve any pipeline log during initialisation.
 		 * @return Pipeline log.
 		*/
-		std::optional<std::string_view> getLog() const;
+		const std::string& getLog() const;
 
 		/**
 		 * @brief Bind the current program pipeline to the context to make it active.

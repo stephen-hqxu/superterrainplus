@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL
-#include <SuperTerrain+/STPOpenGL.h>
+#include <SuperTerrain+/Utility/STPNullablePrimitive.h>
 //Shader
 #include "STPShaderManager.h"
 
@@ -38,15 +38,25 @@ namespace SuperTerrainPlus::STPRealism {
 
 	private:
 
+		/**
+		 * @brief STPProgramDeleter calls glDeleteProgram to remove a program.
+		*/
+		struct STP_REALISM_API STPProgramDeleter {
+		public:
+
+			void operator()(STPOpenGL::STPuint) const;
+
+		};
+		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPProgramDeleter>> STPSmartProgram;
+		//A shader program
+		const STPSmartProgram Program;
+
 		//Program linking log
-		std::unique_ptr<char[]> LinkLog, ValidationLog;
+		std::string LinkLog, ValidationLog;
 		//A value to denotes if the program is linked and validated.
 		bool Linked, Valid;
 
 	public:
-
-		//A shader program
-		const STPOpenGL::STPuint Program;
 
 		/**
 		 * @brief Intialise a STPProgramManager.
@@ -58,13 +68,13 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPProgramManager(const STPProgramManager&) = delete;
 
-		STPProgramManager(STPProgramManager&&) = delete;
+		STPProgramManager(STPProgramManager&&) noexcept = default;
 
 		STPProgramManager& operator=(const STPProgramManager&) = delete;
 
-		STPProgramManager& operator=(STPProgramManager&&) = delete;
+		STPProgramManager& operator=(STPProgramManager&&) noexcept = default;
 
-		~STPProgramManager();
+		~STPProgramManager() = default;
 
 		/**
 		 * @brief Get the uniform location for a uniform in the current program.
@@ -91,12 +101,18 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The log with specified type.
 		 * If there is no such log, nothing is returned.
 		*/
-		std::optional<std::string_view> getLog(STPLogType) const;
+		const std::string& getLog(STPLogType) const;
 
 		/**
 		 * @brief Check if the program is linked and validated such that it can be used.
 		*/
 		explicit operator bool() const;
+
+		/**
+		 * @brief Get the underlying program object.
+		 * @return The program object.
+		*/
+		STPOpenGL::STPuint operator*() const;
 
 		/**
 		 * @brief Use the current program object to make it active.
