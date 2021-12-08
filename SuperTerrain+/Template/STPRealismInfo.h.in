@@ -1,0 +1,13 @@
+#pragma once
+#ifndef _STP_REALISM_INFO_H_
+#define _STP_REALISM_INFO_H_
+
+namespace SuperTerrainPlus {
+	
+	/**
+	 * @brief Denotes the path to SuperRealism+ shader
+	*/
+	constexpr static char SuperRealismPlus_ShaderPath[] = "@SuperRealism+ShaderPath@";
+
+}
+#endif//_STP_REALISM_INFO_H_

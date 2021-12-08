@@ -35,7 +35,7 @@ PRIVATE ${STP_EXTERNAL_DIR}
 # when building a shared library, GLAD.c is not exported by the engine so we need to compile it twice
 target_link_libraries(${STP_DEMO_PROGRAM}
 PRIVATE glfw SIMPLE::SIMPLE SglToolkit::SglToolkit
-PRIVATE ${STP_GLAD} ${STP_MAIN_ENGINE} ${STP_ALGORITHM_HOST_ENGINE}
+PRIVATE ${STP_GLAD} ${STP_MAIN_ENGINE} ${STP_ALGORITHM_HOST_ENGINE} ${STP_TEMPLATE_INCLUDE}
 )
 
 # copy GLSL code to where the bin locates

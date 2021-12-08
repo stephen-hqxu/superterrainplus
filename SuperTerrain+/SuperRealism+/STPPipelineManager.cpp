@@ -1,5 +1,8 @@
 #include <SuperRealism+/Object/STPPipelineManager.h>
 
+//Error
+#include <SuperTerrain+/Exception/STPGLError.h>
+
 //GLAD
 #include <glad/glad.h>
 
@@ -18,7 +21,11 @@ inline static GLuint createOnePipeline() {
 	return pipeline;
 }
 
-STPPipelineManager::STPPipelineManager(const STPShaderSelection& stages) : Pipeline(createOnePipeline()) {
+STPPipelineManager::STPPipelineManager() : Pipeline(createOnePipeline()) {
+	
+}
+
+const string& STPPipelineManager::operator()(const STPShaderSelection& stages) {
 	//assign shader stages
 	for (const auto [bit, program] : stages) {
 		glUseProgramStages(this->Pipeline.get(), bit, **program);
@@ -31,13 +38,15 @@ STPPipelineManager::STPPipelineManager(const STPShaderSelection& stages) : Pipel
 		this->Log.resize(logLength);
 		glGetProgramPipelineInfoLog(this->Pipeline.get(), logLength, NULL, this->Log.data());
 	}
+
+	return this->lastLog();
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint STPPipelineManager::operator*() const {
 	return this->Pipeline.get();
 }
 
-const string& STPPipelineManager::getLog() const {
+const string& STPPipelineManager::lastLog() const {
 	return this->Log;
 }
 

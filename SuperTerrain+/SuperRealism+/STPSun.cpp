@@ -1,4 +1,6 @@
 #include <SuperRealism+/STPSun.h>
+//Shader Dir
+#include <SuperRealism+/STPRealismInfo.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
@@ -7,16 +9,66 @@
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 
+#include <array>
+#include <utility>
+
 using glm::normalize;
 using glm::smoothstep;
 using glm::radians;
 using glm::degrees;
 using glm::dvec3;
 
+using std::array;
+using std::integer_sequence;
+using std::make_index_sequence;
+
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
-STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting) : SunSetting(sun_setting), 
+template<size_t... IL, size_t... IR, typename T>
+constexpr static auto concatImpl(const char* lhs, const char* rhs, integer_sequence<T, IL...>, integer_sequence<T, IR...>) {
+	return array<char, sizeof...(IL) + sizeof...(IR)>{ lhs[IL]..., rhs[IR]... };
+}
+
+template<size_t NL, size_t NR>
+constexpr static auto concatFilename(const char(&lhs)[NL], const char(&rhs)[NR]) {
+	//each string ends with a null, so we need to eliminate the null symbol for all strings except the last one
+	return concatImpl(lhs, rhs, make_index_sequence<NL - 1ull>(), make_index_sequence<NR>());
+}
+
+constexpr static auto SkyShaderFullpath = concatFilename(SuperRealismPlus_ShaderPath, "/STPSun");
+constexpr static array<int, 24ull> SkyBoxVertex = { 
+	//Positions and UV         
+	-1, -1, -1, //origin
+	+1, -1, -1, //x=1
+	+1, -1, +1, //x=z=1
+	-1, -1, +1, //z=1
+	-1, +1, -1, //y=1
+	+1, +1, -1, //x=y=1
+	+1, +1, +1, //x=y=z=1
+	-1, +1, +1  //y=z=1
+};
+constexpr static array<unsigned int, 36ull> SkyBoxIndex = {
+	0, 1, 2,
+	0, 2, 3,
+
+	0, 1, 5,
+	0, 5, 4,
+
+	1, 2, 6,
+	1, 6, 5,
+
+	2, 3, 7,
+	2, 7, 6,
+
+	3, 0, 4,
+	3, 4, 7,
+
+	4, 5, 6,
+	4, 6, 7
+};
+
+STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPEnvironment::STPAtomsphereSetting& sky) : SunSetting(sun_setting), SkySetting(sky),
 	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull) {
 	//validate the setting
 	if (!this->SunSetting.validate()) {

@@ -18,6 +18,7 @@ Exception/STPCompilationError.h
 Exception/STPCUDAError.h
 Exception/STPDatabaseError.h
 Exception/STPDeadThreadPool.h
+Exception/STPGLError.h
 Exception/STPInvalidArgument.h
 Exception/STPInvalidEnvironment.h
 Exception/STPInvalidSyntax.h
@@ -35,6 +36,7 @@ Utility/Memory/STPSmartDeviceMemory.tpp
 Utility/Memory/STPSmartStream.h
 # /Utility
 Utility/STPDeviceErrorHandler.h
+Utility/STPFile.h
 Utility/STPHashCombine.h
 Utility/STPHashCombine.inl
 Utility/STPNullablePrimitive.h

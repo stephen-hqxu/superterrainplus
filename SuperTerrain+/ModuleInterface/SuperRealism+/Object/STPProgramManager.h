@@ -11,6 +11,7 @@
 //Container
 #include <list>
 #include <tuple>
+#include <unordered_map>
 
 #include <functional>
 
@@ -25,8 +26,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//All shader manager attached to this program.
 		typedef std::list<const STPShaderManager*> STPShaderGroup;
-		//An array of program parameters to be applied before program is linked.
-		typedef std::list<std::pair<STPOpenGL::STPenum, STPOpenGL::STPint>> STPProgramParameteri;
 
 		/**
 		 * @brief STPLogType specifies the type of the log retrieved from a program object.
@@ -54,17 +53,16 @@ namespace SuperTerrainPlus::STPRealism {
 		//Program linking log
 		std::string LinkLog, ValidationLog;
 		//A value to denotes if the program is linked and validated.
-		bool Linked, Valid;
+		bool Linked = false, Valid = false;
+
+		std::unordered_map<STPOpenGL::STPenum, STPOpenGL::STPuint> AttachedShader;
 
 	public:
 
 		/**
 		 * @brief Intialise a STPProgramManager.
-		 * @param shader_group A pointer to an array of shaders to be attached to this program.
-		 * According to OpenGL specification, shader can be deleted safely after it has been attached to ba program, 
-		 * and OpenGL will handle the rests.
 		*/
-		STPProgramManager(const STPShaderGroup&, const STPProgramParameteri& = { });
+		STPProgramManager();
 
 		STPProgramManager(const STPProgramManager&) = delete;
 
@@ -75,6 +73,34 @@ namespace SuperTerrainPlus::STPRealism {
 		STPProgramManager& operator=(STPProgramManager&&) noexcept = default;
 
 		~STPProgramManager() = default;
+
+		/**
+		 * @brief Attach a new shaders to the current program.
+		 * @param shader_group A pointer to an array of shaders to be attached to this program.
+		 * @return The pointer to the current program manager for chaining.
+		 * If shader type repeats, or shader fails to compile, exception is thrown.
+		*/
+		STPProgramManager& attach(const STPShaderGroup&);
+
+		/**
+		 * @brief Detatch a shader from the current program.
+		 * @param type The type of the shader to be detached.
+		 * @return True if it has been detached. False if no type of this shader is found.
+		*/
+		bool detach(STPOpenGL::STPenum);
+
+		/**
+		 * @brief Detach all shaders from the current program.
+		 * This does not reset program parameters, however.
+		*/
+		void clear();
+
+		/**
+		 * @brief Finalise the shader program by linking all shaders.
+		 * Any program parameters setting must be done before linking.
+		 * Linkage may fail, so make sure to call lastLog() to get error message.
+		*/
+		void finalise();
 
 		/**
 		 * @brief Get the uniform location for a uniform in the current program.
@@ -96,12 +122,12 @@ namespace SuperTerrainPlus::STPRealism {
 		const STPProgramManager& uniform(Uni&&, const char*, Arg&&...) const;
 
 		/**
-		 * @brief Get the log from the program object.
+		 * @brief Get the log from the last program object linking.
 		 * @param log_type The type of the log.
 		 * @return The log with specified type.
-		 * If there is no such log, nothing is returned.
+		 * If there is no such log, empty string is returned.
 		*/
-		const std::string& getLog(STPLogType) const;
+		const std::string& lastLog(STPLogType) const;
 
 		/**
 		 * @brief Check if the program is linked and validated such that it can be used.

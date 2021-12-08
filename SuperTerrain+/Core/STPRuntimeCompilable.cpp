@@ -2,14 +2,9 @@
 #include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Exception/STPSerialisationError.h>
 #include <SuperTerrain+/Exception/STPCompilationError.h>
 #include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
-
-//IO
-#include <fstream>
-#include <sstream>
 
 using std::vector;
 using std::list;
@@ -57,21 +52,6 @@ void STPRuntimeCompilable::deleteModule(CUmodule module) {
 
 void STPRuntimeCompilable::deleteLink(CUlinkState link) {
 	STPcudaCheckErr(cuLinkDestroy(link));
-}
-
-string STPRuntimeCompilable::readSource(string filename) {
-	using std::ifstream;
-	using std::stringstream;
-
-	ifstream source_reader(filename);
-	if (!source_reader) {
-		throw STPException::STPSerialisationError(("file '" + filename + "' cannot be opened.").c_str());
-	}
-	//read all lines
-	stringstream buffer;
-	buffer << source_reader.rdbuf();
-
-	return buffer.str();
 }
 
 bool STPRuntimeCompilable::attachHeader(string header_name, const string& header_code) {

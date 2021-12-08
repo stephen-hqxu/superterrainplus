@@ -16,6 +16,8 @@ include(SetupEnvironment)
 
 # set some useful variables of our main engine
 set(STP_GLAD "GLAD")
+# a target with config file include directory
+set(STP_TEMPLATE_INCLUDE "TemplateInterface")
 set(STP_MAIN_ENGINE "SuperTerrain+")
 set(STP_ALGORITHM_ENGINE "SuperAlgorithm+")
 set(STP_ALGORITHM_HOST_ENGINE "SuperAlgorithm+Host")

@@ -10,10 +10,8 @@
 //Error
 #include <SuperTerrain+/Exception/STPSerialisationError.h>
 
-//System
-#include <string>
-#include <fstream>
-#include <streambuf>
+//IO
+#include <SuperTerrain+/Utility/STPFile.h>
 
 #include <optional>
 
@@ -23,33 +21,7 @@ constexpr char TerrainTDL[] = "./TestData/Terrain.tdl";
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
 
-using std::string;
-using std::ifstream;
-using std::istreambuf_iterator;
-
 using std::optional;
-
-/**
- * @brief Read all lines from a file into a formatted string.
- * @param filename The filename to be read from.
- * @return The string containing all lines of a file.
-*/
-static string readAll(const char* __restrict filename) {
-	using std::ios;
-
-	ifstream file(filename);
-	if (!file) {
-		throw STPException::STPSerialisationError("Unable to open the target file.");
-	}
-	string str;
-
-	//preallocate memory
-	file.seekg(0, ios::end);
-	str.reserve(file.tellg());
-	file.seekg(0, ios::beg);
-
-	return str.assign(istreambuf_iterator<char>(file), istreambuf_iterator<char>());
-}
 
 SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTextureDefinitionLanguage]") {
 	optional<const STPTextureDefinitionLanguage> Parser;
@@ -60,7 +32,7 @@ SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTexture
 		WHEN("A texture database needs to be filled with texture splatting rules") {
 
 			THEN("TDL can be parsed from source code") {
-				REQUIRE_NOTHROW([&Parser]() { Parser.emplace(readAll(TerrainTDL)); }());
+				REQUIRE_NOTHROW([&Parser]() { Parser.emplace(*STPFile(TerrainTDL)); }());
 
 				AND_THEN("Splat rules can be loaded into texture database correctly") {
 					STPTextureDatabase Database;

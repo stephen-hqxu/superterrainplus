@@ -14,6 +14,7 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
+#include <SuperTerrain+/Utility/STPFile.h>
 
 #include <SuperTerrain+/Exception/STPCompilationError.h>
 #include <SuperTerrain+/Exception/STPSerialisationError.h>
@@ -101,14 +102,13 @@ protected:
 		}
 
 		//read source code
-		string src;
-		REQUIRE_NOTHROW([&src, this]() { src = this->readSource(RTCTester::SourceLocation); }());
+		const STPFile src = STPFile(RTCTester::SourceLocation);
 
 		//compile
 		auto startCompile = [&src_info, &src, this]() {
 			string log;
 			try {
-				log = this->compileSource(RTCTester::SourceName, src, src_info);
+				log = this->compileSource(RTCTester::SourceName, *src, src_info);
 			}
 			catch (const STPException::STPCompilationError& ce) {
 				//compile time error
@@ -259,14 +259,6 @@ static constexpr char Nonsense[] = "Blah.blah";
 SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA scripts and runs the kernel", "[GPGPU][STPRuntimeCompilable]") {
 
 	GIVEN("A RTC version of diversity generator with custom implementation and runtime script") {
-
-		WHEN("Source code cannot be found") {
-
-			THEN("Exception is thrown to notify the user") {
-				REQUIRE_THROWS_AS(this->readSource(Nonsense), STPException::STPSerialisationError);
-			}
-
-		}
 
 		WHEN("The source code contains error") {
 

@@ -7,6 +7,7 @@ STPEngineInitialiser.cpp
 STPEnvironment.cpp
 STPErosionBrushGenerator.cpp
 STPException.cpp
+STPFile.cpp
 STPFreeSlipGenerator.cpp
 STPFreeSlipTextureBuffer.cpp
 STPHeightfieldGenerator.cpp

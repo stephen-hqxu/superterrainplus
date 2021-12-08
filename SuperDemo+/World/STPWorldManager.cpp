@@ -6,9 +6,8 @@
 #include <algorithm>
 #include <execution>
 #include <string_view>
-
-#include <fstream>
-#include <sstream>
+//IO
+#include <SuperTerrain+/Utility/STPFile.h>
 
 //Texture Loader
 #include "../Helpers/STPTextureStorage.h"
@@ -52,23 +51,6 @@ private:
 	};
 	constexpr static char TDLFilename[] = "./Script/STPBiomeSplatRule.tdl";
 
-	/**
-	 * @brief Read a TDL source codes from the local file system.
-	 * @return The string representation of the source code.
-	*/
-	static string readTDL() {
-		std::ifstream tdlFile(STPWorldSplattingAgent::TDLFilename);
-		if (!tdlFile) {
-			std::terminate();
-		}
-
-		//read all lines
-		std::stringstream buffer;
-		buffer << tdlFile.rdbuf();
-
-		return buffer.str();
-	}
-
 	//Group ID recording
 	STPTextureInformation::STPTextureGroupID x1024_rgb;
 
@@ -107,7 +89,7 @@ public:
 		tex_desc.InteralFormat = GL_RGB8;
 		this->x1024_rgb = this->Database.addGroup(tex_desc);
 
-		STPDiversity::STPTextureDefinitionLanguage TDLParser(STPWorldSplattingAgent::readTDL());
+		STPDiversity::STPTextureDefinitionLanguage TDLParser(*STPFile(STPWorldSplattingAgent::TDLFilename));
 		//build texture splatting rules
 		const STPTextureDefinitionLanguage::STPTextureVariable textureName = TDLParser(this->Database);
 		//build database with texture data

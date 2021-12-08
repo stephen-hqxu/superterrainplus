@@ -1,11 +1,5 @@
 #include "STPCommonCompiler.h"
-
-#ifdef _DEBUG
-#include <STPAlgorithmDeviceInfoDebug.h>
-#else
-//We ignored other two release modes
-#include <SuperAlgorithm+DeviceInfoRelease.h>
-#endif//_DEBUG
+#include <SuperAlgorithm+/STPAlgorithmDeviceInfo.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPCompilationError.h>
@@ -13,6 +7,7 @@
 
 //IO
 #include <iostream>
+#include <SuperTerrain+/Utility/STPFile.h>
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -99,7 +94,7 @@ void STPCommonCompiler::setupCommonGenerator() {
 	constexpr static char CommonGeneratorFilename[] = "./Script/STPCommonGenerator.cu";
 
 	//load source code
-	const string commongen_source = this->readSource(CommonGeneratorFilename);
+	const STPFile commongen_source(CommonGeneratorFilename);
 	//set compiler options
 	STPRuntimeCompilable::STPSourceInformation commongen_info = this->getCompilerOptions();
 	//this common generator only contains a few shared variables
@@ -109,7 +104,7 @@ void STPCommonCompiler::setupCommonGenerator() {
 	["STPCommonGenerator::RenderedDimension"]
 	["STPCommonGenerator::Permutation"];
 	//compile
-	HANDLE_COMPILE(this->compileSource("STPCommonGenerator", commongen_source, commongen_info))
+	HANDLE_COMPILE(this->compileSource("STPCommonGenerator", *commongen_source, commongen_info))
 	
 }
 
@@ -119,10 +114,10 @@ void STPCommonCompiler::setupBiomefieldGenerator() {
 	constexpr static char BiomePropertyFilename[] = "./STPBiomeProperty.hpp";
 
 	//read script
-	const string multiheightfield_source = this->readSource(GeneratorFilename);
-	const string biomeprop_hdr = this->readSource(BiomePropertyFilename);
+	const STPFile multiheightfield_source(GeneratorFilename);
+	const STPFile biomeprop_hdr(BiomePropertyFilename);
 	//attach biome property
-	this->attachHeader("STPBiomeProperty", biomeprop_hdr);
+	this->attachHeader("STPBiomeProperty", *biomeprop_hdr);
 	//attach source code and load up default compiler options, it returns a copy
 	STPRuntimeCompilable::STPSourceInformation multiheightfield_info = this->getCompilerOptions();
 	//we only need to adjust options that are unique to different sources
@@ -134,7 +129,7 @@ void STPCommonCompiler::setupBiomefieldGenerator() {
 	//options are all set
 	multiheightfield_info.ExternalHeader
 		["STPBiomeProperty"];
-	HANDLE_COMPILE(this->compileSource("STPMultiHeightGenerator", multiheightfield_source, multiheightfield_info))
+	HANDLE_COMPILE(this->compileSource("STPMultiHeightGenerator", *multiheightfield_source, multiheightfield_info))
 }
 
 void STPCommonCompiler::setupSplatmapGenerator() {
@@ -142,7 +137,7 @@ void STPCommonCompiler::setupSplatmapGenerator() {
 	constexpr static char GeneratorFilename[] = "./Script/STPSplatmapGenerator.cu";
 
 	//read source code
-	const string splatmap_source = this->readSource(GeneratorFilename);
+	const STPFile splatmap_source(GeneratorFilename);
 	//load default compiler settings
 	STPCommonCompiler::STPSourceInformation source_info = this->getCompilerOptions();
 	source_info.NameExpression
@@ -150,7 +145,7 @@ void STPCommonCompiler::setupSplatmapGenerator() {
 	//global function
 	["generateTextureSplatmap"];
 	//compile
-	HANDLE_COMPILE(this->compileSource("STPSplatmapGenerator", splatmap_source, source_info))
+	HANDLE_COMPILE(this->compileSource("STPSplatmapGenerator", *splatmap_source, source_info))
 }
 
 void STPCommonCompiler::finalise() {

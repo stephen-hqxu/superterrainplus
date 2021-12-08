@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_ALGORITHM_DEVICE_INFO_$<CONFIG>_H_
-#define _STP_ALGORITHM_DEVICE_INFO_$<CONFIG>_H_
+#ifndef _STP_ALGORITHM_DEVICE_INFO_H_
+#define _STP_ALGORITHM_DEVICE_INFO_H_
 
 namespace SuperTerrainPlus {
 	
@@ -18,4 +18,4 @@ namespace SuperTerrainPlus {
 	constexpr static char SuperAlgorithmPlus_DeviceInclude[] = "@SuperAlgorithm+DeviceInclude@";
 
 }
-#endif//_STP_ALGORITHM_DEVICE_INFO_$<CONFIG>_H_
+#endif//_STP_ALGORITHM_DEVICE_INFO_H_

@@ -1,12 +1,18 @@
 #include <SuperRealism+/Object/STPProgramManager.h>
 
+#include <SuperTerrain+/Exception/STPGLError.h>
+
 //GLAD
 #include <glad/glad.h>
+
+#include <sstream>
 
 using std::string;
 using std::list;
 using std::unique_ptr;
+using std::stringstream;
 
+using std::endl;
 using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
@@ -15,20 +21,65 @@ void STPProgramManager::STPProgramDeleter::operator()(GLuint program) const {
 	glDeleteProgram(program);
 }
 
-STPProgramManager::STPProgramManager(const STPShaderGroup& shader_group, const STPProgramParameteri& parameter) : Program(glCreateProgram()) {
-	//apply program parameters if any
-	for (const auto [pname, value] : parameter) {
-		glProgramParameteri(this->Program.get(), pname, value);
-	}
+STPProgramManager::STPProgramManager() : Program(glCreateProgram()) {
+
+}
+
+STPProgramManager& STPProgramManager::attach(const STPShaderGroup& shader_group) {
+	this->AttachedShader.reserve(shader_group.size());
 
 	//attach all shaders to the program
 	for (const auto* shader : shader_group) {
-		if (!static_cast<bool>(*shader)) {
-			//skip any failed shader
-			continue;
+		const GLuint shaderID = **shader;
+
+		const bool compilation_err = !static_cast<bool>(*shader), 
+			repeat_err = this->AttachedShader.find(shaderID) == this->AttachedShader.end();
+		if (compilation_err || repeat_err) {
+			//some error occurs
+			stringstream msg;
+			msg << '(' << shaderID << ',' << shader->Type << ")::";
+
+			if (compilation_err) {
+				msg << "Unusable shader";
+			}
+			else if (repeat_err) {
+				msg << "Shader has been attached to this program previously";
+			}
+			msg << endl;
+
+			//throw error
+			throw STPException::STPGLError(msg.str().c_str());
 		}
-		glAttachShader(this->Program.get(), **shader);
+		//no error? good
+		glAttachShader(this->Program.get(), shaderID);
+		this->AttachedShader.emplace(shaderID, shader->Type);
 	}
+
+	return *this;
+}
+
+bool STPProgramManager::detach(GLenum type) {
+	const auto detaching = this->AttachedShader.find(type);
+	if (detaching == this->AttachedShader.end()) {
+		//shader does not exist
+		return false;
+	}
+
+	//shader found
+	glDetachShader(this->Program.get(), detaching->second);
+	//remove from registry
+	this->AttachedShader.erase(detaching);
+	return true;
+}
+
+void STPProgramManager::clear() {
+	for (const auto [shader, type] : this->AttachedShader) {
+		glDetachShader(this->Program.get(), shader);
+	}
+	this->AttachedShader.clear();
+}
+
+void STPProgramManager::finalise() {
 	//link
 	glLinkProgram(this->Program.get());
 
@@ -58,7 +109,7 @@ SuperTerrainPlus::STPOpenGL::STPint STPProgramManager::uniformLocation(const cha
 	return glGetUniformLocation(this->Program.get(), uni);
 }
 
-const string& STPProgramManager::getLog(STPLogType log_type) const {
+const string& STPProgramManager::lastLog(STPLogType log_type) const {
 	static string Dummy = "If you get this message, there is something wrong with the terrain engine, report to the maintainer.";
 
 	//if there is no such log type, unique_ptr should return nullptr

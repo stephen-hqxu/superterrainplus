@@ -1,5 +1,8 @@
 #include <SuperRealism+/Object/STPShaderManager.h>
 
+//Error
+#include <SuperTerrain+/Exception/STPGLError.h>
+
 //GLAD
 #include <glad/glad.h>
 
@@ -14,15 +17,15 @@ void STPShaderManager::STPShaderDeleter::operator()(GLuint shader) const {
 	glDeleteShader(shader);
 }
 
-STPShaderManager::STPShaderManager(const string& source, STPOpenGL::STPenum type) : STPShaderManager(vector<const char*>{ source.c_str() }, type) {
-
+STPShaderManager::STPShaderManager(STPOpenGL::STPenum type) : Shader(glCreateShader(type)), Type(type) {
+	
 }
 
-STPShaderManager::STPShaderManager(const vector<const char*>& source, STPOpenGL::STPenum type) :
-	Shader(glCreateShader(type)), Type(type) {
+const string& STPShaderManager::operator()(const string& source) {
 	//attach source code to the shader
 	//std::string makes sure string is null-terminated, so we can pass NULL as the code length
-	glShaderSource(this->Shader.get(), source.size(), source.data(), NULL);
+	const char* const sourceArray = source.c_str();
+	glShaderSource(this->Shader.get(), 1, &sourceArray, NULL);
 
 	//try to compile it
 	glCompileShader(this->Shader.get());
@@ -30,19 +33,23 @@ STPShaderManager::STPShaderManager(const vector<const char*>& source, STPOpenGL:
 	GLint logLength, status;
 	glGetShaderiv(this->Shader.get(), GL_INFO_LOG_LENGTH, &logLength);
 	glGetShaderiv(this->Shader.get(), GL_COMPILE_STATUS, &status);
-	
+
 	//store information
 	this->Valid = status == GL_TRUE ? true : false;
 	if (logLength > 0) {
 		//shader compilation has log
 		this->Log.resize(logLength);
 		glGetShaderInfoLog(this->Shader.get(), logLength, NULL, this->Log.data());
-		return;
 	}
-	//no log
+
+	if (!this->Valid) {
+		//compilation error
+		throw STPException::STPGLError(this->Log.c_str());
+	}
+	return this->lastLog();
 }
 
-const string& STPShaderManager::getLog() const {
+const string& STPShaderManager::lastLog() const {
 	return this->Log;
 }
 

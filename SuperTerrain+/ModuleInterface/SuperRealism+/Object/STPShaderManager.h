@@ -22,7 +22,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//Any log that comes from the compilation.
 		std::string Log;
 		//Indication of compilation status
-		bool Valid;
+		bool Valid = false;
 
 		/**
 		 * @brief STPShaderDeleter calls glDeleteShader to remove a shader.
@@ -44,18 +44,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Initialise a new shader manager.
-		 * @param source A single string that contains all GLSL source code.
 		 * @param type The type of this shader.
 		*/
-		STPShaderManager(const std::string&, STPOpenGL::STPenum);
-
-		/**
-		 * @brief Intialise a new shader manager.
-		 * @param source A vector of string, where each element is one line of source code.
-		 * Each line must be null-terminated.
-		 * @param type The type of this shader.
-		*/
-		STPShaderManager(const std::vector<const char*>&, STPOpenGL::STPenum);
+		STPShaderManager(STPOpenGL::STPenum);
 
 		STPShaderManager(const STPShaderManager&) = delete;
 
@@ -68,11 +59,20 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPShaderManager() = default;
 
 		/**
-		 * @brief Get the compilation log from the shader object.
-		 * @return The compilation log.
+		 * @brief Attach source code to the current shader manager and compile. Previously attached source code will be removed.
+		 * @param source A single string that contains all GLSL source code.
+		 * The source must corresponds the type of the shader.
+		 * @return Compilation log, if any.
+		 * If compilation fails, exception is thrown with error log.
+		*/
+		const std::string& operator()(const std::string&);
+
+		/**
+		 * @brief Get the compilation log from the last shader object compilation.
+		 * @return The compilation log from last time.
 		 * If there is no compilation log, nothing is returned.
 		*/
-		const std::string& getLog() const;
+		const std::string& lastLog() const;
 
 		/**
 		 * @brief Check if the current shader manager is valid.

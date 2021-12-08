@@ -41,10 +41,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Initialise a new program pipeline object.
-		 * @param stages An array of shader select.
-		 * It determines which shader bits to be used from each program.
 		*/
-		STPPipelineManager(const STPShaderSelection&);
+		STPPipelineManager();
 
 		STPPipelineManager(const STPPipelineManager&) = delete;
 
@@ -57,16 +55,24 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPPipelineManager() = default;
 
 		/**
+		 * @brief Instantiate a program pipeline. All previous pipeline instances will be removed.
+		 * @param stages An array of shader bits selected from any given programs.
+		 * @return The log from instantiation of the pipeline, if any.
+		 * If instantiation fails, exception is thrown with error log.
+		*/
+		const std::string& operator()(const STPShaderSelection&);
+
+		/**
 		 * @brief Get the underlying program pipeline object.
 		 * @return The program pipeline object.
 		*/
 		STPOpenGL::STPuint operator*() const;
 
 		/**
-		 * @brief Retrieve any pipeline log during initialisation.
+		 * @brief Retrieve the last pipeling log during initialisation.
 		 * @return Pipeline log.
 		*/
-		const std::string& getLog() const;
+		const std::string& lastLog() const;
 
 		/**
 		 * @brief Bind the current program pipeline to the context to make it active.

@@ -1,6 +1,43 @@
+#include <SuperRealism+/Environment/STPAtomsphereSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>
 
+using glm::vec3;
+
 using namespace SuperTerrainPlus::STPEnvironment;
+
+//STPAtomsphereSetting.h
+
+STPAtomsphereSetting::STPAtomsphereSetting() : 
+	SunPosition(1.0f), 
+	SunIntensity(1.0f), 
+	PlanetRadius(1.0f), 
+	AtomsphereRadius(1.0f), 
+
+	RayleighCoefficient(1.0f), 
+	MieCoefficient(1.0f), 
+	RayleighScale(1.0f), 
+	MieScale(1.0f), 
+	MieScatteringDirection(1.0f), 
+
+	PrimaryRayStep(1u), 
+	SecondaryRayStep(1u) {
+
+}
+
+bool STPAtomsphereSetting::validate() const {
+	constexpr static vec3 zeroVec3 = vec3(0.0f);
+
+	return this->SunIntensity > 0.0f
+		&& this->PlanetRadius > 0.0f
+		&& this->AtomsphereRadius > 0.0f
+		&& this->RayleighCoefficient != zeroVec3
+		&& this->MieCoefficient > 0.0f
+		&& this->RayleighScale > 0.0f
+		&& this->MieScale > 0.0f
+		&& this->MieScatteringDirection > 0.0f
+		&& this->PrimaryRayStep > 0u
+		&& this->SecondaryRayStep > 0u;
+}
 
 //STPSunSetting.h
 

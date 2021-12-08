@@ -5,6 +5,9 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //Setting
 #include "./Environment/STPSunSetting.h"
+#include "./Environment/STPAtomsphereSetting.h"
+//Rendering Engine
+#include "./Object/STPProgramManager.h"
 
 //GLM
 #include <glm/vec3.hpp>
@@ -44,6 +47,7 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		const STPEnvironment::STPSunSetting& SunSetting;
+		const STPEnvironment::STPAtomsphereSetting& SkySetting;
 
 		//The time according to the position of the sun in the sky relative to one specific location on the ground, in tick
 		size_t LocalSolarTime;
@@ -60,8 +64,9 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Init the sun with settings.
 		 * @param sun_setting The sun setting.
+		 * @param sky_setting The sky setting.
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&);
+		STPSun(const STPEnvironment::STPSunSetting&, const STPEnvironment::STPAtomsphereSetting&);
 
 		STPSun(const STPSun&) = delete;
 

@@ -1,6 +1,20 @@
 set(STP_TEMPLATE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Template)
+set(STP_TEMPLATE_OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>TemplateInterface)
 set(STP_CORE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/CoreInterface)
 set(STP_MODULE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/ModuleInterface)
+# config file information
+set(SuperTerrain+CoreInclude ${STP_CORE_INCLUDE})
+set(SuperAlgorithm+DeviceInclude ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/Device)
+set(SuperRealism+Include ${STP_MODULE_INCLUDE}/${STP_REALISM_ENGINE})
+# a helper function to quickly setup config file
+function(setupConfigTemplate BuildTarget TemplateInput TemplateOutput ConfigFilename)
+	configure_file(${STP_TEMPLATE_DIR}/${TemplateInput} ${TemplateOutput} @ONLY)
+	file(GENERATE
+	OUTPUT ${STP_TEMPLATE_OUTPUT}/${BuildTarget}/${ConfigFilename}
+	INPUT ${CMAKE_CURRENT_BINARY_DIR}/${TemplateOutput}
+	)
+endfunction()
+
 # add SuperTerrain+ source codes to target
 add_subdirectory(Core)
 add_subdirectory(${STP_CORE_INCLUDE}/${STP_MAIN_ENGINE})
@@ -11,15 +25,11 @@ add_subdirectory(${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})
 add_subdirectory(${STP_REALISM_ENGINE})
 add_subdirectory(${STP_MODULE_INCLUDE}/${STP_REALISM_ENGINE})
 
-# config file for algorithm engine
-# tell the static library location so CUDA runtime compiler can find it easily (if developer wants to)
-set(SuperTerrain+CoreInclude ${STP_CORE_INCLUDE})
-set(SuperAlgorithm+DeviceInclude ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/Device)
-# algorithm device info contains path to the static library, we need to output that based on configuration
-configure_file(${STP_TEMPLATE_DIR}/STPAlgorithmDeviceInfo.h.in ${STP_ALGORITHM_DEFINE_INCLUDE}/STPAlgorithmDeviceInfoRaw.h @ONLY)
-file(GENERATE
-OUTPUT ${STP_ALGORITHM_DEFINE_INCLUDE}/STPAlgorithmDeviceInfo$<CONFIG>.h
-INPUT ${STP_ALGORITHM_DEFINE_INCLUDE}/STPAlgorithmDeviceInfoRaw.h
+# setup the template target
+add_library(${STP_TEMPLATE_INCLUDE} INTERFACE)
+# config file include
+target_include_directories(${STP_TEMPLATE_INCLUDE}
+INTERFACE ${STP_TEMPLATE_OUTPUT}
 )
 
 # dependencies
@@ -28,9 +38,6 @@ PUBLIC ${STP_CORE_INCLUDE}
 )
 target_include_directories(${STP_ALGORITHM_HOST_ENGINE}
 PUBLIC ${STP_MODULE_INCLUDE}
-# info about the algorithm device engine, which may not be linked by the actual application if one chooses to use runtime comilation.
-# however if algorithm device engine is linked (developer decides to not use RTC), then device info header is useless since the target has all info needed.
-INTERFACE ${STP_ALGORITHM_DEFINE_INCLUDE}
 )
 target_include_directories(${STP_ALGORITHM_DEVICE_ENGINE} # algorithm device engine do not expose any external header in its public headers
 # we only include some define symbols from the core engine, no implementations are used
@@ -51,6 +58,7 @@ target_link_libraries(${STP_ALGORITHM_HOST_ENGINE}
 PUBLIC ${STP_MAIN_ENGINE} # main engine has all CUDA drivers linked as public
 )
 target_link_libraries(${STP_REALISM_ENGINE}
-PRIVATE ${STP_GLAD}
+# template file contains private path to some shader source code
+PRIVATE ${STP_GLAD} ${STP_TEMPLATE_INCLUDE}
 PUBLIC ${STP_MAIN_ENGINE}
 )
