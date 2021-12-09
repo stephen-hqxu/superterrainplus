@@ -35,7 +35,7 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPShaderDeleter>> STPSmartShaderObject;
 		//An OpenGL shader object
-		const STPSmartShaderObject Shader;
+		STPSmartShaderObject Shader;
 
 	public:
 

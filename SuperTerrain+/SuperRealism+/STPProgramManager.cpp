@@ -17,7 +17,7 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-void STPProgramManager::STPProgramDeleter::operator()(GLuint program) const {
+void STPProgramManager::STPProgramDeleter::operator()(STPOpenGL::STPuint program) const {
 	glDeleteProgram(program);
 }
 
@@ -25,40 +25,45 @@ STPProgramManager::STPProgramManager() : Program(glCreateProgram()) {
 
 }
 
-STPProgramManager& STPProgramManager::attach(const STPShaderGroup& shader_group) {
-	this->AttachedShader.reserve(shader_group.size());
+void STPProgramManager::resetStatus() {
+	this->Linked = false;
+	this->Valid = false;
 
-	//attach all shaders to the program
-	for (const auto* shader : shader_group) {
-		const GLuint shaderID = **shader;
+	//make sure old logs are cleared
+	this->LinkLog.clear();
+	this->ValidationLog.clear();
+}
 
-		const bool compilation_err = !static_cast<bool>(*shader), 
-			repeat_err = this->AttachedShader.find(shaderID) == this->AttachedShader.end();
-		if (compilation_err || repeat_err) {
-			//some error occurs
-			stringstream msg;
-			msg << '(' << shaderID << ',' << shader->Type << ")::";
+STPProgramManager& STPProgramManager::attach(const STPShaderManager& shader) {
+	//attach shader to the program
+	const GLuint shaderID = *shader;
 
-			if (compilation_err) {
-				msg << "Unusable shader";
-			}
-			else if (repeat_err) {
-				msg << "Shader has been attached to this program previously";
-			}
-			msg << endl;
+	const bool compilation_err = !static_cast<bool>(*shader),
+		repeat_err = this->AttachedShader.find(shaderID) == this->AttachedShader.end();
+	if (compilation_err || repeat_err) {
+		//some error occurs
+		stringstream msg;
+		msg << '(' << shaderID << ',' << shader.Type << ")::";
 
-			//throw error
-			throw STPException::STPGLError(msg.str().c_str());
+		if (compilation_err) {
+			msg << "Unusable shader";
 		}
-		//no error? good
-		glAttachShader(this->Program.get(), shaderID);
-		this->AttachedShader.emplace(shaderID, shader->Type);
+		else if (repeat_err) {
+			msg << "Shader has been attached to this program previously";
+		}
+		msg << endl;
+
+		//throw error
+		throw STPException::STPGLError(msg.str().c_str());
 	}
+	//no error? good
+	glAttachShader(this->Program.get(), shaderID);
+	this->AttachedShader.emplace(shaderID, shader.Type);
 
 	return *this;
 }
 
-bool STPProgramManager::detach(GLenum type) {
+bool STPProgramManager::detach(STPOpenGL::STPenum type) {
 	const auto detaching = this->AttachedShader.find(type);
 	if (detaching == this->AttachedShader.end()) {
 		//shader does not exist
@@ -77,12 +82,16 @@ void STPProgramManager::clear() {
 		glDetachShader(this->Program.get(), shader);
 	}
 	this->AttachedShader.clear();
+	this->resetStatus();
 }
 
 void STPProgramManager::finalise() {
+	//reset old status, because there are two different flags
+	//if the first flag throws error, the second flag should be false but not old value
+	this->resetStatus();
+
 	//link
 	glLinkProgram(this->Program.get());
-
 	auto handle_error = [pro = this->Program.get()](GLenum status_request, string& log, bool& final_status) -> void {
 		//link status error handling
 		GLint logLength, status;
@@ -96,6 +105,11 @@ void STPProgramManager::finalise() {
 			log.resize(logLength);
 			glGetProgramInfoLog(pro, logLength, NULL, log.data());
 			return;
+		}
+
+		if (!final_status) {
+			//error for this stage
+			throw STPException::STPGLError(log.c_str());
 		}
 	};
 

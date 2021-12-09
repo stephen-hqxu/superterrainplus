@@ -24,9 +24,6 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPProgramManager {
 	public:
 
-		//All shader manager attached to this program.
-		typedef std::list<const STPShaderManager*> STPShaderGroup;
-
 		/**
 		 * @brief STPLogType specifies the type of the log retrieved from a program object.
 		*/
@@ -48,7 +45,7 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPProgramDeleter>> STPSmartProgram;
 		//A shader program
-		const STPSmartProgram Program;
+		STPSmartProgram Program;
 
 		//Program linking log
 		std::string LinkLog, ValidationLog;
@@ -56,6 +53,11 @@ namespace SuperTerrainPlus::STPRealism {
 		bool Linked = false, Valid = false;
 
 		std::unordered_map<STPOpenGL::STPenum, STPOpenGL::STPuint> AttachedShader;
+
+		/**
+		 * @brief Reset program status flag to initial.
+		*/
+		void resetStatus();
 
 	public:
 
@@ -76,11 +78,11 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Attach a new shaders to the current program.
-		 * @param shader_group A pointer to an array of shaders to be attached to this program.
+		 * @param shader A pointer to a shader to be attached to this program.
 		 * @return The pointer to the current program manager for chaining.
 		 * If shader type repeats, or shader fails to compile, exception is thrown.
 		*/
-		STPProgramManager& attach(const STPShaderGroup&);
+		STPProgramManager& attach(const STPShaderManager&);
 
 		/**
 		 * @brief Detatch a shader from the current program.
@@ -98,7 +100,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Finalise the shader program by linking all shaders.
 		 * Any program parameters setting must be done before linking.
-		 * Linkage may fail, so make sure to call lastLog() to get error message.
+		 * Linkage may fail and exception is thrown.
 		*/
 		void finalise();
 
@@ -119,7 +121,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The pointer to *this* for chaining.
 		*/
 		template<typename Uni, typename... Arg>
-		const STPProgramManager& uniform(Uni&&, const char*, Arg&&...) const;
+		STPProgramManager& uniform(Uni&&, const char*, Arg&&...);
 
 		/**
 		 * @brief Get the log from the last program object linking.

@@ -52,9 +52,15 @@ namespace SuperTerrainPlus {
 	public:
 
 		/**
-		 * @brief Intialise a nullable primitive with value of Null (nullptr)
+		 * @brief Intialise a nullable primitive with default value
 		*/
 		STPNullablePrimitive() = default;
+
+		/**
+		 * @brief Initialise a nullable primitive with value of Null (nullptr)
+		 * @param A null pointer.
+		*/
+		STPNullablePrimitive(std::nullptr_t);
 
 		/**
 		 * @brief Initialse a nullable primitive with a value.

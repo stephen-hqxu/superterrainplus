@@ -29,7 +29,7 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPPipelineDeleter>> STPSmartPipeline;
 		//A program pipeline
-		const STPSmartPipeline Pipeline;
+		STPSmartPipeline Pipeline;
 
 		//Pipeline linking log
 		std::string Log;

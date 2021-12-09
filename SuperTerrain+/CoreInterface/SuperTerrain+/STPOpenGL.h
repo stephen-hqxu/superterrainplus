@@ -2,6 +2,12 @@
 #ifndef _STP_OPENGL_H_
 #define _STP_OPENGL_H_
 
+#ifndef __CUDACC_RTC__
+//NVRTC does not include any system header, so we need to exclude it
+//CUDA does not use GL stuff anyway.
+#include <cstdint>
+#endif//__CUDACC_RTC__
+
 namespace SuperTerrainPlus {
 	
 	/**
@@ -17,6 +23,12 @@ namespace SuperTerrainPlus {
 		typedef unsigned int STPenum;
 		//GLbitfield
 		typedef unsigned int STPbitfield;
+		//GLboolean
+		typedef unsigned char STPboolean;
+#ifndef __CUDACC_RTC__
+		//GLintptr
+		typedef intptr_t STPintptr;
+#endif//__CUDACC_RTC__
 	}
 
 }

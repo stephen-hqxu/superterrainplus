@@ -1,14 +1,17 @@
 target_sources(${STP_REALISM_ENGINE} PRIVATE
+STPLogStorage.hpp
 STPRealismDefine.h
 STPSun.h
 # /Environment
 Environment/STPAtomsphereSetting.h
 Environment/STPSunSetting.h
 # /Object
+Object/STPBuffer.h
 Object/STPPipelineManager.h
 Object/STPProgramManager.h
 Object/STPProgramManager.inl
 Object/STPShaderManager.h
+Object/STPVertexArray.h
 )
 
 # config file for the realism rendering engine

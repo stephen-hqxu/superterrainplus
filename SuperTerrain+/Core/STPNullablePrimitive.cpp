@@ -6,6 +6,11 @@
 using namespace SuperTerrainPlus;
 
 template<class Pri, Pri Null>
+STPNullablePrimitive<Pri, Null>::STPNullablePrimitive(std::nullptr_t) : Value(Null) {
+
+}
+
+template<class Pri, Pri Null>
 STPNullablePrimitive<Pri, Null>::STPNullablePrimitive(Pri value) : Value(value) {
 
 }

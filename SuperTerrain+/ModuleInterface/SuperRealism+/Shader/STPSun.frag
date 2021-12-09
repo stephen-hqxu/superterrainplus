@@ -3,7 +3,6 @@
 #define PI 3.14159265358979323846264338327923495
 
 struct SkySetting{
-	vec3 pSun;
 	float iSun;
 	float rPlanet, rAtoms;
 	vec3 kRlh;
@@ -20,6 +19,8 @@ out vec4 FragColor;
 uniform SkySetting Sky;
 //ray origin in meters, typically the position of the viewer's eye
 uniform vec3 RayOrigin;
+//position of the sun
+uniform vec3 SunPosition;
 
 // ray-sphere intersection that assumes
 // the sphere is centered at the origin.
@@ -29,7 +30,7 @@ vec3 atomsphere(vec3, vec3);
 
 void main(){
 	//Normalise sun and view direction
-	FragColor = vec4(atomsphere(normalize(Sky.pSun), normalize(RayDirection)), 1.0f);
+	FragColor = vec4(atomsphere(normalize(SunPosition), normalize(RayDirection)), 1.0f);
 }
 
 vec3 atomsphere(vec3 sun_pos, vec3 ray_dir){

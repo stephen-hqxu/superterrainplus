@@ -102,6 +102,7 @@ Those are some third-party libraries used by this project, we always make sure t
   - SuperAlgorithm+: A library of useful noise algorithms for pipeline programming.
     - SuperAlgorithm+Host: Algorithms and prep-works for device computation that are best suited for CPU execution.
     - SuperAlgorithm+Device:  Performant algorithms that can be benefitted from parallel compute.
+  - SuperRealism+: A rendering engine for photo-realistic rendering, with some handy GL function and object wrappers.
 - SuperDemo+: An application which demostrates the usage of the main engine.
 - SuperTest+: Unit test program for dynamic testings.
 

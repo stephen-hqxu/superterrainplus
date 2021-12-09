@@ -13,7 +13,7 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-void STPShaderManager::STPShaderDeleter::operator()(GLuint shader) const {
+void STPShaderManager::STPShaderDeleter::operator()(STPOpenGL::STPuint shader) const {
 	glDeleteShader(shader);
 }
 
@@ -40,6 +40,10 @@ const string& STPShaderManager::operator()(const string& source) {
 		//shader compilation has log
 		this->Log.resize(logLength);
 		glGetShaderInfoLog(this->Shader.get(), logLength, NULL, this->Log.data());
+	}
+	else {
+		//clear old compilation old, leaving no log at current
+		this->Log.clear();
 	}
 
 	if (!this->Valid) {

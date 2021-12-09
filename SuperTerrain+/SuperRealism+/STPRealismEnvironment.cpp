@@ -8,7 +8,6 @@ using namespace SuperTerrainPlus::STPEnvironment;
 //STPAtomsphereSetting.h
 
 STPAtomsphereSetting::STPAtomsphereSetting() : 
-	SunPosition(1.0f), 
 	SunIntensity(1.0f), 
 	PlanetRadius(1.0f), 
 	AtomsphereRadius(1.0f), 

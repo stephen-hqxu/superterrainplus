@@ -4,21 +4,32 @@
 
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPGLError.h>
+//IO
+#include <SuperTerrain+/Utility/STPFile.h>
 
 //GLM
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
+#include <string>
 #include <array>
 #include <utility>
+
+#include <glad/glad.h>
 
 using glm::normalize;
 using glm::smoothstep;
 using glm::radians;
 using glm::degrees;
+using glm::value_ptr;
+
+using glm::vec3;
 using glm::dvec3;
 
 using std::array;
+using std::string;
 using std::integer_sequence;
 using std::make_index_sequence;
 
@@ -37,8 +48,10 @@ constexpr static auto concatFilename(const char(&lhs)[NL], const char(&rhs)[NR])
 }
 
 constexpr static auto SkyShaderFullpath = concatFilename(SuperRealismPlus_ShaderPath, "/STPSun");
-constexpr static array<int, 24ull> SkyBoxVertex = { 
-	//Positions and UV         
+constexpr static size_t SkyShaderCount = 2ull;
+constexpr static char* SkyShaderExtension[] = { ".vert", ".frag" };
+
+constexpr static array<int, 24ull> Box = { 
 	-1, -1, -1, //origin
 	+1, -1, -1, //x=1
 	+1, -1, +1, //x=z=1
@@ -48,7 +61,7 @@ constexpr static array<int, 24ull> SkyBoxVertex = {
 	+1, +1, +1, //x=y=z=1
 	-1, +1, +1  //y=z=1
 };
-constexpr static array<unsigned int, 36ull> SkyBoxIndex = {
+constexpr static array<unsigned int, 36ull> BoxIndex = {
 	0, 1, 2,
 	0, 2, 3,
 
@@ -68,7 +81,7 @@ constexpr static array<unsigned int, 36ull> SkyBoxIndex = {
 	4, 6, 7
 };
 
-STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPEnvironment::STPAtomsphereSetting& sky) : SunSetting(sun_setting), SkySetting(sky),
+STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log_out) : SunSetting(sun_setting),
 	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull) {
 	//validate the setting
 	if (!this->SunSetting.validate()) {
@@ -77,6 +90,37 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPEnviro
 	//calculate starting LST
 	this->LocalSolarTime = this->SunSetting.DayStartOffset;
 	this->Day = 0u;
+
+	//setup sky rendering buffer
+	this->RayDirectionBuffer.bufferStorageSubData(Box.data(), Box.size() * sizeof(int), GL_NONE);
+	this->RayDirectionIndex.bufferStorageSubData(BoxIndex.data(), BoxIndex.size() * sizeof(unsigned int), GL_NONE);
+	//setup vertex array
+	STPVertexArray::STPVertexAttributeBuilder attr = this->RayDirectionArray.attribute();
+	attr.format(3, GL_INT, GL_FALSE, sizeof(int))
+		.vertexBuffer(this->RayDirectionBuffer, 0)
+		.elementBuffer(this->RayDirectionIndex)
+		.binding();
+	this->RayDirectionArray.enable(0u);
+
+	//setup sky renderer
+	STPShaderManager sky_shader[SkyShaderCount] = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
+	for (unsigned int i = 0u; i < SkyShaderCount; i++) {
+		//build the shader filename
+		//TODO: try to avoid doing dynamic memory allocation, do it using template
+		string sky_filename(SkyShaderFullpath.data());
+		sky_filename += SkyShaderExtension[i];
+
+		STPShaderManager& current_shader = sky_shader[i];
+		//compile
+		log_out.Log[i] = current_shader(*STPFile(sky_filename.c_str()));
+
+		//put shader into the program
+		this->SkyRenderer.attach(current_shader);
+	}
+	//link
+	this->SkyRenderer.finalise();
+	log_out.Log[2] = this->SkyRenderer.lastLog(STPProgramManager::STPLogType::Link);
+	log_out.Log[3] = this->SkyRenderer.lastLog(STPProgramManager::STPLogType::Validation);
 }
 
 STPSun::STPSunDirection STPSun::currentDirection() const {
@@ -130,4 +174,17 @@ void STPSun::deltaTick(size_t delta) {
 double STPSun::status(double elevation) const {
 	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
 	return smoothstep(sun.SunriseAngle, sun.SunsetAngle, degrees(elevation) + sun.CycleAngleOffset) * 2.0 - 1.0;
+}
+
+void STPSun::setAtomshpere(const STPEnvironment::STPAtomsphereSetting& sky_setting) {
+	this->SkyRenderer.uniform(glProgramUniform1f, "Sky.iSun", sky_setting.SunIntensity)
+		.uniform(glProgramUniform1f, "Sky.rPlanet", sky_setting.PlanetRadius)
+		.uniform(glProgramUniform1f, "Sky.rAtoms", sky_setting.AtomsphereRadius)
+		.uniform(glProgramUniform3fv, "Sky.kRlh", 1, value_ptr(sky_setting.RayleighCoefficient))
+		.uniform(glProgramUniform1f, "Sky.kMie", sky_setting.MieCoefficient)
+		.uniform(glProgramUniform1f, "Sky.shRlh", sky_setting.RayleighScale)
+		.uniform(glProgramUniform1f, "Sky.shMie", sky_setting.MieScale)
+		.uniform(glProgramUniform1f, "Sky.g", sky_setting.MieScatteringDirection)
+		.uniform(glProgramUniform1ui, "Sky.priStep", sky_setting.PrimaryRayStep)
+		.uniform(glProgramUniform1ui, "Sky.secStep", sky_setting.SecondaryRayStep);
 }

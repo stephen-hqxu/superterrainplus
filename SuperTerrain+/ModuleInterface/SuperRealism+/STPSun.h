@@ -8,6 +8,9 @@
 #include "./Environment/STPAtomsphereSetting.h"
 //Rendering Engine
 #include "./Object/STPProgramManager.h"
+#include "./Object/STPBuffer.h"
+#include "./Object/STPVertexArray.h"
+#include "STPLogStorage.hpp"
 
 //GLM
 #include <glm/vec3.hpp>
@@ -47,7 +50,12 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		const STPEnvironment::STPSunSetting& SunSetting;
-		const STPEnvironment::STPAtomsphereSetting& SkySetting;
+
+		//Those buffers specify the ray direction from the camera
+		STPBuffer RayDirectionBuffer, RayDirectionIndex;
+		STPVertexArray RayDirectionArray;
+		//Shaders
+		STPProgramManager SkyRenderer;
 
 		//The time according to the position of the sun in the sky relative to one specific location on the ground, in tick
 		size_t LocalSolarTime;
@@ -61,12 +69,15 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
+		//The log for STPSun, coming from sun and sky renderer.
+		typedef STPLogStorage<4ull> STPSunLog;
+
 		/**
 		 * @brief Init the sun with settings.
 		 * @param sun_setting The sun setting.
-		 * @param sky_setting The sky setting.
+		 * @param log_out Logs output from the shader compilation.
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, const STPEnvironment::STPAtomsphereSetting&);
+		STPSun(const STPEnvironment::STPSunSetting&, STPSunLog&);
 
 		STPSun(const STPSun&) = delete;
 
@@ -100,6 +111,12 @@ namespace SuperTerrainPlus::STPRealism {
 		 * -1.0 -> sun is completely below the horizon.
 		*/
 		double status(double) const;
+
+		/**
+		 * @brief Update the sky renderer with new atomshpere setting.
+		 * @param sky_setting The sky setting. 
+		*/
+		void setAtomshpere(const STPEnvironment::STPAtomsphereSetting&);
 
 	};
 

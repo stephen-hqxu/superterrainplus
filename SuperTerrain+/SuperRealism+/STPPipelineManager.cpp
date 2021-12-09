@@ -11,7 +11,7 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-void STPPipelineManager::STPPipelineDeleter::operator()(GLuint pipeline) const {
+void STPPipelineManager::STPPipelineDeleter::operator()(STPOpenGL::STPuint pipeline) const {
 	glDeleteProgramPipelines(1u, &pipeline);
 }
 
@@ -37,6 +37,9 @@ const string& STPPipelineManager::operator()(const STPShaderSelection& stages) {
 	if (logLength > 0) {
 		this->Log.resize(logLength);
 		glGetProgramPipelineInfoLog(this->Pipeline.get(), logLength, NULL, this->Log.data());
+	}
+	else {
+		this->Log.clear();
 	}
 
 	return this->lastLog();

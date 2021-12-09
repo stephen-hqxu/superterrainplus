@@ -17,8 +17,6 @@ namespace SuperTerrainPlus::STPEnvironment {
 	class STP_REALISM_API STPAtomsphereSetting : public STPSetting {
 	public:
 
-		//Sun position should be a unit vector
-		glm::vec3 SunPosition;
 		//Intensity of the sun
 		float SunIntensity;
 		//The radius of the planet
