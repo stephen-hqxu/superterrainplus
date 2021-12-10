@@ -4,13 +4,13 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Setting
-#include "./Environment/STPSunSetting.h"
-#include "./Environment/STPAtomsphereSetting.h"
+#include "../Environment/STPSunSetting.h"
+#include "../Environment/STPAtomsphereSetting.h"
 //Rendering Engine
-#include "./Object/STPProgramManager.h"
-#include "./Object/STPBuffer.h"
-#include "./Object/STPVertexArray.h"
-#include "STPLogStorage.hpp"
+#include "../Object/STPProgramManager.h"
+#include "../Object/STPBuffer.h"
+#include "../Object/STPVertexArray.h"
+#include "../Utility/STPLogStorage.hpp"
 
 //GLM
 #include <glm/vec3.hpp>
@@ -52,7 +52,7 @@ namespace SuperTerrainPlus::STPRealism {
 		const STPEnvironment::STPSunSetting& SunSetting;
 
 		//Those buffers specify the ray direction from the camera
-		STPBuffer RayDirectionBuffer, RayDirectionIndex;
+		STPBuffer RayDirectionBuffer, RayDirectionIndex, SkyRenderCommand;
 		STPVertexArray RayDirectionArray;
 		//Shaders
 		STPProgramManager SkyRenderer;
@@ -66,6 +66,10 @@ namespace SuperTerrainPlus::STPRealism {
 		const double AnglePerTick;
 		//Denotes the tick at noon time, equals to day length by 2
 		const size_t NoonTime;
+
+		//Records the most recent calculation to avoid recomputation.
+		mutable STPSunDirection DirectionCache;
+		mutable bool DirectionOutdated;
 
 	public:
 
@@ -92,8 +96,9 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Calculate the current direction of the sun.
 		 * @return Information about the current sun direction.
+		 * @return The pointer to the current calulated sun direction
 		*/
-		STPSunDirection currentDirection() const;
+		const STPSunDirection& calcSunDirection() const;
 
 		/**
 		 * @brief Bring the timer forward by a delta amount.
@@ -117,6 +122,12 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param sky_setting The sky setting. 
 		*/
 		void setAtomshpere(const STPEnvironment::STPAtomsphereSetting&);
+
+		/**
+		 * @brief Render the sun with atomspheric scattering effect.
+		 * @param viewPos The position of the viewer in world coordinate.
+		*/
+		void operator()(glm::vec3);
 
 	};
 

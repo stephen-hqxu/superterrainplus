@@ -5,6 +5,7 @@
 struct SkySetting{
 	float iSun;
 	float rPlanet, rAtoms;
+	float vAlt;
 	vec3 kRlh;
 	float kMie, shRlh, shMie, g;
 	unsigned int priStep, secStep;
@@ -18,7 +19,7 @@ out vec4 FragColor;
 
 uniform SkySetting Sky;
 //ray origin in meters, typically the position of the viewer's eye
-uniform vec3 RayOrigin;
+uniform vec3 ViewPosition;
 //position of the sun
 uniform vec3 SunPosition;
 
@@ -34,13 +35,15 @@ void main(){
 }
 
 vec3 atomsphere(vec3 sun_pos, vec3 ray_dir){
+	const vec3 ray_origin = ViewPosition + vec3(0.0f, Sky.vAlt, 0.0f);
+
 	//calculate step size of the primary ray
-	vec2 p = raySphereIntersection(RayOrigin, ray_dir, Sky.rAtoms);
+	vec2 p = raySphereIntersection(ray_origin, ray_dir, Sky.rAtoms);
 	if(p.x > p.y){
 		//no intersection, default black color
 		return vec3(0.0f);
 	}
-	p.y = min(p.y, raySphereIntersection(RayOrigin, ray_dir, Sky.rPlanet).x);
+	p.y = min(p.y, raySphereIntersection(ray_origin, ray_dir, Sky.rPlanet).x);
 	const float priStepSize = (p.y - p.x) / float(Sky.priStep);
 
 	//Initial primary ray time
@@ -62,7 +65,7 @@ vec3 atomsphere(vec3 sun_pos, vec3 ray_dir){
 	//Primary ray sampling
 	for(unsigned int i = 0u; i < Sky.priStep; i++){
 		//Calculate primary ray sampling position
-		const vec3 priPos = RayOrigin + ray_dir * (priTime + priStepSize * 0.5f);
+		const vec3 priPos = ray_origin + ray_dir * (priTime + priStepSize * 0.5f);
 		//Calculate sample height
 		const float priHeight = length(priPos) - Sky.rPlanet;
 

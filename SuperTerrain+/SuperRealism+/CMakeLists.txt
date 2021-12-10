@@ -1,6 +1,10 @@
 #shading and rendering library
 add_library(${STP_REALISM_ENGINE} SHARED
 STPBuffer.cpp
+STPCamera.cpp
+STPContextStateManager.cpp
+STPDebugCallback.cpp
+STPPerspectiveCamera.cpp
 STPPipelineManager.cpp
 STPProgramManager.cpp
 STPRealismEnvironment.cpp

@@ -11,6 +11,7 @@ STPAtomsphereSetting::STPAtomsphereSetting() :
 	SunIntensity(1.0f), 
 	PlanetRadius(1.0f), 
 	AtomsphereRadius(1.0f), 
+	ViewAltitude(1.0f),
 
 	RayleighCoefficient(1.0f), 
 	MieCoefficient(1.0f), 
@@ -29,6 +30,9 @@ bool STPAtomsphereSetting::validate() const {
 	return this->SunIntensity > 0.0f
 		&& this->PlanetRadius > 0.0f
 		&& this->AtomsphereRadius > 0.0f
+		&& this->PlanetRadius <= this->AtomsphereRadius
+		&& this->ViewAltitude > 0.0f
+		&& this->ViewAltitude >= this->PlanetRadius
 		&& this->RayleighCoefficient != zeroVec3
 		&& this->MieCoefficient > 0.0f
 		&& this->RayleighScale > 0.0f

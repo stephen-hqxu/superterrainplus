@@ -23,6 +23,8 @@ namespace SuperTerrainPlus::STPEnvironment {
 		float PlanetRadius;
 		//The radius of atomsphere
 		float AtomsphereRadius;
+		//The view position starting altitude.
+		float ViewAltitude;
 
 		//Rayleigh scattering coefficient
 		glm::vec3 RayleighCoefficient;
