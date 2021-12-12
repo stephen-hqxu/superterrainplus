@@ -21,14 +21,31 @@ STPShaderManager::STPShaderManager(STPOpenGL::STPenum type) : Shader(glCreateSha
 	
 }
 
-const string& STPShaderManager::operator()(const string& source) {
+const string& STPShaderManager::operator()(const string& source, const STPShaderIncludePath& include) {
 	//attach source code to the shader
 	//std::string makes sure string is null-terminated, so we can pass NULL as the code length
 	const char* const sourceArray = source.c_str();
-	glShaderSource(this->Shader.get(), 1, &sourceArray, NULL);
+	const GLint sourceLength = static_cast<GLint>(source.size());
+	glShaderSource(this->Shader.get(), 1, &sourceArray, &sourceLength);
 
 	//try to compile it
-	glCompileShader(this->Shader.get());
+	if (include.empty()) {
+		glCompileShader(this->Shader.get());
+	}
+	else {
+		const size_t pathCount = include.size();
+		//build the path information
+		vector<const char*> pathStr;
+		vector<GLint> pathLength;
+		pathStr.reserve(pathCount);
+		pathLength.reserve(pathCount);
+		for (const auto& path : include) {
+			pathStr.emplace_back(path.c_str());
+			pathLength.emplace_back(static_cast<GLint>(path.size()));
+		}
+
+		glCompileShaderIncludeARB(this->Shader.get(), pathCount, pathStr.data(), pathLength.data());
+	}
 	//retrieve any log
 	GLint logLength, status;
 	glGetShaderiv(this->Shader.get(), GL_INFO_LOG_LENGTH, &logLength);

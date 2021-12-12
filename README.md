@@ -31,6 +31,7 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 - High-performance application optimisation techniques involving multithread CPU and GPU.
 - Procedural texture synthesis.
 - Various algorithms for procedural terrain generation.
+- State-of-the-art techniques for real-time photo-realistic rendering.
 
 > And don't worry, this project is still alive and I will keep maintaining it.
 
@@ -61,10 +62,13 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 
 ### Real-time realistic rendering
 
-- [ ] Procedural sky rendering
-- [ ] Procedural atomspheric effect rendering
+- [ ] Procedural sun rendering
+- [ ] Procedural sky atomspheric effect rendering
 - [ ] Day-night cycle
+- [ ] Night scene rendering
 - [ ] Weather and seasonal effect
+- [ ] Soft and smooth shadow
+- [ ] Water reflection and refraction
 - [ ] ~~Real-time raster-ray tracing hybrid rendering~~
 
 ## :bricks: Middleware
@@ -128,19 +132,10 @@ Those are some third-party libraries used by this project, we always make sure t
 	<img src="https://img.shields.io/badge/AMD-Ryzen_5_2400G-ED1C24?style=flat&logo=amd&logoColor=white" />
 </p>
 
-- GPU-Legacy
+- GPU
 <p align="left">
-	<img src="https://img.shields.io/badge/NVIDIA-GTX_1050-76B900?style=flat&logo=nvidia&logoColor=white" />
+	<img src="https://img.shields.io/badge/NVIDIA-GTX_1660-76B900?style=flat&logo=nvidia&logoColor=white" />
 </p>
-
-> Supported compute capability >= 6.1. Intel/AMD not available.
-
-- GPU-RT
-<p align="left">
-	<img src="https://img.shields.io/badge/NVIDIA-RTX_2060-76B900?style=flat&logo=nvidia&logoColor=white" />
-</p>
-
-> Supported compute capability >= 7.5. Nvidia Optix ray-tracing enabled.
 
 - RAM: 4GB
 - OS
@@ -153,7 +148,7 @@ Those are some third-party libraries used by this project, we always make sure t
 
 Your GPU must support the following OpenGL extensions:
 
-- All extensions from OpenGL 4.6 core profile specification
+- OpenGL 4.6 core profile
 - GL_ARB_bindless_texture
 - GL_ARB_shading_language_include
 
@@ -206,18 +201,21 @@ Executables:
 
 Contributions are what make the open source community such an amazing place to be learn, inspire, and create. Any contributions you make are greatly appreciated.
 
-## :page_facing_up: Lincense
-
-Distributed under the MIT License. See `LICENSE` for more information.
-
 ## :telephone: Contact
 
 Stephen Xu - stephen.hqxu@gmail.com
 
 Project Repository: https://github.com/stephen-hqxu/superterrainplus
 
-## :books: Reference
+## :books: Credit
+
+Reference contains source code and libraries that are not dependencies of this project but they are where ideas, inspirations and design patterns taken from.
 
 - [README template](https://github.com/othneildrew/Best-README-Template)
-- [Ported from Minecraft biome generator](https://github.com/KaptainWutax/BiomeUtils)
+- [Minecraft biome generator](https://github.com/KaptainWutax/BiomeUtils)
 - [Particle based hydraulic erosion](https://github.com/SebLague/Hydraulic-Erosion/tree/Coding-Adventure-E01)
+- [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
+- [Animated grass geometries rendering](https://github.com/spacejack/terra)
+- [Physically-based atomshperic scattering](https://github.com/wwwtyro/glsl-atmosphere/)
+
+For a more academic-styled reference, check the project dissertation as linked above.

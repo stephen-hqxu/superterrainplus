@@ -2,12 +2,14 @@
 add_library(${STP_REALISM_ENGINE} SHARED
 STPBuffer.cpp
 STPCamera.cpp
-STPContextStateManager.cpp
 STPDebugCallback.cpp
+STPHeightfieldTerrain.cpp
 STPPerspectiveCamera.cpp
 STPPipelineManager.cpp
 STPProgramManager.cpp
 STPRealismEnvironment.cpp
+STPScenePipeline.cpp
+STPShaderIncludeManager.cpp
 STPShaderManager.cpp
 STPSun.cpp
 STPVertexArray.cpp

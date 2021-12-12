@@ -21,6 +21,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPSun is the main light source on the procedural terrain.
 	 * It manages the position of the sun based on the time, rotates around the sky.
 	 * It also allows, optionally, day-night cycle and switches light intensity.
+	 * Atomshperic scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
 	*/
 	class STP_REALISM_API STPSun {
 	public:
@@ -55,7 +56,7 @@ namespace SuperTerrainPlus::STPRealism {
 		STPBuffer RayDirectionBuffer, RayDirectionIndex, SkyRenderCommand;
 		STPVertexArray RayDirectionArray;
 		//Shaders
-		STPProgramManager SkyRenderer;
+		mutable STPProgramManager SkyRenderer;
 
 		//The time according to the position of the sun in the sky relative to one specific location on the ground, in tick
 		size_t LocalSolarTime;
@@ -127,7 +128,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Render the sun with atomspheric scattering effect.
 		 * @param viewPos The position of the viewer in world coordinate.
 		*/
-		void operator()(glm::vec3);
+		void operator()(glm::vec3) const;
 
 	};
 

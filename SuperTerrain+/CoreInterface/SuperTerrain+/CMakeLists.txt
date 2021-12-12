@@ -37,6 +37,7 @@ Utility/Memory/STPSmartStream.h
 # /Utility
 Utility/STPDeviceErrorHandler.h
 Utility/STPFile.h
+Utility/STPFile.inl
 Utility/STPHashCombine.h
 Utility/STPHashCombine.inl
 Utility/STPNullablePrimitive.h

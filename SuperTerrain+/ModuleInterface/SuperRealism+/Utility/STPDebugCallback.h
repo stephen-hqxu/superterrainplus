@@ -49,6 +49,13 @@ namespace SuperTerrainPlus::STPRealism {
 		STP_REALISM_API void enableAsyncCallback(std::ostream&);
 
 		/**
+		 * @brief Check if async debug output has been enabled.
+		 * Debug callback must first be initialised and enabled.
+		 * @return True if enabled.
+		*/
+		STP_REALISM_API bool isEnabledAsyncCallback();
+
+		/**
 		 * @brief Disable asynchronous debug callback.
 		*/
 		STP_REALISM_API void disableAsyncCallback();

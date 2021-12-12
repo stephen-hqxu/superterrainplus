@@ -80,6 +80,8 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		const glm::mat4& perspective() const;
 
+		const glm::mat4& projection() const override;
+
 		/**
 		 * @brief Zoom the view frustum to change the perspective field-of-view.
 		 * @param delta The angle to be changed by, in radians.

@@ -15,9 +15,7 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <string>
 #include <array>
-#include <utility>
 
 #include <glad/glad.h>
 
@@ -31,29 +29,13 @@ using glm::vec3;
 using glm::dvec3;
 
 using std::array;
-using std::string;
-using std::integer_sequence;
-using std::make_index_sequence;
 
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
-template<size_t... IL, size_t... IR, typename T>
-constexpr static auto concatImpl(const char* lhs, const char* rhs, integer_sequence<T, IL...>, integer_sequence<T, IR...>) {
-	return array<char, sizeof...(IL) + sizeof...(IR)>{ lhs[IL]..., rhs[IR]... };
-}
+constexpr static auto SkyShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSun", ".vert", ".frag");
 
-template<size_t NL, size_t NR>
-constexpr static auto concatFilename(const char(&lhs)[NL], const char(&rhs)[NR]) {
-	//each string ends with a null, so we need to eliminate the null symbol for all strings except the last one
-	return concatImpl(lhs, rhs, make_index_sequence<NL - 1ull>(), make_index_sequence<NR>());
-}
-
-constexpr static auto SkyShaderFullpath = concatFilename(SuperRealismPlus_ShaderPath, "/STPSun");
-constexpr static size_t SkyShaderCount = 2ull;
-constexpr static char* SkyShaderExtension[] = { ".vert", ".frag" };
-
-constexpr static array<signed char, 24ull> Box = { 
+constexpr static array<signed char, 24ull> BoxVertex = { 
 	-1, -1, -1, //origin
 	+1, -1, -1, //x=1
 	+1, -1, +1, //x=z=1
@@ -101,7 +83,7 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log_
 	this->Day = 0u;
 
 	//setup sky rendering buffer
-	this->RayDirectionBuffer.bufferStorageSubData(Box.data(), Box.size() * sizeof(signed char), GL_NONE);
+	this->RayDirectionBuffer.bufferStorageSubData(BoxVertex.data(), BoxVertex.size() * sizeof(signed char), GL_NONE);
 	this->RayDirectionIndex.bufferStorageSubData(BoxIndex.data(), BoxIndex.size() * sizeof(unsigned char), GL_NONE);
 	//setup rendering command
 	this->SkyRenderCommand.bufferStorageSubData(&SkyDrawCommand, sizeof(SkyDrawCommand), GL_NONE);
@@ -114,20 +96,18 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log_
 	this->RayDirectionArray.enable(0u);
 
 	//setup sky renderer
-	STPShaderManager sky_shader[SkyShaderCount] = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
-	for (unsigned int i = 0u; i < SkyShaderCount; i++) {
-		//build the shader filename
-		//TODO: try to avoid doing dynamic memory allocation, do it using template
-		string sky_filename(SkyShaderFullpath.data());
-		sky_filename += SkyShaderExtension[i];
-
+	STPShaderManager sky_shader[SkyShaderFilename.size()] = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
+	for (unsigned int i = 0u; i < SkyShaderFilename.size(); i++) {
 		STPShaderManager& current_shader = sky_shader[i];
+		//build the shader filename
+		const char* const sky_filename = SkyShaderFilename[i].data();
 		//compile
-		log_out.Log[i] = current_shader(*STPFile(sky_filename.c_str()));
+		log_out.Log[i] = current_shader(*STPFile(sky_filename));
 
 		//put shader into the program
 		this->SkyRenderer.attach(current_shader);
 	}
+
 	//link
 	this->SkyRenderer.finalise();
 	log_out.Log[2] = this->SkyRenderer.lastLog(STPProgramManager::STPLogType::Link);
@@ -209,7 +189,7 @@ void STPSun::setAtomshpere(const STPEnvironment::STPAtomsphereSetting& sky_setti
 		.uniform(glProgramUniform1ui, "Sky.secStep", sky_setting.SecondaryRayStep);
 }
 
-void STPSun::operator()(vec3 viewPos) {
+void STPSun::operator()(vec3 viewPos) const {
 	//calculate the position/direction of the sun
 	const STPSunDirection& sunInfo = this->calcSunDirection();
 	const vec3 sun_dir = static_cast<vec3>(sunInfo.Direction);

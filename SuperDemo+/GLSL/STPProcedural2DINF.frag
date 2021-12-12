@@ -1,5 +1,5 @@
 #version 460 core
-#extension ARB_bindless_texture: require
+#extension GL_ARB_bindless_texture : require
 
 /* ------------------ Texture Splatting ---------------------------- */
 #define TEXTURE_COUNT 1

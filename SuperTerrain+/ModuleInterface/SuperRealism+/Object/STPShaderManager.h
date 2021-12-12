@@ -39,6 +39,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
+		//An array of string indicating the include path of a shader.
+		typedef std::vector<std::string> STPShaderIncludePath;
+
 		//Type of the shader currently managed by the shader manager.
 		const STPOpenGL::STPenum Type;
 
@@ -62,10 +65,12 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Attach source code to the current shader manager and compile. Previously attached source code will be removed.
 		 * @param source A single string that contains all GLSL source code.
 		 * The source must corresponds the type of the shader.
+		 * @param include An array of shader include path to the virtual include directory provided by OpenGL.
+		 * The path must point to a valid include directory with source code.
 		 * @return Compilation log, if any.
 		 * If compilation fails, exception is thrown with error log.
 		*/
-		const std::string& operator()(const std::string&);
+		const std::string& operator()(const std::string&, const STPShaderIncludePath& = { });
 
 		/**
 		 * @brief Get the compilation log from the last shader object compilation.

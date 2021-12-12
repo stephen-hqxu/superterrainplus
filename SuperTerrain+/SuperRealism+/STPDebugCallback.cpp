@@ -9,10 +9,8 @@
 
 using std::ostream;
 
+using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
-
-//Indicate if debug output is enabled.
-static bool mEnabled = false;
 
 static void defaultDebugOutput(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
 	//string convertion
@@ -61,49 +59,59 @@ int STPDebugCallback::support() {
 }
 
 void STPDebugCallback::enable() {
-	if (!support()) {
-		//Does not support
-		throw STPException::STPUnsupportedFunctionality("The current rendering platform does not support GL debug output");
-	}
-	if (mEnabled) {
+	if (isEnabled()) {
 		return;
 	}
 
 	//only enable if the GPU has support to it
 	glEnable(GL_DEBUG_OUTPUT);
-	mEnabled = true;
 }
 
 void STPDebugCallback::disable() {
-	if (!mEnabled) {
+	if (!isEnabled()) {
 		return;
 	}
 
 	glDisable(GL_DEBUG_OUTPUT);
-	mEnabled = false;
 }
 
 bool STPDebugCallback::isEnabled() {
-	return mEnabled;
+	if (!STPDebugCallback::support()) {
+		//Does not support
+		throw STPException::STPUnsupportedFunctionality("The current rendering platform does not support GL debug output");
+	}
+
+	return glIsEnabled(GL_DEBUG_OUTPUT);
 }
 
 inline static void checkEnable() {
-	if (!mEnabled) {
+	if (!STPDebugCallback::isEnabled()) {
 		//debug callback not enabled
 		throw SuperTerrainPlus::STPException::STPGLError("Debug callback was not initialised");
 	}
 }
 
 void STPDebugCallback::enableAsyncCallback(ostream& stream) {
-	checkEnable();
+	if (isEnabledAsyncCallback()) {
+		//if async callback has been enabled, do nothing.
+		return;
+	}
 
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	//use the default message callback
 	glDebugMessageCallback(&defaultDebugOutput, &stream);
 }
 
-void STPDebugCallback::disableAsyncCallback() {
+bool STPDebugCallback::isEnabledAsyncCallback() {
 	checkEnable();
+
+	return glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+}
+
+void STPDebugCallback::disableAsyncCallback() {
+	if (!isEnabledAsyncCallback()) {
+		return;
+	}
 
 	glDisable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 }

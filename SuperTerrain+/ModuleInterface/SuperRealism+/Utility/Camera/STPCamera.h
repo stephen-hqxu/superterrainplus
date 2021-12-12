@@ -89,13 +89,19 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPCamera& operator=(STPCamera&&) noexcept = default;
 
-		~STPCamera() = default;
+		virtual ~STPCamera() = default;
 
 		/**
-		 * @brief Get the camera view matrix that transform from world space to view spalce.
+		 * @brief Get the camera view matrix that transform from world space to view space.
 		 * @return The pointer to the view matrix.
 		*/
 		const glm::mat4& view() const;
+
+		/**
+		 * @brief Get the camera projection matrix that transform from view to clip space.
+		 * @return The pointer to the projection matrix.
+		*/
+		virtual const glm::mat4& projection() const = 0;
 
 		/**
 		 * @brief Get the current camera status.
