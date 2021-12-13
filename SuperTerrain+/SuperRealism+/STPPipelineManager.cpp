@@ -25,12 +25,12 @@ STPPipelineManager::STPPipelineManager() : Pipeline(createOnePipeline()) {
 	
 }
 
-const string& STPPipelineManager::operator()(const STPShaderSelection& stages) {
-	//assign shader stages
-	for (const auto [bit, program] : stages) {
-		glUseProgramStages(this->Pipeline.get(), bit, **program);
-	}
+STPPipelineManager& STPPipelineManager::stage(STPOpenGL::STPbitfield stage, const STPProgramManager& program) {
+	glUseProgramStages(this->Pipeline.get(), stage, *program);
+	return *this;
+}
 
+const string& STPPipelineManager::finalise() {
 	//check for log
 	GLint logLength;
 	glGetProgramPipelineiv(this->Pipeline.get(), GL_INFO_LOG_LENGTH, &logLength);

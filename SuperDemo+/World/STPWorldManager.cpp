@@ -15,6 +15,9 @@
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureDatabase.h>
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureDefinitionLanguage.h>
 
+//GLAD
+#include <glad/glad.h>
+
 using namespace STPDemo;
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
@@ -145,7 +148,7 @@ STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STP
 
 STPWorldManager::~STPWorldManager() = default;
 
-void STPWorldManager::linkProgram(void* indirect_cmd, float anisotropy) {
+void STPWorldManager::linkProgram(float anisotropy) {
 	this->linkStatus = false;
 	//error checking
 	if (!this->BiomeFactory) {
@@ -173,9 +176,6 @@ void STPWorldManager::linkProgram(void* indirect_cmd, float anisotropy) {
 	pipeStage.SplatmapGenerator = this->TextureFactory.get();
 	pipeStage.ChunkSetting = &chunk_settings;
 	this->Pipeline.emplace(pipeStage);
-
-	//create renderer using manager
-	this->WorldRenderer.emplace(this->WorldSetting.getMeshSetting(), *this->Pipeline, indirect_cmd);
 	
 	this->linkStatus = true;
 }
@@ -194,8 +194,4 @@ const STPEnvironment::STPConfiguration& STPWorldManager::getWorldSetting() const
 
 STPWorldPipeline& STPWorldManager::getPipeline() {
 	return *this->Pipeline;
-}
-
-const STPProcedural2DINF& STPWorldManager::getChunkRenderer() const {
-	return *this->WorldRenderer;
 }

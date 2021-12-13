@@ -1,4 +1,5 @@
 #version 460 core
+#extension GL_ARB_shading_language_include : require
 
 #define PI 3.14159265358979323846264338327923495
 
@@ -11,6 +12,8 @@ struct SkySetting{
 	unsigned int priStep, secStep;
 };
 
+#include </Common/STPCameraInformation.glsl>
+
 //Input
 //normalized ray direction, typically a ray cast from the observers eye through a pixel
 in vec3 RayDirection;
@@ -18,8 +21,6 @@ in vec3 RayDirection;
 out vec4 FragColor;
 
 uniform SkySetting Sky;
-//ray origin in meters, typically the position of the viewer's eye
-uniform vec3 ViewPosition;
 //position of the sun
 uniform vec3 SunPosition;
 
@@ -35,7 +36,7 @@ void main(){
 }
 
 vec3 atomsphere(vec3 sun_pos, vec3 ray_dir){
-	const vec3 ray_origin = ViewPosition + vec3(0.0f, Sky.vAlt, 0.0f);
+	const vec3 ray_origin = CameraPosition + vec3(0.0f, Sky.vAlt, 0.0f);
 
 	//calculate step size of the primary ray
 	vec2 p = raySphereIntersection(ray_origin, ray_dir, Sky.rAtoms);

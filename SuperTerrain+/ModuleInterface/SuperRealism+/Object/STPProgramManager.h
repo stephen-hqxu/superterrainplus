@@ -9,7 +9,6 @@
 #include "STPShaderManager.h"
 
 //Container
-#include <list>
 #include <tuple>
 #include <unordered_map>
 
@@ -96,6 +95,12 @@ namespace SuperTerrainPlus::STPRealism {
 		 * This does not reset program parameters, however.
 		*/
 		void clear();
+
+		/**
+		 * @brief Flag the current program as a separable program, which can be used in program pipeline.
+		 * @param separable True to indicate the new separable status of this program.
+		*/
+		void setSeparable(bool);
 
 		/**
 		 * @brief Finalise the shader program by linking all shaders.

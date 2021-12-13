@@ -1,5 +1,6 @@
 #version 460 core
 #extension GL_ARB_bindless_texture : require
+#extension GL_ARB_shading_language_include : require
 
 //Input
 layout (location = 0) in vec3 Position;
@@ -22,12 +23,12 @@ out VertexVS{
 	vec3 bitangent;
 } vs_out;
 
-uniform mat4 Model;//The model matrix will be used to offset and scale unit planes globally
+uniform mat4 MeshModel;//The model matrix will be used to offset and scale unit planes globally
 
 //auxiliary parameters
-uniform uvec2 rendered_chunk_num;//how many chunks will be rendered around the camera?
-uniform uvec2 chunk_dimension;//how many unit plane each chunk is consist of?
-uniform vec2 base_chunk_position;//The coordinate of the most top-left chunk in world position, contains x and z
+uniform uvec2 RenderedChunk;//how many chunks will be rendered around the camera?
+uniform uvec2 ChunkSize;//how many unit plane each chunk is consist of?
+uniform vec2 BaseChunkPosition;//The coordinate of the most top-left chunk in world position, contains x and z
 
 void main(){
 	//We need to instancing the unit plane and build up chunks
@@ -36,9 +37,9 @@ void main(){
 	//Chunks will be built up from top-left to bottom-right corner
 	//Unit planes in each chunk will be again built from top-left to bottom-right
 
-	const uvec2 unitplane_total = rendered_chunk_num * chunk_dimension;
+	const uvec2 unitplane_total = RenderedChunk * ChunkSize;
 	//remember base_chunk_position defines the x and z position
-	vec2 local_plane_position = Position.xz + base_chunk_position;
+	vec2 local_plane_position = Position.xz + BaseChunkPosition;
 	vec2 local_plane_uv = TexCoord;
 	
 	//Preparation done, starting moving instanced unit planes
@@ -52,7 +53,7 @@ void main(){
 	local_plane_uv += uv_increment * local_offset;
 	
 	//Output
-	gl_Position = Model * vec4(local_plane_position.x, Position.y, local_plane_position.y, 1.0f);
+	gl_Position = MeshModel * vec4(local_plane_position.x, Position.y, local_plane_position.y, 1.0f);
 	vs_out.texCoord = local_plane_uv;
 	vs_out.normal = Normal;
 	vs_out.tangent = Tangent;

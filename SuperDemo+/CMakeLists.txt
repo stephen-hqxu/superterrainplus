@@ -5,7 +5,6 @@ set(STP_DEMO_PROGRAM "SuperDemo+")
 find_package(glfw3 3 REQUIRED CONFIG)
 # and include our home-made libraries ;)
 find_package(SIMPLE 2 REQUIRED CONFIG)
-find_package(SglToolkit 1 REQUIRED CONFIG)
 
 # add all demo program code
 # header and source code will be placed together
@@ -15,11 +14,10 @@ World/Biomes/STPBiome.cpp
 World/Biomes/STPBiomefieldGenerator.cpp
 World/Biomes/STPCommonCompiler.cpp
 World/Biomes/STPSplatmapGenerator.cpp
-World/STPProcedural2DINF.cpp
-Helpers/STPStart.cpp
 Helpers/STPTerrainParaLoader.cpp
 Helpers/STPTextureStorage.cpp
 World/STPWorldManager.cpp
+STPStart.cpp
 )
 
 if(MSVC)
@@ -34,16 +32,8 @@ PRIVATE ${STP_EXTERNAL_DIR}
 
 # when building a shared library, GLAD.c is not exported by the engine so we need to compile it twice
 target_link_libraries(${STP_DEMO_PROGRAM}
-PRIVATE glfw SIMPLE::SIMPLE SglToolkit::SglToolkit
+PRIVATE glfw SIMPLE::SIMPLE
 PRIVATE ${STP_GLAD} ${STP_MAIN_ENGINE} ${STP_ALGORITHM_HOST_ENGINE} ${STP_TEMPLATE_INCLUDE}
-)
-
-# copy GLSL code to where the bin locates
-add_custom_command(
-TARGET ${STP_DEMO_PROGRAM} POST_BUILD
-COMMAND ${CMAKE_COMMAND} -E copy_directory
-${CMAKE_CURRENT_SOURCE_DIR}/GLSL
-$<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>/GLSL
 )
 
 # copy runtime generator script

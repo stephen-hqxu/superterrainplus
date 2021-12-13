@@ -36,9 +36,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		//STPShaderSelection records the shader stages being picked from various programs
-		typedef std::list<std::pair<STPOpenGL::STPbitfield, const STPProgramManager*>> STPShaderSelection;
-
 		/**
 		 * @brief Initialise a new program pipeline object.
 		*/
@@ -55,12 +52,19 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPPipelineManager() = default;
 
 		/**
+		 * @brief Bind stages of a program object to the current program pipeline.
+		 * @param stage Specifies a set of program stages to bind to the program pipeline object. 
+		 * @param program Specifies the program object containing the shader executables to use in pipeline. 
+		 * @return The pointer to the current pipeline manager for chaining.
+		*/
+		STPPipelineManager& stage(STPOpenGL::STPbitfield, const STPProgramManager&);
+
+		/**
 		 * @brief Instantiate a program pipeline. All previous pipeline instances will be removed.
-		 * @param stages An array of shader bits selected from any given programs.
 		 * @return The log from instantiation of the pipeline, if any.
 		 * If instantiation fails, exception is thrown with error log.
 		*/
-		const std::string& operator()(const STPShaderSelection&);
+		const std::string& finalise();
 
 		/**
 		 * @brief Get the underlying program pipeline object.

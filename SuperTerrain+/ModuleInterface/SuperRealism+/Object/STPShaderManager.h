@@ -9,6 +9,7 @@
 //System
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -37,10 +38,15 @@ namespace SuperTerrainPlus::STPRealism {
 		//An OpenGL shader object
 		STPSmartShaderObject Shader;
 
+		//Cached shader source code
+		std::string SourceCache;
+
 	public:
 
 		//An array of string indicating the include path of a shader.
 		typedef std::vector<std::string> STPShaderIncludePath;
+		//A dictionary to assign value to a macro
+		typedef std::unordered_map<std::string, std::string> STPMacroValueDictionary;
 
 		//Type of the shader currently managed by the shader manager.
 		const STPOpenGL::STPenum Type;
@@ -62,6 +68,22 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPShaderManager() = default;
 
 		/**
+		 * @brief Cache a shader source code into the shader manager.
+		 * Previously cached source is abandoned.
+		 * Caching source code allows shader manager to perform pre-processing before compilation.
+		 * @param source A pointer to a string that contains all GLSL source code.
+		*/
+		void cache(const std::string&);
+
+		/**
+		 * @brief Assign macros with values in the cached source code.
+		 * If macro has been defined with values, it will be replaced with the new value.
+		 * @param dictionary A lookup table that maps macro names to values.
+		 * @return The number of macro being assigned with values.
+		*/
+		unsigned int defineMacro(const STPMacroValueDictionary&);
+
+		/**
 		 * @brief Attach source code to the current shader manager and compile. Previously attached source code will be removed.
 		 * @param source A single string that contains all GLSL source code.
 		 * The source must corresponds the type of the shader.
@@ -71,6 +93,14 @@ namespace SuperTerrainPlus::STPRealism {
 		 * If compilation fails, exception is thrown with error log.
 		*/
 		const std::string& operator()(const std::string&, const STPShaderIncludePath& = { });
+
+		/**
+		 * @brief Compile cached source code to the current shader manager. Previous compilation will be removed.
+		 * Exception is thrown if there is no cache being attached previously.
+		 * @param include An array of shader include path.
+		 * @return Compilation log.
+		*/
+		const std::string& operator()(const STPShaderIncludePath& = { });
 
 		/**
 		 * @brief Get the compilation log from the last shader object compilation.

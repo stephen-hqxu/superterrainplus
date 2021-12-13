@@ -142,6 +142,13 @@ namespace SuperTerrainPlus::STPRealism {
 		void enable(STPOpenGL::STPuint);
 
 		/**
+		 * @brief Enable a vertex attribute array within a range.
+		 * @param start The first index to be enabled.
+		 * @param count The number of index to be enabled.
+		*/
+		void enable(STPOpenGL::STPuint, STPOpenGL::STPuint);
+
+		/**
 		 * @brief Disable a generic vertex attribute array.
 		 * @param index Specifies the index of the generic vertex attribute to be disable.
 		*/

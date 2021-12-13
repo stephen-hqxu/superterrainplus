@@ -16,52 +16,6 @@ using glm::mat4;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-/**
- * @brief Change a boolean status only when the current status is different from the target.
- * @param type The type of this status to be updated to GL context.
- * @param target_status The new status to change to.
-*/
-static void changeBinStatus(GLenum type, bool target_status) {
-	//check the current status from the context
-	const bool current_status = glIsEnabled(type);
-
-	if (current_status != target_status) {
-		//status is different, update
-		if (target_status) {
-			glEnable(type);
-		}
-		else {
-			glDisable(type);
-		}
-	}
-	//nothing needs to be done if status is the same as current.
-}
-
-/**
- * @brief Change a value status when the current status is different.
- * @tparam V The type of the status value.
- * @tparam Que The status function to get the current status.
- * @tparam Upd The functio to update the new status.
- * @param status_query The function to query the current status.
- * @param update_function The function to update the status.
- * @param status_type The GL enum type of the status being requested.
- * @param target_status The new status to change to.
- * @param gl_func The GL function to update the status.
-*/
-template<typename V, class Que, class Upd>
-static void changeValueStatus(Que&& status_query, Upd&& update_function, GLenum status_type, V target_status) {
-	using std::forward;
-
-	V current_status;
-	//check the current status
-	forward<Que>(status_query)(status_type, &current_status);
-
-	//update if not the same
-	if (current_status != target_status) {
-		forward<Upd>(update_function)(target_status);
-	}
-}
-
 STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneWorkflow& scene) : SceneCamera(camera), Workflow(scene) {
 	constexpr static size_t cameraBufferSize = sizeof(mat4) * 2u + sizeof(vec3);
 
@@ -77,17 +31,17 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneWorkfl
 	//buffer has been setup
 	
 	//set up initial GL context states
-	changeBinStatus(GL_DEPTH_TEST, true);
-	changeValueStatus<GLint>(glGetIntegerv, glDepthFunc, GL_DEPTH_FUNC, GL_LESS);
-	changeValueStatus<GLboolean>(glGetBooleanv, glDepthMask, GL_DEPTH_WRITEMASK, GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glDepthMask(GL_TRUE);
 
-	changeBinStatus(GL_STENCIL_TEST, false);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CCW);
 
-	changeBinStatus(GL_CULL_FACE, true);
-	changeValueStatus<GLint>(glGetIntegerv, glCullFace, GL_CULL_FACE_MODE, GL_BACK);
-	changeValueStatus<GLint>(glGetIntegerv, glFrontFace, GL_FRONT_FACE, GL_CCW);
-
-	changeBinStatus(GL_BLEND, false);
+	//tessellation settings
+	//barycentric coordinate system
+	glPatchParameteri(GL_PATCH_VERTICES, 3);
 }
 
 STPScenePipeline::~STPScenePipeline() {

@@ -2,7 +2,6 @@
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
 //Import implementation
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
@@ -89,7 +88,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 
 		//each texture ID contains some number of type as stride, if type is not use we set the index to 
 		this->TextureRegion.reserve(texture_map_rec.size());
-		this->TextureRegionLookup.resize(database_view.Database.textureSize() * UsedTypeCount, STPTextureFactory::UnuseTextureType);
+		this->TextureRegionLookup.resize(database_view.Database.textureSize() * UsedTypeCount, STPTextureFactory::UnusedType);
 		//loop through all texture data
 		STPTextureInformation::STPTextureGroupID prev_group = std::numeric_limits<STPTextureInformation::STPTextureGroupID>::max();
 		unsigned int layer_idx = 0u;
@@ -244,7 +243,7 @@ STPTextureFactory::STPTextureType_t STPTextureFactory::convertType(STPTextureTyp
 
 	if (this->ValidType[type_index] != type) {
 		//type not found
-		throw STPException::STPMemoryError("Type is not used by the texture splatting system since it was not defined in the rules.");
+		return STPTextureFactory::UnregisteredType;
 	}
 	return static_cast<STPTextureType_t>(type_index);
 }

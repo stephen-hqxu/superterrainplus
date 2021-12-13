@@ -87,6 +87,12 @@ void STPVertexArray::enable(STPOpenGL::STPuint index) {
 	glEnableVertexArrayAttrib(this->VertexArray.get(), index);
 }
 
+void STPVertexArray::enable(STPOpenGL::STPuint start, STPOpenGL::STPuint count) {
+	for (GLuint i = 0u; i < count; i++) {
+		this->enable(start + i);
+	}
+}
+
 void STPVertexArray::disable(STPOpenGL::STPuint index) {
 	glDisableVertexArrayAttrib(this->VertexArray.get(), index);
 }

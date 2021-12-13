@@ -1,15 +1,11 @@
 #version 460 core
 #extension GL_ARB_bindless_texture : require
+#extension GL_ARB_shading_language_include : require
 
 layout (triangles) in;
 layout (triangle_strip, max_vertices = 3) out;
 
-//PVM transformation
-layout (std430, binding = 0) buffer PVmatrix{
-	layout (offset = 0) mat4 View;
-	layout (offset = 64) mat4 View_notrans;//removed translations of view matrix
-	layout (offset = 128) mat4 Projection;//each float uses 4 bytes and mat4 has 16 of them
-};
+#include </Common/STPCameraInformation.glsl>
 
 //Input
 in gl_PerVertex
@@ -38,8 +34,6 @@ out VertexGS{
 	vec3 normal;
 } gs_out;
 
-layout (binding = 1) uniform sampler2D Heightfield;
-
 //Functions
 void emitFace(int);
 
@@ -53,7 +47,7 @@ void emitFace(int layer){
 		//output the primitive information
 		gl_Position = gl_in[i].gl_Position;
 		gs_out.position_world = gl_Position;
-		gl_Position = Projection * View * gl_Position;
+		gl_Position = CameraProjection * CameraView * gl_Position;
 		gs_out.position_clip = gl_Position;
 		gs_out.texCoord = gs_in[i].texCoord;
 		gs_out.normal = gs_in[i].normal;//this normal is the original flat plane normal not the terrain heightfield

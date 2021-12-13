@@ -5,6 +5,7 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //Rendering Components
 #include "./Renderer/STPSun.h"
+#include "./Renderer/STPHeightfieldTerrain.h"
 //Camera
 #include "./Utility/Camera/STPCamera.h"
 
@@ -33,7 +34,7 @@ namespace SuperTerrainPlus::STPRealism {
 			const STPSun* Sun = nullptr;
 
 			//Terrain renderer
-			//TODO
+			const STPHeightfieldTerrain* Terrain = nullptr;
 		};
 
 	private:

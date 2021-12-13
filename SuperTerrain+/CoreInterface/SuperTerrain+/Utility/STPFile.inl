@@ -11,7 +11,7 @@ template<size_t LP, size_t LF, size_t... LE>
 constexpr auto SuperTerrainPlus::STPFile::generateFilename(const char(&path)[LP], const char(&file)[LF], const char(&...extension)[LE]) {
 	using std::make_index_sequence;
 
-	if constexpr ((LE == ...)) {
+	if constexpr ([](const auto& x, const auto&... xs) { return ((x == xs) && ... && true); }(LE...)) {
 		//all filenames have the same size, a simple array can be used
 		//each string ends with a null, so we need to eliminate the null symbol for all strings except the last one
 		return std::array{

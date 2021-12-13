@@ -80,7 +80,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Init the sun with settings.
 		 * @param sun_setting The sun setting.
-		 * @param log_out Logs output from the shader compilation.
+		 * @param log Logs output from the shader compilation.
 		*/
 		STPSun(const STPEnvironment::STPSunSetting&, STPSunLog&);
 
@@ -128,7 +128,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Render the sun with atomspheric scattering effect.
 		 * @param viewPos The position of the viewer in world coordinate.
 		*/
-		void operator()(glm::vec3) const;
+		void operator()(const glm::vec3&) const;
 
 	};
 

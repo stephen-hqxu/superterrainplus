@@ -1,14 +1,20 @@
 #version 460 core
 #extension GL_ARB_bindless_texture : require
+#extension GL_ARB_shading_language_include : require
 
 //patches output
 layout (vertices = 3) out;
 
-struct TessLevel{
-	float MAX_TESS_LEVEL;
-	float MIN_TESS_LEVEL;
-	float FURTHEST_TESS_DISTANCE;
-	float NEAREST_TESS_DISTANCE;
+#include </Common/STPCameraInformation.glsl>
+
+struct TessellationSetting{
+	float MaxLod;
+	float MinLod;
+	float FurthestDistance;
+	float NearestDistance;
+	//control how far the mesh starts to decrease its LoD, (0, inf), in classic hermite interpolation, this factor will be 8.0f
+	//2.0 is the default value, mesh will half its original LoD at 50% of tessllation distance
+	float ShiftFactor;
 };
 
 //Input
@@ -40,19 +46,15 @@ out VertexTCS{
 } tcs_out[];
 
 //Uniforms
-uniform vec3 cameraPos;
-uniform float altitude;
-uniform TessLevel tessParameters;
-//control how far the mesh starts to decrease its LoD, (0, inf), in classic hermite interpolation, this factor will be 8.0f
-//2.0 is the default value, mesh will half its original LoD at 50% of tessllation distance
-uniform float shiftFactor;
+uniform float Altitude;
+uniform TessellationSetting TessSetting;
 
 //Heightfield, R channel denotes the terrain height factor
 layout (binding = 1) uniform sampler2D Heightfield;
 
 //Functions
 float[3] calcPatchDistance(vec3);
-float getTessLevel(TessLevel, float, float);
+float getTessLevel(TessellationSetting, float, float);
 float distanceFunction(float, float, float, float);
 
 void main(){
@@ -64,11 +66,11 @@ void main(){
 	tcs_out[gl_InvocationID].bitangent = tcs_in[gl_InvocationID].bitangent;
 	
 	if(gl_InvocationID == 0){//tessllation settings are shared across all local invocations, so only need to set it once
-		float[3] camera_terrain_distance = calcPatchDistance(cameraPos);
+		float[3] camera_terrain_distance = calcPatchDistance(CameraPosition);
 
-		gl_TessLevelOuter[0] = getTessLevel(tessParameters, camera_terrain_distance[1], camera_terrain_distance[2]);
-		gl_TessLevelOuter[1] = getTessLevel(tessParameters, camera_terrain_distance[2], camera_terrain_distance[0]);
-		gl_TessLevelOuter[2] = getTessLevel(tessParameters, camera_terrain_distance[0], camera_terrain_distance[1]);
+		gl_TessLevelOuter[0] = getTessLevel(TessSetting, camera_terrain_distance[1], camera_terrain_distance[2]);
+		gl_TessLevelOuter[1] = getTessLevel(TessSetting, camera_terrain_distance[2], camera_terrain_distance[0]);
+		gl_TessLevelOuter[2] = getTessLevel(TessSetting, camera_terrain_distance[0], camera_terrain_distance[1]);
 		gl_TessLevelInner[0] = (gl_TessLevelOuter[0] + gl_TessLevelOuter[1] + gl_TessLevelOuter[2]) / (3.0f * 4.0f);
 	}
 }
@@ -78,7 +80,7 @@ float[3] calcPatchDistance(vec3 origin){
 	//calculate distance from origin to each vertex
 	for(int i = 0; i < 3; i++){
 		//calculate the vertex position on the actual terrain
-		vec3 terrainVertexPos = gl_out[i].gl_Position.xyz + normalize(tcs_out[i].normal) * altitude * texture(Heightfield, tcs_out[i].texCoord).r;
+		vec3 terrainVertexPos = gl_out[i].gl_Position.xyz + normalize(tcs_out[i].normal) * Altitude * texture(Heightfield, tcs_out[i].texCoord).r;
 		//calculate distance
 		patch_distance[i] = distance(origin, terrainVertexPos);
 	}
@@ -86,15 +88,15 @@ float[3] calcPatchDistance(vec3 origin){
 	return patch_distance;
 }
 
-float getTessLevel(TessLevel levelControl, float distance1, float distance2){
+float getTessLevel(TessellationSetting levelControl, float distance1, float distance2){
 	//calculate the distance from camera to the center of the edge
 	float distance_to_edge = (distance1 + distance2) * 0.5f;
 	//clamp the distance between nearest to furthest
-	distance_to_edge = clamp(distance_to_edge, levelControl.NEAREST_TESS_DISTANCE, levelControl.FURTHEST_TESS_DISTANCE);
+	distance_to_edge = clamp(distance_to_edge, levelControl.NearestDistance, levelControl.FurthestDistance);
 	
 	//calculate the tess level base on distance 
-	return mix(levelControl.MAX_TESS_LEVEL, levelControl.MIN_TESS_LEVEL, 
-	distanceFunction(levelControl.NEAREST_TESS_DISTANCE, levelControl.FURTHEST_TESS_DISTANCE, distance_to_edge, shiftFactor));
+	return mix(levelControl.MaxLod, levelControl.MinLod, 
+	distanceFunction(levelControl.NearestDistance, levelControl.FurthestDistance, distance_to_edge, levelControl.ShiftFactor));
 }
 
 //X must be clamped, the result is undefined if X is out of range

@@ -8,7 +8,6 @@
 #include <sstream>
 
 using std::string;
-using std::list;
 using std::unique_ptr;
 using std::stringstream;
 
@@ -83,6 +82,10 @@ void STPProgramManager::clear() {
 	}
 	this->AttachedShader.clear();
 	this->resetStatus();
+}
+
+void STPProgramManager::setSeparable(bool separable) {
+	glProgramParameteri(this->Program.get(), GL_PROGRAM_SEPARABLE, separable ? GL_TRUE : GL_FALSE);
 }
 
 void STPProgramManager::finalise() {

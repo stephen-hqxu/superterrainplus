@@ -72,7 +72,7 @@ constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
 	0u
 };
 
-STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log_out) : SunSetting(sun_setting),
+STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log) : SunSetting(sun_setting),
 	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), DirectionOutdated(true), DirectionCache() {
 	//validate the setting
 	if (!this->SunSetting.validate()) {
@@ -102,7 +102,7 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log_
 		//build the shader filename
 		const char* const sky_filename = SkyShaderFilename[i].data();
 		//compile
-		log_out.Log[i] = current_shader(*STPFile(sky_filename));
+		log.Log[i] = current_shader(*STPFile(sky_filename));
 
 		//put shader into the program
 		this->SkyRenderer.attach(current_shader);
@@ -110,8 +110,8 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log_
 
 	//link
 	this->SkyRenderer.finalise();
-	log_out.Log[2] = this->SkyRenderer.lastLog(STPProgramManager::STPLogType::Link);
-	log_out.Log[3] = this->SkyRenderer.lastLog(STPProgramManager::STPLogType::Validation);
+	log.Log[2] = this->SkyRenderer.lastLog(STPProgramManager::STPLogType::Link);
+	log.Log[3] = this->SkyRenderer.lastLog(STPProgramManager::STPLogType::Validation);
 }
 
 const STPSun::STPSunDirection& STPSun::calcSunDirection() const {
@@ -176,6 +176,11 @@ double STPSun::status(double elevation) const {
 }
 
 void STPSun::setAtomshpere(const STPEnvironment::STPAtomsphereSetting& sky_setting) {
+	//validate
+	if (!sky_setting.validate()) {
+		throw STPException::STPBadNumericRange("Atomshpere setting is invalid");
+	}
+
 	this->SkyRenderer.uniform(glProgramUniform1f, "Sky.iSun", sky_setting.SunIntensity)
 		.uniform(glProgramUniform1f, "Sky.rPlanet", sky_setting.PlanetRadius)
 		.uniform(glProgramUniform1f, "Sky.rAtoms", sky_setting.AtomsphereRadius)
@@ -189,13 +194,12 @@ void STPSun::setAtomshpere(const STPEnvironment::STPAtomsphereSetting& sky_setti
 		.uniform(glProgramUniform1ui, "Sky.secStep", sky_setting.SecondaryRayStep);
 }
 
-void STPSun::operator()(vec3 viewPos) const {
+void STPSun::operator()(const vec3& viewPos) const {
 	//calculate the position/direction of the sun
 	const STPSunDirection& sunInfo = this->calcSunDirection();
 	const vec3 sun_dir = static_cast<vec3>(sunInfo.Direction);
 
-	this->SkyRenderer.uniform(glProgramUniform3fv, "ViewPosition", 1, value_ptr(viewPos))
-		.uniform(glProgramUniform3fv, "SunPosition", 1, value_ptr(sun_dir));
+	this->SkyRenderer.uniform(glProgramUniform3fv, "SunPosition", 1, value_ptr(sun_dir));
 
 	//setup context
 	this->SkyRenderer.use();
@@ -204,4 +208,7 @@ void STPSun::operator()(vec3 viewPos) const {
 
 	//draw
 	glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_BYTE, nullptr);
+
+	//clear up
+	STPProgramManager::unuse();
 }

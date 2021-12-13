@@ -31,6 +31,8 @@ namespace SuperTerrainPlus::STPDiversity {
 	class STP_API STPTextureFactory {
 	public:
 
+		typedef std::underlying_type_t<STPTextureType> STPTextureType_t;
+
 		//The dimension of terrain map in one chunk
 		const glm::uvec2 MapDimension;
 		//The total number of chunk being rendered
@@ -40,8 +42,10 @@ namespace SuperTerrainPlus::STPDiversity {
 		//An array of chunk requesting for splatmap generation
 		typedef std::vector<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation> STPRequestingChunkInfo;
 
-		//Denote the current texture type is not used in this region
-		static constexpr unsigned int UnuseTextureType = std::numeric_limits<unsigned int>::max();
+		//Unused type means texture type is registered but no this type of texture can be found in the region.
+		static constexpr unsigned int UnusedType = std::numeric_limits<unsigned int>::max();
+		//Unregistered type means this type is not enabled for the splatting system.
+		static constexpr STPTextureType_t UnregisteredType = std::numeric_limits<STPTextureType_t>::max();
 
 	private:
 
@@ -114,8 +118,6 @@ namespace SuperTerrainPlus::STPDiversity {
 	
 	public:
 
-		typedef std::underlying_type_t<STPTextureType> STPTextureType_t;
-
 		/**
 		 * @brief Setup texture factory, manufacture texture data provided and process it to the way that it can be used by texturing system.
 		 * After this function returns, all internal states are initialised and no further change can be made.
@@ -169,7 +171,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @brief Convert texture type to index that can be used to locate in the texture registry.
 		 * @param type The type to be converted.
 		 * @return The index correspond to this type.
-		 * If the texture type is not used by texture factory, exception is thrown.
+		 * If the texture type is not used by texture factory, unregistered texture type identifier is returned.
 		*/
 		STPTextureType_t convertType(STPTextureType) const;
 

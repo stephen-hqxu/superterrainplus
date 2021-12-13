@@ -1,5 +1,6 @@
 #version 460 core
 #extension GL_ARB_bindless_texture : require
+#extension GL_ARB_shading_language_include : require
 
 //patches input
 layout (triangles, fractional_odd_spacing, cw) in;
@@ -31,8 +32,7 @@ out VertexTES{
 } tes_out;
 
 //Uniforms
-uniform vec3 cameraPos;
-uniform float altitude;
+uniform float Altitude;
 
 layout (binding = 1) uniform sampler2D Heightfield;
 
@@ -50,7 +50,7 @@ void main(){
 	tes_out.bitangent = toCartesian3D(tes_in[0].bitangent, tes_in[1].bitangent, tes_in[2].bitangent);
 
 	//displace the terrain, moving the vertices upward
-	terrain_vertices.xyz += normalize(tes_out.normal) * texture(Heightfield, tes_out.texCoord).r * altitude;
+	terrain_vertices.xyz += normalize(tes_out.normal) * texture(Heightfield, tes_out.texCoord).r * Altitude;
 	gl_Position = terrain_vertices;
 }
 

@@ -78,7 +78,6 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 Those libraries are maintained by us and can be downloaded from our public repo :+1:.
 
 - [SIMPLE](https://github.com/stephen-hqxu/SIMPLE)
-- [SglToolkit](https://github.com/stephen-hqxu/SglToolkit)
 
 ### External libraries
 
