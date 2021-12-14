@@ -35,11 +35,11 @@ void* STPBuffer::mapBuffer(STPOpenGL::STPenum access) {
 	return glMapNamedBuffer(this->Buffer.get(), access);
 }
 
-void* STPBuffer::mapBufferRange(size_t length, STPOpenGL::STPintptr offset, STPOpenGL::STPbitfield access) {
+void* STPBuffer::mapBufferRange(STPOpenGL::STPintptr offset, size_t length, STPOpenGL::STPbitfield access) {
 	return glMapNamedBufferRange(this->Buffer.get(), offset, length, access);
 }
 
-void STPBuffer::flushMappedBufferRange(size_t length, STPOpenGL::STPintptr offset) {
+void STPBuffer::flushMappedBufferRange(STPOpenGL::STPintptr offset, size_t length) {
 	glFlushMappedNamedBufferRange(this->Buffer.get(), offset, length);
 }
 

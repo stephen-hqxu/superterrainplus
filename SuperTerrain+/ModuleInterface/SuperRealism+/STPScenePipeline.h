@@ -31,10 +31,10 @@ namespace SuperTerrainPlus::STPRealism {
 		public:
 
 			//Environment renderer
-			const STPSun* Sun = nullptr;
+			STPSun* Sun = nullptr;
 
 			//Terrain renderer
-			const STPHeightfieldTerrain* Terrain = nullptr;
+			STPHeightfieldTerrain* Terrain = nullptr;
 		};
 
 	private:
@@ -80,7 +80,10 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void setClearColor(glm::vec4);
 
-		void traverse() const;
+		/**
+		 * @brief Traverse the scene graph and render every component in sequential order.
+		*/
+		void traverse();
 
 	};
 

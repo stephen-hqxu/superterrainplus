@@ -16,19 +16,30 @@ using glm::mat4;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneWorkflow& scene) : SceneCamera(camera), Workflow(scene) {
-	constexpr static size_t cameraBufferSize = sizeof(mat4) * 2u + sizeof(vec3);
+/**
+ * @brief Packed struct for mapped camera buffer following OpenGL std430 alignment rule.
+*/
+struct STPPackedCameraBuffer {
+public:
 
+	vec3 Pos;
+	mat4 V;
+	mat4 P;
+
+};
+
+STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneWorkflow& scene) : SceneCamera(camera), Workflow(scene) {
 	//set up buffer for camera transformation matrix
-	this->CameraBuffer.bufferStorage(cameraBufferSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
+	this->CameraBuffer.bufferStorage(sizeof(STPPackedCameraBuffer), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
 	this->CameraBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 0u);
 	this->MappedCameraBuffer = 
-		this->CameraBuffer.mapBufferRange(cameraBufferSize, 0, 
-			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
+		this->CameraBuffer.mapBufferRange(0, sizeof(STPPackedCameraBuffer),
+			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
 	if (!this->MappedCameraBuffer) {
 		throw STPException::STPGLError("Unable to map camera buffer to shader storage buffer");
 	}
-	//buffer has been setup
+	//buffer has been setup, clear the buffer before use
+	memset(this->MappedCameraBuffer, 0x00u, sizeof(STPPackedCameraBuffer));
 	
 	//set up initial GL context states
 	glEnable(GL_DEPTH_TEST);
@@ -56,4 +67,45 @@ inline void STPScenePipeline::reset() const {
 
 void STPScenePipeline::setClearColor(vec4 color) {
 	glClearColor(color.r, color.g, color.b, color.a);
+}
+
+void STPScenePipeline::traverse() {
+	//clear the canvas before drawing the new scene
+	this->reset();
+
+	const vec3& position = this->SceneCamera.cameraStatus().Position;
+	//update camera
+	STPPackedCameraBuffer* camBuf = reinterpret_cast<STPPackedCameraBuffer*>(this->MappedCameraBuffer);
+	//for simplicity, always update position
+	camBuf->Pos = position;
+
+	//for the matrices, only update when necessary
+	const STPCamera::STPMatrixResult V = this->SceneCamera.view(), 
+		P = this->SceneCamera.projection();
+	if (!V.second) {
+		//view matrix has changed
+		camBuf->V = *V.first;
+	}
+	if (!P.second) {
+		//projection matric has changed
+		camBuf->P = *P.first;
+	}
+
+	//process rendering components.
+	//remember that rendering components are optionally nullptr
+	if (this->Workflow.Terrain) {
+		//prepare for terrain rendering
+		this->Workflow.Terrain->prepare(position);
+
+		glDepthFunc(GL_LESS);
+		glEnable(GL_CULL_FACE);
+		//ready for rendering
+		(*this->Workflow.Terrain)();
+	}
+
+	if (this->Workflow.Sun) {
+		glDepthFunc(GL_LEQUAL);
+		glDisable(GL_CULL_FACE);
+		(*this->Workflow.Sun)(position);
+	}
 }

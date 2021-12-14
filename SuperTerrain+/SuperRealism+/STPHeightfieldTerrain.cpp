@@ -56,7 +56,8 @@ constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 	0u
 };
 
-STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log) : TerrainGenerator(generator_pipeline) {
+STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log) : 
+	TerrainGenerator(generator_pipeline), ViewPosition(vec3(0.0f)) {
 	if (!GLAD_GL_ARB_bindless_texture) {
 		throw STPException::STPUnsupportedFunctionality("The current rendering context does not support ARB_bindless_texture");
 	}
@@ -116,7 +117,8 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 			log.Log[i] = current_shader();
 		}
 		else {
-			log.Log[i] = current_shader(shader_source);
+			//add include path for tes control and geometry shader
+			log.Log[i] = (i == 1u || i == 3u) ? current_shader(shader_source, { "/Common/STPCameraInformation.glsl" }) : current_shader(shader_source);
 		}
 
 		//attach to program
@@ -192,12 +194,20 @@ void STPHeightfieldTerrain::setMesh(const STPEnvironment::STPMeshSetting& mesh_s
 		.uniform(glProgramUniform1f, "NormalStrength", mesh_setting.Strength);
 }
 
-void STPHeightfieldTerrain::operator()(const vec3& viewPos) const {
+void STPHeightfieldTerrain::prepare(const vec3& viewPos) {
+	//prepare heightfield
+	this->TerrainGenerator.load(viewPos);
+
+	//update the current view position
+	this->ViewPosition = viewPos;
+}
+
+void STPHeightfieldTerrain::operator()() const {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	mat4 Model = glm::identity<mat4>();
 	//move the terrain centre to the camera
 	const vec2 chunkCentre = STPChunk::getChunkPosition(
-		viewPos - chunk_setting.ChunkOffset,
+		this->ViewPosition - chunk_setting.ChunkOffset,
 		chunk_setting.ChunkSize,
 		chunk_setting.ChunkScaling
 	);

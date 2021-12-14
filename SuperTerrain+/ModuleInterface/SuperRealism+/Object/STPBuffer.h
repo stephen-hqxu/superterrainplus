@@ -76,19 +76,19 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Map all or part of a buffer object's data store into the client's address space.
-		 * @param length Specifies the length of the range to be mapped.
 		 * @param offset Specifies the starting offset within the buffer of the range to be mapped.
+		 * @param length Specifies the length of the range to be mapped.
 		 * @param access Specifies a combination of access flags indicating the desired access to the mapped range.
 		 * @return A pointer to the mapped buffer.
 		*/
-		void* mapBufferRange(size_t, STPOpenGL::STPintptr, STPOpenGL::STPbitfield);
+		void* mapBufferRange(STPOpenGL::STPintptr, size_t, STPOpenGL::STPbitfield);
 
 		/**
 		 * @brief Indicate modifications to a range of a mapped buffer.
-		 * @param length Specifies the length of the buffer subrange, in basic machine units.
 		 * @param offset Specifies the start of the buffer subrange, in basic machine units.
+		 * @param length Specifies the length of the buffer subrange, in basic machine units.
 		*/
-		void flushMappedBufferRange(size_t, STPOpenGL::STPintptr);
+		void flushMappedBufferRange(STPOpenGL::STPintptr, size_t);
 
 		/**
 		 * @brief Release the mapping of a buffer object's data store into the client's address space.

@@ -26,7 +26,8 @@ const STPPerspectiveCamera::STPProjectionProperty& STPPerspectiveCamera::perspec
 	return this->PerspectiveFrustum;
 }
 
-inline const mat4& STPPerspectiveCamera::perspective() const {
+inline STPPerspectiveCamera::STPMatrixResult STPPerspectiveCamera::perspective() const {
+	bool same = true;
 	if (this->ProjectionOutdated) {
 		//update the projection matrix
 		this->PerspectiveProjection = glm::perspective(
@@ -36,12 +37,13 @@ inline const mat4& STPPerspectiveCamera::perspective() const {
 			this->PerspectiveFrustum.Far
 		);
 		this->ProjectionOutdated = false;
+		same = false;
 	}
 	//return the projection
-	return this->PerspectiveProjection;
+	return STPMatrixResult(&this->PerspectiveProjection, same);
 }
 
-const mat4& STPPerspectiveCamera::projection() const {
+STPPerspectiveCamera::STPMatrixResult STPPerspectiveCamera::projection() const {
 	return this->perspective();
 }
 

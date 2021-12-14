@@ -41,7 +41,8 @@ void STPCamera::updateViewSpace() {
 	this->Up = normalize(cross(this->Right, this->Front));
 }
 
-const mat4& STPCamera::view() const {
+STPCamera::STPMatrixResult STPCamera::view() const {
+	bool same = true;
 	if (this->ViewOutdated) {
 		//update view matrix
 		this->View = glm::lookAt(
@@ -50,9 +51,10 @@ const mat4& STPCamera::view() const {
 			this->Up
 		);
 		this->ViewOutdated = false;
+		same = false;
 	}
 
-	return this->View;
+	return STPMatrixResult(&this->View, same);
 }
 
 const STPCamera::STPCameraProperty& STPCamera::cameraStatus() const {

@@ -21,7 +21,6 @@ Utility/Camera/STPPerspectiveCamera.h
 Utility/STPDebugCallback.h
 Utility/STPIndirectCommand.hpp
 Utility/STPLogStorage.hpp
-Utility/STPShaderIncludeManager.h
 )
 
 # config file for the realism rendering engine

@@ -76,11 +76,11 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Get the perspective projection matrix.
-		 * @return The pointer to the current perspective projection matrix.
+		 * @return The current perspective projection matrix result.
 		*/
-		const glm::mat4& perspective() const;
+		STPMatrixResult perspective() const;
 
-		const glm::mat4& projection() const override;
+		STPMatrixResult projection() const override;
 
 		/**
 		 * @brief Zoom the view frustum to change the perspective field-of-view.

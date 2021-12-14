@@ -1,9 +1,5 @@
 #include <SuperRealism+/Utility/STPDebugCallback.h>
 
-//Error
-#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
-#include <SuperTerrain+/Exception/STPGLError.h>
-
 //GLAD
 #include <glad/glad.h>
 
@@ -58,60 +54,8 @@ int STPDebugCallback::support() {
 	return GLAD_GL_ARB_debug_output;
 }
 
-void STPDebugCallback::enable() {
-	if (isEnabled()) {
-		return;
-	}
-
-	//only enable if the GPU has support to it
-	glEnable(GL_DEBUG_OUTPUT);
-}
-
-void STPDebugCallback::disable() {
-	if (!isEnabled()) {
-		return;
-	}
-
-	glDisable(GL_DEBUG_OUTPUT);
-}
-
-bool STPDebugCallback::isEnabled() {
-	if (!STPDebugCallback::support()) {
-		//Does not support
-		throw STPException::STPUnsupportedFunctionality("The current rendering platform does not support GL debug output");
-	}
-
-	return glIsEnabled(GL_DEBUG_OUTPUT);
-}
-
-inline static void checkEnable() {
-	if (!STPDebugCallback::isEnabled()) {
-		//debug callback not enabled
-		throw SuperTerrainPlus::STPException::STPGLError("Debug callback was not initialised");
-	}
-}
-
-void STPDebugCallback::enableAsyncCallback(ostream& stream) {
-	if (isEnabledAsyncCallback()) {
-		//if async callback has been enabled, do nothing.
-		return;
-	}
-
+void STPDebugCallback::registerAsyncCallback(ostream& stream) {
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	//use the default message callback
 	glDebugMessageCallback(&defaultDebugOutput, &stream);
-}
-
-bool STPDebugCallback::isEnabledAsyncCallback() {
-	checkEnable();
-
-	return glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-}
-
-void STPDebugCallback::disableAsyncCallback() {
-	if (!isEnabledAsyncCallback()) {
-		return;
-	}
-
-	glDisable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 }

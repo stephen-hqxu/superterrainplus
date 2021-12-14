@@ -9,7 +9,6 @@ STPPipelineManager.cpp
 STPProgramManager.cpp
 STPRealismEnvironment.cpp
 STPScenePipeline.cpp
-STPShaderIncludeManager.cpp
 STPShaderManager.cpp
 STPSun.cpp
 STPVertexArray.cpp

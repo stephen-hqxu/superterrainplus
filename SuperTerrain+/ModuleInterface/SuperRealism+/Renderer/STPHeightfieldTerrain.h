@@ -33,6 +33,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 		std::vector<STPOpenGL::STPuint64> SplatTextureHandle;
 
+		//The last identified view position, acting as a cache
+		glm::vec3 ViewPosition;
+
 		/**
 		 * @brief Calculate the base chunk position (the coordinate of top-left corner) for the most top-left corner chunk.
 		 * @param horizontal_offset The chunk offset in xz direction in world coordinate.
@@ -68,10 +71,16 @@ namespace SuperTerrainPlus::STPRealism {
 		void setMesh(const STPEnvironment::STPMeshSetting&);
 
 		/**
-		 * @brief Render the procedural heightfield terrain.
-		 * @param viewPos The world position of the viewing coordinate.
+		 * @brief Signal the terrain generator to prepare heightfield texture before actual rendering.
+		 * @param viewPos The world position of the viewing coordinate to be prepared.
 		*/
-		void operator()(const glm::vec3&) const;
+		void prepare(const glm::vec3&);
+
+		/**
+		 * @brief Render the procedural heightfield terrain.
+		 * Terrain texture must be prepared prior to this call, and this function sync with the generator automatically.
+		*/
+		void operator()() const;
 
 	};
 

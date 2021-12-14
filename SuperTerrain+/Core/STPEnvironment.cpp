@@ -14,18 +14,6 @@ bool STPConfiguration::validate() const {
 		&& this->MeshSetting.validate();
 }
 
-STPChunkSetting& STPConfiguration::getChunkSetting() {
-	return this->ChunkSetting;
-}
-
-STPHeightfieldSetting& STPConfiguration::getHeightfieldSetting() {
-	return this->HeightfieldSetting;
-}
-
-STPMeshSetting& STPConfiguration::getMeshSetting() {
-	return this->MeshSetting;
-}
-
 //STPChunkSetting.h
 
 STPChunkSetting::STPChunkSetting() : STPSetting(), 

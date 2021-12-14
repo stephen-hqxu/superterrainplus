@@ -101,8 +101,8 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log)
 		STPShaderManager& current_shader = sky_shader[i];
 		//build the shader filename
 		const char* const sky_filename = SkyShaderFilename[i].data();
-		//compile
-		log.Log[i] = current_shader(*STPFile(sky_filename));
+		//compile with super realism + system include directory
+		log.Log[i] = current_shader(*STPFile(sky_filename), { "/Common/STPCameraInformation.glsl" });
 
 		//put shader into the program
 		this->SkyRenderer.attach(current_shader);

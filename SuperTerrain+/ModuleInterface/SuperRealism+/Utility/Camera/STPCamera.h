@@ -9,6 +9,8 @@
 #include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
 
+#include <utility>
+
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -52,6 +54,10 @@ namespace SuperTerrainPlus::STPRealism {
 			Down = 0x21u
 		};
 
+		//A matrix and a status.
+		//The true status indicates the matrix is the same compared to last time it was queried.
+		typedef std::pair<const glm::mat4*, bool> STPMatrixResult;
+
 	private:
 
 		//The view matrix to transform from world space to view space.
@@ -93,15 +99,15 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Get the camera view matrix that transform from world space to view space.
-		 * @return The pointer to the view matrix.
+		 * @return The the view matrix result.
 		*/
-		const glm::mat4& view() const;
+		STPMatrixResult view() const;
 
 		/**
 		 * @brief Get the camera projection matrix that transform from view to clip space.
 		 * @return The pointer to the projection matrix.
 		*/
-		virtual const glm::mat4& projection() const = 0;
+		virtual STPMatrixResult projection() const = 0;
 
 		/**
 		 * @brief Get the current camera status.

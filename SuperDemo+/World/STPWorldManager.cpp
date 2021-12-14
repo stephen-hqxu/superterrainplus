@@ -139,7 +139,7 @@ public:
 
 STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STPConfiguration& settings, 
 	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
-	SharedProgram(settings.getChunkSetting(), simplex_setting), WorldSetting(std::move(settings)),
+	SharedProgram(settings.ChunkSetting, simplex_setting), WorldSetting(std::move(settings)),
 	Texture(make_unique<STPWorldManager::STPWorldSplattingAgent>(tex_filename_prefix)), linkStatus(false) {
 	if (!this->WorldSetting.validate()) {
 		throw invalid_argument("World settings are not valid.");
@@ -161,11 +161,11 @@ void STPWorldManager::linkProgram(float anisotropy) {
 	//finish up texture settings
 	this->Texture->setTextureParameter(*this->TextureFactory, anisotropy);
 
-	const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldSetting.getChunkSetting();
+	const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldSetting.ChunkSetting;
 	//create generator and storage unit first
 	this->ChunkGenerator.emplace(
 		chunk_settings,
-		this->WorldSetting.getHeightfieldSetting(),
+		this->WorldSetting.HeightfieldSetting,
 		*this->DiversityGenerator,
 		//TODO: fix the occupancy calculator
 		1u);

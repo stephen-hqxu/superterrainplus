@@ -212,7 +212,7 @@ namespace SuperTerrainPlus {
 		 * @param cameraPos The world position of the camera
 		 * @return True if loading worker has been dispatched, false if there is no chunk need to be updated.
 		*/
-		bool load(glm::vec3);
+		bool load(const glm::vec3&);
 
 		/**
 		 * @brief Change the rendering chunk status to force reload that will trigger a chunk texture reload onto rendering buffer.
@@ -222,7 +222,7 @@ namespace SuperTerrainPlus {
 		 * @param chunkPos The world position of the chunk required for reloading
 		 * @return True if query has been submitted successfully, false if chunk is not in the rendering range or the same query has been submitted before.
 		*/
-		bool reload(glm::vec2);
+		bool reload(const glm::vec2&);
 
 		/**
 		 * @brief Sync the map loading operations to make sure the work has finished before this function returns.

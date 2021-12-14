@@ -541,7 +541,7 @@ uvec2 STPWorldPipeline::calcBufferOffset(unsigned int index) const {
 	return chunk_setting.MapSize * chunkIdx;
 }
 
-bool STPWorldPipeline::load(vec3 cameraPos) {
+bool STPWorldPipeline::load(const vec3& cameraPos) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
 	//waiting for the previous worker to finish(if any)
 	this->wait();
@@ -662,7 +662,7 @@ bool STPWorldPipeline::load(vec3 cameraPos) {
 	return true;
 }
 
-bool STPWorldPipeline::reload(vec2 chunkPos) {
+bool STPWorldPipeline::reload(const vec2& chunkPos) {
 	auto it = this->renderingLocalLookup.find(chunkPos);
 	if (it == this->renderingLocalLookup.end()) {
 		//chunk position provided is not required to be rendered, or new rendering area has changed

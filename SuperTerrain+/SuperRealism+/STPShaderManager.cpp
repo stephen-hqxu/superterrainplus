@@ -1,4 +1,7 @@
 #include <SuperRealism+/Object/STPShaderManager.h>
+//IO
+#include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperRealism+/STPRealismInfo.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPGLError.h>
@@ -11,9 +14,11 @@
 #include <sstream>
 
 using std::string;
+using std::stringstream;
 using std::istringstream;
 using std::ostringstream;
 using std::vector;
+using std::unordered_map;
 
 using std::endl;
 
@@ -21,12 +26,38 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
+//TODO: C++20 template lambda
+template<class D, size_t S>
+static void readSource(D& dict, const char(&pathname)[S]) {
+	using namespace SuperTerrainPlus;
+
+	const auto filename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, pathname, ".glsl").data();
+	dict[filename] = *STPFile(filename);
+}
+
+//(include pathname, include source)
+static auto mShaderIncludeRegistry = [] {
+	unordered_map<string, string> reg;
+	//initialise super realism + system include headers
+	readSource(reg, "/Common/STPCameraInformation");
+
+	return reg;
+}();
+
 void STPShaderManager::STPShaderDeleter::operator()(STPOpenGL::STPuint shader) const {
 	glDeleteShader(shader);
 }
 
 STPShaderManager::STPShaderManager(STPOpenGL::STPenum type) : Shader(glCreateShader(type)), Type(type) {
 	
+}
+
+bool STPShaderManager::include(const string& name, const string& source) {
+	return mShaderIncludeRegistry.try_emplace(name, source).second;
+}
+
+bool STPShaderManager::uninclude(const string& name) {
+	return mShaderIncludeRegistry.erase(name) == 1ull;
 }
 
 void STPShaderManager::cache(const string& source) {
@@ -97,9 +128,26 @@ const string& STPShaderManager::operator()(const string& source, const STPShader
 		pathStr.reserve(pathCount);
 		pathLength.reserve(pathCount);
 		for (const auto& path : include) {
+			//check if path exists as named string
+			if (!glIsNamedStringARB(path.size(), path.c_str())) {
+				//see if this path has been registered
+				auto reg_it = mShaderIncludeRegistry.find(path);
+				if (reg_it == mShaderIncludeRegistry.cend()) {
+					//not registered, we can't do anything
+					stringstream msg;
+					msg << "Include path \'" << path << "\' is not registered with shader include and no associated source code can be found";
+					throw STPException::STPMemoryError(msg.str().c_str());
+				}
+
+				const auto& [reg_path, reg_src] = *reg_it;
+				//try to add the named string to GL virtual include system
+				glNamedStringARB(GL_SHADER_INCLUDE_ARB, reg_path.size(), reg_path.c_str(), reg_src.size(), reg_src.c_str());
+			}
+
 			pathStr.emplace_back(path.c_str());
 			pathLength.emplace_back(static_cast<GLint>(path.size()));
 		}
+
 
 		glCompileShaderIncludeARB(this->Shader.get(), pathCount, pathStr.data(), pathLength.data());
 	}

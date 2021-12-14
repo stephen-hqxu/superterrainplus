@@ -332,12 +332,12 @@ SCENARIO_METHOD(STPSimplexNoiseSetting, "STPSimplexNoiseSetting stores setting f
 SCENARIO_METHOD(STPConfiguration, "STPConfiguration stores all environment objects that will be used by the engine", "[Environment][STPConfiguration]") {
 
 	GIVEN("A configuration object") {
-		fillChunkSetting(&this->getChunkSetting());
-		fillMeshSetting(&this->getMeshSetting());
-		fillHeightfieldSetting(&this->getHeightfieldSetting());
+		fillChunkSetting(&this->ChunkSetting);
+		fillMeshSetting(&this->MeshSetting);
+		fillHeightfieldSetting(&this->HeightfieldSetting);
 
 		WHEN("Any of the sub-setting is not validated") {
-			this->getHeightfieldSetting().minSedimentCapacity = -15.5f;
+			this->HeightfieldSetting.minSedimentCapacity = -15.5f;
 
 			THEN("Configuration should not be validated") {
 				REQUIRE_FALSE(this->validate());
@@ -346,7 +346,7 @@ SCENARIO_METHOD(STPConfiguration, "STPConfiguration stores all environment objec
 		}
 
 		WHEN("All setting objects in the configuration are validated") {
-			this->getHeightfieldSetting().setErosionBrushRadius(uvec2(64u), 7u);
+			this->HeightfieldSetting.setErosionBrushRadius(uvec2(64u), 7u);
 
 			THEN("Configuration should be validated") {
 				REQUIRE(this->validate());

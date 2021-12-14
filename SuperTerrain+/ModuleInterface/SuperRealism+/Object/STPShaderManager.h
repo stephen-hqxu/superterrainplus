@@ -44,7 +44,7 @@ namespace SuperTerrainPlus::STPRealism {
 	public:
 
 		//An array of string indicating the include path of a shader.
-		typedef std::vector<std::string> STPShaderIncludePath;
+		typedef std::list<std::string> STPShaderIncludePath;
 		//A dictionary to assign value to a macro
 		typedef std::unordered_map<std::string, std::string> STPMacroValueDictionary;
 
@@ -68,6 +68,25 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPShaderManager() = default;
 
 		/**
+		 * @brief Add a shader source to the internal shader include cache.
+		 * The shader source is only cached to an internal dictionary, it will be flushed to OpenGL during shader compilation when 
+		 * the include path is being used but no existing named string is found in the current GL context, 
+		 * according to ARB_shading_language_include sprcification.
+		 * This effectively allows having the same shader include system among different GL contexts.
+		 * @param name The name of the include shader.
+		 * @param source The string, i.e., source, of the shader.
+		 * @return True if the shader has been added, false if the same name has been included previously.
+		*/
+		static bool include(const std::string&, const std::string&);
+
+		/**
+		 * @brief Remove a shader source from the internal shader cache. This will not remove named string from the GL context.
+		 * @param name The name of the include shader.
+		 * @return True if the shader has been removed.
+		*/
+		static bool uninclude(const std::string&);
+
+		/**
 		 * @brief Cache a shader source code into the shader manager.
 		 * Previously cached source is abandoned.
 		 * Caching source code allows shader manager to perform pre-processing before compilation.
@@ -88,7 +107,10 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param source A single string that contains all GLSL source code.
 		 * The source must corresponds the type of the shader.
 		 * @param include An array of shader include path to the virtual include directory provided by OpenGL.
-		 * The path must point to a valid include directory with source code.
+		 * The path must either be a valid name of a string source either submitted to GL shader include system manually, 
+		 * or has been included into the internal shader include cache.
+		 * In case both GL shader system and internal cache has shader source pointed by the same name, 
+		 * GL shader system will be used first.
 		 * @return Compilation log, if any.
 		 * If compilation fails, exception is thrown with error log.
 		*/
