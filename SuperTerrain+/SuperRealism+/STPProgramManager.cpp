@@ -29,8 +29,7 @@ void STPProgramManager::resetStatus() {
 	this->Valid = false;
 
 	//make sure old logs are cleared
-	this->LinkLog.clear();
-	this->ValidationLog.clear();
+	this->Log.clear();
 }
 
 STPProgramManager& STPProgramManager::attach(const STPShaderManager& shader) {
@@ -38,7 +37,7 @@ STPProgramManager& STPProgramManager::attach(const STPShaderManager& shader) {
 	const GLuint shaderID = *shader;
 
 	const bool compilation_err = !static_cast<bool>(*shader),
-		repeat_err = this->AttachedShader.find(shaderID) == this->AttachedShader.end();
+		repeat_err = this->AttachedShader.find(shaderID) != this->AttachedShader.cend();
 	if (compilation_err || repeat_err) {
 		//some error occurs
 		stringstream msg;
@@ -64,7 +63,7 @@ STPProgramManager& STPProgramManager::attach(const STPShaderManager& shader) {
 
 bool STPProgramManager::detach(STPOpenGL::STPenum type) {
 	const auto detaching = this->AttachedShader.find(type);
-	if (detaching == this->AttachedShader.end()) {
+	if (detaching == this->AttachedShader.cend()) {
 		//shader does not exist
 		return false;
 	}
@@ -95,20 +94,22 @@ void STPProgramManager::finalise() {
 
 	//link
 	glLinkProgram(this->Program.get());
-	auto handle_error = [pro = this->Program.get()](GLenum status_request, string& log, bool& final_status) -> void {
+	//get log
+	GLint logLength;
+	glGetProgramiv(this->Program.get(), GL_INFO_LOG_LENGTH, &logLength);
+	//get any log
+	if (logLength > 0) {
+		//shader compilation has log
+		this->Log.resize(logLength);
+		glGetProgramInfoLog(this->Program.get(), logLength, NULL, this->Log.data());
+	}
+
+	auto handle_error = [pro = this->Program.get(), &log = this->Log](GLenum status_request, bool& final_status) -> void {
 		//link status error handling
-		GLint logLength, status;
-		glGetProgramiv(pro, GL_INFO_LOG_LENGTH, &logLength);
+		GLint status;
 		glGetProgramiv(pro, status_request, &status);
 		//store
 		final_status = status == GL_TRUE ? true : false;
-		//get any log
-		if (logLength > 0) {
-			//shader compilation has log
-			log.resize(logLength);
-			glGetProgramInfoLog(pro, logLength, NULL, log.data());
-			return;
-		}
 
 		if (!final_status) {
 			//error for this stage
@@ -117,24 +118,17 @@ void STPProgramManager::finalise() {
 	};
 
 	//link status error handling
-	handle_error(GL_LINK_STATUS, this->LinkLog, this->Linked);
+	handle_error(GL_LINK_STATUS, this->Linked);
 	//validation checks if the program can be used as a GL application
-	handle_error(GL_VALIDATE_STATUS, this->ValidationLog, this->Valid);
+	handle_error(GL_VALIDATE_STATUS, this->Valid);
 }
 
 SuperTerrainPlus::STPOpenGL::STPint STPProgramManager::uniformLocation(const char* uni) const {
 	return glGetUniformLocation(this->Program.get(), uni);
 }
 
-const string& STPProgramManager::lastLog(STPLogType log_type) const {
-	static string Dummy = "If you get this message, there is something wrong with the terrain engine, report to the maintainer.";
-
-	//if there is no such log type, unique_ptr should return nullptr
-	switch (log_type) {
-	case STPLogType::Link: return this->LinkLog;
-	case STPLogType::Validation: return this->ValidationLog;
-	default: return Dummy;
-	}
+const string& STPProgramManager::lastLog() const {
+	return this->Log;
 }
 
 STPProgramManager::operator bool() const {

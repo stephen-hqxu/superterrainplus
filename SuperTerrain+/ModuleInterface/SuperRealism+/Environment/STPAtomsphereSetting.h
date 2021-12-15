@@ -14,7 +14,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 	/**
 	 * @brief STPAtomsphereSetting stores configurations for sky rendering and atomshpere scattering.
 	*/
-	class STP_REALISM_API STPAtomsphereSetting : public STPSetting {
+	struct STP_REALISM_API STPAtomsphereSetting : public STPSetting {
 	public:
 
 		//Intensity of the sun

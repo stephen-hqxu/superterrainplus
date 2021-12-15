@@ -3,8 +3,16 @@
 //Error
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 #include <SuperTerrain+/Exception/STPInvalidSyntax.h>
+#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+
+//SuperRealism+ Engine
+#include <SuperRealism+/Utility/Camera/STPPerspectiveCamera.h>
+#include <SuperRealism+/STPScenePipeline.h>
+#include <SuperRealism+/Renderer/STPHeightfieldTerrain.h>
+//GL helper
+#include <SuperRealism+/Utility/STPDebugCallback.h>
 
 //SuperDemo+
 #include "./Helpers/STPTerrainParaLoader.h"
@@ -24,19 +32,25 @@
 #include <iostream>
 #include <optional>
 
+//GLM
+#include <glm/trigonometric.hpp>
+#include <glm/vec4.hpp>
+
 using std::optional;
+using std::string;
 
 using std::cout;
 using std::endl;
 using std::cerr;
 
 using glm::uvec2;
+using glm::vec2;
 using glm::ivec3;
+using glm::vec3;
+using glm::vec4;
+using glm::radians;
 
 namespace STPStart {
-
-	static GLFWwindow* GLCanvas = nullptr;
-	constexpr static uvec2 InitialCanvasSize = { 1600u, 900u };
 
 	/**
 	 * @brief Rendering the entire terrain scene for demo.
@@ -44,39 +58,32 @@ namespace STPStart {
 	class STPMasterRenderer {
 	private:
 
-		//Configuration
-		SIMPLE::SIParser engineINILoader, biomeINILoader;
-
-	public:
-
 		const SIMPLE::SIStorage& engineINI, biomeINI;
-
-	private:
-
-		uvec2 CanvasSize;
-
-		//Camera
 
 		//Generation Pipeline
 		optional<STPDemo::STPWorldManager> WorldManager;
 
 		//Rendering Pipeline
+		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain> TerrainRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
 
 	public:
 
 		/**
 		 * @brief Init STPMasterRenderer.
+		 * @param engine The pointer to engine INI settings.
+		 * @param biome The pointer to biome INI settings.
+		 * @param camera The pointer to the perspective camera for the scene.
 		*/
-		STPMasterRenderer() : engineINILoader("./Engine.ini"), biomeINILoader("./Biome.ini"),
-			engineINI(this->engineINILoader.get()), biomeINI(this->biomeINILoader.get()),
-			CanvasSize(InitialCanvasSize) {
+		STPMasterRenderer(const SIMPLE::SIStorage& engine, const SIMPLE::SIStorage& biome, SuperTerrainPlus::STPRealism::STPPerspectiveCamera& camera) :
+			engineINI(engine), biomeINI(biome) {
 			using namespace SuperTerrainPlus;
 			using namespace STPDemo;
 
 			//loading terrain 2d inf parameters
 			STPEnvironment::STPConfiguration config;
 			config.ChunkSetting = STPTerrainParaLoader::getProcedural2DINFChunksParameter(this->engineINI["Generators"]);
-			config.MeshSetting = STPTerrainParaLoader::getProcedural2DINFRenderingParameter(this->engineINI["2DTerrainINF"]);
+			STPEnvironment::STPMeshSetting MeshSetting = STPTerrainParaLoader::getProcedural2DINFRenderingParameter(this->engineINI["2DTerrainINF"]);
 			STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
 
 			const auto& chunk_setting = config.ChunkSetting;
@@ -114,6 +121,34 @@ namespace STPStart {
 				std::terminate();
 			}
 
+			//setup GL environment
+			using namespace SuperTerrainPlus::STPRealism;
+			//debug callback
+			if (!STPDebugCallback::support()) {
+				throw STPException::STPUnsupportedFunctionality("The current GL does not support debug callback");
+			}
+			glEnable(GL_DEBUG_OUTPUT);
+			STPDebugCallback::registerAsyncCallback(cout);
+			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
+			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE);
+
+			//setup rendering components
+			STPHeightfieldTerrain::STPHeightfieldTerrainLog terrain_log;
+			this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log);
+			//print log
+			for (unsigned int i = 0u; i < STPHeightfieldTerrain::STPHeightfieldTerrainLog::Count; i++) {
+				const string& current_log = terrain_log.Log[i];
+				if (!current_log.empty()) {
+					cout << current_log << endl;
+				}
+			}
+			this->TerrainRenderer->setMesh(MeshSetting);
+			//setup rendering pipeline
+			STPScenePipeline::STPSceneWorkflow workflow = { };
+			workflow.Terrain = &(*this->TerrainRenderer);
+			this->RenderPipeline.emplace(camera, workflow);
+			//basic setup
+			this->RenderPipeline->setClearColor(vec4(vec3(121.0f, 151.0f, 52.0f) / 255.0f, 1.0f));
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
@@ -131,54 +166,59 @@ namespace STPStart {
 		 * @param frametime The time in sec spent on each frame.
 		*/
 		inline void render(double delta) {
-
+			this->RenderPipeline->traverse();
 		}
 
-		/**
-		 * @brief Framebuffer resize callback function.
-		 * @param width The new width.
-		 * @param height The new height.
-		*/
-		void reshape(int width, int height) {
-			if (width != 0 && height != 0) {
-				//user has not minimised the window
-				//updating the screen size variable
-				this->CanvasSize = uvec2(width, height);
-				//adjust viewport
-				glViewport(0, 0, width, height);
-			}
+	};
+	static optional<STPMasterRenderer> MasterEngine;
+	//Camera
+	static optional<SuperTerrainPlus::STPRealism::STPPerspectiveCamera> MainCamera;
+	//Configuration
+	static SIMPLE::SIParser engineINILoader("./Engine.ini"), biomeINILoader("./Biome.ini");
+
+	/* ------------------------------ callback functions ----------------------------------- */
+	constexpr static uvec2 InitialCanvasSize = { 1600u, 900u };
+	static GLFWwindow* GLCanvas = nullptr;
+
+	static void frame_resized(GLFWwindow* window, int width, int height) {
+		if (width != 0 && height != 0) {
+			//user has not minimised the window
+			//updating the screen size variable
+			MainCamera->rescale(1.0f * width / (1.0f * height));
+			//adjust viewport
+			glViewport(0, 0, width, height);
 		}
+	}
+
+	static void cursor_moved(GLFWwindow* window, double X, double Y) {
+		MainCamera->rotate(vec2(X, Y));
+	}
+
+	static void scrolled(GLFWwindow* window, double Xoffset, double Yoffset) {
+		//we only need vertical scroll
+		MainCamera->zoom(static_cast<float>(Yoffset));
+	}
 
 #define STP_GET_KEY(KEY, FUNC) \
 if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 	FUNC; \
 }
 
-		/**
-		 * @brief Check the input each frame.
-		 * @param time Frame time.
-		*/
-		inline void processEvent(double delta) {
-			STP_GET_KEY(GLFW_KEY_ESCAPE, glfwSetWindowShouldClose(GLCanvas, GLFW_TRUE))
-		}
+	inline static void process_event(float delta) {
+		using Dir = SuperTerrainPlus::STPRealism::STPCamera::STPMoveDirection;
 
-	};
-	static optional<STPMasterRenderer> MasterEngine;
+		STP_GET_KEY(GLFW_KEY_W, MainCamera->move(Dir::Forward, delta))
+		STP_GET_KEY(GLFW_KEY_S, MainCamera->move(Dir::Backward, delta))
+		STP_GET_KEY(GLFW_KEY_A, MainCamera->move(Dir::Left, delta))
+		STP_GET_KEY(GLFW_KEY_D, MainCamera->move(Dir::Right, delta))
+		STP_GET_KEY(GLFW_KEY_SPACE, MainCamera->move(Dir::Up, delta))
+		STP_GET_KEY(GLFW_KEY_C, MainCamera->move(Dir::Down, delta))
 
-	/* ------------------------------ callback functions ----------------------------------- */
-	static void frame_resized(GLFWwindow* window, int width, int height) {
-		MasterEngine->reshape(width, height);
-	}
-
-	static void cursor_moved(GLFWwindow* window, double X, double Y) {
-
-	}
-
-	static void scrolled(GLFWwindow* window, double Xoffset, double Yoffset) {
-
+		STP_GET_KEY(GLFW_KEY_ESCAPE, glfwSetWindowShouldClose(GLCanvas, GLFW_TRUE))
 	}
 
 	/* ------------------------------ framework setup ----------------------------------- */
+
 	/**
 	 * @brief Initialise GLFW engine
 	 * @return True if the glfwwindow has been created
@@ -260,22 +300,48 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 }
 
 int main() {
+	//get INI
+	const SIMPLE::SIStorage& engineINI = STPStart::engineINILoader.get(), 
+		&biomeINI = STPStart::biomeINILoader.get();
+
+	//setup camera
+	{
+		using namespace SuperTerrainPlus;
+		STPEnvironment::STPCameraSetting cam = { };
+		cam.Yaw = radians(90.0f);
+		cam.Pitch = 0.0f;
+		cam.MovementSpeed = engineINI("movementSpeed").to<float>();
+		cam.RotationSensitivity = engineINI("mouseSensitivity").to<float>();
+		cam.Position = vec3(0.0f, 600.0f, 0.0f);
+		cam.WorldUp = vec3(0.0f, 1.0f, 0.0f);
+		
+		STPEnvironment::STPPerspectiveCameraSetting proj = { };
+		proj.ViewAngle = radians(60.0f);
+		proj.ZoomLimit = radians(vec2(20.0f, 100.0f));
+		proj.ZoomSensitivity = engineINI("zoomSensitivity").to<float>();
+		proj.Aspect = 1.0f * STPStart::InitialCanvasSize.x / (1.0f * STPStart::InitialCanvasSize.y);
+		proj.Near = 1.0f;
+		proj.Far = 2200.0f;
+
+		STPStart::MainCamera.emplace(proj, cam);
+	}
+
 	//engine setup
+	//because GLFW callback uses camera, so we need to setup camera first
 	if (!(STPStart::initGLFW() && STPStart::initSTP())) {
 		//error
 		STPStart::clearup();
 		return -1;
 	}
-	//welcome
-	cout << *SuperTerrainPlus::STPFile("./Resource/welcome.txt") << endl;
-	cout << glGetString(GL_VERSION) << endl;
 
 	//setup renderer
-	STPStart::MasterEngine.emplace();
-	STPStart::MasterEngine->reshape(STPStart::InitialCanvasSize.x, STPStart::InitialCanvasSize.y);
+	STPStart::MasterEngine.emplace(engineINI, biomeINI, *STPStart::MainCamera);
+	//welcome
+	cout << *SuperTerrainPlus::STPFile("./Resource/welcome.txt") << endl;
+	cout << "OpenGL Renderer: " << glGetString(GL_VERSION) << endl;
 
 	//rendering loop
-	double currentTime, lastTime = 0.0f, deltaTime, FPS = STPStart::MasterEngine->engineINI("FPS").to<double>();
+	double currentTime, lastTime = 0.0f, deltaTime, FPS = engineINI("FPS").to<double>();
 	cout << "Start..." << endl;
 	while (!glfwWindowShouldClose(STPStart::GLCanvas)) {
 		//frametime logic
@@ -287,7 +353,7 @@ int main() {
 		lastTime = currentTime;
 
 		//draw
-		STPStart::MasterEngine->processEvent(deltaTime);
+		STPStart::process_event(static_cast<float>(deltaTime));
 		STPStart::MasterEngine->render(deltaTime);
 
 		//event update

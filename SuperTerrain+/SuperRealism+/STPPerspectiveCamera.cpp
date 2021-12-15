@@ -1,5 +1,8 @@
 #include <SuperRealism+/Utility/Camera/STPPerspectiveCamera.h>
 
+//Error
+#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
+
 //GLM
 #include <glm/ext/matrix_clip_space.hpp>
 
@@ -10,20 +13,16 @@ using glm::mat4;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPPerspectiveCamera::STPProjectionProperty::STPProjectionProperty() : 
-	ViewAngle(radians(45.0f)), ZoomSensitivity(1.0f), 
-	ZoomLimit(radians(1.0f), radians(90.0f)),
-	Aspect(1.0f), Near(0.1f), Far(1.0f) {
-
+STPPerspectiveCamera::STPPerspectiveCamera(const STPEnvironment::STPPerspectiveCameraSetting& projection_props, 
+	const STPEnvironment::STPCameraSetting& camera_pros) :
+	STPCamera(camera_pros), Frustum(projection_props), PerspectiveProjection(mat4(0.0f)), ProjectionOutdated(true) {
+	if (!this->Frustum.validate()) {
+		throw STPException::STPInvalidEnvironment("Project setting not validated");
+	}
 }
 
-STPPerspectiveCamera::STPPerspectiveCamera(const STPProjectionProperty& projection_props, const STPCamera::STPCameraProperty& camera_pros) : 
-	STPCamera(camera_pros), PerspectiveFrustum(projection_props), PerspectiveProjection(mat4(0.0f)), ProjectionOutdated(true) {
-
-}
-
-const STPPerspectiveCamera::STPProjectionProperty& STPPerspectiveCamera::perspectiveStatus() const {
-	return this->PerspectiveFrustum;
+const SuperTerrainPlus::STPEnvironment::STPPerspectiveCameraSetting& STPPerspectiveCamera::perspectiveStatus() const {
+	return this->Frustum;
 }
 
 inline STPPerspectiveCamera::STPMatrixResult STPPerspectiveCamera::perspective() const {
@@ -31,10 +30,10 @@ inline STPPerspectiveCamera::STPMatrixResult STPPerspectiveCamera::perspective()
 	if (this->ProjectionOutdated) {
 		//update the projection matrix
 		this->PerspectiveProjection = glm::perspective(
-			this->PerspectiveFrustum.ViewAngle,
-			this->PerspectiveFrustum.Aspect,
-			this->PerspectiveFrustum.Near,
-			this->PerspectiveFrustum.Far
+			this->Frustum.ViewAngle,
+			this->Frustum.Aspect,
+			this->Frustum.Near,
+			this->Frustum.Far
 		);
 		this->ProjectionOutdated = false;
 		same = false;
@@ -49,12 +48,12 @@ STPPerspectiveCamera::STPMatrixResult STPPerspectiveCamera::projection() const {
 
 void STPPerspectiveCamera::zoom(float delta) {
 	//change the view angle
-	this->PerspectiveFrustum.ViewAngle += delta * this->PerspectiveFrustum.ZoomSensitivity;
+	this->Frustum.ViewAngle += delta * this->Frustum.ZoomSensitivity;
 	//limit the zoom angle
-	this->PerspectiveFrustum.ViewAngle = glm::clamp(
-		this->PerspectiveFrustum.ViewAngle,
-		this->PerspectiveFrustum.ZoomLimit.x,
-		this->PerspectiveFrustum.ZoomLimit.y
+	this->Frustum.ViewAngle = glm::clamp(
+		this->Frustum.ViewAngle,
+		this->Frustum.ZoomLimit.x,
+		this->Frustum.ZoomLimit.y
 	);
 
 	//update the projection matrix
@@ -62,14 +61,14 @@ void STPPerspectiveCamera::zoom(float delta) {
 }
 
 void STPPerspectiveCamera::rescale(float aspect) {
-	this->PerspectiveFrustum.Aspect = aspect;
+	this->Frustum.Aspect = aspect;
 
 	this->ProjectionOutdated = true;
 }
 
 void STPPerspectiveCamera::reshape(vec2 shape) {
-	this->PerspectiveFrustum.Near = shape.x;
-	this->PerspectiveFrustum.Far = shape.y;
+	this->Frustum.Near = shape.x;
+	this->Frustum.Far = shape.y;
 
 	this->ProjectionOutdated = true;
 }

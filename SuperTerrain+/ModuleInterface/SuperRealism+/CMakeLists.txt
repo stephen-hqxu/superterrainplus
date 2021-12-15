@@ -3,6 +3,9 @@ STPRealismDefine.h
 STPScenePipeline.h
 # /Environment
 Environment/STPAtomsphereSetting.h
+Environment/STPCameraSetting.h
+Environment/STPMeshSetting.h
+Environment/STPPerspectiveCameraSetting.h
 Environment/STPSunSetting.h
 # /Object
 Object/STPBuffer.h

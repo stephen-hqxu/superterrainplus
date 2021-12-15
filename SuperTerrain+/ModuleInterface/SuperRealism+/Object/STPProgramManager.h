@@ -21,16 +21,6 @@ namespace SuperTerrainPlus::STPRealism {
 	 * It links with multiple shaders into a single program.
 	*/
 	class STP_REALISM_API STPProgramManager {
-	public:
-
-		/**
-		 * @brief STPLogType specifies the type of the log retrieved from a program object.
-		*/
-		enum class STPLogType : unsigned char {
-			Link = 0x00u,
-			Validation = 0xFFu
-		};
-
 	private:
 
 		/**
@@ -47,7 +37,7 @@ namespace SuperTerrainPlus::STPRealism {
 		STPSmartProgram Program;
 
 		//Program linking log
-		std::string LinkLog, ValidationLog;
+		std::string Log;
 		//A value to denotes if the program is linked and validated.
 		bool Linked = false, Valid = false;
 
@@ -130,11 +120,10 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Get the log from the last program object linking.
-		 * @param log_type The type of the log.
-		 * @return The log with specified type.
+		 * @return The pointer to the program log.
 		 * If there is no such log, empty string is returned.
 		*/
-		const std::string& lastLog(STPLogType) const;
+		const std::string& lastLog() const;
 
 		/**
 		 * @brief Check if the program is linked and validated such that it can be used.

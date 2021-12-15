@@ -1,9 +1,11 @@
 #include <SuperRealism+/Utility/Camera/STPCamera.h>
 
+//Error
+#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
+
 //Camera Calculation
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
-#include <glm/ext/scalar_constants.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 using glm::vec2;
@@ -16,14 +18,12 @@ using glm::cross;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPCamera::STPCameraProperty::STPCameraProperty() : 
-	Yaw(radians(-90.0f)), Pitch(0.0f),
-	MovementSpeed(2.5f), RotationSensitivity(0.1f),
-	Position(vec3(0.0f)), WorldUp(0.0f, 1.0f, 0.0f) {
+STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) : 
+	Camera(props), LastRotateOffset(vec2(0.0f)), View(mat4(0.0f)), ViewOutdated(true) {
+	if (!this->Camera.validate()) {
+		throw STPException::STPInvalidEnvironment("Camera setting not validated");
+	}
 
-}
-
-STPCamera::STPCamera(const STPCameraProperty& props) : Camera(props), LastRotateOffset(vec2(0.0f)), View(mat4(0.0f)), ViewOutdated(true) {
 	//calculate the initial values for the camera based on the default settings.
 	this->updateViewSpace();
 }
@@ -57,7 +57,7 @@ STPCamera::STPMatrixResult STPCamera::view() const {
 	return STPMatrixResult(&this->View, same);
 }
 
-const STPCamera::STPCameraProperty& STPCamera::cameraStatus() const {
+const SuperTerrainPlus::STPEnvironment::STPCameraSetting& STPCamera::cameraStatus() const {
 	return this->Camera;
 }
 
@@ -74,9 +74,9 @@ void STPCamera::move(const STPMoveDirection direction, float delta) {
 		break;
 	case STPMoveDirection::Right: this->Camera.Position += this->Right * velocity;
 		break;
-	case STPMoveDirection::Up: this->Camera.Position += this->Up * velocity;
+	case STPMoveDirection::Up: this->Camera.Position += this->Camera.WorldUp * velocity;
 		break;
-	case STPMoveDirection::Down: this->Camera.Position -= this->Up * velocity;
+	case STPMoveDirection::Down: this->Camera.Position -= this->Camera.WorldUp * velocity;
 		break;
 	default:
 		//impossible
@@ -88,14 +88,11 @@ void STPCamera::move(const STPMoveDirection direction, float delta) {
 }
 
 void STPCamera::rotate(vec2 offset) {
-	static constexpr double PI = glm::pi<double>(), PI_BY_2 = PI * 0.5;
+	static constexpr float YAW_LIM = radians(360.0f), PITCH_LIM = radians(89.0f);
 	static auto modulof = [](float val, float bound) constexpr -> float {
 		//a float modulo function
-		if (val > bound) {
+		if (val >= bound || val <= -bound) {
 			return val - bound;
-		}
-		if (val < -bound) {
-			return val + bound;
 		}
 		return val;
 	};
@@ -105,10 +102,11 @@ void STPCamera::rotate(vec2 offset) {
 	const vec2 rotateAmount = vec2(offset.x - this->LastRotateOffset.x, this->LastRotateOffset.y - offset.y) * this->Camera.RotationSensitivity;
 	this->Camera.Yaw += rotateAmount.x;
 	//modulo the angle
-	this->Camera.Yaw = modulof(this->Camera.Yaw, PI);
+	this->Camera.Yaw = modulof(this->Camera.Yaw, YAW_LIM);
 	//same for the pitch
 	this->Camera.Pitch += rotateAmount.y;
-	this->Camera.Pitch = modulof(this->Camera.Pitch, PI_BY_2);
+	//does not allow pitch to go over vertical (so flip the camera over)
+	this->Camera.Pitch = glm::clamp(this->Camera.Pitch, -PITCH_LIM, PITCH_LIM);
 
 	//update camera front, right and up
 	this->updateViewSpace();

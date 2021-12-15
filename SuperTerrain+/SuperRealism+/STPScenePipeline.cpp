@@ -23,6 +23,7 @@ struct STPPackedCameraBuffer {
 public:
 
 	vec3 Pos;
+	float _padPod;
 	mat4 V;
 	mat4 P;
 

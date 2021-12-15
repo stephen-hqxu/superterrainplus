@@ -3,6 +3,8 @@
 #define _STP_CAMERA_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
+//Setting
+#include "../../Environment/STPCameraSetting.h"
 
 //GLM
 #include <glm/vec2.hpp>
@@ -18,29 +20,6 @@ namespace SuperTerrainPlus::STPRealism {
 	*/
 	class STP_REALISM_API STPCamera {
 	public:
-
-		/**
-		 * @brief STPCameraProperty stores current parameters for the camera.
-		*/
-		struct STP_REALISM_API STPCameraProperty {
-		public:
-
-			//Euler's angles to define the rotation of the camera, expressed in radians
-			float Yaw, Pitch;
-			//These parameters define the animation of the camera.
-			float MovementSpeed, RotationSensitivity;
-
-			//These vectors define a camera coordinate in world space and can be used to construct view matrix.
-			glm::vec3 Position, WorldUp;
-
-			/**
-			 * @brief Initialise a camera property with default settings.
-			*/
-			STPCameraProperty();
-
-			~STPCameraProperty() = default;
-
-		};
 
 		/**
 		 * @brief STPMoveDirection defines in which direction the camera should move to.
@@ -71,8 +50,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 	protected:
 
-		//Properties of the camera
-		STPCameraProperty Camera;
+		STPEnvironment::STPCameraSetting Camera;
 
 		//A vector defines to the up and right of the camera
 		glm::vec3 Front, Up, Right;
@@ -85,7 +63,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param props The pointer to the initial camera settings.
 		 * Settings are copied to the camera class.
 		*/
-		STPCamera(const STPCameraProperty&);
+		STPCamera(const STPEnvironment::STPCameraSetting&);
 
 		STPCamera(const STPCamera&) = default;
 
@@ -113,7 +91,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Get the current camera status.
 		 * @return The pointer to the current camera status.
 		*/
-		const STPCameraProperty& cameraStatus() const;
+		const STPEnvironment::STPCameraSetting& cameraStatus() const;
 
 		/**
 		 * @brief Move position of the camera in the world.

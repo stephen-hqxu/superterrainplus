@@ -14,6 +14,9 @@ namespace SuperTerrainPlus::STPRealism {
 	struct STPLogStorage {
 	public:
 
+		//The number of log in the storage.
+		constexpr static size_t Count = L;
+
 		std::array<std::string, L> Log;
 
 	};

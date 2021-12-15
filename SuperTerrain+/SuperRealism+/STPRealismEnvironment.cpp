@@ -1,7 +1,14 @@
 #include <SuperRealism+/Environment/STPAtomsphereSetting.h>
+#include <SuperRealism+/Environment/STPCameraSetting.h>
+#include <SuperRealism+/Environment/STPMeshSetting.h>
+#include <SuperRealism+/Environment/STPPerspectiveCameraSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>
 
+#include <glm/trigonometric.hpp>
+#include <glm/ext/scalar_constants.hpp>
+
 using glm::vec3;
+using glm::radians;
 
 using namespace SuperTerrainPlus::STPEnvironment;
 
@@ -40,6 +47,87 @@ bool STPAtomsphereSetting::validate() const {
 		&& this->MieScatteringDirection > 0.0f
 		&& this->PrimaryRayStep > 0u
 		&& this->SecondaryRayStep > 0u;
+}
+
+//STPCameraSetting.h
+
+STPCameraSetting::STPCameraSetting() : 
+	Yaw(radians(-90.0f)), Pitch(0.0f),
+	MovementSpeed(2.5f), RotationSensitivity(0.1f),
+	Position(vec3(0.0f)), WorldUp(0.0f, 1.0f, 0.0f) {
+
+}
+
+bool STPCameraSetting::validate() const {
+	static auto range = [](float val, float min, float max) constexpr -> bool {
+		return val > min && val < max;
+	};
+	static constexpr float PI = glm::pi<float>(), PI_BY_2 = PI * 0.5f;
+
+	return range(this->Yaw, -PI, PI) 
+		&& range(this->Pitch, -PI_BY_2, PI_BY_2) 
+		&& this->MovementSpeed > 0.0f 
+		&& this->RotationSensitivity > 0.0f;
+}
+
+//STPMeshSetting.h
+
+STPMeshSetting::STPTessellationSetting::STPTessellationSetting() :
+	MaxTessLevel(0.0f),
+	MinTessLevel(0.0f),
+	FurthestTessDistance(0.0f),
+	NearestTessDistance(0.0f) {
+
+}
+
+bool STPMeshSetting::STPTessellationSetting::validate() const {
+	return this->MaxTessLevel >= 0.0f
+		&& this->MinTessLevel >= 0.0f
+		&& this->FurthestTessDistance >= 0.0f
+		&& this->NearestTessDistance >= 0.0f
+		//range check
+		&& this->MaxTessLevel >= this->MinTessLevel
+		&& this->FurthestTessDistance >= this->NearestTessDistance;
+}
+
+STPMeshSetting::STPMeshSetting() :
+	Strength(1.0f),
+	Altitude(1.0f),
+	LoDShiftFactor(2.0f) {
+
+}
+
+bool STPMeshSetting::validate() const {
+	return this->Strength > 0.0f
+		&& this->Altitude > 0.0f
+		&& this->LoDShiftFactor > 0.0f
+		&& this->TessSetting.validate();
+}
+
+//STPPerspectiveCameraSetting.h
+
+STPPerspectiveCameraSetting::STPPerspectiveCameraSetting() :
+	ViewAngle(radians(45.0f)), ZoomSensitivity(1.0f),
+	ZoomLimit(radians(1.0f), radians(90.0f)),
+	Aspect(1.0f), Near(0.1f), Far(1.0f) {
+
+}
+
+bool STPPerspectiveCameraSetting::validate() const {
+	static auto range = [](float val, float min, float max) constexpr -> bool {
+		return val > min && val < max;
+	};
+	static constexpr float TWO_PI = glm::pi<float>() * 2.0f;
+
+	return range(this->ViewAngle, 0.0f, TWO_PI)
+		&& this->ZoomSensitivity > 0.0f
+		&& this->ZoomLimit.x > 0.0f
+		&& this->ZoomLimit.y > 0.0f
+		&& this->ZoomLimit.x <= this->ZoomLimit.y
+		&& this->Aspect > 0.0f
+		&& this->Near > 0.0f
+		&& this->Far > 0.0f
+		&& this->Near < this->Far;
 }
 
 //STPSunSetting.h

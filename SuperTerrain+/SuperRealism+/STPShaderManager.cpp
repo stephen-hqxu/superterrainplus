@@ -32,7 +32,7 @@ static void readSource(D& dict, const char(&pathname)[S]) {
 	using namespace SuperTerrainPlus;
 
 	const auto filename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, pathname, ".glsl").data();
-	dict[filename] = *STPFile(filename);
+	dict[string(pathname) + ".glsl"] = *STPFile(filename);
 }
 
 //(include pathname, include source)

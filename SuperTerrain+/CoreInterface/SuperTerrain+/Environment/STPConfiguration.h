@@ -6,7 +6,6 @@
 //Include all settings here
 #include "STPChunkSetting.h"
 #include "STPHeightfieldSetting.h"
-#include "STPMeshSetting.h"
 
 namespace SuperTerrainPlus::STPEnvironment {
 
@@ -18,7 +17,6 @@ namespace SuperTerrainPlus::STPEnvironment {
 
 		STPChunkSetting ChunkSetting;
 		STPHeightfieldSetting HeightfieldSetting;
-		STPMeshSetting MeshSetting;
 
 		//STPHeightfieldSetting is non-copiable
 

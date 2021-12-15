@@ -75,7 +75,7 @@ namespace SuperTerrainPlus::STPRealism {
 	public:
 
 		//The log for STPSun, coming from sun and sky renderer.
-		typedef STPLogStorage<4ull> STPSunLog;
+		typedef STPLogStorage<3ull> STPSunLog;
 
 		/**
 		 * @brief Init the sun with settings.

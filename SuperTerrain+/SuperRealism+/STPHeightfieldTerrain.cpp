@@ -3,6 +3,7 @@
 
 //Error
 #include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Exception/STPGLError.h>
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
@@ -22,6 +23,7 @@
 
 using std::array;
 using std::string;
+using std::to_string;
 
 using glm::ivec2;
 using glm::uvec2;
@@ -94,7 +96,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 		STPShaderManager& current_shader = terrain_shader[i];
 		const char* const terrain_filename = HeightfieldTerrainShaderFilename[i].data();
 
-		const string& shader_source = *STPFile(terrain_filename);
+		const STPFile shader_source(terrain_filename);
 		//compile
 		if (i == 4u) {
 			//prepare compile-time macros
@@ -102,23 +104,23 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 			//prepare identifiers for texture splatting
 			using namespace SuperTerrainPlus::STPDiversity;
 			//general info
-			Macro["REGION_COUNT"] = splat_texture.TextureBufferCount;
-			Macro["REGISTRY_COUNT"] = splat_texture.LocationRegistryCount;
-			Macro["REGISTRY_DICTIONARY_COUNT"] = splat_texture.LocationRegistryDictionaryCount;
+			Macro["REGION_COUNT"] = to_string(splat_texture.TextureBufferCount);
+			Macro["REGISTRY_COUNT"] = to_string(splat_texture.LocationRegistryCount);
+			Macro["REGISTRY_DICTIONARY_COUNT"] = to_string(splat_texture.LocationRegistryDictionaryCount);
 
 			//texture type
-			Macro["ALBEDO"] = splatmap_generator.convertType(STPTextureType::Albedo);
-			Macro["UNUSED_TYPE"] = STPTextureFactory::UnusedType;
-			Macro["UNREGISTERED_TYPE"] = STPTextureFactory::UnregisteredType;
+			Macro["ALBEDO"] = to_string(splatmap_generator.convertType(STPTextureType::Albedo));
+			Macro["UNUSED_TYPE"] = to_string(STPTextureFactory::UnusedType);
+			Macro["UNREGISTERED_TYPE"] = to_string(STPTextureFactory::UnregisteredType);
 
 			//process fragment shader
-			current_shader.cache(shader_source);
+			current_shader.cache(*shader_source);
 			current_shader.defineMacro(Macro);
 			log.Log[i] = current_shader();
 		}
 		else {
 			//add include path for tes control and geometry shader
-			log.Log[i] = (i == 1u || i == 3u) ? current_shader(shader_source, { "/Common/STPCameraInformation.glsl" }) : current_shader(shader_source);
+			log.Log[i] = (i == 1u || i == 3u) ? current_shader(*shader_source, { "/Common/STPCameraInformation.glsl" }) : current_shader(*shader_source);
 		}
 
 		//attach to program
@@ -127,10 +129,14 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	this->TerrainComponent.setSeparable(true);
 	//link
 	this->TerrainComponent.finalise();
-	log.Log[5] = this->TerrainComponent.lastLog(STPProgramManager::STPLogType::Link);
-	log.Log[6] = this->TerrainComponent.lastLog(STPProgramManager::STPLogType::Validation);
+	log.Log[5] = this->TerrainComponent.lastLog();
+	if (!this->TerrainComponent) {
+		//program not usable
+		throw STPException::STPGLError("Heightfield terrain renderer program returns a failed status");
+	}
+
 	//build pipeline
-	log.Log[7] = this->TerrainRenderer.stage(GL_ALL_SHADER_BITS, this->TerrainComponent)
+	log.Log[6] = this->TerrainRenderer.stage(GL_ALL_SHADER_BITS, this->TerrainComponent)
 		.finalise();
 
 	/* ------------------------------- setup initial immutable uniforms ---------------------------------- */

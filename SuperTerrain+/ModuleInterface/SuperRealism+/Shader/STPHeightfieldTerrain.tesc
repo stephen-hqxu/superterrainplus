@@ -65,7 +65,8 @@ void main(){
 	tcs_out[gl_InvocationID].tangent = tcs_in[gl_InvocationID].tangent;
 	tcs_out[gl_InvocationID].bitangent = tcs_in[gl_InvocationID].bitangent;
 	
-	if(gl_InvocationID == 0){//tessllation settings are shared across all local invocations, so only need to set it once
+	if(gl_InvocationID == 0){
+		//tessllation settings are shared across all local invocations, so only need to set it once
 		float[3] camera_terrain_distance = calcPatchDistance(CameraPosition);
 
 		gl_TessLevelOuter[0] = getTessLevel(TessSetting, camera_terrain_distance[1], camera_terrain_distance[2]);

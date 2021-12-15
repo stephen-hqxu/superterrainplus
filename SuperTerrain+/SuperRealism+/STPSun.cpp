@@ -110,8 +110,10 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log)
 
 	//link
 	this->SkyRenderer.finalise();
-	log.Log[2] = this->SkyRenderer.lastLog(STPProgramManager::STPLogType::Link);
-	log.Log[3] = this->SkyRenderer.lastLog(STPProgramManager::STPLogType::Validation);
+	log.Log[2] = this->SkyRenderer.lastLog();
+	if (!this->SkyRenderer) {
+		throw STPException::STPGLError("Sky renderer program returns a failed status");
+	}
 }
 
 const STPSun::STPSunDirection& STPSun::calcSunDirection() const {

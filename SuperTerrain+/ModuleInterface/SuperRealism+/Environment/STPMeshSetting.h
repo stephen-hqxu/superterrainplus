@@ -2,22 +2,23 @@
 #ifndef _STP_MESH_SETTING_H_
 #define _STP_MESH_SETTING_H_
 
-#include <SuperTerrain+/STPCoreDefine.h>
-#include "STPSetting.hpp"
+#include <SuperRealism+/STPRealismDefine.h>
+//Base Setting
+#include <SuperTerrain+/Environment/STPSetting.hpp>
 
 namespace SuperTerrainPlus::STPEnvironment {
 
 	/**
 	 * @brief STPMeshSettings stores parameters for rendering terrain mesh
 	*/
-	struct STP_API STPMeshSetting : public STPSetting {
+	struct STP_REALISM_API STPMeshSetting : public STPSetting {
 	public:
 
 		/**
 		 * @brief STPTessellationSettings controls the range of the tessellation levels, as well as the min and max distance
 		 * where tessellation will become min and max
 		*/
-		struct STP_API STPTessellationSetting : public STPSetting {
+		struct STP_REALISM_API STPTessellationSetting : public STPSetting {
 		public:
 
 			/**

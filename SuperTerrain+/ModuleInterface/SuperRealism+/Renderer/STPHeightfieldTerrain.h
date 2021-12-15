@@ -11,7 +11,7 @@
 
 //Terrain Generator
 #include <SuperTerrain+/World/STPWorldPipeline.h>
-#include <SuperTerrain+/Environment/STPMeshSetting.h>
+#include "../Environment/STPMeshSetting.h"
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -45,7 +45,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		typedef STPLogStorage<8ull> STPHeightfieldTerrainLog;
+		typedef STPLogStorage<7ull> STPHeightfieldTerrainLog;
 
 		/**
 		 * @brief Initialise the heightfield terrain rendering engine.

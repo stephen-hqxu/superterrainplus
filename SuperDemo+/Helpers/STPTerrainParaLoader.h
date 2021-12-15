@@ -9,6 +9,7 @@
 //Settings
 #include <SuperTerrain+/Environment/STPConfiguration.h>
 #include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
+#include <SuperRealism+/Environment/STPMeshSetting.h>
 
 namespace STPDemo {
 
