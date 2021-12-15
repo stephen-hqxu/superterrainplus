@@ -6,15 +6,17 @@
 #include <algorithm>
 #include <execution>
 #include <string_view>
-
-#include <fstream>
-#include <sstream>
+//IO
+#include <SuperTerrain+/Utility/STPFile.h>
 
 //Texture Loader
 #include "../Helpers/STPTextureStorage.h"
 //Texture Splatting
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureDatabase.h>
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureDefinitionLanguage.h>
+
+//GLAD
+#include <glad/glad.h>
 
 using namespace STPDemo;
 using namespace SuperTerrainPlus;
@@ -51,23 +53,6 @@ private:
 		"soil_color.jpg"
 	};
 	constexpr static char TDLFilename[] = "./Script/STPBiomeSplatRule.tdl";
-
-	/**
-	 * @brief Read a TDL source codes from the local file system.
-	 * @return The string representation of the source code.
-	*/
-	static string readTDL() {
-		std::ifstream tdlFile(STPWorldSplattingAgent::TDLFilename);
-		if (!tdlFile) {
-			std::terminate();
-		}
-
-		//read all lines
-		std::stringstream buffer;
-		buffer << tdlFile.rdbuf();
-
-		return buffer.str();
-	}
 
 	//Group ID recording
 	STPTextureInformation::STPTextureGroupID x1024_rgb;
@@ -107,7 +92,7 @@ public:
 		tex_desc.InteralFormat = GL_RGB8;
 		this->x1024_rgb = this->Database.addGroup(tex_desc);
 
-		STPDiversity::STPTextureDefinitionLanguage TDLParser(STPWorldSplattingAgent::readTDL());
+		STPDiversity::STPTextureDefinitionLanguage TDLParser(*STPFile(STPWorldSplattingAgent::TDLFilename));
 		//build texture splatting rules
 		const STPTextureDefinitionLanguage::STPTextureVariable textureName = TDLParser(this->Database);
 		//build database with texture data
@@ -134,8 +119,9 @@ public:
 	/**
 	 * @brief Set the texture parameter for a all texture groups.
 	 * @param factory The pointer to the texture factory where texture parameters will be set.
+	 * @param anisotropy_filter The level of anisotropy filtering to be used for each texture.
 	*/
-	void setTextureParameter(const STPTextureFactory& factory) const {
+	void setTextureParameter(const STPTextureFactory& factory, float anisotropy_filter) const {
 		//get the TBO based on group ID, currently we only have one group
 		const GLuint tbo = factory[this->x1024_rgb];
 
@@ -144,8 +130,7 @@ public:
 		glTextureParameteri(tbo, GL_TEXTURE_WRAP_R, GL_REPEAT);
 		glTextureParameteri(tbo, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTextureParameteri(tbo, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		//TODO: don't hard-code anisotropy filtering value, read from INI
-		glTextureParameterf(tbo, GL_TEXTURE_MAX_ANISOTROPY, 8.0f);
+		glTextureParameterf(tbo, GL_TEXTURE_MAX_ANISOTROPY, anisotropy_filter);
 
 		glGenerateTextureMipmap(tbo);
 	}
@@ -154,7 +139,7 @@ public:
 
 STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STPConfiguration& settings, 
 	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
-	SharedProgram(settings.getChunkSetting(), simplex_setting), WorldSetting(std::move(settings)),
+	SharedProgram(settings.ChunkSetting, simplex_setting), WorldSetting(std::move(settings)),
 	Texture(make_unique<STPWorldManager::STPWorldSplattingAgent>(tex_filename_prefix)), linkStatus(false) {
 	if (!this->WorldSetting.validate()) {
 		throw invalid_argument("World settings are not valid.");
@@ -163,7 +148,7 @@ STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STP
 
 STPWorldManager::~STPWorldManager() = default;
 
-void STPWorldManager::linkProgram(void* indirect_cmd) {
+void STPWorldManager::linkProgram(float anisotropy) {
 	this->linkStatus = false;
 	//error checking
 	if (!this->BiomeFactory) {
@@ -174,13 +159,13 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 	}
 
 	//finish up texture settings
-	this->Texture->setTextureParameter(*this->TextureFactory);
+	this->Texture->setTextureParameter(*this->TextureFactory, anisotropy);
 
-	const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldSetting.getChunkSetting();
+	const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldSetting.ChunkSetting;
 	//create generator and storage unit first
 	this->ChunkGenerator.emplace(
 		chunk_settings,
-		this->WorldSetting.getHeightfieldSetting(),
+		this->WorldSetting.HeightfieldSetting,
 		*this->DiversityGenerator,
 		//TODO: fix the occupancy calculator
 		1u);
@@ -191,9 +176,6 @@ void STPWorldManager::linkProgram(void* indirect_cmd) {
 	pipeStage.SplatmapGenerator = this->TextureFactory.get();
 	pipeStage.ChunkSetting = &chunk_settings;
 	this->Pipeline.emplace(pipeStage);
-
-	//create renderer using manager
-	this->WorldRenderer.emplace(this->WorldSetting.getMeshSetting(), *this->Pipeline, indirect_cmd);
 	
 	this->linkStatus = true;
 }
@@ -212,8 +194,4 @@ const STPEnvironment::STPConfiguration& STPWorldManager::getWorldSetting() const
 
 STPWorldPipeline& STPWorldManager::getPipeline() {
 	return *this->Pipeline;
-}
-
-const STPProcedural2DINF& STPWorldManager::getChunkRenderer() const {
-	return *this->WorldRenderer;
 }

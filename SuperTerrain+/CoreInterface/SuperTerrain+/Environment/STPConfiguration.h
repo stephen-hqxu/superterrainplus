@@ -6,7 +6,6 @@
 //Include all settings here
 #include "STPChunkSetting.h"
 #include "STPHeightfieldSetting.h"
-#include "STPMeshSetting.h"
 
 namespace SuperTerrainPlus::STPEnvironment {
 
@@ -14,13 +13,10 @@ namespace SuperTerrainPlus::STPEnvironment {
 	 * @brief STPConfigurations stores configurations each settings of Super Terrain +
 	*/
 	class STP_API STPConfiguration : public STPSetting {
-	private:
+	public:
 
 		STPChunkSetting ChunkSetting;
 		STPHeightfieldSetting HeightfieldSetting;
-		STPMeshSetting MeshSetting;
-
-	public:
 
 		//STPHeightfieldSetting is non-copiable
 
@@ -40,26 +36,6 @@ namespace SuperTerrainPlus::STPEnvironment {
 		~STPConfiguration() = default;
 
 		bool validate() const override;
-
-		//------------------Get setting-------------------//
-
-		/**
-		 * @brief Get chunk setting
-		 * @return Pointer to chunk setting
-		*/
-		STPChunkSetting& getChunkSetting();
-
-		/**
-		 * @brief Get heightfield setting
-		 * @return Pointer to heightfield setting
-		*/
-		STPHeightfieldSetting& getHeightfieldSetting();
-
-		/**
-		 * @brief Get mesh setting
-		 * @return Pointer to mesh setting
-		*/
-		STPMeshSetting& getMeshSetting();
 
 	};
 

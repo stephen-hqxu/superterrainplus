@@ -8,7 +8,6 @@ Environment/STPChunkSetting.h
 Environment/STPConfiguration.h
 Environment/STPErosionBrushGenerator.h
 Environment/STPHeightfieldSetting.h
-Environment/STPMeshSetting.h
 Environment/STPRainDropSetting.cuh
 Environment/STPSetting.hpp
 # /Exception
@@ -18,6 +17,7 @@ Exception/STPCompilationError.h
 Exception/STPCUDAError.h
 Exception/STPDatabaseError.h
 Exception/STPDeadThreadPool.h
+Exception/STPGLError.h
 Exception/STPInvalidArgument.h
 Exception/STPInvalidEnvironment.h
 Exception/STPInvalidSyntax.h
@@ -35,8 +35,11 @@ Utility/Memory/STPSmartDeviceMemory.tpp
 Utility/Memory/STPSmartStream.h
 # /Utility
 Utility/STPDeviceErrorHandler.h
+Utility/STPFile.h
+Utility/STPFile.inl
 Utility/STPHashCombine.h
 Utility/STPHashCombine.inl
+Utility/STPNullablePrimitive.h
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl
 # /World/Chunk/FreeSlip

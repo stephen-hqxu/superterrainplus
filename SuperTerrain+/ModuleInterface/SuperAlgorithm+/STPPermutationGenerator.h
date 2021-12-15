@@ -16,7 +16,7 @@ namespace SuperTerrainPlus::STPCompute {
 	/**
 	 * @brief Generate a random permutaion and gradient table for simplex noise generator
 	*/
-	class STPALGORITHMPLUS_HOST_API STPPermutationGenerator : private STPPermutation {
+	class STP_ALGORITHM_HOST_API STPPermutationGenerator : private STPPermutation {
 	private:
 
 		//TODO Choose your prefered rng here!!!

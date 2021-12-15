@@ -16,4 +16,7 @@ Device/STPSingleHistogramWrapper.inl
 Device/STPTextureSplatRuleWrapper.cuh
 )
 
-set(STP_ALGORITHM_DEFINE_INCLUDE ${CMAKE_CURRENT_BINARY_DIR}/Include PARENT_SCOPE)
+# config file for algorithm engine
+# tell the static library location so CUDA runtime compiler can find it easily (if developer wants to)
+# algorithm device info contains path to the static library, we need to output that based on configuration
+setupConfigTemplate(${STP_ALGORITHM_ENGINE} STPAlgorithmDeviceInfo.h.in Include/STPAlgorithmDeviceInfoRaw.h STPAlgorithmDeviceInfo.h)

@@ -98,6 +98,27 @@ __device__ float STPSimplexNoise::simplex2D(float x, float y) const {
 	return 70.0f * (corner[0] + corner[1] + corner[2]);
 }
 
+__device__ float3 STPSimplexNoise::simplex2DFractal(float x, float y, STPFractalSimplexInformation& desc) const {
+	//The min and max (y and z component) indicates the range of the multi-phased simplex function, not the range of the output texture
+	float3 fractal = make_float3(0.0f, 0.0f, 0.0f);
+
+	//multiple phases of noise
+	for (unsigned int i = 0u; i < desc.Octave; i++) {
+		const float sampleX = ((x - desc.HalfDimension.x) + desc.Offset.x) / desc.Scale * desc.Frequency, //subtract the half width and height can make the scaling focus at the center
+			sampleY = ((y - desc.HalfDimension.y) + desc.Offset.y) / desc.Scale * desc.Frequency;//since the y is inverted we want to filp it over
+		fractal.x += this->simplex2D(sampleX, sampleY) * desc.Amplitude;
+
+		//calculate the min and max
+		fractal.y -= desc.Amplitude;
+		fractal.z += desc.Amplitude;
+		//scale the parameters
+		desc.Amplitude *= desc.Persistence;
+		desc.Frequency *= desc.Lacunarity;
+	}
+
+	return fractal;
+}
+
 __device__ __forceinline__ constexpr static float dot2D(float v1x, float v1y, float v2x, float v2y) {
 	return v1x * v2x + v1y * v2y;
 }

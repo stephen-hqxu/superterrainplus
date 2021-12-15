@@ -18,7 +18,7 @@ __constant__ STPDemo::STPBiomeProperty BiomeTable[2];
  * @param offset The simplex noise offset in global coordinate
  * @return The normalised noise value.
 */
-__device__ float sampleSimplexNoise(uint2, const STPDemo::STPBiomeProperty&, float2);
+__device__ static float sampleSimplexNoise(uint2, const STPDemo::STPBiomeProperty&, float2);
 
 //--------------------- Definition --------------------------
 
@@ -57,27 +57,20 @@ __global__ void generateMultiBiomeHeightmap(float* height_storage, STPSingleHist
 
 __device__ float sampleSimplexNoise(uint2 coord, const STPDemo::STPBiomeProperty& parameter, float2 offset) {
 	//get simplex noise generator
-	const STPSimplexNoise Simplex(*Permutation);
+	const STPSimplexNoise simplex(*Permutation);
+	//prepare for the fractal generator
+	STPSimplexNoise::STPFractalSimplexInformation fractal_desc;
+	fractal_desc.Persistence = parameter.Persistence;
+	fractal_desc.Lacunarity = parameter.Lacunarity;
+	fractal_desc.Octave = parameter.Octave;
+	fractal_desc.HalfDimension = *HalfDimension;
+	fractal_desc.Offset = offset;
+	fractal_desc.Scale = parameter.Scale;
 
-	float amplitude = 1.0f, frequency = 1.0f, noiseheight = 0.0f;
-	float min = 0.0f, max = 0.0f;//The min and max indicates the range of the multi-phased simplex function, not the range of the output texture
-	//multiple phases of noise
-	#pragma unroll
-	for (int i = 0; i < parameter.Octave; i++) {
-		float sampleX = ((1.0 * coord.x - HalfDimension->x) + offset.x) / parameter.Scale * frequency, //subtract the half width and height can make the scaling focus at the center
-			sampleY = ((1.0 * coord.y - HalfDimension->y) + offset.y) / parameter.Scale * frequency;//since the y is inverted we want to filp it over
-		noiseheight += Simplex.simplex2D(sampleX, sampleY) * amplitude;
-
-		//calculate the min and max
-		min -= 1.0f * amplitude;
-		max += 1.0f * amplitude;
-		//scale the parameters
-		amplitude *= parameter.Persistence;
-		frequency *= parameter.Lacunarity;
-	}
+	const float3 nosieoutput = simplex.simplex2DFractal(1.0f * coord.x, 1.0f * coord.y, fractal_desc);
 	
 	//interpolate and clamp the value within [0,1], was [min,max]
-	noiseheight = STPKernelMath::Invlerp(min, max, noiseheight);
+	float noiseheight = STPKernelMath::Invlerp(nosieoutput.y, nosieoutput.z, nosieoutput.x);
 	//scale the noise
 	noiseheight *= parameter.Variation;
 	noiseheight += parameter.Depth;

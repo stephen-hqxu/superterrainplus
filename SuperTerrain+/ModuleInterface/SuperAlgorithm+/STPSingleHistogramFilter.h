@@ -31,7 +31,7 @@ namespace SuperTerrainPlus::STPCompute {
 	 * but once reused for repetitive filter calls little to no memory allocation should happen and performance will go to summit.
 	 * so memory can be reused and no re-allocation is required.
 	*/
-	class STPALGORITHMPLUS_HOST_API STPSingleHistogramFilter {
+	class STP_ALGORITHM_HOST_API STPSingleHistogramFilter {
 	private:
 
 		/**
@@ -48,7 +48,7 @@ namespace SuperTerrainPlus::STPCompute {
 		/**
 		 * @brief The default membered deleter for pinned histogram buffer that will be passed to external user
 		*/
-		struct STPALGORITHMPLUS_HOST_API STPPinnedHistogramBufferDeleter {
+		struct STP_ALGORITHM_HOST_API STPPinnedHistogramBufferDeleter {
 		public:
 
 			void operator()(STPPinnedHistogramBuffer*) const;

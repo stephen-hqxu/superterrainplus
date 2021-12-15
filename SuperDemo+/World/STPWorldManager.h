@@ -3,10 +3,12 @@
 #define _STP_WORLD_MANAGER_H_
 
 //World
-#include "STPProcedural2DINF.h"
 #include <SuperTerrain+/Environment/STPConfiguration.h>
 //Compiler
 #include "./Biomes/STPCommonCompiler.h"
+
+//World Engine
+#include <SuperTerrain+/World/STPWorldPipeline.h>
 
 //System
 #include <optional>
@@ -45,7 +47,6 @@ namespace STPDemo {
 		std::unique_ptr<SuperTerrainPlus::STPDiversity::STPTextureFactory> TextureFactory;
 		//make sure pipeline is destroyed (it will auto sync) before all generators and storage because it's the multi-threaded commander to call all other generators
 		std::optional<SuperTerrainPlus::STPWorldPipeline> Pipeline;
-		std::optional<STPProcedural2DINF> WorldRenderer;
 
 		/**
 		 * @brief Attach a type of custom attachment.
@@ -106,10 +107,10 @@ namespace STPDemo {
 		void attachTextureFactory(Arg&&...);
 
 		/**
-		 * @brief Link all pipeline stages together
-		 * @param indirect_cmd The indrect rendering command for renderer
+		 * @brief Link all pipeline stages together.
+		 * @param anisotropy The level of anisotropy filtering to be used for textures.
 		*/
-		void linkProgram(void*);
+		void linkProgram(float);
 
 		/**
 		 * @brief Get the link status of the current world manager.
@@ -134,12 +135,6 @@ namespace STPDemo {
 		 * @return The world pipeline managed by the current world manager. If world manager is not linked, nullptr is returned.
 		*/
 		SuperTerrainPlus::STPWorldPipeline& getPipeline();
-
-		/**
-		 * @brief Get the chunk renderer
-		 * @return The infinite terrain renderer managed by the current world manager. If world manager is not linked, nullptr is returned.
-		*/
-		const STPProcedural2DINF& getChunkRenderer() const;
 
 	};
 

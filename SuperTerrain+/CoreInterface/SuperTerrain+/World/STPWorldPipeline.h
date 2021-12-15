@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _STP_WORLD_PIPELINE_H_
 #define _STP_WORLD_PIPELINE_H_
 
@@ -128,6 +129,7 @@ namespace SuperTerrainPlus {
 		cudaGraphicsResource_t TerrainMapRes[STPWorldPipeline::BufferCount];
 		//empty buffer (using cuda pinned memory) that is used to clear a chunk data
 		void* TerrainMapClearBuffer;
+		size_t TerrainMapClearBufferPitch;
 		//A cache that holds the previous rendered chunk memory to update the new rendered chunk
 		STPRenderingBufferCache TerrainMapExchangeCache;
 
@@ -158,10 +160,11 @@ namespace SuperTerrainPlus {
 		void backupBuffer(const STPRenderingBufferMemory&);
 
 		/**
-		 * @brief Clear up the rendering buffer of the chunk map
+		 * @brief Clear up the rendering buffer of the chunk map.
 		 * @param destination The loaction to store all loaded maps, and it will be erased.
+		 * @param dest_idx The local chunk index to the destination rendering sub-buffer to be cleared.
 		*/
-		void clearBuffer(const STPRenderingBufferMemory&);
+		void clearBuffer(const STPRenderingBufferMemory&, unsigned int);
 
 		/**
 		 * @brief Transfer rendering buffer on host side to device (OpenGL) rendering buffer by local chunk.
@@ -209,7 +212,7 @@ namespace SuperTerrainPlus {
 		 * @param cameraPos The world position of the camera
 		 * @return True if loading worker has been dispatched, false if there is no chunk need to be updated.
 		*/
-		bool load(glm::vec3);
+		bool load(const glm::vec3&);
 
 		/**
 		 * @brief Change the rendering chunk status to force reload that will trigger a chunk texture reload onto rendering buffer.
@@ -219,7 +222,7 @@ namespace SuperTerrainPlus {
 		 * @param chunkPos The world position of the chunk required for reloading
 		 * @return True if query has been submitted successfully, false if chunk is not in the rendering range or the same query has been submitted before.
 		*/
-		bool reload(glm::vec2);
+		bool reload(const glm::vec2&);
 
 		/**
 		 * @brief Sync the map loading operations to make sure the work has finished before this function returns.

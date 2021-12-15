@@ -12,7 +12,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 	/**
 	 * @brief STPSimplexNoiseSettings specifies the simplex noise generator parameter for the simplex noise functions
 	*/
-	struct STPALGORITHMPLUS_HOST_API STPSimplexNoiseSetting : public STPSetting {
+	struct STP_ALGORITHM_HOST_API STPSimplexNoiseSetting : public STPSetting {
 	public:
 
 		//Determine the seed used for the RNG

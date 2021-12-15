@@ -10,20 +10,7 @@ using glm::vec3;
 
 bool STPConfiguration::validate() const {
 	return this->ChunkSetting.validate()
-		&& this->HeightfieldSetting.validate()
-		&& this->MeshSetting.validate();
-}
-
-STPChunkSetting& STPConfiguration::getChunkSetting() {
-	return this->ChunkSetting;
-}
-
-STPHeightfieldSetting& STPConfiguration::getHeightfieldSetting() {
-	return this->HeightfieldSetting;
-}
-
-STPMeshSetting& STPConfiguration::getMeshSetting() {
-	return this->MeshSetting;
+		&& this->HeightfieldSetting.validate();
 }
 
 //STPChunkSetting.h
@@ -72,38 +59,4 @@ bool STPHeightfieldSetting::validate() const {
 	};
 	//check the raindrop parameter plus also heightmap parameter
 	return this->STPRainDropSetting::validate();
-}
-
-//STPMeshSetting.h
-
-STPMeshSetting::STPTessellationSetting::STPTessellationSetting() : 
-	MaxTessLevel(0.0f), 
-	MinTessLevel(0.0f), 
-	FurthestTessDistance(0.0f), 
-	NearestTessDistance(0.0f) {
-
-}
-
-bool STPMeshSetting::STPTessellationSetting::validate() const {
-	return this->MaxTessLevel >= 0.0f
-		&& this->MinTessLevel >= 0.0f
-		&& this->FurthestTessDistance >= 0.0f
-		&& this->NearestTessDistance >= 0.0f
-		//range check
-		&& this->MaxTessLevel >= this->MinTessLevel
-		&& this->FurthestTessDistance >= this->NearestTessDistance;
-}
-
-STPMeshSetting::STPMeshSetting() : 
-	Strength(1.0f),
-	Altitude(1.0f), 
-	LoDShiftFactor(2.0f) {
-
-}
-
-bool STPMeshSetting::validate() const {
-	return this->Strength > 0.0f 
-		&& this->Altitude > 0.0f
-		&& this->LoDShiftFactor > 0.0f
-		&& this->TessSetting.validate();
 }

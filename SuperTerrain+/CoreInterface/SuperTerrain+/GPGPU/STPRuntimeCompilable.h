@@ -197,14 +197,6 @@ namespace SuperTerrainPlus::STPCompute {
 		STPRuntimeCompilable& operator=(STPRuntimeCompilable&&) = delete;
 
 		/**
-		 * @brief Read source code given a filename as input
-		 * @param filename The file to be read.
-		 * If filename cannot be found, exception is thrown
-		 * @return The source code contained in file
-		*/
-		std::string readSource(std::string);
-
-		/**
 		 * @brief Attach an external header into this runtime compiler database.
 		 * Only headers that are not able to be found in the include path should be added,
 		 * or any header rename, i.e., include name is not the same as filename.

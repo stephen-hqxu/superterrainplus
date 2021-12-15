@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 project(SuperTerrain+
-VERSION 0.8.11
+VERSION 0.9.0
 LANGUAGES C CXX CUDA
 DESCRIPTION "A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering."
 HOMEPAGE_URL "https://github.com/stephen-hqxu/superterrainplus"
@@ -16,10 +16,13 @@ include(SetupEnvironment)
 
 # set some useful variables of our main engine
 set(STP_GLAD "GLAD")
+# a target with config file include directory
+set(STP_TEMPLATE_INCLUDE "TemplateInterface")
 set(STP_MAIN_ENGINE "SuperTerrain+")
 set(STP_ALGORITHM_ENGINE "SuperAlgorithm+")
 set(STP_ALGORITHM_HOST_ENGINE "SuperAlgorithm+Host")
 set(STP_ALGORITHM_DEVICE_ENGINE "SuperAlgorithm+Device")
+set(STP_REALISM_ENGINE "SuperRealism+")
 
 # pre-compile GLAD
 add_subdirectory(GLAD)

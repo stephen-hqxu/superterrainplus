@@ -157,74 +157,6 @@ SCENARIO_METHOD(STPHeightfieldSetting, "STPHeightfieldSetting stores setting for
 
 }
 
-static auto& fillMeshSetting(STPMeshSetting* env) {
-	//fill in some correct values
-	env->Strength = 12.0f;
-	env->Altitude = 8848.86f;
-	env->LoDShiftFactor = 8.0f;
-	auto& tessellation = env->TessSetting;
-	tessellation.MinTessLevel = 5.0f;
-	tessellation.MaxTessLevel = 32.0f;
-	tessellation.NearestTessDistance = 100.0f;
-	tessellation.FurthestTessDistance = 1000.0f;
-
-	return tessellation;
-}
-
-SCENARIO_METHOD(STPMeshSetting, "STPMeshSetting stores setting for terrain mesh rendering", "[Environment][STPMeshSetting]") {
-
-	GIVEN("A mesh setting object") {
-		auto& tessellation = fillMeshSetting(dynamic_cast<STPMeshSetting*>(this));
-
-		WHEN("All values are filled in correctly") {
-
-			THEN("Setting is validated") {
-				REQUIRE(this->validate());
-			}
-		}
-
-		WHEN("Some values don't make sense") {
-
-			AND_WHEN("Values that are required to be positive are negatively filled") {
-				const unsigned char trial = GENERATE(range(0u, 3u));
-				switch (trial) {
-				case 0u:
-					//strength is negative?
-					this->Strength = -2.5f;
-					break;
-				case 1u:
-					//level is negative?
-					tessellation.MinTessLevel = -6.6f;
-					break;
-				case 2u:
-					//zero LoD?
-					this->LoDShiftFactor = 0.0f;
-					break;
-				default:
-					break;
-				}
-
-				THEN("Values should not be allowed and validation fails") {
-					CHECK_FALSE(this->validate());
-				}
-			}
-
-			AND_WHEN("Ranged values have the boundary swapped") {
-				//min is greater than max?
-				tessellation.NearestTessDistance = 888.8f;
-				tessellation.FurthestTessDistance = 12.5f;
-
-				THEN("Range check should fail") {
-					CHECK_FALSE(this->validate());
-				}
-			}
-			
-		}
-
-	}
-
-}
-
 static void fillChunkSetting(STPChunkSetting* env) {
 	env->ChunkSize = uvec2(6u);
 	env->MapSize = uvec2(16u);
@@ -332,12 +264,11 @@ SCENARIO_METHOD(STPSimplexNoiseSetting, "STPSimplexNoiseSetting stores setting f
 SCENARIO_METHOD(STPConfiguration, "STPConfiguration stores all environment objects that will be used by the engine", "[Environment][STPConfiguration]") {
 
 	GIVEN("A configuration object") {
-		fillChunkSetting(&this->getChunkSetting());
-		fillMeshSetting(&this->getMeshSetting());
-		fillHeightfieldSetting(&this->getHeightfieldSetting());
+		fillChunkSetting(&this->ChunkSetting);
+		fillHeightfieldSetting(&this->HeightfieldSetting);
 
 		WHEN("Any of the sub-setting is not validated") {
-			this->getHeightfieldSetting().minSedimentCapacity = -15.5f;
+			this->HeightfieldSetting.minSedimentCapacity = -15.5f;
 
 			THEN("Configuration should not be validated") {
 				REQUIRE_FALSE(this->validate());
@@ -346,7 +277,7 @@ SCENARIO_METHOD(STPConfiguration, "STPConfiguration stores all environment objec
 		}
 
 		WHEN("All setting objects in the configuration are validated") {
-			this->getHeightfieldSetting().setErosionBrushRadius(uvec2(64u), 7u);
+			this->HeightfieldSetting.setErosionBrushRadius(uvec2(64u), 7u);
 
 			THEN("Configuration should be validated") {
 				REQUIRE(this->validate());
