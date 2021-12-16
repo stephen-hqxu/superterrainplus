@@ -9,12 +9,13 @@ using namespace STPDemo;
 using namespace SuperTerrainPlus;
 
 using std::string;
+using std::pair;
 
 using glm::uvec2;
 using glm::vec2;
 using glm::vec3;
 
-static constexpr char* Procedural2DINFRenderingVariables[7] = {
+static constexpr char* RenderingVariables[] = {
 	"strength",
 	"altitude",
 	"LoDfactor",
@@ -24,7 +25,7 @@ static constexpr char* Procedural2DINFRenderingVariables[7] = {
 	"nearestDistance"
 };
 
-static constexpr char* Procedural2DINFChunksVariables[14] = {
+static constexpr char* ChunkVariables[] = {
 	"heightmap2DSizeX",
 	"heightmap2DSizeZ",
 	"chunkSizeX",
@@ -41,7 +42,7 @@ static constexpr char* Procedural2DINFChunksVariables[14] = {
 	"chunkScale"
 };
 
-static constexpr char* Procedural2DINFGeneratorVariables[14] = {
+static constexpr char* GeneratorVariables[] = {
 	"seed",
 	"brush_radius",
 	"inertia",
@@ -58,13 +59,13 @@ static constexpr char* Procedural2DINFGeneratorVariables[14] = {
 	"iteration"
 };
 
-static constexpr char* Simplex2DNoiseVariables[3] = {
+static constexpr char* SimplexVariables[] = {
 	"seed",
 	"distribution",
 	"offset"
 };
 
-static constexpr char* BiomeVariables[10]{
+static constexpr char* BiomeVariables[] = {
 	"name",
 	"id",
 	"temperature",
@@ -77,89 +78,149 @@ static constexpr char* BiomeVariables[10]{
 	"variation"
 };
 
-STPEnvironment::STPMeshSetting STPTerrainParaLoader::getProcedural2DINFRenderingParameter(const SIMPLE::SISection& section) {
+static constexpr char* SunVariables[] = {
+	"day_length",
+	"day_start",
+	"year_length",
+	"axial_tilt",
+	"latitude",
+	"sunset_angle",
+	"sunrise_angle",
+	"cycle_angle_offset"
+};
+
+static constexpr char* AtomshpereVariables[] = {
+	"sun_intensity",
+	"planet_radius",
+	"atomshpere_radius",
+	"view_altitude",
+	"rayleigh_coefX",
+	"rayleigh_coefY",
+	"rayleigh_coefZ",
+	"mie_coef",
+	"rayleigh_scale",
+	"mie_scale",
+	"mie_dir",
+	"primary_step",
+	"secondary_step"
+};
+
+STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const SIMPLE::SISection& section) {
 	STPEnvironment::STPMeshSetting rendering_options;
 	STPEnvironment::STPMeshSetting::STPTessellationSetting tess_options;
 
-	rendering_options.Strength = section(Procedural2DINFRenderingVariables[0]).to<float>();
-	rendering_options.Altitude = section(Procedural2DINFRenderingVariables[1]).to<float>();
-	rendering_options.LoDShiftFactor = section(Procedural2DINFRenderingVariables[2]).to<float>();
+	rendering_options.Strength = section(RenderingVariables[0]).to<float>();
+	rendering_options.Altitude = section(RenderingVariables[1]).to<float>();
+	rendering_options.LoDShiftFactor = section(RenderingVariables[2]).to<float>();
 	
-	tess_options.MinTessLevel = section(Procedural2DINFRenderingVariables[3]).to<float>();
-	tess_options.MaxTessLevel = section(Procedural2DINFRenderingVariables[4]).to<float>();
-	tess_options.FurthestTessDistance = section(Procedural2DINFRenderingVariables[5]).to<float>();
-	tess_options.NearestTessDistance = section(Procedural2DINFRenderingVariables[6]).to<float>();
+	tess_options.MinTessLevel = section(RenderingVariables[3]).to<float>();
+	tess_options.MaxTessLevel = section(RenderingVariables[4]).to<float>();
+	tess_options.FurthestTessDistance = section(RenderingVariables[5]).to<float>();
+	tess_options.NearestTessDistance = section(RenderingVariables[6]).to<float>();
 
 	rendering_options.TessSetting = tess_options;
 
 	return rendering_options;
 }
 
-STPEnvironment::STPChunkSetting STPTerrainParaLoader::getProcedural2DINFChunksParameter(const SIMPLE::SISection& section) {
+STPEnvironment::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const SIMPLE::SISection& section) {
 	STPEnvironment::STPChunkSetting chunks_options;
 
 	chunks_options.MapSize = uvec2(
-		section(Procedural2DINFChunksVariables[0]).to<unsigned int>(),
-		section(Procedural2DINFChunksVariables[1]).to<unsigned int>()
+		section(ChunkVariables[0]).to<unsigned int>(),
+		section(ChunkVariables[1]).to<unsigned int>()
 	);
 	chunks_options.ChunkSize = uvec2(
-		section(Procedural2DINFChunksVariables[2]).to<unsigned int>(),
-		section(Procedural2DINFChunksVariables[3]).to<unsigned int>()
+		section(ChunkVariables[2]).to<unsigned int>(),
+		section(ChunkVariables[3]).to<unsigned int>()
 	);
 	chunks_options.RenderedChunk = uvec2(
-		section(Procedural2DINFChunksVariables[4]).to<unsigned int>(),
-		section(Procedural2DINFChunksVariables[5]).to<unsigned int>()
+		section(ChunkVariables[4]).to<unsigned int>(),
+		section(ChunkVariables[5]).to<unsigned int>()
 	);
 	chunks_options.ChunkOffset = vec3(
-		section(Procedural2DINFChunksVariables[6]).to<float>(),
-		section(Procedural2DINFChunksVariables[7]).to<float>(),
-		section(Procedural2DINFChunksVariables[8]).to<float>()
+		section(ChunkVariables[6]).to<float>(),
+		section(ChunkVariables[7]).to<float>(),
+		section(ChunkVariables[8]).to<float>()
 	);
 	chunks_options.MapOffset = vec2(
-		section(Procedural2DINFChunksVariables[9]).to<float>(),
-		section(Procedural2DINFChunksVariables[10]).to<float>()
+		section(ChunkVariables[9]).to<float>(),
+		section(ChunkVariables[10]).to<float>()
 	);
 	chunks_options.FreeSlipChunk = uvec2(
-		section(Procedural2DINFChunksVariables[11]).to<unsigned int>(),
-		section(Procedural2DINFChunksVariables[12]).to<unsigned int>()
+		section(ChunkVariables[11]).to<unsigned int>(),
+		section(ChunkVariables[12]).to<unsigned int>()
 	);
-	chunks_options.ChunkScaling = section(Procedural2DINFChunksVariables[13]).to<float>();
+	chunks_options.ChunkScaling = section(ChunkVariables[13]).to<float>();
 
 	return chunks_options;
 }
 
-STPEnvironment::STPHeightfieldSetting STPTerrainParaLoader::getProcedural2DINFGeneratorParameter(const SIMPLE::SISection& section, glm::uvec2 slipRange) {
+STPEnvironment::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(const SIMPLE::SISection& section, glm::uvec2 slipRange) {
 	//get the default settings
 	STPEnvironment::STPHeightfieldSetting launch_options;
 	
 	//set the parameter one by one, enjoy :)
-	launch_options.Seed = section(Procedural2DINFGeneratorVariables[0]).to<STPDiversity::Seed>();
-	launch_options.setErosionBrushRadius(slipRange, section(Procedural2DINFGeneratorVariables[1]).to<unsigned int>());
-	launch_options.Inertia = section(Procedural2DINFGeneratorVariables[2]).to<float>();
-	launch_options.SedimentCapacityFactor = section(Procedural2DINFGeneratorVariables[3]).to<float>();
-	launch_options.minSedimentCapacity = section(Procedural2DINFGeneratorVariables[4]).to<float>();
-	launch_options.initWaterVolume = section(Procedural2DINFGeneratorVariables[5]).to<float>();
-	launch_options.minWaterVolume = section(Procedural2DINFGeneratorVariables[6]).to<float>();
-	launch_options.Friction = section(Procedural2DINFGeneratorVariables[7]).to<float>();
-	launch_options.initSpeed = section(Procedural2DINFGeneratorVariables[8]).to<float>();
-	launch_options.ErodeSpeed = section(Procedural2DINFGeneratorVariables[9]).to<float>();
-	launch_options.DepositSpeed = section(Procedural2DINFGeneratorVariables[10]).to<float>();
-	launch_options.EvaporateSpeed = section(Procedural2DINFGeneratorVariables[11]).to<float>();
-	launch_options.Gravity = section(Procedural2DINFGeneratorVariables[12]).to<float>();
-	launch_options.RainDropCount = section(Procedural2DINFGeneratorVariables[13]).to<unsigned int>();
+	launch_options.Seed = section(GeneratorVariables[0]).to<STPDiversity::Seed>();
+	launch_options.setErosionBrushRadius(slipRange, section(GeneratorVariables[1]).to<unsigned int>());
+	launch_options.Inertia = section(GeneratorVariables[2]).to<float>();
+	launch_options.SedimentCapacityFactor = section(GeneratorVariables[3]).to<float>();
+	launch_options.minSedimentCapacity = section(GeneratorVariables[4]).to<float>();
+	launch_options.initWaterVolume = section(GeneratorVariables[5]).to<float>();
+	launch_options.minWaterVolume = section(GeneratorVariables[6]).to<float>();
+	launch_options.Friction = section(GeneratorVariables[7]).to<float>();
+	launch_options.initSpeed = section(GeneratorVariables[8]).to<float>();
+	launch_options.ErodeSpeed = section(GeneratorVariables[9]).to<float>();
+	launch_options.DepositSpeed = section(GeneratorVariables[10]).to<float>();
+	launch_options.EvaporateSpeed = section(GeneratorVariables[11]).to<float>();
+	launch_options.Gravity = section(GeneratorVariables[12]).to<float>();
+	launch_options.RainDropCount = section(GeneratorVariables[13]).to<unsigned int>();
 
 	//return the value
 	return launch_options;
 }
 
-STPEnvironment::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplex2DNoiseParameter(const SIMPLE::SISection& section) {
+STPEnvironment::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplexSetting(const SIMPLE::SISection& section) {
 	auto noise_option = STPEnvironment::STPSimplexNoiseSetting();
 
-	noise_option.Seed = section(Simplex2DNoiseVariables[0]).to<STPDiversity::Seed>();
-	noise_option.Distribution = section(Simplex2DNoiseVariables[1]).to<unsigned int>();
-	noise_option.Offset = section(Simplex2DNoiseVariables[2]).to<double>();
+	noise_option.Seed = section(SimplexVariables[0]).to<STPDiversity::Seed>();
+	noise_option.Distribution = section(SimplexVariables[1]).to<unsigned int>();
+	noise_option.Offset = section(SimplexVariables[2]).to<double>();
 
 	return noise_option;
+}
+
+pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtomsphereSetting> STPTerrainParaLoader::getSkySetting(const SIMPLE::SISection& section) {
+	STPEnvironment::STPSunSetting sun;
+	sun.DayLength = section(SunVariables[0]).to<size_t>();
+	sun.DayStartOffset = section(SunVariables[1]).to<size_t>();
+	sun.YearLength = section(SunVariables[2]).to<unsigned int>();
+	sun.Obliquity = section(SunVariables[3]).to<double>();
+	sun.Latitude = section(SunVariables[4]).to<double>();
+	sun.SunsetAngle = section(SunVariables[5]).to<double>();
+	sun.SunriseAngle = section(SunVariables[6]).to<double>();
+	sun.CycleAngleOffset = section(SunVariables[7]).to<double>();
+
+	STPEnvironment::STPAtomsphereSetting atom;
+	atom.SunIntensity = section(AtomshpereVariables[0]).to<float>();
+	atom.PlanetRadius = section(AtomshpereVariables[1]).to<float>();
+	atom.AtomsphereRadius = section(AtomshpereVariables[2]).to<float>();
+	atom.ViewAltitude = section(AtomshpereVariables[3]).to<float>();
+
+	atom.RayleighCoefficient = vec3(
+		section(AtomshpereVariables[4]).to<float>(),
+		section(AtomshpereVariables[5]).to<float>(),
+		section(AtomshpereVariables[6]).to<float>()
+	);
+	atom.MieCoefficient = section(AtomshpereVariables[7]).to<float>();
+	atom.RayleighScale = section(AtomshpereVariables[8]).to<float>();
+	atom.MieScale = section(AtomshpereVariables[9]).to<float>();
+	atom.MieScatteringDirection = section(AtomshpereVariables[10]).to<float>();
+
+	atom.PrimaryRayStep = section(AtomshpereVariables[11]).to<unsigned int>();
+	atom.SecondaryRayStep = section(AtomshpereVariables[12]).to<unsigned int>();
+
+	return pair(sun, atom);
 }
 
 void STPTerrainParaLoader::loadBiomeParameters(const SIMPLE::SIStorage& biomeini) {

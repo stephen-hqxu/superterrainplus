@@ -12,8 +12,6 @@ struct SkySetting{
 	unsigned int priStep, secStep;
 };
 
-#include </Common/STPCameraInformation.glsl>
-
 //Input
 //normalized ray direction, typically a ray cast from the observers eye through a pixel
 in vec3 RayDirection;
@@ -36,7 +34,7 @@ void main(){
 }
 
 vec3 atomsphere(vec3 sun_pos, vec3 ray_dir){
-	const vec3 ray_origin = CameraPosition + vec3(0.0f, Sky.vAlt, 0.0f);
+	const vec3 ray_origin = vec3(0.0f, Sky.vAlt, 0.0f);
 
 	//calculate step size of the primary ray
 	vec2 p = raySphereIntersection(ray_origin, ray_dir, Sky.rAtoms);
@@ -60,7 +58,7 @@ vec3 atomsphere(vec3 sun_pos, vec3 ray_dir){
 	const float mu = dot(ray_dir, sun_pos),
 		mu_2 = mu * mu,
 		g_2 = Sky.g * Sky.g,
-		pRlh = 3.0f / (16.0f * PI) * (1.0f * mu_2),
+		pRlh = 3.0f / (16.0f * PI) * (1.0f + mu_2),
 		pMie = 3.0f / (8.0f * PI) * ((1.0f - g_2) * (mu_2 + 1.0f)) / (pow(1.0f + g_2 - 2.0f * mu * Sky.g, 1.5f) * (2.0f + g_2));
 
 	//Primary ray sampling
@@ -76,9 +74,9 @@ vec3 atomsphere(vec3 sun_pos, vec3 ray_dir){
 		//Accumulate optical depth
 		priOdRlh += odStepRlh;
 		priOdMie += odStepMie;
-
+		
 		//Calculate step size of the secondary ray
-		const float secStepSize = raySphereIntersection(priPos, sun_pos, Sky.rAtoms).y / (1.0f * Sky.secStep);
+		const float secStepSize = raySphereIntersection(priPos, sun_pos, Sky.rAtoms).y / float(Sky.secStep);
 
 		//Initialise secondary ray time
 		float secTime = 0.0f;

@@ -62,8 +62,8 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 
 ### Real-time realistic rendering
 
-- [ ] Procedural sun rendering
-- [ ] Procedural sky atomspheric effect rendering
+- [x] Procedural sun rendering
+- [x] Procedural sky atmospheric effect rendering
 - [ ] Day-night cycle
 - [ ] Night scene rendering
 - [ ] Weather and seasonal effect
@@ -215,6 +215,6 @@ Reference contains source code and libraries that are not dependencies of this p
 - [Particle based hydraulic erosion](https://github.com/SebLague/Hydraulic-Erosion/tree/Coding-Adventure-E01)
 - [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
 - [Animated grass geometries rendering](https://github.com/spacejack/terra)
-- [Physically-based atomshperic scattering](https://github.com/wwwtyro/glsl-atmosphere/)
+- [Physically-based atmoshperic scattering](https://github.com/wwwtyro/glsl-atmosphere/)
 
 For a more academic-styled reference, check the project dissertation as linked above.

@@ -24,30 +24,6 @@ namespace SuperTerrainPlus::STPRealism {
 	 * Atomshperic scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
 	*/
 	class STP_REALISM_API STPSun {
-	public:
-
-		/**
-		 * @brief STPSunDirection contains angular information about a sun direction, all in radians.
-		*/
-		struct STPSunDirection {
-		public:
-
-			//The elevation angle is the angle between the sun and the horizontal. 
-			//The elevation angle is similar to the zenith angle but it is measured from the horizontal rather than from the vertical, 
-			//thus making the elevation angle = 90° - zenith.
-			double Elevation;
-			//The azimuth angle is the compass direction from which the sunlight is coming. 
-			//At solar noon, the sun is always directly south in the northern hemisphere and directly north in the southern hemisphere.
-			//At the equinoxes, the sun rises directly east and sets directly west regardless of the latitude, 
-			//thus making the azimuth angles 90° at sunrise and 270° at sunset. 
-			//In general however, the azimuth angle varies with the latitude and time of year.
-			double Azimuth;
-
-			//A unit vector of sun direction, this is calculate directly from elevation and azimuth angle.
-			glm::dvec3 Direction;
-
-		};
-
 	private:
 
 		const STPEnvironment::STPSunSetting& SunSetting;
@@ -69,7 +45,15 @@ namespace SuperTerrainPlus::STPRealism {
 		const size_t NoonTime;
 
 		//Records the most recent calculation to avoid recomputation.
-		mutable STPSunDirection DirectionCache;
+		//The elevation angle is the angle between the sun and the horizontal. 
+		//The elevation angle is similar to the zenith angle but it is measured from the horizontal rather than from the vertical, 
+		//thus making the elevation angle = 90° - zenith.
+		//The azimuth angle is the compass direction from which the sunlight is coming. 
+		//At solar noon, the sun is always directly south in the northern hemisphere and directly north in the southern hemisphere.
+		//At the equinoxes, the sun rises directly east and sets directly west regardless of the latitude, 
+		//thus making the azimuth angles 90° at sunrise and 270° at sunset. 
+		//In general however, the azimuth angle varies with the latitude and time of year.
+		mutable glm::dvec3 SunDirectionCache;
 		mutable bool DirectionOutdated;
 
 	public:
@@ -97,9 +81,10 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Calculate the current direction of the sun.
 		 * @return Information about the current sun direction.
-		 * @return The pointer to the current calulated sun direction
+		 * @return The pointer to the current calulated sun direction, 
+		 * A unit vector of sun direction, this is calculate directly from elevation and azimuth angle.
 		*/
-		const STPSunDirection& calcSunDirection() const;
+		const glm::dvec3& calcSunDirection() const;
 
 		/**
 		 * @brief Bring the timer forward by a delta amount.
@@ -126,9 +111,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Render the sun with atomspheric scattering effect.
-		 * @param viewPos The position of the viewer in world coordinate.
 		*/
-		void operator()(const glm::vec3&) const;
+		void operator()() const;
 
 	};
 

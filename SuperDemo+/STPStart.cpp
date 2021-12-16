@@ -11,6 +11,7 @@
 #include <SuperRealism+/Utility/Camera/STPPerspectiveCamera.h>
 #include <SuperRealism+/STPScenePipeline.h>
 #include <SuperRealism+/Renderer/STPHeightfieldTerrain.h>
+#include <SuperRealism+/Renderer/STPSun.h>
 //GL helper
 #include <SuperRealism+/Utility/STPDebugCallback.h>
 
@@ -65,7 +66,26 @@ namespace STPStart {
 
 		//Rendering Pipeline
 		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain> TerrainRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
+
+		//Setting
+		SuperTerrainPlus::STPEnvironment::STPSunSetting SunSetting;
+
+		/**
+		 * @brief Try to print all logs provided to cout.
+		 * @tparam L The log storage.
+		 * @param log The pointer to the log.
+		*/
+		template<class L>
+		static void printLog(const L& log) {
+			for (unsigned int i = 0u; i < L::Count; i++) {
+				const string& current_log = log.Log[i];
+				if (!current_log.empty()) {
+					cout << current_log << endl;
+				}
+			}
+		}
 
 	public:
 
@@ -80,22 +100,24 @@ namespace STPStart {
 			using namespace SuperTerrainPlus;
 			using namespace STPDemo;
 
-			//loading terrain 2d inf parameters
+			//loading terrain parameters
 			STPEnvironment::STPConfiguration config;
-			config.ChunkSetting = STPTerrainParaLoader::getProcedural2DINFChunksParameter(this->engineINI["Generators"]);
-			STPEnvironment::STPMeshSetting MeshSetting = STPTerrainParaLoader::getProcedural2DINFRenderingParameter(this->engineINI["2DTerrainINF"]);
+			config.ChunkSetting = STPTerrainParaLoader::getChunkSetting(this->engineINI["Generators"]);
+			STPEnvironment::STPMeshSetting MeshSetting = STPTerrainParaLoader::getRenderingSetting(this->engineINI["2DTerrainINF"]);
 			STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
 
 			const auto& chunk_setting = config.ChunkSetting;
 			config.HeightfieldSetting = std::move(
-				STPTerrainParaLoader::getProcedural2DINFGeneratorParameter(this->engineINI["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
-			STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplex2DNoiseParameter(this->biomeINI["simplex"]);
+				STPTerrainParaLoader::getGeneratorSetting(this->engineINI["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
+			STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI["simplex"]);
 
 			if (!config.validate()) {
 				throw STPException::STPInvalidEnvironment("Configurations are not validated");
 			}
-			const unsigned int unitplane_count =
-				chunk_setting.ChunkSize.x * chunk_setting.ChunkSize.y * chunk_setting.RenderedChunk.x * chunk_setting.RenderedChunk.y;
+
+			//load renderer settings
+			const auto sky_setting = STPTerrainParaLoader::getSkySetting(this->engineINI["Sky"]);
+			this->SunSetting = sky_setting.first;
 
 			//setup world manager
 			try {
@@ -133,22 +155,28 @@ namespace STPStart {
 			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE);
 
 			//setup rendering components
+			//-------------------------------------------
+			//terrain
 			STPHeightfieldTerrain::STPHeightfieldTerrainLog terrain_log;
 			this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log);
 			//print log
-			for (unsigned int i = 0u; i < STPHeightfieldTerrain::STPHeightfieldTerrainLog::Count; i++) {
-				const string& current_log = terrain_log.Log[i];
-				if (!current_log.empty()) {
-					cout << current_log << endl;
-				}
-			}
+			STPMasterRenderer::printLog(terrain_log);
 			this->TerrainRenderer->setMesh(MeshSetting);
+			//-------------------------------------------
+			//sun
+			STPSun::STPSunLog sun_log;
+			this->SunRenderer.emplace(this->SunSetting, sun_log);
+			STPMasterRenderer::printLog(sun_log);
+			//setup atomshpere
+			this->SunRenderer->setAtomshpere(sky_setting.second);
+
 			//setup rendering pipeline
 			STPScenePipeline::STPSceneWorkflow workflow = { };
 			workflow.Terrain = &(*this->TerrainRenderer);
+			workflow.Sun = &(*this->SunRenderer);
 			this->RenderPipeline.emplace(camera, workflow);
 			//basic setup
-			this->RenderPipeline->setClearColor(vec4(vec3(121.0f, 151.0f, 52.0f) / 255.0f, 1.0f));
+			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
@@ -163,9 +191,11 @@ namespace STPStart {
 
 		/**
 		 * @brief Main rendering functions, called every frame.
-		 * @param frametime The time in sec spent on each frame.
 		*/
-		inline void render(double delta) {
+		inline void render() {
+			//change the sun position
+			this->SunRenderer->deltaTick(1ull);
+
 			this->RenderPipeline->traverse();
 		}
 
@@ -196,7 +226,7 @@ namespace STPStart {
 
 	static void scrolled(GLFWwindow* window, double Xoffset, double Yoffset) {
 		//we only need vertical scroll
-		MainCamera->zoom(static_cast<float>(Yoffset));
+		MainCamera->zoom(-static_cast<float>(Yoffset));
 	}
 
 #define STP_GET_KEY(KEY, FUNC) \
@@ -250,7 +280,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 			return false;
 		}
 		//load icon
-		STPDemo::STPTextureStorage iconImage("./Resource/mountain.png", 0);//all channels are required
+		STPDemo::STPTextureStorage iconImage("./Resource/landscape.png", 0);//all channels are required
 		const ivec3 iconProps = iconImage.property();
 		const GLFWimage icon = { iconProps.x, iconProps.y, const_cast<unsigned char*>(iconImage.texture()) };
 		//icon data is copied by GLFW
@@ -335,10 +365,19 @@ int main() {
 	}
 
 	//setup renderer
-	STPStart::MasterEngine.emplace(engineINI, biomeINI, *STPStart::MainCamera);
+	try {
+		STPStart::MasterEngine.emplace(engineINI, biomeINI, *STPStart::MainCamera);
+	}
+	catch (const std::exception& e) {
+		cerr << e.what() << endl;
+		STPStart::clearup();
+		return -1;
+	}
 	//welcome
 	cout << *SuperTerrainPlus::STPFile("./Resource/welcome.txt") << endl;
-	cout << "OpenGL Renderer: " << glGetString(GL_VERSION) << endl;
+	cout << "OpenGL Version: " << glGetString(GL_VERSION) << endl;
+	cout << "OpenGL Vendor: " << glGetString(GL_VENDOR) << endl;
+	cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << endl << endl;
 
 	//rendering loop
 	double currentTime, lastTime = 0.0f, deltaTime, FPS = engineINI("FPS").to<double>();
@@ -354,7 +393,14 @@ int main() {
 
 		//draw
 		STPStart::process_event(static_cast<float>(deltaTime));
-		STPStart::MasterEngine->render(deltaTime);
+		try {
+			STPStart::MasterEngine->render();
+		}
+		catch (std::exception& e) {
+			cerr << e.what() << endl;
+			STPStart::clearup();
+			return -1;
+		}
 
 		//event update
 		glfwPollEvents();

@@ -24,6 +24,8 @@ using glm::smoothstep;
 using glm::radians;
 using glm::degrees;
 using glm::value_ptr;
+using glm::clamp;
+using glm::rotate;
 
 using glm::vec3;
 using glm::dvec3;
@@ -73,7 +75,7 @@ constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
 };
 
 STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log) : SunSetting(sun_setting),
-	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), DirectionOutdated(true), DirectionCache() {
+	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), DirectionOutdated(true), SunDirectionCache(0.0) {
 	//validate the setting
 	if (!this->SunSetting.validate()) {
 		throw STPException::STPBadNumericRange("Sun setting provided is invalid");
@@ -96,13 +98,19 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log)
 	this->RayDirectionArray.enable(0u);
 
 	//setup sky renderer
-	STPShaderManager sky_shader[SkyShaderFilename.size()] = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
+	STPShaderManager sky_shader[SkyShaderFilename.size()] = 
+		{ GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
 	for (unsigned int i = 0u; i < SkyShaderFilename.size(); i++) {
 		STPShaderManager& current_shader = sky_shader[i];
 		//build the shader filename
 		const char* const sky_filename = SkyShaderFilename[i].data();
 		//compile with super realism + system include directory
-		log.Log[i] = current_shader(*STPFile(sky_filename), { "/Common/STPCameraInformation.glsl" });
+		if (i == 1u) {
+			log.Log[i] = current_shader(*STPFile(sky_filename));
+		}
+		else {
+			log.Log[i] = current_shader(*STPFile(sky_filename), { "/Common/STPCameraInformation.glsl" });
+		}
 
 		//put shader into the program
 		this->SkyRenderer.attach(current_shader);
@@ -116,42 +124,58 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log)
 	}
 }
 
-const STPSun::STPSunDirection& STPSun::calcSunDirection() const {
-	static constexpr double TWO_PI = glm::pi<double>() * 2.0;
+const dvec3& STPSun::calcSunDirection() const {
+	static constexpr double PI = glm::pi<double>(), TWO_PI = PI * 2.0;
+	static auto saturate = [](double val) constexpr -> double {
+		return clamp(val, -1.0, 1.0);
+	};
 
 	if (this->DirectionOutdated) {
 		//the old direction cache is no longer accurate, needs to recalculate
 		const STPEnvironment::STPSunSetting& sun = this->SunSetting;
 
 		//calculate hour angle
-		const double HRA = radians(this->AnglePerTick * (this->LocalSolarTime - this->NoonTime));
+		const double HRA = this->AnglePerTick * static_cast<long long>(this->LocalSolarTime - this->NoonTime);
 		//calculate declination, the angle between the sun and the equator plane
-		const double delta = radians(sun.Obliquity * -glm::cos(TWO_PI * this->Day / (1.0 * sun.YearLength))),
-			phi = radians(sun.Latitude);
+		const double delta = sun.Obliquity * -glm::cos(TWO_PI * this->Day / (1.0 * sun.YearLength)),
+			phi = sun.Latitude;
 
-		STPSunDirection& dir = this->DirectionCache;
 		//calculate sun direction
 		const double sin_delta = glm::sin(delta),
 			cos_delta = glm::cos(delta),
 			sin_phi = glm::sin(phi),
 			cos_phi = glm::cos(phi),
 			cos_HRA = glm::cos(HRA);
-		//azimuth angle: north=0, east=90, south=180, west=270 degree
-		dir.Direction.y =
+
+		const double sin_Elevation = saturate(
 			sin_delta * sin_phi +
-			cos_delta * cos_phi * cos_HRA;
-		dir.Elevation = glm::asin(dir.Direction.y);
-		dir.Direction.z =
-			-(sin_delta * cos_phi - cos_delta * sin_phi * cos_HRA) /
-			glm::cos(dir.Elevation);
-		dir.Azimuth = glm::acos(-dir.Direction.z);
-		dir.Direction.x = glm::sin(dir.Azimuth);
+			cos_delta * cos_phi * cos_HRA
+		),
+			cos_Elevation = glm::sqrt(1.0 - sin_Elevation * sin_Elevation);
+		//azimuth angle: north=0, east=90, south=180, west=270 degree
+		const double cos_Azimuth = saturate(
+			(sin_delta * cos_phi - cos_delta * sin_phi * cos_HRA) /
+			cos_Elevation
+		),
+			//azimuth correction for the afternoon
+			//Azimuth angle starts from north, which is (0, 0, -1) in OpenGL coordinate system
+			sin_Azimuth = glm::sqrt(1.0 - cos_Azimuth * cos_Azimuth) * ((HRA > 0.0) ? 1.0 : -1.0);
+
+		//convert angles to direction vector
+		dvec3& dir = this->SunDirectionCache;
+		//y rotation
+		dir.y = sin_Elevation;
+		dir.z = -cos_Elevation;
+		//x-z plane rotation
+		dir.x = sin_Azimuth * dir.z;
+		dir.z = cos_Azimuth * dir.z;
+
 		//normalise the direction
-		dir.Direction = normalize(dir.Direction);
+		dir = normalize(dir);
 
 		this->DirectionOutdated = false;
 	}
-	return this->DirectionCache;
+	return this->SunDirectionCache;
 }
 
 void STPSun::deltaTick(size_t delta) {
@@ -196,10 +220,9 @@ void STPSun::setAtomshpere(const STPEnvironment::STPAtomsphereSetting& sky_setti
 		.uniform(glProgramUniform1ui, "Sky.secStep", sky_setting.SecondaryRayStep);
 }
 
-void STPSun::operator()(const vec3& viewPos) const {
+void STPSun::operator()() const {
 	//calculate the position/direction of the sun
-	const STPSunDirection& sunInfo = this->calcSunDirection();
-	const vec3 sun_dir = static_cast<vec3>(sunInfo.Direction);
+	const vec3 sun_dir = static_cast<vec3>(this->calcSunDirection());
 
 	this->SkyRenderer.uniform(glProgramUniform3fv, "SunPosition", 1, value_ptr(sun_dir));
 

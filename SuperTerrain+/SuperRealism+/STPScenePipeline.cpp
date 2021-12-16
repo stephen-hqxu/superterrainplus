@@ -107,6 +107,6 @@ void STPScenePipeline::traverse() {
 	if (this->Workflow.Sun) {
 		glDepthFunc(GL_LEQUAL);
 		glDisable(GL_CULL_FACE);
-		(*this->Workflow.Sun)(position);
+		(*this->Workflow.Sun)();
 	}
 }

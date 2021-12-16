@@ -10,6 +10,10 @@
 #include <SuperTerrain+/Environment/STPConfiguration.h>
 #include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
+#include <SuperRealism+/Environment/STPSunSetting.h>
+#include <SuperRealism+/Environment/STPAtomsphereSetting.h>
+
+#include <utility>
 
 namespace STPDemo {
 
@@ -20,33 +24,41 @@ namespace STPDemo {
 	namespace STPTerrainParaLoader {
 
 		/**
-		 * @brief Load the procedual 2d infinite terrain rendering parameters
+		 * @brief Load the terrain rendering settings.
 		 * @param section The INI section that contains the 2d terrain rendering parameters
 		 * @return The terrain rendering parameters, if certain parameters are missing in the section, exception will be thrown
 		*/
-		SuperTerrainPlus::STPEnvironment::STPMeshSetting getProcedural2DINFRenderingParameter(const SIMPLE::SISection&);
+		SuperTerrainPlus::STPEnvironment::STPMeshSetting getRenderingSetting(const SIMPLE::SISection&);
 
 		/**
-		 * @brief Load the chunk settings and rendering parameters for procedural infinite 2d terrain
+		 * @brief Load the chunk and rendering settings for procedural terrain
 		 * @param section The INI section that contains the 2d terrian rendering parameters
 		 * @return The chunk manager rendering parameters, if certain parameters are missing in the section, exception will be thrown
 		*/
-		SuperTerrainPlus::STPEnvironment::STPChunkSetting getProcedural2DINFChunksParameter(const SIMPLE::SISection&);
+		SuperTerrainPlus::STPEnvironment::STPChunkSetting getChunkSetting(const SIMPLE::SISection&);
 
 		/**
-		 * @brief Load the launch parameter for procedural infinite 2d terrain, stored in the ini file into STPHeightfieldLaunchPara
+		 * @brief Load the launch settings for terrain.
 		 * @param section The INI section that contains the launch parameter
 		 * @param slipRange The size of the free-slip range of the erosion
 		 * @return The launch parameter, if certain parameters are missing in the section, exception will be thrown
 		*/
-		SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting getProcedural2DINFGeneratorParameter(const SIMPLE::SISection&, glm::uvec2);
+		SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting getGeneratorSetting(const SIMPLE::SISection&, glm::uvec2);
 
 		/**
-		 * @brief Load the simplex noise 2d parameter, stored in the ini file into STPSimplexNoise2DPara
+		 * @brief Load the simplex noise setting.
 		 * @param section The INI section that contains the launch parameter
-		 * @return The noise parameter,, if certain parameters are missing in the section, exception will eb thrown
+		 * @return The noise parameter, if certain parameters are missing in the section, exception will eb thrown
 		*/
-		SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting getSimplex2DNoiseParameter(const SIMPLE::SISection&);
+		SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting getSimplexSetting(const SIMPLE::SISection&);
+
+		/**
+		 * @brief Load the settings for procedural sky rendering/
+		 * @param section The INI section that contains all sky setting.
+		 * @return Setting for sun and atomshpere.
+		*/
+		std::pair<SuperTerrainPlus::STPEnvironment::STPSunSetting, SuperTerrainPlus::STPEnvironment::STPAtomsphereSetting>
+			getSkySetting(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load all biome parameters into STPBiomeRegistry

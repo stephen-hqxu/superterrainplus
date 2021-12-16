@@ -22,15 +22,16 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//The number of day per year
 		unsigned int YearLength;
 
-		//The angle between an object's rotational axis and its orbital axis, which is the line perpendicular to its orbital plane; 
+		//The angle between an object's rotational axis and its orbital axis, in radians, which is the line perpendicular to its orbital plane; 
 		//equivalently, it is the angle between its equatorial plane and orbital plane.
 		double Obliquity;
 		//A geographic coordinate that specifies the north–south position of a point on the planet surface.
 		//Latitude is an angle which ranges from 0 at the Equator to 90 (North or South) at the poles.
+		//Remember to convert it into radians.
 		double Latitude;
 
 		//Set the angle to denote at which point the sun starts rising and setting, and the offset.
-		//The angles are all in degree.
+		//The angles are all in radians.
 		double SunsetAngle, SunriseAngle, CycleAngleOffset;
 
 		/**
