@@ -89,10 +89,10 @@ static constexpr char* SunVariables[] = {
 	"cycle_angle_offset"
 };
 
-static constexpr char* AtomshpereVariables[] = {
+static constexpr char* AtmoshpereVariables[] = {
 	"sun_intensity",
 	"planet_radius",
-	"atomshpere_radius",
+	"atmoshpere_radius",
 	"view_altitude",
 	"rayleigh_coefX",
 	"rayleigh_coefY",
@@ -190,7 +190,7 @@ STPEnvironment::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplexSetting(c
 	return noise_option;
 }
 
-pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtomsphereSetting> STPTerrainParaLoader::getSkySetting(const SIMPLE::SISection& section) {
+pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtmosphereSetting> STPTerrainParaLoader::getSkySetting(const SIMPLE::SISection& section) {
 	STPEnvironment::STPSunSetting sun;
 	sun.DayLength = section(SunVariables[0]).to<size_t>();
 	sun.DayStartOffset = section(SunVariables[1]).to<size_t>();
@@ -201,26 +201,26 @@ pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtomsphereSetting> STPTer
 	sun.SunriseAngle = section(SunVariables[6]).to<double>();
 	sun.CycleAngleOffset = section(SunVariables[7]).to<double>();
 
-	STPEnvironment::STPAtomsphereSetting atom;
-	atom.SunIntensity = section(AtomshpereVariables[0]).to<float>();
-	atom.PlanetRadius = section(AtomshpereVariables[1]).to<float>();
-	atom.AtomsphereRadius = section(AtomshpereVariables[2]).to<float>();
-	atom.ViewAltitude = section(AtomshpereVariables[3]).to<float>();
+	STPEnvironment::STPAtmosphereSetting atmo;
+	atmo.SunIntensity = section(AtmoshpereVariables[0]).to<float>();
+	atmo.PlanetRadius = section(AtmoshpereVariables[1]).to<float>();
+	atmo.AtmosphereRadius = section(AtmoshpereVariables[2]).to<float>();
+	atmo.ViewAltitude = section(AtmoshpereVariables[3]).to<float>();
 
-	atom.RayleighCoefficient = vec3(
-		section(AtomshpereVariables[4]).to<float>(),
-		section(AtomshpereVariables[5]).to<float>(),
-		section(AtomshpereVariables[6]).to<float>()
+	atmo.RayleighCoefficient = vec3(
+		section(AtmoshpereVariables[4]).to<float>(),
+		section(AtmoshpereVariables[5]).to<float>(),
+		section(AtmoshpereVariables[6]).to<float>()
 	);
-	atom.MieCoefficient = section(AtomshpereVariables[7]).to<float>();
-	atom.RayleighScale = section(AtomshpereVariables[8]).to<float>();
-	atom.MieScale = section(AtomshpereVariables[9]).to<float>();
-	atom.MieScatteringDirection = section(AtomshpereVariables[10]).to<float>();
+	atmo.MieCoefficient = section(AtmoshpereVariables[7]).to<float>();
+	atmo.RayleighScale = section(AtmoshpereVariables[8]).to<float>();
+	atmo.MieScale = section(AtmoshpereVariables[9]).to<float>();
+	atmo.MieScatteringDirection = section(AtmoshpereVariables[10]).to<float>();
 
-	atom.PrimaryRayStep = section(AtomshpereVariables[11]).to<unsigned int>();
-	atom.SecondaryRayStep = section(AtomshpereVariables[12]).to<unsigned int>();
+	atmo.PrimaryRayStep = section(AtmoshpereVariables[11]).to<unsigned int>();
+	atmo.SecondaryRayStep = section(AtmoshpereVariables[12]).to<unsigned int>();
 
-	return pair(sun, atom);
+	return pair(sun, atmo);
 }
 
 void STPTerrainParaLoader::loadBiomeParameters(const SIMPLE::SIStorage& biomeini) {

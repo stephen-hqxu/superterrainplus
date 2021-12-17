@@ -159,19 +159,15 @@ const dvec3& STPSun::calcSunDirection() const {
 		),
 			//azimuth correction for the afternoon
 			//Azimuth angle starts from north, which is (0, 0, -1) in OpenGL coordinate system
-			sin_Azimuth = glm::sqrt(1.0 - cos_Azimuth * cos_Azimuth) * ((HRA > 0.0) ? 1.0 : -1.0);
+			sin_Azimuth = glm::sqrt(1.0 - cos_Azimuth * cos_Azimuth) * ((HRA > 0.0) ? -1.0 : 1.0);
 
 		//convert angles to direction vector
-		dvec3& dir = this->SunDirectionCache;
-		//y rotation
-		dir.y = sin_Elevation;
-		dir.z = -cos_Elevation;
-		//x-z plane rotation
-		dir.x = sin_Azimuth * dir.z;
-		dir.z = cos_Azimuth * dir.z;
-
 		//normalise the direction
-		dir = normalize(dir);
+		this->SunDirectionCache = normalize(dvec3(
+			cos_Elevation * cos_Azimuth,
+			sin_Elevation,
+			cos_Elevation * sin_Azimuth
+		));
 
 		this->DirectionOutdated = false;
 	}
@@ -201,15 +197,15 @@ double STPSun::status(double elevation) const {
 	return smoothstep(sun.SunriseAngle, sun.SunsetAngle, degrees(elevation) + sun.CycleAngleOffset) * 2.0 - 1.0;
 }
 
-void STPSun::setAtomshpere(const STPEnvironment::STPAtomsphereSetting& sky_setting) {
+void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& sky_setting) {
 	//validate
 	if (!sky_setting.validate()) {
-		throw STPException::STPBadNumericRange("Atomshpere setting is invalid");
+		throw STPException::STPBadNumericRange("Atmoshpere setting is invalid");
 	}
 
 	this->SkyRenderer.uniform(glProgramUniform1f, "Sky.iSun", sky_setting.SunIntensity)
 		.uniform(glProgramUniform1f, "Sky.rPlanet", sky_setting.PlanetRadius)
-		.uniform(glProgramUniform1f, "Sky.rAtoms", sky_setting.AtomsphereRadius)
+		.uniform(glProgramUniform1f, "Sky.rAtmos", sky_setting.AtmosphereRadius)
 		.uniform(glProgramUniform1f, "Sky.vAlt", sky_setting.ViewAltitude)
 		.uniform(glProgramUniform3fv, "Sky.kRlh", 1, value_ptr(sky_setting.RayleighCoefficient))
 		.uniform(glProgramUniform1f, "Sky.kMie", sky_setting.MieCoefficient)

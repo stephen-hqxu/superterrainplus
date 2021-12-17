@@ -2,7 +2,7 @@ target_sources(${STP_REALISM_ENGINE} PRIVATE
 STPRealismDefine.h
 STPScenePipeline.h
 # /Environment
-Environment/STPAtomsphereSetting.h
+Environment/STPAtmosphereSetting.h
 Environment/STPCameraSetting.h
 Environment/STPMeshSetting.h
 Environment/STPPerspectiveCameraSetting.h
@@ -13,6 +13,7 @@ Object/STPPipelineManager.h
 Object/STPProgramManager.h
 Object/STPProgramManager.inl
 Object/STPShaderManager.h
+Object/STPTexture.h
 Object/STPVertexArray.h
 # /Renderer
 Renderer/STPHeightfieldTerrain.h
@@ -24,6 +25,7 @@ Utility/Camera/STPPerspectiveCamera.h
 Utility/STPDebugCallback.h
 Utility/STPIndirectCommand.hpp
 Utility/STPLogStorage.hpp
+Utility/STPRandomTextureGenerator.cuh
 )
 
 # config file for the realism rendering engine

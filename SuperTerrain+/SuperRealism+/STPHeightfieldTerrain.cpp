@@ -1,9 +1,12 @@
 #include <SuperRealism+/Renderer/STPHeightfieldTerrain.h>
 #include <SuperRealism+/STPRealismInfo.h>
+//Noise Generator
+#include <SuperRealism+/Utility/STPRandomTextureGenerator.cuh>
 
 //Error
 #include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
@@ -12,9 +15,11 @@
 
 //GLAD
 #include <glad/glad.h>
+//CUDA-GL
+#include <cuda_gl_interop.h>
 
-//Container
 #include <array>
+#include <limits>
 
 //GLM
 #include <glm/gtc/type_ptr.hpp>
@@ -24,10 +29,12 @@
 using std::array;
 using std::string;
 using std::to_string;
+using std::numeric_limits;
 
 using glm::ivec2;
 using glm::uvec2;
 using glm::vec2;
+using glm::uvec3;
 using glm::vec3;
 using glm::mat4;
 using glm::value_ptr;
@@ -58,8 +65,8 @@ constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 	0u
 };
 
-STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log) : 
-	TerrainGenerator(generator_pipeline), ViewPosition(vec3(0.0f)) {
+STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, uvec3 noise_scale) : 
+	TerrainGenerator(generator_pipeline), ViewPosition(vec3(0.0f)), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(noise_scale) {
 	if (!GLAD_GL_ARB_bindless_texture) {
 		throw STPException::STPUnsupportedFunctionality("The current rendering context does not support ARB_bindless_texture");
 	}
@@ -147,6 +154,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	this->TerrainComponent.uniform(glProgramUniform1i, "Biomemap", 0)
 		.uniform(glProgramUniform1i, "Heightfield", 1)
 		.uniform(glProgramUniform1i, "Splatmap", 2)
+		.uniform(glProgramUniform1i, "Noisemap", 3)
 		//chunk setting
 		.uniform(glProgramUniform2uiv, "ChunkSize", 1, value_ptr(chunk_setting.ChunkSize))
 		.uniform(glProgramUniform2uiv, "RenderedChunk", 1, value_ptr(chunk_setting.RenderedChunk))
@@ -172,6 +180,14 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 		//prepare registry
 		.uniform(glProgramUniform2uiv, "RegionRegistry", static_cast<GLsizei>(reg_count), reinterpret_cast<const unsigned int*>(reg))
 		.uniform(glProgramUniform1uiv, "RegistryDictionary", static_cast<GLsizei>(dict_count), dict);
+
+	/* --------------------------------- shader noise texture preparation ------------------------------ */
+	glTextureStorage3D(*this->NoiseSample, 1, GL_R8, this->RandomTextureDimension.x, this->RandomTextureDimension.y, this->RandomTextureDimension.z);
+	glTextureParameteri(*this->NoiseSample, GL_TEXTURE_WRAP_R, GL_REPEAT);
+	glTextureParameteri(*this->NoiseSample, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTextureParameteri(*this->NoiseSample, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTextureParameteri(*this->NoiseSample, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTextureParameteri(*this->NoiseSample, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
 STPHeightfieldTerrain::~STPHeightfieldTerrain() {
@@ -198,6 +214,25 @@ void STPHeightfieldTerrain::setMesh(const STPEnvironment::STPMeshSetting& mesh_s
 		//update other mesh-related parameters
 		.uniform(glProgramUniform1f, "Altitude", mesh_setting.Altitude)
 		.uniform(glProgramUniform1f, "NormalStrength", mesh_setting.Strength);
+}
+
+void STPHeightfieldTerrain::seedRandomBuffer(unsigned long long seed) {
+	cudaGraphicsResource_t res;
+	cudaArray_t random_buffer;
+
+	//register cuda graphics
+	STPcudaCheckErr(cudaGraphicsGLRegisterImage(&res, *this->NoiseSample, GL_TEXTURE_3D, cudaGraphicsRegisterFlagsWriteDiscard));
+	//map
+	STPcudaCheckErr(cudaGraphicsMapResources(1, &res));
+	STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&random_buffer, res, 0u, 0u));
+
+	//compute
+	STPCompute::STPRandomTextureGenerator::generate<unsigned char>(random_buffer, this->RandomTextureDimension, seed, 
+		numeric_limits<unsigned char>::min(), numeric_limits<unsigned char>::max());
+
+	//clear up
+	STPcudaCheckErr(cudaGraphicsUnmapResources(1, &res));
+	STPcudaCheckErr(cudaGraphicsUnregisterResource(res));
 }
 
 void STPHeightfieldTerrain::prepare(const vec3& viewPos) {
@@ -236,6 +271,8 @@ void STPHeightfieldTerrain::operator()() const {
 	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::BIOME]);
 	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
 	glBindTextureUnit(2, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::SPLAT]);
+	this->NoiseSample.bind(3);
+
 	this->TileArray.bind();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
 	this->TerrainRenderer.bind();

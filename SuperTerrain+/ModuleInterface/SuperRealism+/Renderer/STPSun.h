@@ -5,7 +5,7 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //Setting
 #include "../Environment/STPSunSetting.h"
-#include "../Environment/STPAtomsphereSetting.h"
+#include "../Environment/STPAtmosphereSetting.h"
 //Rendering Engine
 #include "../Object/STPProgramManager.h"
 #include "../Object/STPBuffer.h"
@@ -21,7 +21,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPSun is the main light source on the procedural terrain.
 	 * It manages the position of the sun based on the time, rotates around the sky.
 	 * It also allows, optionally, day-night cycle and switches light intensity.
-	 * Atomshperic scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
+	 * Atmoshperic scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
 	*/
 	class STP_REALISM_API STPSun {
 	private:
@@ -104,13 +104,13 @@ namespace SuperTerrainPlus::STPRealism {
 		double status(double) const;
 
 		/**
-		 * @brief Update the sky renderer with new atomshpere setting.
+		 * @brief Update the sky renderer with new atmoshpere setting.
 		 * @param sky_setting The sky setting. 
 		*/
-		void setAtomshpere(const STPEnvironment::STPAtomsphereSetting&);
+		void setAtmoshpere(const STPEnvironment::STPAtmosphereSetting&);
 
 		/**
-		 * @brief Render the sun with atomspheric scattering effect.
+		 * @brief Render the sun with atmospheric scattering effect.
 		*/
 		void operator()() const;
 

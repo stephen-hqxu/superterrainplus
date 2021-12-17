@@ -54,7 +54,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//A vector defines to the up and right of the camera
 		glm::vec3 Front, Up, Right;
-		glm::vec2 LastRotateOffset;
 
 	public:
 
@@ -104,7 +103,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Rotate the orientation of the camera in the world.
 		 * @param offset The relative angle of offset of the camera.
 		*/
-		void rotate(glm::vec2);
+		void rotate(const glm::vec2&);
 
 	};
 

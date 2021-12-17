@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_ATOMSPHERE_SETTING_H_
-#define _STP_ATOMSPHERE_SETTING_H_
+#ifndef _STP_ATMOSPHERE_SETTING_H_
+#define _STP_ATMOSPHERE_SETTING_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Base
@@ -12,17 +12,17 @@
 namespace SuperTerrainPlus::STPEnvironment {
 
 	/**
-	 * @brief STPAtomsphereSetting stores configurations for sky rendering and atomshpere scattering.
+	 * @brief STPAtmosphereSetting stores configurations for sky rendering and atmoshpere scattering.
 	*/
-	struct STP_REALISM_API STPAtomsphereSetting : public STPSetting {
+	struct STP_REALISM_API STPAtmosphereSetting : public STPSetting {
 	public:
 
 		//Intensity of the sun
 		float SunIntensity;
 		//The radius of the planet
 		float PlanetRadius;
-		//The radius of atomsphere
-		float AtomsphereRadius;
+		//The radius of atmoshpere
+		float AtmosphereRadius;
 		//The view position starting altitude.
 		float ViewAltitude;
 
@@ -40,9 +40,9 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Control the precision of scattering
 		unsigned int PrimaryRayStep, SecondaryRayStep;
 
-		STPAtomsphereSetting();
+		STPAtmosphereSetting();
 
-		~STPAtomsphereSetting() = default;
+		~STPAtmosphereSetting() = default;
 
 		bool validate() const override;
 
@@ -50,4 +50,4 @@ namespace SuperTerrainPlus::STPEnvironment {
 
 }
 
-#endif//_STP_ATOMSPHERE_SETTING_H_
+#endif//_STP_ATMOSPHERE_SETTING_H_

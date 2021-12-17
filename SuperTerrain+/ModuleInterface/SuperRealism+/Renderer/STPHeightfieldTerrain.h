@@ -7,11 +7,15 @@
 #include "../Object/STPPipelineManager.h"
 #include "../Object/STPBuffer.h"
 #include "../Object/STPVertexArray.h"
+#include "../Object/STPTexture.h"
 #include "../Utility/STPLogStorage.hpp"
 
 //Terrain Generator
 #include <SuperTerrain+/World/STPWorldPipeline.h>
 #include "../Environment/STPMeshSetting.h"
+
+//GLM
+#include <glm/vec3.hpp>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -27,6 +31,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//A buffer representing the a tile (a unit plane).
 		STPBuffer TileBuffer, TileIndex, TerrainRenderCommand;
 		STPVertexArray TileArray;
+		STPTexture NoiseSample;
 		//Shader program for terrain rendering
 		mutable STPProgramManager TerrainComponent;
 		STPPipelineManager TerrainRenderer;
@@ -47,12 +52,17 @@ namespace SuperTerrainPlus::STPRealism {
 
 		typedef STPLogStorage<7ull> STPHeightfieldTerrainLog;
 
+		//The size of the texture storing rangom numbers.
+		const glm::uvec3 RandomTextureDimension;
+
 		/**
 		 * @brief Initialise the heightfield terrain rendering engine.
 		 * @param generator_pipeline A pointer to the world pipeline that provides heightfield.
 		 * @param log The pointer to the log output from GL shader and program compiler.
+		 * @param noise_scale Specify the dimension of the noise sampling texture to be used in the shader.
+		 * Higher scale provides more randomness but also consumes more memory.
 		*/
-		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&);
+		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, glm::uvec3);
 
 		STPHeightfieldTerrain(const STPHeightfieldTerrain&) = delete;
 
@@ -69,6 +79,14 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param mesh_setting The pointer to the new mesh setting to be updated.
 		*/
 		void setMesh(const STPEnvironment::STPMeshSetting&);
+
+		/**
+		 * @brief Set the seed for a texture of random number used during rendering, and regenerate the random texture 
+		 * with the dimension initialised.
+		 * This function is considered to be expensive and hence should not be called frequently.
+		 * @param seed The new seed value.
+		*/
+		void seedRandomBuffer(unsigned long long);
 
 		/**
 		 * @brief Signal the terrain generator to prepare heightfield texture before actual rendering.

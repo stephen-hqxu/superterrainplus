@@ -11,7 +11,7 @@
 #include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>
-#include <SuperRealism+/Environment/STPAtomsphereSetting.h>
+#include <SuperRealism+/Environment/STPAtmosphereSetting.h>
 
 #include <utility>
 
@@ -55,9 +55,9 @@ namespace STPDemo {
 		/**
 		 * @brief Load the settings for procedural sky rendering/
 		 * @param section The INI section that contains all sky setting.
-		 * @return Setting for sun and atomshpere.
+		 * @return Setting for sun and atmoshpere.
 		*/
-		std::pair<SuperTerrainPlus::STPEnvironment::STPSunSetting, SuperTerrainPlus::STPEnvironment::STPAtomsphereSetting>
+		std::pair<SuperTerrainPlus::STPEnvironment::STPSunSetting, SuperTerrainPlus::STPEnvironment::STPAtmosphereSetting>
 			getSkySetting(const SIMPLE::SISection&);
 
 		/**

@@ -97,12 +97,14 @@ const uvec2& STPFreeSlipGenerator::getFreeSlipRange() const {
 	return this->Data.FreeSlipRange;
 }
 
-#define GET_MANAGER(TYPE) \
-template<> \
-STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<TYPE> STPFreeSlipGenerator::operator()(STPFreeSlipTextureBuffer<TYPE>& buffer) const { \
-	return STPFreeSlipManagerAdaptor(buffer, *this); \
+template<typename T>
+STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<T> STPFreeSlipGenerator::operator()(STPFreeSlipTextureBuffer<T>& buffer) const {
+	return STPFreeSlipManagerAdaptor(buffer, *this);
 }
 
-GET_MANAGER(float)
+//Explicit instantiation
+#define GET_MANAGER(TYPE) \
+template STP_API STPFreeSlipGenerator::STPFreeSlipManagerAdaptor<TYPE> STPFreeSlipGenerator::operator()(STPFreeSlipTextureBuffer<TYPE>&) const
 
-GET_MANAGER(Sample)
+GET_MANAGER(float);
+GET_MANAGER(Sample);

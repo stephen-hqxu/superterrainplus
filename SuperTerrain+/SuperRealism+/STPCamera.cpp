@@ -19,7 +19,7 @@ using glm::cross;
 using namespace SuperTerrainPlus::STPRealism;
 
 STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) : 
-	Camera(props), LastRotateOffset(vec2(0.0f)), View(mat4(0.0f)), ViewOutdated(true) {
+	Camera(props), View(mat4(0.0f)), ViewOutdated(true) {
 	if (!this->Camera.validate()) {
 		throw STPException::STPInvalidEnvironment("Camera setting not validated");
 	}
@@ -87,7 +87,7 @@ void STPCamera::move(const STPMoveDirection direction, float delta) {
 	this->ViewOutdated = true;
 }
 
-void STPCamera::rotate(vec2 offset) {
+void STPCamera::rotate(const vec2& offset) {
 	static constexpr float YAW_LIM = radians(360.0f), PITCH_LIM = radians(89.0f);
 	static auto modulof = [](float val, float bound) constexpr -> float {
 		//a float modulo function
@@ -97,9 +97,8 @@ void STPCamera::rotate(vec2 offset) {
 		return val;
 	};
 
-	//we reverse Y since Y goes from bottom to top (from negative axis to positive)
 	//using sensitivity to scale the offset
-	const vec2 rotateAmount = vec2(offset.x - this->LastRotateOffset.x, this->LastRotateOffset.y - offset.y) * this->Camera.RotationSensitivity;
+	const vec2 rotateAmount = offset * this->Camera.RotationSensitivity;
 	this->Camera.Yaw += rotateAmount.x;
 	//modulo the angle
 	this->Camera.Yaw = modulof(this->Camera.Yaw, YAW_LIM);
@@ -110,9 +109,6 @@ void STPCamera::rotate(vec2 offset) {
 
 	//update camera front, right and up
 	this->updateViewSpace();
-
-	//update last position
-	this->LastRotateOffset = offset;
 
 	this->ViewOutdated = true;
 }

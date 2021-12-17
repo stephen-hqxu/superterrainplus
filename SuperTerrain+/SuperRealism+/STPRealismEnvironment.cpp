@@ -1,4 +1,4 @@
-#include <SuperRealism+/Environment/STPAtomsphereSetting.h>
+#include <SuperRealism+/Environment/STPAtmosphereSetting.h>
 #include <SuperRealism+/Environment/STPCameraSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
 #include <SuperRealism+/Environment/STPPerspectiveCameraSetting.h>
@@ -12,12 +12,12 @@ using glm::radians;
 
 using namespace SuperTerrainPlus::STPEnvironment;
 
-//STPAtomsphereSetting.h
+//STPAtmosphereSetting.h
 
-STPAtomsphereSetting::STPAtomsphereSetting() : 
+STPAtmosphereSetting::STPAtmosphereSetting() :
 	SunIntensity(1.0f), 
 	PlanetRadius(1.0f), 
-	AtomsphereRadius(1.0f), 
+	AtmosphereRadius(1.0f), 
 	ViewAltitude(1.0f),
 
 	RayleighCoefficient(1.0f), 
@@ -31,13 +31,13 @@ STPAtomsphereSetting::STPAtomsphereSetting() :
 
 }
 
-bool STPAtomsphereSetting::validate() const {
+bool STPAtmosphereSetting::validate() const {
 	constexpr static vec3 zeroVec3 = vec3(0.0f);
 
 	return this->SunIntensity > 0.0f
 		&& this->PlanetRadius > 0.0f
-		&& this->AtomsphereRadius > 0.0f
-		&& this->PlanetRadius <= this->AtomsphereRadius
+		&& this->AtmosphereRadius > 0.0f
+		&& this->PlanetRadius <= this->AtmosphereRadius
 		&& this->ViewAltitude > 0.0f
 		&& this->ViewAltitude >= this->PlanetRadius
 		&& this->RayleighCoefficient != zeroVec3

@@ -28,6 +28,7 @@ using std::shared_mutex;
 using std::shared_lock;
 using std::unique_lock;
 using std::exception_ptr;
+using std::make_pair;
 
 using std::for_each;
 using std::make_unique;
@@ -439,6 +440,7 @@ STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : PipelineWorker(1u)
 	const unsigned int renderedChunkCount = setting.RenderedChunk.x * setting.RenderedChunk.y;
 	this->renderingLocal.reserve(renderedChunkCount);
 	this->renderingLocalLookup.reserve(renderedChunkCount);
+	this->TerrainMapExchangeCache.LocalCache.reserve(renderedChunkCount);
 }
 
 STPWorldPipeline::~STPWorldPipeline() {
@@ -547,12 +549,19 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 	this->wait();
 	//make sure there isn't any worker accessing the loading_chunks, otherwise undefined behaviour warning
 
+	//Whenever camera changes location, all previous rendering buffers are dumpped
+	bool shouldClearBuffer = false;
 	//check if the central position has changed or not
 	if (const vec2 thisCentralPos = STPChunk::getChunkPosition(cameraPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScaling);
 		thisCentralPos != this->lastCenterLocation) {
 		//changed
 		//backup the current rendering locals
-		this->TerrainMapExchangeCache.RenderingLocal = this->renderingLocalLookup;
+		this->TerrainMapExchangeCache.LocalCache.clear();
+		for (auto [local_it, chunkID] = make_pair(this->renderingLocal.cbegin(), 0u); local_it != this->renderingLocal.cend(); local_it++, chunkID++) {
+			const auto [position, status] = *local_it;
+			this->TerrainMapExchangeCache.LocalCache.try_emplace(position, chunkID, status);
+		}
+
 		//recalculate loading chunks
 		this->renderingLocal.clear();
 		this->renderingLocalLookup.clear();
@@ -573,7 +582,7 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 
 		this->lastCenterLocation = thisCentralPos;
 		//clear up previous rendering buffer
-		this->shouldClearBuffer = true;
+		shouldClearBuffer = true;
 	}
 	else if (std::all_of(this->renderingLocal.cbegin(), this->renderingLocal.cend(), [](auto i) -> bool {return i.second; })) {
 		//if all chunks are loaded there is no need to do those complicated stuff
@@ -603,7 +612,8 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 				chunkLoaded = true;
 				num_chunkLoaded++;
 				//mark updated rendering buffer
-				//we need to use the chunk normalised coordinate to get the splatmap offset, splatmap offset needs to be consistent with the heightmap and biomemap
+				//we need to use the chunk normalised coordinate to get the splatmap offset, 
+				//splatmap offset needs to be consistent with the heightmap and biomemap
 				const vec2 offset = STPChunk::calcChunkMapOffset(
 					chunkPos,
 					chunk_setting.ChunkSize,
@@ -630,31 +640,36 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 	//we only have one texture, so index is always zero
 	FOR_EACH_BUFFER(STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(buffer_ptr.Map + i, this->TerrainMapRes[i], 0, 0)))
 	//clear up the render buffer for every chunk
-	if (this->shouldClearBuffer) {
+	if (shouldClearBuffer) {
 		//backup the current buffer before clearing
 		this->backupBuffer(buffer_ptr);
 
-		const STPLocalChunkDictionary& cacheDict = this->TerrainMapExchangeCache.RenderingLocal;
+		const STPLocalChunkCache& cacheDict = this->TerrainMapExchangeCache.LocalCache;
 		//here we perform an optimisation: reuse chunk that has been rendered previously from the old rendering buffer
 		for (auto& [chunkPos, loaded] : this->renderingLocal) {
 			//check in the new rendered chunk, is there any old chunk has the same world coordinate as the new chunk?
 			auto pos_it = cacheDict.find(chunkPos);
 
 			const unsigned int buffer_chunkID = this->renderingLocalLookup.at(chunkPos);
-			if (pos_it == cacheDict.cend()) {
-				//the current new chunk is not found in the old rendering buffer, we need to load it from chunk storage later
-				//clear this chunk
-				this->clearBuffer(buffer_ptr, buffer_chunkID);
-				continue;
-			}
-			//found, copy it from the old buffer
-			const unsigned int cache_chunkID = pos_it->second;
-			this->copySubBufferFromSubCache(buffer_ptr, buffer_chunkID, cache_chunkID);
-			//mark this chunk as loaded
-			loaded = true;
-		}
+			if (pos_it != cacheDict.cend()) {
+				//found, check if the previous cache is complete
 
-		this->shouldClearBuffer = false;
+				const auto [cache_chunkID, cache_status] = pos_it->second;
+				if (cache_status) {
+					//if the previous cahce is complete, copy to new buffer
+					this->copySubBufferFromSubCache(buffer_ptr, buffer_chunkID, cache_chunkID);
+					//mark this chunk as loaded
+					loaded = true;
+
+					continue;
+				}
+
+			}
+			//the current new chunk has no usesable buffer, we need to load it from chunk storage later
+			//clear this chunk
+			this->clearBuffer(buffer_ptr, buffer_chunkID);
+
+		}
 	}
 
 	//group mapped data together and start loading chunk

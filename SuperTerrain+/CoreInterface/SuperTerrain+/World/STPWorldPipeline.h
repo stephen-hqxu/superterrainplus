@@ -74,6 +74,7 @@ namespace SuperTerrainPlus {
 		typedef std::vector<std::pair<glm::vec2, bool>> STPLocalChunkStatus;
 		//Use chunk world coordinate to lookup chunk ID
 		typedef std::unordered_map<glm::vec2, unsigned int, STPChunkStorage::STPHashvec2> STPLocalChunkDictionary;
+		typedef std::unordered_map<glm::vec2, std::pair<unsigned int, bool>, STPChunkStorage::STPHashvec2> STPLocalChunkCache;
 
 		/**
 		 * @brief STPRenderingBufferMemory contains data to mapped GL texture data.
@@ -106,7 +107,7 @@ namespace SuperTerrainPlus {
 			size_t Pitch[STPWorldPipeline::BufferCount];
 
 			//A record of rendering locals for the current rendering buffer
-			STPLocalChunkDictionary RenderingLocal;
+			STPLocalChunkCache LocalCache;
 
 		};
 
@@ -139,8 +140,6 @@ namespace SuperTerrainPlus {
 		//for automatic chunk loading
 		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the currentCentralPos is different from this value
 		glm::vec2 lastCenterLocation = glm::vec2(std::numeric_limits<float>::min());//the last world position of the central chunk of the entire visible chunks
-		//Whenever camera changes location, all previous rendering buffers are dumpped
-		bool shouldClearBuffer;
 		//determine which chunks to render and whether it's loaded, index of element denotes chunk local ID
 		STPLocalChunkStatus renderingLocal;
 		STPLocalChunkDictionary renderingLocalLookup;

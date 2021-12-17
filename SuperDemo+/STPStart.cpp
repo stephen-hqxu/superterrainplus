@@ -46,7 +46,9 @@ using std::cerr;
 
 using glm::uvec2;
 using glm::vec2;
+using glm::dvec2;
 using glm::ivec3;
+using glm::uvec3;
 using glm::vec3;
 using glm::vec4;
 using glm::radians;
@@ -158,17 +160,18 @@ namespace STPStart {
 			//-------------------------------------------
 			//terrain
 			STPHeightfieldTerrain::STPHeightfieldTerrainLog terrain_log;
-			this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log);
+			this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log, uvec3(128u, 128u, 6u));
 			//print log
 			STPMasterRenderer::printLog(terrain_log);
 			this->TerrainRenderer->setMesh(MeshSetting);
+			this->TerrainRenderer->seedRandomBuffer(this->biomeINI("seed", "simplex").to<unsigned long long>());
 			//-------------------------------------------
 			//sun
 			STPSun::STPSunLog sun_log;
 			this->SunRenderer.emplace(this->SunSetting, sun_log);
 			STPMasterRenderer::printLog(sun_log);
-			//setup atomshpere
-			this->SunRenderer->setAtomshpere(sky_setting.second);
+			//setup atmoshpere
+			this->SunRenderer->setAtmoshpere(sky_setting.second);
 
 			//setup rendering pipeline
 			STPScenePipeline::STPSceneWorkflow workflow = { };
@@ -209,6 +212,7 @@ namespace STPStart {
 	/* ------------------------------ callback functions ----------------------------------- */
 	constexpr static uvec2 InitialCanvasSize = { 1600u, 900u };
 	static GLFWwindow* GLCanvas = nullptr;
+	static dvec2 LastRotation;
 
 	static void frame_resized(GLFWwindow* window, int width, int height) {
 		if (width != 0 && height != 0) {
@@ -221,7 +225,13 @@ namespace STPStart {
 	}
 
 	static void cursor_moved(GLFWwindow* window, double X, double Y) {
-		MainCamera->rotate(vec2(X, Y));
+		//we reverse Y since Y goes from bottom to top (from negative axis to positive)
+		const dvec2 currentPos = vec2(X, Y);
+		const vec2 offset = vec2(currentPos.x - LastRotation.x, LastRotation.y - currentPos.y);
+		MainCamera->rotate(offset);
+
+		//update last rotation
+		LastRotation = currentPos;
 	}
 
 	static void scrolled(GLFWwindow* window, double Xoffset, double Yoffset) {
@@ -294,6 +304,8 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwSetCursorPosCallback(GLCanvas, cursor_moved);
 		glfwSetScrollCallback(GLCanvas, scrolled);
 
+		glfwGetCursorPos(GLCanvas, &LastRotation.x, &LastRotation.y);
+
 		//finally return
 		glfwMakeContextCurrent(GLCanvas);//enabling the current window as our master rendering thread
 		return true;
@@ -334,6 +346,14 @@ int main() {
 	const SIMPLE::SIStorage& engineINI = STPStart::engineINILoader.get(), 
 		&biomeINI = STPStart::biomeINILoader.get();
 
+	//engine setup
+	//because GLFW callback uses camera, so we need to setup camera first
+	if (!(STPStart::initGLFW() && STPStart::initSTP())) {
+		//error
+		STPStart::clearup();
+		return -1;
+	}
+
 	//setup camera
 	{
 		using namespace SuperTerrainPlus;
@@ -354,14 +374,6 @@ int main() {
 		proj.Far = 2200.0f;
 
 		STPStart::MainCamera.emplace(proj, cam);
-	}
-
-	//engine setup
-	//because GLFW callback uses camera, so we need to setup camera first
-	if (!(STPStart::initGLFW() && STPStart::initSTP())) {
-		//error
-		STPStart::clearup();
-		return -1;
 	}
 
 	//setup renderer

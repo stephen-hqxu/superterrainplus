@@ -5,7 +5,7 @@
 
 struct SkySetting{
 	float iSun;
-	float rPlanet, rAtoms;
+	float rPlanet, rAtmos;
 	float vAlt;
 	vec3 kRlh;
 	float kMie, shRlh, shMie, g;
@@ -37,7 +37,7 @@ vec3 atomsphere(vec3 sun_pos, vec3 ray_dir){
 	const vec3 ray_origin = vec3(0.0f, Sky.vAlt, 0.0f);
 
 	//calculate step size of the primary ray
-	vec2 p = raySphereIntersection(ray_origin, ray_dir, Sky.rAtoms);
+	vec2 p = raySphereIntersection(ray_origin, ray_dir, Sky.rAtmos);
 	if(p.x > p.y){
 		//no intersection, default black color
 		return vec3(0.0f);
@@ -76,7 +76,7 @@ vec3 atomsphere(vec3 sun_pos, vec3 ray_dir){
 		priOdMie += odStepMie;
 		
 		//Calculate step size of the secondary ray
-		const float secStepSize = raySphereIntersection(priPos, sun_pos, Sky.rAtoms).y / float(Sky.secStep);
+		const float secStepSize = raySphereIntersection(priPos, sun_pos, Sky.rAtmos).y / float(Sky.secStep);
 
 		//Initialise secondary ray time
 		float secTime = 0.0f;

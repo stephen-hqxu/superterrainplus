@@ -2,6 +2,8 @@
 #extension GL_ARB_bindless_texture : require
 #extension GL_ARB_shading_language_include : require
 
+#define TWO_PI 6.283185307179586476925286766559
+
 /* ------------------ Texture Splatting ---------------------------- */
 //Macros are define by the main application, having an arbitary number just to make the compiler happy.
 #define REGION_COUNT 1
@@ -34,12 +36,15 @@ layout (location = 0) out vec4 FragColor;
 layout (binding = 0) uniform usampler2D Biomemap;
 layout (binding = 1) uniform sampler2D Heightfield;
 layout (binding = 2) uniform usampler2D Splatmap;
+layout (binding = 3) uniform sampler3D Noisemap;
 
 uniform uvec2 RenderedChunk;
 uniform vec2 ChunkOffset;
 //The strength of the z component on normalmap
 uniform float NormalStrength;
 uniform uvec2 HeightfieldResolution;
+
+const float UVScale = 10.0f;
 
 const ivec2 ConvolutionKernelOffset[8] = {
 	{ -1, -1 },
@@ -63,7 +68,22 @@ void main(){
 	//for demo to test if everything works, we display the normal map for now
 	const vec3 Normal = calcTerrainNormal();
 
-	FragColor = vec4(getRegionTexture(fs_in.texCoord, Normal), 1.0f);
+	vec3 TerrainColor = vec3(0.0f);
+	//perform smoothing to integer texture
+	for(int i = 0; i < 5; i++){
+		for(int j = 0; j < 5; j++){
+			const vec2 domain = vec2(i, j) / 5.25f,
+				stratified_domain = clamp(domain + 0.25f * texture(Noisemap, vec3(fs_in.texCoord * 98.7f, i + j * 5)).r, 0.0f, 1.0f),
+				disk_domain = sqrt(stratified_domain.y) * vec2(
+					cos(TWO_PI * stratified_domain.x),
+					sin(TWO_PI * stratified_domain.x)
+				);
+			
+			const vec2 uv_offset = (disk_domain * 2.0f - 1.0f) / HeightfieldResolution;
+			TerrainColor += getRegionTexture(fs_in.texCoord + uv_offset, Normal);
+		}
+	}
+	FragColor = vec4(TerrainColor / 25.0f, 1.0f);
 }
 
 vec3 getRegionTexture(vec2 uv, vec3 replacement){
@@ -85,8 +105,10 @@ vec3 getRegionTexture(vec2 uv, vec3 replacement){
 	}
 
 	//this formula make sure the UV is stable when the rendered chunk shifts
-	const vec2 world_uv = uv * RenderedChunk + ChunkOffset;
-	const vec3 terrainColor = texture(RegionTexture[textureLoc.x], vec3(world_uv * 10.0f, textureLoc.y)).rgb;
+	//here we need to use the UV of the current pixel (not the argument one)
+	//so when we are doing smoothing over a convolution kernel the texture color remains the same for the same pixel.
+	const vec2 world_uv = fs_in.texCoord * RenderedChunk + ChunkOffset;
+	const vec3 terrainColor = texture(RegionTexture[textureLoc.x], vec3(world_uv * UVScale, textureLoc.y)).rgb;
 
 	//region is valid, can be visualised, otherwise we display a replacement color
 	return terrainColor;
