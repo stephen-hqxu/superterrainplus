@@ -345,7 +345,6 @@ int main() {
 	//get INI
 	const SIMPLE::SIStorage& engineINI = STPStart::engineINILoader.get(), 
 		&biomeINI = STPStart::biomeINILoader.get();
-
 	//engine setup
 	//because GLFW callback uses camera, so we need to setup camera first
 	if (!(STPStart::initGLFW() && STPStart::initSTP())) {
@@ -353,6 +352,11 @@ int main() {
 		STPStart::clearup();
 		return -1;
 	}
+	//welcome
+	cout << *SuperTerrainPlus::STPFile("./Resource/welcome.txt") << endl;
+	cout << "OpenGL Version: " << glGetString(GL_VERSION) << endl;
+	cout << "OpenGL Vendor: " << glGetString(GL_VENDOR) << endl;
+	cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << endl << endl;
 
 	//setup camera
 	{
@@ -385,11 +389,6 @@ int main() {
 		STPStart::clearup();
 		return -1;
 	}
-	//welcome
-	cout << *SuperTerrainPlus::STPFile("./Resource/welcome.txt") << endl;
-	cout << "OpenGL Version: " << glGetString(GL_VERSION) << endl;
-	cout << "OpenGL Vendor: " << glGetString(GL_VENDOR) << endl;
-	cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << endl << endl;
 
 	//rendering loop
 	double currentTime, lastTime = 0.0f, deltaTime, FPS = engineINI("FPS").to<double>();

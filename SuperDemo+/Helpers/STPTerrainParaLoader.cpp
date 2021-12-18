@@ -22,7 +22,11 @@ static constexpr char* RenderingVariables[] = {
 	"minTess",
 	"maxTess",
 	"furthestDistance",
-	"nearestDistance"
+	"nearestDistance",
+	"kernel_radius",
+	"kernel_scale",
+	"noise_scale",
+	"uv_scale_factor"
 };
 
 static constexpr char* ChunkVariables[] = {
@@ -108,6 +112,7 @@ static constexpr char* AtmoshpereVariables[] = {
 STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const SIMPLE::SISection& section) {
 	STPEnvironment::STPMeshSetting rendering_options;
 	STPEnvironment::STPMeshSetting::STPTessellationSetting tess_options;
+	STPEnvironment::STPMeshSetting::STPTextureRegionSmoothSetting smooth_options;
 
 	rendering_options.Strength = section(RenderingVariables[0]).to<float>();
 	rendering_options.Altitude = section(RenderingVariables[1]).to<float>();
@@ -118,7 +123,14 @@ STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const S
 	tess_options.FurthestTessDistance = section(RenderingVariables[5]).to<float>();
 	tess_options.NearestTessDistance = section(RenderingVariables[6]).to<float>();
 
+	smooth_options.KernelRadius = section(RenderingVariables[7]).to<unsigned int>();
+	smooth_options.KernelScale = section(RenderingVariables[8]).to<float>();
+	smooth_options.NoiseScale = section(RenderingVariables[9]).to<float>();
+
+	rendering_options.UVScaleFactor = section(RenderingVariables[10]).to<unsigned int>();
+
 	rendering_options.TessSetting = tess_options;
+	rendering_options.RegionSmoothSetting = smooth_options;
 
 	return rendering_options;
 }

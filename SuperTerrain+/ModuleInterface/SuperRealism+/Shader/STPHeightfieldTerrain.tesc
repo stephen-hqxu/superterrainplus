@@ -12,8 +12,6 @@ struct TessellationSetting{
 	float MinLod;
 	float FurthestDistance;
 	float NearestDistance;
-	//control how far the mesh starts to decrease its LoD, (0, inf), in classic hermite interpolation, this factor will be 8.0f
-	//2.0 is the default value, mesh will half its original LoD at 50% of tessllation distance
 	float ShiftFactor;
 };
 
@@ -27,8 +25,6 @@ in gl_PerVertex
 in VertexVS{
 	vec2 texCoord;
 	vec3 normal;
-	vec3 tangent;
-	vec3 bitangent;
 } tcs_in[];
 
 //Output
@@ -41,8 +37,6 @@ out gl_PerVertex
 out VertexTCS{
 	vec2 texCoord;
 	vec3 normal;
-	vec3 tangent;
-	vec3 bitangent;
 } tcs_out[];
 
 //Uniforms
@@ -62,8 +56,6 @@ void main(){
 	gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
 	tcs_out[gl_InvocationID].texCoord = tcs_in[gl_InvocationID].texCoord;
 	tcs_out[gl_InvocationID].normal = tcs_in[gl_InvocationID].normal;
-	tcs_out[gl_InvocationID].tangent = tcs_in[gl_InvocationID].tangent;
-	tcs_out[gl_InvocationID].bitangent = tcs_in[gl_InvocationID].bitangent;
 	
 	if(gl_InvocationID == 0){
 		//tessllation settings are shared across all local invocations, so only need to set it once

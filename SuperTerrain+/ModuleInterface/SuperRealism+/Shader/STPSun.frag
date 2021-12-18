@@ -1,8 +1,6 @@
 #version 460 core
 #extension GL_ARB_shading_language_include : require
 
-#define PI 3.14159265358979323846264338327923495
-
 struct SkySetting{
 	float iSun;
 	float rPlanet, rAtmos;
@@ -56,10 +54,12 @@ vec3 atomsphere(vec3 sun_pos, vec3 ray_dir){
 
 	//Calculate Rayleigh and Mie phases
 	const float mu = dot(ray_dir, sun_pos),
-		mu_2 = mu * mu,
+		mu_2_p1 = mu * mu + 1.0f,
 		g_2 = Sky.g * Sky.g,
-		pRlh = 3.0f / (16.0f * PI) * (1.0f + mu_2),
-		pMie = 3.0f / (8.0f * PI) * ((1.0f - g_2) * (mu_2 + 1.0f)) / (pow(1.0f + g_2 - 2.0f * mu * Sky.g, 1.5f) * (2.0f + g_2));
+		//3.0f / (16.0f * PI)
+		pRlh = 0.05968310366 * mu_2_p1,
+		//3.0f / (8.0f * PI)
+		pMie = 0.1193662073 * (1.0f - g_2) * mu_2_p1 / (pow(1.0f + g_2 - 2.0f * mu * Sky.g, 1.5f) * (2.0f + g_2));
 
 	//Primary ray sampling
 	for(unsigned int i = 0u; i < Sky.priStep; i++){

@@ -52,6 +52,33 @@ namespace SuperTerrainPlus::STPEnvironment {
 
 		};
 
+		/**
+		 * @brief STPTextureRegionSmoothSetting controls parameters for terrain texture splatting region smoothing algorithms.
+		 * The algorithm blends colors from different regions.
+		*/
+		struct STP_REALISM_API STPTextureRegionSmoothSetting : public STPSetting {
+		public:
+
+			//Control the convolution radius for the box blur filter.
+			//Higher radius gives smoother result but consumes more power.
+			unsigned int KernelRadius;
+			//Control the distance between each sampling points.
+			float KernelScale;
+			//The UV multiplier applied to noise texture.
+			//Lower value gives smoother noise.
+			float NoiseScale;
+
+			/**
+			 * @brief Init STPTextureRegionSmoothSetting with default settings.
+			*/
+			STPTextureRegionSmoothSetting();
+
+			~STPTextureRegionSmoothSetting() = default;
+
+			bool validate() const override;
+
+		};
+
 		//Mesh Normal Parameters
 		//Control the strength of z component of the normal map, the greater, the more the normal pointing towards the surface
 		float Strength;
@@ -72,6 +99,12 @@ namespace SuperTerrainPlus::STPEnvironment {
 		STPTessellationSetting TessSetting;
 
 		//Fragment Control
+		STPTextureRegionSmoothSetting RegionSmoothSetting;
+		//Texture coordinate scaling control
+		//Texture coordinate will be calculated like this:
+		//UV * (Factor * TextureDimension ^ -1)
+		//The result should be a multiple of number of rendered chunk to avoid artifacts.
+		unsigned int UVScaleFactor;
 
 		/**
 		 * @brief Init STPMeshSettings with defaults

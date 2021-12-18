@@ -64,7 +64,7 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 
 - [x] Procedural sun rendering
 - [x] Procedural sky atmospheric effect rendering
-- [ ] Day-night cycle
+- [x] Day-night cycle
 - [ ] Night scene rendering
 - [ ] Weather and seasonal effect
 - [ ] Soft and smooth shadow

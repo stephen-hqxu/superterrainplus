@@ -90,10 +90,23 @@ bool STPMeshSetting::STPTessellationSetting::validate() const {
 		&& this->FurthestTessDistance >= this->NearestTessDistance;
 }
 
+STPMeshSetting::STPTextureRegionSmoothSetting::STPTextureRegionSmoothSetting() :
+	KernelRadius(1u), 
+	KernelScale(1.0f), 
+	NoiseScale(1.0f) {
+
+}
+
+bool STPMeshSetting::STPTextureRegionSmoothSetting::validate() const {
+	return this->KernelRadius > 0u
+		&& this->KernelScale > 0.0f;
+}
+
 STPMeshSetting::STPMeshSetting() :
 	Strength(1.0f),
 	Altitude(1.0f),
-	LoDShiftFactor(2.0f) {
+	LoDShiftFactor(2.0f), 
+	UVScaleFactor(1u) {
 
 }
 
@@ -101,7 +114,9 @@ bool STPMeshSetting::validate() const {
 	return this->Strength > 0.0f
 		&& this->Altitude > 0.0f
 		&& this->LoDShiftFactor > 0.0f
-		&& this->TessSetting.validate();
+		&& this->UVScaleFactor > 0u
+		&& this->TessSetting.validate()
+		&& this->RegionSmoothSetting.validate();
 }
 
 //STPPerspectiveCameraSetting.h

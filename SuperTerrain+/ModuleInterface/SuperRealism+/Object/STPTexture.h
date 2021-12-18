@@ -6,6 +6,10 @@
 //GL Management
 #include <SuperTerrain+/Utility/STPNullablePrimitive.h>
 
+//GLM
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -87,6 +91,64 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Generate mipmaps for a specified texture object
 		*/
 		void generateMipmap();
+
+		/**
+		 * @brief Set the texture filtering.
+		 * @param min The filter mode for minification.
+		 * @param mag The filter mode for magnification.
+		*/
+		void filter(STPOpenGL::STPenum, STPOpenGL::STPenum);
+
+		/**
+		 * @brief Set the texture wrap mode.
+		 * @param s The texture warp mode for X direction.
+		 * @param t The texture warp mode for Y direction.
+		 * @param r The texture warp mode for Z direction.
+		*/
+		void wrap(STPOpenGL::STPenum, STPOpenGL::STPenum, STPOpenGL::STPenum);
+
+		/**
+		 * @brief Set the same texture wrap mode for all direction.
+		 * @param str The texture warp mode for XYZ direction.
+		*/
+		void wrap(STPOpenGL::STPenum);
+
+		/**
+		 * @brief Set the border color when texture is wrapped using border mode.
+		 * @param color The border color.
+		*/
+		void borderColor(glm::vec4);
+
+		/**
+		 * @brief Set the anisotropy filtering mode for the texture.
+		 * @param ani The filter level.
+		*/
+		void anisotropy(STPOpenGL::STPfloat);
+
+		/**
+		 * @brief Allocate immutable storage for a texture.
+		 * @param level Specify the number of texture levels.
+		 * @param internal Specifies the sized internal format to be used to store texture image data.
+		 * @param dimension Specifies the width, height, depth of the texture, in texels. 
+		 * For 1D texture, y and z component should be 1.
+		 * For 2D texture, z component should be 1.
+		 * None of the componet should be 0.
+		*/
+		void textureStorage(STPOpenGL::STPint, STPOpenGL::STPenum, glm::uvec3);
+
+		/**
+		 * @brief Specify a three-dimensional texture subimage.
+		 * @param level Specifies the level-of-detail number. Level 0 is the base image level. Level n is the nth mipmap reduction image.
+		 * @param offset Specifies a texel offset in the x, y, z direction within the texture array.
+		 * For 1D texture, y and z offset are ignored.
+		 * For 2D texture, z offset is ignored.
+		 * @param dimension Specifies the width, height, depth of the texture subimage.
+		 * The dimension requirment remains the same as textureStorage() function.
+		 * @param format Specifies the format of the pixel data.
+		 * @param type Specifies the data type of the pixel data.
+		 * @param pixel Specifies a pointer to the image data in memory.
+		*/
+		void textureSubImage(STPOpenGL::STPint, glm::ivec3, glm::uvec3, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
 
 	};
 

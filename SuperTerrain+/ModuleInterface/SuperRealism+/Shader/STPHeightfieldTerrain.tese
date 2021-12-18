@@ -15,8 +15,6 @@ in gl_PerVertex
 in VertexTCS{
 	vec2 texCoord;
 	vec3 normal;
-	vec3 tangent;
-	vec3 bitangent;
 } tes_in[];
 //Output
 out gl_PerVertex {
@@ -27,8 +25,6 @@ out gl_PerVertex {
 out VertexTES{
 	vec2 texCoord;
 	vec3 normal;
-	vec3 tangent;
-	vec3 bitangent;
 } tes_out;
 
 //Uniforms
@@ -46,8 +42,6 @@ void main(){
 	vec4 terrain_vertices = toCartesian4D(gl_in[0].gl_Position, gl_in[1].gl_Position, gl_in[2].gl_Position);
 	tes_out.texCoord = toCartesian2D(tes_in[0].texCoord, tes_in[1].texCoord, tes_in[2].texCoord);
 	tes_out.normal = toCartesian3D(tes_in[0].normal, tes_in[1].normal, tes_in[2].normal);
-	tes_out.tangent = toCartesian3D(tes_in[0].tangent, tes_in[1].tangent, tes_in[2].tangent);
-	tes_out.bitangent = toCartesian3D(tes_in[0].bitangent, tes_in[1].bitangent, tes_in[2].bitangent);
 
 	//displace the terrain, moving the vertices upward
 	terrain_vertices.xyz += normalize(tes_out.normal) * texture(Heightfield, tes_out.texCoord).r * Altitude;

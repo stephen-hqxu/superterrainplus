@@ -17,8 +17,6 @@ in gl_PerVertex
 in VertexTES{
 	vec2 texCoord;
 	vec3 normal;
-	vec3 tangent;
-	vec3 bitangent;
 } gs_in[];
 //Output
 out gl_PerVertex
@@ -31,7 +29,6 @@ out VertexGS{
 	vec4 position_world;
 	vec4 position_clip;
 	vec2 texCoord;
-	vec3 normal;
 } gs_out;
 
 //Functions
@@ -50,7 +47,6 @@ void emitFace(int layer){
 		gl_Position = CameraProjection * CameraView * gl_Position;
 		gs_out.position_clip = gl_Position;
 		gs_out.texCoord = gs_in[i].texCoord;
-		gs_out.normal = gs_in[i].normal;//this normal is the original flat plane normal not the terrain heightfield
 		gl_Layer = layer;
 
 		EmitVertex();

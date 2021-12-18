@@ -90,7 +90,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Flag the current program as a separable program, which can be used in program pipeline.
 		 * @param separable True to indicate the new separable status of this program.
 		*/
-		void setSeparable(bool);
+		void separable(bool);
 
 		/**
 		 * @brief Finalise the shader program by linking all shaders.

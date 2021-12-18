@@ -5,9 +5,6 @@
 //Input
 layout (location = 0) in vec3 Position;
 layout (location = 1) in vec2 TexCoord;
-layout (location = 2) in vec3 Normal;
-layout (location = 3) in vec3 Tangent;
-layout (location = 4) in vec3 Bitangent;
 
 //Output
 out gl_PerVertex
@@ -19,8 +16,6 @@ out gl_PerVertex
 out VertexVS{
 	vec2 texCoord;
 	vec3 normal;
-	vec3 tangent;
-	vec3 bitangent;
 } vs_out;
 
 uniform mat4 MeshModel;//The model matrix will be used to offset and scale unit planes globally
@@ -55,7 +50,6 @@ void main(){
 	//Output
 	gl_Position = MeshModel * vec4(local_plane_position.x, Position.y, local_plane_position.y, 1.0f);
 	vs_out.texCoord = local_plane_uv;
-	vs_out.normal = Normal;
-	vs_out.tangent = Tangent;
-	vs_out.bitangent = Bitangent;
+	//our plane is always pointing upwards
+	vs_out.normal = vec3(0.0f, 1.0f, 0.0f);
 }

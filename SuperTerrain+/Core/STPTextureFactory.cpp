@@ -238,12 +238,13 @@ STPTextureInformation::STPSplatTextureDatabase STPTextureFactory::getSplatTextur
 
 STPTextureFactory::STPTextureType_t STPTextureFactory::convertType(STPTextureType type) const {
 	auto type_beg = this->ValidType.cbegin();
-	//find this type
-	const size_t type_index = std::lower_bound(type_beg, this->ValidType.cend(), type) - type_beg;
-
-	if (this->ValidType[type_index] != type) {
+	//check if type exists
+	if (!std::binary_search(type_beg, this->ValidType.cend(), type)) {
 		//type not found
 		return STPTextureFactory::UnregisteredType;
 	}
+
+	//found
+	const size_t type_index = std::lower_bound(type_beg, this->ValidType.cend(), type) - type_beg;
 	return static_cast<STPTextureType_t>(type_index);
 }

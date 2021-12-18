@@ -6,6 +6,7 @@
 //Error
 #include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
+#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //IO
@@ -45,12 +46,12 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static auto HeightfieldTerrainShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPHeightfieldTerrain", 
 	".vert", ".tesc", ".tese", ".geom", ".frag");
 
-constexpr static array<signed char, 56ull> PlaneVertex = {
-	//Position		//Texcoords		//Normal	//Tangent	//Bitangent
-	0, 0, 0,		0, 0,			0, 1, 0,	1, 0, 0,	0, 0, -1,
-	1, 0, 0,		1, 0,			0, 1, 0,	1, 0, 0,	0, 0, -1,
-	1, 0, 1,		1, 1,			0, 1, 0,	1, 0, 0,	0, 0, -1,
-	0, 0, 1,		0, 1,			0, 1, 0,	1, 0, 0,	0, 0, -1
+constexpr static array<signed char, 20ull> PlaneVertex = {
+	//Position		//Texcoords
+	0, 0, 0,		0, 0,
+	1, 0, 0,		1, 0,
+	1, 0, 1,		1, 1,
+	0, 0, 1,		0, 1
 };
 constexpr static array<unsigned char, 6ull> PlaneIndex = {
 	0, 1, 2,
@@ -87,13 +88,10 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	STPVertexArray::STPVertexAttributeBuilder attr = this->TileArray.attribute();
 	attr.format(3, GL_BYTE, GL_FALSE, sizeof(signed char))
 		.format(2, GL_BYTE, GL_FALSE, sizeof(signed char))
-		.format(3, GL_BYTE, GL_FALSE, sizeof(signed char))
-		.format(3, GL_BYTE, GL_FALSE, sizeof(signed char))
-		.format(3, GL_BYTE, GL_FALSE, sizeof(signed char))
 		.vertexBuffer(this->TileBuffer, 0)
 		.elementBuffer(this->TileIndex)
 		.binding();
-	this->TileArray.enable(0u, 5u);
+	this->TileArray.enable(0u, 2u);
 
 	//setup shader
 	STPShaderManager terrain_shader[HeightfieldTerrainShaderFilename.size()] = {
@@ -117,6 +115,12 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 
 			//texture type
 			Macro["ALBEDO"] = to_string(splatmap_generator.convertType(STPTextureType::Albedo));
+			Macro["NORMAL"] = to_string(splatmap_generator.convertType(STPTextureType::Normal));
+			Macro["BUMP"] = to_string(splatmap_generator.convertType(STPTextureType::Displacement));
+			Macro["SPECULAR"] = to_string(splatmap_generator.convertType(STPTextureType::Specular));
+			Macro["AO"] = to_string(splatmap_generator.convertType(STPTextureType::AmbientOcclusion));
+			Macro["EMISSIVE"] = to_string(splatmap_generator.convertType(STPTextureType::Emissive));
+
 			Macro["UNUSED_TYPE"] = to_string(STPTextureFactory::UnusedType);
 			Macro["UNREGISTERED_TYPE"] = to_string(STPTextureFactory::UnregisteredType);
 
@@ -133,7 +137,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 		//attach to program
 		this->TerrainComponent.attach(current_shader);
 	}
-	this->TerrainComponent.setSeparable(true);
+	this->TerrainComponent.separable(true);
 	//link
 	this->TerrainComponent.finalise();
 	log.Log[5] = this->TerrainComponent.lastLog();
@@ -182,12 +186,9 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 		.uniform(glProgramUniform1uiv, "RegistryDictionary", static_cast<GLsizei>(dict_count), dict);
 
 	/* --------------------------------- shader noise texture preparation ------------------------------ */
-	glTextureStorage3D(*this->NoiseSample, 1, GL_R8, this->RandomTextureDimension.x, this->RandomTextureDimension.y, this->RandomTextureDimension.z);
-	glTextureParameteri(*this->NoiseSample, GL_TEXTURE_WRAP_R, GL_REPEAT);
-	glTextureParameteri(*this->NoiseSample, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTextureParameteri(*this->NoiseSample, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTextureParameteri(*this->NoiseSample, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTextureParameteri(*this->NoiseSample, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	this->NoiseSample.textureStorage(1, GL_R8, this->RandomTextureDimension);
+	this->NoiseSample.wrap(GL_REPEAT);
+	this->NoiseSample.filter(GL_NEAREST, GL_LINEAR);
 }
 
 STPHeightfieldTerrain::~STPHeightfieldTerrain() {
@@ -205,15 +206,26 @@ vec2 STPHeightfieldTerrain::calcBaseChunkPosition(const vec2& horizontal_offset)
 }
 
 void STPHeightfieldTerrain::setMesh(const STPEnvironment::STPMeshSetting& mesh_setting) {
+	if (!mesh_setting.validate()) {
+		throw STPException::STPInvalidEnvironment("Mesh setting is not validated");
+	}
+	const auto& tess_setting = mesh_setting.TessSetting;
+	const auto& smooth_setting = mesh_setting.RegionSmoothSetting;
+
 	//update tessellation LoD control
-	this->TerrainComponent.uniform(glProgramUniform1f, "TessSetting.MaxLod", mesh_setting.TessSetting.MaxTessLevel)
-		.uniform(glProgramUniform1f, "TessSetting.MinLod", mesh_setting.TessSetting.MinTessLevel)
-		.uniform(glProgramUniform1f, "TessSetting.FurthestDistance", mesh_setting.TessSetting.FurthestTessDistance)
-		.uniform(glProgramUniform1f, "TessSetting.NearestDistance", mesh_setting.TessSetting.NearestTessDistance)
+	this->TerrainComponent.uniform(glProgramUniform1f, "TessSetting.MaxLod", tess_setting.MaxTessLevel)
+		.uniform(glProgramUniform1f, "TessSetting.MinLod", tess_setting.MinTessLevel)
+		.uniform(glProgramUniform1f, "TessSetting.FurthestDistance", tess_setting.FurthestTessDistance)
+		.uniform(glProgramUniform1f, "TessSetting.NearestDistance", tess_setting.NearestTessDistance)
 		.uniform(glProgramUniform1f, "TessSetting.ShiftFactor", mesh_setting.LoDShiftFactor)
 		//update other mesh-related parameters
 		.uniform(glProgramUniform1f, "Altitude", mesh_setting.Altitude)
-		.uniform(glProgramUniform1f, "NormalStrength", mesh_setting.Strength);
+		.uniform(glProgramUniform1f, "NormalStrength", mesh_setting.Strength)
+		//texture splatting smoothing
+		.uniform(glProgramUniform1ui, "SmoothSetting.Kr", smooth_setting.KernelRadius)
+		.uniform(glProgramUniform1f, "SmoothSetting.Ks", smooth_setting.KernelScale)
+		.uniform(glProgramUniform1f, "SmoothSetting.Ns", smooth_setting.NoiseScale)
+		.uniform(glProgramUniform1ui, "UVScaleFactor", mesh_setting.UVScaleFactor);
 }
 
 void STPHeightfieldTerrain::seedRandomBuffer(unsigned long long seed) {

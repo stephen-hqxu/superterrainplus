@@ -27,6 +27,8 @@ namespace SuperTerrainPlus {
 		typedef unsigned char STPboolean;
 		//GLuint64
 		typedef unsigned long long STPuint64;
+		//GLfloat
+		typedef float STPfloat;
 #ifndef __CUDACC_RTC__
 		//GLintptr
 		typedef intptr_t STPintptr;

@@ -17,17 +17,13 @@ namespace SuperTerrainPlus::STPDiversity {
 		Displacement = 0x02u,
 		//A texture that defines the amount of specular highlight at a pixel
 		Specular = 0x03u,
-		//A texture that defines how much light is scattered across the surface of the mesh
-		Glossiness = 0x04u,
-		//A texture that controls how much color from the albedo map contributes to the diffuse and brightness
-		Metalness = 0x05u,
 		//A texture that defines how a texture reacts to light during rendering
-		AmbientOcclusion = 0x06u,
+		AmbientOcclusion = 0x4u,
 		//A texture that defines which part of the object emits light, as well as the light color of each pixel
-		Emissive = 0x07u,
+		Emissive = 0x05u,
 
 		//The total number of type listed in the enum
-		TypeCount = 0x08u
+		TypeCount = 0x06u
 	};
 
 }

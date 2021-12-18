@@ -12,14 +12,29 @@
 
 //texture type indexing
 #define ALBEDO 1
+#define NORMAL 1
+#define BUMP 1
+#define SPECULAR 1
+#define AO 1
+#define EMISSIVE 1
+
 #define UNUSED_TYPE 1
 #define UNREGISTERED_TYPE 1
+
+struct TextureRegionSmoothSetting{
+	unsigned int Kr;
+	float Ks;
+	float Ns;
+};
 
 //Rule-based texturing system
 layout (bindless_sampler) uniform sampler2DArray RegionTexture[REGION_COUNT];
 //x: array index, y: layer index
 uniform uvec2 RegionRegistry[REGISTRY_COUNT];
 uniform uint RegistryDictionary[REGISTRY_DICTIONARY_COUNT];
+
+uniform TextureRegionSmoothSetting SmoothSetting;
+uniform unsigned int UVScaleFactor;
 
 /* ----------------------------------------------------------------- */
 
@@ -28,7 +43,6 @@ in VertexGS{
 	vec4 position_world;
 	vec4 position_clip;
 	vec2 texCoord;
-	vec3 normal;
 } fs_in;
 //Output
 layout (location = 0) out vec4 FragColor;
@@ -44,8 +58,6 @@ uniform vec2 ChunkOffset;
 uniform float NormalStrength;
 uniform uvec2 HeightfieldResolution;
 
-const float UVScale = 10.0f;
-
 const ivec2 ConvolutionKernelOffset[8] = {
 	{ -1, -1 },
 	{  0, -1 },
@@ -58,39 +70,61 @@ const ivec2 ConvolutionKernelOffset[8] = {
 };
 
 vec3 getRegionTexture(vec2, vec3);
-
+//Calculate the UV scaling based on the size of texture
+vec2 getUVScale(ivec2);
+//this function make sure the UV is stable when the rendered chunk shifts
+//here we need to use the UV of the current pixel (not the argument one)
+//so when we are doing smoothing over a convolution kernel the texture color remains the same for the same pixel.
+vec2 getWorldUV();
+/**
+ * We have three normal systems for terrain, plane normal, terrain normal and terrain texture normal.
+ * plane normal is simply (0,1,0), that's how our model is defined (model space normal)
+ * terrain normal is the vector that perpendicular to the tessellated terrain
+ * terrain texture normal is the normal comes along with the texture on the terrain later in the fragment shader,
+ * each texture has its own dedicated normal map.
+ * So we need to do the TBN transform twice: plane->terrain normal then terrain normal->terrain texture normal
+*/
 vec3 calcTerrainNormal();
-//The functions below are used to transformed terrain normal->terrain texture normal, given vertex position, uv and normal
-mat2x3 calcTangentBitangent(vec3[3], vec2[3]);
-mat3 calcTerrainTBN(mat2x3, vec3);
 
 void main(){
 	//for demo to test if everything works, we display the normal map for now
 	const vec3 Normal = calcTerrainNormal();
 
 	vec3 TerrainColor = vec3(0.0f);
+	const float Kr_inv = 1.0f / (1.0f * SmoothSetting.Kr),
+		Kr_2_inv = 1.0f / (1.0f * SmoothSetting.Kr * SmoothSetting.Kr), 
+		cellWidth = 1.0f / SmoothSetting.Kr;
 	//perform smoothing to integer texture
-	for(int i = 0; i < 5; i++){
-		for(int j = 0; j < 5; j++){
-			const vec2 domain = vec2(i, j) / 5.25f,
-				stratified_domain = clamp(domain + 0.25f * texture(Noisemap, vec3(fs_in.texCoord * 98.7f, i + j * 5)).r, 0.0f, 1.0f),
-				disk_domain = sqrt(stratified_domain.y) * vec2(
-					cos(TWO_PI * stratified_domain.x),
-					sin(TWO_PI * stratified_domain.x)
-				);
+	for(int i = 0; i < SmoothSetting.Kr; i++){
+		for(int j = 0; j < SmoothSetting.Kr; j++){
+			//we first divide the kernel matric into cells with equal spaces
+			const vec2 domain = vec2(i, j) * Kr_inv,
+				//then we jittered each sampling points from the cell centre
+				//however we need to make sure samples are not jittered out of its cell
+				stratified_domain = clamp(domain + cellWidth * 
+					texture(Noisemap, vec3(getWorldUV() * SmoothSetting.Ns, (1.0f * i + j * SmoothSetting.Kr) * Kr_2_inv)).r, 0.0f, 1.0f);
 			
-			const vec2 uv_offset = (disk_domain * 2.0f - 1.0f) / HeightfieldResolution;
+			//then we map a squared domain into a disk domain.
+			const float sq_domain_x = TWO_PI * stratified_domain.x;
+			const vec2 disk_domain = sqrt(stratified_domain.y) * vec2(
+				cos(sq_domain_x),
+				sin(sq_domain_x)
+			);
+			
+			//now apply the sampling points to the actual texture
+			const vec2 uv_offset = SmoothSetting.Ks * (disk_domain * 2.0f - 1.0f) / HeightfieldResolution;
 			TerrainColor += getRegionTexture(fs_in.texCoord + uv_offset, Normal);
 		}
 	}
-	FragColor = vec4(TerrainColor / 25.0f, 1.0f);
+
+	FragColor = vec4(TerrainColor * Kr_2_inv, 1.0f);
 }
 
-vec3 getRegionTexture(vec2 uv, vec3 replacement){
+vec3 getRegionTexture(vec2 splatmap_uv, vec3 replacement){
 #if ALBEDO == UNREGISTERED_TYPE
 	return replacement;
 #else
-	const uint region = texture(Splatmap, uv).r;
+	const uint region = texture(Splatmap, splatmap_uv).r;
 	if(region >= REGISTRY_DICTIONARY_COUNT){
 		//no region is defined
 		return replacement;
@@ -104,26 +138,23 @@ vec3 getRegionTexture(vec2 uv, vec3 replacement){
 		return replacement;
 	}
 
-	//this formula make sure the UV is stable when the rendered chunk shifts
-	//here we need to use the UV of the current pixel (not the argument one)
-	//so when we are doing smoothing over a convolution kernel the texture color remains the same for the same pixel.
-	const vec2 world_uv = fs_in.texCoord * RenderedChunk + ChunkOffset;
-	const vec3 terrainColor = texture(RegionTexture[textureLoc.x], vec3(world_uv * UVScale, textureLoc.y)).rgb;
+	const vec2 world_uv = getWorldUV();
+	const sampler2DArray selected_sampler = RegionTexture[textureLoc.x];
+	const vec3 terrainColor = texture(selected_sampler, vec3(world_uv * getUVScale(textureSize(selected_sampler, 0).xy), textureLoc.y)).rgb;
 
 	//region is valid, can be visualised, otherwise we display a replacement color
 	return terrainColor;
 #endif
 }
 
-/*
-	We have three normal systems for terrain, plane normal, terrain normal and terrain texture normal.
-	- plane normal is simply (0,1,0), that's how our model is defined (model space normal)
-	- terrain normal is the vector that perpendicular to the tessellated terrain
-	- terrain texture normal is the normal comes along with the texture on the terrain later in the fragment shader,
-		each texture has its own dedicated normal map
+vec2 getUVScale(ivec2 texDim){
+	return float(UVScaleFactor) / vec2(texDim);
+}
 
-	So we need to do the TBN transform twice: plane->terrain normal then terrain normal->terrain texture normal
-*/
+vec2 getWorldUV(){
+	return fs_in.texCoord * RenderedChunk + ChunkOffset;;
+}
+
 vec3 calcTerrainNormal(){
 	//calculate terrain normal from the heightfield
 	//the uv increment for each pixel on the heightfield
@@ -143,24 +174,4 @@ vec3 calcTerrainNormal(){
 	));
 	//transfer the range from [-1,1] to [0,1]
 	return (clamp(TerrainNormal, -1.0f, 1.0f) + 1.0f) / 2.0f;
-}
-
-mat2x3 calcTangentBitangent(vec3[3] position, vec2[3] uv){
-	//edge and delta uv
-	const vec3 edge0 = position[1] - position[0], edge1 = position[2] - position[0];
-	const vec2 deltauv0 = uv[1] - uv[0], deltauv1 = uv[2] - uv[0];
-	//mat(column)x(row). calculate tangent and bitangent
-	//since glsl matrix is column major we need to do a lot of transpose
-	return transpose(inverse(transpose(mat2(deltauv0, deltauv1))) * transpose(mat2x3(edge0, edge1)));
-}
-
-mat3 calcTerrainTBN(mat2x3 tangent_bitangent, vec3 normal){
-	//calculate TBN matrix for 3 vertices, tangent space to world space
-	const vec3 normal_normalised = normalize(normal), tangent_normalised = normalize(tangent_bitangent[0]);
-	return mat3(
-		//re-orthgonalise the tangent
-		normalize(tangent_normalised - dot(tangent_normalised, normal_normalised) * normal_normalised),
-		normalize(tangent_bitangent[1]),
-		normal_normalised
-	);
 }

@@ -83,7 +83,7 @@ void STPProgramManager::clear() {
 	this->resetStatus();
 }
 
-void STPProgramManager::setSeparable(bool separable) {
+void STPProgramManager::separable(bool separable) {
 	glProgramParameteri(this->Program.get(), GL_PROGRAM_SEPARABLE, separable ? GL_TRUE : GL_FALSE);
 }
 
