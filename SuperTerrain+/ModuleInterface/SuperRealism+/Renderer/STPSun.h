@@ -32,7 +32,7 @@ namespace SuperTerrainPlus::STPRealism {
 		STPBuffer RayDirectionBuffer, RayDirectionIndex, SkyRenderCommand;
 		STPVertexArray RayDirectionArray;
 		//Shaders
-		mutable STPProgramManager SkyRenderer;
+		STPProgramManager SkyRenderer;
 
 		//The time according to the position of the sun in the sky relative to one specific location on the ground, in tick
 		size_t LocalSolarTime;
@@ -53,8 +53,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//At the equinoxes, the sun rises directly east and sets directly west regardless of the latitude, 
 		//thus making the azimuth angles 90° at sunrise and 270° at sunset. 
 		//In general however, the azimuth angle varies with the latitude and time of year.
-		mutable glm::dvec3 SunDirectionCache;
-		mutable bool DirectionOutdated;
+		glm::vec3 SunDirectionCache;
 
 	public:
 
@@ -79,18 +78,17 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPSun() = default;
 
 		/**
-		 * @brief Calculate the current direction of the sun.
-		 * @return Information about the current sun direction.
-		 * @return The pointer to the current calulated sun direction, 
+		 * @brief Get the current sun direction.
+		 * @return The pointer to the current calulated sun direction cache, 
 		 * A unit vector of sun direction, this is calculate directly from elevation and azimuth angle.
 		*/
-		const glm::dvec3& calcSunDirection() const;
+		const glm::vec3& sunDirection() const;
 
 		/**
-		 * @brief Bring the timer forward by a delta amount.
-		 * @param delta The amount of tick to be added to the current LST.
+		 * @brief Bring the timer forward by a delta amount and update the sun position.
+		 * @param tick The number of tick to be added to the current LST.
 		*/
-		void deltaTick(size_t);
+		void advanceTick(size_t);
 
 		/**
 		 * @brief Get the current status of the sun.

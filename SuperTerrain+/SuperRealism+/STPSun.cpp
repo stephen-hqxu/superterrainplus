@@ -75,7 +75,7 @@ constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
 };
 
 STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log) : SunSetting(sun_setting),
-	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), DirectionOutdated(true), SunDirectionCache(0.0) {
+	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), SunDirectionCache(0.0) {
 	//validate the setting
 	if (!this->SunSetting.validate()) {
 		throw STPException::STPBadNumericRange("Sun setting provided is invalid");
@@ -124,72 +124,69 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log)
 	}
 }
 
-const dvec3& STPSun::calcSunDirection() const {
+const vec3& STPSun::sunDirection() const {
+	return this->SunDirectionCache;
+}
+
+void STPSun::advanceTick(size_t tick) {
+	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
+
+	//offset the timer
+	{
+		this->LocalSolarTime += tick;
+		const size_t deltaDay = this->LocalSolarTime / sun.DayLength;
+		if (deltaDay > 0ull) {
+			//wrap the time around if it is the next day
+			this->LocalSolarTime %= sun.DayLength;
+
+			this->Day += deltaDay;
+			//wrap the day around if it is the next year
+			this->Day %= sun.YearLength;
+		}
+	}
+
+	//the old direction cache is no longer accurate, needs to recalculate
 	static constexpr double PI = glm::pi<double>(), TWO_PI = PI * 2.0;
 	static auto saturate = [](double val) constexpr -> double {
 		return clamp(val, -1.0, 1.0);
 	};
+	//calculate hour angle
+	const double HRA = this->AnglePerTick * static_cast<long long>(this->LocalSolarTime - this->NoonTime);
+	//calculate declination, the angle between the sun and the equator plane
+	const double delta = sun.Obliquity * -glm::cos(TWO_PI * this->Day / (1.0 * sun.YearLength)),
+		phi = sun.Latitude;
 
-	if (this->DirectionOutdated) {
-		//the old direction cache is no longer accurate, needs to recalculate
-		const STPEnvironment::STPSunSetting& sun = this->SunSetting;
+	//calculate sun direction
+	const double sin_delta = glm::sin(delta),
+		cos_delta = glm::cos(delta),
+		sin_phi = glm::sin(phi),
+		cos_phi = glm::cos(phi),
+		cos_HRA = glm::cos(HRA);
 
-		//calculate hour angle
-		const double HRA = this->AnglePerTick * static_cast<long long>(this->LocalSolarTime - this->NoonTime);
-		//calculate declination, the angle between the sun and the equator plane
-		const double delta = sun.Obliquity * -glm::cos(TWO_PI * this->Day / (1.0 * sun.YearLength)),
-			phi = sun.Latitude;
+	const double sin_Elevation = saturate(
+		sin_delta * sin_phi +
+		cos_delta * cos_phi * cos_HRA
+	),
+		cos_Elevation = glm::sqrt(1.0 - sin_Elevation * sin_Elevation);
+	//azimuth angle: north=0, east=90, south=180, west=270 degree
+	const double cos_Azimuth = saturate(
+		(sin_delta * cos_phi - cos_delta * sin_phi * cos_HRA) /
+		cos_Elevation
+	),
+		//azimuth correction for the afternoon
+		//Azimuth angle starts from north, which is (0, 0, -1) in OpenGL coordinate system
+		sin_Azimuth = glm::sqrt(1.0 - cos_Azimuth * cos_Azimuth) * ((HRA > 0.0) ? -1.0 : 1.0);
 
-		//calculate sun direction
-		const double sin_delta = glm::sin(delta),
-			cos_delta = glm::cos(delta),
-			sin_phi = glm::sin(phi),
-			cos_phi = glm::cos(phi),
-			cos_HRA = glm::cos(HRA);
+	//convert angles to direction vector
+	//normalise the direction
+	this->SunDirectionCache = static_cast<vec3>(normalize(dvec3(
+		cos_Elevation * cos_Azimuth,
+		sin_Elevation,
+		cos_Elevation * sin_Azimuth
+	)));
 
-		const double sin_Elevation = saturate(
-			sin_delta * sin_phi +
-			cos_delta * cos_phi * cos_HRA
-		),
-			cos_Elevation = glm::sqrt(1.0 - sin_Elevation * sin_Elevation);
-		//azimuth angle: north=0, east=90, south=180, west=270 degree
-		const double cos_Azimuth = saturate(
-			(sin_delta * cos_phi - cos_delta * sin_phi * cos_HRA) /
-			cos_Elevation
-		),
-			//azimuth correction for the afternoon
-			//Azimuth angle starts from north, which is (0, 0, -1) in OpenGL coordinate system
-			sin_Azimuth = glm::sqrt(1.0 - cos_Azimuth * cos_Azimuth) * ((HRA > 0.0) ? -1.0 : 1.0);
-
-		//convert angles to direction vector
-		//normalise the direction
-		this->SunDirectionCache = normalize(dvec3(
-			cos_Elevation * cos_Azimuth,
-			sin_Elevation,
-			cos_Elevation * sin_Azimuth
-		));
-
-		this->DirectionOutdated = false;
-	}
-	return this->SunDirectionCache;
-}
-
-void STPSun::deltaTick(size_t delta) {
-	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
-
-	this->LocalSolarTime += delta;
-	const size_t deltaDay = this->LocalSolarTime / sun.DayLength;
-	if (deltaDay > 0ull) {
-		//wrap the time around if it is the next day
-		this->LocalSolarTime %= sun.DayLength;
-
-		this->Day += deltaDay;
-		//wrap the day around if it is the next year
-		this->Day %= sun.YearLength;
-	}
-
-	//time has changed, mark the direction cache as outdated
-	this->DirectionOutdated = true;
+	//update sun position in the shader
+	this->SkyRenderer.uniform(glProgramUniform3fv, "SunPosition", 1, value_ptr(this->SunDirectionCache));
 }
 
 double STPSun::status(double elevation) const {
@@ -217,11 +214,6 @@ void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& sky_setti
 }
 
 void STPSun::operator()() const {
-	//calculate the position/direction of the sun
-	const vec3 sun_dir = static_cast<vec3>(this->calcSunDirection());
-
-	this->SkyRenderer.uniform(glProgramUniform3fv, "SunPosition", 1, value_ptr(sun_dir));
-
 	//setup context
 	this->SkyRenderer.use();
 	this->RayDirectionArray.bind();

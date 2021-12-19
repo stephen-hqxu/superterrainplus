@@ -175,6 +175,12 @@ namespace SuperTerrainPlus::STPDiversity {
 		*/
 		STPTextureType_t convertType(STPTextureType) const;
 
+		/**
+		 * @brief Get the number of texture type being used.
+		 * @return The number of used type.
+		*/
+		size_t usedType() const;
+
 	};
 
 }

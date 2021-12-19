@@ -18,6 +18,7 @@
 #define AO 1
 #define EMISSIVE 1
 
+#define TYPE_STRIDE 1
 #define UNUSED_TYPE 1
 #define UNREGISTERED_TYPE 1
 
@@ -35,12 +36,25 @@ uniform uint RegistryDictionary[REGISTRY_DICTIONARY_COUNT];
 
 uniform TextureRegionSmoothSetting SmoothSetting;
 uniform unsigned int UVScaleFactor;
+/* -------------------------- Terrain Lighting ------------------------- */
+struct LightSetting{
+	float Ka, Kd, Ks;
+	float Shin;
+};
 
-/* ----------------------------------------------------------------- */
+#include </Common/STPCameraInformation.glsl>
+
+uniform vec3 LightDirection;
+uniform LightSetting Lighting;
+
+//Normalmap blending algorithm
+#define NORMALMAP_BLENDING 255
+
+/* --------------------------------------------------------------------- */
 
 //Input
 in VertexGS{
-	vec4 position_world;
+	vec3 position_world;
 	vec4 position_clip;
 	vec2 texCoord;
 } fs_in;
@@ -69,13 +83,9 @@ const ivec2 ConvolutionKernelOffset[8] = {
 	{ +1, +1 },
 };
 
-vec3 getRegionTexture(vec2, vec3);
+vec3 getRegionTexture(vec2, vec2, vec3, unsigned int);
 //Calculate the UV scaling based on the size of texture
 vec2 getUVScale(ivec2);
-//this function make sure the UV is stable when the rendered chunk shifts
-//here we need to use the UV of the current pixel (not the argument one)
-//so when we are doing smoothing over a convolution kernel the texture color remains the same for the same pixel.
-vec2 getWorldUV();
 /**
  * We have three normal systems for terrain, plane normal, terrain normal and terrain texture normal.
  * plane normal is simply (0,1,0), that's how our model is defined (model space normal)
@@ -85,12 +95,20 @@ vec2 getWorldUV();
  * So we need to do the TBN transform twice: plane->terrain normal then terrain normal->terrain texture normal
 */
 vec3 calcTerrainNormal();
+//Blend a main normalmap with detail normalmap
+vec3 blendNormal(vec3, vec3);
+//Calculate light color for the current fragment position
+vec3 calcLight(vec3, vec3);
 
 void main(){
-	//for demo to test if everything works, we display the normal map for now
-	const vec3 Normal = calcTerrainNormal();
+	const vec3 MeshNormal = calcTerrainNormal();
+	//this function make sure the UV is stable when the rendered chunk shifts
+	//here we need to use the UV of the current pixel (not the argument one)
+	//so when we are doing smoothing over a convolution kernel the texture color remains the same for the same pixel.
+	const vec2 worldUV = fs_in.texCoord * RenderedChunk + ChunkOffset;
 
-	vec3 TerrainColor = vec3(0.0f);
+	//terrain texture splatting
+	vec3 TerrainColor = vec3(0.0f), TerrainNormal = vec3(0.0f);
 	const float Kr_inv = 1.0f / (1.0f * SmoothSetting.Kr),
 		Kr_2_inv = 1.0f / (1.0f * SmoothSetting.Kr * SmoothSetting.Kr), 
 		cellWidth = 1.0f / SmoothSetting.Kr;
@@ -102,7 +120,7 @@ void main(){
 				//then we jittered each sampling points from the cell centre
 				//however we need to make sure samples are not jittered out of its cell
 				stratified_domain = clamp(domain + cellWidth * 
-					texture(Noisemap, vec3(getWorldUV() * SmoothSetting.Ns, (1.0f * i + j * SmoothSetting.Kr) * Kr_2_inv)).r, 0.0f, 1.0f);
+					texture(Noisemap, vec3(worldUV * SmoothSetting.Ns, (1.0f * i + j * SmoothSetting.Kr) * Kr_2_inv)).r, 0.0f, 1.0f);
 			
 			//then we map a squared domain into a disk domain.
 			const float sq_domain_x = TWO_PI * stratified_domain.x;
@@ -113,46 +131,60 @@ void main(){
 			
 			//now apply the sampling points to the actual texture
 			const vec2 uv_offset = SmoothSetting.Ks * (disk_domain * 2.0f - 1.0f) / HeightfieldResolution;
-			TerrainColor += getRegionTexture(fs_in.texCoord + uv_offset, Normal);
+			TerrainColor += getRegionTexture(fs_in.texCoord + uv_offset, worldUV, vec3(0.3f), ALBEDO);
+			TerrainNormal += getRegionTexture(fs_in.texCoord + uv_offset, worldUV, vec3(vec2(0.5f), 1.0f), NORMAL);
 		}
 	}
+	//average the final color
+	TerrainColor *= Kr_2_inv;
+	TerrainNormal *= Kr_2_inv;
 
-	FragColor = vec4(TerrainColor * Kr_2_inv, 1.0f);
+	//convert the basis of texture normal from [0,1] to [-1,1]
+	TerrainNormal = normalize(TerrainNormal) * 2.0f - 1.0f;
+	//convert from tangent space to world space
+	//since the original mesh is a upward plane, we only need to flip the normal
+	const mat3 MeshTBN = mat3(
+		vec3(1.0f, 0.0f, 0.0f),
+		vec3(0.0f, 0.0f, -1.0f),
+		vec3(0.0f, 1.0f, 0.0f)
+	);
+	//normalmap blending
+	const vec3 FinalNormal = normalize(MeshTBN * blendNormal(MeshNormal, TerrainNormal));
+	
+	//lighting pass
+	const vec3 TerrainLight = calcLight(TerrainColor, FinalNormal);
+
+	//finally
+	FragColor = vec4(TerrainLight, 1.0f);
 }
 
-vec3 getRegionTexture(vec2 splatmap_uv, vec3 replacement){
-#if ALBEDO == UNREGISTERED_TYPE
-	return replacement;
-#else
+vec3 getRegionTexture(vec2 splatmap_uv, vec2 current_world_uv, vec3 replacement, unsigned int type){
+	if(type == UNREGISTERED_TYPE){
+		//type not used
+		return replacement;
+	}
 	const uint region = texture(Splatmap, splatmap_uv).r;
 	if(region >= REGISTRY_DICTIONARY_COUNT){
 		//no region is defined
 		return replacement;
 	}
 
-	//find albedo texture for this region, currently the stride is 1
-	const uint regionLoc = RegistryDictionary[region + ALBEDO];
-	const uvec2 textureLoc = RegionRegistry[regionLoc];
-	if(textureLoc == UNUSED_TYPE){
+	const uint regionLoc = RegistryDictionary[region * TYPE_STRIDE + type];
+	if(regionLoc == UNUSED_TYPE){
 		//handle the case when texture type is not used
 		return replacement;
 	}
+	const uvec2 textureLoc = RegionRegistry[regionLoc];
 
-	const vec2 world_uv = getWorldUV();
 	const sampler2DArray selected_sampler = RegionTexture[textureLoc.x];
-	const vec3 terrainColor = texture(selected_sampler, vec3(world_uv * getUVScale(textureSize(selected_sampler, 0).xy), textureLoc.y)).rgb;
+	const vec3 terrainColor = texture(selected_sampler, vec3(current_world_uv * getUVScale(textureSize(selected_sampler, 0).xy), textureLoc.y)).rgb;
 
-	//region is valid, can be visualised, otherwise we display a replacement color
+	//region is valid
 	return terrainColor;
-#endif
 }
 
 vec2 getUVScale(ivec2 texDim){
 	return float(UVScaleFactor) / vec2(texDim);
-}
-
-vec2 getWorldUV(){
-	return fs_in.texCoord * RenderedChunk + ChunkOffset;;
 }
 
 vec3 calcTerrainNormal(){
@@ -166,12 +198,61 @@ vec3 calcTerrainNormal(){
 		const vec2 uv_offset = unit_uv * ConvolutionKernelOffset[a];
 		cell[a] = texture(Heightfield, fs_in.texCoord + uv_offset).r;
 	}
+
 	//apply filter
-	const vec3 TerrainNormal = normalize(vec3(
+	return normalize(vec3(
 		cell[0] + 2 * cell[3] + cell[5] - (cell[2] + 2 * cell[4] + cell[7]), 
 		cell[0] + 2 * cell[1] + cell[2] - (cell[5] + 2 * cell[6] + cell[7]),
 		1.0f / NormalStrength
 	));
-	//transfer the range from [-1,1] to [0,1]
-	return (clamp(TerrainNormal, -1.0f, 1.0f) + 1.0f) / 2.0f;
+}
+
+//n1 is the main normalmap, n2 adds details
+vec3 blendNormal(vec3 n1, vec3 n2){
+	//there exixts many different algorithms for normal blending, pick one yourself
+
+#if NORMALMAP_BLENDING == 0
+	//Linear
+	return normalize(n1 + n2);
+#elif NORMALMAP_BLENDING == 1
+	//Whiteout  
+	return normalize(vec3(n1.xy + n2.xy, n1.z * n2.z));
+#elif NORMALMAP_BLENDING == 2
+	//Partial Derivative
+	return normalize(vec3(n1.xy * n2.z + n2.xy * n1.z, n1.z * n2.z));
+#elif NORMALMAP_BLENDING == 3
+	//Unreal Developer Network
+	return normalize(vec3(n1.xy + n2.xy, n1.z));
+#elif NORMALMAP_BLENDING == 4
+	//Basis Transform
+	mat3 TBN = mat3(
+		vec3(n1.z, n1.y, -n1.x),
+		vec3(n1.x, n1.z, -n1.y),
+		vec3(n1.x, n1.y, n1.z)
+	);
+	return normalize(TBN * n2);
+#elif NORMALMAP_BLENDING == 5
+	//Reoriented Normal Mapping
+	n1.z += 1.0f;
+	n2 *= vec3(vec2(-1.0f), 1.0f);
+	return normalize(n1 * dot(n1, n2) / n1.z - n2);
+#else
+	//no blending
+	return n1;
+#endif
+}
+
+vec3 calcLight(vec3 material, vec3 normal){
+	//ambient
+	const vec3 ambient = Lighting.Ka * material,
+		//diffuse
+		lightDir = normalize(LightDirection),
+		diffuse = Lighting.Kd * max(dot(lightDir, normal), 0.0f) * material,
+		//specular
+		viewDir = normalize(CameraPosition - fs_in.position_world),
+		reflectDir = reflect(-lightDir, normal),
+		halfwayDir = normalize(lightDir + viewDir),
+		specular = Lighting.Ks * vec3(pow(max(dot(normal, halfwayDir), 0.0f), Lighting.Shin) * 0.3f);
+
+	return ambient + diffuse + specular;
 }

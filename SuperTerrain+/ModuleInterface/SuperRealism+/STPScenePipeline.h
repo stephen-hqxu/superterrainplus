@@ -82,8 +82,11 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Traverse the scene graph and render every component in sequential order.
+		 * This function does not modify the state of any rendering component, such as view position change.
+		 * Any update need to be called by the caller prior to rendering.
+		 * Any pending async operations will be sync automatically by this function before rendering.
 		*/
-		void traverse();
+		void traverse() const;
 
 	};
 

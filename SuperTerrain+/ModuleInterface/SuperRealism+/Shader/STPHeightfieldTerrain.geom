@@ -26,7 +26,7 @@ out gl_PerVertex
 	float gl_ClipDistance[];
 };
 out VertexGS{
-	vec4 position_world;
+	vec3 position_world;
 	vec4 position_clip;
 	vec2 texCoord;
 } gs_out;
@@ -43,7 +43,7 @@ void emitFace(int layer){
 	for(int i = 0; i < gl_in.length; i++){
 		//output the primitive information
 		gl_Position = gl_in[i].gl_Position;
-		gs_out.position_world = gl_Position;
+		gs_out.position_world = gl_Position.xyz;
 		gl_Position = CameraProjection * CameraView * gl_Position;
 		gs_out.position_clip = gl_Position;
 		gs_out.texCoord = gs_in[i].texCoord;

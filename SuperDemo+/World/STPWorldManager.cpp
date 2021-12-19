@@ -40,16 +40,20 @@ using glm::uvec2;
 class STPWorldManager::STPWorldSplattingAgent {
 private:
 
-	constexpr static size_t TextureCount = 6ull;
+	constexpr static size_t TextureCount = 10ull;
 	//All loaded texture data
 	STPTextureStorage LoadedData[STPWorldSplattingAgent::TextureCount];
 	//List of all texture name
 	constexpr static char* Filename[] = {
 		"darkrock_color.jpg",
+		"darkrock_normal.jpg",
 		"grass_color.jpg",
 		"mossrock_color.jpg",
+		"mossrock_normal.jpg",
 		"redrock_color.jpg",
+		"redrock_normal.jpg",
 		"sand_color.jpg",
+		"sand_normal.jpg",
 		"soil_color.jpg"
 	};
 	constexpr static char TDLFilename[] = "./Script/STPBiomeSplatRule.tdl";
@@ -102,7 +106,16 @@ public:
 			//our filename always follows this pattern: (texture name)_(type).(suffix), we can search using that
 			const STPTextureInformation::STPTextureID currTexID = textureName.at(currTexFile.substr(0ull, currTexFile.find_first_of('_')));
 			
-			this->Database.addMap(currTexID, STPTextureType::Albedo, x1024_rgb, this->LoadedData[i].texture());
+			//find the string representation of the type
+			const size_t type_start = currTexFile.find('_') + 1ull,
+				type_end = currTexFile.find('.');
+			const string_view typeStr = currTexFile.substr(type_start, type_end - type_start);
+			STPTextureType texType = STPTextureType::Albedo;
+			//determine texture type
+			if (typeStr == "normal") {
+				texType = STPTextureType::Normal;
+			}
+			this->Database.addMap(currTexID, texType, x1024_rgb, this->LoadedData[i].texture());
 		}
 	}
 

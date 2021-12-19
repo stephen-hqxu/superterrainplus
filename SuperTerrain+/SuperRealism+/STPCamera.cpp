@@ -30,10 +30,11 @@ STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) :
 
 void STPCamera::updateViewSpace() {
 	//calculate front based on the orientation
+	const float cos_pitch = glm::cos(this->Camera.Pitch);
 	this->Front = normalize(vec3(
-		glm::cos(this->Camera.Yaw) * glm::cos(this->Camera.Pitch),
+		glm::cos(this->Camera.Yaw) * cos_pitch,
 		glm::sin(this->Camera.Pitch),
-		glm::sin(this->Camera.Yaw) * glm::cos(this->Camera.Pitch)
+		glm::sin(this->Camera.Yaw) * cos_pitch
 	));
 	//update right and up
 	//normalise the right vector because their length gets closer to 0 the more you look up or down which results in slower movement.

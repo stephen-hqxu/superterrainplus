@@ -248,3 +248,7 @@ STPTextureFactory::STPTextureType_t STPTextureFactory::convertType(STPTextureTyp
 	const size_t type_index = std::lower_bound(type_beg, this->ValidType.cend(), type) - type_beg;
 	return static_cast<STPTextureType_t>(type_index);
 }
+
+size_t STPTextureFactory::usedType() const {
+	return this->ValidType.size();
+}

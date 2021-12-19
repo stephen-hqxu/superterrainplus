@@ -22,27 +22,14 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 - Pseudorandom generation
 - Real-time rendering
 
-:x: Unfortunately, due to the limited allocated development time (as a school project), this project currently has absolutely zero backward compatibility and may not be ready for production code rather than using with the demo program.
-
-:heavy_check_mark: However source codes are all documented and feel free to explore them for learning some of the key concepts used in this project, like:
-
-- Latest features brought by OpenGL 4 such as tessellation shader and direct-state access.
-- Latest features brought by C++ 17 and how to effectively use them in an application.
-- High-performance application optimisation techniques involving multithread CPU and GPU.
-- Procedural texture synthesis.
-- Various algorithms for procedural terrain generation.
-- State-of-the-art techniques for real-time photo-realistic rendering.
-
-> And don't worry, this project is still alive and I will keep maintaining it.
-
 ## :sparkler: Main Features
 
-### Procedural 2D infinite terrain
+### Procedural heightfield-based infinite terrain
 
 - [x] Tile-based infinite chunk
-- [x] Improved simplex noise algorithm
+- [x] Improved simplex noise
 - [x] Hardware instancing and tessellation
-- [x] Continuous Level-of-Detail
+- [x] Continuous level-of-detail
 - [x] Concurrent rendering and generation
 - [x] Particle-based free-slip hydraulic erosion
 - [x] ~~Selective edge copy from rendering buffer~~
@@ -158,21 +145,27 @@ Your GPU must support the following OpenGL extensions:
 2. Unzip the source code and go to project root.
 
 ```sh
+
 unzip `superterrainplus-master.zip`
 cd ./superterrainplus-master
+
 ```
 
 3. Create and go to `build` folder.
 
 ```sh
+
 mkdir build
 cd ./build
+
 ```
 
-4. Aquire project build script from CMake.
+4. Acquire project build script from CMake.
 
 ```sh
+
 cmake ../
+
 ```
 
 5. Configure CMake cache if preferred. Leave it as default otherwise.
@@ -180,7 +173,12 @@ cmake ../
 6. Build the program
 
 ```sh
+
+# for single-configuration generator
 cmake --build ./ --target ALL_BUILD
+# for multi-configuration generator
+cmake --build ./ --config Release --target ALL_BUILD
+
 ```
 
 Executables:
@@ -210,11 +208,11 @@ Project Repository: https://github.com/stephen-hqxu/superterrainplus
 
 Reference contains source code and libraries that are not dependencies of this project but they are where ideas, inspirations and design patterns taken from.
 
-- [README template](https://github.com/othneildrew/Best-README-Template)
 - [Minecraft biome generator](https://github.com/KaptainWutax/BiomeUtils)
 - [Particle based hydraulic erosion](https://github.com/SebLague/Hydraulic-Erosion/tree/Coding-Adventure-E01)
 - [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
 - [Animated grass geometries rendering](https://github.com/spacejack/terra)
 - [Physically-based atmoshperic scattering](https://github.com/wwwtyro/glsl-atmosphere/)
+- [Integer-format texture smoothing](https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-17-efficient-soft-edged-shadows-using)
 
 For a more academic-styled reference, check the project dissertation as linked above.

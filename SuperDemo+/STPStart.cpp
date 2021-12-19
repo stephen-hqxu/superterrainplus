@@ -74,6 +74,8 @@ namespace STPStart {
 		//Setting
 		SuperTerrainPlus::STPEnvironment::STPSunSetting SunSetting;
 
+		const vec3& ViewPosition;
+
 		/**
 		 * @brief Try to print all logs provided to cout.
 		 * @tparam L The log storage.
@@ -98,7 +100,7 @@ namespace STPStart {
 		 * @param camera The pointer to the perspective camera for the scene.
 		*/
 		STPMasterRenderer(const SIMPLE::SIStorage& engine, const SIMPLE::SIStorage& biome, SuperTerrainPlus::STPRealism::STPPerspectiveCamera& camera) :
-			engineINI(engine), biomeINI(biome) {
+			engineINI(engine), biomeINI(biome), ViewPosition(camera.cameraStatus().Position) {
 			using namespace SuperTerrainPlus;
 			using namespace STPDemo;
 
@@ -160,7 +162,8 @@ namespace STPStart {
 			//-------------------------------------------
 			//terrain
 			STPHeightfieldTerrain::STPHeightfieldTerrainLog terrain_log;
-			this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log, uvec3(128u, 128u, 6u));
+			this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log, 
+				uvec3(128u, 128u, 6u), STPHeightfieldTerrain::STPNormalBlendingAlgorithm::BasisTransform);
 			//print log
 			STPMasterRenderer::printLog(terrain_log);
 			this->TerrainRenderer->setMesh(MeshSetting);
@@ -196,9 +199,15 @@ namespace STPStart {
 		 * @brief Main rendering functions, called every frame.
 		*/
 		inline void render() {
-			//change the sun position
-			this->SunRenderer->deltaTick(1ull);
+			//prepare terrain texture first (async), because this is a slow operation
+			this->TerrainRenderer->setViewPosition(this->ViewPosition);
 
+			//change the sun position
+			this->SunRenderer->advanceTick(1ull);
+			//updat terrain rendering settings.
+			this->TerrainRenderer->setLightDirection(this->SunRenderer->sunDirection());
+
+			//render, all async operations are sync automatically
 			this->RenderPipeline->traverse();
 		}
 

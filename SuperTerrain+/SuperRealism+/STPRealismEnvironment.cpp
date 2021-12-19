@@ -102,6 +102,22 @@ bool STPMeshSetting::STPTextureRegionSmoothSetting::validate() const {
 		&& this->KernelScale > 0.0f;
 }
 
+STPMeshSetting::STPPhongLightSetting::STPPhongLightSetting() : 
+	AmbientStrength(1.0f), 
+	DiffuseStrength(0.0f), 
+	SpecularStrength(0.0f), 
+	Shineness(1.0f) {
+
+}
+
+bool STPMeshSetting::STPPhongLightSetting::validate() const {
+	return this->AmbientStrength >= 0.0f && this->AmbientStrength <= 1.0f
+		&& this->DiffuseStrength >= 0.0f
+		&& this->SpecularStrength >= 0.0f
+		&& this->Shineness >= 0.0f;
+
+}
+
 STPMeshSetting::STPMeshSetting() :
 	Strength(1.0f),
 	Altitude(1.0f),
@@ -116,7 +132,8 @@ bool STPMeshSetting::validate() const {
 		&& this->LoDShiftFactor > 0.0f
 		&& this->UVScaleFactor > 0u
 		&& this->TessSetting.validate()
-		&& this->RegionSmoothSetting.validate();
+		&& this->RegionSmoothSetting.validate()
+		&& this->LightSetting.validate();
 }
 
 //STPPerspectiveCameraSetting.h

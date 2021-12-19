@@ -66,8 +66,9 @@ constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 	0u
 };
 
-STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, uvec3 noise_scale) : 
-	TerrainGenerator(generator_pipeline), ViewPosition(vec3(0.0f)), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(noise_scale) {
+STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, 
+	uvec3 noise_scale, STPNormalBlendingAlgorithm blending) :
+	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(noise_scale) {
 	if (!GLAD_GL_ARB_bindless_texture) {
 		throw STPException::STPUnsupportedFunctionality("The current rendering context does not support ARB_bindless_texture");
 	}
@@ -121,8 +122,11 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 			Macro["AO"] = to_string(splatmap_generator.convertType(STPTextureType::AmbientOcclusion));
 			Macro["EMISSIVE"] = to_string(splatmap_generator.convertType(STPTextureType::Emissive));
 
+			Macro["TYPE_STRIDE"] = to_string(splatmap_generator.usedType());
 			Macro["UNUSED_TYPE"] = to_string(STPTextureFactory::UnusedType);
 			Macro["UNREGISTERED_TYPE"] = to_string(STPTextureFactory::UnregisteredType);
+
+			Macro["NORMALMAP_BLENDING"] = to_string(static_cast<std::underlying_type_t<STPNormalBlendingAlgorithm>>(blending));
 
 			//process fragment shader
 			current_shader.cache(*shader_source);
@@ -211,6 +215,7 @@ void STPHeightfieldTerrain::setMesh(const STPEnvironment::STPMeshSetting& mesh_s
 	}
 	const auto& tess_setting = mesh_setting.TessSetting;
 	const auto& smooth_setting = mesh_setting.RegionSmoothSetting;
+	const auto& light_setting = mesh_setting.LightSetting;
 
 	//update tessellation LoD control
 	this->TerrainComponent.uniform(glProgramUniform1f, "TessSetting.MaxLod", tess_setting.MaxTessLevel)
@@ -225,7 +230,12 @@ void STPHeightfieldTerrain::setMesh(const STPEnvironment::STPMeshSetting& mesh_s
 		.uniform(glProgramUniform1ui, "SmoothSetting.Kr", smooth_setting.KernelRadius)
 		.uniform(glProgramUniform1f, "SmoothSetting.Ks", smooth_setting.KernelScale)
 		.uniform(glProgramUniform1f, "SmoothSetting.Ns", smooth_setting.NoiseScale)
-		.uniform(glProgramUniform1ui, "UVScaleFactor", mesh_setting.UVScaleFactor);
+		.uniform(glProgramUniform1ui, "UVScaleFactor", mesh_setting.UVScaleFactor)
+		//lighting
+		.uniform(glProgramUniform1f, "Lighting.Ka", light_setting.AmbientStrength)
+		.uniform(glProgramUniform1f, "Lighting.Kd", light_setting.DiffuseStrength)
+		.uniform(glProgramUniform1f, "Lighting.Ks", light_setting.SpecularStrength)
+		.uniform(glProgramUniform1f, "Lighting.Shin", light_setting.Shineness);
 }
 
 void STPHeightfieldTerrain::seedRandomBuffer(unsigned long long seed) {
@@ -247,20 +257,16 @@ void STPHeightfieldTerrain::seedRandomBuffer(unsigned long long seed) {
 	STPcudaCheckErr(cudaGraphicsUnregisterResource(res));
 }
 
-void STPHeightfieldTerrain::prepare(const vec3& viewPos) {
+void STPHeightfieldTerrain::setViewPosition(const vec3& viewPos) {
 	//prepare heightfield
 	this->TerrainGenerator.load(viewPos);
 
-	//update the current view position
-	this->ViewPosition = viewPos;
-}
-
-void STPHeightfieldTerrain::operator()() const {
+	//update model matrix
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	mat4 Model = glm::identity<mat4>();
 	//move the terrain centre to the camera
 	const vec2 chunkCentre = STPChunk::getChunkPosition(
-		this->ViewPosition - chunk_setting.ChunkOffset,
+		viewPos - chunk_setting.ChunkOffset,
 		chunk_setting.ChunkSize,
 		chunk_setting.ChunkScaling
 	);
@@ -275,7 +281,13 @@ void STPHeightfieldTerrain::operator()() const {
 		chunk_setting.ChunkScaling
 	));
 	this->TerrainComponent.uniform(glProgramUniformMatrix4fv, "MeshModel", 1, GL_FALSE, value_ptr(Model));
+}
 
+void STPHeightfieldTerrain::setLightDirection(const vec3& dir) {
+	this->TerrainComponent.uniform(glProgramUniform3fv, "LightDirection", 1, value_ptr(dir));
+}
+
+void STPHeightfieldTerrain::operator()() const {
 	//waiting for the heightfield generator to finish
 	this->TerrainGenerator.wait();
 

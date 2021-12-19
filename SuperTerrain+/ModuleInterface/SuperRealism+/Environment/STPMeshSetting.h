@@ -79,6 +79,28 @@ namespace SuperTerrainPlus::STPEnvironment {
 
 		};
 
+		/**
+		 * @brief STPPhongLightSetting stores settings for manipulating Blinn-Phong lighting model.
+		*/
+		struct STP_REALISM_API STPPhongLightSetting : public STPSetting {
+		public:
+
+			//The light strength multiplier for different stages of lighting.
+			float AmbientStrength, DiffuseStrength, SpecularStrength;
+			//An exponent to specular highlight
+			float Shineness;
+
+			/**
+			 * @brief Init STPPhongLightSetting with default settings.
+			*/
+			STPPhongLightSetting();
+
+			~STPPhongLightSetting() = default;
+
+			bool validate() const override;
+
+		};
+
 		//Mesh Normal Parameters
 		//Control the strength of z component of the normal map, the greater, the more the normal pointing towards the surface
 		float Strength;
@@ -105,6 +127,8 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//UV * (Factor * TextureDimension ^ -1)
 		//The result should be a multiple of number of rendered chunk to avoid artifacts.
 		unsigned int UVScaleFactor;
+		//Setting for terrain lighting
+		STPPhongLightSetting LightSetting;
 
 		/**
 		 * @brief Init STPMeshSettings with defaults

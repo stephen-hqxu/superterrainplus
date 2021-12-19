@@ -70,7 +70,7 @@ void STPScenePipeline::setClearColor(vec4 color) {
 	glClearColor(color.r, color.g, color.b, color.a);
 }
 
-void STPScenePipeline::traverse() {
+void STPScenePipeline::traverse() const {
 	//clear the canvas before drawing the new scene
 	this->reset();
 
@@ -95,9 +95,6 @@ void STPScenePipeline::traverse() {
 	//process rendering components.
 	//remember that rendering components are optionally nullptr
 	if (this->Workflow.Terrain) {
-		//prepare for terrain rendering
-		this->Workflow.Terrain->prepare(position);
-
 		glDepthFunc(GL_LESS);
 		glEnable(GL_CULL_FACE);
 		//ready for rendering

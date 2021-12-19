@@ -23,6 +23,28 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPHeightfieldTerrain is a real-time photorealistic renderer for heightfield-base terrain.
 	*/
 	class STP_REALISM_API STPHeightfieldTerrain {
+	public:
+
+		/**
+		 * @brief STPNormalBlendingAlgorithm selects normalmap blending algorithm in the shader
+		*/
+		enum class STPNormalBlendingAlgorithm : unsigned char {
+			//Blend two normalmaps by adding them together
+			Linear = 0x00u,
+			//Blend by adding x,y component together and multiply z component
+			Whiteout = 0x01u,
+			//Treat two normalmap as heightmaps and blend based on the height difference
+			PartialDerivative = 0x02u,
+			//Blend by adding x,y together and use the mesh normal only as z component
+			UDN = 0x03u,
+			//Contruct a TBN matrix using mesh normal and transform texture normal to the terrain tangent space
+			BasisTransform = 0x04u,
+			//Project the texture normal to mesh normal
+			RNM = 0x05u,
+			//Disable use of texture normalmap, only mesh normal is in effect
+			Disable = 0xFFu
+		};
+
 	private:
 
 		//The main terrain generator
@@ -33,13 +55,10 @@ namespace SuperTerrainPlus::STPRealism {
 		STPVertexArray TileArray;
 		STPTexture NoiseSample;
 		//Shader program for terrain rendering
-		mutable STPProgramManager TerrainComponent;
+		STPProgramManager TerrainComponent;
 		STPPipelineManager TerrainRenderer;
 
 		std::vector<STPOpenGL::STPuint64> SplatTextureHandle;
-
-		//The last identified view position, acting as a cache
-		glm::vec3 ViewPosition;
 
 		/**
 		 * @brief Calculate the base chunk position (the coordinate of top-left corner) for the most top-left corner chunk.
@@ -61,8 +80,9 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param log The pointer to the log output from GL shader and program compiler.
 		 * @param noise_scale Specify the dimension of the noise sampling texture to be used in the shader.
 		 * Higher scale provides more randomness but also consumes more memory.
+		 * @param blending Specify the normalmap blending algorithm to be used during rendering.
 		*/
-		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, glm::uvec3);
+		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, glm::uvec3, STPNormalBlendingAlgorithm);
 
 		STPHeightfieldTerrain(const STPHeightfieldTerrain&) = delete;
 
@@ -89,10 +109,16 @@ namespace SuperTerrainPlus::STPRealism {
 		void seedRandomBuffer(unsigned long long);
 
 		/**
-		 * @brief Signal the terrain generator to prepare heightfield texture before actual rendering.
+		 * @brief Set the new view position and signal the terrain generator to prepare heightfield texture.
 		 * @param viewPos The world position of the viewing coordinate to be prepared.
 		*/
-		void prepare(const glm::vec3&);
+		void setViewPosition(const glm::vec3&);
+
+		/**
+		 * @brief Set the terrain light direction.
+		 * @param dir The direction of the light.
+		*/
+		void setLightDirection(const glm::vec3&);
 
 		/**
 		 * @brief Render the procedural heightfield terrain.
