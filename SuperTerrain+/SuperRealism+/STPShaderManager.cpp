@@ -129,7 +129,7 @@ const string& STPShaderManager::operator()(const string& source, const STPShader
 		pathLength.reserve(pathCount);
 		for (const auto& path : include) {
 			//check if path exists as named string
-			if (!glIsNamedStringARB(path.size(), path.c_str())) {
+			if (!glIsNamedStringARB(static_cast<GLint>(path.size()), path.c_str())) {
 				//see if this path has been registered
 				auto reg_it = mShaderIncludeRegistry.find(path);
 				if (reg_it == mShaderIncludeRegistry.cend()) {
@@ -141,7 +141,7 @@ const string& STPShaderManager::operator()(const string& source, const STPShader
 
 				const auto& [reg_path, reg_src] = *reg_it;
 				//try to add the named string to GL virtual include system
-				glNamedStringARB(GL_SHADER_INCLUDE_ARB, reg_path.size(), reg_path.c_str(), reg_src.size(), reg_src.c_str());
+				glNamedStringARB(GL_SHADER_INCLUDE_ARB, static_cast<GLint>(reg_path.size()), reg_path.c_str(), static_cast<GLint>(reg_src.size()), reg_src.c_str());
 			}
 
 			pathStr.emplace_back(path.c_str());
@@ -149,7 +149,7 @@ const string& STPShaderManager::operator()(const string& source, const STPShader
 		}
 
 
-		glCompileShaderIncludeARB(this->Shader.get(), pathCount, pathStr.data(), pathLength.data());
+		glCompileShaderIncludeARB(this->Shader.get(), static_cast<GLsizei>(pathCount), pathStr.data(), pathLength.data());
 	}
 	//retrieve any log
 	GLint logLength, status;

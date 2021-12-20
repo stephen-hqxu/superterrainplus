@@ -401,7 +401,7 @@ private:
 			bin.Item = sample;
 			bin.Data.Quantity = 0u;
 			//record the index in the bin and store to dictionary
-			bin_index = this->Bin.size() - 1;
+			bin_index = static_cast<unsigned int>(this->Bin.size()) - 1;
 			return bin;
 		}
 		else {
@@ -733,9 +733,9 @@ void STPSingleHistogramFilter::filter
 			//get the base index for the next worker, so each worker only copies buffer belongs to them to independent location
 			STPDefaultHistogramBuffer& curr_buffer = (*departmentLoc)[w].first;
 			//bin_base
-			base.x += curr_buffer.Bin.size();
+			base.x += static_cast<unsigned int>(curr_buffer.Bin.size());
 			//offset_base
-			base.y += curr_buffer.HistogramStartOffset.size();
+			base.y += static_cast<unsigned int>(curr_buffer.HistogramStartOffset.size());
 		}
 		//sync
 		for (unsigned char w = 0u; w < STPSingleHistogramFilter::Parallelism; w++) {

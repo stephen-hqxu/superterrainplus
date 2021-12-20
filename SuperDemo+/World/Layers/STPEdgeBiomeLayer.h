@@ -18,7 +18,7 @@ namespace STPDemo {
 
 		}
 
-		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) {
+		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) {
 			if (STPBiomeRegistry::isOcean(center)) {
 				//ocean should be untouched
 				return center;

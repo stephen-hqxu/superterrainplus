@@ -55,7 +55,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 		//this is the total number of layered texture we will have
 		this->Texture.resize(group_rec.size());
 		this->TextureOwnership.reserve(group_rec.size());
-		glCreateTextures(GL_TEXTURE_2D_ARRAY, this->Texture.size(), this->Texture.data());
+		glCreateTextures(GL_TEXTURE_2D_ARRAY, static_cast<GLsizei>(this->Texture.size()), this->Texture.data());
 		//loop through all groups
 		//we can also iterate through the GL texture array at the same time since they have the same dimension
 		groupID_converter.reserve(group_rec.size());
@@ -64,7 +64,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			const auto& [group_id, member_count, group_props] = *group_it;
 
 			//allocate memory for each layer
-			glTextureStorage3D(*gl_texture_it, 1, group_props.InteralFormat, group_props.Dimension.x, group_props.Dimension.y, member_count);
+			glTextureStorage3D(*gl_texture_it, 1, group_props.InteralFormat, group_props.Dimension.x, group_props.Dimension.y, static_cast<GLsizei>(member_count));
 			//build texture ownership table, so we can lookup texture buffer using group ID later
 			this->TextureOwnership.try_emplace(group_id, *gl_texture_it);
 
@@ -102,7 +102,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			}
 			const unsigned int group_idx = groupID_converter.at(group_id),
 				texture_idx = textureID_converter.at(texture_id);
-			const TEXTYPE_TYPE type_idx = textureType_converter.at(type);
+			const TEXTYPE_TYPE type_idx = static_cast<TEXTYPE_TYPE>(textureType_converter.at(type));
 			const STPTextureDatabase::STPTextureDescription& desc = std::get<2>(group_rec[group_idx]);
 			const uvec2 dimension = desc.Dimension;
 
@@ -136,13 +136,13 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			spalt_lookup.emplace_back(sample_id);
 			STPTextureInformation::STPSplatRegistry& reg = splat_reg.emplace_back(STPTextureInformation::STPSplatRegistry());
 			reg.AltitudeEntry = alt_acc;
-			reg.AltitudeSize = alt_count;
+			reg.AltitudeSize = static_cast<unsigned int>(alt_count);
 			reg.GradientEntry = gra_acc;
-			reg.GradientSize = gra_count;
+			reg.GradientSize = static_cast<unsigned int>(gra_count);
 
 			//update accumulator
-			alt_acc += alt_count;
-			gra_acc += gra_count;
+			alt_acc += static_cast<unsigned int>(alt_count);
+			gra_acc += static_cast<unsigned int>(gra_count);
 		}
 
 		//build the splat texture and replace texture ID with index to the texture database
@@ -160,7 +160,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 
 STPTextureFactory::~STPTextureFactory() {
 	//delete all gl texture
-	glDeleteTextures(this->Texture.size(), this->Texture.data());
+	glDeleteTextures(static_cast<GLsizei>(this->Texture.size()), this->Texture.data());
 }
 
 template<typename N>

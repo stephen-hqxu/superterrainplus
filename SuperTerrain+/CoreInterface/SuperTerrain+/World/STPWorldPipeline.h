@@ -209,7 +209,8 @@ namespace SuperTerrainPlus {
 		 * If previous worker has yet finished, function will be blocked until the previous returned, then it will be proceed.
 		 * Loading must be sync with wait() or it will incur undefined behaviour.
 		 * @param cameraPos The world position of the camera
-		 * @return True if loading worker has been dispatched, false if there is no chunk need to be updated.
+		 * @return The status of change of the central chunk.
+		 * True if the central chunk has been changed, false otherwise.
 		*/
 		bool load(const glm::vec3&);
 
@@ -228,6 +229,12 @@ namespace SuperTerrainPlus {
 		 * This function should be called by the renderer before rendering to ensure data safety.
 		*/
 		void wait();
+
+		/**
+		 * @brief Get the current world position of the central chunk.
+		 * @return The pointer to the current central chunk.
+		*/
+		const glm::vec2& centre() const;
 
 		/**
 		 * @brief Get the current OpenGL rendering buffer.

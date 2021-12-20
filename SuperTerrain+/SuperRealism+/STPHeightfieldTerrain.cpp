@@ -58,7 +58,7 @@ constexpr static array<unsigned char, 6ull> PlaneIndex = {
 	0, 2, 3
 };
 constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
-	PlaneIndex.size(),
+	static_cast<unsigned int>(PlaneIndex.size()),
 	//Needs to set instance count manually during runtime
 	1u,
 	0u,
@@ -259,17 +259,16 @@ void STPHeightfieldTerrain::seedRandomBuffer(unsigned long long seed) {
 
 void STPHeightfieldTerrain::setViewPosition(const vec3& viewPos) {
 	//prepare heightfield
-	this->TerrainGenerator.load(viewPos);
+	if (!this->TerrainGenerator.load(viewPos)) {
+		//centre chunk has yet changed, nothing to do.
+		return;
+	}
 
 	//update model matrix
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	mat4 Model = glm::identity<mat4>();
 	//move the terrain centre to the camera
-	const vec2 chunkCentre = STPChunk::getChunkPosition(
-		viewPos - chunk_setting.ChunkOffset,
-		chunk_setting.ChunkSize,
-		chunk_setting.ChunkScaling
-	);
+	const vec2& chunkCentre = this->TerrainGenerator.centre();
 	Model = glm::translate(Model, vec3(
 		chunkCentre.x,
 		chunk_setting.ChunkOffset.y,
@@ -280,7 +279,7 @@ void STPHeightfieldTerrain::setViewPosition(const vec3& viewPos) {
 		1.0f,
 		chunk_setting.ChunkScaling
 	));
-	this->TerrainComponent.uniform(glProgramUniformMatrix4fv, "MeshModel", 1, GL_FALSE, value_ptr(Model));
+	this->TerrainComponent.uniform(glProgramUniformMatrix4fv, "MeshModel", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(Model));
 }
 
 void STPHeightfieldTerrain::setLightDirection(const vec3& dir) {

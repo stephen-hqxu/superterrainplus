@@ -77,7 +77,7 @@ namespace STPDemo {
 
 			}
 
-			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
+			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
 				//escape the one that is extreme on the center
 				//and either temperate on one of the other side
 				//and replace it with a more temperate biome
@@ -104,7 +104,7 @@ namespace STPDemo {
 
 			}
 
-			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
+			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
 				//escape the one that is cold on the center
 				//and either hot or warm on one of the other side
 				//extreme climate cannot be placed together

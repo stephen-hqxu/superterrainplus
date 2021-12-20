@@ -32,11 +32,11 @@ protected:
 	constexpr static size_t CacheSize = 32ull;
 
 	Sample sampling(int x, int z) {
-		return this->cache(x, 0, z, [](int x, int y, int z) -> Sample { return static_cast<Sample>(x + z); });
+		return this->cache(x, 0, z, [](int x, int, int z) -> Sample { return static_cast<Sample>(x + z); });
 	}
 
 	Sample empty_sampling(int x, int z) {
-		return this->cache(x, 0, z, [](int x, int y, int z) -> Sample { FAIL("Sampler should not be called when cache is available."); return 0u; });
+		return this->cache(x, 0, z, [](int, int, int) -> Sample { FAIL("Sampler should not be called when cache is available."); return 0u; });
 	}
 
 public:
@@ -101,9 +101,8 @@ SCENARIO_METHOD(LayerCacheTester, "STPLayerCache is used to cache data", "[Diver
 			const auto Coordinate = GENERATE(take(3, chunk(2, random(-987654, 1313666))));
 
 			THEN("The same value should be obtained when the input is the same") {
-				const auto Value = this->sampling(Coordinate[0], Coordinate[1]);
 				//we make the sampler different to make sure it's not called because the value can be retrieved from the cache
-				REQUIRE(this->empty_sampling(Coordinate[0], Coordinate[1]) == Value);
+				REQUIRE(this->empty_sampling(Coordinate[0], Coordinate[1]) == this->sampling(Coordinate[0], Coordinate[1]));
 			}
 
 		}
@@ -162,7 +161,7 @@ public:
 class RandomLayer : public STPLayer {
 private:
 
-	Sample sample(int x, int y, int z) {
+	Sample sample(int x, int, int z) {
 		return static_cast<Sample>(this->genLocalSeed(x, z));
 	}
 

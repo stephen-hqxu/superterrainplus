@@ -18,14 +18,32 @@
 #define AO 1
 #define EMISSIVE 1
 
-#define TYPE_STRIDE 1
-#define UNUSED_TYPE 1
-#define UNREGISTERED_TYPE 1
+#define TYPE_STRIDE 6
+#define UNUSED_TYPE 0
+#define UNREGISTERED_TYPE 0
 
 struct TextureRegionSmoothSetting{
 	unsigned int Kr;
 	float Ks;
 	float Ns;
+};
+
+struct TerrainTextureData{
+#if ALBEDO != UNREGISTERED_TYPE
+	vec3 TerrainColor;
+#endif
+#if NORMAL != UNREGISTERED_TYPE
+	vec3 TerrainNormal;
+#endif
+#if BUMP != UNREGISTERED_TYPE
+	float TerrainBump;
+#endif
+#if SPECULAR != UNREGISTERED_TYPE
+	float TerrainSpecular;
+#endif
+#if AO != UNREGISTERED_TYPE
+	float TerrainAmbientOcclusion;
+#endif
 };
 
 //Rule-based texturing system
@@ -83,7 +101,11 @@ const ivec2 ConvolutionKernelOffset[8] = {
 	{ +1, +1 },
 };
 
-vec3 getRegionTexture(vec2, vec2, vec3, unsigned int);
+//Get region index
+uint getRegion(vec2);
+vec3 getRegionTexture(vec2, vec3, unsigned int, unsigned int);
+//Get all types of available texture using texture region smoothing algorithm
+TerrainTextureData getSmoothTexture(vec2);
 //Calculate the UV scaling based on the size of texture
 vec2 getUVScale(ivec2);
 /**
@@ -98,7 +120,7 @@ vec3 calcTerrainNormal();
 //Blend a main normalmap with detail normalmap
 vec3 blendNormal(vec3, vec3);
 //Calculate light color for the current fragment position
-vec3 calcLight(vec3, vec3);
+vec3 calcLight(vec3, vec3, float, float);
 
 void main(){
 	const vec3 MeshNormal = calcTerrainNormal();
@@ -108,10 +130,92 @@ void main(){
 	const vec2 worldUV = fs_in.texCoord * RenderedChunk + ChunkOffset;
 
 	//terrain texture splatting
-	vec3 TerrainColor = vec3(0.0f), TerrainNormal = vec3(0.0f);
+	const TerrainTextureData TerrainTexture = getSmoothTexture(worldUV);
+
+	//albedomap processing
+#if ALBEDO != UNREGISTERED_TYPE
+	const vec3 RenderingColor = TerrainTexture.TerrainColor;
+#else
+	//by default we visualise the terrain normal if there is no albedo texture
+	const vec3 RenderingColor = (MeshNormal + 1.0f) * 2.0f;
+#endif
+	
+	//normalmap processing
+	//convert from tangent space to world space
+	//since the original mesh is a upward plane, we only need to flip the normal
+	const mat3 MeshTBN = mat3(
+		vec3(1.0f, 0.0f, 0.0f),
+		vec3(0.0f, 0.0f, -1.0f),
+		vec3(0.0f, 1.0f, 0.0f)
+	);
+#if NORMAL != UNREGISTERED_TYPE
+	//convert the basis of texture normal from [0,1] to [-1,1]
+	const vec3 TextureNormal = normalize(TerrainTexture.TerrainNormal * 2.0f - 1.0f);
+	
+	//normalmap blending
+	const vec3 RenderingNormal = normalize(MeshTBN * blendNormal(MeshNormal, TextureNormal));
+#else
+	const vec3 RenderingNormal = normalize(MeshTBN * MeshNormal);
+#endif
+
+	//bumpmap processing
+#if BUMP != UNREGISTERED_TYPE
+	const float RenderingBump = TerrainTexture.TerrainBump;
+#else
+	const float RenderingBump = 0.0f;
+#endif
+
+	//specularmap processing
+#if SPECULAR != UNREGISTERED_TYPE
+	const float RenderingSpecular = TerrainTexture.TerrainSpecular;
+#else
+	const float RenderingSpecular = 1.0f;
+#endif
+
+	//ambient-occlusionmap processing
+#if AO != UNREGISTERED_TYPE
+	const float RenderingAO = TerrainTexture.TerrainAmbientOcclusion;
+#else
+	const float RenderingAO = 1.0f;
+#endif
+	
+	//lighting pass
+	const vec3 TerrainLight = calcLight(RenderingColor, RenderingNormal, RenderingSpecular, RenderingAO);
+
+	//finally
+	FragColor = vec4(TerrainLight, 1.0f);
+}
+
+uint getRegion(vec2 splatmap_uv){
+	return texture(Splatmap, splatmap_uv).r;
+}
+
+vec3 getRegionTexture(vec2 world_uv, vec3 replacement, unsigned int region, unsigned int type){
+	if(type == UNREGISTERED_TYPE || region >= REGISTRY_DICTIONARY_COUNT){
+		//type not used
+		//no region is defined
+		return replacement;
+	}
+
+	const uint regionLoc = RegistryDictionary[region * TYPE_STRIDE + type];
+	if(regionLoc >= REGISTRY_COUNT){
+		//handle the case when texture type is not used
+		return replacement;
+	}
+	const uvec2 textureLoc = RegionRegistry[regionLoc];
+
+	const sampler2DArray selected_sampler = RegionTexture[textureLoc.x];
+	const vec3 regionTexture = texture(selected_sampler, vec3(world_uv * getUVScale(textureSize(selected_sampler, 0).xy), textureLoc.y)).rgb;
+
+	//region is valid
+	return regionTexture;
+}
+
+TerrainTextureData getSmoothTexture(vec2 world_uv){
+	TerrainTextureData TerrainTexture;
+
 	const float Kr_inv = 1.0f / (1.0f * SmoothSetting.Kr),
-		Kr_2_inv = 1.0f / (1.0f * SmoothSetting.Kr * SmoothSetting.Kr), 
-		cellWidth = 1.0f / SmoothSetting.Kr;
+		Kr_2_inv = 1.0f / (1.0f * SmoothSetting.Kr * SmoothSetting.Kr);
 	//perform smoothing to integer texture
 	for(int i = 0; i < SmoothSetting.Kr; i++){
 		for(int j = 0; j < SmoothSetting.Kr; j++){
@@ -119,8 +223,8 @@ void main(){
 			const vec2 domain = vec2(i, j) * Kr_inv,
 				//then we jittered each sampling points from the cell centre
 				//however we need to make sure samples are not jittered out of its cell
-				stratified_domain = clamp(domain + cellWidth * 
-					texture(Noisemap, vec3(worldUV * SmoothSetting.Ns, (1.0f * i + j * SmoothSetting.Kr) * Kr_2_inv)).r, 0.0f, 1.0f);
+				stratified_domain = clamp(domain + Kr_inv * 
+					texture(Noisemap, vec3(world_uv * SmoothSetting.Ns, (1.0f * i + j * SmoothSetting.Kr) * Kr_2_inv)).r, 0.0f, 1.0f);
 			
 			//then we map a squared domain into a disk domain.
 			const float sq_domain_x = TWO_PI * stratified_domain.x;
@@ -130,57 +234,46 @@ void main(){
 			);
 			
 			//now apply the sampling points to the actual texture
-			const vec2 uv_offset = SmoothSetting.Ks * (disk_domain * 2.0f - 1.0f) / HeightfieldResolution;
-			TerrainColor += getRegionTexture(fs_in.texCoord + uv_offset, worldUV, vec3(0.3f), ALBEDO);
-			TerrainNormal += getRegionTexture(fs_in.texCoord + uv_offset, worldUV, vec3(vec2(0.5f), 1.0f), NORMAL);
+			const vec2 uv_offset = SmoothSetting.Ks * (disk_domain * 2.0f - 1.0f) / HeightfieldResolution,
+				sampling_uv = fs_in.texCoord + uv_offset;
+			const uint region = getRegion(sampling_uv);
+
+#if ALBEDO != UNREGISTERED_TYPE
+			TerrainTexture.TerrainColor += getRegionTexture(world_uv, vec3(0.5f), region, ALBEDO);
+#endif
+#if NORMAL != UNREGISTERED_TYPE
+			TerrainTexture.TerrainNormal += getRegionTexture(world_uv, vec3(vec2(0.5f), 1.0f), region, NORMAL);
+#endif
+#if BUMP != UNREGISTERED_TYPE
+			TerrainTexture.TerrainBump += getRegionTexture(world_uv, vec3(0.0f), region, BUMP);
+#endif
+#if SPECULAR != UNREGISTERED_TYPE
+			TerrainTexture.TerrainSpecular += getRegionTexture(world_uv, vec3(1.0f), region, SPECULAR);
+#endif
+#if AO != UNREGISTERED_TYPE
+			TerrainTexture.TerrainAmbientOcclusion += getRegionTexture(world_uv, vec3(1.0f), region, AO);
+#endif
 		}
 	}
+
 	//average the final color
-	TerrainColor *= Kr_2_inv;
-	TerrainNormal *= Kr_2_inv;
-
-	//convert the basis of texture normal from [0,1] to [-1,1]
-	TerrainNormal = normalize(TerrainNormal) * 2.0f - 1.0f;
-	//convert from tangent space to world space
-	//since the original mesh is a upward plane, we only need to flip the normal
-	const mat3 MeshTBN = mat3(
-		vec3(1.0f, 0.0f, 0.0f),
-		vec3(0.0f, 0.0f, -1.0f),
-		vec3(0.0f, 1.0f, 0.0f)
-	);
-	//normalmap blending
-	const vec3 FinalNormal = normalize(MeshTBN * blendNormal(MeshNormal, TerrainNormal));
+#if ALBEDO != UNREGISTERED_TYPE
+	TerrainTexture.TerrainColor *= Kr_2_inv;
+#endif
+#if NORMAL != UNREGISTERED_TYPE
+	TerrainTexture.TerrainNormal *= Kr_2_inv;
+#endif
+#if BUMP != UNREGISTERED_TYPE
+	TerrainTexture.TerrainBump *= Kr_2_inv;
+#endif
+#if SPECULAR != UNREGISTERED_TYPE
+	TerrainTexture.TerrainSpecular *= Kr_2_inv;
+#endif
+#if AO != UNREGISTERED_TYPE
+	TerrainTexture.TerrainAmbientOcclusion *= Kr_2_inv;
+#endif
 	
-	//lighting pass
-	const vec3 TerrainLight = calcLight(TerrainColor, FinalNormal);
-
-	//finally
-	FragColor = vec4(TerrainLight, 1.0f);
-}
-
-vec3 getRegionTexture(vec2 splatmap_uv, vec2 current_world_uv, vec3 replacement, unsigned int type){
-	if(type == UNREGISTERED_TYPE){
-		//type not used
-		return replacement;
-	}
-	const uint region = texture(Splatmap, splatmap_uv).r;
-	if(region >= REGISTRY_DICTIONARY_COUNT){
-		//no region is defined
-		return replacement;
-	}
-
-	const uint regionLoc = RegistryDictionary[region * TYPE_STRIDE + type];
-	if(regionLoc == UNUSED_TYPE){
-		//handle the case when texture type is not used
-		return replacement;
-	}
-	const uvec2 textureLoc = RegionRegistry[regionLoc];
-
-	const sampler2DArray selected_sampler = RegionTexture[textureLoc.x];
-	const vec3 terrainColor = texture(selected_sampler, vec3(current_world_uv * getUVScale(textureSize(selected_sampler, 0).xy), textureLoc.y)).rgb;
-
-	//region is valid
-	return terrainColor;
+	return TerrainTexture;
 }
 
 vec2 getUVScale(ivec2 texDim){
@@ -201,8 +294,8 @@ vec3 calcTerrainNormal(){
 
 	//apply filter
 	return normalize(vec3(
-		cell[0] + 2 * cell[3] + cell[5] - (cell[2] + 2 * cell[4] + cell[7]), 
-		cell[0] + 2 * cell[1] + cell[2] - (cell[5] + 2 * cell[6] + cell[7]),
+		-(cell[0] + 2 * cell[3] + cell[5] - (cell[2] + 2 * cell[4] + cell[7])), 
+		-(cell[0] + 2 * cell[1] + cell[2] - (cell[5] + 2 * cell[6] + cell[7])),
 		1.0f / NormalStrength
 	));
 }
@@ -242,9 +335,9 @@ vec3 blendNormal(vec3 n1, vec3 n2){
 #endif
 }
 
-vec3 calcLight(vec3 material, vec3 normal){
+vec3 calcLight(vec3 material, vec3 normal, float specular_strength, float ambient_strength){
 	//ambient
-	const vec3 ambient = Lighting.Ka * material,
+	const vec3 ambient = ambient_strength * Lighting.Ka * material,
 		//diffuse
 		lightDir = normalize(LightDirection),
 		diffuse = Lighting.Kd * max(dot(lightDir, normal), 0.0f) * material,
@@ -252,7 +345,7 @@ vec3 calcLight(vec3 material, vec3 normal){
 		viewDir = normalize(CameraPosition - fs_in.position_world),
 		reflectDir = reflect(-lightDir, normal),
 		halfwayDir = normalize(lightDir + viewDir),
-		specular = Lighting.Ks * vec3(pow(max(dot(normal, halfwayDir), 0.0f), Lighting.Shin) * 0.3f);
+		specular = specular_strength * Lighting.Ks * vec3(pow(max(dot(normal, halfwayDir), 0.0f), Lighting.Shin) * 0.3f);
 
 	return ambient + diffuse + specular;
 }

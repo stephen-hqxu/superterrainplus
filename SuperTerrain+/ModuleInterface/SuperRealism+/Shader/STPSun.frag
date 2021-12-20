@@ -24,14 +24,14 @@ uniform vec3 SunPosition;
 // the sphere is centered at the origin.
 // No intersection when result.x > result.y
 vec2 raySphereIntersection(vec3, vec3, float);
-vec3 atomsphere(vec3, vec3);
+vec3 atmosphere(vec3, vec3);
 
 void main(){
 	//Normalise sun and view direction
-	FragColor = vec4(atomsphere(normalize(SunPosition), normalize(RayDirection)), 1.0f);
+	FragColor = vec4(atmosphere(normalize(SunPosition), normalize(RayDirection)), 1.0f);
 }
 
-vec3 atomsphere(vec3 sun_pos, vec3 ray_dir){
+vec3 atmosphere(vec3 sun_pos, vec3 ray_dir){
 	const vec3 ray_origin = vec3(0.0f, Sky.vAlt, 0.0f);
 
 	//calculate step size of the primary ray

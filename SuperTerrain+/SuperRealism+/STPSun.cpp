@@ -67,7 +67,7 @@ constexpr static array<unsigned char, 36ull> BoxIndex = {
 	4, 6, 7
 };
 constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
-	BoxIndex.size(),
+	static_cast<unsigned int>(BoxIndex.size()),
 	1u,
 	0u,
 	0u,
@@ -139,7 +139,7 @@ void STPSun::advanceTick(size_t tick) {
 			//wrap the time around if it is the next day
 			this->LocalSolarTime %= sun.DayLength;
 
-			this->Day += deltaDay;
+			this->Day += static_cast<unsigned int>(deltaDay);
 			//wrap the day around if it is the next year
 			this->Day %= sun.YearLength;
 		}

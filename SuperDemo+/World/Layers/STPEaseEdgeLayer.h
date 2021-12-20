@@ -29,7 +29,7 @@ namespace STPDemo {
 
 		}
 
-		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
+		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
 			//replace the edge by something else if it has conflict
 			if (center == STPBiomeRegistry::DESERT.getID() && STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::SNOWY_TUNDRA, north, east, south, west)) {
 				return STPBiomeRegistry::WOODED_MOUNTAIN.getID();

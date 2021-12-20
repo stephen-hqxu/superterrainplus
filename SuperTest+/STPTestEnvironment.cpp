@@ -94,7 +94,7 @@ SCENARIO_METHOD(STPHeightfieldSetting, "STPHeightfieldSetting stores setting for
 		WHEN("Heightfield setting contains incorrect value(s)") {
 
 			AND_WHEN("Values are not positive") {
-				const unsigned char trial = GENERATE(range(0u, 5u));
+				const unsigned char trial = static_cast<unsigned char>(GENERATE(range(0u, 5u)));
 				switch (trial) {
 				case 0u:
 					//strength is negative?
@@ -127,7 +127,7 @@ SCENARIO_METHOD(STPHeightfieldSetting, "STPHeightfieldSetting stores setting for
 			}
 
 			AND_WHEN("Values are out-of-bound of defined") {
-				const unsigned char trial = GENERATE(range(0u, 3u));
+				const unsigned char trial = static_cast<unsigned char>(GENERATE(range(0u, 3u)));
 				switch (trial) {
 				case 0u:
 					//inertia is bigger than 1?
@@ -181,7 +181,7 @@ SCENARIO_METHOD(STPChunkSetting, "STPChunkSetting stores setting for chunk mesh 
 		}
 
 		WHEN("Chunk setting values contain nonsense") {
-			const unsigned char trial = GENERATE(range(0u, 4u));
+			const unsigned char trial = static_cast<unsigned char>(GENERATE(range(0u, 4u)));
 			switch (trial) {
 			case 0u:
 				//chunk scales to negative?
@@ -234,7 +234,7 @@ SCENARIO_METHOD(STPSimplexNoiseSetting, "STPSimplexNoiseSetting stores setting f
 		}
 
 		WHEN("Any give value does not make sense") {
-			const unsigned char trial = GENERATE(range(0u, 3u));
+			const unsigned char trial = static_cast<unsigned char>(GENERATE(range(0u, 3u)));
 			switch (trial) {
 			case 0u:
 				//distribution is zero?

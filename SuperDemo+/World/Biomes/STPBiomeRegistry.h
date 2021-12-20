@@ -308,8 +308,7 @@ namespace STPDemo {
 			//type check
 			static_assert(std::conjunction<std::is_same<Sample, S>...>::value, "Only sample values are allowed to be applied");
 
-			const unsigned int len = sizeof...(S);
-			if (len == 0) {
+			if constexpr (sizeof...(S) == 0) {
 				return true;
 			}
 

@@ -24,7 +24,7 @@ namespace STPDemo {
 
 			}
 
-			Sample sample(int x, int y, int z) override {
+			Sample sample(int x, int, int z) override {
 				//set local seed
 				const Seed local_seed = this->genLocalSeed(x, z);
 				//get local rng
@@ -55,7 +55,7 @@ namespace STPDemo {
 				//parent: STPOceanExtreme
 			}
 
-			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
+			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
 				if (center != STPBiomeRegistry::LUKEWARM_OCEAN.getID()
 					|| STPBiomeRegistry::applyAll([](Sample val) -> bool {
 						return val != STPBiomeRegistry::COLD_OCEAN.getID();
@@ -87,7 +87,7 @@ namespace STPDemo {
 				//parent: STPOceanNoise
 			}
 
-			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
+			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
 				if (center == STPBiomeRegistry::WARM_OCEAN.getID()
 					&& (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
 						return val != STPBiomeRegistry::FROZEN_OCEAN.getID();
@@ -131,7 +131,7 @@ namespace STPDemo {
 				//testing for neighbors and check for lands
 				for (int rx = -8; rx <= 8; rx += 4) {
 					for (int rz = -8; rz <= 8; rz += 4) {
-						const int shift_xz = this->getAscendant()->retrieve(x + rx, y, z + rz);
+						const Sample shift_xz = this->getAscendant()->retrieve(x + rx, y, z + rz);
 						if (STPBiomeRegistry::isOcean(shift_xz)) {
 							//we need to find neighbor who is land
 							continue;

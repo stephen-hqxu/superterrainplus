@@ -160,7 +160,7 @@ private:
 			HEIGHTMAP_PASS = 2u;
 
 		{
-			STPChunk::STPChunkState expected_state;
+			STPChunk::STPChunkState expected_state = STPChunk::STPChunkState::Empty;
 			switch (rec_depth) {
 			case BIOMEMAP_PASS: expected_state = STPChunk::STPChunkState::Heightmap_Ready;
 				break;
@@ -177,7 +177,7 @@ private:
 				return center;
 			}
 		}
-		auto biomemap_computer = [this](STPChunk* chunk, vec2 position, vec2 offset) -> void {
+		auto biomemap_computer = [this](STPChunk* chunk, vec2 offset) -> void {
 			//since biomemap is discrete, we need to round the pixel
 			ivec2 rounded_offset = static_cast<ivec2>(glm::round(offset));
 			STORE_EXCEPTION(this->generateBiomemap(chunk->getBiomemap(), ivec3(rounded_offset.x, 0, rounded_offset.y)))
@@ -223,7 +223,7 @@ private:
 				if (curr_neighbour->getChunkState() == STPChunk::STPChunkState::Empty) {
 					curr_neighbour->markOccupancy(true);
 					//compute biomemap
-					this->GeneratorWorker.enqueue_void(biomemap_computer, curr_neighbour, neighbourPos, this->calcOffset(neighbourPos));
+					this->GeneratorWorker.enqueue_void(biomemap_computer, curr_neighbour, this->calcOffset(neighbourPos));
 					//try to compute all biomemap, and when biomemap is computing, we don't need to wait
 					canContinue = false;
 				}
@@ -265,8 +265,7 @@ private:
 			this->GeneratorWorker.enqueue_void(erosion_computer, this->ChunkCache[chunkPos], neighbour);
 			{
 				//trigger a chunk reload as some chunks have been added to render buffer already after neighbours are updated
-				const auto neighbour_position = this->getNeighbour(chunkPos);
-				for (vec2 position : neighbour_position) {
+				for (vec2 position : this->getNeighbour(chunkPos)) {
 					this->Pipeline->reload(position);
 				}
 			}
@@ -550,11 +549,13 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 	//make sure there isn't any worker accessing the loading_chunks, otherwise undefined behaviour warning
 
 	//Whenever camera changes location, all previous rendering buffers are dumpped
-	bool shouldClearBuffer = false;
+	bool centreChanged = false, 
+		shouldClearBuffer = false;
 	//check if the central position has changed or not
 	if (const vec2 thisCentralPos = STPChunk::getChunkPosition(cameraPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScaling);
 		thisCentralPos != this->lastCenterLocation) {
 		//changed
+		centreChanged = true;
 		//backup the current rendering locals
 		this->TerrainMapExchangeCache.LocalCache.clear();
 		for (auto [local_it, chunkID] = make_pair(this->renderingLocal.cbegin(), 0u); local_it != this->renderingLocal.cend(); local_it++, chunkID++) {
@@ -674,7 +675,7 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 
 	//group mapped data together and start loading chunk
 	this->MapLoader = this->PipelineWorker.enqueue_future(asyncChunkLoader, buffer_ptr);
-	return true;
+	return centreChanged;
 }
 
 bool STPWorldPipeline::reload(const vec2& chunkPos) {
@@ -697,6 +698,10 @@ void STPWorldPipeline::wait() {
 		//CUDA will make sure all previous pending works in the stream has finished before graphics API can be called
 		STPcudaCheckErr(cudaGraphicsUnmapResources(3, this->TerrainMapRes, *this->BufferStream));
 	}
+}
+
+const vec2& STPWorldPipeline::centre() const {
+	return this->lastCenterLocation;
 }
 
 STPOpenGL::STPuint STPWorldPipeline::operator[](STPRenderingBufferType type) const {

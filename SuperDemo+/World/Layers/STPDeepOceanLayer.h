@@ -18,7 +18,7 @@ namespace STPDemo {
 
 		}
 
-		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
+		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
 			//if the center is not shallow or it's not even ocean, we can't change anything
 			if (!STPBiomeRegistry::isShallowOcean(center)) {
 				return center;

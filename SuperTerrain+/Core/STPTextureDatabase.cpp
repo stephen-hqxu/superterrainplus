@@ -141,7 +141,7 @@ public:
 	*/
 	STPSmartStmt createStmt(const string_view& sql, unsigned int flag = 0u) {
 		sqlite3_stmt* newStmt;
-		STPsqliteCheckErr(sqlite3_prepare_v3(this->SQL, sql.data(), sql.size(), flag, &newStmt, nullptr));
+		STPsqliteCheckErr(sqlite3_prepare_v3(this->SQL, sql.data(), static_cast<int>(sql.size()), flag, &newStmt, nullptr));
 		return STPSmartStmt(newStmt);
 	}
 

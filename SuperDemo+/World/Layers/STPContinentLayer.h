@@ -18,7 +18,7 @@ namespace STPDemo {
 
 		}
 
-		Sample sample(int x, int y, int z) override {
+		Sample sample(int x, int, int z) override {
 			//set local seed
 			const Seed local_seed = this->genLocalSeed(x, z);
 			//get the rng for this coordinate

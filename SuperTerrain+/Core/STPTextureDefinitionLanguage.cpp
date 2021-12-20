@@ -455,7 +455,7 @@ void STPTextureDefinitionLanguage::processRule() {
 STPTextureDefinitionLanguage::STPTextureVariable STPTextureDefinitionLanguage::operator()(STPTextureDatabase& database) const {
 	//prepare variable dictionary for return
 	STPTextureVariable varDic;
-	const size_t textureCount = this->DeclaredTexture.size();
+	const unsigned int textureCount = static_cast<unsigned int>(this->DeclaredTexture.size());
 	varDic.reserve(textureCount);
 
 	//requesting texture

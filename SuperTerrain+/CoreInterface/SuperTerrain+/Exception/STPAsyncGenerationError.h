@@ -11,7 +11,7 @@ namespace SuperTerrainPlus::STPException {
 	/**
 	 * @brief STPAsyncGenerationError indicates some exception is thrown during async launch to compute the terrain.
 	*/
-	class STP_API STPAsyncGenerationError : std::runtime_error {
+	class STP_API STPAsyncGenerationError : public std::runtime_error {
 	public:
 
 		/**

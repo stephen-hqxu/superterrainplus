@@ -24,7 +24,7 @@ Sample STPLayer::STPLocalRNG::nextVal(Sample range) const {
 	return val;
 }
 
-SuperTerrainPlus::STPDiversity::STPLayer::STPLayer(Seed global_seed, Seed salt) : Salt(salt), LayerSeed(STPLayer::genLayerSeed(global_seed, salt)) {
+STPLayer::STPLayer(Seed global_seed, Seed salt) : Salt(salt), LayerSeed(STPLayer::genLayerSeed(global_seed, salt)) {
 
 }
 

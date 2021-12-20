@@ -40,7 +40,7 @@ using glm::uvec2;
 class STPWorldManager::STPWorldSplattingAgent {
 private:
 
-	constexpr static size_t TextureCount = 10ull;
+	constexpr static size_t TextureCount = 11ull;
 	//All loaded texture data
 	STPTextureStorage LoadedData[STPWorldSplattingAgent::TextureCount];
 	//List of all texture name
@@ -48,6 +48,7 @@ private:
 		"darkrock_color.jpg",
 		"darkrock_normal.jpg",
 		"grass_color.jpg",
+		"grass_normal.jpg",
 		"mossrock_color.jpg",
 		"mossrock_normal.jpg",
 		"redrock_color.jpg",

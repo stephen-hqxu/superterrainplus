@@ -24,7 +24,7 @@ namespace STPDemo {
 
 		}
 
-		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
+		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
 			//filter the river
 			//bascially it's an edge detector
 			const Sample i = STPNoiseToRiverLayer::filterRiver(center);

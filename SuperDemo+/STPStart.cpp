@@ -91,6 +91,18 @@ namespace STPStart {
 			}
 		}
 
+		//A simple seed mixing function
+		unsigned long long CurrentSeed;
+
+		/**
+		 * @brief Get the nest seed value.
+		 * @return The next need value
+		*/
+		unsigned long long getNextSeed() {
+			this->CurrentSeed = std::hash<unsigned long long>()(this->CurrentSeed);
+			return this->CurrentSeed;
+		}
+
 	public:
 
 		/**
@@ -100,26 +112,28 @@ namespace STPStart {
 		 * @param camera The pointer to the perspective camera for the scene.
 		*/
 		STPMasterRenderer(const SIMPLE::SIStorage& engine, const SIMPLE::SIStorage& biome, SuperTerrainPlus::STPRealism::STPPerspectiveCamera& camera) :
-			engineINI(engine), biomeINI(biome), ViewPosition(camera.cameraStatus().Position) {
+			engineINI(engine), biomeINI(biome), ViewPosition(camera.cameraStatus().Position), 
+			CurrentSeed(this->biomeINI("seed", "simplex").to<unsigned long long>()) {
 			using namespace SuperTerrainPlus;
 			using namespace STPDemo;
 
 			//loading terrain parameters
 			STPEnvironment::STPConfiguration config;
-			config.ChunkSetting = STPTerrainParaLoader::getChunkSetting(this->engineINI["Generators"]);
-			STPEnvironment::STPMeshSetting MeshSetting = STPTerrainParaLoader::getRenderingSetting(this->engineINI["2DTerrainINF"]);
-			STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
-
-			const auto& chunk_setting = config.ChunkSetting;
-			config.HeightfieldSetting = std::move(
-				STPTerrainParaLoader::getGeneratorSetting(this->engineINI["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
 			STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI["simplex"]);
+			{
+				config.ChunkSetting = STPTerrainParaLoader::getChunkSetting(this->engineINI["Generators"]);
+				STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
 
-			if (!config.validate()) {
-				throw STPException::STPInvalidEnvironment("Configurations are not validated");
+				const auto& chunk_setting = config.ChunkSetting;
+				config.HeightfieldSetting = std::move(
+					STPTerrainParaLoader::getGeneratorSetting(this->engineINI["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
+
+				if (!config.validate()) {
+					throw STPException::STPInvalidEnvironment("Configurations are not validated");
+				}
 			}
-
 			//load renderer settings
+			STPEnvironment::STPMeshSetting MeshSetting = STPTerrainParaLoader::getRenderingSetting(this->engineINI["2DTerrainINF"]);
 			const auto sky_setting = STPTerrainParaLoader::getSkySetting(this->engineINI["Sky"]);
 			this->SunSetting = sky_setting.first;
 
@@ -167,7 +181,7 @@ namespace STPStart {
 			//print log
 			STPMasterRenderer::printLog(terrain_log);
 			this->TerrainRenderer->setMesh(MeshSetting);
-			this->TerrainRenderer->seedRandomBuffer(this->biomeINI("seed", "simplex").to<unsigned long long>());
+			this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
 			//-------------------------------------------
 			//sun
 			STPSun::STPSunLog sun_log;
@@ -223,7 +237,7 @@ namespace STPStart {
 	static GLFWwindow* GLCanvas = nullptr;
 	static dvec2 LastRotation;
 
-	static void frame_resized(GLFWwindow* window, int width, int height) {
+	static void frame_resized(GLFWwindow*, int width, int height) {
 		if (width != 0 && height != 0) {
 			//user has not minimised the window
 			//updating the screen size variable
@@ -233,7 +247,7 @@ namespace STPStart {
 		}
 	}
 
-	static void cursor_moved(GLFWwindow* window, double X, double Y) {
+	static void cursor_moved(GLFWwindow*, double X, double Y) {
 		//we reverse Y since Y goes from bottom to top (from negative axis to positive)
 		const dvec2 currentPos = vec2(X, Y);
 		const vec2 offset = vec2(currentPos.x - LastRotation.x, LastRotation.y - currentPos.y);
@@ -243,7 +257,7 @@ namespace STPStart {
 		LastRotation = currentPos;
 	}
 
-	static void scrolled(GLFWwindow* window, double Xoffset, double Yoffset) {
+	static void scrolled(GLFWwindow*, double, double Yoffset) {
 		//we only need vertical scroll
 		MainCamera->zoom(-static_cast<float>(Yoffset));
 	}

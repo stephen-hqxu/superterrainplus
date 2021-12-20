@@ -193,7 +193,6 @@ protected:
 
 	mat4 matrixTransform(CUfunction func, const mat4& matA, const mat4& matB, float factor) {
 		assert(func != this->Matscale);
-		auto program = this->getGeneratorModule();
 
 		//copy input to device
 		STPcudaCheckErr(cudaMemcpy(this->MatA.get(), value_ptr(matA), sizeof(mat4), cudaMemcpyHostToDevice));

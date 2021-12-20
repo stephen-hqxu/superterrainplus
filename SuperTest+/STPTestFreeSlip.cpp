@@ -354,14 +354,14 @@ TEMPLATE_TEST_CASE_METHOD(LocalIndexRef, "STPFreeSlipGenerator generates global-
 						STPFreeSlipLocation::HostMemory,
 						STPFreeSlipLocation::DeviceMemory
 					}));
-					auto& Manager = Adaptor(ChosenLocation);
+					auto Manager = Adaptor(ChosenLocation);
 					
 					THEN("Data included in the manager should be consistent") {
-						const auto* Data = this->prepareData(Manager, ChosenLocation);
+						const auto* PreparedData = this->prepareData(Manager, ChosenLocation);
 
-						REQUIRE(Data->Dimension == LocalIndexRef::Dimension);
-						REQUIRE(Data->FreeSlipChunk == LocalIndexRef::ChunkUnit);
-						REQUIRE(Data->FreeSlipRange == LocalIndexRef::ChunkRange);
+						REQUIRE(PreparedData->Dimension == LocalIndexRef::Dimension);
+						REQUIRE(PreparedData->FreeSlipChunk == LocalIndexRef::ChunkUnit);
+						REQUIRE(PreparedData->FreeSlipRange == LocalIndexRef::ChunkRange);
 
 						CHECKED_IF(ChosenLocation == STPFreeSlipLocation::HostMemory) {
 							//we don't need to check the device texture since we have tested free-slip texture buffer
@@ -370,14 +370,14 @@ TEMPLATE_TEST_CASE_METHOD(LocalIndexRef, "STPFreeSlipGenerator generates global-
 							AND_THEN("Texture can be indexed correctly using global-local index table, and the correctness of index table is verified") {
 								const auto IndexXY = GENERATE(take(5, chunk(2, random(0u, 31u))));
 								const uvec2 Coordinate = glm::make_vec2(IndexXY.data());
-								const unsigned int Local = this->locate(Coordinate);
+								const unsigned int CoordinateLocal = static_cast<unsigned int>(this->locate(Coordinate));
 
 								//index table correctness, our texture simply converts 2D coordinate to 1D index
 								//when texture is flatten in the manager, the relationship is simply:
 								//Texture[Index] = Index ==Implies==> Manager[Local] == Texture[Manager(Local)]
-								REQUIRE(Manager[Local] == Manager(Local));
+								REQUIRE(Manager[CoordinateLocal] == static_cast<TestType>(Manager(CoordinateLocal)));
 								//symmetric, convert to global index and then back to local index
-								REQUIRE(Manager[Manager[Local]] == Local);
+								REQUIRE(Manager[static_cast<unsigned int>(Manager[CoordinateLocal])] == static_cast<TestType>(CoordinateLocal));
 							}
 
 						}

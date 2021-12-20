@@ -18,7 +18,7 @@ namespace STPDemo {
 			//parent: noise to river layer
 		}
 
-		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
+		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
 			//center is river, return a river if any of the sample is a river
 			//de morgan's law
 			if (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
