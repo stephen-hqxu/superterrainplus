@@ -34,15 +34,15 @@ namespace SuperTerrainPlus::STPRealism {
 		//Shaders
 		STPProgramManager SkyRenderer;
 
-		//The time according to the position of the sun in the sky relative to one specific location on the ground, in tick
-		size_t LocalSolarTime;
 		//The number of day elapsed
-		unsigned int Day;
+		//The integer part is the number of day, the fractional part is the local solar time.
+		//The time according to the position of the sun in the sky relative to one specific location on the ground, in tick
+		double Day;
 
 		//The angle changed per tick, in radians
 		const double AnglePerTick;
 		//Denotes the tick at noon time, equals to day length by 2
-		const size_t NoonTime;
+		const unsigned long long NoonTime;
 
 		//Records the most recent calculation to avoid recomputation.
 		//The elevation angle is the angle between the sun and the horizontal. 
@@ -88,18 +88,18 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Bring the timer forward by a delta amount and update the sun position.
 		 * @param tick The number of tick to be added to the current LST.
 		*/
-		void advanceTick(size_t);
+		void advanceTick(unsigned long long);
 
 		/**
 		 * @brief Get the current status of the sun.
-		 * @param elevation The angle between the sun and the horizon.
-		 * The elevation must be in radians.
+		 * @param elevation The y component of the normalised sun direction.
+		 * The elevation must be between -1.0f and 1.0f.
 		 * @return A value between 1.0 and -1.0.
 		 * 1.0 -> sun is completely above the horizon.
 		 * 0.0 -> horizon cuts the sun in half.
 		 * -1.0 -> sun is completely below the horizon.
 		*/
-		double status(double) const;
+		float status(float) const;
 
 		/**
 		 * @brief Update the sky renderer with new atmoshpere setting.

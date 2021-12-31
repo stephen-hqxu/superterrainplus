@@ -55,9 +55,14 @@ uniform uint RegistryDictionary[REGISTRY_DICTIONARY_COUNT];
 uniform TextureRegionSmoothSetting SmoothSetting;
 uniform unsigned int UVScaleFactor;
 /* -------------------------- Terrain Lighting ------------------------- */
+struct LightColor{
+	vec3 InDir, Dir, Ref;
+};
+
 struct LightSetting{
 	float Ka, Kd, Ks;
 	float Shin;
+	LightColor Col;
 };
 
 #include </Common/STPCameraInformation.glsl>
@@ -205,10 +210,8 @@ vec3 getRegionTexture(vec2 world_uv, vec3 replacement, unsigned int region, unsi
 	const uvec2 textureLoc = RegionRegistry[regionLoc];
 
 	const sampler2DArray selected_sampler = RegionTexture[textureLoc.x];
-	const vec3 regionTexture = texture(selected_sampler, vec3(world_uv * getUVScale(textureSize(selected_sampler, 0).xy), textureLoc.y)).rgb;
-
 	//region is valid
-	return regionTexture;
+	return texture(selected_sampler, vec3(world_uv * getUVScale(textureSize(selected_sampler, 0).xy), textureLoc.y)).rgb;
 }
 
 TerrainTextureData getSmoothTexture(vec2 world_uv){
@@ -245,13 +248,13 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 			TerrainTexture.TerrainNormal += getRegionTexture(world_uv, vec3(vec2(0.5f), 1.0f), region, NORMAL);
 #endif
 #if BUMP != UNREGISTERED_TYPE
-			TerrainTexture.TerrainBump += getRegionTexture(world_uv, vec3(0.0f), region, BUMP);
+			TerrainTexture.TerrainBump += getRegionTexture(world_uv, vec3(0.0f), region, BUMP).r;
 #endif
 #if SPECULAR != UNREGISTERED_TYPE
-			TerrainTexture.TerrainSpecular += getRegionTexture(world_uv, vec3(1.0f), region, SPECULAR);
+			TerrainTexture.TerrainSpecular += getRegionTexture(world_uv, vec3(1.0f), region, SPECULAR).r;
 #endif
 #if AO != UNREGISTERED_TYPE
-			TerrainTexture.TerrainAmbientOcclusion += getRegionTexture(world_uv, vec3(1.0f), region, AO);
+			TerrainTexture.TerrainAmbientOcclusion += getRegionTexture(world_uv, vec3(1.0f), region, AO).r;
 #endif
 		}
 	}
@@ -336,16 +339,19 @@ vec3 blendNormal(vec3 n1, vec3 n2){
 }
 
 vec3 calcLight(vec3 material, vec3 normal, float specular_strength, float ambient_strength){
+	//get light color
+	const LightColor color = Lighting.Col;
+
 	//ambient
-	const vec3 ambient = ambient_strength * Lighting.Ka * material,
+	const vec3 ambient = ambient_strength * Lighting.Ka * material * color.InDir,
 		//diffuse
 		lightDir = normalize(LightDirection),
-		diffuse = Lighting.Kd * max(dot(lightDir, normal), 0.0f) * material,
+		diffuse = Lighting.Kd * max(dot(lightDir, normal), 0.0f) * material * color.Dir,
 		//specular
 		viewDir = normalize(CameraPosition - fs_in.position_world),
 		reflectDir = reflect(-lightDir, normal),
 		halfwayDir = normalize(lightDir + viewDir),
-		specular = specular_strength * Lighting.Ks * vec3(pow(max(dot(normal, halfwayDir), 0.0f), Lighting.Shin) * 0.3f);
+		specular = specular_strength * Lighting.Ks * pow(max(dot(normal, halfwayDir), 0.0f), Lighting.Shin) * color.Ref;
 
 	return ambient + diffuse + specular;
 }

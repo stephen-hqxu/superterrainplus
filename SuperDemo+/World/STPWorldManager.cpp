@@ -1,5 +1,8 @@
 #include "STPWorldManager.h"
 
+//Error
+#include <SuperTerrain+/Exception/STPInvalidArgument.h>
+
 //System
 #include <exception>
 #include <array>
@@ -60,7 +63,32 @@ private:
 	constexpr static char TDLFilename[] = "./Script/STPBiomeSplatRule.tdl";
 
 	//Group ID recording
-	STPTextureInformation::STPTextureGroupID x1024_rgb;
+	STPTextureInformation::STPTextureGroupID x1024_rgb, x1024_r;
+
+	/**
+	 * @brief Determine the texture type based on the filename.
+	 * @param filename The filename of the texture.
+	 * @return The type of texture.
+	*/
+	static STPTextureType getType(const string_view& filename) {
+		//find the string representation of the type
+		const size_t type_start = filename.find('_') + 1ull,
+			type_end = filename.find('.');
+		const string_view typeStr = filename.substr(type_start, type_end - type_start);
+
+		//convert string to texture type
+		if (typeStr == "color") {
+			return STPTextureType::Albedo;
+		}
+		if (typeStr == "normal") {
+			return STPTextureType::Normal;
+		}
+		if (typeStr == "disp") {
+			return STPTextureType::Displacement;
+		}
+
+		throw STPException::STPInvalidArgument("Cannot determine the type of this texture");
+	}
 
 public:
 
@@ -82,11 +110,15 @@ public:
 
 		//load all texture from the file system
 		for_each(std::execution::par, IndexedFilename.cbegin(), IndexedFilename.cend(),
-			[&texArr = this->LoadedData, &prefix](const auto& filename) {
-			//currently we only worry about 3 channels, since all our images don't have alpha channel.
+			[&texArr = this->LoadedData, &prefix](const auto& data) {
+			const auto [index, filename] = data;
+			//displacement map has only one channel
+			const int channel = (STPWorldSplattingAgent::getType(string_view(filename)) == STPTextureType::Displacement) ? 1 : 3;
+
+			//all our images don't have alpha channel.
 			//loading texture from file system can be done in parallel
 			//insertion into the container needs to be safe.
-			texArr[filename.first] = STPTextureStorage(prefix + '/' + filename.second, 3);
+			texArr[index] = STPTextureStorage(prefix + '/' + filename, channel);
 		});
 
 		//create group
@@ -96,6 +128,9 @@ public:
 		tex_desc.ChannelFormat = GL_RGB;
 		tex_desc.InteralFormat = GL_RGB8;
 		this->x1024_rgb = this->Database.addGroup(tex_desc);
+		tex_desc.ChannelFormat = GL_RED;
+		tex_desc.InteralFormat = GL_R8;
+		this->x1024_r = this->Database.addGroup(tex_desc);
 
 		STPDiversity::STPTextureDefinitionLanguage TDLParser(*STPFile(STPWorldSplattingAgent::TDLFilename));
 		//build texture splatting rules
@@ -106,17 +141,14 @@ public:
 			const string_view currTexFile(STPWorldSplattingAgent::Filename[i]);
 			//our filename always follows this pattern: (texture name)_(type).(suffix), we can search using that
 			const STPTextureInformation::STPTextureID currTexID = textureName.at(currTexFile.substr(0ull, currTexFile.find_first_of('_')));
-			
-			//find the string representation of the type
-			const size_t type_start = currTexFile.find('_') + 1ull,
-				type_end = currTexFile.find('.');
-			const string_view typeStr = currTexFile.substr(type_start, type_end - type_start);
-			STPTextureType texType = STPTextureType::Albedo;
-			//determine texture type
-			if (typeStr == "normal") {
-				texType = STPTextureType::Normal;
+
+			STPTextureType texType = STPWorldSplattingAgent::getType(currTexFile);
+			STPTextureInformation::STPTextureGroupID texGroup = this->x1024_rgb;
+			//change group ID conditionally
+			if (texType == STPTextureType::Displacement) {
+				texGroup = this->x1024_r;
 			}
-			this->Database.addMap(currTexID, texType, x1024_rgb, this->LoadedData[i].texture());
+			this->Database.addMap(currTexID, texType, texGroup, this->LoadedData[i].texture());
 		}
 	}
 
@@ -137,16 +169,20 @@ public:
 	*/
 	void setTextureParameter(const STPTextureFactory& factory, float anisotropy_filter) const {
 		//get the TBO based on group ID, currently we only have one group
-		const GLuint tbo = factory[this->x1024_rgb];
+		const array<GLuint, 1ull> all_tbo = {
+			factory[this->x1024_rgb]
+		};
 
-		glTextureParameteri(tbo, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTextureParameteri(tbo, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTextureParameteri(tbo, GL_TEXTURE_WRAP_R, GL_REPEAT);
-		glTextureParameteri(tbo, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTextureParameteri(tbo, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTextureParameterf(tbo, GL_TEXTURE_MAX_ANISOTROPY, anisotropy_filter);
+		for (const auto tbo : all_tbo) {
+			glTextureParameteri(tbo, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTextureParameteri(tbo, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glTextureParameteri(tbo, GL_TEXTURE_WRAP_R, GL_REPEAT);
+			glTextureParameteri(tbo, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			glTextureParameteri(tbo, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTextureParameterf(tbo, GL_TEXTURE_MAX_ANISOTROPY, anisotropy_filter);
 
-		glGenerateTextureMipmap(tbo);
+			glGenerateTextureMipmap(tbo);
+		}
 	}
 
 };

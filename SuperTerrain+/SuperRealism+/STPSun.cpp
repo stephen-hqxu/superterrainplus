@@ -81,8 +81,7 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log)
 		throw STPException::STPBadNumericRange("Sun setting provided is invalid");
 	}
 	//calculate starting LST
-	this->LocalSolarTime = this->SunSetting.DayStartOffset;
-	this->Day = 0u;
+	this->Day = 1.0 * this->SunSetting.DayStartOffset / (1.0 * this->SunSetting.DayLength);
 
 	//setup sky rendering buffer
 	this->RayDirectionBuffer.bufferStorageSubData(BoxVertex.data(), BoxVertex.size() * sizeof(signed char), GL_NONE);
@@ -128,22 +127,18 @@ const vec3& STPSun::sunDirection() const {
 	return this->SunDirectionCache;
 }
 
-void STPSun::advanceTick(size_t tick) {
+void STPSun::advanceTick(unsigned long long tick) {
 	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
 
 	//offset the timer
-	{
-		this->LocalSolarTime += tick;
-		const size_t deltaDay = this->LocalSolarTime / sun.DayLength;
-		if (deltaDay > 0ull) {
-			//wrap the time around if it is the next day
-			this->LocalSolarTime %= sun.DayLength;
-
-			this->Day += static_cast<unsigned int>(deltaDay);
-			//wrap the day around if it is the next year
-			this->Day %= sun.YearLength;
-		}
+	//increment day count
+	this->Day += 1.0 * tick / (1.0 * sun.DayLength);
+	//wrap the day around if it is the next year
+	if (this->Day >= 1.0 * sun.YearLength) {
+		this->Day -= static_cast<double>(sun.YearLength);
 	}
+	//the fractional part of Day is the fraction in a day
+	const unsigned long long LocalSolarTime = static_cast<unsigned long long>(glm::round(glm::fract(this->Day) * sun.DayLength));
 
 	//the old direction cache is no longer accurate, needs to recalculate
 	static constexpr double PI = glm::pi<double>(), TWO_PI = PI * 2.0;
@@ -151,7 +146,7 @@ void STPSun::advanceTick(size_t tick) {
 		return clamp(val, -1.0, 1.0);
 	};
 	//calculate hour angle
-	const double HRA = this->AnglePerTick * static_cast<long long>(this->LocalSolarTime - this->NoonTime);
+	const double HRA = this->AnglePerTick * static_cast<long long>(LocalSolarTime - this->NoonTime);
 	//calculate declination, the angle between the sun and the equator plane
 	const double delta = sun.Obliquity * -glm::cos(TWO_PI * this->Day / (1.0 * sun.YearLength)),
 		phi = sun.Latitude;
@@ -189,9 +184,9 @@ void STPSun::advanceTick(size_t tick) {
 	this->SkyRenderer.uniform(glProgramUniform3fv, "SunPosition", 1, value_ptr(this->SunDirectionCache));
 }
 
-double STPSun::status(double elevation) const {
+float STPSun::status(float elevation) const {
 	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
-	return smoothstep(sun.SunriseAngle, sun.SunsetAngle, degrees(elevation) + sun.CycleAngleOffset) * 2.0 - 1.0;
+	return smoothstep(sun.LowerElevation, sun.UpperElevation, elevation + sun.CycleElevationOffset) * 2.0f - 1.0f;
 }
 
 void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& sky_setting) {

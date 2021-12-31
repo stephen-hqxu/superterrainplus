@@ -32,13 +32,17 @@
 //System
 #include <iostream>
 #include <optional>
+#include <tuple>
 
 //GLM
 #include <glm/trigonometric.hpp>
+#include <glm/geometric.hpp>
 #include <glm/vec4.hpp>
 
 using std::optional;
 using std::string;
+using std::tuple;
+using std::make_tuple;
 
 using std::cout;
 using std::endl;
@@ -60,6 +64,9 @@ namespace STPStart {
 	*/
 	class STPMasterRenderer {
 	private:
+
+		//A tuple of terrain light color
+		typedef tuple<vec3, vec3, vec3> STPTerrainColor;
 
 		const SIMPLE::SIStorage& engineINI, biomeINI;
 
@@ -182,13 +189,19 @@ namespace STPStart {
 			STPMasterRenderer::printLog(terrain_log);
 			this->TerrainRenderer->setMesh(MeshSetting);
 			this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
+
+			//approximate terrain light color
+			this->TerrainRenderer->setLightColor(STPHeightfieldTerrain::STPLightType::Indirect, vec3(201.0f, 226.0f, 255.0f) / 255.0f);
+			this->TerrainRenderer->setLightColor(STPHeightfieldTerrain::STPLightType::Direct, vec3(vec2(255.0f), 250.0f) / 255.0f);
+			this->TerrainRenderer->setLightColor(STPHeightfieldTerrain::STPLightType::Reflection, vec3(vec2(255.0f), 240.0f) / 255.0f);
 			//-------------------------------------------
 			//sun
 			STPSun::STPSunLog sun_log;
 			this->SunRenderer.emplace(this->SunSetting, sun_log);
 			STPMasterRenderer::printLog(sun_log);
 			//setup atmoshpere
-			this->SunRenderer->setAtmoshpere(sky_setting.second);
+			const STPEnvironment::STPAtmosphereSetting& atm_setting = sky_setting.second;
+			this->SunRenderer->setAtmoshpere(atm_setting);
 
 			//setup rendering pipeline
 			STPScenePipeline::STPSceneWorkflow workflow = { };
@@ -219,7 +232,8 @@ namespace STPStart {
 			//change the sun position
 			this->SunRenderer->advanceTick(1ull);
 			//updat terrain rendering settings.
-			this->TerrainRenderer->setLightDirection(this->SunRenderer->sunDirection());
+			const vec3& sunDir = this->SunRenderer->sunDirection();
+			this->TerrainRenderer->setLightDirection(sunDir);
 
 			//render, all async operations are sync automatically
 			this->RenderPipeline->traverse();
@@ -233,7 +247,7 @@ namespace STPStart {
 	static SIMPLE::SIParser engineINILoader("./Engine.ini"), biomeINILoader("./Biome.ini");
 
 	/* ------------------------------ callback functions ----------------------------------- */
-	constexpr static uvec2 InitialCanvasSize = { 1600u, 900u };
+	constexpr static uvec2 InitialCanvasSize = uvec2(1600u, 900u);
 	static GLFWwindow* GLCanvas = nullptr;
 	static dvec2 LastRotation;
 

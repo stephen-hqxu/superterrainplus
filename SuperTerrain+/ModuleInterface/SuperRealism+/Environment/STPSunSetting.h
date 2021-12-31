@@ -16,9 +16,9 @@ namespace SuperTerrainPlus::STPEnvironment {
 
 		//The number of tick per day
 		//Tick is the unit of time, however the actual meaning of tick is implementation defined (by the user).
-		size_t DayLength;
+		unsigned long long DayLength;
 		//The tick set to at the start of the sun application
-		size_t DayStartOffset;
+		unsigned long long DayStartOffset;
 		//The number of day per year
 		unsigned int YearLength;
 
@@ -30,9 +30,10 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Remember to convert it into radians.
 		double Latitude;
 
-		//Set the angle to denote at which point the sun starts rising and setting, and the offset.
-		//The angles are all in radians.
-		double SunsetAngle, SunriseAngle, CycleAngleOffset;
+		//Set the elevation of the sun to the horizon to denote at which point the sun starts rising and setting, and the offset.
+		//Elevation is expressed as the y component of the normalised sun direction in the sky.
+		//All elevation values should be between -1.0 and 1.0.
+		float LowerElevation, UpperElevation, CycleElevationOffset;
 
 		/**
 		 * @brief Init STPSunSetting with default settings.

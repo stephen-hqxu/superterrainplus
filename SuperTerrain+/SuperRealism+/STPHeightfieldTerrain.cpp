@@ -286,6 +286,24 @@ void STPHeightfieldTerrain::setLightDirection(const vec3& dir) {
 	this->TerrainComponent.uniform(glProgramUniform3fv, "LightDirection", 1, value_ptr(dir));
 }
 
+void STPHeightfieldTerrain::setLightColor(STPLightType type, const vec3& color) {
+	const char* varName = nullptr;
+	//check the name of the variable.
+	switch (type) {
+	case STPLightType::Indirect: varName = "Lighting.Col.InDir";
+		break;
+	case STPLightType::Direct: varName = "Lighting.Col.Dir";
+		break;
+	case STPLightType::Reflection: varName = "Lighting.Col.Ref";
+		break;
+	default:
+		//impossible
+		break;
+	}
+	//send the uniform
+	this->TerrainComponent.uniform(glProgramUniform3fv, varName, 1, value_ptr(color));
+}
+
 void STPHeightfieldTerrain::operator()() const {
 	//waiting for the heightfield generator to finish
 	this->TerrainGenerator.wait();

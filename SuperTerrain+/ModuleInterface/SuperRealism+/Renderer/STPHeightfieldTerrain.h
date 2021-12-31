@@ -45,6 +45,21 @@ namespace SuperTerrainPlus::STPRealism {
 			Disable = 0xFFu
 		};
 
+		/**
+		 * @brief STPLightType specifies the type of a light source.
+		*/
+		enum class STPLightType : unsigned char {
+			//Simulate lights that is not visible directly by the light source.
+			//Ambient
+			Indirect = 0x00u,
+			//Simulates areas being illuminated directly by light source.
+			//Diffuse
+			Direct = 0x01u,
+			//Simulates reflection of a surface.
+			//Specular
+			Reflection = 0x02u
+		};
+
 	private:
 
 		//The main terrain generator
@@ -119,6 +134,13 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param dir The direction of the light.
 		*/
 		void setLightDirection(const glm::vec3&);
+
+		/**
+		 * @brief Set the light color of a specific type of light.
+		 * @param type The type of light to be set.
+		 * @param color The RGB color of the light.
+		*/
+		void setLightColor(STPLightType, const glm::vec3&);
 
 		/**
 		 * @brief Render the procedural heightfield terrain.

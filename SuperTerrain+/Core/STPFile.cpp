@@ -19,7 +19,7 @@ STPFile::STPFile(const char* filename) {
 	using std::ios;
 	//open the file
 	ifstream fileIO(filename, ios::in);
-	if (!fileIO) {
+	if (!fileIO.good()) {
 		//cannot open the file
 		stringstream msg;
 		msg << "File \'" << filename << "\' cannot be opened" << std::endl;
