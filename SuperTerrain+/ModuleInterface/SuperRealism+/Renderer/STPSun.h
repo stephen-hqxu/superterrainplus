@@ -11,9 +11,12 @@
 #include "../Object/STPBuffer.h"
 #include "../Object/STPVertexArray.h"
 #include "../Utility/STPLogStorage.hpp"
+//Lighting
+#include "STPLightSpectrum.h"
 
 //GLM
 #include <glm/vec3.hpp>
+#include <glm/mat3x3.hpp>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -24,6 +27,76 @@ namespace SuperTerrainPlus::STPRealism {
 	 * Atmoshperic scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
 	*/
 	class STP_REALISM_API STPSun {
+	public:
+
+		typedef STPLogStorage<2ull> STPSpectrumLog;
+
+		/**
+		 * @brief STPSunSpectrum allows generating an approximation of spectrum for looking up sky and sun color using sun elevation.
+		*/
+		class STP_REALISM_API STPSunSpectrum : public STPLightSpectrum {
+		public:
+
+			/**
+			 * @brief STPSpectrumSpecification specifies the behaviour of the sun spectrum generator to 
+			 * control the precision of the spectrum.
+			*/
+			struct STPSpectrumSpecification {
+			public:
+
+				const STPEnvironment::STPAtmosphereSetting* Atmosphere;
+				//A matrix to convert from sun direction space to ray direction space.
+				glm::mat3 RaySpace;
+
+				//The sun direction for the first iteration and the last iteration.
+				//Sun direction in between will be interpolated.
+				std::pair<glm::vec3, glm::vec3> Domain;
+			};
+
+		private:
+
+			//A compute shader to generate an approximation of sky and sun spectrum
+			STPProgramManager SpectrumEmulator;
+
+			//The sun direction linked with a sun, and will be updated automatically.
+			const float& SunElevation;
+			//Record the elevation of sun direction domain of last computed spectrum.
+			std::pair<float, float> DomainElevation;
+
+		public:
+
+			/**
+			 * @brief Initialise a sun spectrum generator and generate the spectrum.
+			 * @param iteration The number of iteration to be performed for the spectrum generation.
+			 * @param sun The pointer to the sun to be linked with the sun spectrum emulator.
+			 * @param log The pointer to where the shader log will be stored to.
+			*/
+			STPSunSpectrum(unsigned int, const STPSun&, STPSpectrumLog&);
+
+			STPSunSpectrum(const STPSunSpectrum&) = delete;
+
+			STPSunSpectrum(STPSunSpectrum&&) noexcept = default;
+
+			STPSunSpectrum& operator=(const STPSunSpectrum&) = delete;
+
+			STPSunSpectrum& operator=(STPSunSpectrum&&) noexcept = default;
+
+			~STPSunSpectrum() = default;
+			
+			/**
+			 * @brief Generate a new sun spectrum.
+			 * @param spectrum_setting The pointer to the spectrum specification.
+			*/
+			void operator()(const STPSpectrumSpecification&);
+
+			/**
+			 * @brief Calculate the sun spectrum coordinate based on the sun direction.
+			 * @return The spectrum texture coordinate.
+			*/
+			float coordinate() const override;
+
+		};
+
 	private:
 
 		const STPEnvironment::STPSunSetting& SunSetting;
@@ -54,6 +127,13 @@ namespace SuperTerrainPlus::STPRealism {
 		//thus making the azimuth angles 90° at sunrise and 270° at sunset. 
 		//In general however, the azimuth angle varies with the latitude and time of year.
 		glm::vec3 SunDirectionCache;
+
+		/**
+		 * @brief Send new atmosphere settings as uniforms to the destintion program.
+		 * @param program The program where the uniforms will be sent to.
+		 * @param atmo_setting The atmosphere setting to be updated.
+		*/
+		static void updateAtmosphere(STPProgramManager&, const STPEnvironment::STPAtmosphereSetting&);
 
 	public:
 
@@ -91,19 +171,9 @@ namespace SuperTerrainPlus::STPRealism {
 		void advanceTick(unsigned long long);
 
 		/**
-		 * @brief Get the current status of the sun.
-		 * @param elevation The y component of the normalised sun direction.
-		 * The elevation must be between -1.0f and 1.0f.
-		 * @return A value between 1.0 and -1.0.
-		 * 1.0 -> sun is completely above the horizon.
-		 * 0.0 -> horizon cuts the sun in half.
-		 * -1.0 -> sun is completely below the horizon.
-		*/
-		float status(float) const;
-
-		/**
-		 * @brief Update the sky renderer with new atmoshpere setting.
-		 * @param sky_setting The sky setting. 
+		 * @brief Update the renderer with new atmoshpere setting.
+		 * No reference is retained after this function returns.
+		 * @param atmo_setting The atmosphere setting to be updated setting. 
 		*/
 		void setAtmoshpere(const STPEnvironment::STPAtmosphereSetting&);
 

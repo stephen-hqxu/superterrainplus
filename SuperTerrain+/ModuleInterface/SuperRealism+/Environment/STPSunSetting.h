@@ -30,11 +30,6 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Remember to convert it into radians.
 		double Latitude;
 
-		//Set the elevation of the sun to the horizon to denote at which point the sun starts rising and setting, and the offset.
-		//Elevation is expressed as the y component of the normalised sun direction in the sky.
-		//All elevation values should be between -1.0 and 1.0.
-		float LowerElevation, UpperElevation, CycleElevationOffset;
-
 		/**
 		 * @brief Init STPSunSetting with default settings.
 		*/

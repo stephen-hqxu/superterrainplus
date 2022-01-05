@@ -4,6 +4,7 @@ STPBuffer.cpp
 STPCamera.cpp
 STPDebugCallback.cpp
 STPHeightfieldTerrain.cpp
+STPLightSpectrum.cpp
 STPPerspectiveCamera.cpp
 STPPipelineManager.cpp
 STPProgramManager.cpp

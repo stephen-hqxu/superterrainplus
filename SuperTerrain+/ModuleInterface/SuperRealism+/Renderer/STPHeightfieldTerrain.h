@@ -14,6 +14,9 @@
 #include <SuperTerrain+/World/STPWorldPipeline.h>
 #include "../Environment/STPMeshSetting.h"
 
+//Lighting
+#include "STPLightSpectrum.h"
+
 //GLM
 #include <glm/vec3.hpp>
 
@@ -46,18 +49,21 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 
 		/**
-		 * @brief STPLightType specifies the type of a light source.
+		 * @brief STPTerrainShaderOption specifies the compiler options to be passed to terrain shader compiler.
 		*/
-		enum class STPLightType : unsigned char {
-			//Simulate lights that is not visible directly by the light source.
-			//Ambient
-			Indirect = 0x00u,
-			//Simulates areas being illuminated directly by light source.
-			//Diffuse
-			Direct = 0x01u,
-			//Simulates reflection of a surface.
-			//Specular
-			Reflection = 0x02u
+		struct STPTerrainShaderOption {
+		public:
+
+			//Specify the dimension of the noise sampling texture to be used in the shader.
+			//Higher scale provides more randomness but also consumes more memory.
+			glm::uvec3 NoiseDimension;
+			//Specify the normalmap blending algorithm to be used during rendering.
+			STPNormalBlendingAlgorithm NormalBlender;
+			//The light spectrum for indirect and direct light respectively for the terrain.
+			//The spectrum must remain valid during the lifetime of initialised terrain renderer.
+			//The spectrum must not be NULL.
+			const STPLightSpectrum* Spectrum;
+
 		};
 
 	private:
@@ -69,6 +75,8 @@ namespace SuperTerrainPlus::STPRealism {
 		STPBuffer TileBuffer, TileIndex, TerrainRenderCommand;
 		STPVertexArray TileArray;
 		STPTexture NoiseSample;
+		//spectrum for lighting supplied by user.
+		const STPLightSpectrum& LightSpectrum;
 		//Shader program for terrain rendering
 		STPProgramManager TerrainComponent;
 		STPPipelineManager TerrainRenderer;
@@ -93,11 +101,9 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Initialise the heightfield terrain rendering engine.
 		 * @param generator_pipeline A pointer to the world pipeline that provides heightfield.
 		 * @param log The pointer to the log output from GL shader and program compiler.
-		 * @param noise_scale Specify the dimension of the noise sampling texture to be used in the shader.
-		 * Higher scale provides more randomness but also consumes more memory.
-		 * @param blending Specify the normalmap blending algorithm to be used during rendering.
+		 * @param option The pointer to various compiler options.
 		*/
-		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, glm::uvec3, STPNormalBlendingAlgorithm);
+		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, const STPTerrainShaderOption&);
 
 		STPHeightfieldTerrain(const STPHeightfieldTerrain&) = delete;
 
@@ -136,11 +142,9 @@ namespace SuperTerrainPlus::STPRealism {
 		void setLightDirection(const glm::vec3&);
 
 		/**
-		 * @brief Set the light color of a specific type of light.
-		 * @param type The type of light to be set.
-		 * @param color The RGB color of the light.
+		 * @brief Update the sampling coordinate on the light spectrum for spectrum lighting.
 		*/
-		void setLightColor(STPLightType, const glm::vec3&);
+		void updateSpectrumCoordinate();
 
 		/**
 		 * @brief Render the procedural heightfield terrain.

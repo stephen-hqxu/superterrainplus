@@ -91,10 +91,7 @@ static constexpr char* SunVariables[] = {
 	"day_start",
 	"year_length",
 	"axial_tilt",
-	"latitude",
-	"lower_elev",
-	"upper_elev",
-	"cycle_elev_offset"
+	"latitude"
 };
 
 static constexpr char* AtmoshpereVariables[] = {
@@ -220,9 +217,6 @@ pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtmosphereSetting> STPTer
 	sun.YearLength = section(SunVariables[2]).to<unsigned int>();
 	sun.Obliquity = section(SunVariables[3]).to<double>();
 	sun.Latitude = section(SunVariables[4]).to<double>();
-	sun.LowerElevation = section(SunVariables[5]).to<float>();
-	sun.UpperElevation = section(SunVariables[6]).to<float>();
-	sun.CycleElevationOffset = section(SunVariables[7]).to<float>();
 
 	STPEnvironment::STPAtmosphereSetting atmo;
 	atmo.SunIntensity = section(AtmoshpereVariables[0]).to<float>();

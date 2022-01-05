@@ -1,9 +1,12 @@
 #include <SuperRealism+/Object/STPProgramManager.h>
 
 #include <SuperTerrain+/Exception/STPGLError.h>
+#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 
 //GLAD
 #include <glad/glad.h>
+
+#include <glm/gtc/type_ptr.hpp>
 
 #include <sstream>
 
@@ -13,6 +16,9 @@ using std::stringstream;
 
 using std::endl;
 using std::make_unique;
+
+using glm::ivec3;
+using glm::value_ptr;
 
 using namespace SuperTerrainPlus::STPRealism;
 
@@ -87,7 +93,7 @@ void STPProgramManager::separable(bool separable) {
 	glProgramParameteri(this->Program.get(), GL_PROGRAM_SEPARABLE, separable ? GL_TRUE : GL_FALSE);
 }
 
-void STPProgramManager::finalise() {
+const string& STPProgramManager::finalise() {
 	//reset old status, because there are two different flags
 	//if the first flag throws error, the second flag should be false but not old value
 	this->resetStatus();
@@ -121,10 +127,23 @@ void STPProgramManager::finalise() {
 	handle_error(GL_LINK_STATUS, this->Linked);
 	//validation checks if the program can be used as a GL application
 	handle_error(GL_VALIDATE_STATUS, this->Valid);
+
+	return this->lastLog();
 }
 
 SuperTerrainPlus::STPOpenGL::STPint STPProgramManager::uniformLocation(const char* uni) const {
 	return glGetUniformLocation(this->Program.get(), uni);
+}
+
+ivec3 STPProgramManager::workgroupSize() const {
+	if (this->AttachedShader.find(GL_COMPUTE_SHADER) == this->AttachedShader.cend()) {
+		throw STPException::STPUnsupportedFunctionality("The target program is not a compute shader program");
+	}
+
+	//query the size
+	ivec3 size;
+	glGetProgramiv(this->Program.get(), GL_COMPUTE_WORK_GROUP_SIZE, value_ptr(size));
+	return size;
 }
 
 const string& STPProgramManager::lastLog() const {

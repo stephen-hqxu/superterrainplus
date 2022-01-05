@@ -27,15 +27,18 @@ using glm::value_ptr;
 using glm::clamp;
 using glm::rotate;
 
+using glm::uvec3;
 using glm::vec3;
 using glm::dvec3;
 
 using std::array;
+using std::make_pair;
 
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto SkyShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSun", ".vert", ".frag");
+constexpr static auto SpectrumShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSunSpectrum", ".comp");
 
 constexpr static array<signed char, 24ull> BoxVertex = { 
 	-1, -1, -1, //origin
@@ -74,6 +77,58 @@ constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
 	0u
 };
 
+STPSun::STPSunSpectrum::STPSunSpectrum(unsigned int iteration, const STPSun& sun, STPSpectrumLog& log) : 
+	STPLightSpectrum(iteration), SunElevation(sun.sunDirection().y) {
+	//setup spectrum emulator
+	STPShaderManager spectrum_shader(GL_COMPUTE_SHADER);
+	log.Log[0] = spectrum_shader(*STPFile(SpectrumShaderFilename.data()), { "/Common/STPAtmosphericScattering.glsl" });
+	this->SpectrumEmulator.attach(spectrum_shader);
+	//link
+	log.Log[1] = this->SpectrumEmulator.finalise();
+	if (!this->SpectrumEmulator) {
+		throw STPException::STPGLError("Spectrum generator program fails to validate");
+	}
+
+	//the number of iteration is a fixed number and does not allow to be changed
+	this->SpectrumEmulator.uniform(glProgramUniform1ui, "SpectrumDimension", this->SpectrumLength);
+}
+
+void STPSun::STPSunSpectrum::operator()(const STPSpectrumSpecification& spectrum_setting) {
+	//send uniforms to compute shader
+	STPSun::updateAtmosphere(this->SpectrumEmulator, *spectrum_setting.Atmosphere);
+
+	//record the sun direction domain
+	const auto& [sunDir_start, sunDir_end] = spectrum_setting.Domain;
+	this->SpectrumEmulator.uniform(glProgramUniformMatrix3fv, "SunToRayDirection", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(spectrum_setting.RaySpace))
+		.uniform(glProgramUniform3fv, "SunDirectionStart", 1, value_ptr(sunDir_start))
+		.uniform(glProgramUniform3fv, "SunDirectionEnd", 1, value_ptr(sunDir_end));
+	this->DomainElevation = make_pair(sunDir_start.y, sunDir_end.y);
+
+	//setup output
+	this->Spectrum.bindImage(0u, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+
+	//calculate launch configuration
+	const unsigned int blockDim = static_cast<unsigned int>(this->SpectrumEmulator.workgroupSize().x),
+		gridDim = (this->SpectrumLength + blockDim - 1u) / blockDim;
+	//compute
+	this->SpectrumEmulator.use();
+	glDispatchCompute(gridDim, 1u, 1u);
+	//sync
+	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+	//clear up
+	STPTexture::unbindImage(0u);
+	STPProgramManager::unuse();
+}
+
+float STPSun::STPSunSpectrum::coordinate() const {
+	const auto [elev_start, elev_end] = this->DomainElevation;
+
+	//project current sun direction to the spectrum sun direction
+	//we assume the atmosphere is uniform, meaning the spectrum is independent of Azimuth angle, and depends only on Elevation.
+	return (this->SunElevation - elev_start) / (elev_end - elev_start);
+}
+
 STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log) : SunSetting(sun_setting),
 	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), SunDirectionCache(0.0) {
 	//validate the setting
@@ -105,9 +160,11 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log)
 		const char* const sky_filename = SkyShaderFilename[i].data();
 		//compile with super realism + system include directory
 		if (i == 1u) {
-			log.Log[i] = current_shader(*STPFile(sky_filename));
+			//fragment shader
+			log.Log[i] = current_shader(*STPFile(sky_filename), { "/Common/STPAtmosphericScattering.glsl" });
 		}
 		else {
+			//vertex shader
 			log.Log[i] = current_shader(*STPFile(sky_filename), { "/Common/STPCameraInformation.glsl" });
 		}
 
@@ -116,11 +173,29 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log)
 	}
 
 	//link
-	this->SkyRenderer.finalise();
-	log.Log[2] = this->SkyRenderer.lastLog();
+	log.Log[2] = this->SkyRenderer.finalise();
 	if (!this->SkyRenderer) {
 		throw STPException::STPGLError("Sky renderer program returns a failed status");
 	}
+}
+
+inline void STPSun::updateAtmosphere(STPProgramManager& program, const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
+	//validate
+	if (!atmo_setting.validate()) {
+		throw STPException::STPBadNumericRange("Atmoshpere setting is invalid");
+	}
+
+	program.uniform(glProgramUniform1f, "Atmo.iSun", atmo_setting.SunIntensity)
+		.uniform(glProgramUniform1f, "Atmo.rPlanet", atmo_setting.PlanetRadius)
+		.uniform(glProgramUniform1f, "Atmo.rAtmos", atmo_setting.AtmosphereRadius)
+		.uniform(glProgramUniform1f, "Atmo.vAlt", atmo_setting.ViewAltitude)
+		.uniform(glProgramUniform3fv, "Atmo.kRlh", 1, value_ptr(atmo_setting.RayleighCoefficient))
+		.uniform(glProgramUniform1f, "Atmo.kMie", atmo_setting.MieCoefficient)
+		.uniform(glProgramUniform1f, "Atmo.shRlh", atmo_setting.RayleighScale)
+		.uniform(glProgramUniform1f, "Atmo.shMie", atmo_setting.MieScale)
+		.uniform(glProgramUniform1f, "Atmo.g", atmo_setting.MieScatteringDirection)
+		.uniform(glProgramUniform1ui, "Atmo.priStep", atmo_setting.PrimaryRayStep)
+		.uniform(glProgramUniform1ui, "Atmo.secStep", atmo_setting.SecondaryRayStep);
 }
 
 const vec3& STPSun::sunDirection() const {
@@ -184,28 +259,8 @@ void STPSun::advanceTick(unsigned long long tick) {
 	this->SkyRenderer.uniform(glProgramUniform3fv, "SunPosition", 1, value_ptr(this->SunDirectionCache));
 }
 
-float STPSun::status(float elevation) const {
-	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
-	return smoothstep(sun.LowerElevation, sun.UpperElevation, elevation + sun.CycleElevationOffset) * 2.0f - 1.0f;
-}
-
-void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& sky_setting) {
-	//validate
-	if (!sky_setting.validate()) {
-		throw STPException::STPBadNumericRange("Atmoshpere setting is invalid");
-	}
-
-	this->SkyRenderer.uniform(glProgramUniform1f, "Sky.iSun", sky_setting.SunIntensity)
-		.uniform(glProgramUniform1f, "Sky.rPlanet", sky_setting.PlanetRadius)
-		.uniform(glProgramUniform1f, "Sky.rAtmos", sky_setting.AtmosphereRadius)
-		.uniform(glProgramUniform1f, "Sky.vAlt", sky_setting.ViewAltitude)
-		.uniform(glProgramUniform3fv, "Sky.kRlh", 1, value_ptr(sky_setting.RayleighCoefficient))
-		.uniform(glProgramUniform1f, "Sky.kMie", sky_setting.MieCoefficient)
-		.uniform(glProgramUniform1f, "Sky.shRlh", sky_setting.RayleighScale)
-		.uniform(glProgramUniform1f, "Sky.shMie", sky_setting.MieScale)
-		.uniform(glProgramUniform1f, "Sky.g", sky_setting.MieScatteringDirection)
-		.uniform(glProgramUniform1ui, "Sky.priStep", sky_setting.PrimaryRayStep)
-		.uniform(glProgramUniform1ui, "Sky.secStep", sky_setting.SecondaryRayStep);
+void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
+	STPSun::updateAtmosphere(this->SkyRenderer, atmo_setting);
 }
 
 void STPSun::operator()() const {

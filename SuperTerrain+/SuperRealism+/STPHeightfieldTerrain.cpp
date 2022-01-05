@@ -66,9 +66,8 @@ constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 	0u
 };
 
-STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, 
-	uvec3 noise_scale, STPNormalBlendingAlgorithm blending) :
-	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(noise_scale) {
+STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, const STPTerrainShaderOption& option) :
+	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(option.NoiseDimension), LightSpectrum(*option.Spectrum) {
 	if (!GLAD_GL_ARB_bindless_texture) {
 		throw STPException::STPUnsupportedFunctionality("The current rendering context does not support ARB_bindless_texture");
 	}
@@ -126,7 +125,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 			Macro["UNUSED_TYPE"] = to_string(STPTextureFactory::UnusedType);
 			Macro["UNREGISTERED_TYPE"] = to_string(STPTextureFactory::UnregisteredType);
 
-			Macro["NORMALMAP_BLENDING"] = to_string(static_cast<std::underlying_type_t<STPNormalBlendingAlgorithm>>(blending));
+			Macro["NORMALMAP_BLENDING"] = to_string(static_cast<std::underlying_type_t<STPNormalBlendingAlgorithm>>(option.NormalBlender));
 
 			//process fragment shader
 			current_shader.cache(*shader_source);
@@ -143,8 +142,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	}
 	this->TerrainComponent.separable(true);
 	//link
-	this->TerrainComponent.finalise();
-	log.Log[5] = this->TerrainComponent.lastLog();
+	log.Log[5] = this->TerrainComponent.finalise();
 	if (!this->TerrainComponent) {
 		//program not usable
 		throw STPException::STPGLError("Heightfield terrain renderer program returns a failed status");
@@ -190,7 +188,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 		.uniform(glProgramUniform1uiv, "RegistryDictionary", static_cast<GLsizei>(dict_count), dict);
 
 	/* --------------------------------- shader noise texture preparation ------------------------------ */
-	this->NoiseSample.textureStorage(1, GL_R8, this->RandomTextureDimension);
+	this->NoiseSample.textureStorage<STPTexture::STPDimension::THREE>(1, GL_R8, this->RandomTextureDimension);
 	this->NoiseSample.wrap(GL_REPEAT);
 	this->NoiseSample.filter(GL_NEAREST, GL_LINEAR);
 }
@@ -286,22 +284,8 @@ void STPHeightfieldTerrain::setLightDirection(const vec3& dir) {
 	this->TerrainComponent.uniform(glProgramUniform3fv, "LightDirection", 1, value_ptr(dir));
 }
 
-void STPHeightfieldTerrain::setLightColor(STPLightType type, const vec3& color) {
-	const char* varName = nullptr;
-	//check the name of the variable.
-	switch (type) {
-	case STPLightType::Indirect: varName = "Lighting.Col.InDir";
-		break;
-	case STPLightType::Direct: varName = "Lighting.Col.Dir";
-		break;
-	case STPLightType::Reflection: varName = "Lighting.Col.Ref";
-		break;
-	default:
-		//impossible
-		break;
-	}
-	//send the uniform
-	this->TerrainComponent.uniform(glProgramUniform3fv, varName, 1, value_ptr(color));
+void STPHeightfieldTerrain::updateSpectrumCoordinate() {
+	this->TerrainComponent.uniform(glProgramUniform1f, "Lighting.SpectrumCoord", this->LightSpectrum.coordinate());
 }
 
 void STPHeightfieldTerrain::operator()() const {
@@ -313,6 +297,7 @@ void STPHeightfieldTerrain::operator()() const {
 	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
 	glBindTextureUnit(2, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::SPLAT]);
 	this->NoiseSample.bind(3);
+	this->LightSpectrum.spectrum().bind(4);
 
 	this->TileArray.bind();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);

@@ -17,6 +17,7 @@ Object/STPTexture.h
 Object/STPVertexArray.h
 # /Renderer
 Renderer/STPHeightfieldTerrain.h
+Renderer/STPLightSpectrum.h
 Renderer/STPSun.h
 # /Utility/Camera
 Utility/Camera/STPCamera.h

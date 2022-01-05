@@ -6,6 +6,7 @@
 //Error
 #include <SuperTerrain+/Exception/STPGLError.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -40,6 +41,7 @@ static auto mShaderIncludeRegistry = [] {
 	unordered_map<string, string> reg;
 	//initialise super realism + system include headers
 	readSource(reg, "/Common/STPCameraInformation");
+	readSource(reg, "/Common/STPAtmosphericScattering");
 
 	return reg;
 }();
@@ -121,6 +123,11 @@ const string& STPShaderManager::operator()(const string& source, const STPShader
 		glCompileShader(this->Shader.get());
 	}
 	else {
+		//check if shader include is supported
+		if (!GLAD_GL_ARB_shading_language_include) {
+			throw STPException::STPUnsupportedFunctionality("The current rendering context does not support ARB_shading_language_include");
+		}
+
 		const size_t pathCount = include.size();
 		//build the path information
 		vector<const char*> pathStr;

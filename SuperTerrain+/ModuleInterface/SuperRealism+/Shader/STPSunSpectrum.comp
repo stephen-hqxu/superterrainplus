@@ -1,0 +1,44 @@
+#version 460 core
+#extension GL_ARB_shading_language_include : require
+//A simple utility to calculate an approximation of sun spectrum based on the sun elevation
+
+layout(local_size_x = 1024) in;
+
+//Output
+//The output contains two spectrum, sky and sun for each
+layout(binding = 0, rgba16f) uniform writeonly restrict image1DArray Spectrum;
+
+#include </Common/STPAtmosphericScattering.glsl>
+
+uniform AtmosphereSetting Atmo;
+uniform uint SpectrumDimension;
+//Transforms sun direction to ray direction.
+//Identity matrix denotes that the ray has the same direction as sun.
+uniform mat3 SunToRayDirection;
+//Specify the unit directional vector for which the spectrum domain starts and ends.
+uniform vec3 SunDirectionStart, SunDirectionEnd;
+
+void main(){
+	//current working pixel
+	const uint index = gl_GlobalInvocationID.x;
+	if(index >= SpectrumDimension){
+		//index out of bound
+		return;
+	}
+
+	//sun direction interpolation
+	//we divide spectrum into fractions based on the spectrum dimension.
+	const float factor = 1.0f * index / (1.0f * SpectrumDimension);
+	const vec3 current_sun = normalize(mix(SunDirectionStart, SunDirectionEnd, factor)), 
+		current_ray = normalize(SunToRayDirection * current_sun);
+	
+	//compute scattering
+	const AtmosphereComposition comp = atmosphere(Atmo, current_sun, current_ray);
+	const vec3 sky_color = Atmo.iSun * comp.colSky, 
+		sun_color = Atmo.iSun * comp.colSun;
+	//write to output spectrum
+	//the output is NOT clamped to 0.0f and 1.0f
+	//this allows the spectrum to be used for HDR rendering
+	imageStore(Spectrum, ivec2(index, 0), vec4(sun_color, length(sky_color)));
+	imageStore(Spectrum, ivec2(index, 1), vec4(sky_color, length(sun_color)));
+}

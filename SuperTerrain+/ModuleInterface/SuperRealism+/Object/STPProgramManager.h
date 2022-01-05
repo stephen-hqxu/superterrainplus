@@ -8,6 +8,9 @@
 //Shader
 #include "STPShaderManager.h"
 
+//GLM
+#include <glm/vec3.hpp>
+
 //Container
 #include <tuple>
 #include <unordered_map>
@@ -96,8 +99,9 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Finalise the shader program by linking all shaders.
 		 * Any program parameters setting must be done before linking.
 		 * Linkage may fail and exception is thrown.
+		 * @return The program linking log.
 		*/
-		void finalise();
+		const std::string& finalise();
 
 		/**
 		 * @brief Get the uniform location for a uniform in the current program.
@@ -117,6 +121,13 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		template<typename Uni, typename... Arg>
 		STPProgramManager& uniform(Uni&&, const char*, Arg&&...);
+
+		/**
+		 * @brief Query the local work group size of the compute program as specified by its input layout qualifier(s).
+		 * If the program is not a compute program, exception is thrown.
+		 * @return A vector of 3 intergers containing the local workgroup size
+		*/
+		glm::ivec3 workgroupSize() const;
 
 		/**
 		 * @brief Get the log from the last program object linking.

@@ -74,6 +74,7 @@ namespace STPStart {
 		optional<STPDemo::STPWorldManager> WorldManager;
 
 		//Rendering Pipeline
+		SuperTerrainPlus::STPRealism::STPStaticLightSpectrum TerrainLighting;
 		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain> TerrainRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
@@ -181,19 +182,23 @@ namespace STPStart {
 
 			//setup rendering components
 			//-------------------------------------------
+			//lighting
+			this->TerrainLighting(vec4(vec3(201.0f, 226.0f, 255.0f) / 255.0f, 1.0f), vec4(vec3(vec2(255.0f), 250.0f) / 255.0f, 1.0f));
+			//-------------------------------------------
 			//terrain
 			STPHeightfieldTerrain::STPHeightfieldTerrainLog terrain_log;
-			this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log, 
-				uvec3(128u, 128u, 6u), STPHeightfieldTerrain::STPNormalBlendingAlgorithm::BasisTransform);
+			STPHeightfieldTerrain::STPTerrainShaderOption terrain_opt;
+			terrain_opt.NoiseDimension = uvec3(128u, 128u, 6u);
+			terrain_opt.NormalBlender = STPHeightfieldTerrain::STPNormalBlendingAlgorithm::BasisTransform;
+			terrain_opt.Spectrum = &this->TerrainLighting;
+
+			this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
 			//print log
 			STPMasterRenderer::printLog(terrain_log);
+			//initial setup
 			this->TerrainRenderer->setMesh(MeshSetting);
 			this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
-
-			//approximate terrain light color
-			this->TerrainRenderer->setLightColor(STPHeightfieldTerrain::STPLightType::Indirect, vec3(201.0f, 226.0f, 255.0f) / 255.0f);
-			this->TerrainRenderer->setLightColor(STPHeightfieldTerrain::STPLightType::Direct, vec3(vec2(255.0f), 250.0f) / 255.0f);
-			this->TerrainRenderer->setLightColor(STPHeightfieldTerrain::STPLightType::Reflection, vec3(vec2(255.0f), 240.0f) / 255.0f);
+			this->TerrainRenderer->updateSpectrumCoordinate();
 			//-------------------------------------------
 			//sun
 			STPSun::STPSunLog sun_log;

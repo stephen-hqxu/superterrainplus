@@ -16,6 +16,17 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPTexture is a thin wrapper to GL texture objects and smartly handle its lifetime.
 	*/
 	class STP_REALISM_API STPTexture {
+	public:
+
+		/**
+		 * @brief Specify the dimension of a vector.
+		*/
+		enum class STPDimension : unsigned char {
+			ONE = 0x01u,
+			TWO = 0x02u,
+			THREE = 0x03u
+		};
+
 	private:
 
 		/**
@@ -127,27 +138,31 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Allocate immutable storage for a texture.
+		 * @tparam Dim The dimension of the texture, it reflects the glTextureStorage function to be called.
 		 * @param level Specify the number of texture levels.
 		 * @param internal Specifies the sized internal format to be used to store texture image data.
 		 * @param dimension Specifies the width, height, depth of the texture, in texels. 
-		 * For 1D texture, y and z component should be 1.
-		 * For 2D texture, z component should be 1.
-		 * None of the componet should be 0.
+		 * For 1D texture, y and z component are ignored.
+		 * For 2D or 1D array texture, z component is ignored.
+		 * Used component should not be zero.
 		*/
+		template<STPDimension Dim>
 		void textureStorage(STPOpenGL::STPint, STPOpenGL::STPenum, glm::uvec3);
 
 		/**
 		 * @brief Specify a three-dimensional texture subimage.
+		 * @tparam Dim The dimension of the texture, it reflects the glTextureSubImage function to be called.
 		 * @param level Specifies the level-of-detail number. Level 0 is the base image level. Level n is the nth mipmap reduction image.
 		 * @param offset Specifies a texel offset in the x, y, z direction within the texture array.
 		 * For 1D texture, y and z offset are ignored.
-		 * For 2D texture, z offset is ignored.
+		 * For 2D or 1D array texture, z offset is ignored.
 		 * @param dimension Specifies the width, height, depth of the texture subimage.
 		 * The dimension requirment remains the same as textureStorage() function.
 		 * @param format Specifies the format of the pixel data.
 		 * @param type Specifies the data type of the pixel data.
 		 * @param pixel Specifies a pointer to the image data in memory.
 		*/
+		template<STPDimension Dim>
 		void textureSubImage(STPOpenGL::STPint, glm::ivec3, glm::uvec3, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
 
 	};

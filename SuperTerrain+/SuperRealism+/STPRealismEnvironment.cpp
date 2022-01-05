@@ -170,11 +170,7 @@ STPSunSetting::STPSunSetting() :
 	YearLength(1u),
 
 	Obliquity(0.0), 
-	Latitude(0.0),
-
-	LowerElevation(-0.1f), 
-	UpperElevation(0.1f), 
-	CycleElevationOffset(0.0f) {
+	Latitude(0.0) {
 
 }
 
@@ -183,19 +179,11 @@ bool STPSunSetting::validate() const {
 	static auto range_check = [](double val, double min, double max) constexpr -> bool {
 		return val >= min && val <= max;
 	};
-	//between minus 1 and 1
-	static auto between_m1_1 = [](float val) constexpr -> bool {
-		return val >= -1.0f && val <= 1.0f;
-	};
 
 	return this->DayLength > 0ull
 		&& ((this->DayLength & 0x01ull) == 0x00ull)//must be an even number
 		&& this->DayStartOffset < this->DayLength
 		&& this->YearLength > 0u
 		&& range_check(this->Obliquity, 0.0, PI_BY_2)
-		&& range_check(this->Latitude, -PI_BY_2, PI_BY_2)
-		&& between_m1_1(this->LowerElevation)
-		&& between_m1_1(this->UpperElevation)
-		&& this->UpperElevation > this->LowerElevation
-		&& between_m1_1(this->CycleElevationOffset);
+		&& range_check(this->Latitude, -PI_BY_2, PI_BY_2);
 }
