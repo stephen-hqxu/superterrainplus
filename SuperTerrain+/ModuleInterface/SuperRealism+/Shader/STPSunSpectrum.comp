@@ -39,6 +39,6 @@ void main(){
 	//write to output spectrum
 	//the output is NOT clamped to 0.0f and 1.0f
 	//this allows the spectrum to be used for HDR rendering
-	imageStore(Spectrum, ivec2(index, 0), vec4(sun_color, length(sky_color)));
-	imageStore(Spectrum, ivec2(index, 1), vec4(sky_color, length(sun_color)));
+	imageStore(Spectrum, ivec2(index, 0), vec4(sky_color, length(sky_color)));
+	imageStore(Spectrum, ivec2(index, 1), vec4(sun_color, length(sun_color)));
 }

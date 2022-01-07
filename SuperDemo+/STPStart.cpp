@@ -32,17 +32,17 @@
 //System
 #include <iostream>
 #include <optional>
-#include <tuple>
 
 //GLM
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 #include <glm/vec4.hpp>
+#include <glm/mat3x3.hpp>
+#include <glm/mat4x4.hpp>
 
 using std::optional;
 using std::string;
-using std::tuple;
-using std::make_tuple;
+using std::make_pair;
 
 using std::cout;
 using std::endl;
@@ -55,7 +55,12 @@ using glm::ivec3;
 using glm::uvec3;
 using glm::vec3;
 using glm::vec4;
+using glm::mat3;
+using glm::mat4;
+using glm::rotate;
 using glm::radians;
+using glm::identity;
+using glm::normalize;
 
 namespace STPStart {
 
@@ -65,22 +70,19 @@ namespace STPStart {
 	class STPMasterRenderer {
 	private:
 
-		//A tuple of terrain light color
-		typedef tuple<vec3, vec3, vec3> STPTerrainColor;
-
 		const SIMPLE::SIStorage& engineINI, biomeINI;
 
 		//Generation Pipeline
 		optional<STPDemo::STPWorldManager> WorldManager;
 
-		//Rendering Pipeline
-		SuperTerrainPlus::STPRealism::STPStaticLightSpectrum TerrainLighting;
-		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain> TerrainRenderer;
-		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
-		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
-
 		//Setting
 		SuperTerrainPlus::STPEnvironment::STPSunSetting SunSetting;
+
+		//Rendering Pipeline
+		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPSun::STPSunSpectrum> TerrainLighting;
+		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain> TerrainRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
 
 		const vec3& ViewPosition;
 
@@ -175,6 +177,7 @@ namespace STPStart {
 			if (!STPDebugCallback::support()) {
 				throw STPException::STPUnsupportedFunctionality("The current GL does not support debug callback");
 			}
+			glEnable(GL_MULTISAMPLE);
 			glEnable(GL_DEBUG_OUTPUT);
 			STPDebugCallback::registerAsyncCallback(cout);
 			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
@@ -182,31 +185,51 @@ namespace STPStart {
 
 			//setup rendering components
 			//-------------------------------------------
-			//lighting
-			this->TerrainLighting(vec4(vec3(201.0f, 226.0f, 255.0f) / 255.0f, 1.0f), vec4(vec3(vec2(255.0f), 250.0f) / 255.0f, 1.0f));
-			//-------------------------------------------
-			//terrain
-			STPHeightfieldTerrain::STPHeightfieldTerrainLog terrain_log;
-			STPHeightfieldTerrain::STPTerrainShaderOption terrain_opt;
-			terrain_opt.NoiseDimension = uvec3(128u, 128u, 6u);
-			terrain_opt.NormalBlender = STPHeightfieldTerrain::STPNormalBlendingAlgorithm::BasisTransform;
-			terrain_opt.Spectrum = &this->TerrainLighting;
+			{
+				//sun
+				STPSun::STPSunLog sun_log;
+				this->SunRenderer.emplace(this->SunSetting, sun_log);
+				//print log
+				STPMasterRenderer::printLog(sun_log);
+				//setup atmoshpere
+				const STPEnvironment::STPAtmosphereSetting& atm_setting = sky_setting.second;
+				this->SunRenderer->setAtmoshpere(atm_setting);
+				//-------------------------------------------
+				//sun lighting
+				STPSun::STPSunSpectrum::STPSpectrumLog sun_spectrum_log;
+				this->TerrainLighting.emplace(std::move(this->SunRenderer->createSpectrum(8192u, sun_spectrum_log)));
+				STPMasterRenderer::printLog(sun_spectrum_log);
 
-			this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
-			//print log
-			STPMasterRenderer::printLog(terrain_log);
-			//initial setup
-			this->TerrainRenderer->setMesh(MeshSetting);
-			this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
-			this->TerrainRenderer->updateSpectrumCoordinate();
+				//setup the spectrum
+				mat4 raySpace = identity<mat4>();
+				raySpace = rotate(raySpace, radians(2.7f), normalize(vec3(vec2(0.0f), 1.0f)));
+				const STPSun::STPSunSpectrum::STPSpectrumSpecification spectrum_spec = {
+					&atm_setting,
+					static_cast<mat3>(raySpace),
+					make_pair(
+						normalize(vec3(1.0f, -0.1f, 0.0f)),
+						normalize(vec3(0.0f, 1.0f, 0.0f))
+					)
+				};
+				//generate a new spectrum
+				(*this->TerrainLighting)(spectrum_spec);
+			}
 			//-------------------------------------------
-			//sun
-			STPSun::STPSunLog sun_log;
-			this->SunRenderer.emplace(this->SunSetting, sun_log);
-			STPMasterRenderer::printLog(sun_log);
-			//setup atmoshpere
-			const STPEnvironment::STPAtmosphereSetting& atm_setting = sky_setting.second;
-			this->SunRenderer->setAtmoshpere(atm_setting);
+			{
+				//terrain
+				STPHeightfieldTerrain::STPHeightfieldTerrainLog terrain_log;
+				const STPHeightfieldTerrain::STPTerrainShaderOption terrain_opt = {
+					uvec3(128u, 128u, 6u),
+					STPHeightfieldTerrain::STPNormalBlendingAlgorithm::BasisTransform,
+					&this->TerrainLighting.value()
+				};
+
+				this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
+				STPMasterRenderer::printLog(terrain_log);
+				//initial setup
+				this->TerrainRenderer->setMesh(MeshSetting);
+				this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
+			}
 
 			//setup rendering pipeline
 			STPScenePipeline::STPSceneWorkflow workflow = { };
@@ -239,6 +262,7 @@ namespace STPStart {
 			//updat terrain rendering settings.
 			const vec3& sunDir = this->SunRenderer->sunDirection();
 			this->TerrainRenderer->setLightDirection(sunDir);
+			this->TerrainRenderer->updateSpectrumCoordinate();
 
 			//render, all async operations are sync automatically
 			this->RenderPipeline->traverse();
@@ -302,10 +326,11 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 	/* ------------------------------ framework setup ----------------------------------- */
 
 	/**
-	 * @brief Initialise GLFW engine
-	 * @return True if the glfwwindow has been created
+	 * @brief Initialise GLFW engine.
+	 * @param msaa The number of sample used for MSAA
+	 * @return True if the glfwwindow has been created.
 	*/
-	static bool initGLFW() {
+	static bool initGLFW(unsigned int msaa) {
 		//Initialisation
 		if (glfwInit() == GLFW_FALSE) {
 			cerr << "Unable to Init GLFW." << endl;
@@ -323,7 +348,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwWindowHint(GLFW_ALPHA_BITS, 8);
 		glfwWindowHint(GLFW_DEPTH_BITS, 24);
 		glfwWindowHint(GLFW_STENCIL_BITS, 8);
-		glfwWindowHint(GLFW_SAMPLES, 8);
+		glfwWindowHint(GLFW_SAMPLES, msaa);
 
 		//creation of the rendering window
 		GLCanvas = glfwCreateWindow(InitialCanvasSize.x, InitialCanvasSize.y, "SuperTerrain+ Demo", nullptr, nullptr);
@@ -389,7 +414,7 @@ int main() {
 		&biomeINI = STPStart::biomeINILoader.get();
 	//engine setup
 	//because GLFW callback uses camera, so we need to setup camera first
-	if (!(STPStart::initGLFW() && STPStart::initSTP())) {
+	if (!(STPStart::initGLFW(engineINI("MSAA", "Global").to<unsigned int>()) && STPStart::initSTP())) {
 		//error
 		STPStart::clearup();
 		return -1;
@@ -398,7 +423,7 @@ int main() {
 	cout << *SuperTerrainPlus::STPFile("./Resource/welcome.txt") << endl;
 	cout << "OpenGL Version: " << glGetString(GL_VERSION) << endl;
 	cout << "OpenGL Vendor: " << glGetString(GL_VENDOR) << endl;
-	cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << endl << endl;
+	cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << '\n' << endl;
 
 	//setup camera
 	{
@@ -417,7 +442,7 @@ int main() {
 		proj.ZoomSensitivity = engineINI("zoomSensitivity").to<float>();
 		proj.Aspect = 1.0f * STPStart::InitialCanvasSize.x / (1.0f * STPStart::InitialCanvasSize.y);
 		proj.Near = 1.0f;
-		proj.Far = 2200.0f;
+		proj.Far = 2500.0f;
 
 		STPStart::MainCamera.emplace(proj, cam);
 	}
@@ -469,6 +494,5 @@ int main() {
 	STPStart::clearup();
 
 	cout << "Done... Program now exit." << endl;
-	
 	return 0;
 }

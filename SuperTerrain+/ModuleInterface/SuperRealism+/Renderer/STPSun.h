@@ -29,8 +29,6 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPSun {
 	public:
 
-		typedef STPLogStorage<2ull> STPSpectrumLog;
-
 		/**
 		 * @brief STPSunSpectrum allows generating an approximation of spectrum for looking up sky and sun color using sun elevation.
 		*/
@@ -64,6 +62,8 @@ namespace SuperTerrainPlus::STPRealism {
 			std::pair<float, float> DomainElevation;
 
 		public:
+
+			typedef STPLogStorage<2ull> STPSpectrumLog;
 
 			/**
 			 * @brief Initialise a sun spectrum generator and generate the spectrum.
@@ -176,6 +176,16 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param atmo_setting The atmosphere setting to be updated setting. 
 		*/
 		void setAtmoshpere(const STPEnvironment::STPAtmosphereSetting&);
+
+		/**
+		 * @brief Create a new sun spectrum instance that is used to emulate the light spectrum of the current sun.
+		 * @see STPSunSpectrum
+		 * @param iteration The number of iteration to be performed.
+		 * @param log The compilation log.
+		 * @return The sun spectrum instance.
+		 * This spectrum instance is linked to the current sun hence the current STPSun should remain valid.
+		*/
+		STPSunSpectrum createSpectrum(unsigned int, STPSunSpectrum::STPSpectrumLog&) const;
 
 		/**
 		 * @brief Render the sun with atmospheric scattering effect.

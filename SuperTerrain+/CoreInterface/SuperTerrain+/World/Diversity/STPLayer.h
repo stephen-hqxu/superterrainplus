@@ -95,6 +95,16 @@ namespace SuperTerrainPlus::STPDiversity {
 		*/
 		static Seed genLayerSeed(Seed, Seed);
 
+		/**
+		 * @brief Sample the layer, given the world coordinate and return a sample point.
+		 * The value of the sample point can be interpreted differently in different layer, for instance climate, temp or biome id
+		 * @param x The x coordinate on the terrain
+		 * @param y The y coordinate on the terrain. If the one wants to generate 2D biome map, the actual implementation can ignore this parameter
+		 * @param z The z coordinate on the terrain
+		 * @return Sample id or value, depended on the actual implementation.
+		*/
+		virtual Sample sample(int, int, int) = 0;
+
 	protected:
 
 		/**
@@ -155,16 +165,6 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @return The size of the layer cache for this layer
 		*/
 		size_t cacheSize() const;
-
-		/**
-		 * @brief Sample the layer, given the world coordinate and return a sample point.
-		 * The value of the sample point can be interpreted differently in different layer, for instance climate, temp or biome id
-		 * @param x The x coordinate on the terrain
-		 * @param y The y coordinate on the terrain. If the one wants to generate 2D biome map, the actual implementation can ignore this parameter
-		 * @param z The z coordinate on the terrain
-		 * @return Sample id or value, depended on the actual implementation.
-		*/
-		virtual Sample sample(int, int, int) = 0;
 
 		/**
 		 * @brief It will first read from the layer cache with the given world coordinate as key, if the cache exists, retrieve the value directly. Otherwise

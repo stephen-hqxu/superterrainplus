@@ -40,20 +40,21 @@ void STPProgramManager::resetStatus() {
 
 STPProgramManager& STPProgramManager::attach(const STPShaderManager& shader) {
 	//attach shader to the program
-	const GLuint shaderID = *shader;
+	const GLenum shaderType = shader.Type;
+	const GLuint shaderRef = *shader;
 
 	const bool compilation_err = !static_cast<bool>(*shader),
-		repeat_err = this->AttachedShader.find(shaderID) != this->AttachedShader.cend();
+		repeat_err = this->AttachedShader.find(shaderType) != this->AttachedShader.cend();
 	if (compilation_err || repeat_err) {
 		//some error occurs
 		stringstream msg;
-		msg << '(' << shaderID << ',' << shader.Type << ")::";
+		msg << '(' << shaderType << ',' << shaderRef << ")::";
 
 		if (compilation_err) {
 			msg << "Unusable shader";
 		}
 		else if (repeat_err) {
-			msg << "Shader has been attached to this program previously";
+			msg << "This type of shader has been attached to this program previously";
 		}
 		msg << endl;
 
@@ -61,8 +62,8 @@ STPProgramManager& STPProgramManager::attach(const STPShaderManager& shader) {
 		throw STPException::STPGLError(msg.str().c_str());
 	}
 	//no error? good
-	glAttachShader(this->Program.get(), shaderID);
-	this->AttachedShader.emplace(shaderID, shader.Type);
+	glAttachShader(this->Program.get(), shaderRef);
+	this->AttachedShader.emplace(shaderType, shaderRef);
 
 	return *this;
 }
@@ -82,7 +83,7 @@ bool STPProgramManager::detach(STPOpenGL::STPenum type) {
 }
 
 void STPProgramManager::clear() {
-	for (const auto [shader, type] : this->AttachedShader) {
+	for (const auto [type, shader] : this->AttachedShader) {
 		glDetachShader(this->Program.get(), shader);
 	}
 	this->AttachedShader.clear();

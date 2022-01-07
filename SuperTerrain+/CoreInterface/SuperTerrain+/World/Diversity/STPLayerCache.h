@@ -3,20 +3,29 @@
 #define _STP_LAYER_CACHE_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-//Functional
-#include <functional>
-//Exception
-#include <stdexcept>
 //Biome define
 #include "STPBiomeDefine.h"
 //System
 #include <memory>
+#include <optional>
+#include <tuple>
 
 namespace SuperTerrainPlus::STPDiversity {
 	/**
 	 * @brief STPLayerCache is a smart caching system that stores computed layer sample and read directly from when available
 	*/
 	class STP_API STPLayerCache {
+	public:
+
+		//The data to locate an entry in the cache.
+		//It contains:
+		//True if the address given has data cached under this location, false otherwise.
+		//And the rests represents key and index to the entry.
+		//If the first flag indicates a false, the key and index can be used to store this data into cache.
+		typedef std::tuple<bool, unsigned long long, unsigned long long> STPCacheEntry;
+		//Represents a piece of data cached.
+		typedef std::optional<Sample> STPCacheData;
+
 	private:
 
 		//Store the key value for a coordinate
@@ -75,16 +84,29 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPLayerCache& operator=(STPLayerCache&&) = delete;
 
 		/**
-		 * @brief Find the value with coordinate specified in the cache. If found, read directly; if not, it will be evaluated using the sample function
-		 * then store into the cache.
-		 * This method is NOT thread safe
-		 * @param x The x world coordinate
-		 * @param y The y world coordinate
-		 * @param z The z world coordinate
-		 * @param sampler If the cache is not found, it will be evaluated using this function
-		 * @return The sample associated with the coordinate
+		 * @brief Use the cache entry to read the cached value from the cache.
+		 * @param entry A valid cache entry.
+		 * @return The cache data associated with the cache entry.
+		 * If the entry does not point point to a valid cache to this data, none is returned.
 		*/
-		Sample cache(int, int, int, std::function<Sample(int, int, int)>);
+		STPCacheData read(STPCacheEntry);
+
+		/**
+		 * @brief Write a piece of data to the cache entry.
+		 * @param entry The cache entry where the data will be written.
+		 * Note that data is only written when entry flag is false, indicating the address has no data cached.
+		 * @param sample The sample data to be cached.
+		*/
+		void write(STPCacheEntry, Sample);
+
+		/**
+		 * @brief Attempt to find the cache entry using an address specified in the cache.
+		 * @param x The x world coordinate.
+		 * @param y The y world coordinate.
+		 * @param z The z world coordinate.
+		 * @return The cache entry to the data.
+		*/
+		STPCacheEntry locate(int, int, int) const;
 
 		/**
 		 * @brief Empty the content of the cache, size is not changed. This operation is not atomic.
@@ -95,7 +117,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @brief Retrieve the size of the cache
 		 * @return The size of the cache
 		*/
-		size_t getCapacity() const;
+		unsigned long long getCapacity() const;
 	};
 }
 #endif//_STP_LAYER_CACHE_H_

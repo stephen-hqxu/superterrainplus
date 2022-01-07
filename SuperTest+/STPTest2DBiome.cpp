@@ -26,27 +26,6 @@ using glm::uvec2;
 using glm::ivec3;
 using glm::uvec3;
 
-class LayerCacheTester : protected STPLayerCache {
-protected:
-
-	constexpr static size_t CacheSize = 32ull;
-
-	Sample sampling(int x, int z) {
-		return this->cache(x, 0, z, [](int x, int, int z) -> Sample { return static_cast<Sample>(x + z); });
-	}
-
-	Sample empty_sampling(int x, int z) {
-		return this->cache(x, 0, z, [](int, int, int) -> Sample { FAIL("Sampler should not be called when cache is available."); return 0u; });
-	}
-
-public:
-
-	LayerCacheTester() : STPLayerCache(LayerCacheTester::CacheSize) {
-
-	}
-
-};
-
 SCENARIO("STPSeedMixer can be used to mix some seeds", "[Diversity][STPSeedMixer][!mayfail]") {
 
 	GIVEN("A random seed") {
@@ -76,6 +55,19 @@ SCENARIO("STPSeedMixer can be used to mix some seeds", "[Diversity][STPSeedMixer
 
 }
 
+class LayerCacheTester : protected STPLayerCache {
+protected:
+
+	constexpr static size_t CacheSize = 32ull;
+
+public:
+
+	LayerCacheTester() : STPLayerCache(LayerCacheTester::CacheSize) {
+
+	}
+
+};
+
 SCENARIO_METHOD(LayerCacheTester, "STPLayerCache is used to cache data", "[Diversity][STPLayerCache]") {
 
 	GIVEN("A layer cache with wrong cache size") {
@@ -98,11 +90,25 @@ SCENARIO_METHOD(LayerCacheTester, "STPLayerCache is used to cache data", "[Diver
 		}
 
 		WHEN("Using cache to store and read value back") {
-			const auto Coordinate = GENERATE(take(3, chunk(2, random(-987654, 1313666))));
+			const auto Coordinate = GENERATE(take(3, chunk(3, random(-987654, 1313666))));
 
-			THEN("The same value should be obtained when the input is the same") {
-				//we make the sampler different to make sure it's not called because the value can be retrieved from the cache
-				REQUIRE(this->empty_sampling(Coordinate[0], Coordinate[1]) == this->sampling(Coordinate[0], Coordinate[1]));
+			THEN("A new cache should have no entry within") {
+				const STPCacheEntry NewEntry = this->locate(Coordinate[0], Coordinate[1], Coordinate[2]);
+				const STPCacheData NewData = this->read(NewEntry);
+
+				REQUIRE_FALSE(NewData.has_value());
+
+				AND_THEN("Data can be retrieved when it has been cached") {
+					const Sample Written = static_cast<Sample>(Coordinate[0] + Coordinate[1] + Coordinate[2]);
+					this->write(NewEntry, Written);
+					//locate the entry again
+					const STPCacheEntry AgainEntry = this->locate(Coordinate[0], Coordinate[1], Coordinate[2]);
+					const STPCacheData AgainData = this->read(AgainEntry);
+
+					REQUIRE(AgainData.has_value());
+					REQUIRE(*AgainData == Written);
+				}
+
 			}
 
 		}

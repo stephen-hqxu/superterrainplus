@@ -27,7 +27,7 @@ STPLightSpectrum::STPLightSpectrum(unsigned int length) : Spectrum(GL_TEXTURE_1D
 	//setup output texture
 	this->Spectrum.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGBA16F, uvec3(this->SpectrumLength, 2u, 1u));
 	this->Spectrum.filter(GL_NEAREST, GL_LINEAR);
-	this->Spectrum.wrap(GL_MIRRORED_REPEAT, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+	this->Spectrum.wrap(GL_CLAMP_TO_EDGE);
 }
 
 const STPTexture& STPLightSpectrum::spectrum() const {

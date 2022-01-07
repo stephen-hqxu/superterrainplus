@@ -44,6 +44,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//A value to denotes if the program is linked and validated.
 		bool Linked = false, Valid = false;
 
+		//Use shader type as key, find the shader reference number
 		std::unordered_map<STPOpenGL::STPenum, STPOpenGL::STPuint> AttachedShader;
 
 		/**

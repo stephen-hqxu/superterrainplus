@@ -1,10 +1,13 @@
 #include <SuperTerrain+/World/Diversity/STPLayerCache.h>
 
+//Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 using namespace SuperTerrainPlus::STPDiversity;
 
 using std::make_unique;
+using std::make_tuple;
+using std::make_optional;
 
 bool STPLayerCache::isPow2(unsigned long long val) {
 	return val && !(val & (val - 1ull));
@@ -46,32 +49,47 @@ STPLayerCache::STPLayerCache(size_t capacity) {
 
 }
 
-Sample STPLayerCache::cache(int x, int y, int z, std::function<Sample(int, int, int)> sampler) {
-	//calc the key
+STPLayerCache::STPCacheData STPLayerCache::read(STPCacheEntry entry) {
+	//decompose the entry
+	const auto [found, key, index] = entry;
+
+	if (found) {
+		//cache found, read directly
+		return make_optional(this->Value[index]);
+	}
+	//cache not found
+	return std::nullopt;
+}
+
+void STPLayerCache::write(STPCacheEntry entry, Sample sample) {
+	const auto [found, key, index] = entry;
+
+	if (!found) {
+		//write data only if entry is empty
+		this->Key[index] = key;
+		this->Value[index] = sample;
+	}
+}
+
+STPLayerCache::STPCacheEntry STPLayerCache::locate(int x, int y, int z) const {
+	//calculate the key
 	const unsigned long long key = STPLayerCache::uniqueHash(x, y, z);
 	//locate the index in our hash table
 	const unsigned long long index = STPLayerCache::mixKey(key) & this->Mask;
-
 	//Please be aware the cache is not thread safe!
 	//That's because multithread performance is 100x worse than single thread so I remove it
-	if (this->Key[index] == key) {
-		//cache found, read it directly
-		return this->Value[index];
-	}
-	//cache not found, compute then store
-	Sample sample = sampler(x, y, z);
-	this->Key[index] = key;
-	this->Value[index] = sample;
-	return sample;
+	const bool found = this->Key[index] == key;
+
+	return make_tuple(found, key, index);
 }
 
 void STPLayerCache::clearCache() {
-	const size_t capacity = this->getCapacity();
+	const unsigned long long capacity = this->getCapacity();
 	//to avoid hash collision for key (it's equivalent to -1 with signed integer)
 	memset(this->Key.get(), 0xFFu, sizeof(unsigned long long) * capacity);
 	memset(this->Value.get(), 0x00u, sizeof(Sample) * capacity);
 }
 
-size_t STPLayerCache::getCapacity() const {
+unsigned long long STPLayerCache::getCapacity() const {
 	return this->Mask + 1ull;
 }

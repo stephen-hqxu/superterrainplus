@@ -56,9 +56,8 @@ void STPBiomeFactory::operator()(Sample* biomemap, ivec3 offset) {
 		for (unsigned int x = 0u; x < this->BiomeDimension.x; x++) {
 			//calculate the map index
 			const unsigned int index = x + z * this->BiomeDimension.x;
-			//get the biome at thie coordinate
-			//I don't find using cache at the first layer necessary since each pixel is sampled only once
-			biomemap[index] = producer->start()->sample(static_cast<int>(x) + offset.x, 0, static_cast<int>(z) + offset.z);
+			//get the biome at given coordinate
+			biomemap[index] = producer->start()->retrieve(static_cast<int>(x) + offset.x, 0, static_cast<int>(z) + offset.z);
 		}
 	}
 

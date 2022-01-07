@@ -263,6 +263,10 @@ void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_sett
 	STPSun::updateAtmosphere(this->SkyRenderer, atmo_setting);
 }
 
+STPSun::STPSunSpectrum STPSun::createSpectrum(unsigned int iteration, STPSunSpectrum::STPSpectrumLog& log) const {
+	return STPSun::STPSunSpectrum(iteration, *this, log);
+}
+
 void STPSun::operator()() const {
 	//setup context
 	this->SkyRenderer.use();
