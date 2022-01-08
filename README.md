@@ -13,7 +13,7 @@
 
 ## :eyes: Overview
 
-Super Terrain + (or STP in short) is a procedural terrain generation engine that incorporates natural physics-simulation and photo-realistic rendering. It was originally my computer science undergraduate project and inspired by games with random generation features, most noticeably Minecraft.
+Super Terrain + (or STP in short) is a procedural terrain generation engine that incorporates natural physics-simulation and photo-realistic rendering. It was originally my computer science undergraduate project and inspired by many games and movies with random generation features.
 
 **Design Lemma**
 
@@ -46,16 +46,16 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 - [ ] Rule-based geometry placement
 - [ ] Animated geometric grassland rendering
 - [ ] Procedural parameter-based tree generation
-- [ ] Volumetric clound rendering
+- [ ] Volumetric cloud rendering
 
 ### Real-time realistic rendering
 
 - [x] Procedural sun rendering
 - [x] Procedural sky atmospheric effect rendering
 - [x] Day-night cycle
+- [ ] Soft and smooth shadow
 - [ ] Night scene rendering
 - [ ] Weather and seasonal effect
-- [ ] Soft and smooth shadow
 - [ ] Water reflection and refraction
 - [ ] ~~Real-time raster-ray tracing hybrid rendering~~
 
@@ -94,14 +94,14 @@ Those are some third-party libraries used by this project, we always make sure t
 - SuperTerrain+: Main procedural terrain generation engine.
   - SuperAlgorithm+: A library of useful noise algorithms for pipeline programming.
     - SuperAlgorithm+Host: Algorithms and prep-works for device computation that are best suited for CPU execution.
-    - SuperAlgorithm+Device:  Algorithms that can be benefitted from parallel compute.
+    - SuperAlgorithm+Device:  Algorithms that can be benefited from parallel compute.
   - SuperRealism+: A rendering engine for photo-realistic rendering, with some handy GL functions and object wrappers.
-- SuperDemo+: An application which demostrates the usage of the main engine.
-- SuperTest+: Unit test program for dynamic testings.
+- SuperDemo+: An application which demonstrates the usage of the main engine.
+- SuperTest+: Unit test program for dynamic testing.
 
 ### :ballot_box_with_check: CMake options
 
-| Option | Explaination | Default |
+| Option | Explanation | Default |
 | ------ | ------------ | ------- |
 | STP_CUDA_RUNTIME_LIBRARY | Set the global `nvcc` compiler flag `-cudart=` to the value set | "Static" |
 | STP_CUDA_VERBOSE_PTX | Append to the global `nvcc` compiler flag with `--ptxas-options=-v` | OFF |
@@ -212,7 +212,7 @@ Reference contains source code and libraries that are not dependencies of this p
 - [Particle based hydraulic erosion](https://github.com/SebLague/Hydraulic-Erosion/tree/Coding-Adventure-E01)
 - [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
 - [Animated grass geometries rendering](https://github.com/spacejack/terra)
-- [Physically-based atmoshperic scattering](https://github.com/wwwtyro/glsl-atmosphere/)
+- [Physically-based atmospheric scattering](https://github.com/wwwtyro/glsl-atmosphere/)
 - [Integer-format texture smoothing](https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-17-efficient-soft-edged-shadows-using)
 - [The sun, sky, cloud and night rendering](https://www.shadertoy.com/view/tdSXzD)
 

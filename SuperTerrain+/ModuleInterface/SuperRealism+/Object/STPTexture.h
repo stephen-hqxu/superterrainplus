@@ -119,7 +119,7 @@ namespace SuperTerrainPlus::STPRealism {
 		void wrap(STPOpenGL::STPenum, STPOpenGL::STPenum, STPOpenGL::STPenum);
 
 		/**
-		 * @brief Set the same texture wrap mode for all direction.
+		 * @brief Set the same texture wrap mode for all directions.
 		 * @param str The texture warp mode for XYZ direction.
 		*/
 		void wrap(STPOpenGL::STPenum);
@@ -148,6 +148,20 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		template<STPDimension Dim>
 		void textureStorage(STPOpenGL::STPint, STPOpenGL::STPenum, glm::uvec3);
+
+		/**
+		 * @brief Specify storage for a multisample texture.
+		 * @tparam Dim The dimension of the texture. 1D multisampled texture is not supported and hence should not be used.
+		 * @param samples Specify the number of samples in the texture.
+		 * @param internal Specifies the sized internal format to be used to store texture image data.
+		 * @param dimension Specifies the width, height, depth of the texture, in texels.
+		 * OpenGL does not support 1D multisampled texture.
+		 * For 2D texture, z component is ignored.
+		 * @param fixed Specifies whether the image will use identical sample locations and the same number of samples for all texels in the image, 
+		 * and the sample locations will not depend on the internal format or size of the image. 
+		*/
+		template<STPDimension Dim>
+		void textureStorageMultisample(STPOpenGL::STPint, STPOpenGL::STPenum, glm::uvec3, STPOpenGL::STPboolean);
 
 		/**
 		 * @brief Specify a three-dimensional texture subimage.

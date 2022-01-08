@@ -76,10 +76,7 @@ namespace SuperTerrainPlus::STPCompute {
 		//list of pointers
 		STPOrganisation Organisation;
 		std::queue<STPOrganisation_it, std::list<STPOrganisation_it>> FreeWorkingMemory;
-		std::shared_mutex WorkplaceLock;
-
-		//A pair of index to the department and to the workplace, respectively
-		typedef std::pair<STPOrganisation_it, unsigned char> STPAssignment;
+		std::mutex WorkplaceLock;
 
 		/**
 		 * @brief Request an available workplace for workers to generate histogram.
@@ -112,20 +109,20 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @param w_range Denotes the width start and end that will be computed by the current function call.
 		 * The range should start from the halo (central image x index minus radius), and should use global index.
 		 * The range end applies as well (central image x index plus dimension plus radius)
-		 * @param workingID The ID to the allocated working memory, an of the CPU thread that is calling this function.
+		 * @param workplace The pointer to the allocated working memory.
 		 * @param radius The radius of the filter.
 		*/
-		void filter_vertical(const STPFreeSlipSampleManager&, unsigned int, glm::uvec2, STPAssignment, unsigned int);
+		void filter_vertical(const STPFreeSlipSampleManager&, unsigned int, glm::uvec2, STPWorkplace&, unsigned int);
 
 		/**
 		 * @brief Merge buffers from each thread into a large chunk of output data.
 		 * It will perform offset correction for HistogramStartOffset.
 		 * @param buffer The histogram buffer that will be merged to
-		 * @param workingID The ID to the allocated working memory, and the buffer from that threadID to copy.
-		 * Note that threadID 0 doesn't require offset correction.
+		 * @param workplace_memory The pointer to the thread memory where the buffer will be copied from.
+		 * @param workplaceID The ID of the workplace in the department. Note that threadID 0 doesn't require offset correction.
 		 * @param output_base The base start index from the beginning of output container for each thread for bin and histogram offset
 		*/
-		void copy_to_output(STPPinnedHistogramBuffer*, STPAssignment, glm::uvec2);
+		void copy_to_output(STPPinnedHistogramBuffer*, const STPDefaultHistogramBuffer&, unsigned char, glm::uvec2);
 
 		/**
 		 * @brief Perform horizontal pass histogram filter.
@@ -135,10 +132,10 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @param h_range Denotes the height start and end that will be computed by the current function call.
 		 * The range should start from 0.
 		 * The range end at the height of the texture
-		 * @param workingID The ID to the allocated working memory, an of the CPU thread that is calling this function.
+		 * @param workplace The pointer to the allocated working memory.
 		 * @param radius The radius of the filter
 		*/
-		void filter_horizontal(STPPinnedHistogramBuffer*, const glm::uvec2&, glm::uvec2, STPAssignment, unsigned int);
+		void filter_horizontal(STPPinnedHistogramBuffer*, const glm::uvec2&, glm::uvec2, STPWorkplace&, unsigned int);
 
 		/**
 		 * @brief Performa a complete histogram filter

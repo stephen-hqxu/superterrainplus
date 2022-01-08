@@ -9,9 +9,11 @@ Environment/STPPerspectiveCameraSetting.h
 Environment/STPSunSetting.h
 # /Object
 Object/STPBuffer.h
+Object/STPFrameBuffer.h
 Object/STPPipelineManager.h
 Object/STPProgramManager.h
 Object/STPProgramManager.inl
+Object/STPRenderBuffer.h
 Object/STPShaderManager.h
 Object/STPTexture.h
 Object/STPVertexArray.h

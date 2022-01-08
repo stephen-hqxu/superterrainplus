@@ -41,7 +41,7 @@ void STPTexture::bindImage
 }
 
 void STPTexture::unbindImage(STPOpenGL::STPuint unit) {
-	glBindImageTexture(unit, 0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGB8);
+	glBindImageTexture(unit, 0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA8);
 }
 
 void STPTexture::unbind(STPOpenGL::STPuint unit) {
@@ -86,6 +86,20 @@ TEXTURE_STORAGE(TWO) {
 }
 TEXTURE_STORAGE(THREE) {
 	glTextureStorage3D(this->Texture.get(), level, internal, dimension.x, dimension.y, dimension.z);
+}
+
+#define TEXTURE_STORAGE_MS(DIM) \
+template<> STP_REALISM_API void STPTexture::textureStorageMultisample<STPTexture::STPDimension::DIM> \
+(STPOpenGL::STPint samples, STPOpenGL::STPenum internal, uvec3 dimension, STPOpenGL::STPboolean fixed)
+
+//TEXTURE_STORAGE_MS(ONE) can be ignored because OpenGL has no support for 1D multisampling texture
+
+TEXTURE_STORAGE_MS(TWO) {
+	glTextureStorage2DMultisample(this->Texture.get(), samples, internal, dimension.x, dimension.y, fixed);
+}
+
+TEXTURE_STORAGE_MS(THREE) {
+	glTextureStorage3DMultisample(this->Texture.get(), samples, internal, dimension.x, dimension.y, dimension.z, fixed);
 }
 
 #define TEXTURE_SUBIMAGE(DIM) \

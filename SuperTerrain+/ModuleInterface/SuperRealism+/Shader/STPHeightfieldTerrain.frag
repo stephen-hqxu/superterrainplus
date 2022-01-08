@@ -320,7 +320,7 @@ vec3 blendNormal(vec3 n1, vec3 n2){
 	return normalize(vec3(n1.xy + n2.xy, n1.z));
 #elif NORMALMAP_BLENDING == 4
 	//Basis Transform
-	mat3 TBN = mat3(
+	const mat3 TBN = mat3(
 		vec3(n1.z, n1.y, -n1.x),
 		vec3(n1.x, n1.z, -n1.y),
 		vec3(n1.x, n1.y, n1.z)

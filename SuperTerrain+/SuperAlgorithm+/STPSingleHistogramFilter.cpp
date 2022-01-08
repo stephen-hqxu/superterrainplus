@@ -30,8 +30,7 @@ using std::make_unique;
 using std::pair;
 using std::make_pair;
 using std::unique_lock;
-using std::shared_lock;
-using std::shared_mutex;
+using std::mutex;
 using std::allocator;
 using std::allocator_traits;
 
@@ -503,7 +502,7 @@ STPSingleHistogramFilter::STPSingleHistogramFilter() : filter_worker(STPSingleHi
 STPSingleHistogramFilter::~STPSingleHistogramFilter() = default;
 
 STPSingleHistogramFilter::STPOrganisation_it STPSingleHistogramFilter::requestWorkplace() {
-	unique_lock<shared_mutex> write(this->WorkplaceLock);
+	unique_lock<mutex> write(this->WorkplaceLock);
 
 	//check if there is any free organisation
 	if (this->FreeWorkingMemory.empty()) {
@@ -518,7 +517,7 @@ STPSingleHistogramFilter::STPOrganisation_it STPSingleHistogramFilter::requestWo
 }
 
 void STPSingleHistogramFilter::returnWorkplace(STPOrganisation_it it) {
-	unique_lock<shared_mutex> write(this->WorkplaceLock);
+	unique_lock<mutex> write(this->WorkplaceLock);
 
 	//push the id back to the free working memory
 	this->FreeWorkingMemory.emplace(it);
@@ -553,8 +552,9 @@ void STPSingleHistogramFilter::copy_to_buffer(STPDefaultHistogramBuffer& target,
 	}
 }
 
-void STPSingleHistogramFilter::filter_vertical(const STPFreeSlipSampleManager& sample_map, unsigned int vertical_start_offset, uvec2 w_range, STPAssignment workingID, unsigned int radius) {
-	auto& [target, acc] = (*workingID.first)[workingID.second];
+void STPSingleHistogramFilter::filter_vertical(const STPFreeSlipSampleManager& sample_map, unsigned int vertical_start_offset, uvec2 w_range, 
+	STPWorkplace& workplace, unsigned int radius) {
+	auto& [target, acc] = workplace;
 	//clear both
 	target.clear();
 	acc.clear();
@@ -594,19 +594,18 @@ void STPSingleHistogramFilter::filter_vertical(const STPFreeSlipSampleManager& s
 	}
 }
 
-void STPSingleHistogramFilter::copy_to_output(STPPinnedHistogramBuffer* buffer, STPAssignment workingID, uvec2 output_base) {
-	const auto [departmentLoc, threadID] = workingID;
-	STPDefaultHistogramBuffer& target = (*departmentLoc)[threadID].first;
+void STPSingleHistogramFilter::copy_to_output(STPPinnedHistogramBuffer* buffer, 
+	const STPDefaultHistogramBuffer& workplace_memory, unsigned char workplaceID, uvec2 output_base) {
 	auto offset_base_it = buffer->HistogramStartOffset.begin() + output_base.y;
 	//caller should guarantee the output container has been allocated that many elements, we don't need to allocate memory here
 
 	//copy histogram offset
-	if (threadID != 0u) {
+	if (workplaceID != 0u) {
 		//do a offset correction first
 		//no need to do that for thread 0 since offset starts at zero
 		std::transform(
-			target.HistogramStartOffset.cbegin(), 
-			target.HistogramStartOffset.cend(), 
+			workplace_memory.HistogramStartOffset.cbegin(),
+			workplace_memory.HistogramStartOffset.cend(),
 			offset_base_it,
 			//get the starting index, so the current buffer connects to the previous buffer seamlessly
 			[bin_base = output_base.x](auto offset) { return bin_base + offset; }
@@ -614,15 +613,16 @@ void STPSingleHistogramFilter::copy_to_output(STPPinnedHistogramBuffer* buffer, 
 	}
 	else {
 		//direct copy for threadID 0
-		std::copy(target.HistogramStartOffset.cbegin(), target.HistogramStartOffset.cend(), offset_base_it);
+		std::copy(workplace_memory.HistogramStartOffset.cbegin(), workplace_memory.HistogramStartOffset.cend(), offset_base_it);
 	}
 
 	//copy the bin
-	std::copy(target.Bin.cbegin(), target.Bin.cend(), buffer->Bin.begin() + output_base.x);
+	std::copy(workplace_memory.Bin.cbegin(), workplace_memory.Bin.cend(), buffer->Bin.begin() + output_base.x);
 }
 
-void STPSingleHistogramFilter::filter_horizontal(STPPinnedHistogramBuffer* histogram_input, const uvec2& dimension, uvec2 h_range, STPAssignment workingID, unsigned int radius) {
-	auto& [target, acc] = (*workingID.first)[workingID.second];
+void STPSingleHistogramFilter::filter_horizontal(STPPinnedHistogramBuffer* histogram_input, const uvec2& dimension, uvec2 h_range, 
+	STPWorkplace& workplace, unsigned int radius) {
+	auto& [target, acc] = workplace;
 	//make sure both of them are cleared (don't deallocate)
 	target.clear();
 	acc.clear();
@@ -696,9 +696,10 @@ void STPSingleHistogramFilter::filter
 	using std::bind;
 	using std::future;
 	using std::cref;
+	using std::ref;
 
 	auto vertical = bind(&STPSingleHistogramFilter::filter_vertical, this, _1, _2, _3, _4, _5);
-	auto copy_output = bind(&STPSingleHistogramFilter::copy_to_output, this, _1, _2, _3);
+	auto copy_output = bind(&STPSingleHistogramFilter::copy_to_output, this, _1, _2, _3, _4);
 	auto horizontal = bind(&STPSingleHistogramFilter::filter_horizontal, this, _1, _2, _3, _4, _5);
 	future<void> workgroup[STPSingleHistogramFilter::Parallelism];
 	//calculate central texture starting index
@@ -716,7 +717,7 @@ void STPSingleHistogramFilter::filter
 		for (unsigned char w = 0u; w < STPSingleHistogramFilter::Parallelism; w++) {
 			workgroup[w].get();
 
-			//grab the buffer in the allocated workspace belongs to this thread
+			//grab the buffer in the allocated workplace belongs to this thread
 			STPDefaultHistogramBuffer& curr_buffer = (*departmentLoc)[w].first;
 			bin_total += curr_buffer.Bin.size();
 			offset_total += curr_buffer.HistogramStartOffset.size();
@@ -728,7 +729,7 @@ void STPSingleHistogramFilter::filter
 		histogram_output->HistogramStartOffset.resize(offset_total);
 		uvec2 base(0u);
 		for (unsigned char w = 0u; w < STPSingleHistogramFilter::Parallelism; w++) {
-			workgroup[w] = this->filter_worker.enqueue_future(copy_output, histogram_output, make_pair(departmentLoc, w), base);
+			workgroup[w] = this->filter_worker.enqueue_future(copy_output, histogram_output, cref((*departmentLoc)[w].first), w, base);
 
 			//get the base index for the next worker, so each worker only copies buffer belongs to them to independent location
 			STPDefaultHistogramBuffer& curr_buffer = (*departmentLoc)[w].first;
@@ -760,7 +761,7 @@ void STPSingleHistogramFilter::filter
 			width_step = total_width / STPSingleHistogramFilter::Parallelism;
 		uvec2 w_range(width_start, width_start + width_step);
 		for (unsigned char w = 0u; w < STPSingleHistogramFilter::Parallelism; w++) {
-			workgroup[w] = this->filter_worker.enqueue_future(vertical, cref(sample_map), central_starting_coordinate.y, w_range, make_pair(departmentLoc, w), radius);
+			workgroup[w] = this->filter_worker.enqueue_future(vertical, cref(sample_map), central_starting_coordinate.y, w_range, ref((*departmentLoc)[w]), radius);
 			//increment
 			w_range.x = w_range.y;
 			if (w == STPSingleHistogramFilter::Parallelism - 2u) {
@@ -781,7 +782,7 @@ void STPSingleHistogramFilter::filter
 		const unsigned int height_step = dimension.y / STPSingleHistogramFilter::Parallelism;
 		uvec2 h_range(0u, height_step);
 		for (unsigned char w = 0u; w < STPSingleHistogramFilter::Parallelism; w++) {
-			workgroup[w] = this->filter_worker.enqueue_future(horizontal, histogram_output, cref(dimension), h_range, make_pair(departmentLoc, w), radius);
+			workgroup[w] = this->filter_worker.enqueue_future(horizontal, histogram_output, cref(dimension), h_range, ref((*departmentLoc)[w]), radius);
 			//increment range
 			h_range.x = h_range.y;
 			if (w == STPSingleHistogramFilter::Parallelism - 2u) {
