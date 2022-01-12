@@ -91,8 +91,8 @@ unsigned int STPShaderManager::defineMacro(const STPMacroValueDictionary& dictio
 				macroName = line.substr(macroStart, macroEnd - macroStart);
 
 				//get macro value
-				auto dict_it = dictionary.find(macroName);
-				if (dict_it != dictionary.cend()) {
+				auto dict_it = dictionary.Macro.find(macroName);
+				if (dict_it != dictionary.Macro.cend()) {
 					//found, compose new line
 					output_src << DefineIdentifier << ' ' << macroName << ' ' << dict_it->second << endl;
 

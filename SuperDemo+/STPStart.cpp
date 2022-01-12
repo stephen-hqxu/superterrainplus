@@ -327,10 +327,9 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 
 	/**
 	 * @brief Initialise GLFW engine.
-	 * @param msaa The number of sample used for MSAA
 	 * @return True if the glfwwindow has been created.
 	*/
-	static bool initGLFW(unsigned int msaa) {
+	static bool initGLFW() {
 		//Initialisation
 		if (glfwInit() == GLFW_FALSE) {
 			cerr << "Unable to Init GLFW." << endl;
@@ -348,7 +347,8 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwWindowHint(GLFW_ALPHA_BITS, 8);
 		glfwWindowHint(GLFW_DEPTH_BITS, 24);
 		glfwWindowHint(GLFW_STENCIL_BITS, 8);
-		glfwWindowHint(GLFW_SAMPLES, msaa);
+		//disable multisample on default framebuffer
+		glfwWindowHint(GLFW_SAMPLES, 0);
 
 		//creation of the rendering window
 		GLCanvas = glfwCreateWindow(InitialCanvasSize.x, InitialCanvasSize.y, "SuperTerrain+ Demo", nullptr, nullptr);
@@ -414,7 +414,7 @@ int main() {
 		&biomeINI = STPStart::biomeINILoader.get();
 	//engine setup
 	//because GLFW callback uses camera, so we need to setup camera first
-	if (!(STPStart::initGLFW(engineINI("MSAA", "Global").to<unsigned int>()) && STPStart::initSTP())) {
+	if (!(STPStart::initGLFW() && STPStart::initSTP())) {
 		//error
 		STPStart::clearup();
 		return -1;

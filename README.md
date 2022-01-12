@@ -53,6 +53,7 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 - [x] Procedural sun rendering
 - [x] Procedural sky atmospheric effect rendering
 - [x] Day-night cycle
+- [ ] High dynamic range with filmic tone mapping
 - [ ] Soft and smooth shadow
 - [ ] Night scene rendering
 - [ ] Weather and seasonal effect
@@ -215,5 +216,6 @@ Reference contains source code and libraries that are not dependencies of this p
 - [Physically-based atmospheric scattering](https://github.com/wwwtyro/glsl-atmosphere/)
 - [Integer-format texture smoothing](https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-17-efficient-soft-edged-shadows-using)
 - [The sun, sky, cloud and night rendering](https://www.shadertoy.com/view/tdSXzD)
+- [Filmic tone mapping functions](https://bruop.github.io/tonemapping/)
 
 For a more academic-styled reference, check the project dissertation as linked above.

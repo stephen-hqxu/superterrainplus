@@ -5,7 +5,7 @@
 #include <type_traits>
 //Base reporter
 #include <catch2/internal/catch_compiler_capabilities.hpp>
-#include <catch2/catch_reporter_registrars.hpp>
+#include <catch2/reporters/catch_reporter_registrars.hpp>
 #include <catch2/reporters/catch_reporter_cumulative_base.hpp>
 
 //Emit Helper
@@ -54,7 +54,7 @@ private:
 				text.remove_prefix(breakLength);
 				
 				//output
-				this->stream << emit << endl;
+				m_stream << emit << endl;
 				continue;
 			}
 			const string_view emit = text.substr(0ull, emitStart + 1ull);
@@ -62,7 +62,7 @@ private:
 			text.remove_prefix(emit.size());
 
 			//output
-			this->stream << emit << endl;
+			m_stream << emit << endl;
 		}
 
 		//return the text if wrap is not required
@@ -74,7 +74,7 @@ private:
 	 * @param text The text to be centred
 	*/
 	void emitCentreString(const string_view& text) const {
-		auto centreStr = [&stream = this->stream](const string_view& text) -> void {
+		auto centreStr = [&stream = m_stream](const string_view& text) -> void {
 			auto emit_border = [&stream](size_t border_size) -> void {
 				for (size_t i = 0ull; i < border_size / 2ull; i++) {
 					stream << ' ';
@@ -115,9 +115,9 @@ private:
 	inline void emitRightString(size_t border_size, const string_view& text, Colour color) const {
 		const size_t emit_length = CATCH_CONFIG_CONSOLE_WIDTH - border_size - text.size();
 		for (size_t i = 0ull; i < emit_length; i++) {
-			this->stream << ' ';
+			m_stream << ' ';
 		}
-		this->stream << color << text << endl;
+		m_stream << color << text << endl;
 	}
 
 	/**
@@ -125,10 +125,10 @@ private:
 	*/
 	inline void emitSymbol(const char symbol) const {
 		for (int i = 0; i < CATCH_CONFIG_CONSOLE_WIDTH; i++) {
-			this->stream << symbol;
+			m_stream << symbol;
 		}
 
-		this->stream << endl;
+		m_stream << endl;
 	}
 
 	/**
@@ -136,7 +136,7 @@ private:
 	 * @param assertion The assertion to be emitted
 	*/
 	inline void emitStats(const Counts& assertion) const {
-		this->stream << Colour(Colour::Cyan) << assertion.total() << " Total |"
+		m_stream << Colour(Colour::Cyan) << assertion.total() << " Total |"
 			<< Colour(Colour::ResultSuccess) << "| " << assertion.passed << " Passed |"
 			<< Colour(Colour::ResultExpectedFailure) << "| " << assertion.failedButOk << " Warned |"
 			<< Colour(Colour::ResultError) << "| " << assertion.failed << " Failed"
@@ -155,7 +155,7 @@ private:
 		const string_view sec_name = this->emitWrapped(STPConsoleReporter::getView(indented_sec), 6ull);
 
 		//print the current section
-		this->stream << sec_name;
+		m_stream << sec_name;
 		//print section pass status
 		const bool allPassed = sec_stats.assertions.allPassed();
 		if (allPassed) {
@@ -169,10 +169,15 @@ private:
 		}
 
 		//print message (if any)
-		for (const auto& assertion : section->assertions) {
+		for (const auto& assertionNode : section->assertionsAndBenchmarks) {
+			if (!assertionNode.isAssertion()) {
+				//this result is not an assertion, skip
+				continue;
+			}
+			const auto& assertion = assertionNode.asAssertion();
 			//throw non-serious info
 			if (!assertion.infoMessages.empty()) {
-				this->stream << Colour(Colour::Red) << "Message stack trace:" << endl;
+				m_stream << Colour(Colour::Red) << "Message stack trace:" << endl;
 				for (const auto& info : assertion.infoMessages) {
 					//the output color
 					Colour::Code output_color;
@@ -192,22 +197,22 @@ private:
 						output_color = Colour::Error;
 						break;
 					}
-					this->stream << "==>" << Colour(output_color) << info.message << endl;
-					this->stream << info.lineInfo << endl;
+					m_stream << "==>" << Colour(output_color) << info.message << endl;
+					m_stream << info.lineInfo << endl;
 				}
 			}
 			//bring up user's attention with error message
 			if (!allPassed) {
 				const auto& result = assertion.assertionResult;
 
-				this->stream << Colour(Colour::Red) << "Caused by:" << endl;
-				this->stream << result.getSourceInfo() << endl;
-				this->stream << "Was expecting: " << Colour(Colour::Yellow) << result.getExpressionInMacro() << endl;
-				this->stream << "Evaludated to: " << Colour(Colour::Yellow) << result.getExpandedExpression() << endl;
+				m_stream << Colour(Colour::Red) << "Caused by:" << endl;
+				m_stream << result.getSourceInfo() << endl;
+				m_stream << "Was expecting: " << Colour(Colour::Yellow) << result.getExpressionInMacro() << endl;
+				m_stream << "Evaludated to: " << Colour(Colour::Yellow) << result.getExpandedExpression() << endl;
 			}
 		}
 		
-		this->stream << endl;
+		m_stream << endl;
 		//write all children
 		for (const auto& child : section->childSections) {
 			this->writeSection(child.get(), depth + 1u);
@@ -250,7 +255,7 @@ public:
 			this->emitSymbol('-');
 			stringstream testcase_ss;
 			testcase_ss << Colour(Colour::FileName) << testcase_info->name;
-			this->stream << this->emitWrapped(STPConsoleReporter::getView(testcase_ss.str())) << endl;
+			m_stream << this->emitWrapped(STPConsoleReporter::getView(testcase_ss.str())) << endl;
 			this->emitSymbol('-');
 
 			//for each section in a test case

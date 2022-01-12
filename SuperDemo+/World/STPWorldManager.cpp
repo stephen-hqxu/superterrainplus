@@ -63,7 +63,7 @@ private:
 	constexpr static char TDLFilename[] = "./Script/STPBiomeSplatRule.tdl";
 
 	//Group ID recording
-	STPTextureInformation::STPTextureGroupID x1024_rgb, x1024_r;
+	STPTextureInformation::STPTextureGroupID x1024_srgb, x1024_rgb;
 
 	/**
 	 * @brief Determine the texture type based on the filename.
@@ -126,11 +126,10 @@ public:
 		tex_desc.Dimension = uvec2(1024u);
 		tex_desc.PixelFormat = GL_UNSIGNED_BYTE;
 		tex_desc.ChannelFormat = GL_RGB;
+		tex_desc.InteralFormat = GL_SRGB8;
+		this->x1024_srgb = this->Database.addGroup(tex_desc);
 		tex_desc.InteralFormat = GL_RGB8;
 		this->x1024_rgb = this->Database.addGroup(tex_desc);
-		tex_desc.ChannelFormat = GL_RED;
-		tex_desc.InteralFormat = GL_R8;
-		this->x1024_r = this->Database.addGroup(tex_desc);
 
 		STPDiversity::STPTextureDefinitionLanguage TDLParser(*STPFile(STPWorldSplattingAgent::TDLFilename));
 		//build texture splatting rules
@@ -145,8 +144,9 @@ public:
 			STPTextureType texType = STPWorldSplattingAgent::getType(currTexFile);
 			STPTextureInformation::STPTextureGroupID texGroup = this->x1024_rgb;
 			//change group ID conditionally
-			if (texType == STPTextureType::Displacement) {
-				texGroup = this->x1024_r;
+			if (texType == STPTextureType::Albedo) {
+				//color texture is usually in gamma space, we need to transform it to linear space.
+				texGroup = this->x1024_srgb;
 			}
 			this->Database.addMap(currTexID, texType, texGroup, this->LoadedData[i].texture());
 		}
@@ -169,8 +169,8 @@ public:
 	*/
 	void setTextureParameter(const STPTextureFactory& factory, float anisotropy_filter) const {
 		//get the TBO based on group ID, currently we only have one group
-		const array<GLuint, 1ull> all_tbo = {
-			factory[this->x1024_rgb]
+		const array<GLuint, 2ull> all_tbo = {
+			factory[this->x1024_srgb], factory[this->x1024_rgb]
 		};
 
 		for (const auto tbo : all_tbo) {

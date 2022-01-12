@@ -109,23 +109,23 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 			//prepare identifiers for texture splatting
 			using namespace SuperTerrainPlus::STPDiversity;
 			//general info
-			Macro["REGION_COUNT"] = to_string(splat_texture.TextureBufferCount);
-			Macro["REGISTRY_COUNT"] = to_string(splat_texture.LocationRegistryCount);
-			Macro["REGISTRY_DICTIONARY_COUNT"] = to_string(splat_texture.LocationRegistryDictionaryCount);
+			Macro("REGION_COUNT", splat_texture.TextureBufferCount)
+				("REGISTRY_COUNT", splat_texture.LocationRegistryCount)
+				("REGISTRY_DICTIONARY_COUNT", splat_texture.LocationRegistryDictionaryCount)
 
 			//texture type
-			Macro["ALBEDO"] = to_string(splatmap_generator.convertType(STPTextureType::Albedo));
-			Macro["NORMAL"] = to_string(splatmap_generator.convertType(STPTextureType::Normal));
-			Macro["BUMP"] = to_string(splatmap_generator.convertType(STPTextureType::Displacement));
-			Macro["SPECULAR"] = to_string(splatmap_generator.convertType(STPTextureType::Specular));
-			Macro["AO"] = to_string(splatmap_generator.convertType(STPTextureType::AmbientOcclusion));
-			Macro["EMISSIVE"] = to_string(splatmap_generator.convertType(STPTextureType::Emissive));
+			("ALBEDO", splatmap_generator.convertType(STPTextureType::Albedo))
+			("NORMAL", splatmap_generator.convertType(STPTextureType::Normal))
+			("BUMP", splatmap_generator.convertType(STPTextureType::Displacement))
+			("SPECULAR", splatmap_generator.convertType(STPTextureType::Specular))
+			("AO", splatmap_generator.convertType(STPTextureType::AmbientOcclusion))
+			("EMISSIVE", splatmap_generator.convertType(STPTextureType::Emissive))
 
-			Macro["TYPE_STRIDE"] = to_string(splatmap_generator.usedType());
-			Macro["UNUSED_TYPE"] = to_string(STPTextureFactory::UnusedType);
-			Macro["UNREGISTERED_TYPE"] = to_string(STPTextureFactory::UnregisteredType);
+			("TYPE_STRIDE", splatmap_generator.usedType())
+			("UNUSED_TYPE", STPTextureFactory::UnusedType)
+			("UNREGISTERED_TYPE", STPTextureFactory::UnregisteredType)
 
-			Macro["NORMALMAP_BLENDING"] = to_string(static_cast<std::underlying_type_t<STPNormalBlendingAlgorithm>>(option.NormalBlender));
+			("NORMALMAP_BLENDING", static_cast<std::underlying_type_t<STPNormalBlendingAlgorithm>>(option.NormalBlender));
 
 			//process fragment shader
 			current_shader.cache(*shader_source);

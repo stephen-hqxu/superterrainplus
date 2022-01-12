@@ -8,6 +8,7 @@ STPHeightfieldTerrain.cpp
 STPLightSpectrum.cpp
 STPPerspectiveCamera.cpp
 STPPipelineManager.cpp
+STPPostProcess.cpp
 STPProgramManager.cpp
 STPRealismEnvironment.cpp
 STPRenderBuffer.cpp

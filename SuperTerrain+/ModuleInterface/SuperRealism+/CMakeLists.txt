@@ -15,11 +15,13 @@ Object/STPProgramManager.h
 Object/STPProgramManager.inl
 Object/STPRenderBuffer.h
 Object/STPShaderManager.h
+Object/STPShaderManager.inl
 Object/STPTexture.h
 Object/STPVertexArray.h
 # /Renderer
 Renderer/STPHeightfieldTerrain.h
 Renderer/STPLightSpectrum.h
+Renderer/STPPostProcess.h
 Renderer/STPSun.h
 # /Utility/Camera
 Utility/Camera/STPCamera.h

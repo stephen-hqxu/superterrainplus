@@ -34,7 +34,8 @@ using glm::dvec3;
 using std::array;
 using std::make_pair;
 
-using namespace SuperTerrainPlus;
+using SuperTerrainPlus::STPFile;
+using SuperTerrainPlus::SuperRealismPlus_ShaderPath;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto SkyShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSun", ".vert", ".frag");

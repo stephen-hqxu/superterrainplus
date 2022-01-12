@@ -18,6 +18,32 @@ namespace SuperTerrainPlus::STPRealism {
 	 * Following OpenGL specification, as soon as a shader is attached to a program, it can be deleted, and OpenGL should handle the rest automatically.
 	*/
 	class STP_REALISM_API STPShaderManager {
+	public:
+
+		/**
+		 * @brief STPMacroValueDictionary is a dictionary to assign value to a macro.
+		*/
+		struct STPMacroValueDictionary {
+		public:
+
+			std::unordered_map<std::string, std::string> Macro;
+
+			STPMacroValueDictionary() = default;
+
+			~STPMacroValueDictionary() = default;
+
+			/**
+			 * @brief Insert a macro-value pair into the macro dictionary.
+			 * @tparam T The type of the value. This type must be convertable to string defined by standard library function to_string().
+			 * @param macro The name of the macro.
+			 * @param value The value of the macro which will be converted to string.
+			 * @return The pointer to the current dictionary for chaining.
+			*/
+			template<typename T>
+			STPMacroValueDictionary& operator()(const std::string&, T);
+
+		};
+
 	private:
 
 		//Any log that comes from the compilation.
@@ -45,8 +71,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//An array of string indicating the include path of a shader.
 		typedef std::list<std::string> STPShaderIncludePath;
-		//A dictionary to assign value to a macro
-		typedef std::unordered_map<std::string, std::string> STPMacroValueDictionary;
 
 		//Type of the shader currently managed by the shader manager.
 		const STPOpenGL::STPenum Type;
@@ -145,4 +169,5 @@ namespace SuperTerrainPlus::STPRealism {
 	};
 
 }
+#include "STPShaderManager.inl"
 #endif//_STP_SHADER_MANAGER_H_
