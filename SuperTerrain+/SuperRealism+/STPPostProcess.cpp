@@ -27,6 +27,7 @@ using std::underlying_type_t;
 using glm::vec2;
 using glm::uvec2;
 using glm::uvec3;
+using glm::vec3;
 using glm::ivec4;
 using glm::vec4;
 
@@ -107,6 +108,11 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, STPPostP
 		throw STPException::STPGLError("Post processor program has error during compilation");
 	}
 
+	/* -------------------------------- setup sampler ---------------------------------- */
+	this->RenderingSampler.filter(GL_NEAREST, GL_NEAREST);
+	this->RenderingSampler.wrap(GL_CLAMP_TO_BORDER);
+	this->RenderingSampler.borderColor(vec4(vec3(0.0f), 1.0f));
+
 	/* -------------------------------- setup uniform ---------------------------------- */
 	this->PostProcessor.uniform(glProgramUniform1i, "ScreenBuffer", 0);
 	//prepare for tone mapping function definition
@@ -132,7 +138,7 @@ void STPPostProcess::setResolution(unsigned int sample, uvec2 resolution) {
 
 	//do the same for render buffer
 	STPRenderBuffer msBuffer;
-	msBuffer.renderbufferStorageMultisample(sample, GL_DEPTH_COMPONENT24, dimension);
+	msBuffer.renderbufferStorageMultisample(sample, GL_DEPTH_COMPONENT24, this->Resolution);
 
 	//attach to framebuffer
 	STPFrameBuffer::unbind(GL_FRAMEBUFFER);
@@ -161,20 +167,22 @@ void STPPostProcess::setResolution(unsigned int sample, uvec2 resolution) {
 SET_EFFECT(Gamma, "Gamma")
 
 void STPPostProcess::clear() {
-	static constexpr vec4 Zero = vec4(0.0f);
+	static constexpr vec4 NoColor = vec4(vec3(0.0f), 1.0f);
 	//clear color and depth buffer of all frame buffer
-	this->SampleContainer.clearColor(0, Zero);
-	this->SampleContainer.clearDepth(0.0f);
-	this->PostProcessContainer.clearColor(0, Zero);
+	this->SampleContainer.clearColor(0, NoColor);
+	//the default clear depth value is 1.0
+	this->SampleContainer.clearDepth(1.0f);
+	//no need to clear the display framebuffer because it will be overwritten later anyway.
 }
 
-void STPPostProcess::operator()() const {
+void STPPostProcess::operator()() {
 	//multisample resolve
 	const ivec4 bound = ivec4(0, 0, this->Resolution);
 	this->PostProcessContainer.blitFrom(this->SampleContainer, bound, bound, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
 	//prepare to render
 	this->RenderingImage->bind(0);
+	this->RenderingSampler.bind(0);
 
 	this->ScreenArray.bind();
 	this->ScreenRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
@@ -183,6 +191,8 @@ void STPPostProcess::operator()() const {
 	glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_BYTE, nullptr);
 
 	STPProgramManager::unuse();
+	//must unbind sampler otherwise it will affect texture in other renderer.
+	STPSampler::unbind(0);
 }
 
 #define TONE_MAPPING_NAME(FUNC) STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::FUNC>

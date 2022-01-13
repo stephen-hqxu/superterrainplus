@@ -1,6 +1,7 @@
 target_sources(${STP_REALISM_ENGINE} PRIVATE
 STPRealismDefine.h
 STPScenePipeline.h
+STPScenePipeline.inl
 # /Environment
 Environment/STPAtmosphereSetting.h
 Environment/STPCameraSetting.h
@@ -10,10 +11,12 @@ Environment/STPSunSetting.h
 # /Object
 Object/STPBuffer.h
 Object/STPFrameBuffer.h
+Object/STPImageParameter.hpp
 Object/STPPipelineManager.h
 Object/STPProgramManager.h
 Object/STPProgramManager.inl
 Object/STPRenderBuffer.h
+Object/STPSampler.h
 Object/STPShaderManager.h
 Object/STPShaderManager.inl
 Object/STPTexture.h

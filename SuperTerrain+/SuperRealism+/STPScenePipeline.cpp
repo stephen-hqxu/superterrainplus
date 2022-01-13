@@ -29,7 +29,7 @@ public:
 
 };
 
-STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneWorkflow& scene) : SceneCamera(camera), Workflow(scene) {
+STPScenePipeline::STPScenePipeline(const STPCamera& camera) : SceneCamera(camera) {
 	//set up buffer for camera transformation matrix
 	this->CameraBuffer.bufferStorage(sizeof(STPPackedCameraBuffer), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
 	this->CameraBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 0u);
@@ -61,19 +61,7 @@ STPScenePipeline::~STPScenePipeline() {
 	this->CameraBuffer.unmapBuffer();
 }
 
-inline void STPScenePipeline::reset() const {
-	//clear the canvas
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-}
-
-void STPScenePipeline::setClearColor(vec4 color) {
-	glClearColor(color.r, color.g, color.b, color.a);
-}
-
-void STPScenePipeline::traverse() const {
-	//clear the canvas before drawing the new scene
-	this->reset();
-
+void STPScenePipeline::updateBuffer() const {
 	const vec3& position = this->SceneCamera.cameraStatus().Position;
 	//update camera
 	STPPackedCameraBuffer* camBuf = reinterpret_cast<STPPackedCameraBuffer*>(this->MappedCameraBuffer);
@@ -81,7 +69,7 @@ void STPScenePipeline::traverse() const {
 	camBuf->Pos = position;
 
 	//for the matrices, only update when necessary
-	const STPCamera::STPMatrixResult V = this->SceneCamera.view(), 
+	const STPCamera::STPMatrixResult V = this->SceneCamera.view(),
 		P = this->SceneCamera.projection();
 	if (!V.second) {
 		//view matrix has changed
@@ -91,19 +79,8 @@ void STPScenePipeline::traverse() const {
 		//projection matric has changed
 		camBuf->P = *P.first;
 	}
+}
 
-	//process rendering components.
-	//remember that rendering components are optionally nullptr
-	if (this->Workflow.Terrain) {
-		glDepthFunc(GL_LESS);
-		glEnable(GL_CULL_FACE);
-		//ready for rendering
-		(*this->Workflow.Terrain)();
-	}
-
-	if (this->Workflow.Sun) {
-		glDepthFunc(GL_LEQUAL);
-		glDisable(GL_CULL_FACE);
-		(*this->Workflow.Sun)();
-	}
+void STPScenePipeline::setClearColor(vec4 color) {
+	glClearColor(color.r, color.g, color.b, color.a);
 }

@@ -13,7 +13,7 @@
 
 ## :eyes: Overview
 
-Super Terrain + (or STP in short) is a procedural terrain generation engine that incorporates natural physics-simulation and photo-realistic rendering. It was originally my computer science undergraduate project and inspired by many games and movies with random generation features.
+SuperTerrain+ is a terrain engine that incorporates procedural generation, physics simulation and photo-realistic rendering. It was originally my computer science undergraduate project and inspired by many games and movies with procedural generation features.
 
 **Design Lemma**
 
@@ -53,7 +53,7 @@ Super Terrain + (or STP in short) is a procedural terrain generation engine that
 - [x] Procedural sun rendering
 - [x] Procedural sky atmospheric effect rendering
 - [x] Day-night cycle
-- [ ] High dynamic range with filmic tone mapping
+- [x] High dynamic range with filmic tone mapping
 - [ ] Soft and smooth shadow
 - [ ] Night scene rendering
 - [ ] Weather and seasonal effect
@@ -76,7 +76,7 @@ Those are some third-party libraries used by this project, we always make sure t
 - [GLFW](https://github.com/glfw/glfw)
 - [GLAD](https://github.com/Dav1dde/glad)
 - [stb](https://github.com/nothings/stb)
-- [Catch2 v3](https://github.com/catchorg/Catch2)
+- [Catch2 v3.0.0-preview4](https://github.com/catchorg/Catch2)
 - [SQLite3](https://www.sqlite.org/index.html)
 
 ## :building_construction: Project Structure

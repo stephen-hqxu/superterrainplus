@@ -6,6 +6,8 @@
 //GL Management
 #include <SuperTerrain+/Utility/STPNullablePrimitive.h>
 
+#include "STPImageParameter.hpp"
+
 //GLM
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
@@ -15,7 +17,7 @@ namespace SuperTerrainPlus::STPRealism {
 	/**
 	 * @brief STPTexture is a thin wrapper to GL texture objects and smartly handle its lifetime.
 	*/
-	class STP_REALISM_API STPTexture {
+	class STP_REALISM_API STPTexture : private STPImageParameter {
 	public:
 
 		/**
@@ -103,38 +105,15 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void generateMipmap();
 
-		/**
-		 * @brief Set the texture filtering.
-		 * @param min The filter mode for minification.
-		 * @param mag The filter mode for magnification.
-		*/
-		void filter(STPOpenGL::STPenum, STPOpenGL::STPenum);
+		void filter(STPOpenGL::STPenum, STPOpenGL::STPenum) override;
 
-		/**
-		 * @brief Set the texture wrap mode.
-		 * @param s The texture warp mode for X direction.
-		 * @param t The texture warp mode for Y direction.
-		 * @param r The texture warp mode for Z direction.
-		*/
-		void wrap(STPOpenGL::STPenum, STPOpenGL::STPenum, STPOpenGL::STPenum);
+		void wrap(STPOpenGL::STPenum, STPOpenGL::STPenum, STPOpenGL::STPenum) override;
 
-		/**
-		 * @brief Set the same texture wrap mode for all directions.
-		 * @param str The texture warp mode for XYZ direction.
-		*/
-		void wrap(STPOpenGL::STPenum);
+		void wrap(STPOpenGL::STPenum) override;
 
-		/**
-		 * @brief Set the border color when texture is wrapped using border mode.
-		 * @param color The border color.
-		*/
-		void borderColor(glm::vec4);
+		void borderColor(glm::vec4) override;
 
-		/**
-		 * @brief Set the anisotropy filtering mode for the texture.
-		 * @param ani The filter level.
-		*/
-		void anisotropy(STPOpenGL::STPfloat);
+		void anisotropy(STPOpenGL::STPfloat) override;
 
 		/**
 		 * @brief Allocate immutable storage for a texture.

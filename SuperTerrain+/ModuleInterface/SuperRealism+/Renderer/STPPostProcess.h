@@ -8,6 +8,8 @@
 #include "../Object/STPProgramManager.h"
 #include "../Object/STPBuffer.h"
 #include "../Object/STPVertexArray.h"
+#include "../Object/STPTexture.h"
+#include "../Object/STPSampler.h"
 #include "../Object/STPFrameBuffer.h"
 #include "../Object/STPRenderBuffer.h"
 
@@ -109,8 +111,9 @@ namespace SuperTerrainPlus::STPRealism {
 		STPVertexArray ScreenArray;
 		//The post process capturing unit
 		std::optional<STPTexture> RenderingSample, RenderingImage;
+		STPSampler RenderingSampler;
 		std::optional<STPRenderBuffer> PostProcessBuffer;
-		mutable STPFrameBuffer SampleContainer, PostProcessContainer;
+		STPFrameBuffer SampleContainer, PostProcessContainer;
 
 		STPProgramManager PostProcessor;
 
@@ -169,7 +172,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Render post processed rendering output to the screen.
 		*/
-		void operator()() const;
+		void operator()();
 
 	};
 

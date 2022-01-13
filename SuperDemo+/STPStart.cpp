@@ -7,11 +7,14 @@
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 
+//A valid GL header needs to be included before some of the rendering engine headers as required
+#include <glad/glad.h>
 //SuperRealism+ Engine
 #include <SuperRealism+/Utility/Camera/STPPerspectiveCamera.h>
 #include <SuperRealism+/STPScenePipeline.h>
 #include <SuperRealism+/Renderer/STPHeightfieldTerrain.h>
 #include <SuperRealism+/Renderer/STPSun.h>
+#include <SuperRealism+/Renderer/STPPostProcess.h>
 //GL helper
 #include <SuperRealism+/Utility/STPDebugCallback.h>
 
@@ -25,7 +28,6 @@
 #include "./Helpers/STPTextureStorage.h"
 
 //External
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <SIMPLE/SIParser.h>
 
@@ -82,6 +84,8 @@ namespace STPStart {
 		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPSun::STPSunSpectrum> TerrainLighting;
 		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain> TerrainRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPPostProcess> FinalProcess;
+		SuperTerrainPlus::STPRealism::STPScenePipeline::STPSceneWorkflow PipelineWork;
 		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
 
 		const vec3& ViewPosition;
@@ -114,6 +118,9 @@ namespace STPStart {
 		}
 
 	public:
+
+		//The number of sample used next time the resize() function is called.
+		unsigned int MultiSample = 1u;
 
 		/**
 		 * @brief Init STPMasterRenderer.
@@ -230,12 +237,21 @@ namespace STPStart {
 				this->TerrainRenderer->setMesh(MeshSetting);
 				this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
 			}
+			//-------------------------------------------
+			{
+				//post process
+				STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::Lottes> postprocess_def;
+				STPPostProcess::STPPostProcessLog postprocess_log;
+
+				this->FinalProcess.emplace(postprocess_def, postprocess_log);
+				STPMasterRenderer::printLog(postprocess_log);
+			}
 
 			//setup rendering pipeline
-			STPScenePipeline::STPSceneWorkflow workflow = { };
-			workflow.Terrain = &(*this->TerrainRenderer);
-			workflow.Sun = &(*this->SunRenderer);
-			this->RenderPipeline.emplace(camera, workflow);
+			this->PipelineWork.Terrain = &(*this->TerrainRenderer);
+			this->PipelineWork.Sun = &(*this->SunRenderer);
+			this->PipelineWork.PostProcess = &(*this->FinalProcess);
+			this->RenderPipeline.emplace(camera);
 			//basic setup
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
 		}
@@ -265,7 +281,25 @@ namespace STPStart {
 			this->TerrainRenderer->updateSpectrumCoordinate();
 
 			//render, all async operations are sync automatically
-			this->RenderPipeline->traverse();
+			using namespace SuperTerrainPlus::STPRealism;
+			using Pipe = STPScenePipeline;
+			this->RenderPipeline->traverse<Pipe::SceneComponentSun | Pipe::SceneComponentTerrain | Pipe::SceneComponentPostProcess>(this->PipelineWork);
+		}
+
+		/**
+		 * @brief Resize the post processing framebuffer.
+		 * @param res The resolution of the new framebuffer.
+		*/
+		inline void resize(const uvec2& res) {
+			this->FinalProcess->setResolution(this->MultiSample, res);
+		}
+
+		/**
+		 * @brief Set the display gamma.
+		 * @param gamma The gamma value for display.
+		*/
+		inline void setGamma(float gamma) {
+			this->FinalProcess->setEffect<SuperTerrainPlus::STPRealism::STPPostProcess::STPPostEffect::Gamma>(gamma);
 		}
 
 	};
@@ -285,6 +319,8 @@ namespace STPStart {
 			//user has not minimised the window
 			//updating the screen size variable
 			MainCamera->rescale(1.0f * width / (1.0f * height));
+			//update main renderer
+			MasterEngine->resize(uvec2(width, height));
 			//adjust viewport
 			glViewport(0, 0, width, height);
 		}
@@ -347,8 +383,6 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwWindowHint(GLFW_ALPHA_BITS, 8);
 		glfwWindowHint(GLFW_DEPTH_BITS, 24);
 		glfwWindowHint(GLFW_STENCIL_BITS, 8);
-		//disable multisample on default framebuffer
-		glfwWindowHint(GLFW_SAMPLES, 0);
 
 		//creation of the rendering window
 		GLCanvas = glfwCreateWindow(InitialCanvasSize.x, InitialCanvasSize.y, "SuperTerrain+ Demo", nullptr, nullptr);
@@ -450,6 +484,12 @@ int main() {
 	//setup renderer
 	try {
 		STPStart::MasterEngine.emplace(engineINI, biomeINI, *STPStart::MainCamera);
+
+		//basic setup for the master renderer
+		STPStart::MasterEngine->MultiSample = engineINI("MSAA", "Global").to<unsigned int>();
+		//allocate some memory
+		STPStart::MasterEngine->resize(STPStart::InitialCanvasSize);
+		STPStart::MasterEngine->setGamma(engineINI("gamma", "Global").to<float>());
 	}
 	catch (const std::exception& e) {
 		cerr << e.what() << endl;

@@ -6,6 +6,7 @@
 //Rendering Components
 #include "./Renderer/STPSun.h"
 #include "./Renderer/STPHeightfieldTerrain.h"
+#include "./Renderer/STPPostProcess.h"
 //Camera
 #include "./Utility/Camera/STPCamera.h"
 
@@ -18,24 +19,39 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPScenePipeline is a master rendering pipeline for the terrain engine.
 	 * It manages all rendering components and issues rendering task automatically.
 	 * It is recommended to have only one scene pipeline for one context.
+	 * To allow rendering with the scene pipeline, a valid GL function header needs to be included before including this header.
 	*/
 	class STP_REALISM_API STPScenePipeline {
 	public:
 
 		/**
 		 * @brief STPSceneWorkflow defines rendering targets and components for the scene pipeline.
-		 * Pointers can be assigned with nothing to indicate no rendering workflow for such target, therefore should be ignored by the pipeline.
 		 * All assigned pointers must remain valid until the pipeline is destroied.
 		*/
 		struct STPSceneWorkflow {
 		public:
 
 			//Environment renderer
-			STPSun* Sun = nullptr;
-
+			const STPSun* Sun = nullptr;
 			//Terrain renderer
-			STPHeightfieldTerrain* Terrain = nullptr;
+			const STPHeightfieldTerrain* Terrain = nullptr;
+			//Post processing
+			STPPostProcess* PostProcess = nullptr;
+
 		};
+
+		/**
+		 * @brief STPSceneComponent defines components that need to be processed by the scene pipeline.
+		 * Each component is a bitfield flag.
+		*/
+		typedef unsigned short STPSceneComponent;
+
+		//Enable sun rendering
+		constexpr static STPSceneComponent SceneComponentSun = 1u << 0u;
+		//Enable terrain rendering
+		constexpr static STPSceneComponent SceneComponentTerrain = 1u << 1u;
+		//Enable post processing
+		constexpr static STPSceneComponent SceneComponentPostProcess = 1u << 2u;
 
 	private:
 
@@ -44,13 +60,10 @@ namespace SuperTerrainPlus::STPRealism {
 		STPBuffer CameraBuffer;
 		void* MappedCameraBuffer;
 
-		//Rendering tasks
-		const STPSceneWorkflow Workflow;
-
 		/**
-		 * @brief Reset the current framebuffer back to initial state and read for new rendering.
+		 * @brief Update data in scene pipeline buffer.
 		*/
-		void reset() const;
+		void updateBuffer() const;
 
 	public:
 
@@ -58,11 +71,8 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Initialise an empty scene pipeline.
 		 * @param camera The pointer to the camera.
 		 * The camera must remain valid as long as the current scene pipeline is valid.
-		 * @param scene The pointer to the scene to be processed and rendered by the pipeline.
-		 * The workflow itself is copied by the pipeline, however pipeline stages pointers provided within are 
-		 * required to remain valid.
 		*/
-		STPScenePipeline(const STPCamera&, const STPSceneWorkflow&);
+		STPScenePipeline(const STPCamera&);
 
 		STPScenePipeline(const STPScenePipeline&) = delete;
 
@@ -85,10 +95,16 @@ namespace SuperTerrainPlus::STPRealism {
 		 * This function does not modify the state of any rendering component, such as view position change.
 		 * Any update need to be called by the caller prior to rendering.
 		 * Any pending async operations will be sync automatically by this function before rendering.
+		 * @tparam S A bit flag field indicating which components are used for rendering.
+		 * @param workflow A pointer to scene workflow to process each defined rendering component.
+		 * If the bit field indicates some components are unused, the corresponding component can be nullptr.
+		 * Otherwise it must be a valid pointer and should remain valid until this function returns.
 		*/
-		void traverse() const;
+		template<STPSceneComponent S>
+		void traverse(const STPSceneWorkflow&) const;
 
 	};
 
 }
+#include "STPScenePipeline.inl"
 #endif//_STP_SCENE_PIPELINE_H_

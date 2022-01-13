@@ -7,7 +7,7 @@
 //normalized ray direction, typically a ray cast from the observers eye through a pixel
 in vec3 RayDirection;
 //Output
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
 
 uniform AtmosphereSetting Atmo;
 //position of the sun
