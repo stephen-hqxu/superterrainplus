@@ -41,17 +41,29 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 
 		/**
-		 * @brief STPSceneComponent defines components that need to be processed by the scene pipeline.
+		 * @brief STPRenderComponent defines components that need to be processed by the scene pipeline.
 		 * Each component is a bitfield flag.
 		*/
-		typedef unsigned short STPSceneComponent;
+		typedef unsigned short STPRenderComponent;
+		/**
+		 * @brief STPShadowComponent defines components that can cast and contribute to the shadow.
+		 * Each component is a bitfield flag.
+		*/
+		typedef unsigned short STPShadowComponent;
 
+		//Render nothing
+		constexpr static STPRenderComponent RenderComponentNone = 0u;
 		//Enable sun rendering
-		constexpr static STPSceneComponent SceneComponentSun = 1u << 0u;
+		constexpr static STPRenderComponent RenderComponentSun = 1u << 0u;
 		//Enable terrain rendering
-		constexpr static STPSceneComponent SceneComponentTerrain = 1u << 1u;
+		constexpr static STPRenderComponent RenderComponentTerrain = 1u << 1u;
 		//Enable post processing
-		constexpr static STPSceneComponent SceneComponentPostProcess = 1u << 2u;
+		constexpr static STPRenderComponent RenderComponentPostProcess = 1u << 2u;
+
+		//Nothing casts shadow
+		constexpr static STPShadowComponent ShadowComponentNone = 0u;
+		//Enable terrain shadow
+		constexpr static STPShadowComponent ShadowComponentTerrain = 1u << 0u;
 
 	private:
 
@@ -95,12 +107,14 @@ namespace SuperTerrainPlus::STPRealism {
 		 * This function does not modify the state of any rendering component, such as view position change.
 		 * Any update need to be called by the caller prior to rendering.
 		 * Any pending async operations will be sync automatically by this function before rendering.
-		 * @tparam S A bit flag field indicating which components are used for rendering.
+		 * @tparam R A bit flag field indicating which components are used for rendering.
+		 * @tparam S A bit flag field indicating which components can contribute to shadow.
+		 * Component will be ignored automatically if it is not being rendered.
 		 * @param workflow A pointer to scene workflow to process each defined rendering component.
 		 * If the bit field indicates some components are unused, the corresponding component can be nullptr.
 		 * Otherwise it must be a valid pointer and should remain valid until this function returns.
 		*/
-		template<STPSceneComponent S>
+		template<STPRenderComponent R, STPShadowComponent S>
 		void traverse(const STPSceneWorkflow&) const;
 
 	};

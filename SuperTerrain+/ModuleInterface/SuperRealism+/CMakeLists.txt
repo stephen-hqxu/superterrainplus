@@ -6,6 +6,7 @@ STPScenePipeline.inl
 Environment/STPAtmosphereSetting.h
 Environment/STPCameraSetting.h
 Environment/STPMeshSetting.h
+Environment/STPOrthographicCameraSetting.h
 Environment/STPPerspectiveCameraSetting.h
 Environment/STPSunSetting.h
 # /Object
@@ -22,12 +23,14 @@ Object/STPShaderManager.inl
 Object/STPTexture.h
 Object/STPVertexArray.h
 # /Renderer
+Renderer/STPCascadedShadowMap.h
 Renderer/STPHeightfieldTerrain.h
 Renderer/STPLightSpectrum.h
 Renderer/STPPostProcess.h
 Renderer/STPSun.h
 # /Utility/Camera
 Utility/Camera/STPCamera.h
+Utility/Camera/STPOrthographicCamera.h
 Utility/Camera/STPPerspectiveCamera.h
 # /Utility
 Utility/STPDebugCallback.h

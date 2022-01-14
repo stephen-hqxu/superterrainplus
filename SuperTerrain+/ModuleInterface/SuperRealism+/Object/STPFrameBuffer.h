@@ -92,6 +92,18 @@ namespace SuperTerrainPlus::STPRealism {
 		void attach(STPOpenGL::STPenum, const STPRenderBuffer&);
 
 		/**
+		 * @brief Specify which color buffers are to be drawn into.
+		 * @param buf The buffer for the framebuffer.
+		*/
+		void drawBuffer(STPOpenGL::STPenum);
+
+		/**
+		 * @brief Select a color buffer source for pixels.
+		 * @param mode Specifies a color buffer.
+		*/
+		void readBuffer(STPOpenGL::STPenum);
+
+		/**
 		 * @brief Clear individual color buffers of a framebuffer.
 		 * @tparam Vec The type of color vector.
 		 * Must be one of the following: uvec4, ivec4 and vec4.

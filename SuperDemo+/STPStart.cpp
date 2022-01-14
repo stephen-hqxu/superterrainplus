@@ -283,7 +283,10 @@ namespace STPStart {
 			//render, all async operations are sync automatically
 			using namespace SuperTerrainPlus::STPRealism;
 			using Pipe = STPScenePipeline;
-			this->RenderPipeline->traverse<Pipe::SceneComponentSun | Pipe::SceneComponentTerrain | Pipe::SceneComponentPostProcess>(this->PipelineWork);
+			this->RenderPipeline->traverse<
+				Pipe::RenderComponentSun | Pipe::RenderComponentTerrain | Pipe::RenderComponentPostProcess, 
+				Pipe::ShadowComponentNone
+			>(this->PipelineWork);
 		}
 
 		/**
@@ -469,14 +472,14 @@ int main() {
 		cam.RotationSensitivity = engineINI("mouseSensitivity").to<float>();
 		cam.Position = vec3(0.0f, 600.0f, 0.0f);
 		cam.WorldUp = vec3(0.0f, 1.0f, 0.0f);
+		cam.Near = 1.0f;
+		cam.Far = 2500.0f;
 		
 		STPEnvironment::STPPerspectiveCameraSetting proj = { };
 		proj.ViewAngle = radians(60.0f);
 		proj.ZoomLimit = radians(vec2(20.0f, 100.0f));
 		proj.ZoomSensitivity = engineINI("zoomSensitivity").to<float>();
 		proj.Aspect = 1.0f * STPStart::InitialCanvasSize.x / (1.0f * STPStart::InitialCanvasSize.y);
-		proj.Near = 1.0f;
-		proj.Far = 2500.0f;
 
 		STPStart::MainCamera.emplace(proj, cam);
 	}

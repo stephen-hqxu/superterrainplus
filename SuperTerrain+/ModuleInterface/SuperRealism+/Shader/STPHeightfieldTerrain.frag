@@ -149,7 +149,7 @@ void main(){
 	//since the original mesh is a upward plane, we only need to flip the normal
 	const mat3 MeshTBN = mat3(
 		vec3(1.0f, 0.0f, 0.0f),
-		vec3(0.0f, 0.0f, -1.0f),
+		vec3(0.0f, 0.0f, 1.0f),
 		vec3(0.0f, 1.0f, 0.0f)
 	);
 #if NORMAL != UNREGISTERED_TYPE
@@ -296,8 +296,8 @@ vec3 calcTerrainNormal(){
 
 	//apply filter
 	return normalize(vec3(
-		-(cell[0] + 2 * cell[3] + cell[5] - (cell[2] + 2 * cell[4] + cell[7])), 
-		-(cell[0] + 2 * cell[1] + cell[2] - (cell[5] + 2 * cell[6] + cell[7])),
+		cell[0] + 2 * cell[3] + cell[5] - (cell[2] + 2 * cell[4] + cell[7]), 
+		cell[0] + 2 * cell[1] + cell[2] - (cell[5] + 2 * cell[6] + cell[7]),
 		1.0f / NormalStrength
 	));
 }

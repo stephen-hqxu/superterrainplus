@@ -3,7 +3,7 @@
 #extension GL_ARB_shading_language_include : require
 
 //patches input
-layout (triangles, fractional_odd_spacing, cw) in;
+layout (triangles, fractional_odd_spacing, ccw) in;
 
 //Input
 in gl_PerVertex

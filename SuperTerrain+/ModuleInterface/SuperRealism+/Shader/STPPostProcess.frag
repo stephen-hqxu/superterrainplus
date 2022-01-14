@@ -73,7 +73,8 @@ vec3 toneMapping(vec3 x){
 	return pow(x, va) / (pow(x, va * Tone.d) * Tone.b + Tone.c);
 #elif TONE_MAPPING == 3
 	//Uncharted2(John Hable, 2010)
-	return (((x * (Tone.A * x + Tone.C * Tone.B) + Tone.D * Tone.E) / (x * (Tone.A * x + Tone.B) + Tone.D * Tone.F)) - Tone.E / Tone.F) / Tone.mW;
+	const vec3 product_a_x2 = Tone.A * x * x;
+	return (((product_a_x2 + x * Tone.C * Tone.B + Tone.D * Tone.E) / (product_a_x2 + x * Tone.B + Tone.D * Tone.F)) - Tone.E / Tone.F) / Tone.mW;
 #endif
 }
 #endif//TONE_MAPPING

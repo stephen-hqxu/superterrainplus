@@ -51,6 +51,14 @@ void STPFrameBuffer::attach(STPOpenGL::STPenum attachment, const STPRenderBuffer
 	glNamedFramebufferRenderbuffer(this->FrameBuffer.get(), attachment, GL_RENDERBUFFER, *renderbuffer);
 }
 
+void STPFrameBuffer::drawBuffer(STPOpenGL::STPenum buf) {
+	glNamedFramebufferDrawBuffer(this->FrameBuffer.get(), buf);
+}
+
+void STPFrameBuffer::readBuffer(STPOpenGL::STPenum mode) {
+	glNamedFramebufferReadBuffer(this->FrameBuffer.get(), mode);
+}
+
 #define CLEAR_COLOR(VEC) template<> STP_REALISM_API void STPFrameBuffer::clearColor<VEC>(STPOpenGL::STPint drawbuffer, const VEC& color)
 
 CLEAR_COLOR(uvec4) {

@@ -4,19 +4,20 @@
 //Let the user include this
 //#include <glad/glad.h>
 
-template<SuperTerrainPlus::STPRealism::STPScenePipeline::STPSceneComponent S>
+template<SuperTerrainPlus::STPRealism::STPScenePipeline::STPRenderComponent R, SuperTerrainPlus::STPRealism::STPScenePipeline::STPShadowComponent S>
 inline void SuperTerrainPlus::STPRealism::STPScenePipeline::traverse(const STPSceneWorkflow& workflow) const {
-	//a helper function to determine if a specific bit flag is set
-	static auto getFlag = [](STPSceneComponent flag) constexpr -> bool {
-		return (S & flag) != 0u;
+	//a helper function to determine if a specific "provide" flag is set against "check".
+	static auto getFlag = [](auto flag, auto check) constexpr -> bool {
+		return (flag & check) != 0u;
 	};
 
 	//update scene buffer
 	this->updateBuffer();
 	//retrieve bit flags
-	static constexpr bool hasSun = getFlag(STPScenePipeline::SceneComponentSun),
-		hasTerrain = getFlag(STPScenePipeline::SceneComponentTerrain),
-		hasPost = getFlag(STPScenePipeline::SceneComponentPostProcess);
+	static constexpr bool hasSun = getFlag(R, STPScenePipeline::RenderComponentSun),
+		hasTerrain = getFlag(R, STPScenePipeline::RenderComponentTerrain),
+		hasPost = getFlag(R, STPScenePipeline::RenderComponentPostProcess);
+	static constexpr bool shadowTerrain = getFlag(S, STPScenePipeline::ShadowComponentTerrain);
 
 	//process rendering components.
 	//clear the canvas before drawing the new scene

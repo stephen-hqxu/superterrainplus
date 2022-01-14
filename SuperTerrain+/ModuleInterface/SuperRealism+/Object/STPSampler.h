@@ -13,7 +13,7 @@ namespace SuperTerrainPlus::STPRealism {
 	/**
 	 * @brief STPSampler is a managed GL sampler object which stores sampling parameters for texture acess inside a shader.
 	*/
-	class STP_REALISM_API STPSampler : private STPImageParameter {
+	class STP_REALISM_API STPSampler : public STPImageParameter {
 	private:
 
 		/**
@@ -61,6 +61,10 @@ namespace SuperTerrainPlus::STPRealism {
 		void borderColor(glm::vec4) override;
 
 		void anisotropy(STPOpenGL::STPfloat) override;
+
+		void compareFunction(STPOpenGL::STPint) override;
+
+		void compareMode(STPOpenGL::STPint) override;
 
 		/**
 		 * @brief Bind a named sampler to a texturing target.

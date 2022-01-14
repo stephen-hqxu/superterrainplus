@@ -4,6 +4,7 @@
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
 //GLM
+#include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 
 using glm::radians;
@@ -15,9 +16,9 @@ using namespace SuperTerrainPlus::STPRealism;
 
 STPPerspectiveCamera::STPPerspectiveCamera(const STPEnvironment::STPPerspectiveCameraSetting& projection_props, 
 	const STPEnvironment::STPCameraSetting& camera_pros) :
-	STPCamera(camera_pros), Frustum(projection_props), PerspectiveProjection(mat4(0.0f)), ProjectionOutdated(true) {
+	STPCamera(camera_pros), Frustum(projection_props), PerspectiveProjection(glm::identity<mat4>()), ProjectionOutdated(true) {
 	if (!this->Frustum.validate()) {
-		throw STPException::STPInvalidEnvironment("Project setting not validated");
+		throw STPException::STPInvalidEnvironment("Perspective projection setting not validated");
 	}
 }
 
@@ -32,8 +33,8 @@ inline STPPerspectiveCamera::STPMatrixResult STPPerspectiveCamera::perspective()
 		this->PerspectiveProjection = glm::perspective(
 			this->Frustum.ViewAngle,
 			this->Frustum.Aspect,
-			this->Frustum.Near,
-			this->Frustum.Far
+			this->Camera.Near,
+			this->Camera.Far
 		);
 		this->ProjectionOutdated = false;
 		same = false;
@@ -44,6 +45,15 @@ inline STPPerspectiveCamera::STPMatrixResult STPPerspectiveCamera::perspective()
 
 STPPerspectiveCamera::STPMatrixResult STPPerspectiveCamera::projection() const {
 	return this->perspective();
+}
+
+mat4 STPPerspectiveCamera::projection(float near, float far) const {
+	return glm::perspective(
+		this->Frustum.ViewAngle,
+		this->Frustum.Aspect,
+		near,
+		far
+	);
 }
 
 void STPPerspectiveCamera::zoom(float delta) {
@@ -67,8 +77,8 @@ void STPPerspectiveCamera::rescale(float aspect) {
 }
 
 void STPPerspectiveCamera::reshape(vec2 shape) {
-	this->Frustum.Near = shape.x;
-	this->Frustum.Far = shape.y;
+	this->Camera.Near = shape.x;
+	this->Camera.Far = shape.y;
 
 	this->ProjectionOutdated = true;
 }

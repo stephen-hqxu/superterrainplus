@@ -17,7 +17,7 @@ namespace SuperTerrainPlus::STPRealism {
 	/**
 	 * @brief STPTexture is a thin wrapper to GL texture objects and smartly handle its lifetime.
 	*/
-	class STP_REALISM_API STPTexture : private STPImageParameter {
+	class STP_REALISM_API STPTexture : public STPImageParameter {
 	public:
 
 		/**
@@ -114,6 +114,10 @@ namespace SuperTerrainPlus::STPRealism {
 		void borderColor(glm::vec4) override;
 
 		void anisotropy(STPOpenGL::STPfloat) override;
+
+		void compareFunction(STPOpenGL::STPint) override;
+
+		void compareMode(STPOpenGL::STPint) override;
 
 		/**
 		 * @brief Allocate immutable storage for a texture.

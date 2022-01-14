@@ -14,7 +14,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPImageParameter is a base class for image-related GL objects.
 	*/
 	class STPImageParameter {
-	protected:
+	public:
 
 		/**
 		 * @brief Init a STPImageParameter instance.
@@ -55,6 +55,18 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param ani The filter level.
 		*/
 		virtual void anisotropy(STPOpenGL::STPfloat) = 0;
+
+		/**
+		 * @brief Specifies the comparison operator used when GL_TEXTURE_COMPARE_MODE is set to GL_COMPARE_REF_TO_TEXTURE.
+		 * @param function The texture compare function.
+		*/
+		virtual void compareFunction(STPOpenGL::STPint) = 0;
+
+		/**
+		 * @brief Specifies the texture comparison mode for currently bound depth textures. That is, a texture whose internal format is GL_DEPTH_COMPONENT_*.
+		 * @param mode The texture comparison mode.
+		*/
+		virtual void compareMode(STPOpenGL::STPint) = 0;
 
 	};
 

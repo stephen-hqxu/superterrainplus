@@ -25,6 +25,9 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//These vectors define a camera coordinate in world space and can be used to construct view matrix.
 		glm::vec3 Position, WorldUp;
 
+		//Define the depth of the view frustum.
+		float Near, Far;
+
 		/**
 		 * @brief Init STPCameraSetting with default values.
 		*/

@@ -3,7 +3,7 @@
 #include <SuperRealism+/STPRealismInfo.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
@@ -134,7 +134,7 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log)
 	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), SunDirectionCache(0.0) {
 	//validate the setting
 	if (!this->SunSetting.validate()) {
-		throw STPException::STPBadNumericRange("Sun setting provided is invalid");
+		throw STPException::STPInvalidEnvironment("Sun setting provided is invalid");
 	}
 	//calculate starting LST
 	this->Day = 1.0 * this->SunSetting.DayStartOffset / (1.0 * this->SunSetting.DayLength);
@@ -183,7 +183,7 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log)
 inline void STPSun::updateAtmosphere(STPProgramManager& program, const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
 	//validate
 	if (!atmo_setting.validate()) {
-		throw STPException::STPBadNumericRange("Atmoshpere setting is invalid");
+		throw STPException::STPInvalidEnvironment("Atmoshpere setting is invalid");
 	}
 
 	program.uniform(glProgramUniform1f, "Atmo.iSun", atmo_setting.SunIntensity)

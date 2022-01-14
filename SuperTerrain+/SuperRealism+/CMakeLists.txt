@@ -2,10 +2,12 @@
 add_library(${STP_REALISM_ENGINE} SHARED
 STPBuffer.cpp
 STPCamera.cpp
+STPCascadedShadowMap.cpp
 STPDebugCallback.cpp
 STPFrameBuffer.cpp
 STPHeightfieldTerrain.cpp
 STPLightSpectrum.cpp
+STPOrthographicCamera.cpp
 STPPerspectiveCamera.cpp
 STPPipelineManager.cpp
 STPPostProcess.cpp

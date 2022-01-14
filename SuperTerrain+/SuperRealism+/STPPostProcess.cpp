@@ -235,13 +235,15 @@ TONE_MAPPING_NAME(Lottes)::STPToneMappingDefinition() : STPToneMappingCurve(STPT
 
 TONE_MAPPING_DEF(Lottes) {
 	//product of contrast and shoulder
-	const float product_ad = this->Contrast * this->Shoulder;
+	const float product_ad = this->Contrast * this->Shoulder,
+		pow_hdr_a = glm::pow(this->HDRMax, this->Contrast),
+		pow_midin_a = glm::pow(this->Middle.x, this->Contrast),
+		pow_hdr_ad = glm::pow(this->HDRMax, product_ad),
+		pow_midin_ad = glm::pow(this->Middle.x, product_ad);
 	const float b =
-		(-glm::pow(this->Middle.x, this->Contrast) + glm::pow(this->HDRMax, this->Contrast) * this->Middle.y) /
-		((glm::pow(this->HDRMax, product_ad) - glm::pow(this->Middle.x, product_ad)) * this->Middle.y),
+		(-pow_midin_a + pow_hdr_a * this->Middle.y) / ((pow_hdr_ad - pow_midin_ad) * this->Middle.y),
 				c =
-		(glm::pow(this->HDRMax, product_ad) * glm::pow(this->Middle.x, this->Contrast) - glm::pow(this->HDRMax, this->Contrast) * glm::pow(this->Middle.x, product_ad) * this->Middle.y) /
-		((glm::pow(this->HDRMax, product_ad) - glm::pow(this->Middle.x, product_ad)) * this->Middle.y);
+		(pow_hdr_ad * pow_midin_a - pow_hdr_a * pow_midin_ad * this->Middle.y) / ((pow_hdr_ad - pow_midin_ad) * this->Middle.y);
 
 	program.uniform(glProgramUniform1f, "Tone.a", this->Contrast)
 		.uniform(glProgramUniform1f, "Tone.b", b)
@@ -256,9 +258,9 @@ TONE_MAPPING_NAME(Uncharted2)::STPToneMappingDefinition() : STPToneMappingCurve(
 
 TONE_MAPPING_DEF(Uncharted2) {
 	//compute mapped linear white point value.
-	const float mW = 
-		((this->LinearWhite * (this->ShoulderStrength * this->LinearWhite + this->LinearAngle * this->LinearStrength) + this->ToeStrength * this->ToeNumerator) / 
-			(this->LinearWhite * (this->ShoulderStrength * this->LinearWhite + this->LinearStrength) + this->ToeStrength * this->ToeDenominator)) - this->ToeNumerator / this->ToeDenominator;
+	const float product_a_w2 = this->ShoulderStrength * this->LinearWhite * this->LinearWhite,
+		mW = ((product_a_w2 + this->LinearWhite * this->LinearAngle * this->LinearStrength + this->ToeStrength * this->ToeNumerator) /
+			(product_a_w2 + this->LinearWhite * this->LinearStrength + this->ToeStrength * this->ToeDenominator)) - this->ToeNumerator / this->ToeDenominator;
 
 	program.uniform(glProgramUniform1f, "Tone.A", this->ShoulderStrength)
 		.uniform(glProgramUniform1f, "Tone.B", this->LinearStrength)

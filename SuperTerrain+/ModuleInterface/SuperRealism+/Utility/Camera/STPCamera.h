@@ -87,6 +87,14 @@ namespace SuperTerrainPlus::STPRealism {
 		virtual STPMatrixResult projection() const = 0;
 
 		/**
+		 * @brief Get the camera projection matrix that overrides the camera near and far plane settings.
+		 * @param near The near plane of the projection frustum.
+		 * @param far The far plane of the projection frustum.
+		 * @return The projection matrix.
+		*/
+		virtual glm::mat4 projection(float, float) const = 0;
+
+		/**
 		 * @brief Get the current camera status.
 		 * @return The pointer to the current camera status.
 		*/

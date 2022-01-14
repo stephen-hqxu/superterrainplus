@@ -21,8 +21,8 @@ namespace SuperTerrainPlus::STPEnvironment {
 		float ViewAngle, ZoomSensitivity;
 		//The min and max allowed zooming angle, in radians.
 		glm::vec2 ZoomLimit;
-		//Clipping planes
-		float Aspect, Near, Far;
+		//Frustum aspect ratio
+		float Aspect;
 
 		/**
 		 * @brief Init STPPerspectiveCameraSetting with default settings.

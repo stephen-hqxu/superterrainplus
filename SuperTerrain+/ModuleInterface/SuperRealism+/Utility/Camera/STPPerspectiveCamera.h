@@ -14,7 +14,7 @@
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
-	 * @brief STPPerspectiveCamera is a camera with perspective project.
+	 * @brief STPPerspectiveCamera is a camera with perspective projection.
 	*/
 	class STP_REALISM_API STPPerspectiveCamera : public STPCamera {
 	private:
@@ -58,6 +58,8 @@ namespace SuperTerrainPlus::STPRealism {
 		STPMatrixResult perspective() const;
 
 		STPMatrixResult projection() const override;
+
+		glm::mat4 projection(float, float) const override;
 
 		/**
 		 * @brief Zoom the view frustum to change the perspective field-of-view.

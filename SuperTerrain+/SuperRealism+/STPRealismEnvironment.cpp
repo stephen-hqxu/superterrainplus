@@ -1,6 +1,7 @@
 #include <SuperRealism+/Environment/STPAtmosphereSetting.h>
 #include <SuperRealism+/Environment/STPCameraSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
+#include <SuperRealism+/Environment/STPOrthographicCameraSetting.h>
 #include <SuperRealism+/Environment/STPPerspectiveCameraSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>
 
@@ -54,7 +55,8 @@ bool STPAtmosphereSetting::validate() const {
 STPCameraSetting::STPCameraSetting() : 
 	Yaw(radians(-90.0f)), Pitch(0.0f),
 	MovementSpeed(2.5f), RotationSensitivity(0.1f),
-	Position(vec3(0.0f)), WorldUp(0.0f, 1.0f, 0.0f) {
+	Position(vec3(0.0f)), WorldUp(0.0f, 1.0f, 0.0f), 
+	Near(0.1f), Far(1.0f) {
 
 }
 
@@ -67,7 +69,10 @@ bool STPCameraSetting::validate() const {
 	return range(this->Yaw, -PI, PI) 
 		&& range(this->Pitch, -PI_BY_2, PI_BY_2) 
 		&& this->MovementSpeed > 0.0f 
-		&& this->RotationSensitivity > 0.0f;
+		&& this->RotationSensitivity > 0.0f
+		&& this->Near > 0.0f
+		&& this->Far > 0.0f
+		&& this->Near < this->Far;
 }
 
 //STPMeshSetting.h
@@ -136,12 +141,24 @@ bool STPMeshSetting::validate() const {
 		&& this->LightSetting.validate();
 }
 
+//STPOrthographicCameraSetting.h
+
+STPOrthographicCameraSetting::STPOrthographicCameraSetting() : 
+	Left(-1.0f), Right(1.0f), Bottom(-1.0f), Top(1.0f) {
+
+}
+
+bool STPOrthographicCameraSetting::validate() const {
+	return this->Left < this->Right
+		&& this->Bottom < this->Top;
+}
+
 //STPPerspectiveCameraSetting.h
 
 STPPerspectiveCameraSetting::STPPerspectiveCameraSetting() :
 	ViewAngle(radians(45.0f)), ZoomSensitivity(1.0f),
 	ZoomLimit(radians(1.0f), radians(90.0f)),
-	Aspect(1.0f), Near(0.1f), Far(1.0f) {
+	Aspect(1.0f) {
 
 }
 
@@ -156,10 +173,7 @@ bool STPPerspectiveCameraSetting::validate() const {
 		&& this->ZoomLimit.x > 0.0f
 		&& this->ZoomLimit.y > 0.0f
 		&& this->ZoomLimit.x <= this->ZoomLimit.y
-		&& this->Aspect > 0.0f
-		&& this->Near > 0.0f
-		&& this->Far > 0.0f
-		&& this->Near < this->Far;
+		&& this->Aspect > 0.0f;
 }
 
 //STPSunSetting.h

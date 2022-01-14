@@ -75,6 +75,14 @@ void STPTexture::anisotropy(STPOpenGL::STPfloat ani) {
 	glTextureParameterf(this->Texture.get(), GL_TEXTURE_MAX_ANISOTROPY, ani);
 }
 
+void STPTexture::compareFunction(STPOpenGL::STPint function) {
+	glTextureParameteri(this->Texture.get(), GL_TEXTURE_COMPARE_FUNC, function);
+}
+
+void STPTexture::compareMode(STPOpenGL::STPint mode) {
+	glTextureParameteri(this->Texture.get(), GL_TEXTURE_COMPARE_MODE, mode);
+}
+
 #define TEXTURE_STORAGE(DIM) \
 template<> STP_REALISM_API void STPTexture::textureStorage<STPTexture::STPDimension::DIM>(STPOpenGL::STPint level, STPOpenGL::STPenum internal, uvec3 dimension)
 

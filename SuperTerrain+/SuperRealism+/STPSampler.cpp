@@ -52,6 +52,14 @@ void STPSampler::anisotropy(STPOpenGL::STPfloat ani) {
 	glSamplerParameterf(this->Sampler.get(), GL_TEXTURE_MAX_ANISOTROPY, ani);
 }
 
+void STPSampler::compareFunction(STPOpenGL::STPint function) {
+	glSamplerParameteri(this->Sampler.get(), GL_TEXTURE_COMPARE_FUNC, function);
+}
+
+void STPSampler::compareMode(STPOpenGL::STPint mode) {
+	glSamplerParameteri(this->Sampler.get(), GL_TEXTURE_COMPARE_MODE, mode);
+}
+
 void STPSampler::bind(STPOpenGL::STPuint unit) const {
 	glBindSampler(unit, this->Sampler.get());
 }

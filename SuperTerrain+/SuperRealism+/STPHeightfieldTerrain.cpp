@@ -46,12 +46,12 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static auto HeightfieldTerrainShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPHeightfieldTerrain", 
 	".vert", ".tesc", ".tese", ".geom", ".frag");
 
-constexpr static array<signed char, 20ull> PlaneVertex = {
+constexpr static array<unsigned char, 20ull> PlaneVertex = {
 	//Position		//Texcoords
 	0, 0, 0,		0, 0,
-	1, 0, 0,		1, 0,
+	0, 0, 1,		0, 1,
 	1, 0, 1,		1, 1,
-	0, 0, 1,		0, 1
+	1, 0, 0,		1, 0
 };
 constexpr static array<unsigned char, 6ull> PlaneIndex = {
 	0, 1, 2,
@@ -77,7 +77,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	const STPDiversity::STPTextureInformation::STPSplatTextureDatabase splat_texture = splatmap_generator.getSplatTexture();
 
 	//setup rendering buffer
-	this->TileBuffer.bufferStorageSubData(PlaneVertex.data(), PlaneVertex.size() * sizeof(signed char), GL_NONE);
+	this->TileBuffer.bufferStorageSubData(PlaneVertex.data(), PlaneVertex.size() * sizeof(unsigned char), GL_NONE);
 	this->TileIndex.bufferStorageSubData(PlaneIndex.data(), PlaneIndex.size() * sizeof(unsigned char), GL_NONE);
 	//setup indirect buffer
 	const uvec2 tileDimension = chunk_setting.ChunkSize * chunk_setting.RenderedChunk;
@@ -86,8 +86,8 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	this->TerrainRenderCommand.bufferStorageSubData(&cmd, sizeof(cmd), GL_NONE);
 	//attributing
 	STPVertexArray::STPVertexAttributeBuilder attr = this->TileArray.attribute();
-	attr.format(3, GL_BYTE, GL_FALSE, sizeof(signed char))
-		.format(2, GL_BYTE, GL_FALSE, sizeof(signed char))
+	attr.format(3, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(unsigned char))
+		.format(2, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(unsigned char))
 		.vertexBuffer(this->TileBuffer, 0)
 		.elementBuffer(this->TileIndex)
 		.binding();

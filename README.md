@@ -19,44 +19,48 @@ SuperTerrain+ is a terrain engine that incorporates procedural generation, physi
 
 - Realistic
 - Procedural
-- Pseudorandom generation
-- Real-time rendering
+- Pseudorandom
+- Real-time
 
-## :sparkler: Main Features
+## :bulb: Main Features
 
-### Procedural heightfield-based infinite terrain
+### Procedural heightfield infinite terrain
 
-- [x] Tile-based infinite chunk
+- [x] Tile-based infinite terrain
 - [x] Improved simplex noise
 - [x] Hardware instancing and tessellation
 - [x] Continuous level-of-detail
-- [x] Concurrent rendering and generation
+- [x] Concurrent heightfield generation
 - [x] Particle-based free-slip hydraulic erosion
 - [x] ~~Selective edge copy from rendering buffer~~
-- [x] Programmable generator pipeline stage
-- [x] Static-compiled pipeline stage
-- [x] Runtime-compiled pipeline stage
-- [x] Biome generation with classic Minecraft scaling algorithm
+- [x] Programmable static/runtime-compiled pipeline stage
+- [x] Biome generation with classic *Minecraft* zoom algorithm
 - [x] Multi-biome heightfield generation with smooth transition
 - [x] Rule-based biome-dependent terrain texture splatting with smooth transition
 - [ ] River and lake generation
+- [ ] Procedural texture synthesis
+
+### Procedural volumetric infinite terrain
+
+- [ ] Come up with a nice plan for this topic
 
 ### Procedural geometry generation
 
 - [ ] Rule-based geometry placement
-- [ ] Animated geometric grassland rendering
+- [ ] Procedural animated grassland generation
 - [ ] Procedural parameter-based tree generation
 - [ ] Volumetric cloud rendering
 
-### Real-time realistic rendering
+### Real-time photo-realistic rendering
 
 - [x] Procedural sun rendering
-- [x] Procedural sky atmospheric effect rendering
+- [x] Procedural atmospheric scattering
 - [x] Day-night cycle
 - [x] High dynamic range with filmic tone mapping
-- [ ] Soft and smooth shadow
-- [ ] Night scene rendering
-- [ ] Weather and seasonal effect
+- [x] Post-processing
+- [ ] Cascaded shadow map
+- [ ] Night rendering
+- [ ] Procedural weather effect
 - [ ] Water reflection and refraction
 - [ ] ~~Real-time raster-ray tracing hybrid rendering~~
 
@@ -93,12 +97,12 @@ Those are some third-party libraries used by this project, we always make sure t
 
 - GLAD: Pre-compilation of `glad.c` for source and GL-context sharing among build targets.
 - SuperTerrain+: Main procedural terrain generation engine.
-  - SuperAlgorithm+: A library of useful noise algorithms for pipeline programming.
-    - SuperAlgorithm+Host: Algorithms and prep-works for device computation that are best suited for CPU execution.
-    - SuperAlgorithm+Device:  Algorithms that can be benefited from parallel compute.
+  - SuperAlgorithm+: A library of useful algorithms for terrain generation.
+    - SuperAlgorithm+Host: Algorithms that are best suited for CPU execution.
+    - SuperAlgorithm+Device:  Algorithms that can be benefited from mass parallel computing using GPU.
   - SuperRealism+: A rendering engine for photo-realistic rendering, with some handy GL functions and object wrappers.
 - SuperDemo+: An application which demonstrates the usage of the main engine.
-- SuperTest+: Unit test program for dynamic testing.
+- SuperTest+: Unit test program.
 
 ### :ballot_box_with_check: CMake options
 
@@ -127,6 +131,8 @@ Those are some third-party libraries used by this project, we always make sure t
 	<img src="https://img.shields.io/badge/NVIDIA-GTX_1660-76B900?style=flat&logo=nvidia&logoColor=white" />
 </p>
 
+> Unfortunately AMD and Intel GPU are not supported as CUDA only works on Nvidia GPU. *SuperTerrain+* is mostly optimised for *Turing* and newer, consumer-level architectures.
+
 - RAM: 4GB
 - OS
 <p align="left">
@@ -134,13 +140,13 @@ Those are some third-party libraries used by this project, we always make sure t
 	<img src="https://img.shields.io/badge/Windows_10-0078D6?style=flat&logo=windows&logoColor=white" />
 </p>
 
-**OpenGL extensions**
-
-Your GPU must support the following OpenGL extensions:
+**OpenGL extension requirement**
 
 - OpenGL 4.6 core profile
 - GL_ARB_bindless_texture
 - GL_ARB_shading_language_include
+
+> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed.
 
 ### :gear: How to build
 
@@ -182,7 +188,7 @@ cmake --build ./ --config Release --target ALL_BUILD
 
 ```
 
-Executables:
+You may obtain the following executables:
 
 - `SuperDemo+` if demo build is enabled
 - `SuperTest+` if test build is enabled
@@ -201,21 +207,61 @@ Contributions are what make the open source community such an amazing place to b
 
 ## :telephone: Contact
 
-Stephen Xu - stephen.hqxu@gmail.com
+This project is right now actively maintained by Stephen Xu(*stephen.hqxu@gmail.com*).
 
 Project Repository: https://github.com/stephen-hqxu/superterrainplus
 
-## :books: Credit
+## :books: Credits
 
-Reference contains source code and libraries that are not dependencies of this project but they are where ideas, inspirations and design patterns taken from.
+Reference contains source code and libraries that are not dependencies of this project but they are where ideas and inspirations are taken from.
+
+For a more academic-styled reference, check out the project dissertation as linked above.
+
+### Terrain generation
+
+**Terrain modelling**
+
+- [Particle based hydraulic erosion](https://github.com/SebLague/Hydraulic-Erosion/tree/Coding-Adventure-E01)
+
+**Biome generation**
 
 - [Minecraft biome generator](https://github.com/KaptainWutax/BiomeUtils)
-- [Particle based hydraulic erosion](https://github.com/SebLague/Hydraulic-Erosion/tree/Coding-Adventure-E01)
-- [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
-- [Animated grass geometries rendering](https://github.com/spacejack/terra)
-- [Physically-based atmospheric scattering](https://github.com/wwwtyro/glsl-atmosphere/)
-- [Integer-format texture smoothing](https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-17-efficient-soft-edged-shadows-using)
-- [The sun, sky, cloud and night rendering](https://www.shadertoy.com/view/tdSXzD)
-- [Filmic tone mapping functions](https://bruop.github.io/tonemapping/)
+- [Linear time Gaussian filter](http://blog.ivank.net/fastest-gaussian-blur.html) by *Ivan Kutskir*
 
-For a more academic-styled reference, check the project dissertation as linked above.
+**Texture splatting**
+
+- [Integer texture smoothing](https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-17-efficient-soft-edged-shadows-using)
+
+### Photo-realistic rendering
+
+- [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
+
+**Geometry generation**
+
+- [Animated grassland generation](https://github.com/spacejack/terra)
+
+**Atmospheric scattering**
+
+- [Simulating the Colors of the Sky](https://www.scratchapixel.com/lessons/procedural-generation-virtual-worlds/simulating-sky)
+- [Physically-based atmospheric scattering](https://github.com/wwwtyro/glsl-atmosphere/)
+
+**Shadow mapping**
+
+- [Cascaded Shadow Mapping](https://learnopengl.com/Guest-Articles/2021/CSM)
+
+### Tone mapping
+
+**Article**
+
+- [Filmic tone mapping functions](https://bruop.github.io/tonemapping/) by *Bruno Opsenica*
+
+**Presentation**
+
+- [HDR Theory and practice](https://www.slideshare.net/nikuque/hdr-theory-and-practicce-jp) by *Hajime Uchimura*
+- [Advanced Techniques and Optimization of HDR Color Pipelines](http://32ipi028l5q82yhj72224m8j.wpengine.netdna-cdn.com/wp-content/uploads/2016/03/GdcVdrLottes.pdf) by *Timothy Lottes*
+- [Uncharted2: HDR Lighting](http://slideshare.net/ozlael/hable-john-uncharted2-hdr-lighting) by *John Hable*
+
+**Demo**
+
+- [Tone mapping curve sketch](https://www.shadertoy.com/view/WdjSW3)
+- [Tone mapping rendering comparison](https://www.shadertoy.com/view/lslGzl)
