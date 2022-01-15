@@ -8,6 +8,7 @@
 #include "../Object/STPBuffer.h"
 #include "../Object/STPVertexArray.h"
 #include "../Object/STPTexture.h"
+#include "../Object/STPBindlessTexture.h"
 #include "../Utility/STPLogStorage.hpp"
 
 //Terrain Generator
@@ -81,7 +82,7 @@ namespace SuperTerrainPlus::STPRealism {
 		STPProgramManager TerrainComponent;
 		STPPipelineManager TerrainRenderer;
 
-		std::vector<STPOpenGL::STPuint64> SplatTextureHandle;
+		std::vector<STPBindlessTexture> SplatTextureHandle;
 
 		/**
 		 * @brief Calculate the base chunk position (the coordinate of top-left corner) for the most top-left corner chunk.
@@ -113,7 +114,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPHeightfieldTerrain& operator=(STPHeightfieldTerrain&&) = delete;
 
-		~STPHeightfieldTerrain();
+		~STPHeightfieldTerrain() = default;
 
 		/**
 		 * @brief Update the terrain mesh setting.

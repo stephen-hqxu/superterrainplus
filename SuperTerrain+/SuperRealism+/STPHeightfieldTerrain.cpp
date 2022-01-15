@@ -4,7 +4,6 @@
 #include <SuperRealism+/Utility/STPRandomTextureGenerator.cuh>
 
 //Error
-#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
@@ -31,6 +30,8 @@ using std::array;
 using std::string;
 using std::to_string;
 using std::numeric_limits;
+using std::unique_ptr;
+using std::make_unique;
 
 using glm::ivec2;
 using glm::uvec2;
@@ -68,10 +69,6 @@ constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 
 STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, const STPTerrainShaderOption& option) :
 	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(option.NoiseDimension), LightSpectrum(*option.Spectrum) {
-	if (!GLAD_GL_ARB_bindless_texture) {
-		throw STPException::STPUnsupportedFunctionality("The current rendering context does not support ARB_bindless_texture");
-	}
-
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	const STPDiversity::STPTextureFactory& splatmap_generator = this->TerrainGenerator.splatmapGenerator();
 	const STPDiversity::STPTextureInformation::STPSplatTextureDatabase splat_texture = splatmap_generator.getSplatTexture();
@@ -174,15 +171,14 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 
 	//prepare bindless texture
 	this->SplatTextureHandle.reserve(tbo_count);
+	unique_ptr<GLuint64[]> rawHandle = make_unique<GLuint64[]>(tbo_count);
 	for (unsigned int i = 0u; i < tbo_count; i++) {
-		const GLuint64 handle = glGetTextureHandleARB(tbo[i]);
-		this->SplatTextureHandle.emplace_back(handle);
-		//active this handle
-		glMakeTextureHandleResidentARB(handle);
+		//extract raw handle so we can send them to the shader via uniform
+		rawHandle[i] = *this->SplatTextureHandle.emplace_back(tbo[i]);
 	}
 
 	//send bindless handle to the shader
-	this->TerrainComponent.uniform(glProgramUniformHandleui64vARB, "RegionTexture", static_cast<GLsizei>(tbo_count), this->SplatTextureHandle.data())
+	this->TerrainComponent.uniform(glProgramUniformHandleui64vARB, "RegionTexture", static_cast<GLsizei>(tbo_count), rawHandle.get())
 		//prepare registry
 		.uniform(glProgramUniform2uiv, "RegionRegistry", static_cast<GLsizei>(reg_count), reinterpret_cast<const unsigned int*>(reg))
 		.uniform(glProgramUniform1uiv, "RegistryDictionary", static_cast<GLsizei>(dict_count), dict);
@@ -191,13 +187,6 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	this->NoiseSample.textureStorage<STPTexture::STPDimension::THREE>(1, GL_R8, this->RandomTextureDimension);
 	this->NoiseSample.wrap(GL_REPEAT);
 	this->NoiseSample.filter(GL_NEAREST, GL_LINEAR);
-}
-
-STPHeightfieldTerrain::~STPHeightfieldTerrain() {
-	//deactivate bindless handles
-	for (const auto handle : this->SplatTextureHandle) {
-		glMakeTextureHandleNonResidentARB(handle);
-	}
 }
 
 vec2 STPHeightfieldTerrain::calcBaseChunkPosition(const vec2& horizontal_offset) {

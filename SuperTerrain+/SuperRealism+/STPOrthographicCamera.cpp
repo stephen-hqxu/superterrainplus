@@ -21,8 +21,7 @@ STPOrthographicCamera::STPOrthographicCamera
 	}
 }
 
-inline STPOrthographicCamera::STPMatrixResult STPOrthographicCamera::ortho() const {
-	bool same = true;
+inline const mat4& STPOrthographicCamera::ortho() const {
 	if (this->ProjectionOutdated) {
 		this->OrthographicProjection = glm::ortho(
 			this->Frustum.Left, 
@@ -33,13 +32,12 @@ inline STPOrthographicCamera::STPMatrixResult STPOrthographicCamera::ortho() con
 			this->Camera.Far
 		);
 		this->ProjectionOutdated = false;
-		same = false;
 	}
 	//return the matrix
-	return STPMatrixResult(&this->OrthographicProjection, same);
+	return this->OrthographicProjection;
 }
 
-STPOrthographicCamera::STPMatrixResult STPOrthographicCamera::projection() const {
+const mat4& STPOrthographicCamera::projection() const {
 	return this->ortho();
 }
 
@@ -64,4 +62,8 @@ void STPOrthographicCamera::reshape(vec4 side, vec2 depth) {
 	this->Camera.Far = depth.y;
 
 	this->ProjectionOutdated = true;
+}
+
+bool STPOrthographicCamera::reshaped() const {
+	return this->ProjectionOutdated;
 }

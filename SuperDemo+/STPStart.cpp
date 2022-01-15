@@ -515,6 +515,7 @@ int main() {
 		//draw
 		STPStart::process_event(static_cast<float>(deltaTime));
 		try {
+			glFinish();
 			STPStart::MasterEngine->render();
 		}
 		catch (std::exception& e) {

@@ -26,8 +26,7 @@ const SuperTerrainPlus::STPEnvironment::STPPerspectiveCameraSetting& STPPerspect
 	return this->Frustum;
 }
 
-inline STPPerspectiveCamera::STPMatrixResult STPPerspectiveCamera::perspective() const {
-	bool same = true;
+inline const mat4& STPPerspectiveCamera::perspective() const {
 	if (this->ProjectionOutdated) {
 		//update the projection matrix
 		this->PerspectiveProjection = glm::perspective(
@@ -37,13 +36,12 @@ inline STPPerspectiveCamera::STPMatrixResult STPPerspectiveCamera::perspective()
 			this->Camera.Far
 		);
 		this->ProjectionOutdated = false;
-		same = false;
 	}
 	//return the projection
-	return STPMatrixResult(&this->PerspectiveProjection, same);
+	return this->PerspectiveProjection;
 }
 
-STPPerspectiveCamera::STPMatrixResult STPPerspectiveCamera::projection() const {
+const mat4& STPPerspectiveCamera::projection() const {
 	return this->perspective();
 }
 
@@ -81,4 +79,8 @@ void STPPerspectiveCamera::reshape(vec2 shape) {
 	this->Camera.Far = shape.y;
 
 	this->ProjectionOutdated = true;
+}
+
+bool STPPerspectiveCamera::reshaped() const {
+	return this->ProjectionOutdated;
 }

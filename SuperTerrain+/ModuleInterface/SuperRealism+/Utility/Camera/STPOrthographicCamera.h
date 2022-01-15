@@ -48,11 +48,12 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Get the orthographic projection matrix.
-		 * @return The current orthographic projection result.
+		 * @return The pointer to the current orthographic matrix which is cached by the current camera.
+		 * Like the base camera class, this pointer will not be updated by the instance automatically.
 		*/
-		STPMatrixResult ortho() const;
+		const glm::mat4& ortho() const;
 
-		STPMatrixResult projection() const override;
+		const glm::mat4& projection() const override;
 
 		glm::mat4 projection(float, float) const override;
 
@@ -62,6 +63,8 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param depth Specify the near and far of the bounding box.
 		*/
 		void reshape(glm::vec4, glm::vec2);
+
+		bool reshaped() const override;
 
 	};
 

@@ -37,3 +37,4 @@ bool STPNullablePrimitive<Pri, Null>::operator!=(std::nullptr_t) const {
 
 //Explicit instantiation
 template struct STP_API STPNullablePrimitive<GLuint, 0u>;
+template struct STP_API STPNullablePrimitive<GLuint64, 0ull>;

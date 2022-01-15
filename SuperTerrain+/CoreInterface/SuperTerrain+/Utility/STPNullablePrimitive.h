@@ -89,6 +89,7 @@ namespace SuperTerrainPlus {
 	//A nullable GLuint type
 	//Most OpenGL objects use GLuint format, doing this allow manging GL objects as a smart pointer.
 	typedef STPNullablePrimitive<STPOpenGL::STPuint, 0u> STPNullableGLuint;
+	typedef STPNullablePrimitive<STPOpenGL::STPuint64, 0ull> STPNullableGLuint64;
 
 }
 #endif//_STP_NULLABLE_PRIMITIVE_H_

@@ -11,8 +11,6 @@
 #include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
 
-#include <utility>
-
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -33,15 +31,13 @@ namespace SuperTerrainPlus::STPRealism {
 			Down = 0x21u
 		};
 
-		//A matrix and a status.
-		//The true status indicates the matrix is the same compared to last time it was queried.
-		typedef std::pair<const glm::mat4*, bool> STPMatrixResult;
-
 	private:
 
 		//The view matrix to transform from world space to view space.
 		mutable glm::mat4 View;
-		mutable bool ViewOutdated;
+		//Flag to indicate if the camera has changed its state since last time the view matrix was computed.
+		//The flag will be reset until view matrix is recomputed.
+		mutable bool Moved, Rotated;
 
 		/**
 		 * @brief Update the camera vectors.
@@ -75,16 +71,17 @@ namespace SuperTerrainPlus::STPRealism {
 		virtual ~STPCamera() = default;
 
 		/**
-		 * @brief Get the camera view matrix that transform from world space to view space.
-		 * @return The the view matrix result.
+		 * @brief Update and get the camera view matrix that transform from world space to view space.
+		 * @return The pointer to the view matrix cached by the camera.
+		 * Note that this pointer will not be updated by the camera automatically unless this function is called.
 		*/
-		STPMatrixResult view() const;
+		const glm::mat4& view() const;
 
 		/**
 		 * @brief Get the camera projection matrix that transform from view to clip space.
 		 * @return The pointer to the projection matrix.
 		*/
-		virtual STPMatrixResult projection() const = 0;
+		virtual const glm::mat4& projection() const = 0;
 
 		/**
 		 * @brief Get the camera projection matrix that overrides the camera near and far plane settings.
@@ -108,10 +105,28 @@ namespace SuperTerrainPlus::STPRealism {
 		void move(STPMoveDirection, float);
 
 		/**
+		 * @brief Check if the camera has moved since last time view matrix was updated.
+		 * @return True if camera has moved.
+		*/
+		bool hasMoved() const;
+
+		/**
 		 * @brief Rotate the orientation of the camera in the world.
 		 * @param offset The relative angle of offset of the camera.
 		*/
 		void rotate(const glm::vec2&);
+
+		/**
+		 * @brief Check if the camera has rotated since last time view matrix was updated.
+		 * @return True if camera has rotated.
+		*/
+		bool hasRotated() const;
+
+		/**
+		 * @brief Check if the camera projection has its shape changed since last time projection matrix was computed.
+		 * @return True if the camera shape is outdated and requires update.
+		*/
+		virtual bool reshaped() const = 0;
 
 	};
 

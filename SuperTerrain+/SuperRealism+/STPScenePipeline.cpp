@@ -23,7 +23,7 @@ struct STPPackedCameraBuffer {
 public:
 
 	vec3 Pos;
-	float _padPod;
+	float _padPos;
 	mat4 V;
 	mat4 P;
 
@@ -31,11 +31,11 @@ public:
 
 STPScenePipeline::STPScenePipeline(const STPCamera& camera) : SceneCamera(camera) {
 	//set up buffer for camera transformation matrix
-	this->CameraBuffer.bufferStorage(sizeof(STPPackedCameraBuffer), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+	this->CameraBuffer.bufferStorage(sizeof(STPPackedCameraBuffer), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
 	this->CameraBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 0u);
 	this->MappedCameraBuffer = 
 		this->CameraBuffer.mapBufferRange(0, sizeof(STPPackedCameraBuffer),
-			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
 	if (!this->MappedCameraBuffer) {
 		throw STPException::STPGLError("Unable to map camera buffer to shader storage buffer");
 	}
@@ -62,22 +62,25 @@ STPScenePipeline::~STPScenePipeline() {
 }
 
 void STPScenePipeline::updateBuffer() const {
-	const vec3& position = this->SceneCamera.cameraStatus().Position;
-	//update camera
 	STPPackedCameraBuffer* camBuf = reinterpret_cast<STPPackedCameraBuffer*>(this->MappedCameraBuffer);
-	//for simplicity, always update position
-	camBuf->Pos = position;
 
-	//for the matrices, only update when necessary
-	const STPCamera::STPMatrixResult V = this->SceneCamera.view(),
-		P = this->SceneCamera.projection();
-	if (!V.second) {
+	//only update buffer when necessary
+	if (this->SceneCamera.hasMoved() || this->SceneCamera.hasRotated()) {
+		//position has changed
+		if (this->SceneCamera.hasMoved()) {
+			camBuf->Pos = this->SceneCamera.cameraStatus().Position;
+			this->CameraBuffer.flushMappedBufferRange(0, sizeof(vec3));
+		}
+
 		//view matrix has changed
-		camBuf->V = *V.first;
+		camBuf->V = this->SceneCamera.view();
+		this->CameraBuffer.flushMappedBufferRange(sizeof(vec4), sizeof(mat4));
 	}
-	if (!P.second) {
-		//projection matric has changed
-		camBuf->P = *P.first;
+	if (this->SceneCamera.reshaped()) {
+		constexpr static size_t offset_P = sizeof(vec4) + sizeof(mat4);
+		//projection matrix has changed
+		camBuf->P = this->SceneCamera.projection();
+		this->CameraBuffer.flushMappedBufferRange(offset_P, sizeof(mat4));
 	}
 }
 

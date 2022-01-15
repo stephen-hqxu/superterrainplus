@@ -177,8 +177,8 @@ protected:
 		return this->sample(coord.x, 0, coord.y);
 	}
 
-	inline ivec2 getRandomCoord() const {
-		const auto RandomCoord = GENERATE(take(2, chunk(2, random(-6666666, 66666666))));
+	inline ivec2 getRandomCoord(int min, int max) const {
+		const auto RandomCoord = GENERATE_COPY(take(2, chunk(2, random(min, max))));
 		return glm::make_vec2(RandomCoord.data());
 	}
 
@@ -193,7 +193,7 @@ public:
 SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG", "[Diversity][STPLayer][!mayfail]") {
 
 	GIVEN("An implementation of STPLayer") {
-		const ivec2 Coord = this->getRandomCoord();
+		const ivec2 Coord = this->getRandomCoord(-666666, 666666);
 
 		WHEN("Local seed is retrieved from the layer") {
 			const Sample Value1 = this->getValue(Coord);
@@ -204,7 +204,7 @@ SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG",
 			}
 
 			THEN("Seed should be random when the inputs are different") {
-				const ivec2 NewCoord = this->getRandomCoord();
+				const ivec2 NewCoord = this->getRandomCoord(-987654, 456789);
 				const Sample Value2 = this->getValue(NewCoord);
 
 				const bool result = Value2 == Value1;

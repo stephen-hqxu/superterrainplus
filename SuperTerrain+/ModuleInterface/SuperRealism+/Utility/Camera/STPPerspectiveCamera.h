@@ -53,11 +53,12 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Get the perspective projection matrix.
-		 * @return The current perspective projection matrix result.
+		 * @return The pointer to the current perspective matrix which is cached by the current camera.
+		 * Like the base camera class, this pointer will not be updated by the instance automatically.
 		*/
-		STPMatrixResult perspective() const;
+		const glm::mat4& perspective() const;
 
-		STPMatrixResult projection() const override;
+		const glm::mat4& projection() const override;
 
 		glm::mat4 projection(float, float) const override;
 
@@ -78,6 +79,8 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param shape The new shape, with near and far plane distance respectively in each component.
 		*/
 		void reshape(glm::vec2);
+
+		bool reshaped() const override;
 
 	};
 

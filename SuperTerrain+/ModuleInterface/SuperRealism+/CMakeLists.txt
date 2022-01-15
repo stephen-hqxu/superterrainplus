@@ -10,6 +10,7 @@ Environment/STPOrthographicCameraSetting.h
 Environment/STPPerspectiveCameraSetting.h
 Environment/STPSunSetting.h
 # /Object
+Object/STPBindlessTexture.h
 Object/STPBuffer.h
 Object/STPFrameBuffer.h
 Object/STPImageParameter.hpp

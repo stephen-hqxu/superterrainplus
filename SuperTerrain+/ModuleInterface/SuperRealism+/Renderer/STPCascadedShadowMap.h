@@ -5,7 +5,9 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Object
 #include "../Object/STPTexture.h"
+#include "../Object/STPBindlessTexture.h"
 #include "../Object/STPFrameBuffer.h"
+#include "../Object/STPBuffer.h"
 
 #include "../Utility/Camera/STPCamera.h"
 
@@ -49,6 +51,8 @@ namespace SuperTerrainPlus::STPRealism {
 			//Specifies the depth multiplier of the light frustum.
 			//A value of 1.0 specifies a minimum light frustum bounded around the camera view frustum.
 			float ShadowDistanceMultiplier;
+			//Specify the multiplier to bias based on the angle of light and fragment position, and the minimum bias.
+			float BiasMultiplier, MinBias;
 
 		};
 
@@ -61,7 +65,12 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//Capture depths of each cascade
 		STPTexture ShadowMap;
+		STPBindlessTexture ShadowMapHandle;
 		STPFrameBuffer ShadowContainer;
+
+		//Buffer for sharing shadow parameters for all programs
+		STPBuffer LightBuffer;
+		glm::mat4* BufferLightMatrix;
 
 		const STPCamera& Viewer;
 		const STPCascadeLevel ShadowLevel;

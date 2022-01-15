@@ -69,7 +69,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//The master camera for the rendering scene.
 		const STPCamera& SceneCamera;
-		STPBuffer CameraBuffer;
+		mutable STPBuffer CameraBuffer;
 		void* MappedCameraBuffer;
 
 		/**

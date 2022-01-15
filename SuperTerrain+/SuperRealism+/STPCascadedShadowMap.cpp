@@ -3,6 +3,7 @@
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -29,10 +30,27 @@ using std::numeric_limits;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPCascadedShadowMap::STPCascadedShadowMap(const STPLightFrustum& light_frustum) :
-	ShadowMap(GL_TEXTURE_2D_ARRAY), Viewer(*light_frustum.Camera), ShadowLevel(light_frustum.Level), ShadowDistance(light_frustum.ShadowDistanceMultiplier), 
+/**
+ * @brief Only contains part of the data, dynamic elements are not included.
+ * Padded for std430.
+*/
+struct STPPackedLightBuffer {
+public:
+
+	GLuint64 Ptr;
+	float Far;
+	float _padFar;
+	vec2 Bias;
+	vec2 _padBias;
+};
+
+//The offset from the beginning of the light buffer to reach the light space matrix
+constexpr static size_t LightMatrixOffset = sizeof(STPPackedLightBuffer);
+
+STPCascadedShadowMap::STPCascadedShadowMap(const STPLightFrustum& light_frustum) : ShadowMap(GL_TEXTURE_2D_ARRAY), ShadowMapHandle(this->ShadowMap),
+	Viewer(*light_frustum.Camera), ShadowLevel(light_frustum.Level), ShadowDistance(light_frustum.ShadowDistanceMultiplier), 
 	LightDirection(vec3(0.0f)) {
-	const vec2& resolution = light_frustum.Resolution;
+	const uvec2& resolution = light_frustum.Resolution;
 	if (resolution.x == 0u || resolution.y == 0u) {
 		throw STPException::STPBadNumericRange("Both components of the shadow map resolution should be a positive integer");
 	}
@@ -40,7 +58,40 @@ STPCascadedShadowMap::STPCascadedShadowMap(const STPLightFrustum& light_frustum)
 		throw STPException::STPBadNumericRange("A less-than-one shadow distance is not able to cover the view frustum");
 	}
 
-	/* --------------------------- setup depth texture -----------------------------*/
+	/* --------------------------------------- light space buffer setup ------------------------------------------- */
+	{
+		const size_t lightMatrixSize = sizeof(mat4) * (this->ShadowLevel.size() + 1u),
+			shadowPlaneSize = sizeof(float) * this->ShadowLevel.size(),
+			lightBufferSize = LightMatrixOffset + lightMatrixSize + shadowPlaneSize;
+
+		this->LightBuffer.bufferStorage(lightBufferSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+		this->LightBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 1u);
+
+		//map the entire buffer for initial setup
+		unsigned char* mappedLightBuffer = reinterpret_cast<unsigned char*>(this->LightBuffer.mapBuffer(GL_WRITE_ONLY));
+		if (!mappedLightBuffer) {
+			throw STPException::STPMemoryError("Unable to map the light buffer");
+		}
+		memset(mappedLightBuffer, 0x00, lightBufferSize);
+
+		STPPackedLightBuffer* fixedBuffer = reinterpret_cast<STPPackedLightBuffer*>(mappedLightBuffer);
+		fixedBuffer->Ptr = *this->ShadowMapHandle;
+		fixedBuffer->Far = this->Viewer.cameraStatus().Far;
+		fixedBuffer->Bias = vec2(light_frustum.BiasMultiplier, light_frustum.MinBias);
+
+		mappedLightBuffer += LightMatrixOffset + lightMatrixSize;//skip light matrix
+		memcpy(mappedLightBuffer, this->ShadowLevel.data(), shadowPlaneSize);
+
+		if (!this->LightBuffer.unmapBuffer()) {
+			throw STPException::STPMemoryError("Unable to close the light buffer mapping");
+		}
+
+		//store the pointer to memory that requires frequent update
+		this->BufferLightMatrix = reinterpret_cast<mat4*>(this->LightBuffer.mapBufferRange(LightMatrixOffset, lightMatrixSize,
+			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_MAP_INVALIDATE_RANGE_BIT));
+	}
+
+	/* --------------------------------------- depth texture setup ------------------------------------------------ */
 	this->ShadowMap.textureStorage<STPTexture::STPDimension::THREE>(1, GL_DEPTH_COMPONENT24, uvec3(resolution, 1u));
 
 	this->ShadowMap.filter(GL_NEAREST, GL_NEAREST);
@@ -49,7 +100,9 @@ STPCascadedShadowMap::STPCascadedShadowMap(const STPLightFrustum& light_frustum)
 	//setup compare function so we can use shadow sampler in the shader
 	this->ShadowMap.compareFunction(GL_LESS);
 	this->ShadowMap.compareMode(GL_COMPARE_REF_TO_TEXTURE);
-	/* ------------------------ setup capture framebuffer --------------------------*/
+
+	/* -------------------------------------- depth texture framebuffer ------------------------------------------- */
+	//attach the new depth texture to the framebuffer
 	this->ShadowContainer.attach(GL_DEPTH_ATTACHMENT, this->ShadowMap, 0);
 	//we are rendering shadow and colors are not needed.
 	this->ShadowContainer.drawBuffer(GL_NONE);
@@ -136,15 +189,16 @@ mat4 STPCascadedShadowMap::calcLightSpace(float near, float far, const mat4& vie
 
 STPCascadedShadowMap::STPLightSpaceMatrix STPCascadedShadowMap::calcAllLightSpace() const {
 	STPLightSpaceMatrix lightSpace;
-	lightSpace.reserve(this->ShadowLevel.size());
+	const size_t lightSpaceCount = this->ShadowLevel.size() + 1ull;
+	lightSpace.reserve(lightSpaceCount);
 
 	//The camera class has smart cache to the view matrix.
-	const mat4& camView = *this->Viewer.view().first;
+	const mat4& camView = this->Viewer.view();
 	const STPEnvironment::STPCameraSetting& camSetting = this->Viewer.cameraStatus();
 	const float near = camSetting.Near, far = camSetting.Far;
 
 	//calculate the light view matrix for each subfrusta
-	for (unsigned int i = 0u; i < this->ShadowLevel.size(); i++) {
+	for (unsigned int i = 0u; i < lightSpaceCount; i++) {
 		if (i == 0u) {
 			//the first frustum
 			lightSpace.emplace_back(this->calcLightSpace(near, this->ShadowLevel[i], camView));
