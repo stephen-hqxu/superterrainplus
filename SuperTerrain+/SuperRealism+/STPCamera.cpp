@@ -19,7 +19,7 @@ using glm::cross;
 using namespace SuperTerrainPlus::STPRealism;
 
 STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) : 
-	Camera(props), View(mat4(0.0f)), Moved(true), Rotated(true) {
+	Camera(props), View(mat4(0.0f)), ViewOutdated(true), Callback(nullptr) {
 	if (!this->Camera.validate()) {
 		throw STPException::STPInvalidEnvironment("Camera setting not validated");
 	}
@@ -42,16 +42,19 @@ void STPCamera::updateViewSpace() {
 	this->Up = normalize(cross(this->Right, this->Front));
 }
 
+void STPCamera::registerListener(STPStatusChangeCallback* listener) const {
+	this->Callback = listener;
+}
+
 const mat4& STPCamera::view() const {
-	if (this->Moved || this->Rotated) {
+	if (this->ViewOutdated) {
 		//update view matrix
 		this->View = glm::lookAt(
 			this->Camera.Position,
 			this->Camera.Position + this->Front,
 			this->Up
 		);
-		this->Moved = false;
-		this->Rotated = false;
+		this->ViewOutdated = false;
 	}
 
 	return this->View;
@@ -83,12 +86,12 @@ void STPCamera::move(const STPMoveDirection direction, float delta) {
 		break;
 	}
 
-	//update the view matrix
-	this->Moved = true;
-}
-
-bool STPCamera::hasMoved() const {
-	return this->Moved;
+	//trigger update the view matrix
+	this->ViewOutdated = true;
+	//trigger callback, if applicable
+	if (this->Callback) {
+		this->Callback->onMove(*this);
+	}
 }
 
 void STPCamera::rotate(const vec2& offset) {
@@ -114,9 +117,8 @@ void STPCamera::rotate(const vec2& offset) {
 	//update camera front, right and up
 	this->updateViewSpace();
 
-	this->Rotated = true;
-}
-
-bool STPCamera::hasRotated() const {
-	return this->Rotated;
+	this->ViewOutdated = true;
+	if (this->Callback) {
+		this->Callback->onRotate(*this);
+	}
 }

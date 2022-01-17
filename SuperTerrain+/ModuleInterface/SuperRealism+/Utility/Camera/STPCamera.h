@@ -31,13 +31,46 @@ namespace SuperTerrainPlus::STPRealism {
 			Down = 0x21u
 		};
 
+		/**
+		 * @brief STPStatusChangeCallback allows actions to be taken when the camera status has changed outside of the environment.
+		*/
+		class STPStatusChangeCallback {
+		public:
+
+			/**
+			 * @brief Default init STPStatusChangeCallback.
+			*/
+			STPStatusChangeCallback() = default;
+
+			virtual ~STPStatusChangeCallback() = default;
+
+			/**
+			 * @brief The camera has moved.
+			 * @param camera The pointer to the camera where it is called.
+			*/
+			virtual void onMove(const STPCamera&) = 0;
+
+			/**
+			 * @brief The camera has moved.
+			 * @param camera The pointer to the camera where it is called.
+			*/
+			virtual void onRotate(const STPCamera&) = 0;
+
+			/**
+			 * @brief The camera has reshaped.
+			 * @param camera The pointer to the camera where it is called.
+			*/
+			virtual void onReshape(const STPCamera&) = 0;
+
+		};
+
 	private:
 
 		//The view matrix to transform from world space to view space.
 		mutable glm::mat4 View;
 		//Flag to indicate if the camera has changed its state since last time the view matrix was computed.
 		//The flag will be reset until view matrix is recomputed.
-		mutable bool Moved, Rotated;
+		mutable bool ViewOutdated;
 
 		/**
 		 * @brief Update the camera vectors.
@@ -50,6 +83,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//A vector defines to the up and right of the camera
 		glm::vec3 Front, Up, Right;
+
+		mutable STPStatusChangeCallback* Callback;
 
 	public:
 
@@ -69,6 +104,13 @@ namespace SuperTerrainPlus::STPRealism {
 		STPCamera& operator=(STPCamera&&) noexcept = default;
 
 		virtual ~STPCamera() = default;
+
+		/**
+		 * @brief Register a camera status change listener.
+		 * @param listener The listener instance to receive update.
+		 * Or nullptr if one wishes to remove exisiting listener.
+		*/
+		void registerListener(STPStatusChangeCallback*) const;
 
 		/**
 		 * @brief Update and get the camera view matrix that transform from world space to view space.
@@ -105,28 +147,10 @@ namespace SuperTerrainPlus::STPRealism {
 		void move(STPMoveDirection, float);
 
 		/**
-		 * @brief Check if the camera has moved since last time view matrix was updated.
-		 * @return True if camera has moved.
-		*/
-		bool hasMoved() const;
-
-		/**
 		 * @brief Rotate the orientation of the camera in the world.
 		 * @param offset The relative angle of offset of the camera.
 		*/
 		void rotate(const glm::vec2&);
-
-		/**
-		 * @brief Check if the camera has rotated since last time view matrix was updated.
-		 * @return True if camera has rotated.
-		*/
-		bool hasRotated() const;
-
-		/**
-		 * @brief Check if the camera projection has its shape changed since last time projection matrix was computed.
-		 * @return True if the camera shape is outdated and requires update.
-		*/
-		virtual bool reshaped() const = 0;
 
 	};
 

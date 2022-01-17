@@ -57,6 +57,8 @@ uniform unsigned int UVScaleFactor;
 /* -------------------------- Terrain Lighting ------------------------- */
 //Normalmap blending algorithm
 #define NORMALMAP_BLENDING 255
+//Set to 1 to enable rendering shadow from shadow map
+#define HEIGHTFIELD_RENDER_SHADOW 0
 
 struct LightSetting{
 	float Ka, Kd, Ks;
@@ -67,6 +69,14 @@ struct LightSetting{
 };
 
 #include </Common/STPCameraInformation.glsl>
+
+#if HEIGHTFIELD_RENDER_SHADOW
+//we need to use the sampling implementation in the fragment shader
+#define CSM_SAMPLING_IMPLEMENTATION
+//Application-automatically defined
+#define CSM_LIGHT_SPACE_COUNT 2
+#include </Common/STPCascadedShadowMap.glsl>
+#endif//HEIGHTFIELD_RENDER_SHADOW
 
 uniform vec3 LightDirection;
 uniform LightSetting Lighting;

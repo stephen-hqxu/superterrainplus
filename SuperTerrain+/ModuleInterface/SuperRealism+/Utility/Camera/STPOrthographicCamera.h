@@ -64,8 +64,6 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void reshape(glm::vec4, glm::vec2);
 
-		bool reshaped() const override;
-
 	};
 
 }

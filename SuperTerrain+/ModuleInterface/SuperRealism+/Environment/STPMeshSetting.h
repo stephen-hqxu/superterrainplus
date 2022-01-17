@@ -111,11 +111,6 @@ namespace SuperTerrainPlus::STPEnvironment {
 		*/
 		float Altitude;
 		/**
-		 * @brief Determine how far the mesh starts to decrease its LoD, (0, inf), in classic hermite interpolation, this factor will be 8.0f
-		 * 2.0 is the default value, mesh will half its original LoD at 50% of tessllation distance
-		*/
-		float LoDShiftFactor;
-		/**
 		 * @brief Determine the range of tessellations, and the tessellation LoD will be clamped between min and max within a specified range of distances.
 		*/
 		STPTessellationSetting TessSetting;

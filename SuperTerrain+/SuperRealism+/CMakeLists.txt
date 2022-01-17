@@ -15,6 +15,7 @@ STPPostProcess.cpp
 STPProgramManager.cpp
 STPRealismEnvironment.cpp
 STPRenderBuffer.cpp
+STPRendererInitialiser.cpp
 STPSampler.cpp
 STPScenePipeline.cpp
 STPShaderManager.cpp

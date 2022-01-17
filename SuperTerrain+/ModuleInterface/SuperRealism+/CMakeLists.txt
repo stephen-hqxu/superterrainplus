@@ -1,5 +1,6 @@
 target_sources(${STP_REALISM_ENGINE} PRIVATE
 STPRealismDefine.h
+STPRendererInitialiser.h
 STPScenePipeline.h
 STPScenePipeline.inl
 # /Environment

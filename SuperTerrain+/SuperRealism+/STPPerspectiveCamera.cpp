@@ -22,6 +22,15 @@ STPPerspectiveCamera::STPPerspectiveCamera(const STPEnvironment::STPPerspectiveC
 	}
 }
 
+inline void STPPerspectiveCamera::setOutdated() {
+	//update the projection matrix
+	this->ProjectionOutdated = true;
+	//trigger
+	if (this->Callback) {
+		this->Callback->onReshape(*this);
+	}
+}
+
 const SuperTerrainPlus::STPEnvironment::STPPerspectiveCameraSetting& STPPerspectiveCamera::perspectiveStatus() const {
 	return this->Frustum;
 }
@@ -36,6 +45,7 @@ inline const mat4& STPPerspectiveCamera::perspective() const {
 			this->Camera.Far
 		);
 		this->ProjectionOutdated = false;
+
 	}
 	//return the projection
 	return this->PerspectiveProjection;
@@ -64,23 +74,18 @@ void STPPerspectiveCamera::zoom(float delta) {
 		this->Frustum.ZoomLimit.y
 	);
 
-	//update the projection matrix
-	this->ProjectionOutdated = true;
+	this->setOutdated();
 }
 
 void STPPerspectiveCamera::rescale(float aspect) {
 	this->Frustum.Aspect = aspect;
 
-	this->ProjectionOutdated = true;
+	this->setOutdated();
 }
 
 void STPPerspectiveCamera::reshape(vec2 shape) {
 	this->Camera.Near = shape.x;
 	this->Camera.Far = shape.y;
 
-	this->ProjectionOutdated = true;
-}
-
-bool STPPerspectiveCamera::reshaped() const {
-	return this->ProjectionOutdated;
+	this->setOutdated();
 }

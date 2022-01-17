@@ -18,7 +18,6 @@ using glm::vec3;
 static constexpr char* RenderingVariables[] = {
 	"strength",
 	"altitude",
-	"LoDfactor",
 	"minTess",
 	"maxTess",
 	"furthestDistance",
@@ -118,23 +117,22 @@ STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const S
 
 	rendering_options.Strength = section(RenderingVariables[0]).to<float>();
 	rendering_options.Altitude = section(RenderingVariables[1]).to<float>();
-	rendering_options.LoDShiftFactor = section(RenderingVariables[2]).to<float>();
 	
-	tess_options.MinTessLevel = section(RenderingVariables[3]).to<float>();
-	tess_options.MaxTessLevel = section(RenderingVariables[4]).to<float>();
-	tess_options.FurthestTessDistance = section(RenderingVariables[5]).to<float>();
-	tess_options.NearestTessDistance = section(RenderingVariables[6]).to<float>();
+	tess_options.MinTessLevel = section(RenderingVariables[2]).to<float>();
+	tess_options.MaxTessLevel = section(RenderingVariables[3]).to<float>();
+	tess_options.FurthestTessDistance = section(RenderingVariables[4]).to<float>();
+	tess_options.NearestTessDistance = section(RenderingVariables[5]).to<float>();
 
-	smooth_options.KernelRadius = section(RenderingVariables[7]).to<unsigned int>();
-	smooth_options.KernelScale = section(RenderingVariables[8]).to<float>();
-	smooth_options.NoiseScale = section(RenderingVariables[9]).to<float>();
+	smooth_options.KernelRadius = section(RenderingVariables[6]).to<unsigned int>();
+	smooth_options.KernelScale = section(RenderingVariables[7]).to<float>();
+	smooth_options.NoiseScale = section(RenderingVariables[8]).to<float>();
 
-	rendering_options.UVScaleFactor = section(RenderingVariables[10]).to<unsigned int>();
+	rendering_options.UVScaleFactor = section(RenderingVariables[9]).to<unsigned int>();
 
-	light_options.AmbientStrength = section(RenderingVariables[11]).to<float>();
-	light_options.DiffuseStrength = section(RenderingVariables[12]).to<float>();
-	light_options.SpecularStrength = section(RenderingVariables[13]).to<float>();
-	light_options.Shineness = section(RenderingVariables[14]).to<float>();
+	light_options.AmbientStrength = section(RenderingVariables[10]).to<float>();
+	light_options.DiffuseStrength = section(RenderingVariables[11]).to<float>();
+	light_options.SpecularStrength = section(RenderingVariables[12]).to<float>();
+	light_options.Shineness = section(RenderingVariables[13]).to<float>();
 
 	rendering_options.TessSetting = tess_options;
 	rendering_options.RegionSmoothSetting = smooth_options;

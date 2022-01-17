@@ -10,9 +10,8 @@ layout (vertices = 3) out;
 struct TessellationSetting{
 	float MaxLod;
 	float MinLod;
-	float FurthestDistance;
-	float NearestDistance;
-	float ShiftFactor;
+	float MaxDis;
+	float MinDis;
 };
 
 //Input
@@ -40,67 +39,37 @@ out VertexTCS{
 } tcs_out[];
 
 //Uniforms
-uniform float Altitude;
-uniform TessellationSetting TessSetting;
+uniform TessellationSetting Tess;
 
-//Heightfield, R channel denotes the terrain height factor
-layout (binding = 1) uniform sampler2D Heightfield;
-
-//Functions
-float[3] calcPatchDistance(vec3);
-float getTessLevel(TessellationSetting, float, float);
-float distanceFunction(float, float, float, float);
+float calcLoD(float, float);
 
 void main(){
+	//tessllation settings are shared across all local invocations, so only need to set it once
+	if(gl_InvocationID == 0){
+		float vertexDistance[3];
+		//first calculate the distance from camera to each vertex in a patch
+		for(int i = 0; i < 3; i++){
+			//override the altitude of view position and vertex position
+			//to make sure they are at the same height and will not be affected by displacement of vertices later.
+			const vec2 vertexPos = gl_in[i].gl_Position.xz,
+				viewPos = CameraPosition.xz;
+
+			//perform linear interpolation to the distance
+			vertexDistance[i] = clamp((distance(vertexPos, viewPos) - Tess.MinDis) / (Tess.MaxDis - Tess.MinDis), 0.0f, 1.0f);
+		}
+
+		gl_TessLevelOuter[0] = calcLoD(vertexDistance[1], vertexDistance[2]);
+		gl_TessLevelOuter[1] = calcLoD(vertexDistance[2], vertexDistance[0]);
+		gl_TessLevelOuter[2] = calcLoD(vertexDistance[0], vertexDistance[1]);
+		gl_TessLevelInner[0] = (gl_TessLevelOuter[0] + gl_TessLevelOuter[1] + gl_TessLevelOuter[2]) / 3.0f;
+	}
+	
 	//copy pasting the input to output
 	gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
 	tcs_out[gl_InvocationID].texCoord = tcs_in[gl_InvocationID].texCoord;
 	tcs_out[gl_InvocationID].normal = tcs_in[gl_InvocationID].normal;
-	
-	if(gl_InvocationID == 0){
-		//tessllation settings are shared across all local invocations, so only need to set it once
-		float[3] camera_terrain_distance = calcPatchDistance(CameraPosition);
-
-		gl_TessLevelOuter[0] = getTessLevel(TessSetting, camera_terrain_distance[1], camera_terrain_distance[2]);
-		gl_TessLevelOuter[1] = getTessLevel(TessSetting, camera_terrain_distance[2], camera_terrain_distance[0]);
-		gl_TessLevelOuter[2] = getTessLevel(TessSetting, camera_terrain_distance[0], camera_terrain_distance[1]);
-		gl_TessLevelInner[0] = (gl_TessLevelOuter[0] + gl_TessLevelOuter[1] + gl_TessLevelOuter[2]) / (3.0f * 4.0f);
-	}
 }
 
-float[3] calcPatchDistance(vec3 origin){
-	float[3] patch_distance;
-	//calculate distance from origin to each vertex
-	for(int i = 0; i < 3; i++){
-		//calculate the vertex position on the actual terrain
-		vec3 terrainVertexPos = gl_out[i].gl_Position.xyz + normalize(tcs_out[i].normal) * Altitude * texture(Heightfield, tcs_out[i].texCoord).r;
-		//calculate distance
-		patch_distance[i] = distance(origin, terrainVertexPos);
-	}
-	//return
-	return patch_distance;
-}
-
-float getTessLevel(TessellationSetting levelControl, float distance1, float distance2){
-	//calculate the distance from camera to the center of the edge
-	float distance_to_edge = (distance1 + distance2) * 0.5f;
-	//clamp the distance between nearest to furthest
-	distance_to_edge = clamp(distance_to_edge, levelControl.NearestDistance, levelControl.FurthestDistance);
-	
-	//calculate the tess level base on distance 
-	return mix(levelControl.MaxLod, levelControl.MinLod, 
-	distanceFunction(levelControl.NearestDistance, levelControl.FurthestDistance, distance_to_edge, levelControl.ShiftFactor));
-}
-
-//X must be clamped, the result is undefined if X is out of range
-//return value will be [0,1]
-float distanceFunction(float minX, float maxX, float X, float power){
-	//this is just a function desinged by my own, copyright!
-	//linearly clamp X between minX and maxX
-	float gradient = 1.0f / (maxX - minX);
-	float clampedX = gradient * X - gradient * minX;//clampedX will always be [0,1]
-	//a modified hermite interpolation
-	//the higher the power, the more the curve shift towards maxX
-	//when power is 2.0, f(0.5)=0.5
-	return clamp(-pow(pow(clampedX, power) - 1.0f, 2.0f) + 1, 0.0f, 1.0f);
+float calcLoD(float v1, float v2){
+	return mix(Tess.MaxLod, Tess.MinLod, (v1 + v2) * 0.5f);
 }

@@ -10,6 +10,7 @@
 //A valid GL header needs to be included before some of the rendering engine headers as required
 #include <glad/glad.h>
 //SuperRealism+ Engine
+#include <SuperRealism+/STPRendererInitialiser.h>
 #include <SuperRealism+/Utility/Camera/STPPerspectiveCamera.h>
 #include <SuperRealism+/STPScenePipeline.h>
 #include <SuperRealism+/Renderer/STPHeightfieldTerrain.h>
@@ -193,9 +194,23 @@ namespace STPStart {
 			//setup rendering components
 			//-------------------------------------------
 			{
+				//sun shadow setting
+				const float camFar = camera.cameraStatus().Far;
+				STPCascadedShadowMap::STPLightFrustum frustum;
+				frustum.Resolution = uvec2(1024u);
+				frustum.Level = {
+					camFar / 50.0f,
+					camFar / 25.0f,
+					camFar / 2.0f
+				};
+				frustum.Camera = &camera;
+				frustum.ShadowDistanceMultiplier = 10.0f;
+				frustum.BiasMultiplier = 0.05f;
+				frustum.MinBias = 0.005f;
+
 				//sun
 				STPSun::STPSunLog sun_log;
-				this->SunRenderer.emplace(this->SunSetting, sun_log);
+				this->SunRenderer.emplace(this->SunSetting, frustum, sun_log);
 				//print log
 				STPMasterRenderer::printLog(sun_log);
 				//setup atmoshpere
@@ -228,7 +243,8 @@ namespace STPStart {
 				const STPHeightfieldTerrain::STPTerrainShaderOption terrain_opt = {
 					uvec3(128u, 128u, 6u),
 					STPHeightfieldTerrain::STPNormalBlendingAlgorithm::BasisTransform,
-					&this->TerrainLighting.value()
+					&this->TerrainLighting.value(),
+					this->SunRenderer->option()
 				};
 
 				this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
@@ -284,8 +300,7 @@ namespace STPStart {
 			using namespace SuperTerrainPlus::STPRealism;
 			using Pipe = STPScenePipeline;
 			this->RenderPipeline->traverse<
-				Pipe::RenderComponentSun | Pipe::RenderComponentTerrain | Pipe::RenderComponentPostProcess, 
-				Pipe::ShadowComponentNone
+				Pipe::RenderComponentSun | Pipe::RenderComponentTerrain | Pipe::RenderComponentPostProcess
 			>(this->PipelineWork);
 		}
 
@@ -428,6 +443,8 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		}
 		//cuda context init on device 0 (only one GPU)
 		SuperTerrainPlus::STPEngineInitialiser::init(0);
+		//must init the main engien first because the renderer is depended on that.
+		SuperTerrainPlus::STPRealism::STPRendererInitialiser::init();
 
 		return SuperTerrainPlus::STPEngineInitialiser::hasInit();
 	}

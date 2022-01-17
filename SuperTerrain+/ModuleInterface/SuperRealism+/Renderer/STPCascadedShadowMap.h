@@ -8,12 +8,14 @@
 #include "../Object/STPBindlessTexture.h"
 #include "../Object/STPFrameBuffer.h"
 #include "../Object/STPBuffer.h"
+#include "../Object/STPShaderManager.h"
 
 #include "../Utility/Camera/STPCamera.h"
 
 //System
 #include <array>
 #include <vector>
+#include <optional>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -56,6 +58,35 @@ namespace SuperTerrainPlus::STPRealism {
 
 		};
 
+		/**
+		 * @brief STPShadowOption is a visitor to a shadow map instance that allows automatically load up shader settings.
+		*/
+		class STP_REALISM_API STPShadowOption {
+		private:
+
+			friend class STPCascadedShadowMap;
+
+			//The shadow map instance it is depended on.
+			const STPCascadedShadowMap* Instance;
+
+			/**
+			 * @brief Create a shadow option loader.
+			 * @param shadow The pointer to the shadow map instance it is depended on.
+			*/
+			STPShadowOption(const STPCascadedShadowMap&);
+
+		public:
+
+			~STPShadowOption() = default;
+
+			/**
+			 * @brief Automatically load the settings into a target macro definer for shader compilation.
+			 * @param dictionary The pointer to the dictionary to be loaded.
+			*/
+			void operator()(STPShaderManager::STPShaderSource::STPMacroValueDictionary&) const;
+
+		};
+
 	private:
 
 		//Eight vertices define the corners of a view frustum.
@@ -65,7 +96,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//Capture depths of each cascade
 		STPTexture ShadowMap;
-		STPBindlessTexture ShadowMapHandle;
+		std::optional<STPBindlessTexture> ShadowMapHandle;
 		STPFrameBuffer ShadowContainer;
 
 		//Buffer for sharing shadow parameters for all programs
@@ -109,7 +140,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPCascadedShadowMap& operator=(STPCascadedShadowMap&&) = delete;
 
-		~STPCascadedShadowMap() = default;
+		virtual ~STPCascadedShadowMap();
 
 		/**
 		 * @brief Update the direction of light.
@@ -121,7 +152,24 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Activate the shadow framebuffer and all rendered contents as depth values will be drawn onto the shadow frame buffer.
 		 * To stop capturing, bind to any other framebuffers.
 		*/
-		void capture();
+		void captureLightSpace();
+
+		/**
+		 * @brief Clear all depth information.
+		*/
+		void clearLightSpace();
+
+		/**
+		 * @brief Get the number of cascade defined. This is the same as the number of light matrix, or the number of cascade plane plus 1.
+		 * @return The number of cascade.
+		*/
+		size_t cascadeCount() const;
+
+		/**
+		 * @brief Get the shadow options loader.
+		 * @return The shadow map setup instance, which is bounded to the current shadow map instance.
+		*/
+		STPShadowOption option() const;
 
 	};
 

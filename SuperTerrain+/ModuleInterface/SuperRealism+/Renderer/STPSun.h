@@ -11,8 +11,10 @@
 #include "../Object/STPBuffer.h"
 #include "../Object/STPVertexArray.h"
 #include "../Utility/STPLogStorage.hpp"
+
 //Lighting
 #include "STPLightSpectrum.h"
+#include "STPCascadedShadowMap.h"
 
 //GLM
 #include <glm/vec3.hpp>
@@ -26,7 +28,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * It also allows, optionally, day-night cycle and switches light intensity.
 	 * Atmoshperic scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
 	*/
-	class STP_REALISM_API STPSun {
+	class STP_REALISM_API STPSun : public STPCascadedShadowMap {
 	public:
 
 		/**
@@ -143,9 +145,10 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Init the sun with settings.
 		 * @param sun_setting The sun setting.
+		 * @param shadow_frustum The pointer to sun shadow light frustum setting.
 		 * @param log Logs output from the shader compilation.
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, STPSunLog&);
+		STPSun(const STPEnvironment::STPSunSetting&, const STPCascadedShadowMap::STPLightFrustum&, STPSunLog&);
 
 		STPSun(const STPSun&) = delete;
 

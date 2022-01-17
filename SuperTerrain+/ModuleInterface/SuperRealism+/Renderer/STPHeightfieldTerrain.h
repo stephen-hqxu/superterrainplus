@@ -17,6 +17,7 @@
 
 //Lighting
 #include "STPLightSpectrum.h"
+#include "STPCascadedShadowMap.h"
 
 //GLM
 #include <glm/vec3.hpp>
@@ -64,6 +65,8 @@ namespace SuperTerrainPlus::STPRealism {
 			//The spectrum must remain valid during the lifetime of initialised terrain renderer.
 			//The spectrum must not be NULL.
 			const STPLightSpectrum* Spectrum;
+			//A shadow map configuration loader.
+			STPCascadedShadowMap::STPShadowOption ShadowMapOption;
 
 		};
 
@@ -79,8 +82,10 @@ namespace SuperTerrainPlus::STPRealism {
 		//spectrum for lighting supplied by user.
 		const STPLightSpectrum& LightSpectrum;
 		//Shader program for terrain rendering
-		STPProgramManager TerrainComponent;
-		STPPipelineManager TerrainRenderer;
+		//component contains all shader stages to model and render the terrain
+		//depth writer contains an empty geometry shader and no shading, for depth map rendering
+		STPProgramManager TerrainComponent, TerrainDepthWriter;
+		STPPipelineManager TerrainRenderer, TerrainDepthRenderer;
 
 		std::vector<STPBindlessTexture> SplatTextureHandle;
 
@@ -93,7 +98,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		typedef STPLogStorage<7ull> STPHeightfieldTerrainLog;
+		typedef STPLogStorage<10ull> STPHeightfieldTerrainLog;
 
 		//The size of the texture storing rangom numbers.
 		const glm::uvec3 RandomTextureDimension;
@@ -151,7 +156,13 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Render the procedural heightfield terrain.
 		 * Terrain texture must be prepared prior to this call, and this function sync with the generator automatically.
 		*/
-		void operator()() const;
+		void renderShaded() const;
+
+		/**
+		 * @brief Render the procedural heightfield terrain, this time fragment shading is pruned.
+		 * This is useful for rendering to depth texture.
+		*/
+		void renderDepth() const;
 
 	};
 

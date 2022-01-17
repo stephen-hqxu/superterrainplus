@@ -37,11 +37,12 @@ static void readSource(D& dict, const char(&pathname)[S]) {
 }
 
 //(include pathname, include source)
-static auto mShaderIncludeRegistry = [] {
+const static auto mShaderIncludeRegistry = [] {
 	unordered_map<string, string> reg;
 	//initialise super realism + system include headers
-	readSource(reg, "/Common/STPCameraInformation");
 	readSource(reg, "/Common/STPAtmosphericScattering");
+	readSource(reg, "/Common/STPCameraInformation");
+	readSource(reg, "/Common/STPCascadedShadowMap");
 
 	return reg;
 }();
@@ -50,24 +51,21 @@ void STPShaderManager::STPShaderDeleter::operator()(STPOpenGL::STPuint shader) c
 	glDeleteShader(shader);
 }
 
-STPShaderManager::STPShaderManager(STPOpenGL::STPenum type) : Shader(glCreateShader(type)), Type(type) {
-	
+STPShaderManager::STPShaderSource::STPShaderIncludePath& STPShaderManager::STPShaderSource::STPShaderIncludePath::operator[](const char* path) {
+	this->Pathname.emplace_back(path);
+	return *this;
 }
 
-bool STPShaderManager::include(const string& name, const string& source) {
-	return mShaderIncludeRegistry.try_emplace(name, source).second;
+STPShaderManager::STPShaderSource::STPShaderSource(const string& source) : Cache(source) {
+
 }
 
-bool STPShaderManager::uninclude(const string& name) {
-	return mShaderIncludeRegistry.erase(name) == 1ull;
+const string& STPShaderManager::STPShaderSource::operator*() const {
+	return this->Cache;
 }
 
-void STPShaderManager::cache(const string& source) {
-	this->SourceCache = source;
-}
-
-unsigned int STPShaderManager::defineMacro(const STPMacroValueDictionary& dictionary) {
-	if (this->SourceCache.empty()) {
+unsigned int STPShaderManager::STPShaderSource::define(const STPMacroValueDictionary& dictionary) {
+	if (this->Cache.empty()) {
 		//do nothing for empty string
 		return 0u;
 	}
@@ -75,7 +73,7 @@ unsigned int STPShaderManager::defineMacro(const STPMacroValueDictionary& dictio
 	constexpr static char MacroIdentifier[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
 
 	unsigned int macroReplaced = 0u;
-	istringstream original_src(this->SourceCache);
+	istringstream original_src(this->Cache);
 	ostringstream output_src;
 	string line, macroName;
 	//read line by line
@@ -101,21 +99,53 @@ unsigned int STPShaderManager::defineMacro(const STPMacroValueDictionary& dictio
 				}
 			}
 		}
-		
+
 		//insert line into a new cache
 		output_src << line << endl;
 	}
 	//copy stream to cache
-	this->SourceCache = output_src.str();
+	this->Cache = output_src.str();
 
 	return macroReplaced;
 }
 
-const string& STPShaderManager::operator()(const string& source, const STPShaderIncludePath& include) {
+STPShaderManager::STPShaderManager(STPOpenGL::STPenum type) : Shader(glCreateShader(type)), Type(type) {
+	
+}
+
+void STPShaderManager::initialise() {
+	//check if shader include is supported
+	if (!GLAD_GL_ARB_shading_language_include) {
+		throw STPException::STPUnsupportedFunctionality("The current rendering context does not support ARB_shading_language_include");
+	}
+
+	for (const auto& [path, src] : mShaderIncludeRegistry) {
+		STPShaderManager::include(path, src);
+	}
+}
+
+bool STPShaderManager::include(const string& name, const string& source) {
+	//check if path exists as named string
+	if (!glIsNamedStringARB(static_cast<GLint>(name.size()), name.data())) {
+		//try to add the named string to GL virtual include system
+		glNamedStringARB(GL_SHADER_INCLUDE_ARB, static_cast<GLint>(name.size()), name.c_str(), static_cast<GLint>(source.size()), source.c_str());
+		return true;
+	}
+	return false;
+}
+
+void STPShaderManager::uninclude(const string& name) {
+	glDeleteNamedStringARB(static_cast<GLint>(name.size()), name.data());
+}
+
+const string& STPShaderManager::operator()(const STPShaderSource& source) {
+	const string& src_str = *source;
+	const auto& include = source.Include.Pathname;
+
 	//attach source code to the shader
 	//std::string makes sure string is null-terminated, so we can pass NULL as the code length
-	const char* const sourceArray = source.c_str();
-	const GLint sourceLength = static_cast<GLint>(source.size());
+	const char* const sourceArray = src_str.c_str();
+	const GLint sourceLength = static_cast<GLint>(src_str.size());
 	glShaderSource(this->Shader.get(), 1, &sourceArray, &sourceLength);
 
 	//try to compile it
@@ -123,11 +153,6 @@ const string& STPShaderManager::operator()(const string& source, const STPShader
 		glCompileShader(this->Shader.get());
 	}
 	else {
-		//check if shader include is supported
-		if (!GLAD_GL_ARB_shading_language_include) {
-			throw STPException::STPUnsupportedFunctionality("The current rendering context does not support ARB_shading_language_include");
-		}
-
 		const size_t pathCount = include.size();
 		//build the path information
 		vector<const char*> pathStr;
@@ -135,26 +160,9 @@ const string& STPShaderManager::operator()(const string& source, const STPShader
 		pathStr.reserve(pathCount);
 		pathLength.reserve(pathCount);
 		for (const auto& path : include) {
-			//check if path exists as named string
-			if (!glIsNamedStringARB(static_cast<GLint>(path.size()), path.c_str())) {
-				//see if this path has been registered
-				auto reg_it = mShaderIncludeRegistry.find(path);
-				if (reg_it == mShaderIncludeRegistry.cend()) {
-					//not registered, we can't do anything
-					stringstream msg;
-					msg << "Include path \'" << path << "\' is not registered with shader include and no associated source code can be found";
-					throw STPException::STPMemoryError(msg.str().c_str());
-				}
-
-				const auto& [reg_path, reg_src] = *reg_it;
-				//try to add the named string to GL virtual include system
-				glNamedStringARB(GL_SHADER_INCLUDE_ARB, static_cast<GLint>(reg_path.size()), reg_path.c_str(), static_cast<GLint>(reg_src.size()), reg_src.c_str());
-			}
-
 			pathStr.emplace_back(path.c_str());
 			pathLength.emplace_back(static_cast<GLint>(path.size()));
 		}
-
 
 		glCompileShaderIncludeARB(this->Shader.get(), static_cast<GLsizei>(pathCount), pathStr.data(), pathLength.data());
 	}
@@ -180,14 +188,6 @@ const string& STPShaderManager::operator()(const string& source, const STPShader
 		throw STPException::STPGLError(this->Log.c_str());
 	}
 	return this->lastLog();
-}
-
-const string& STPShaderManager::operator()(const STPShaderIncludePath& include) {
-	if (this->SourceCache.empty()) {
-		throw STPException::STPMemoryError("There is no source code cached to this shader manager");
-	}
-
-	return  this->operator()(this->SourceCache, include);
 }
 
 const string& STPShaderManager::lastLog() const {

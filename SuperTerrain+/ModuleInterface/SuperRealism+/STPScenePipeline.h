@@ -21,7 +21,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * It is recommended to have only one scene pipeline for one context.
 	 * To allow rendering with the scene pipeline, a valid GL function header needs to be included before including this header.
 	*/
-	class STP_REALISM_API STPScenePipeline {
+	class STP_REALISM_API STPScenePipeline : private STPCamera::STPStatusChangeCallback {
 	public:
 
 		/**
@@ -32,7 +32,7 @@ namespace SuperTerrainPlus::STPRealism {
 		public:
 
 			//Environment renderer
-			const STPSun* Sun = nullptr;
+			STPSun* Sun = nullptr;
 			//Terrain renderer
 			const STPHeightfieldTerrain* Terrain = nullptr;
 			//Post processing
@@ -45,11 +45,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Each component is a bitfield flag.
 		*/
 		typedef unsigned short STPRenderComponent;
-		/**
-		 * @brief STPShadowComponent defines components that can cast and contribute to the shadow.
-		 * Each component is a bitfield flag.
-		*/
-		typedef unsigned short STPShadowComponent;
 
 		//Render nothing
 		constexpr static STPRenderComponent RenderComponentNone = 0u;
@@ -60,11 +55,6 @@ namespace SuperTerrainPlus::STPRealism {
 		//Enable post processing
 		constexpr static STPRenderComponent RenderComponentPostProcess = 1u << 2u;
 
-		//Nothing casts shadow
-		constexpr static STPShadowComponent ShadowComponentNone = 0u;
-		//Enable terrain shadow
-		constexpr static STPShadowComponent ShadowComponentTerrain = 1u << 0u;
-
 	private:
 
 		//The master camera for the rendering scene.
@@ -72,10 +62,19 @@ namespace SuperTerrainPlus::STPRealism {
 		mutable STPBuffer CameraBuffer;
 		void* MappedCameraBuffer;
 
+		//some flags to indicate buffer update status
+		mutable bool updatePosition, updateView, updateProjection;
+
 		/**
 		 * @brief Update data in scene pipeline buffer.
 		*/
 		void updateBuffer() const;
+
+		void onMove(const STPCamera&) override;
+
+		void onRotate(const STPCamera&) override;
+
+		void onReshape(const STPCamera&) override;
 
 	public:
 
@@ -108,13 +107,11 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Any update need to be called by the caller prior to rendering.
 		 * Any pending async operations will be sync automatically by this function before rendering.
 		 * @tparam R A bit flag field indicating which components are used for rendering.
-		 * @tparam S A bit flag field indicating which components can contribute to shadow.
-		 * Component will be ignored automatically if it is not being rendered.
 		 * @param workflow A pointer to scene workflow to process each defined rendering component.
 		 * If the bit field indicates some components are unused, the corresponding component can be nullptr.
 		 * Otherwise it must be a valid pointer and should remain valid until this function returns.
 		*/
-		template<STPRenderComponent R, STPShadowComponent S>
+		template<STPRenderComponent R>
 		void traverse(const STPSceneWorkflow&) const;
 
 	};

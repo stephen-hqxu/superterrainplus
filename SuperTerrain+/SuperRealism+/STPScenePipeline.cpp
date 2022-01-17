@@ -29,7 +29,7 @@ public:
 
 };
 
-STPScenePipeline::STPScenePipeline(const STPCamera& camera) : SceneCamera(camera) {
+STPScenePipeline::STPScenePipeline(const STPCamera& camera) : SceneCamera(camera), updatePosition(true), updateView(true), updateProjection(true) {
 	//set up buffer for camera transformation matrix
 	this->CameraBuffer.bufferStorage(sizeof(STPPackedCameraBuffer), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
 	this->CameraBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 0u);
@@ -54,6 +54,9 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera) : SceneCamera(camera
 	//tessellation settings
 	//barycentric coordinate system
 	glPatchParameteri(GL_PATCH_VERTICES, 3);
+
+	//register camera callback
+	this->SceneCamera.registerListener(dynamic_cast<STPCamera::STPStatusChangeCallback*>(this));
 }
 
 STPScenePipeline::~STPScenePipeline() {
@@ -65,23 +68,45 @@ void STPScenePipeline::updateBuffer() const {
 	STPPackedCameraBuffer* camBuf = reinterpret_cast<STPPackedCameraBuffer*>(this->MappedCameraBuffer);
 
 	//only update buffer when necessary
-	if (this->SceneCamera.hasMoved() || this->SceneCamera.hasRotated()) {
+	if (this->updatePosition || this->updateView) {
 		//position has changed
-		if (this->SceneCamera.hasMoved()) {
+		if (this->updatePosition) {
 			camBuf->Pos = this->SceneCamera.cameraStatus().Position;
 			this->CameraBuffer.flushMappedBufferRange(0, sizeof(vec3));
+
+			this->updatePosition = false;
 		}
 
 		//view matrix has changed
 		camBuf->V = this->SceneCamera.view();
 		this->CameraBuffer.flushMappedBufferRange(sizeof(vec4), sizeof(mat4));
+
+		this->updateView = false;
 	}
-	if (this->SceneCamera.reshaped()) {
+	if (this->updateProjection) {
 		constexpr static size_t offset_P = sizeof(vec4) + sizeof(mat4);
 		//projection matrix has changed
 		camBuf->P = this->SceneCamera.projection();
 		this->CameraBuffer.flushMappedBufferRange(offset_P, sizeof(mat4));
+
+		this->updateProjection = false;
 	}
+}
+
+//by using separate flags instead of just flushing the buffer,
+//we can avoid flushing frequently if camera is updated multiple times before next frame.
+
+void STPScenePipeline::onMove(const STPCamera&) {
+	this->updatePosition = true;
+	this->updateView = true;
+}
+
+void STPScenePipeline::onRotate(const STPCamera&) {
+	this->updateView = true;
+}
+
+void STPScenePipeline::onReshape(const STPCamera&) {
+	this->updateProjection = true;
 }
 
 void STPScenePipeline::setClearColor(vec4 color) {

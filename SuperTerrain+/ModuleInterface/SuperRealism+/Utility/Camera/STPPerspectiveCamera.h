@@ -25,6 +25,11 @@ namespace SuperTerrainPlus::STPRealism {
 		//Denotes if the projection matrix is no longer correct with the current setting.
 		mutable bool ProjectionOutdated;
 
+		/**
+		 * @brief Trigger outdated event.
+		*/
+		void setOutdated();
+
 	public:
 
 		/**
@@ -79,8 +84,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param shape The new shape, with near and far plane distance respectively in each component.
 		*/
 		void reshape(glm::vec2);
-
-		bool reshaped() const override;
 
 	};
 

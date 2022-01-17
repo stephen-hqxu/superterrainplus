@@ -94,15 +94,31 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	STPShaderManager terrain_shader[HeightfieldTerrainShaderFilename.size()] = {
 		GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER, GL_GEOMETRY_SHADER, GL_FRAGMENT_SHADER
 	};
+	//with the base renderer setup, now setup for shadow rendering
+	STPShaderManager terrain_shadow_shader(GL_GEOMETRY_SHADER);
 	for (unsigned int i = 0u; i < HeightfieldTerrainShaderFilename.size(); i++) {
-		STPShaderManager& current_shader = terrain_shader[i];
-		const char* const terrain_filename = HeightfieldTerrainShaderFilename[i].data();
+		STPShaderManager::STPShaderSource shader_source(*STPFile(HeightfieldTerrainShaderFilename[i].data()));
 
-		const STPFile shader_source(terrain_filename);
-		//compile
-		if (i == 4u) {
-			//prepare compile-time macros
-			STPShaderManager::STPMacroValueDictionary Macro;
+		//preprocess
+		if (i == 3u) {
+			//geometry shader for regular rendering remains untouched
+
+			//geometry shader for depth writting
+			//make a copy of the original source because we need to modify it
+			STPShaderManager::STPShaderSource shadow_shader_source = shader_source;
+			STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
+
+			Macro("HEIGHTFIELD_SHADOW_PASS", 1);
+			//load settings for shadow mapping directly
+			//no sampling implementaion because geometry shader only renders to depth
+			option.ShadowMapOption(Macro);
+
+			shadow_shader_source.define(Macro);
+			log.Log[5] = terrain_shadow_shader(shadow_shader_source);
+		}
+		else if (i == 4u) {
+			//fragment shader
+			STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 			//prepare identifiers for texture splatting
 			using namespace SuperTerrainPlus::STPDiversity;
 			//general info
@@ -123,30 +139,41 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 			("UNREGISTERED_TYPE", STPTextureFactory::UnregisteredType)
 
 			("NORMALMAP_BLENDING", static_cast<std::underlying_type_t<STPNormalBlendingAlgorithm>>(option.NormalBlender));
+			
+			//shadow
+			Macro("HEIGHTFIELD_RENDER_SHADOW", 1);
+			option.ShadowMapOption(Macro);
 
 			//process fragment shader
-			current_shader.cache(*shader_source);
-			current_shader.defineMacro(Macro);
-			log.Log[i] = current_shader();
+			shader_source.define(Macro);
 		}
-		else {
-			//add include path for tes control and geometry shader
-			log.Log[i] = (i == 1u || i == 3u) ? current_shader(*shader_source, { "/Common/STPCameraInformation.glsl" }) : current_shader(*shader_source);
-		}
+		//compile
+		log.Log[i] = terrain_shader[i](shader_source);
 
-		//attach to program
-		this->TerrainComponent.attach(current_shader);
+		//attach the complete terrain program
+		this->TerrainComponent.attach(terrain_shader[i]);
 	}
 	this->TerrainComponent.separable(true);
+	//attach program for depth writing
+	this->TerrainDepthWriter.attach(terrain_shadow_shader)
+		.separable(true);
+
 	//link
-	log.Log[5] = this->TerrainComponent.finalise();
-	if (!this->TerrainComponent) {
+	log.Log[6] = this->TerrainComponent.finalise();
+	log.Log[7] = this->TerrainDepthWriter.finalise();
+	if (!this->TerrainComponent || !this->TerrainDepthWriter) {
 		//program not usable
 		throw STPException::STPGLError("Heightfield terrain renderer program returns a failed status");
 	}
 
 	//build pipeline
-	log.Log[6] = this->TerrainRenderer.stage(GL_ALL_SHADER_BITS, this->TerrainComponent)
+	log.Log[8] = this->TerrainRenderer
+		.stage(GL_ALL_SHADER_BITS, this->TerrainComponent)
+		.finalise();
+	log.Log[9] = this->TerrainDepthRenderer
+		.stage(GL_VERTEX_SHADER_BIT | GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainComponent)
+		.stage(GL_GEOMETRY_SHADER_BIT, this->TerrainDepthWriter)
+		//fragment shader is an optional shader stage and, when it is not present, color output is undefined
 		.finalise();
 
 	/* ------------------------------- setup initial immutable uniforms ---------------------------------- */
@@ -205,11 +232,10 @@ void STPHeightfieldTerrain::setMesh(const STPEnvironment::STPMeshSetting& mesh_s
 	const auto& light_setting = mesh_setting.LightSetting;
 
 	//update tessellation LoD control
-	this->TerrainComponent.uniform(glProgramUniform1f, "TessSetting.MaxLod", tess_setting.MaxTessLevel)
-		.uniform(glProgramUniform1f, "TessSetting.MinLod", tess_setting.MinTessLevel)
-		.uniform(glProgramUniform1f, "TessSetting.FurthestDistance", tess_setting.FurthestTessDistance)
-		.uniform(glProgramUniform1f, "TessSetting.NearestDistance", tess_setting.NearestTessDistance)
-		.uniform(glProgramUniform1f, "TessSetting.ShiftFactor", mesh_setting.LoDShiftFactor)
+	this->TerrainComponent.uniform(glProgramUniform1f, "Tess.MaxLod", tess_setting.MaxTessLevel)
+		.uniform(glProgramUniform1f, "Tess.MinLod", tess_setting.MinTessLevel)
+		.uniform(glProgramUniform1f, "Tess.MaxDis", tess_setting.FurthestTessDistance)
+		.uniform(glProgramUniform1f, "Tess.MinDis", tess_setting.NearestTessDistance)
 		//update other mesh-related parameters
 		.uniform(glProgramUniform1f, "Altitude", mesh_setting.Altitude)
 		.uniform(glProgramUniform1f, "NormalStrength", mesh_setting.Strength)
@@ -277,7 +303,7 @@ void STPHeightfieldTerrain::updateSpectrumCoordinate() {
 	this->TerrainComponent.uniform(glProgramUniform1f, "Lighting.SpectrumCoord", this->LightSpectrum.coordinate());
 }
 
-void STPHeightfieldTerrain::operator()() const {
+void STPHeightfieldTerrain::renderShaded() const {
 	//waiting for the heightfield generator to finish
 	this->TerrainGenerator.wait();
 
@@ -290,8 +316,25 @@ void STPHeightfieldTerrain::operator()() const {
 
 	this->TileArray.bind();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
+
 	this->TerrainRenderer.bind();
-	
+	//render
+	glDrawElementsIndirect(GL_PATCHES, GL_UNSIGNED_BYTE, nullptr);
+
+	//clear up
+	STPPipelineManager::unbind();
+}
+
+void STPHeightfieldTerrain::renderDepth() const {
+	this->TerrainGenerator.wait();
+
+	//in this case we only need heightfield for tessellation
+	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
+
+	this->TileArray.bind();
+	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
+
+	this->TerrainDepthRenderer.bind();
 	//render
 	glDrawElementsIndirect(GL_PATCHES, GL_UNSIGNED_BYTE, nullptr);
 

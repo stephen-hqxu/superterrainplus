@@ -79,28 +79,22 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, STPPostP
 	STPShaderManager postprocess_shader[OffScreenShaderFilename.size()] = 
 		{ GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
 	for (unsigned int i = 0u; i < OffScreenShaderFilename.size(); i++) {
-		STPShaderManager& current_shader = postprocess_shader[i];
-		const char* const offscreen_filename = OffScreenShaderFilename[i].data();
+		STPShaderManager::STPShaderSource shader_source(*STPFile(OffScreenShaderFilename[i].data()));
 
-		const STPFile shader_source = STPFile(offscreen_filename);
 		if (i == 1u) {
 			//fragment shader
-			STPShaderManager::STPMacroValueDictionary Macro;
+			STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 			//define post process macros
 			Macro("TONE_MAPPING", static_cast<underlying_type_t<STPToneMappingFunction>>(tone_mapping.Function));
 
 			//update macros in the source code
-			current_shader.cache(*shader_source);
-			current_shader.defineMacro(Macro);
-			log.Log[i] = current_shader();
+			shader_source.define(Macro);
 		}
-		else {
-			log.Log[i] = current_shader(*shader_source);
-		}
+		log.Log[i] = postprocess_shader[i](shader_source);
 
 		//add to program
-		this->PostProcessor.attach(current_shader);
+		this->PostProcessor.attach(postprocess_shader[i]);
 	}
 	//program link
 	log.Log[2] = this->PostProcessor.finalise();

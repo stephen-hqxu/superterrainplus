@@ -4,45 +4,71 @@
 //Let the user include this
 //#include <glad/glad.h>
 
-template<SuperTerrainPlus::STPRealism::STPScenePipeline::STPRenderComponent R, SuperTerrainPlus::STPRealism::STPScenePipeline::STPShadowComponent S>
+template<SuperTerrainPlus::STPRealism::STPScenePipeline::STPRenderComponent R>
 inline void SuperTerrainPlus::STPRealism::STPScenePipeline::traverse(const STPSceneWorkflow& workflow) const {
 	//a helper function to determine if a specific "provide" flag is set against "check".
-	static auto getFlag = [](auto flag, auto check) constexpr -> bool {
-		return (flag & check) != 0u;
+	static auto getFlag = [](auto check) constexpr -> bool {
+		return (R & check) != 0u;
 	};
 
-	//update scene buffer
+	//update buffer
 	this->updateBuffer();
 	//retrieve bit flags
-	static constexpr bool hasSun = getFlag(R, STPScenePipeline::RenderComponentSun),
-		hasTerrain = getFlag(R, STPScenePipeline::RenderComponentTerrain),
-		hasPost = getFlag(R, STPScenePipeline::RenderComponentPostProcess);
-	static constexpr bool shadowTerrain = getFlag(S, STPScenePipeline::ShadowComponentTerrain);
+	static constexpr bool hasSun = getFlag(STPScenePipeline::RenderComponentSun),
+		hasTerrain = getFlag(STPScenePipeline::RenderComponentTerrain),
+		hasPost = getFlag(STPScenePipeline::RenderComponentPostProcess);
 
 	//process rendering components.
 	//clear the canvas before drawing the new scene
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	if constexpr (hasSun) {
+		//clear shadow map
+		workflow.Sun->clearLightSpace();
+	}
 	if constexpr (hasPost) {
-		//also clear post process buffer
+		//clear post process buffer
 		workflow.PostProcess->clear();
+	}
+
+	glDepthFunc(GL_LESS);
+	glEnable(GL_CULL_FACE);
+	/* ------------------------------------------ shadow pass -------------------------------- */
+	if constexpr (hasSun) {//sun casts shadow
+		workflow.Sun->captureLightSpace();
+		//for shadow to avoid light bleeding, we usually cull front face (with respect to the light)
+		glCullFace(GL_FRONT);
+
+		if constexpr (hasTerrain) {
+			//TODO: need to work on this, terrain program needs to be splited, and allow user to disable shadow (if sun is not present).
+			//workflow.Terrain->renderDepth();
+		}
+
+		glCullFace(GL_BACK);
+		//stop drawing shadow
+		STPFrameBuffer::unbind(GL_FRAMEBUFFER);
+	}
+	/* --------------------------------------------------------------------------------------- */
+
+	//for the rest of the pipeline, we want to render everything onto a post processing buffer
+	if constexpr (hasPost) {
 		//render everything onto the post process buffer
 		workflow.PostProcess->capture();
 	}
-
+	/* ------------------------------------ opaque object rendering ----------------------------- */
 	if constexpr (hasTerrain) {
-		glDepthFunc(GL_LESS);
-		glEnable(GL_CULL_FACE);
 		//ready for rendering
-		(*workflow.Terrain)();
+		workflow.Terrain->renderShaded();
 	}
 
+	/* ------------------------------------- environment rendeing ----------------------------- */
 	//there is a early depth test optimisation for sun rendering, so leave it to be drawn at the end of the pipeline
-	if constexpr (hasSun) {
+	if constexpr (hasSun) {//sun scatters its light
 		glDepthFunc(GL_LEQUAL);
 		glDisable(GL_CULL_FACE);
 		(*workflow.Sun)();
 	}
 
+	/* -------------------------------------- post processing -------------------------------- */
 	if constexpr (hasPost) {
 		STPFrameBuffer::unbind(GL_FRAMEBUFFER);
 		//back buffer is empty, render post processed buffer

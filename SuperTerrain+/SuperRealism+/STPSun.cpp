@@ -82,7 +82,9 @@ STPSun::STPSunSpectrum::STPSunSpectrum(unsigned int iteration, const STPSun& sun
 	STPLightSpectrum(iteration), SunElevation(sun.sunDirection().y) {
 	//setup spectrum emulator
 	STPShaderManager spectrum_shader(GL_COMPUTE_SHADER);
-	log.Log[0] = spectrum_shader(*STPFile(SpectrumShaderFilename.data()), { "/Common/STPAtmosphericScattering.glsl" });
+	STPShaderManager::STPShaderSource spectrum_source(*STPFile(SpectrumShaderFilename.data()));
+
+	log.Log[0] = spectrum_shader(spectrum_source);
 	this->SpectrumEmulator.attach(spectrum_shader);
 	//link
 	log.Log[1] = this->SpectrumEmulator.finalise();
@@ -130,7 +132,8 @@ float STPSun::STPSunSpectrum::coordinate() const {
 	return (this->SunElevation - elev_start) / (elev_end - elev_start);
 }
 
-STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log) : SunSetting(sun_setting),
+STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPCascadedShadowMap::STPLightFrustum& shadow_frustum, STPSunLog& log) : 
+	STPCascadedShadowMap(shadow_frustum), SunSetting(sun_setting),
 	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), SunDirectionCache(0.0) {
 	//validate the setting
 	if (!this->SunSetting.validate()) {
@@ -156,21 +159,14 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log)
 	STPShaderManager sky_shader[SkyShaderFilename.size()] = 
 		{ GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
 	for (unsigned int i = 0u; i < SkyShaderFilename.size(); i++) {
-		STPShaderManager& current_shader = sky_shader[i];
 		//build the shader filename
-		const char* const sky_filename = SkyShaderFilename[i].data();
-		//compile with super realism + system include directory
-		if (i == 1u) {
-			//fragment shader
-			log.Log[i] = current_shader(*STPFile(sky_filename), { "/Common/STPAtmosphericScattering.glsl" });
-		}
-		else {
-			//vertex shader
-			log.Log[i] = current_shader(*STPFile(sky_filename), { "/Common/STPCameraInformation.glsl" });
-		}
+		STPShaderManager::STPShaderSource sky_source(*STPFile(SkyShaderFilename[i].data()));
+
+		//compile
+		log.Log[i] = sky_shader[i](sky_source);
 
 		//put shader into the program
-		this->SkyRenderer.attach(current_shader);
+		this->SkyRenderer.attach(sky_shader[i]);
 	}
 
 	//link
@@ -258,6 +254,8 @@ void STPSun::advanceTick(unsigned long long tick) {
 
 	//update sun position in the shader
 	this->SkyRenderer.uniform(glProgramUniform3fv, "SunPosition", 1, value_ptr(this->SunDirectionCache));
+	//update sun direction in the shadow light space
+	this->setDirection(this->SunDirectionCache);
 }
 
 void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_setting) {

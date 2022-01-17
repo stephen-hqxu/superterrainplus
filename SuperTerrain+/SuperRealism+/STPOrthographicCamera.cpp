@@ -32,6 +32,7 @@ inline const mat4& STPOrthographicCamera::ortho() const {
 			this->Camera.Far
 		);
 		this->ProjectionOutdated = false;
+
 	}
 	//return the matrix
 	return this->OrthographicProjection;
@@ -42,7 +43,7 @@ const mat4& STPOrthographicCamera::projection() const {
 }
 
 mat4 STPOrthographicCamera::projection(float near, float far) const {
-	return  glm::ortho(
+	return glm::ortho(
 		this->Frustum.Left,
 		this->Frustum.Right,
 		this->Frustum.Bottom,
@@ -62,8 +63,8 @@ void STPOrthographicCamera::reshape(vec4 side, vec2 depth) {
 	this->Camera.Far = depth.y;
 
 	this->ProjectionOutdated = true;
-}
-
-bool STPOrthographicCamera::reshaped() const {
-	return this->ProjectionOutdated;
+	//trigger update
+	if (this->Callback) {
+		this->Callback->onReshape(*this);
+	}
 }

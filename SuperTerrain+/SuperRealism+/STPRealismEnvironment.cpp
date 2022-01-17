@@ -125,8 +125,7 @@ bool STPMeshSetting::STPPhongLightSetting::validate() const {
 
 STPMeshSetting::STPMeshSetting() :
 	Strength(1.0f),
-	Altitude(1.0f),
-	LoDShiftFactor(2.0f), 
+	Altitude(1.0f), 
 	UVScaleFactor(1u) {
 
 }
@@ -134,7 +133,6 @@ STPMeshSetting::STPMeshSetting() :
 bool STPMeshSetting::validate() const {
 	return this->Strength > 0.0f
 		&& this->Altitude > 0.0f
-		&& this->LoDShiftFactor > 0.0f
 		&& this->UVScaleFactor > 0u
 		&& this->TessSetting.validate()
 		&& this->RegionSmoothSetting.validate()
