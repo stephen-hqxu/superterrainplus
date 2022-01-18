@@ -12,14 +12,16 @@
 #include <glad/glad.h>
 
 //System
+#include <array>
 #include <sstream>
+#include <string_view>
 
+using std::array;
 using std::string;
-using std::stringstream;
+using std::string_view;
 using std::istringstream;
 using std::ostringstream;
 using std::vector;
-using std::unordered_map;
 
 using std::endl;
 
@@ -27,25 +29,11 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-//TODO: C++20 template lambda
-template<class D, size_t S>
-static void readSource(D& dict, const char(&pathname)[S]) {
-	using namespace SuperTerrainPlus;
-
-	const auto filename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, pathname, ".glsl").data();
-	dict[string(pathname) + ".glsl"] = *STPFile(filename);
-}
-
-//(include pathname, include source)
-const static auto mShaderIncludeRegistry = [] {
-	unordered_map<string, string> reg;
-	//initialise super realism + system include headers
-	readSource(reg, "/Common/STPAtmosphericScattering");
-	readSource(reg, "/Common/STPCameraInformation");
-	readSource(reg, "/Common/STPCascadedShadowMap");
-
-	return reg;
-}();
+constexpr static array<string_view, 3ull> mShaderIncludeRegistry = {
+	"/Common/STPAtmosphericScattering.glsl",
+	"/Common/STPCameraInformation.glsl",
+	"/Common/STPCascadedShadowMap.glsl"
+};
 
 void STPShaderManager::STPShaderDeleter::operator()(STPOpenGL::STPuint shader) const {
 	glDeleteShader(shader);
@@ -113,29 +101,38 @@ STPShaderManager::STPShaderManager(STPOpenGL::STPenum type) : Shader(glCreateSha
 	
 }
 
+inline static bool includeImpl(const char* name, size_t nameLen, const string& source) {
+	//check if path exists as named string
+	if (!glIsNamedStringARB(static_cast<GLint>(nameLen), name)) {
+		//try to add the named string to GL virtual include system
+		glNamedStringARB(GL_SHADER_INCLUDE_ARB, static_cast<GLint>(nameLen), name, static_cast<GLint>(source.size()), source.c_str());
+		return true;
+	}
+	return false;
+}
+
 void STPShaderManager::initialise() {
 	//check if shader include is supported
 	if (!GLAD_GL_ARB_shading_language_include) {
 		throw STPException::STPUnsupportedFunctionality("The current rendering context does not support ARB_shading_language_include");
 	}
 
-	for (const auto& [path, src] : mShaderIncludeRegistry) {
-		STPShaderManager::include(path, src);
+	//load source code
+	for (const auto& path : mShaderIncludeRegistry) {
+		using namespace SuperTerrainPlus;
+
+		ostringstream filename;
+		filename << SuperRealismPlus_ShaderPath << path;
+		includeImpl(path.data(), path.length(), *STPFile(filename.str().c_str()));
 	}
 }
 
 bool STPShaderManager::include(const string& name, const string& source) {
-	//check if path exists as named string
-	if (!glIsNamedStringARB(static_cast<GLint>(name.size()), name.data())) {
-		//try to add the named string to GL virtual include system
-		glNamedStringARB(GL_SHADER_INCLUDE_ARB, static_cast<GLint>(name.size()), name.c_str(), static_cast<GLint>(source.size()), source.c_str());
-		return true;
-	}
-	return false;
+	return includeImpl(name.c_str(), name.length(), source);
 }
 
 void STPShaderManager::uninclude(const string& name) {
-	glDeleteNamedStringARB(static_cast<GLint>(name.size()), name.data());
+	glDeleteNamedStringARB(static_cast<GLint>(name.size()), name.c_str());
 }
 
 const string& STPShaderManager::operator()(const STPShaderSource& source) {

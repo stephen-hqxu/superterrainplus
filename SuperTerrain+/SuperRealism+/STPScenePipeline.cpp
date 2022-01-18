@@ -9,10 +9,14 @@
 //GLM
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 using glm::vec3;
+using glm::ivec4;
 using glm::vec4;
 using glm::mat4;
+
+using glm::value_ptr;
 
 using namespace SuperTerrainPlus::STPRealism;
 
@@ -107,6 +111,13 @@ void STPScenePipeline::onRotate(const STPCamera&) {
 
 void STPScenePipeline::onReshape(const STPCamera&) {
 	this->updateProjection = true;
+}
+
+ivec4 STPScenePipeline::getViewport() const {
+	ivec4 viewport;
+	glGetIntegerv(GL_VIEWPORT, value_ptr(viewport));
+	
+	return viewport;
 }
 
 void STPScenePipeline::setClearColor(vec4 color) {

@@ -77,6 +77,10 @@ namespace SuperTerrainPlus::STPRealism {
 
 		public:
 
+			//The handle to the shadow map as a bindless texture.
+			//This handle remains valid until the dependent shadowm manager instance is destroyed.
+			const STPOpenGL::STPuint64 BindlessHandle;
+
 			~STPShadowOption() = default;
 
 			/**
@@ -91,8 +95,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//Eight vertices define the corners of a view frustum.
 		typedef std::array<glm::vec4, 8ull> STPFrustumCorner;
-		//Contains matrices to convert from world space to light view space.
-		typedef std::vector<glm::mat4> STPLightSpaceMatrix;
 
 		//Capture depths of each cascade
 		STPTexture ShadowMap;
@@ -119,12 +121,14 @@ namespace SuperTerrainPlus::STPRealism {
 		glm::mat4 calcLightSpace(float, float, const glm::mat4&) const;
 
 		/**
-		 * @brief Calculate the light space view matrices for all divisions of view frustum.
-		 * @return An array of light space view matrices.
+		 * @brief Calculate the light space view matrices for all divisions of view frustum and store them into mapped light buffer.
 		*/
-		STPLightSpaceMatrix calcAllLightSpace() const;
+		void calcAllLightSpace() const;
 
 	public:
+
+		//The resolution of each shadow map within a subfrustum.
+		const glm::uvec2 Resolution;
 
 		/**
 		 * @brief Initialise a cascaded shadow map.

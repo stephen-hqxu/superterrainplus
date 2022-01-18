@@ -35,15 +35,24 @@ inline void SuperTerrainPlus::STPRealism::STPScenePipeline::traverse(const STPSc
 	/* ------------------------------------------ shadow pass -------------------------------- */
 	if constexpr (hasSun) {//sun casts shadow
 		workflow.Sun->captureLightSpace();
-		//for shadow to avoid light bleeding, we usually cull front face (with respect to the light)
-		glCullFace(GL_FRONT);
 
+		//record the original viewport size
+		const glm::ivec4 pre_vp = this->getViewport();
+		const glm::uvec2 sha_vp = workflow.Sun->Resolution;
+		//change the view port to fit the shadow map
+		glViewport(0, 0, sha_vp.x, sha_vp.y);
+
+		//for those opaque render components (those can cast shadow), the engine provdes a non-shadow and shadow version
+		//The shadow version is usually an inherited version of the non-shadow version.
+		//The non-shadow version has a render to depth virtual function with no body, so it does absolutely nothing 
+		//if the user decides to not render shadow for this particular target.
+		//compiler will optimise away empty function.
 		if constexpr (hasTerrain) {
-			//TODO: need to work on this, terrain program needs to be splited, and allow user to disable shadow (if sun is not present).
-			//workflow.Terrain->renderDepth();
+			workflow.Terrain->renderDepth();
 		}
 
-		glCullFace(GL_BACK);
+		//rollback the previous viewport size
+		glViewport(pre_vp.x, pre_vp.y, pre_vp.z, pre_vp.w);
 		//stop drawing shadow
 		STPFrameBuffer::unbind(GL_FRAMEBUFFER);
 	}
@@ -57,7 +66,7 @@ inline void SuperTerrainPlus::STPRealism::STPScenePipeline::traverse(const STPSc
 	/* ------------------------------------ opaque object rendering ----------------------------- */
 	if constexpr (hasTerrain) {
 		//ready for rendering
-		workflow.Terrain->renderShaded();
+		workflow.Terrain->render();
 	}
 
 	/* ------------------------------------- environment rendeing ----------------------------- */

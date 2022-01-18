@@ -367,17 +367,17 @@ protected:
 	constexpr static Seed RandomSeed = 0ull;
 	constexpr static Seed Salt = 0ull;
 
-	STPLayerManager* supply() const override {
-		STPLayerManager* Mgr = new STPLayerManager();
+	STPLayerManager supply() const override {
+		STPLayerManager Mgr;
 		STPLayer* Layer, *BranchLayer1, *BranchLayer2;
 		
-		Layer = Mgr->insert<RootLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt);
-		Layer = Mgr->insert<NormalLayer>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		Layer = Mgr.insert<RootLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt);
+		Layer = Mgr.insert<NormalLayer>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
 
-		BranchLayer1 = Mgr->insert<NormalLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
-		BranchLayer2 = Mgr->insert<NormalLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		BranchLayer1 = Mgr.insert<NormalLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		BranchLayer2 = Mgr.insert<NormalLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
 
-		Layer = Mgr->insert<MergingLayer>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, BranchLayer1, BranchLayer2);
+		Layer = Mgr.insert<MergingLayer>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, BranchLayer1, BranchLayer2);
 
 		return Mgr;
 	}

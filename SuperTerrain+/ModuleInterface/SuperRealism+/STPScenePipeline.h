@@ -13,6 +13,9 @@
 //GL Object
 #include "./Object/STPBuffer.h"
 
+//GLM
+#include <glm/vec4.hpp>
+
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -34,7 +37,7 @@ namespace SuperTerrainPlus::STPRealism {
 			//Environment renderer
 			STPSun* Sun = nullptr;
 			//Terrain renderer
-			const STPHeightfieldTerrain* Terrain = nullptr;
+			const STPHeightfieldTerrain<false>* Terrain = nullptr;
 			//Post processing
 			STPPostProcess* PostProcess = nullptr;
 
@@ -75,6 +78,12 @@ namespace SuperTerrainPlus::STPRealism {
 		void onRotate(const STPCamera&) override;
 
 		void onReshape(const STPCamera&) override;
+
+		/**
+		 * @brief Query the viewport information in the current context.
+		 * @return The X, Y coordinate and the width, height of the viewport.
+		*/
+		glm::ivec4 getViewport() const;
 
 	public:
 

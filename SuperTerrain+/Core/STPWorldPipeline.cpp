@@ -392,7 +392,7 @@ public:
 };
 
 STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : PipelineWorker(1u), Generator(make_unique<STPGeneratorManager>(setup, this)), 
-	ChunkSetting(*setup.ChunkSetting) {
+	BufferStream(cudaStreamNonBlocking), ChunkSetting(*setup.ChunkSetting) {
 	const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
 	const uvec2 buffer_size(setting.RenderedChunk * setting.MapSize);
 	auto setupTex = [buffer_size](GLuint texture, GLint min_filter, GLint mag_filter, GLsizei levels, GLenum internalFormat) -> void {
@@ -417,7 +417,7 @@ STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : PipelineWorker(1u)
 	setupTex(this->TerrainMap[0], GL_NEAREST, GL_NEAREST, 1, GL_R16UI);
 	regTex(this->TerrainMap[0], this->TerrainMapRes);
 	//heightfield in R format
-	setupTex(this->TerrainMap[1], GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, 1, GL_R16);
+	setupTex(this->TerrainMap[1], GL_LINEAR, GL_LINEAR, 1, GL_R16);
 	regTex(this->TerrainMap[1], this->TerrainMapRes + 1);
 	//splatmap in R format
 	setupTex(this->TerrainMap[2], GL_NEAREST, GL_NEAREST, 1, GL_R8UI);

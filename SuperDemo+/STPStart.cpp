@@ -84,7 +84,7 @@ namespace STPStart {
 		//Rendering Pipeline
 		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPSun::STPSunSpectrum> TerrainLighting;
-		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain> TerrainRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>> TerrainRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPPostProcess> FinalProcess;
 		SuperTerrainPlus::STPRealism::STPScenePipeline::STPSceneWorkflow PipelineWork;
 		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
@@ -197,14 +197,14 @@ namespace STPStart {
 				//sun shadow setting
 				const float camFar = camera.cameraStatus().Far;
 				STPCascadedShadowMap::STPLightFrustum frustum;
-				frustum.Resolution = uvec2(1024u);
+				frustum.Resolution = uvec2(2048u);
 				frustum.Level = {
-					camFar / 50.0f,
-					camFar / 25.0f,
+					camFar / 8.0f,
+					camFar / 4.0f,
 					camFar / 2.0f
 				};
 				frustum.Camera = &camera;
-				frustum.ShadowDistanceMultiplier = 10.0f;
+				frustum.ShadowDistanceMultiplier = 500.0f;
 				frustum.BiasMultiplier = 0.05f;
 				frustum.MinBias = 0.005f;
 
@@ -239,16 +239,17 @@ namespace STPStart {
 			//-------------------------------------------
 			{
 				//terrain
-				STPHeightfieldTerrain::STPHeightfieldTerrainLog terrain_log;
-				const STPHeightfieldTerrain::STPTerrainShaderOption terrain_opt = {
+				STPHeightfieldTerrain<true>::STPHeightfieldTerrainLog terrain_log;
+				const STPHeightfieldTerrain<true>::STPTerrainShaderOption terrain_opt = {
 					uvec3(128u, 128u, 6u),
-					STPHeightfieldTerrain::STPNormalBlendingAlgorithm::BasisTransform,
+					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform,
 					&this->TerrainLighting.value(),
 					this->SunRenderer->option()
 				};
 
 				this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
-				STPMasterRenderer::printLog(terrain_log);
+				STPMasterRenderer::printLog(terrain_log.ShaderComponent);
+				STPMasterRenderer::printLog(terrain_log.DepthComponent);
 				//initial setup
 				this->TerrainRenderer->setMesh(MeshSetting);
 				this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
@@ -532,7 +533,6 @@ int main() {
 		//draw
 		STPStart::process_event(static_cast<float>(deltaTime));
 		try {
-			glFinish();
 			STPStart::MasterEngine->render();
 		}
 		catch (std::exception& e) {

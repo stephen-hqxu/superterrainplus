@@ -213,7 +213,7 @@ void STPSun::advanceTick(unsigned long long tick) {
 	const unsigned long long LocalSolarTime = static_cast<unsigned long long>(glm::round(glm::fract(this->Day) * sun.DayLength));
 
 	//the old direction cache is no longer accurate, needs to recalculate
-	static constexpr double PI = glm::pi<double>(), TWO_PI = PI * 2.0;
+	static constexpr double TWO_PI = glm::pi<double>() * 2.0;
 	static auto saturate = [](double val) constexpr -> double {
 		return clamp(val, -1.0, 1.0);
 	};

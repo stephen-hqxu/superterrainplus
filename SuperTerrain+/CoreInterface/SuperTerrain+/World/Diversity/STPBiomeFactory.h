@@ -30,10 +30,9 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		/**
 		 * @brief A layer supplier, which provides the algorithm for layer chain generation.
-		 * @return A new layer production line.
-		 * Note that the returning pointer should be allocated using `new`, all remaining memory management is carried out automatically.
+		 * @return A new layer production line instance.
 		*/
-		virtual STPLayerManager* supply() const = 0;
+		virtual STPLayerManager supply() const = 0;
 
 		/**
 		 * @brief Request a production line.

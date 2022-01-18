@@ -69,27 +69,23 @@ namespace SuperTerrainPlus::STPCompute {
 
 		//A workplace is some available memory for a complete histogram generation
 		typedef std::pair<STPDefaultHistogramBuffer, STPAccumulator> STPWorkplace;
-		typedef std::unique_ptr<STPWorkplace[]> STPDepartment;
-		typedef std::list<STPDepartment> STPOrganisation;
-		typedef STPOrganisation::iterator STPOrganisation_it;
-		//All available workplace.
-		//list of pointers
-		STPOrganisation Organisation;
-		std::queue<STPOrganisation_it, std::list<STPOrganisation_it>> FreeWorkingMemory;
-		std::mutex WorkplaceLock;
+		typedef std::unique_ptr<STPWorkplace[]> STPMemoryBlock;
+		//All available workplaces are expressed as queue of pointers.
+		std::queue<STPMemoryBlock, std::list<STPMemoryBlock>> MemoryBlockCache;
+		std::mutex CacheLock;
 
 		/**
 		 * @brief Request an available workplace for workers to generate histogram.
 		 * Workplace guarantees critical access, meaning all memory resides will not be modified by other workers until it is returned.
-		 * @return The iterator to the free workplace.
+		 * @return The pointer to free block of working memory
 		*/
-		STPOrganisation_it requestWorkplace();
+		STPMemoryBlock requestWorkplace();
 
 		/**
 		 * @brief Return a workplace back to the system so it can be used by other tasks later.
-		 * @param it The iterator of workplace to be returned.
+		 * @param block The pointer to the memory block to be returned. This memory will be no longer valid after this function returns.
 		*/
-		void returnWorkplace(STPOrganisation_it);
+		void returnWorkplace(STPMemoryBlock&);
 
 		/**
 		 * @brief Copy the content in accumulator to the histogram buffer.

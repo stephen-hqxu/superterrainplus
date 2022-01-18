@@ -76,6 +76,8 @@ struct LightSetting{
 //Application-automatically defined
 #define CSM_LIGHT_SPACE_COUNT 2
 #include </Common/STPCascadedShadowMap.glsl>
+
+layout (bindless_sampler) uniform sampler2DArrayShadow TerrainShadowmap;
 #endif//HEIGHTFIELD_RENDER_SHADOW
 
 uniform vec3 LightDirection;
@@ -93,16 +95,16 @@ in VertexGS{
 layout (location = 0) out vec4 FragColor;
 
 layout (binding = 0) uniform usampler2D Biomemap;
-layout (binding = 1) uniform sampler2D Heightfield;
+layout (binding = 1) uniform sampler2D Heightmap;
 layout (binding = 2) uniform usampler2D Splatmap;
 layout (binding = 3) uniform sampler3D Noisemap;
 layout (binding = 4) uniform sampler1DArray LightSpectrum;
 
-uniform uvec2 RenderedChunk;
-uniform vec2 ChunkOffset;
+//The number of visible chunk in x,z direction
+uniform uvec2 VisibleChunk;
+uniform vec2 ChunkHorizontalOffset;
 //The strength of the z component on normalmap
 uniform float NormalStrength;
-uniform uvec2 HeightfieldResolution;
 
 const ivec2 ConvolutionKernelOffset[8] = {
 	{ -1, -1 },
@@ -115,6 +117,8 @@ const ivec2 ConvolutionKernelOffset[8] = {
 	{ +1, +1 },
 };
 
+//heightmap resolution
+ivec2 getHeightmapRes();
 //Get region index
 uint getRegion(vec2);
 vec3 getRegionTexture(vec2, vec3, unsigned int, unsigned int);
@@ -141,7 +145,7 @@ void main(){
 	//this function make sure the UV is stable when the rendered chunk shifts
 	//here we need to use the UV of the current pixel (not the argument one)
 	//so when we are doing smoothing over a convolution kernel the texture color remains the same for the same pixel.
-	const vec2 worldUV = fs_in.texCoord * RenderedChunk + ChunkOffset;
+	const vec2 worldUV = fs_in.texCoord * VisibleChunk + ChunkHorizontalOffset;
 
 	//terrain texture splatting
 	const TerrainTextureData TerrainTexture = getSmoothTexture(worldUV);
@@ -200,6 +204,10 @@ void main(){
 	FragColor = vec4(TerrainLight, 1.0f);
 }
 
+ivec2 getHeightmapRes(){
+	return textureSize(Heightmap, 0).xy;
+}
+
 uint getRegion(vec2 splatmap_uv){
 	return texture(Splatmap, splatmap_uv).r;
 }
@@ -246,7 +254,7 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 			);
 			
 			//now apply the sampling points to the actual texture
-			const vec2 uv_offset = SmoothSetting.Ks * (disk_domain * 2.0f - 1.0f) / HeightfieldResolution,
+			const vec2 uv_offset = SmoothSetting.Ks * (disk_domain * 2.0f - 1.0f) / getHeightmapRes(),
 				sampling_uv = fs_in.texCoord + uv_offset;
 			const uint region = getRegion(sampling_uv);
 
@@ -295,13 +303,13 @@ vec2 getUVScale(ivec2 texDim){
 vec3 calcTerrainNormal(){
 	//calculate terrain normal from the heightfield
 	//the uv increment for each pixel on the heightfield
-	const vec2 unit_uv = 1.0f / vec2(HeightfieldResolution);
+	const vec2 unit_uv = 1.0f / vec2(getHeightmapRes());
 
 	float cell[ConvolutionKernelOffset.length()];
 	//convolve a 3x3 kernel with Sobel operator
 	for(int a = 0; a < cell.length(); a++){
 		const vec2 uv_offset = unit_uv * ConvolutionKernelOffset[a];
-		cell[a] = texture(Heightfield, fs_in.texCoord + uv_offset).r;
+		cell[a] = texture(Heightmap, fs_in.texCoord + uv_offset).r;
 	}
 
 	//apply filter
@@ -366,5 +374,12 @@ vec3 calcLight(vec3 material, vec3 normal, float specular_strength, float ambien
 		halfwayDir = normalize(lightDir + viewDir),
 		specular = specular_strength * Lighting.Ks * pow(max(dot(normal, halfwayDir), 0.0f), Lighting.Shin) * colDir;
 
+#if HEIGHTFIELD_RENDER_SHADOW
+	//shadow
+	const float shadowMask = sampleShadow(fs_in.position_world, CameraView, normal, lightDir, TerrainShadowmap);
+
+	return ambient + (diffuse + specular) * shadowMask;
+#else
 	return ambient + diffuse + specular;
+#endif
 }

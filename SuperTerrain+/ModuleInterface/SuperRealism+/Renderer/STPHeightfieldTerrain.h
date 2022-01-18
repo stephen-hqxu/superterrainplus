@@ -22,12 +22,20 @@
 //GLM
 #include <glm/vec3.hpp>
 
+//System
+#include <optional>
+
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
 	 * @brief STPHeightfieldTerrain is a real-time photorealistic renderer for heightfield-base terrain.
+	 * @tparam SM Indicate if the terrain renderer should allow render to shadow maps.
 	*/
-	class STP_REALISM_API STPHeightfieldTerrain {
+	template<bool SM>
+	class STPHeightfieldTerrain;
+
+	template<>
+	class STP_REALISM_API STPHeightfieldTerrain<false> {
 	public:
 
 		/**
@@ -65,12 +73,15 @@ namespace SuperTerrainPlus::STPRealism {
 			//The spectrum must remain valid during the lifetime of initialised terrain renderer.
 			//The spectrum must not be NULL.
 			const STPLightSpectrum* Spectrum;
+
 			//A shadow map configuration loader.
-			STPCascadedShadowMap::STPShadowOption ShadowMapOption;
+			//This setting should not be set (or it may incur some overhead) when terrain shadow is not turned on, 
+			//and is mandatory when shadow is used.
+			std::optional<STPCascadedShadowMap::STPShadowOption> ShadowMapOption;
 
 		};
 
-	private:
+	protected:
 
 		//The main terrain generator
 		STPWorldPipeline& TerrainGenerator;
@@ -79,13 +90,14 @@ namespace SuperTerrainPlus::STPRealism {
 		STPBuffer TileBuffer, TileIndex, TerrainRenderCommand;
 		STPVertexArray TileArray;
 		STPTexture NoiseSample;
+
 		//spectrum for lighting supplied by user.
 		const STPLightSpectrum& LightSpectrum;
+
 		//Shader program for terrain rendering
-		//component contains all shader stages to model and render the terrain
-		//depth writer contains an empty geometry shader and no shading, for depth map rendering
-		STPProgramManager TerrainComponent, TerrainDepthWriter;
-		STPPipelineManager TerrainRenderer, TerrainDepthRenderer;
+		//modeller contains vertex, tes control and tes eval, shader contains geom and frag.
+		STPProgramManager TerrainModeller, TerrainShader;
+		STPPipelineManager TerrainRenderer;
 
 		std::vector<STPBindlessTexture> SplatTextureHandle;
 
@@ -98,13 +110,13 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		typedef STPLogStorage<10ull> STPHeightfieldTerrainLog;
+		typedef STPLogStorage<8ull> STPHeightfieldTerrainLog;
 
 		//The size of the texture storing rangom numbers.
 		const glm::uvec3 RandomTextureDimension;
 
 		/**
-		 * @brief Initialise the heightfield terrain rendering engine.
+		 * @brief Initialise the heightfield terrain rendering engine without shadow.
 		 * @param generator_pipeline A pointer to the world pipeline that provides heightfield.
 		 * @param log The pointer to the log output from GL shader and program compiler.
 		 * @param option The pointer to various compiler options.
@@ -119,7 +131,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPHeightfieldTerrain& operator=(STPHeightfieldTerrain&&) = delete;
 
-		~STPHeightfieldTerrain() = default;
+		virtual ~STPHeightfieldTerrain() = default;
 
 		/**
 		 * @brief Update the terrain mesh setting.
@@ -153,16 +165,60 @@ namespace SuperTerrainPlus::STPRealism {
 		void updateSpectrumCoordinate();
 
 		/**
-		 * @brief Render the procedural heightfield terrain.
+		 * @brief Render a regular procedural heightfield terrain.
 		 * Terrain texture must be prepared prior to this call, and this function sync with the generator automatically.
 		*/
-		void renderShaded() const;
+		void render() const;
 
 		/**
 		 * @brief Render the procedural heightfield terrain, this time fragment shading is pruned.
 		 * This is useful for rendering to depth texture.
 		*/
-		void renderDepth() const;
+		virtual void renderDepth() const {};
+
+	};
+
+	template<>
+	class STP_REALISM_API STPHeightfieldTerrain<true> : public STPHeightfieldTerrain<false> {
+	public:
+
+		struct STPHeightfieldTerrainLog {
+		public:
+
+			//Log belongs to the basic renderer.
+			STPHeightfieldTerrain<false>::STPHeightfieldTerrainLog ShaderComponent;
+			//Log for depth renderer.
+			STPLogStorage<3ull> DepthComponent;
+
+		};
+
+	private:
+
+		//depth writer contains an empty geometry shader and no shading, for depth map rendering
+		STPProgramManager TerrainDepthWriter;
+		//depth renderer prunes the frag shader.
+		STPPipelineManager TerrainDepthRenderer;
+
+	public:
+
+		/**
+		 * @brief Initialise the heightfield terrain rendering engine with shadow rendering.
+		 * Arguments are nearly the same as its base class except some additional information required.
+		 * @see STPHeightfieldTerrain<false>.
+		*/
+		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, const STPTerrainShaderOption&);
+
+		STPHeightfieldTerrain(const STPHeightfieldTerrain&) = delete;
+
+		STPHeightfieldTerrain(STPHeightfieldTerrain&&) = delete;
+
+		STPHeightfieldTerrain& operator=(const STPHeightfieldTerrain&) = delete;
+
+		STPHeightfieldTerrain& operator=(STPHeightfieldTerrain&&) = delete;
+
+		~STPHeightfieldTerrain() = default;
+
+		void renderDepth() const override;
 
 	};
 

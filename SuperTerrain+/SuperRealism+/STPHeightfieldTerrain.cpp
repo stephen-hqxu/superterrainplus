@@ -6,6 +6,7 @@
 //Error
 #include <SuperTerrain+/Exception/STPGLError.h>
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //IO
@@ -67,7 +68,7 @@ constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 	0u
 };
 
-STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, const STPTerrainShaderOption& option) :
+STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, const STPTerrainShaderOption& option) :
 	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(option.NoiseDimension), LightSpectrum(*option.Spectrum) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	const STPDiversity::STPTextureFactory& splatmap_generator = this->TerrainGenerator.splatmapGenerator();
@@ -94,29 +95,10 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	STPShaderManager terrain_shader[HeightfieldTerrainShaderFilename.size()] = {
 		GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER, GL_GEOMETRY_SHADER, GL_FRAGMENT_SHADER
 	};
-	//with the base renderer setup, now setup for shadow rendering
-	STPShaderManager terrain_shadow_shader(GL_GEOMETRY_SHADER);
 	for (unsigned int i = 0u; i < HeightfieldTerrainShaderFilename.size(); i++) {
 		STPShaderManager::STPShaderSource shader_source(*STPFile(HeightfieldTerrainShaderFilename[i].data()));
 
-		//preprocess
-		if (i == 3u) {
-			//geometry shader for regular rendering remains untouched
-
-			//geometry shader for depth writting
-			//make a copy of the original source because we need to modify it
-			STPShaderManager::STPShaderSource shadow_shader_source = shader_source;
-			STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
-
-			Macro("HEIGHTFIELD_SHADOW_PASS", 1);
-			//load settings for shadow mapping directly
-			//no sampling implementaion because geometry shader only renders to depth
-			option.ShadowMapOption(Macro);
-
-			shadow_shader_source.define(Macro);
-			log.Log[5] = terrain_shadow_shader(shadow_shader_source);
-		}
-		else if (i == 4u) {
+		if (i == 4u) {
 			//fragment shader
 			STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 			//prepare identifiers for texture splatting
@@ -139,10 +121,12 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 			("UNREGISTERED_TYPE", STPTextureFactory::UnregisteredType)
 
 			("NORMALMAP_BLENDING", static_cast<std::underlying_type_t<STPNormalBlendingAlgorithm>>(option.NormalBlender));
-			
-			//shadow
-			Macro("HEIGHTFIELD_RENDER_SHADOW", 1);
-			option.ShadowMapOption(Macro);
+
+			if (option.ShadowMapOption) {
+				//shadow option.
+				Macro("HEIGHTFIELD_RENDER_SHADOW", 1);
+				(*option.ShadowMapOption)(Macro);
+			}
 
 			//process fragment shader
 			shader_source.define(Macro);
@@ -151,46 +135,56 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 		log.Log[i] = terrain_shader[i](shader_source);
 
 		//attach the complete terrain program
-		this->TerrainComponent.attach(terrain_shader[i]);
+		if (i < 3u) {
+			//anything before geometry shader
+			this->TerrainModeller.attach(terrain_shader[i]);
+		}
+		else {
+			//anything after (and include) geometry shader
+			this->TerrainShader.attach(terrain_shader[i]);
+		}
 	}
-	this->TerrainComponent.separable(true);
-	//attach program for depth writing
-	this->TerrainDepthWriter.attach(terrain_shadow_shader)
-		.separable(true);
+	this->TerrainModeller.separable(true);
+	this->TerrainShader.separable(true);
 
 	//link
-	log.Log[6] = this->TerrainComponent.finalise();
-	log.Log[7] = this->TerrainDepthWriter.finalise();
-	if (!this->TerrainComponent || !this->TerrainDepthWriter) {
+	log.Log[5] = this->TerrainModeller.finalise();
+	log.Log[6] = this->TerrainShader.finalise();
+	if (!this->TerrainModeller || !this->TerrainShader) {
 		//program not usable
 		throw STPException::STPGLError("Heightfield terrain renderer program returns a failed status");
 	}
 
 	//build pipeline
-	log.Log[8] = this->TerrainRenderer
-		.stage(GL_ALL_SHADER_BITS, this->TerrainComponent)
-		.finalise();
-	log.Log[9] = this->TerrainDepthRenderer
-		.stage(GL_VERTEX_SHADER_BIT | GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainComponent)
-		.stage(GL_GEOMETRY_SHADER_BIT, this->TerrainDepthWriter)
-		//fragment shader is an optional shader stage and, when it is not present, color output is undefined
+	log.Log[7] = this->TerrainRenderer
+		.stage(GL_VERTEX_SHADER_BIT | GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
+		.stage(GL_GEOMETRY_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, this->TerrainShader)
 		.finalise();
 
 	/* ------------------------------- setup initial immutable uniforms ---------------------------------- */
 	const vec2 chunkHorizontalOffset = vec2(chunk_setting.ChunkOffset.x, chunk_setting.ChunkOffset.z);
-	const uvec2 textureResolution = chunk_setting.RenderedChunk * chunk_setting.MapSize;
 	const vec2 baseChunkPosition = this->calcBaseChunkPosition(chunkHorizontalOffset);
-	//assign sampler
-	this->TerrainComponent.uniform(glProgramUniform1i, "Biomemap", 0)
+	const uvec2 rendered_chunk = chunk_setting.RenderedChunk;
+
+	//setup program for meshing the terrain
+	this->TerrainModeller
+		//heightfield for displacement mapping
 		.uniform(glProgramUniform1i, "Heightfield", 1)
+		//chunk setting
+		.uniform(glProgramUniform2uiv, "RenderedChunk", 1, value_ptr(rendered_chunk))
+		.uniform(glProgramUniform2uiv, "ChunkSize", 1, value_ptr(chunk_setting.ChunkSize))
+		.uniform(glProgramUniform2fv, "BaseChunkPosition", 1, value_ptr(baseChunkPosition));
+
+	//setup program that shades terrain with color
+	this->TerrainShader
+		//some samplers
+		.uniform(glProgramUniform1i, "Biomemap", 0)
+		.uniform(glProgramUniform1i, "Heightmap", 1)
 		.uniform(glProgramUniform1i, "Splatmap", 2)
 		.uniform(glProgramUniform1i, "Noisemap", 3)
-		//chunk setting
-		.uniform(glProgramUniform2uiv, "ChunkSize", 1, value_ptr(chunk_setting.ChunkSize))
-		.uniform(glProgramUniform2uiv, "RenderedChunk", 1, value_ptr(chunk_setting.RenderedChunk))
-		.uniform(glProgramUniform2fv, "ChunkOffset", 1, value_ptr(chunkHorizontalOffset))
-		.uniform(glProgramUniform2uiv, "HeightfieldResolution", 1, value_ptr(textureResolution))
-		.uniform(glProgramUniform2fv, "BaseChunkPosition", 1, value_ptr(baseChunkPosition));
+		//extra terrain info for rendering
+		.uniform(glProgramUniform2uiv, "VisibleChunk", 1, value_ptr(rendered_chunk))
+		.uniform(glProgramUniform2fv, "ChunkHorizontalOffset", 1, value_ptr(chunkHorizontalOffset));
 
 	/* --------------------------------- setup texture splatting ------------------------------------ */
 	//get splatmap dataset
@@ -205,7 +199,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	}
 
 	//send bindless handle to the shader
-	this->TerrainComponent.uniform(glProgramUniformHandleui64vARB, "RegionTexture", static_cast<GLsizei>(tbo_count), rawHandle.get())
+	this->TerrainShader.uniform(glProgramUniformHandleui64vARB, "RegionTexture", static_cast<GLsizei>(tbo_count), rawHandle.get())
 		//prepare registry
 		.uniform(glProgramUniform2uiv, "RegionRegistry", static_cast<GLsizei>(reg_count), reinterpret_cast<const unsigned int*>(reg))
 		.uniform(glProgramUniform1uiv, "RegistryDictionary", static_cast<GLsizei>(dict_count), dict);
@@ -216,14 +210,14 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	this->NoiseSample.filter(GL_NEAREST, GL_LINEAR);
 }
 
-vec2 STPHeightfieldTerrain::calcBaseChunkPosition(const vec2& horizontal_offset) {
+vec2 STPHeightfieldTerrain<false>::calcBaseChunkPosition(const vec2& horizontal_offset) {
 	const STPEnvironment::STPChunkSetting& chunk_settings = this->TerrainGenerator.ChunkSetting;
 	//calculate offset
 	const ivec2 chunk_offset(-glm::floor(vec2(chunk_settings.RenderedChunk) / 2.0f));
 	return STPChunk::offsetChunk(horizontal_offset, chunk_settings.ChunkSize, chunk_offset);
 }
 
-void STPHeightfieldTerrain::setMesh(const STPEnvironment::STPMeshSetting& mesh_setting) {
+void STPHeightfieldTerrain<false>::setMesh(const STPEnvironment::STPMeshSetting& mesh_setting) {
 	if (!mesh_setting.validate()) {
 		throw STPException::STPInvalidEnvironment("Mesh setting is not validated");
 	}
@@ -232,13 +226,15 @@ void STPHeightfieldTerrain::setMesh(const STPEnvironment::STPMeshSetting& mesh_s
 	const auto& light_setting = mesh_setting.LightSetting;
 
 	//update tessellation LoD control
-	this->TerrainComponent.uniform(glProgramUniform1f, "Tess.MaxLod", tess_setting.MaxTessLevel)
+	this->TerrainModeller.uniform(glProgramUniform1f, "Tess.MaxLod", tess_setting.MaxTessLevel)
 		.uniform(glProgramUniform1f, "Tess.MinLod", tess_setting.MinTessLevel)
 		.uniform(glProgramUniform1f, "Tess.MaxDis", tess_setting.FurthestTessDistance)
 		.uniform(glProgramUniform1f, "Tess.MinDis", tess_setting.NearestTessDistance)
 		//update other mesh-related parameters
-		.uniform(glProgramUniform1f, "Altitude", mesh_setting.Altitude)
-		.uniform(glProgramUniform1f, "NormalStrength", mesh_setting.Strength)
+		.uniform(glProgramUniform1f, "Altitude", mesh_setting.Altitude);
+
+	//update settings for rendering
+	this->TerrainShader.uniform(glProgramUniform1f, "NormalStrength", mesh_setting.Strength)
 		//texture splatting smoothing
 		.uniform(glProgramUniform1ui, "SmoothSetting.Kr", smooth_setting.KernelRadius)
 		.uniform(glProgramUniform1f, "SmoothSetting.Ks", smooth_setting.KernelScale)
@@ -251,7 +247,7 @@ void STPHeightfieldTerrain::setMesh(const STPEnvironment::STPMeshSetting& mesh_s
 		.uniform(glProgramUniform1f, "Lighting.Shin", light_setting.Shineness);
 }
 
-void STPHeightfieldTerrain::seedRandomBuffer(unsigned long long seed) {
+void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 	cudaGraphicsResource_t res;
 	cudaArray_t random_buffer;
 
@@ -270,7 +266,7 @@ void STPHeightfieldTerrain::seedRandomBuffer(unsigned long long seed) {
 	STPcudaCheckErr(cudaGraphicsUnregisterResource(res));
 }
 
-void STPHeightfieldTerrain::setViewPosition(const vec3& viewPos) {
+void STPHeightfieldTerrain<false>::setViewPosition(const vec3& viewPos) {
 	//prepare heightfield
 	if (!this->TerrainGenerator.load(viewPos)) {
 		//centre chunk has yet changed, nothing to do.
@@ -292,18 +288,18 @@ void STPHeightfieldTerrain::setViewPosition(const vec3& viewPos) {
 		1.0f,
 		chunk_setting.ChunkScaling
 	));
-	this->TerrainComponent.uniform(glProgramUniformMatrix4fv, "MeshModel", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(Model));
+	this->TerrainModeller.uniform(glProgramUniformMatrix4fv, "MeshModel", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(Model));
 }
 
-void STPHeightfieldTerrain::setLightDirection(const vec3& dir) {
-	this->TerrainComponent.uniform(glProgramUniform3fv, "LightDirection", 1, value_ptr(dir));
+void STPHeightfieldTerrain<false>::setLightDirection(const vec3& dir) {
+	this->TerrainShader.uniform(glProgramUniform3fv, "LightDirection", 1, value_ptr(dir));
 }
 
-void STPHeightfieldTerrain::updateSpectrumCoordinate() {
-	this->TerrainComponent.uniform(glProgramUniform1f, "Lighting.SpectrumCoord", this->LightSpectrum.coordinate());
+void STPHeightfieldTerrain<false>::updateSpectrumCoordinate() {
+	this->TerrainShader.uniform(glProgramUniform1f, "Lighting.SpectrumCoord", this->LightSpectrum.coordinate());
 }
 
-void STPHeightfieldTerrain::renderShaded() const {
+void STPHeightfieldTerrain<false>::render() const {
 	//waiting for the heightfield generator to finish
 	this->TerrainGenerator.wait();
 
@@ -325,7 +321,50 @@ void STPHeightfieldTerrain::renderShaded() const {
 	STPPipelineManager::unbind();
 }
 
-void STPHeightfieldTerrain::renderDepth() const {
+STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& raw_log, const STPTerrainShaderOption& option) : 
+	STPHeightfieldTerrain<false>(generator_pipeline, raw_log.ShaderComponent, option) {
+	if (!option.ShadowMapOption) {
+		throw STPException::STPMemoryError("Shadow map option is not \"optional\" when shadow is turned on");
+	}
+	auto& log = raw_log.DepthComponent;
+
+	//now the base renderer is finished, setup depth renderer
+	STPShaderManager terrain_shadow_shader(GL_GEOMETRY_SHADER);
+
+	//geometry shader for depth writting
+	//make a copy of the original source because we need to modify it
+	STPShaderManager::STPShaderSource shadow_shader_source(*STPFile(HeightfieldTerrainShaderFilename[3].data()));
+	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
+
+	Macro("HEIGHTFIELD_SHADOW_PASS", 1);
+	//load settings for shadow mapping directly
+	//no sampling implementaion because geometry shader only renders to depth
+	(*option.ShadowMapOption)(Macro);
+
+	shadow_shader_source.define(Macro);
+	log.Log[0] = terrain_shadow_shader(shadow_shader_source);
+
+	//attach program for depth writing
+	this->TerrainDepthWriter.attach(terrain_shadow_shader)
+		.separable(true);
+
+	//link
+	log.Log[1] = this->TerrainDepthWriter.finalise();
+	if (!this->TerrainDepthWriter) {
+		throw STPException::STPGLError("Heightfield terrain shadow renderer setup failed");
+	}
+
+	//build shadow pipeline
+	log.Log[2] = this->TerrainDepthRenderer
+		.stage(GL_VERTEX_SHADER_BIT | GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
+		.stage(GL_GEOMETRY_SHADER_BIT, this->TerrainDepthWriter)
+		.finalise();
+
+	//send some shadow related uniforms
+	this->TerrainShader.uniform(glProgramUniformHandleui64ARB, "TerrainShadowmap", option.ShadowMapOption->BindlessHandle);
+}
+
+void STPHeightfieldTerrain<true>::renderDepth() const {
 	this->TerrainGenerator.wait();
 
 	//in this case we only need heightfield for tessellation

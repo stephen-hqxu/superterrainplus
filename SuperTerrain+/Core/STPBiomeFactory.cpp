@@ -7,6 +7,8 @@ using glm::uvec2;
 using glm::uvec3;
 using glm::ivec3;
 
+using std::make_unique;
+
 using namespace SuperTerrainPlus::STPDiversity;
 
 STPBiomeFactory::STPBiomeFactory(uvec3 dimension) : BiomeDimension(dimension) {
@@ -25,8 +27,7 @@ STPBiomeFactory::STPLayerManager_t STPBiomeFactory::requestProductionLine() {
 
 	if (this->LayerProductionLine.empty()) {
 		//no more idling line? Create a new one
-		line = STPLayerManager_t(this->supply());
-		return line;
+		return make_unique<STPLayerManager>(std::move(this->supply()));
 	}
 	//otherwise simply pop from the idling queue
 	line = move(this->LayerProductionLine.front());
