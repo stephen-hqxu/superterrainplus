@@ -145,6 +145,7 @@ Those are some third-party libraries used by this project, we always make sure t
 - OpenGL 4.6 core profile
 - GL_ARB_bindless_texture
 - GL_ARB_shading_language_include
+- GL_NV_gpu_shader5
 
 > This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed.
 

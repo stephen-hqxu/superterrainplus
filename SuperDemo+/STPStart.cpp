@@ -82,8 +82,8 @@ namespace STPStart {
 		SuperTerrainPlus::STPEnvironment::STPSunSetting SunSetting;
 
 		//Rendering Pipeline
-		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
-		optional<SuperTerrainPlus::STPRealism::STPSun::STPSunSpectrum> TerrainLighting;
+		optional<SuperTerrainPlus::STPRealism::STPSun<true>> SunRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPSun<true>::STPSunSpectrum> TerrainLighting;
 		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>> TerrainRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPPostProcess> FinalProcess;
 		SuperTerrainPlus::STPRealism::STPScenePipeline::STPSceneWorkflow PipelineWork;
@@ -191,7 +191,7 @@ namespace STPStart {
 			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
 			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE);
 
-			//setup rendering components
+			//setup light
 			//-------------------------------------------
 			{
 				//sun shadow setting
@@ -204,12 +204,12 @@ namespace STPStart {
 					camFar / 2.0f
 				};
 				frustum.Camera = &camera;
-				frustum.ShadowDistanceMultiplier = 500.0f;
-				frustum.BiasMultiplier = 0.05f;
+				frustum.ShadowDistanceMultiplier = 250.5f;
+				frustum.MaxBias = 0.05f;
 				frustum.MinBias = 0.005f;
 
 				//sun
-				STPSun::STPSunLog sun_log;
+				STPSun<true>::STPSunLog sun_log;
 				this->SunRenderer.emplace(this->SunSetting, frustum, sun_log);
 				//print log
 				STPMasterRenderer::printLog(sun_log);
@@ -218,14 +218,14 @@ namespace STPStart {
 				this->SunRenderer->setAtmoshpere(atm_setting);
 				//-------------------------------------------
 				//sun lighting
-				STPSun::STPSunSpectrum::STPSpectrumLog sun_spectrum_log;
+				STPSun<true>::STPSunSpectrum::STPSpectrumLog sun_spectrum_log;
 				this->TerrainLighting.emplace(std::move(this->SunRenderer->createSpectrum(8192u, sun_spectrum_log)));
 				STPMasterRenderer::printLog(sun_spectrum_log);
 
 				//setup the spectrum
 				mat4 raySpace = identity<mat4>();
 				raySpace = rotate(raySpace, radians(2.7f), normalize(vec3(vec2(0.0f), 1.0f)));
-				const STPSun::STPSunSpectrum::STPSpectrumSpecification spectrum_spec = {
+				const STPSun<true>::STPSunSpectrum::STPSpectrumSpecification spectrum_spec = {
 					&atm_setting,
 					static_cast<mat3>(raySpace),
 					make_pair(
@@ -236,6 +236,13 @@ namespace STPStart {
 				//generate a new spectrum
 				(*this->TerrainLighting)(spectrum_spec);
 			}
+
+			//setup rendering pipeline and add lights that cast shadow
+			this->RenderPipeline.emplace(camera, STPScenePipeline::STPLightRegistry{ &*this->SunRenderer });
+			//basic setup
+			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
+
+			//setup solid object
 			//-------------------------------------------
 			{
 				//terrain
@@ -244,7 +251,7 @@ namespace STPStart {
 					uvec3(128u, 128u, 6u),
 					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform,
 					&this->TerrainLighting.value(),
-					this->SunRenderer->option()
+					&this->RenderPipeline->ShadowManager.shadowInformation()
 				};
 
 				this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
@@ -264,13 +271,10 @@ namespace STPStart {
 				STPMasterRenderer::printLog(postprocess_log);
 			}
 
-			//setup rendering pipeline
+			//rendering component
 			this->PipelineWork.Terrain = &(*this->TerrainRenderer);
 			this->PipelineWork.Sun = &(*this->SunRenderer);
 			this->PipelineWork.PostProcess = &(*this->FinalProcess);
-			this->RenderPipeline.emplace(camera);
-			//basic setup
-			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
@@ -394,6 +398,9 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);//we are running at opengl 4.6
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_FALSE);//not neccessary for forward compat
+#ifdef _DEBUG
+		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#endif
 
 		//rendering preferences
 		glfwWindowHint(GLFW_RED_BITS, 8);

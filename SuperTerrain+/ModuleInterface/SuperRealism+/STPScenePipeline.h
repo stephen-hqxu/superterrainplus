@@ -7,14 +7,20 @@
 #include "./Renderer/STPSun.h"
 #include "./Renderer/STPHeightfieldTerrain.h"
 #include "./Renderer/STPPostProcess.h"
+#include "./Renderer/STPCascadedShadowMap.h"
 //Camera
 #include "./Utility/Camera/STPCamera.h"
 
 //GL Object
 #include "./Object/STPBuffer.h"
+#include "./Utility/STPShadowInformation.hpp"
+
+//System
+#include <vector>
 
 //GLM
 #include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -27,6 +33,52 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPScenePipeline : private STPCamera::STPStatusChangeCallback {
 	public:
 
+		typedef std::vector<STPCascadedShadowMap*> STPLightRegistry;
+
+		/**
+		 * @brief STPShadowPipeline is a shadow manager that handles all light source that can cast shadow and 
+		 * provide pipeline for rendering opaque objects onto a shadow map.
+		*/
+		class STP_REALISM_API STPShadowPipeline {
+		private:
+
+			//A buffer that stores block of data for sharing shadow information among the context.
+			STPBuffer ShadowBuffer;
+			STPShadowInformation ShadowData;
+
+		public:
+
+			//Record all registered light.
+			const STPLightRegistry Light;
+			//The total number of light space matrix in all registered light.
+			const size_t TotalLightSpace;
+
+			/**
+			 * @brief Init an empty STPShadowPipeline instance.
+			 * @param light_shadow A pointer to an array of light that can cast shadow when rendering.
+			 * This array will be copied, however each pointer within the array should be managed by the caller and 
+			 * must remain valid until those lights are deregistered or the shadow pipeline is destroyed.
+			*/
+			STPShadowPipeline(const STPLightRegistry&);
+
+			STPShadowPipeline(const STPShadowPipeline&) = delete;
+
+			STPShadowPipeline(STPShadowPipeline&&) = delete;
+
+			STPShadowPipeline& operator=(const STPShadowPipeline&) = delete;
+
+			STPShadowPipeline& operator=(STPShadowPipeline&&) = delete;
+
+			~STPShadowPipeline();
+
+			/**
+			 * @brief Return a pointer to shadow information to be shared with all rendering components.
+			 * @return The pointer to the shadow information instance that contains shadow information.
+			*/
+			const STPShadowInformation& shadowInformation() const;
+
+		};
+
 		/**
 		 * @brief STPSceneWorkflow defines rendering targets and components for the scene pipeline.
 		 * All assigned pointers must remain valid until the pipeline is destroied.
@@ -35,7 +87,7 @@ namespace SuperTerrainPlus::STPRealism {
 		public:
 
 			//Environment renderer
-			STPSun* Sun = nullptr;
+			STPSun<false>* Sun = nullptr;
 			//Terrain renderer
 			const STPHeightfieldTerrain<false>* Terrain = nullptr;
 			//Post processing
@@ -87,12 +139,15 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
+		const STPShadowPipeline ShadowManager;
+
 		/**
 		 * @brief Initialise an empty scene pipeline.
 		 * @param camera The pointer to the camera.
 		 * The camera must remain valid as long as the current scene pipeline is valid.
+		 * @param light_shadow An array of light that can cast shadow.
 		*/
-		STPScenePipeline(const STPCamera&);
+		STPScenePipeline(const STPCamera&, const STPLightRegistry&);
 
 		STPScenePipeline(const STPScenePipeline&) = delete;
 

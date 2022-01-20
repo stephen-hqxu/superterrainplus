@@ -27,8 +27,13 @@ namespace SuperTerrainPlus::STPRealism {
 	 * It manages the position of the sun based on the time, rotates around the sky.
 	 * It also allows, optionally, day-night cycle and switches light intensity.
 	 * Atmoshperic scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
+	 * @tparam SM True to indicate that the sun should cast shadow to opaque object, false otherwise.
 	*/
-	class STP_REALISM_API STPSun : public STPCascadedShadowMap {
+	template<bool SM>
+	class STPSun;
+	
+	template<>
+	class STP_REALISM_API STPSun<false> {
 	public:
 
 		/**
@@ -99,7 +104,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		};
 
-	private:
+	protected:
 
 		const STPEnvironment::STPSunSetting& SunSetting;
 
@@ -145,10 +150,9 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Init the sun with settings.
 		 * @param sun_setting The sun setting.
-		 * @param shadow_frustum The pointer to sun shadow light frustum setting.
 		 * @param log Logs output from the shader compilation.
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, const STPCascadedShadowMap::STPLightFrustum&, STPSunLog&);
+		STPSun(const STPEnvironment::STPSunSetting&, STPSunLog&);
 
 		STPSun(const STPSun&) = delete;
 
@@ -171,7 +175,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Bring the timer forward by a delta amount and update the sun position.
 		 * @param tick The number of tick to be added to the current LST.
 		*/
-		void advanceTick(unsigned long long);
+		virtual void advanceTick(unsigned long long);
 
 		/**
 		 * @brief Update the renderer with new atmoshpere setting.
@@ -194,6 +198,23 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Render the sun with atmospheric scattering effect.
 		*/
 		void operator()() const;
+
+	};
+
+	template<>
+	class STP_REALISM_API STPSun<true> : public STPSun<false>, public STPCascadedShadowMap {
+	public:
+
+		/**
+		 * @brief Init the sun with settings.
+		 * Arguments are nearly the same as the base class except the extra pointer to sun shadow light frustum setting.
+		 * @see STPSun<false>
+		*/
+		STPSun(const STPEnvironment::STPSunSetting&, const STPCascadedShadowMap::STPLightFrustum&, STPSunLog&);
+
+		~STPSun() = default;
+
+		void advanceTick(unsigned long long) override;
 
 	};
 

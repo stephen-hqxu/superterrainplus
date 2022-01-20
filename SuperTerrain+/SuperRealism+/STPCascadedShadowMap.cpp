@@ -3,7 +3,6 @@
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -16,10 +15,8 @@
 #include <numeric>
 #include <limits>
 #include <functional>
-#include <memory>
 
 using glm::uvec2;
-using glm::vec2;
 using glm::uvec3;
 using glm::vec3;
 using glm::mat4;
@@ -27,51 +24,29 @@ using glm::vec4;
 
 using glm::radians;
 
-using std::unique_ptr;
-using std::make_unique;
 using std::numeric_limits;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-/**
- * @brief Only contains part of the data, dynamic elements are not included.
- * Padded for std430.
-*/
-struct STPPackedLightBuffer {
-public:
-
-	float Far;
-	float _padFar;
-	vec2 Bias;
-};
-
-STPCascadedShadowMap::STPShadowOption::STPShadowOption(const STPCascadedShadowMap& shadow) : Instance(&shadow), 
-	BindlessHandle(**this->Instance->ShadowMapHandle) {
-
-}
-
-void STPCascadedShadowMap::STPShadowOption::operator()(STPShaderManager::STPShaderSource::STPMacroValueDictionary& dictionary) const {
-	dictionary("CSM_LIGHT_SPACE_COUNT", this->Instance->cascadeCount());
-}
-
 STPCascadedShadowMap::STPCascadedShadowMap(const STPLightFrustum& light_frustum) : ShadowMap(GL_TEXTURE_2D_ARRAY),
-	Viewer(*light_frustum.Camera), ShadowLevel(light_frustum.Level), ShadowDistance(light_frustum.ShadowDistanceMultiplier), 
-	LightDirection(vec3(0.0f)), Resolution(light_frustum.Resolution) {
-	if (this->Resolution.x == 0u || this->Resolution.y == 0u) {
+	LightBuffer{ }, LightDirection(vec3(0.0f)), LightFrustum(light_frustum) {
+	const uvec2 resolution = this->LightFrustum.Resolution;
+
+	if (resolution.x == 0u || resolution.y == 0u) {
 		throw STPException::STPBadNumericRange("Both components of the shadow map resolution should be a positive integer");
 	}
-	if (this->ShadowDistance < 1.0f) {
+	if (this->LightFrustum.ShadowDistanceMultiplier < 1.0f) {
 		throw STPException::STPBadNumericRange("A less-than-one shadow distance is not able to cover the view frustum");
 	}
-	if (this->ShadowLevel.size() == 0ull) {
+	if (this->LightFrustum.Level.size() == 0ull) {
 		throw STPException::STPBadNumericRange("There is no shadow level being defined");
 	}
 
 	/* --------------------------------------- depth texture setup ------------------------------------------------ */
 	this->ShadowMap.textureStorage<STPTexture::STPDimension::THREE>(1, GL_DEPTH_COMPONENT24, 
-		uvec3(this->Resolution, static_cast<unsigned int>(this->cascadeCount())));
+		uvec3(resolution, static_cast<unsigned int>(this->cascadeCount())));
 
-	this->ShadowMap.filter(GL_NEAREST, GL_NEAREST);
+	this->ShadowMap.filter(GL_LINEAR, GL_LINEAR);
 	this->ShadowMap.wrap(GL_CLAMP_TO_BORDER);
 	this->ShadowMap.borderColor(vec4(1.0f));
 	//setup compare function so we can use shadow sampler in the shader
@@ -90,39 +65,6 @@ STPCascadedShadowMap::STPCascadedShadowMap(const STPLightFrustum& light_frustum)
 	if (this->ShadowContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 		throw STPException::STPGLError("Framebuffer for capturing shadow map fails to setup");
 	}
-
-	/* --------------------------------------- light space buffer setup ------------------------------------------- */
-	//The offset from the beginning of the light buffer to reach the light space matrix
-	constexpr static size_t lightMatrixOffset = sizeof(STPPackedLightBuffer);
-	const size_t lightMatrixSize = sizeof(mat4) * this->cascadeCount(),
-		shadowPlaneSize = sizeof(float) * this->ShadowLevel.size(),
-		lightBufferSize = lightMatrixOffset + lightMatrixSize + shadowPlaneSize;
-	//create a temporary storage for initial buffer setup
-	unique_ptr<unsigned char[]> initialLightBuffer = make_unique<unsigned char[]>(lightBufferSize);
-
-	unsigned char* binlightBuffer = initialLightBuffer.get();
-	memset(binlightBuffer, 0x00, lightBufferSize);
-	//settings that have fixed size
-	STPPackedLightBuffer* shadow_setting = reinterpret_cast<STPPackedLightBuffer*>(binlightBuffer);
-	shadow_setting->Far = this->Viewer.cameraStatus().Far;
-	shadow_setting->Bias = vec2(light_frustum.BiasMultiplier, light_frustum.MinBias);
-	//variable sized settings, skip the light matrix because this will be updated at runtime
-	binlightBuffer += lightMatrixOffset + lightMatrixSize;
-	memcpy(binlightBuffer, this->ShadowLevel.data(), shadowPlaneSize);
-
-	this->LightBuffer.bufferStorageSubData(initialLightBuffer.get(), lightBufferSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
-	this->LightBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 1u);
-
-	//store the pointer to memory that requires frequent update
-	this->BufferLightMatrix = reinterpret_cast<mat4*>(this->LightBuffer.mapBufferRange(lightMatrixOffset, lightMatrixSize,
-		GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
-	if (!this->BufferLightMatrix) {
-		throw STPException::STPMemoryError("Unable to map the memory for updating light matrix");
-	}
-}
-
-STPCascadedShadowMap::~STPCascadedShadowMap() {
-	this->LightBuffer.unmapBuffer();
 }
 
 mat4 STPCascadedShadowMap::calcLightSpace(float near, float far, const mat4& view) const {
@@ -149,7 +91,7 @@ mat4 STPCascadedShadowMap::calcLightSpace(float near, float far, const mat4& vie
 	};
 
 	//calculate the projection matrix for this view frustum
-	const mat4 projection = this->Viewer.projection(near, far);
+	const mat4 projection = this->LightFrustum.Camera->projection(near, far);
 	const STPFrustumCorner corner = calcCorner(projection, view);
 
 	//each corner is normalised, so sum them up to get the coordinate of centre
@@ -176,19 +118,20 @@ mat4 STPCascadedShadowMap::calcLightSpace(float near, float far, const mat4& vie
 		maxZ = glm::max(maxZ, trf.z);
 	}
 
+	const float zDistance = this->LightFrustum.ShadowDistanceMultiplier;
 	//Tune the depth (maximum shadow distance)
 	if (minZ < 0.0f) {
-		minZ *= this->ShadowDistance;
+		minZ *= zDistance;
 	}
 	else {
-		minZ /= this->ShadowDistance;
+		minZ /= zDistance;
 	}
 
 	if (maxZ < 0.0f) {
-		maxZ /= this->ShadowDistance;
+		maxZ /= zDistance;
 	}
 	else {
-		maxZ *= this->ShadowDistance;
+		maxZ *= zDistance;
 	}
 
 	//finally, we are dealing with a directional light so shadow is parallel
@@ -197,38 +140,50 @@ mat4 STPCascadedShadowMap::calcLightSpace(float near, float far, const mat4& vie
 	return lightProjection * lightView;
 }
 
-void STPCascadedShadowMap::calcAllLightSpace() const {
+void STPCascadedShadowMap::calcAllLightSpace(mat4* light_space) const {
+	const STPCamera& viewer = *this->LightFrustum.Camera;
+	const STPCascadeLevel& shadow_level = this->LightFrustum.Level;
+
 	//The camera class has smart cache to the view matrix.
-	const mat4& camView = this->Viewer.view();
-	const STPEnvironment::STPCameraSetting& camSetting = this->Viewer.cameraStatus();
+	const mat4& camView = viewer.view();
+	const STPEnvironment::STPCameraSetting& camSetting = viewer.cameraStatus();
 	const float near = camSetting.Near, far = camSetting.Far;
 
 	const size_t lightSpaceCount = this->cascadeCount();
 	//calculate the light view matrix for each subfrusta
 	for (unsigned int i = 0u; i < lightSpaceCount; i++) {
 		//current light space in the mapped buffer
-		mat4& lightSpace = this->BufferLightMatrix[i];
+		mat4& current_light = light_space[i];
 
 		if (i == 0u) {
 			//the first frustum
-			lightSpace = this->calcLightSpace(near, this->ShadowLevel[i], camView);
+			current_light = this->calcLightSpace(near, shadow_level[i], camView);
 		}
-		else if (i < this->ShadowLevel.size()) {
+		else if (i < shadow_level.size()) {
 			//the middle
-			lightSpace = this->calcLightSpace(this->ShadowLevel[i - 1u], this->ShadowLevel[i], camView);
+			current_light = this->calcLightSpace(shadow_level[i - 1u], shadow_level[i], camView);
 		}
 		else {
 			//the last one
-			lightSpace = this->calcLightSpace(this->ShadowLevel[i - 1u], far, camView);
+			current_light = this->calcLightSpace(shadow_level[i - 1u], far, camView);
 		}
 	}
+}
+
+void STPCascadedShadowMap::setLightBuffer(const STPBufferAllocation& allocation) {
+	this->LightBuffer = allocation;
 }
 
 void STPCascadedShadowMap::setDirection(const vec3& dir) {
 	this->LightDirection = dir;
 
-	//need to also update light space matrix
-	this->calcAllLightSpace();
+	const auto [buffer, start, light_space] = this->LightBuffer;
+	//need to also update light space matrix if shadow has been turned on for this light
+	this->calcAllLightSpace(light_space);
+
+	//after update, the data needs to be flushed.
+	buffer->flushMappedBufferRange(start, sizeof(mat4) * this->cascadeCount());
+	
 }
 
 void STPCascadedShadowMap::captureLightSpace() {
@@ -239,10 +194,10 @@ void STPCascadedShadowMap::clearLightSpace() {
 	this->ShadowContainer.clearDepth(1.0f);
 }
 
-size_t STPCascadedShadowMap::cascadeCount() const {
-	return this->ShadowLevel.size() + 1ull;
+inline size_t STPCascadedShadowMap::cascadeCount() const {
+	return this->LightFrustum.Level.size() + 1ull;
 }
 
-STPCascadedShadowMap::STPShadowOption STPCascadedShadowMap::option() const {
-	return STPShadowOption(*this);
+SuperTerrainPlus::STPOpenGL::STPuint64 STPCascadedShadowMap::handle() const {
+	return **this->ShadowMapHandle;
 }

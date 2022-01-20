@@ -1,6 +1,4 @@
 #version 460 core
-#extension GL_ARB_bindless_texture : require
-#extension GL_ARB_shading_language_include : require
 
 //Input
 layout (location = 0) in vec3 Position;

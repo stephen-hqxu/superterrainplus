@@ -39,6 +39,7 @@ Utility/STPDebugCallback.h
 Utility/STPIndirectCommand.hpp
 Utility/STPLogStorage.hpp
 Utility/STPRandomTextureGenerator.cuh
+Utility/STPShadowInformation.hpp
 )
 
 # config file for the realism rendering engine

@@ -10,6 +10,7 @@
 #include "../Object/STPTexture.h"
 #include "../Object/STPBindlessTexture.h"
 #include "../Utility/STPLogStorage.hpp"
+#include "../Utility/STPShadowInformation.hpp"
 
 //Terrain Generator
 #include <SuperTerrain+/World/STPWorldPipeline.h>
@@ -74,11 +75,7 @@ namespace SuperTerrainPlus::STPRealism {
 			//The spectrum must not be NULL.
 			const STPLightSpectrum* Spectrum;
 
-			//A shadow map configuration loader.
-			//This setting should not be set (or it may incur some overhead) when terrain shadow is not turned on, 
-			//and is mandatory when shadow is used.
-			std::optional<STPCascadedShadowMap::STPShadowOption> ShadowMapOption;
-
+			STPShadowInformation_opt TerrainShadowInfo;
 		};
 
 	protected:
@@ -207,14 +204,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @see STPHeightfieldTerrain<false>.
 		*/
 		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, const STPTerrainShaderOption&);
-
-		STPHeightfieldTerrain(const STPHeightfieldTerrain&) = delete;
-
-		STPHeightfieldTerrain(STPHeightfieldTerrain&&) = delete;
-
-		STPHeightfieldTerrain& operator=(const STPHeightfieldTerrain&) = delete;
-
-		STPHeightfieldTerrain& operator=(STPHeightfieldTerrain&&) = delete;
 
 		~STPHeightfieldTerrain() = default;
 

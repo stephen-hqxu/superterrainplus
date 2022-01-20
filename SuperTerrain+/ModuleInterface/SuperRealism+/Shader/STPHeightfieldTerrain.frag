@@ -1,6 +1,8 @@
 #version 460 core
 #extension GL_ARB_bindless_texture : require
 #extension GL_ARB_shading_language_include : require
+//this extension allows access array of bindless samplers non-uniformly
+#extension GL_NV_gpu_shader5 : require
 
 #define TWO_PI 6.283185307179586476925286766559
 
@@ -76,8 +78,6 @@ struct LightSetting{
 //Application-automatically defined
 #define CSM_LIGHT_SPACE_COUNT 2
 #include </Common/STPCascadedShadowMap.glsl>
-
-layout (bindless_sampler) uniform sampler2DArrayShadow TerrainShadowmap;
 #endif//HEIGHTFIELD_RENDER_SHADOW
 
 uniform vec3 LightDirection;
@@ -376,7 +376,7 @@ vec3 calcLight(vec3 material, vec3 normal, float specular_strength, float ambien
 
 #if HEIGHTFIELD_RENDER_SHADOW
 	//shadow
-	const float shadowMask = sampleShadow(fs_in.position_world, CameraView, normal, lightDir, TerrainShadowmap);
+	const float shadowMask = sampleShadow(fs_in.position_world, CameraView, normal, lightDir);
 
 	return ambient + (diffuse + specular) * shadowMask;
 #else

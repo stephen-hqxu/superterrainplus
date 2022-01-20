@@ -8,7 +8,6 @@
 #include "../Object/STPBindlessTexture.h"
 #include "../Object/STPFrameBuffer.h"
 #include "../Object/STPBuffer.h"
-#include "../Object/STPShaderManager.h"
 
 #include "../Utility/Camera/STPCamera.h"
 
@@ -53,41 +52,23 @@ namespace SuperTerrainPlus::STPRealism {
 			//Specifies the depth multiplier of the light frustum.
 			//A value of 1.0 specifies a minimum light frustum bounded around the camera view frustum.
 			float ShadowDistanceMultiplier;
-			//Specify the multiplier to bias based on the angle of light and fragment position, and the minimum bias.
-			float BiasMultiplier, MinBias;
+			//Specify the max and min bias based on the angle of light and fragment position.
+			float MaxBias, MinBias;
 
 		};
 
 		/**
-		 * @brief STPShadowOption is a visitor to a shadow map instance that allows automatically load up shader settings.
+		 * @brief STPBufferAllocation indicates an allocated section of memory in a shared buffer.
 		*/
-		class STP_REALISM_API STPShadowOption {
-		private:
-
-			friend class STPCascadedShadowMap;
-
-			//The shadow map instance it is depended on.
-			const STPCascadedShadowMap* Instance;
-
-			/**
-			 * @brief Create a shadow option loader.
-			 * @param shadow The pointer to the shadow map instance it is depended on.
-			*/
-			STPShadowOption(const STPCascadedShadowMap&);
-
+		struct STPBufferAllocation {
 		public:
 
-			//The handle to the shadow map as a bindless texture.
-			//This handle remains valid until the dependent shadowm manager instance is destroyed.
-			const STPOpenGL::STPuint64 BindlessHandle;
+			STPBuffer* SharedMemory;
+			//Define the offset in byte in the shared memory to locate the light matrix
+			size_t Start;
 
-			~STPShadowOption() = default;
-
-			/**
-			 * @brief Automatically load the settings into a target macro definer for shader compilation.
-			 * @param dictionary The pointer to the dictionary to be loaded.
-			*/
-			void operator()(STPShaderManager::STPShaderSource::STPMacroValueDictionary&) const;
+			//The pointer directly pointing (with start offset applied to the base pointer of shared memory region) to the allocated memory region.
+			glm::mat4* LightMatrix;
 
 		};
 
@@ -101,13 +82,10 @@ namespace SuperTerrainPlus::STPRealism {
 		std::optional<STPBindlessTexture> ShadowMapHandle;
 		STPFrameBuffer ShadowContainer;
 
-		//Buffer for sharing shadow parameters for all programs
-		STPBuffer LightBuffer;
-		glm::mat4* BufferLightMatrix;
+		//Allocated memory to the light buffer where light information will be sent.
+		//This memory must be initialised before shadow class can be used, or undefined behaviour.
+		STPBufferAllocation LightBuffer;
 
-		const STPCamera& Viewer;
-		const STPCascadeLevel ShadowLevel;
-		const float ShadowDistance;
 		//CSM handles directional light rather than positional.
 		glm::vec3 LightDirection;
 
@@ -122,13 +100,14 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Calculate the light space view matrices for all divisions of view frustum and store them into mapped light buffer.
+		 * @param light_space An array of light space matrix where the calculation will be stored, memory should be sufficient to 
+		 * hold all the light cascade.
 		*/
-		void calcAllLightSpace() const;
+		void calcAllLightSpace(glm::mat4*) const;
 
 	public:
 
-		//The resolution of each shadow map within a subfrustum.
-		const glm::uvec2 Resolution;
+		const STPLightFrustum LightFrustum;
 
 		/**
 		 * @brief Initialise a cascaded shadow map.
@@ -144,7 +123,14 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPCascadedShadowMap& operator=(STPCascadedShadowMap&&) = delete;
 
-		virtual ~STPCascadedShadowMap();
+		virtual ~STPCascadedShadowMap() = default;
+
+		/**
+		 * @brief Set the shadow map shared memory to a allocated region of memory.
+		 * This memory will be used by the current instance to update any light information for shadow calculation.
+		 * @param allocation The block of memory for updating shadow information.
+		*/
+		void setLightBuffer(const STPBufferAllocation&);
 
 		/**
 		 * @brief Update the direction of light.
@@ -170,10 +156,10 @@ namespace SuperTerrainPlus::STPRealism {
 		size_t cascadeCount() const;
 
 		/**
-		 * @brief Get the shadow options loader.
-		 * @return The shadow map setup instance, which is bounded to the current shadow map instance.
+		 * @brief Get the bindless handle to the shadow map.
+		 * @return A bindless handle, this handle remains valid as long as the instance is valid.
 		*/
-		STPShadowOption option() const;
+		STPOpenGL::STPuint64 handle() const;
 
 	};
 

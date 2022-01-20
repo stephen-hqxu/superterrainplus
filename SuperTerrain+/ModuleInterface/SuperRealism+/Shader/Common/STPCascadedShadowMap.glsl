@@ -4,24 +4,34 @@
 //The number of light space matrix.
 //Define a valid number for a fixed compile time constant
 /* #define CSM_LIGHT_SPACE_COUNT */
+#ifndef CSM_LIGHT_SPACE_COUNT
+#define CSM_LIGHT_SPACE_COUNT "The number of light space is unspecified"
+#endif
 
 //Define to emit implementation for sampling the shadow map
 /* #define CSM_SAMPLING_IMPLEMENTATION */
 
-layout(std430, binding = 1) readonly restrict buffer STPCascadedShadowMap {
-	layout(offset = 0) float FarPlane;
+struct STPLightSpaceInformation {
+	//accroding to ARB specification, uvec2 can be used instead of uint64 to avoid adding extension dependencies to every shader.
+	uvec2 ShadowMap;
+	float FarPlane;
 	//First component defines the bias multiplier and the second one defines the minimum bias
-	layout(offset = 8) vec2 ShadowBias;
-	layout(offset = 16) mat4 ShadowLightSpace[CSM_LIGHT_SPACE_COUNT];
+	vec2 ShadowBias;
+};
+
+layout(std430, binding = 1) readonly restrict buffer STPCascadedShadowMap {
+	//for now we only support a single light that can cast shadow, this will be mitigated in the future
+	layout(offset = 0) STPLightSpaceInformation LightSpace;
+	layout(offset = 32) mat4 ShadowLightSpace[CSM_LIGHT_SPACE_COUNT];
 	//Those are separated by these planes as well as the near/far plane.
 	//They define the middle planes inside the cascade, if we have N frusta, there will be N - 1 cascade planes.
-	layout(offset = 16 + CSM_LIGHT_SPACE_COUNT * 64) float CascadePlaneDistance[CSM_LIGHT_SPACE_COUNT - 1];
+	layout(offset = 32 + CSM_LIGHT_SPACE_COUNT * 64) float CascadePlaneDistance[CSM_LIGHT_SPACE_COUNT - 1];
 };
 
 //Implementation for sampling Cascaded Shadow Map
 #ifdef CSM_SAMPLING_IMPLEMENTATION
 //input normal and light direction must be normalised
-float sampleShadow(vec3 fragworldPos, mat4 view, vec3 normal, vec3 lightDir, sampler2DArrayShadow shadow_map) {
+float sampleShadow(vec3 fragworldPos, mat4 view, vec3 normal, vec3 lightDir) {
 	//select cascade level from array shadow texture
 	const vec4 fragviewPos = view * vec4(fragworldPos, 1.0f);
 	const float depthValue = abs(fragviewPos.z);
@@ -53,11 +63,11 @@ float sampleShadow(vec3 fragworldPos, mat4 view, vec3 normal, vec3 lightDir, sam
 	}
 
 	//calcualte bias based on depth map resolution and slope
-	float bias = max(ShadowBias.x * (1.0f - dot(normal, lightDir)), ShadowBias.y);
-	bias *= (layer == cascadeCount) ? 1.0f / (FarPlane * 0.5f) : 1.0f / (CascadePlaneDistance[layer] * 0.5f);
+	float bias = max(LightSpace.ShadowBias.x * (1.0f - dot(normal, lightDir)), LightSpace.ShadowBias.y);
+	bias *= (layer == cascadeCount) ? 1.0f / (LightSpace.FarPlane * 0.5f) : 1.0f / (CascadePlaneDistance[layer] * 0.5f);
 
 	//get closest depth value from light's perspective
-	return texture(shadow_map, vec4(projCoord.xy, layer, currentDepth - bias)).r;
+	return texture(sampler2DArrayShadow(LightSpace.ShadowMap), vec4(projCoord.xy, layer, currentDepth - bias)).r;
 }
 #endif//CSM_SAMPLING_IMPLEMENTATION
 

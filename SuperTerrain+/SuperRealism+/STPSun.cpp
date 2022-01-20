@@ -78,7 +78,7 @@ constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
 	0u
 };
 
-STPSun::STPSunSpectrum::STPSunSpectrum(unsigned int iteration, const STPSun& sun, STPSpectrumLog& log) : 
+STPSun<false>::STPSunSpectrum::STPSunSpectrum(unsigned int iteration, const STPSun& sun, STPSpectrumLog& log) : 
 	STPLightSpectrum(iteration), SunElevation(sun.sunDirection().y) {
 	//setup spectrum emulator
 	STPShaderManager spectrum_shader(GL_COMPUTE_SHADER);
@@ -96,7 +96,7 @@ STPSun::STPSunSpectrum::STPSunSpectrum(unsigned int iteration, const STPSun& sun
 	this->SpectrumEmulator.uniform(glProgramUniform1ui, "SpectrumDimension", this->SpectrumLength);
 }
 
-void STPSun::STPSunSpectrum::operator()(const STPSpectrumSpecification& spectrum_setting) {
+void STPSun<false>::STPSunSpectrum::operator()(const STPSpectrumSpecification& spectrum_setting) {
 	//send uniforms to compute shader
 	STPSun::updateAtmosphere(this->SpectrumEmulator, *spectrum_setting.Atmosphere);
 
@@ -124,7 +124,7 @@ void STPSun::STPSunSpectrum::operator()(const STPSpectrumSpecification& spectrum
 	STPProgramManager::unuse();
 }
 
-float STPSun::STPSunSpectrum::coordinate() const {
+float STPSun<false>::STPSunSpectrum::coordinate() const {
 	const auto [elev_start, elev_end] = this->DomainElevation;
 
 	//project current sun direction to the spectrum sun direction
@@ -132,8 +132,7 @@ float STPSun::STPSunSpectrum::coordinate() const {
 	return (this->SunElevation - elev_start) / (elev_end - elev_start);
 }
 
-STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPCascadedShadowMap::STPLightFrustum& shadow_frustum, STPSunLog& log) : 
-	STPCascadedShadowMap(shadow_frustum), SunSetting(sun_setting),
+STPSun<false>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log) : SunSetting(sun_setting),
 	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), SunDirectionCache(0.0) {
 	//validate the setting
 	if (!this->SunSetting.validate()) {
@@ -176,7 +175,7 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPCascad
 	}
 }
 
-inline void STPSun::updateAtmosphere(STPProgramManager& program, const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
+inline void STPSun<false>::updateAtmosphere(STPProgramManager& program, const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
 	//validate
 	if (!atmo_setting.validate()) {
 		throw STPException::STPInvalidEnvironment("Atmoshpere setting is invalid");
@@ -195,11 +194,11 @@ inline void STPSun::updateAtmosphere(STPProgramManager& program, const STPEnviro
 		.uniform(glProgramUniform1ui, "Atmo.secStep", atmo_setting.SecondaryRayStep);
 }
 
-const vec3& STPSun::sunDirection() const {
+const vec3& STPSun<false>::sunDirection() const {
 	return this->SunDirectionCache;
 }
 
-void STPSun::advanceTick(unsigned long long tick) {
+void STPSun<false>::advanceTick(unsigned long long tick) {
 	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
 
 	//offset the timer
@@ -254,19 +253,17 @@ void STPSun::advanceTick(unsigned long long tick) {
 
 	//update sun position in the shader
 	this->SkyRenderer.uniform(glProgramUniform3fv, "SunPosition", 1, value_ptr(this->SunDirectionCache));
-	//update sun direction in the shadow light space
-	this->setDirection(this->SunDirectionCache);
 }
 
-void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
+void STPSun<false>::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
 	STPSun::updateAtmosphere(this->SkyRenderer, atmo_setting);
 }
 
-STPSun::STPSunSpectrum STPSun::createSpectrum(unsigned int iteration, STPSunSpectrum::STPSpectrumLog& log) const {
+STPSun<false>::STPSunSpectrum STPSun<false>::createSpectrum(unsigned int iteration, STPSunSpectrum::STPSpectrumLog& log) const {
 	return STPSun::STPSunSpectrum(iteration, *this, log);
 }
 
-void STPSun::operator()() const {
+void STPSun<false>::operator()() const {
 	//setup context
 	this->SkyRenderer.use();
 	this->RayDirectionArray.bind();
@@ -277,4 +274,17 @@ void STPSun::operator()() const {
 
 	//clear up
 	STPProgramManager::unuse();
+}
+
+STPSun<true>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPCascadedShadowMap::STPLightFrustum& shadow_frustum, STPSunLog& log) : 
+	STPSun<false>(sun_setting, log), STPCascadedShadowMap(shadow_frustum) {
+
+}
+
+void STPSun<true>::advanceTick(unsigned long long tick) {
+	//call the base class method
+	this->STPSun<false>::advanceTick(tick);
+
+	//update sun direction in the shadow light space
+	this->setDirection(this->SunDirectionCache);
 }

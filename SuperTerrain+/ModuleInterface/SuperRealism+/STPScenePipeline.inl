@@ -21,9 +21,9 @@ inline void SuperTerrainPlus::STPRealism::STPScenePipeline::traverse(const STPSc
 	//process rendering components.
 	//clear the canvas before drawing the new scene
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	if constexpr (hasSun) {
+	for (const auto& light : this->ShadowManager.Light) {
 		//clear shadow map
-		workflow.Sun->clearLightSpace();
+		light->clearLightSpace();
 	}
 	if constexpr (hasPost) {
 		//clear post process buffer
@@ -33,22 +33,25 @@ inline void SuperTerrainPlus::STPRealism::STPScenePipeline::traverse(const STPSc
 	glDepthFunc(GL_LESS);
 	glEnable(GL_CULL_FACE);
 	/* ------------------------------------------ shadow pass -------------------------------- */
-	if constexpr (hasSun) {//sun casts shadow
-		workflow.Sun->captureLightSpace();
-
+	{
 		//record the original viewport size
 		const glm::ivec4 pre_vp = this->getViewport();
-		const glm::uvec2 sha_vp = workflow.Sun->Resolution;
-		//change the view port to fit the shadow map
-		glViewport(0, 0, sha_vp.x, sha_vp.y);
 
-		//for those opaque render components (those can cast shadow), the engine provdes a non-shadow and shadow version
-		//The shadow version is usually an inherited version of the non-shadow version.
-		//The non-shadow version has a render to depth virtual function with no body, so it does absolutely nothing 
-		//if the user decides to not render shadow for this particular target.
-		//compiler will optimise away empty function.
-		if constexpr (hasTerrain) {
-			workflow.Terrain->renderDepth();
+		for (const auto& light : this->ShadowManager.Light) {
+			light->captureLightSpace();
+
+			const glm::uvec2 sha_vp = light->LightFrustum.Resolution;
+			//change the view port to fit the shadow map
+			glViewport(0, 0, sha_vp.x, sha_vp.y);
+
+			//for those opaque render components (those can cast shadow), the engine provdes a non-shadow and shadow version
+			//The shadow version is usually an inherited version of the non-shadow version.
+			//The non-shadow version has a render to depth virtual function with no body, so it does absolutely nothing 
+			//if the user decides to not render shadow for this particular target.
+			if constexpr (hasTerrain) {
+				workflow.Terrain->renderDepth();
+			}
+
 		}
 
 		//rollback the previous viewport size

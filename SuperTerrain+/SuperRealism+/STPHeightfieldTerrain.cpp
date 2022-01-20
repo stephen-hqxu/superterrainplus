@@ -122,10 +122,12 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 
 			("NORMALMAP_BLENDING", static_cast<std::underlying_type_t<STPNormalBlendingAlgorithm>>(option.NormalBlender));
 
-			if (option.ShadowMapOption) {
+			if (option.TerrainShadowInfo) {
 				//shadow option.
 				Macro("HEIGHTFIELD_RENDER_SHADOW", 1);
-				(*option.ShadowMapOption)(Macro);
+				for (const auto& [name, value] : *option.TerrainShadowInfo) {
+					Macro(name, value);
+				}
 			}
 
 			//process fragment shader
@@ -323,7 +325,7 @@ void STPHeightfieldTerrain<false>::render() const {
 
 STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& raw_log, const STPTerrainShaderOption& option) : 
 	STPHeightfieldTerrain<false>(generator_pipeline, raw_log.ShaderComponent, option) {
-	if (!option.ShadowMapOption) {
+	if (!option.TerrainShadowInfo) {
 		throw STPException::STPMemoryError("Shadow map option is not \"optional\" when shadow is turned on");
 	}
 	auto& log = raw_log.DepthComponent;
@@ -339,7 +341,9 @@ STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_p
 	Macro("HEIGHTFIELD_SHADOW_PASS", 1);
 	//load settings for shadow mapping directly
 	//no sampling implementaion because geometry shader only renders to depth
-	(*option.ShadowMapOption)(Macro);
+	for (const auto& [name, value] : *option.TerrainShadowInfo) {
+		Macro(name, value);
+	}
 
 	shadow_shader_source.define(Macro);
 	log.Log[0] = terrain_shadow_shader(shadow_shader_source);
@@ -359,9 +363,6 @@ STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_p
 		.stage(GL_VERTEX_SHADER_BIT | GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
 		.stage(GL_GEOMETRY_SHADER_BIT, this->TerrainDepthWriter)
 		.finalise();
-
-	//send some shadow related uniforms
-	this->TerrainShader.uniform(glProgramUniformHandleui64ARB, "TerrainShadowmap", option.ShadowMapOption->BindlessHandle);
 }
 
 void STPHeightfieldTerrain<true>::renderDepth() const {
