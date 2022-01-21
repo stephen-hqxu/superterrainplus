@@ -18,7 +18,6 @@
 
 //Lighting
 #include "STPLightSpectrum.h"
-#include "STPCascadedShadowMap.h"
 
 //GLM
 #include <glm/vec3.hpp>

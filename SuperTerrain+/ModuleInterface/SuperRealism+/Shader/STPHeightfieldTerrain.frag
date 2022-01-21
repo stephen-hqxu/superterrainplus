@@ -376,9 +376,10 @@ vec3 calcLight(vec3 material, vec3 normal, float specular_strength, float ambien
 
 #if HEIGHTFIELD_RENDER_SHADOW
 	//shadow
-	const float shadowMask = sampleShadow(fs_in.position_world, CameraView, normal, lightDir);
+	//the returned value represents the light intensity multiplier rather than the shadow
+	const float intensity = sampleShadow(fs_in.position_world, CameraView, normal, lightDir);
 
-	return ambient + (diffuse + specular) * shadowMask;
+	return ambient + (diffuse + specular) * intensity;
 #else
 	return ambient + diffuse + specular;
 #endif

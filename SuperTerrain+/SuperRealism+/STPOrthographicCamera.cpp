@@ -64,7 +64,7 @@ void STPOrthographicCamera::reshape(vec4 side, vec2 depth) {
 
 	this->ProjectionOutdated = true;
 	//trigger update
-	if (this->Callback) {
-		this->Callback->onReshape(*this);
+	for (auto callback : this->CallbackRegistry) {
+		callback->onReshape(*this);
 	}
 }

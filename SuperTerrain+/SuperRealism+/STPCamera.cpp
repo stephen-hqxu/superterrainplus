@@ -2,11 +2,14 @@
 
 //Error
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 //Camera Calculation
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+#include <algorithm>
 
 using glm::vec2;
 using glm::vec3;
@@ -19,7 +22,7 @@ using glm::cross;
 using namespace SuperTerrainPlus::STPRealism;
 
 STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) : 
-	Camera(props), View(mat4(0.0f)), ViewOutdated(true), Callback(nullptr) {
+	Camera(props), View(mat4(0.0f)), ViewOutdated(true) {
 	if (!this->Camera.validate()) {
 		throw STPException::STPInvalidEnvironment("Camera setting not validated");
 	}
@@ -42,8 +45,31 @@ void STPCamera::updateViewSpace() {
 	this->Up = normalize(cross(this->Right, this->Front));
 }
 
+inline auto STPCamera::findListener(STPStatusChangeCallback* listener) const {
+	return std::find(this->CallbackRegistry.cbegin(), this->CallbackRegistry.cend(), listener);
+}
+
 void STPCamera::registerListener(STPStatusChangeCallback* listener) const {
-	this->Callback = listener;
+	//make sure the same listener is not registered twice.
+	if (this->findListener(listener) != this->CallbackRegistry.cend()) {
+		//the same instance is found
+		throw STPException::STPMemoryError("The same listener instance has been registered with this camera previously");
+	}
+
+	//ok, add
+	this->CallbackRegistry.emplace_back(listener);
+}
+
+void STPCamera::removeListener(STPStatusChangeCallback* listener) const {
+	//try to find this instance
+	const auto it = this->findListener(listener);
+	if (it == this->CallbackRegistry.cend()) {
+		//not found
+		throw STPException::STPMemoryError("This listener is not previously registered");
+	}
+
+	//found, remove it
+	this->CallbackRegistry.erase(it);
 }
 
 const mat4& STPCamera::view() const {
@@ -89,8 +115,8 @@ void STPCamera::move(const STPMoveDirection direction, float delta) {
 	//trigger update the view matrix
 	this->ViewOutdated = true;
 	//trigger callback, if applicable
-	if (this->Callback) {
-		this->Callback->onMove(*this);
+	for (auto callback : this->CallbackRegistry) {
+		callback->onMove(*this);
 	}
 }
 
@@ -118,7 +144,7 @@ void STPCamera::rotate(const vec2& offset) {
 	this->updateViewSpace();
 
 	this->ViewOutdated = true;
-	if (this->Callback) {
-		this->Callback->onRotate(*this);
+	for (auto callback : this->CallbackRegistry) {
+		callback->onRotate(*this);
 	}
 }

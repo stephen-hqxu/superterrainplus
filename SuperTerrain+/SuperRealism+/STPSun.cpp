@@ -263,7 +263,7 @@ STPSun<false>::STPSunSpectrum STPSun<false>::createSpectrum(unsigned int iterati
 	return STPSun::STPSunSpectrum(iteration, *this, log);
 }
 
-void STPSun<false>::operator()() const {
+void STPSun<false>::render() const {
 	//setup context
 	this->SkyRenderer.use();
 	this->RayDirectionArray.bind();
@@ -276,8 +276,8 @@ void STPSun<false>::operator()() const {
 	STPProgramManager::unuse();
 }
 
-STPSun<true>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPCascadedShadowMap::STPLightFrustum& shadow_frustum, STPSunLog& log) : 
-	STPSun<false>(sun_setting, log), STPCascadedShadowMap(shadow_frustum) {
+STPSun<true>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPDirectionalLight::STPLightFrustum& shadow_frustum, STPSunLog& log) :
+	STPSun<false>(sun_setting, log), STPDirectionalLight(shadow_frustum) {
 
 }
 

@@ -169,7 +169,7 @@ void STPPostProcess::clear() {
 	//no need to clear the display framebuffer because it will be overwritten later anyway.
 }
 
-void STPPostProcess::operator()() {
+void STPPostProcess::process() {
 	//multisample resolve
 	const ivec4 bound = ivec4(0, 0, this->Resolution);
 	this->PostProcessContainer.blitFrom(this->SampleContainer, bound, bound, GL_COLOR_BUFFER_BIT, GL_NEAREST);

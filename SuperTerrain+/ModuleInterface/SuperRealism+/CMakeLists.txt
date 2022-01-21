@@ -25,7 +25,7 @@ Object/STPShaderManager.inl
 Object/STPTexture.h
 Object/STPVertexArray.h
 # /Renderer
-Renderer/STPCascadedShadowMap.h
+Renderer/STPDirectionalLight.h
 Renderer/STPHeightfieldTerrain.h
 Renderer/STPLightSpectrum.h
 Renderer/STPPostProcess.h

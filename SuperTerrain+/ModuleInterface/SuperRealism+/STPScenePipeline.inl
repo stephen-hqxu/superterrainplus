@@ -10,25 +10,16 @@ inline void SuperTerrainPlus::STPRealism::STPScenePipeline::traverse(const STPSc
 	static auto getFlag = [](auto check) constexpr -> bool {
 		return (R & check) != 0u;
 	};
-
-	//update buffer
-	this->updateBuffer();
 	//retrieve bit flags
 	static constexpr bool hasSun = getFlag(STPScenePipeline::RenderComponentSun),
 		hasTerrain = getFlag(STPScenePipeline::RenderComponentTerrain),
 		hasPost = getFlag(STPScenePipeline::RenderComponentPostProcess);
 
+	//update buffer
+	this->updateBuffer();
 	//process rendering components.
 	//clear the canvas before drawing the new scene
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	for (const auto& light : this->ShadowManager.Light) {
-		//clear shadow map
-		light->clearLightSpace();
-	}
-	if constexpr (hasPost) {
-		//clear post process buffer
-		workflow.PostProcess->clear();
-	}
 
 	glDepthFunc(GL_LESS);
 	glEnable(GL_CULL_FACE);
@@ -37,10 +28,18 @@ inline void SuperTerrainPlus::STPRealism::STPScenePipeline::traverse(const STPSc
 		//record the original viewport size
 		const glm::ivec4 pre_vp = this->getViewport();
 
-		for (const auto& light : this->ShadowManager.Light) {
-			light->captureLightSpace();
+		for (const auto& [light, light_matrix, buffer_offset, depth_capture] : this->ShadowPipeline.LightAllocationDatabase) {
+			//check if the light needs to update
+			if (light.updateLightSpace(light_matrix)) {
+				//light matrix has been updated, flush the buffer
+				this->ShadowPipeline.LightDataBuffer.flushMappedBufferRange(buffer_offset, sizeof(mat4) * light.lightSpaceSize());
+			}
 
-			const glm::uvec2 sha_vp = light->LightFrustum.Resolution;
+			//clear shadow map
+			depth_capture.clearDepth(1.0f);
+			depth_capture.bind(GL_FRAMEBUFFER);
+
+			const glm::uvec2 sha_vp = light.LightFrustum.Resolution;
 			//change the view port to fit the shadow map
 			glViewport(0, 0, sha_vp.x, sha_vp.y);
 
@@ -63,6 +62,8 @@ inline void SuperTerrainPlus::STPRealism::STPScenePipeline::traverse(const STPSc
 
 	//for the rest of the pipeline, we want to render everything onto a post processing buffer
 	if constexpr (hasPost) {
+		//clear post process buffer
+		workflow.PostProcess->clear();
 		//render everything onto the post process buffer
 		workflow.PostProcess->capture();
 	}
@@ -77,7 +78,7 @@ inline void SuperTerrainPlus::STPRealism::STPScenePipeline::traverse(const STPSc
 	if constexpr (hasSun) {//sun scatters its light
 		glDepthFunc(GL_LEQUAL);
 		glDisable(GL_CULL_FACE);
-		(*workflow.Sun)();
+		workflow.Sun->render();
 	}
 
 	/* -------------------------------------- post processing -------------------------------- */
@@ -87,7 +88,7 @@ inline void SuperTerrainPlus::STPRealism::STPScenePipeline::traverse(const STPSc
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_CULL_FACE);
 
-		(*workflow.PostProcess)();
+		workflow.PostProcess->process();
 
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);

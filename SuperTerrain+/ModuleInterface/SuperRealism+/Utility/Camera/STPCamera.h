@@ -11,6 +11,9 @@
 #include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
 
+//System
+#include <vector>
+
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -77,6 +80,13 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void updateViewSpace();
 
+		/**
+		 * @brief Find a listener instance in the callback registry.
+		 * @param listener The pointer to listener to be found.
+		 * @return The iterator in the registry.
+		*/
+		auto findListener(STPStatusChangeCallback*) const;
+
 	protected:
 
 		STPEnvironment::STPCameraSetting Camera;
@@ -84,7 +94,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//A vector defines to the up and right of the camera
 		glm::vec3 Front, Up, Right;
 
-		mutable STPStatusChangeCallback* Callback;
+		mutable std::vector<STPStatusChangeCallback*> CallbackRegistry;
 
 	public:
 
@@ -108,9 +118,16 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Register a camera status change listener.
 		 * @param listener The listener instance to receive update.
-		 * Or nullptr if one wishes to remove exisiting listener.
+		 * It is not allowed to registered the same listener twice, in case that happens exception is thrown.
 		*/
 		void registerListener(STPStatusChangeCallback*) const;
+
+		/**
+		 * @brief Remove a previously registered listener from the camera class.
+		 * @param listener The listener instance to be removed.
+		 * If this listener is not previously registered, exception is thrown.
+		*/
+		void removeListener(STPStatusChangeCallback*) const;
 
 		/**
 		 * @brief Update and get the camera view matrix that transform from world space to view space.

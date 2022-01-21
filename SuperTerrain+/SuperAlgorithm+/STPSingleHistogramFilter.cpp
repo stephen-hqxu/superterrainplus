@@ -17,8 +17,6 @@
 #include <stdexcept>
 #include <cstring>
 
-#include <glm/common.hpp>
-
 using namespace SuperTerrainPlus::STPCompute;
 using SuperTerrainPlus::STPDiversity::Sample;
 

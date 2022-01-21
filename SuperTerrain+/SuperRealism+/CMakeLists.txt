@@ -3,8 +3,8 @@ add_library(${STP_REALISM_ENGINE} SHARED
 STPBindlessTexture.cpp
 STPBuffer.cpp
 STPCamera.cpp
-STPCascadedShadowMap.cpp
 STPDebugCallback.cpp
+STPDirectionalLight.cpp
 STPFrameBuffer.cpp
 STPHeightfieldTerrain.cpp
 STPLightSpectrum.cpp

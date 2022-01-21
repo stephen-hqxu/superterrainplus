@@ -87,6 +87,7 @@ namespace STPStart {
 		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>> TerrainRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPPostProcess> FinalProcess;
 		SuperTerrainPlus::STPRealism::STPScenePipeline::STPSceneWorkflow PipelineWork;
+		optional<SuperTerrainPlus::STPRealism::STPShadowPipeline> DepthPipeline;
 		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
 
 		const vec3& ViewPosition;
@@ -196,14 +197,14 @@ namespace STPStart {
 			{
 				//sun shadow setting
 				const float camFar = camera.cameraStatus().Far;
-				STPCascadedShadowMap::STPLightFrustum frustum;
+				STPDirectionalLight::STPLightFrustum frustum;
 				frustum.Resolution = uvec2(2048u);
-				frustum.Level = {
+				frustum.Division = {
 					camFar / 8.0f,
 					camFar / 4.0f,
 					camFar / 2.0f
 				};
-				frustum.Camera = &camera;
+				frustum.Focus = &camera;
 				frustum.ShadowDistanceMultiplier = 250.5f;
 				frustum.MaxBias = 0.05f;
 				frustum.MinBias = 0.005f;
@@ -237,10 +238,8 @@ namespace STPStart {
 				(*this->TerrainLighting)(spectrum_spec);
 			}
 
-			//setup rendering pipeline and add lights that cast shadow
-			this->RenderPipeline.emplace(camera, STPScenePipeline::STPLightRegistry{ &*this->SunRenderer });
-			//basic setup
-			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
+			//setup pipeline for shadow pass and add lights that cast shadow
+			this->DepthPipeline.emplace(STPShadowPipeline::STPLightRegistry{ &*this->SunRenderer }, STPShadowPipeline::STPShadowMapFilter::Bilinear);
 
 			//setup solid object
 			//-------------------------------------------
@@ -251,7 +250,7 @@ namespace STPStart {
 					uvec3(128u, 128u, 6u),
 					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform,
 					&this->TerrainLighting.value(),
-					&this->RenderPipeline->ShadowManager.shadowInformation()
+					&this->DepthPipeline->shadowInformation()
 				};
 
 				this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
@@ -271,6 +270,10 @@ namespace STPStart {
 				STPMasterRenderer::printLog(postprocess_log);
 			}
 
+			//setup rendering pipeline
+			this->RenderPipeline.emplace(camera, *this->DepthPipeline);
+			//basic setup
+			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
 			//rendering component
 			this->PipelineWork.Terrain = &(*this->TerrainRenderer);
 			this->PipelineWork.Sun = &(*this->SunRenderer);

@@ -26,8 +26,8 @@ inline void STPPerspectiveCamera::setOutdated() {
 	//update the projection matrix
 	this->ProjectionOutdated = true;
 	//trigger
-	if (this->Callback) {
-		this->Callback->onReshape(*this);
+	for (auto callback : this->CallbackRegistry) {
+		callback->onReshape(*this);
 	}
 }
 

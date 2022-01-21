@@ -172,7 +172,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Render post processed rendering output to the screen.
 		*/
-		void operator()();
+		void process();
 
 	};
 

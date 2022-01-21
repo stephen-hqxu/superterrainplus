@@ -14,7 +14,7 @@
 
 //Lighting
 #include "STPLightSpectrum.h"
-#include "STPCascadedShadowMap.h"
+#include "STPDirectionalLight.h"
 
 //GLM
 #include <glm/vec3.hpp>
@@ -197,12 +197,12 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Render the sun with atmospheric scattering effect.
 		*/
-		void operator()() const;
+		void render() const;
 
 	};
 
 	template<>
-	class STP_REALISM_API STPSun<true> : public STPSun<false>, public STPCascadedShadowMap {
+	class STP_REALISM_API STPSun<true> : public STPSun<false>, public STPDirectionalLight {
 	public:
 
 		/**
@@ -210,7 +210,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Arguments are nearly the same as the base class except the extra pointer to sun shadow light frustum setting.
 		 * @see STPSun<false>
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, const STPCascadedShadowMap::STPLightFrustum&, STPSunLog&);
+		STPSun(const STPEnvironment::STPSunSetting&, const STPDirectionalLight::STPLightFrustum&, STPSunLog&);
 
 		~STPSun() = default;
 

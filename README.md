@@ -62,7 +62,7 @@ SuperTerrain+ is a terrain engine that incorporates procedural generation, physi
 - [ ] Night rendering
 - [ ] Procedural weather effect
 - [ ] Water reflection and refraction
-- [ ] ~~Real-time raster-ray tracing hybrid rendering~~
+- [ ] ~~Real-time~~ raster-ray tracing hybrid rendering
 
 ## :bricks: Middleware
 
