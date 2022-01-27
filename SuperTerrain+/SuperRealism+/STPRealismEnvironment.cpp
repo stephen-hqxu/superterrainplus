@@ -1,5 +1,6 @@
 #include <SuperRealism+/Environment/STPAtmosphereSetting.h>
 #include <SuperRealism+/Environment/STPCameraSetting.h>
+#include <SuperRealism+/Environment/STPLightSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
 #include <SuperRealism+/Environment/STPOrthographicCameraSetting.h>
 #include <SuperRealism+/Environment/STPPerspectiveCameraSetting.h>
@@ -75,6 +76,26 @@ bool STPCameraSetting::validate() const {
 		&& this->Near < this->Far;
 }
 
+//STPLightSetting.h
+
+STPLightSetting::STPAmbientLightSetting::STPAmbientLightSetting() : 
+	AmbientStrength(0.1f) {
+
+}
+
+bool STPLightSetting::STPAmbientLightSetting::validate() const {
+	return true;
+}
+
+STPLightSetting::STPDirectionalLightSetting::STPDirectionalLightSetting() : 
+	DiffuseStrength(1.0f), SpecularStrength(1.0f) {
+
+}
+
+bool STPLightSetting::STPDirectionalLightSetting::validate() const {
+	return true;
+}
+
 //STPMeshSetting.h
 
 STPMeshSetting::STPTessellationSetting::STPTessellationSetting() :
@@ -107,22 +128,6 @@ bool STPMeshSetting::STPTextureRegionSmoothSetting::validate() const {
 		&& this->KernelScale > 0.0f;
 }
 
-STPMeshSetting::STPPhongLightSetting::STPPhongLightSetting() : 
-	AmbientStrength(1.0f), 
-	DiffuseStrength(0.0f), 
-	SpecularStrength(0.0f), 
-	Shineness(1.0f) {
-
-}
-
-bool STPMeshSetting::STPPhongLightSetting::validate() const {
-	return this->AmbientStrength >= 0.0f && this->AmbientStrength <= 1.0f
-		&& this->DiffuseStrength >= 0.0f
-		&& this->SpecularStrength >= 0.0f
-		&& this->Shineness >= 0.0f;
-
-}
-
 STPMeshSetting::STPMeshSetting() :
 	Strength(1.0f),
 	Altitude(1.0f), 
@@ -135,8 +140,7 @@ bool STPMeshSetting::validate() const {
 		&& this->Altitude > 0.0f
 		&& this->UVScaleFactor > 0u
 		&& this->TessSetting.validate()
-		&& this->RegionSmoothSetting.validate()
-		&& this->LightSetting.validate();
+		&& this->RegionSmoothSetting.validate();
 }
 
 //STPOrthographicCameraSetting.h

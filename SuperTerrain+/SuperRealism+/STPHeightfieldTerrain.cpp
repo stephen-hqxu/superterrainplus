@@ -6,7 +6,6 @@
 //Error
 #include <SuperTerrain+/Exception/STPGLError.h>
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 //IO
@@ -69,7 +68,7 @@ constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 };
 
 STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, const STPTerrainShaderOption& option) :
-	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(option.NoiseDimension), LightSpectrum(*option.Spectrum) {
+	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(option.NoiseDimension) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	const STPDiversity::STPTextureFactory& splatmap_generator = this->TerrainGenerator.splatmapGenerator();
 	const STPDiversity::STPTextureInformation::STPSplatTextureDatabase splat_texture = splatmap_generator.getSplatTexture();
@@ -111,24 +110,15 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 			//texture type
 			("ALBEDO", splatmap_generator.convertType(STPTextureType::Albedo))
 			("NORMAL", splatmap_generator.convertType(STPTextureType::Normal))
-			("BUMP", splatmap_generator.convertType(STPTextureType::Displacement))
+			("ROUGHNESS", splatmap_generator.convertType(STPTextureType::Roughness))
 			("SPECULAR", splatmap_generator.convertType(STPTextureType::Specular))
 			("AO", splatmap_generator.convertType(STPTextureType::AmbientOcclusion))
-			("EMISSIVE", splatmap_generator.convertType(STPTextureType::Emissive))
 
 			("TYPE_STRIDE", splatmap_generator.usedType())
 			("UNUSED_TYPE", STPTextureFactory::UnusedType)
 			("UNREGISTERED_TYPE", STPTextureFactory::UnregisteredType)
 
 			("NORMALMAP_BLENDING", static_cast<std::underlying_type_t<STPNormalBlendingAlgorithm>>(option.NormalBlender));
-
-			if (option.TerrainShadowInfo) {
-				//shadow option.
-				Macro("HEIGHTFIELD_RENDER_SHADOW", 1);
-				for (const auto& [name, value] : *option.TerrainShadowInfo) {
-					Macro(name, value);
-				}
-			}
 
 			//process fragment shader
 			shader_source.define(Macro);
@@ -225,7 +215,6 @@ void STPHeightfieldTerrain<false>::setMesh(const STPEnvironment::STPMeshSetting&
 	}
 	const auto& tess_setting = mesh_setting.TessSetting;
 	const auto& smooth_setting = mesh_setting.RegionSmoothSetting;
-	const auto& light_setting = mesh_setting.LightSetting;
 
 	//update tessellation LoD control
 	this->TerrainModeller.uniform(glProgramUniform1f, "Tess.MaxLod", tess_setting.MaxTessLevel)
@@ -241,12 +230,7 @@ void STPHeightfieldTerrain<false>::setMesh(const STPEnvironment::STPMeshSetting&
 		.uniform(glProgramUniform1ui, "SmoothSetting.Kr", smooth_setting.KernelRadius)
 		.uniform(glProgramUniform1f, "SmoothSetting.Ks", smooth_setting.KernelScale)
 		.uniform(glProgramUniform1f, "SmoothSetting.Ns", smooth_setting.NoiseScale)
-		.uniform(glProgramUniform1ui, "UVScaleFactor", mesh_setting.UVScaleFactor)
-		//lighting
-		.uniform(glProgramUniform1f, "Lighting.Ka", light_setting.AmbientStrength)
-		.uniform(glProgramUniform1f, "Lighting.Kd", light_setting.DiffuseStrength)
-		.uniform(glProgramUniform1f, "Lighting.Ks", light_setting.SpecularStrength)
-		.uniform(glProgramUniform1f, "Lighting.Shin", light_setting.Shineness);
+		.uniform(glProgramUniform1ui, "UVScaleFactor", mesh_setting.UVScaleFactor);
 }
 
 void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
@@ -293,14 +277,6 @@ void STPHeightfieldTerrain<false>::setViewPosition(const vec3& viewPos) {
 	this->TerrainModeller.uniform(glProgramUniformMatrix4fv, "MeshModel", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(Model));
 }
 
-void STPHeightfieldTerrain<false>::setLightDirection(const vec3& dir) {
-	this->TerrainShader.uniform(glProgramUniform3fv, "LightDirection", 1, value_ptr(dir));
-}
-
-void STPHeightfieldTerrain<false>::updateSpectrumCoordinate() {
-	this->TerrainShader.uniform(glProgramUniform1f, "Lighting.SpectrumCoord", this->LightSpectrum.coordinate());
-}
-
 void STPHeightfieldTerrain<false>::render() const {
 	//waiting for the heightfield generator to finish
 	this->TerrainGenerator.wait();
@@ -310,7 +286,6 @@ void STPHeightfieldTerrain<false>::render() const {
 	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
 	glBindTextureUnit(2, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::SPLAT]);
 	this->NoiseSample.bind(3);
-	this->LightSpectrum.spectrum().bind(4);
 
 	this->TileArray.bind();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
@@ -323,11 +298,9 @@ void STPHeightfieldTerrain<false>::render() const {
 	STPPipelineManager::unbind();
 }
 
-STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& raw_log, const STPTerrainShaderOption& option) : 
+STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& raw_log, 
+	const STPTerrainShaderOption& option, const STPShadowInformation& terrain_shadow_info) :
 	STPHeightfieldTerrain<false>(generator_pipeline, raw_log.ShaderComponent, option) {
-	if (!option.TerrainShadowInfo) {
-		throw STPException::STPMemoryError("Shadow map option is not \"optional\" when shadow is turned on");
-	}
 	auto& log = raw_log.DepthComponent;
 
 	//now the base renderer is finished, setup depth renderer
@@ -341,7 +314,7 @@ STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_p
 	Macro("HEIGHTFIELD_SHADOW_PASS", 1);
 	//load settings for shadow mapping directly
 	//no sampling implementaion because geometry shader only renders to depth
-	for (const auto& [name, value] : *option.TerrainShadowInfo) {
+	for (const auto& [name, value] : terrain_shadow_info) {
 		Macro(name, value);
 	}
 

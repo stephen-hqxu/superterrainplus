@@ -13,17 +13,15 @@ namespace SuperTerrainPlus::STPDiversity {
 		Albedo = 0x00u,
 		//A texture that defines the normal vector which is then used to calculate light reflection and refraction on the surface of the mesh
 		Normal = 0x01u,
-		//A texture that defines the perpendicular offset to the surface of the mesh at a pixel
-		Displacement = 0x02u,
+		//A texture that defines how spread out a specular highlight is from the projection centre.
+		Roughness = 0x02u,
 		//A texture that defines the amount of specular highlight at a pixel
 		Specular = 0x03u,
 		//A texture that defines how a texture reacts to light during rendering
 		AmbientOcclusion = 0x4u,
-		//A texture that defines which part of the object emits light, as well as the light color of each pixel
-		Emissive = 0x05u,
 
 		//The total number of type listed in the enum
-		TypeCount = 0x06u
+		TypeCount = 0x05u
 	};
 
 }

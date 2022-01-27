@@ -1,4 +1,4 @@
-#include <SuperRealism+/Renderer/STPDirectionalLight.h>
+#include <SuperRealism+/Scene/STPCascadedShadowMap.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
@@ -26,7 +26,7 @@ using std::numeric_limits;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPDirectionalLight::STPDirectionalLight(const STPLightFrustum& light_frustum) : LightDirection(vec3(0.0f)),
+STPCascadedShadowMap::STPCascadedShadowMap(const STPLightFrustum& light_frustum) : LightDirection(vec3(0.0f)),
 	LightSpaceOutdated(true), LightFrustum(light_frustum) {
 	if (this->LightFrustum.ShadowDistanceMultiplier < 1.0f) {
 		throw STPException::STPBadNumericRange("A less-than-one shadow distance is not able to cover the view frustum");
@@ -39,11 +39,11 @@ STPDirectionalLight::STPDirectionalLight(const STPLightFrustum& light_frustum) :
 	this->LightFrustum.Focus->registerListener(this);
 }
 
-STPDirectionalLight::~STPDirectionalLight() {
+STPCascadedShadowMap::~STPCascadedShadowMap() {
 	this->LightFrustum.Focus->removeListener(this);
 }
 
-mat4 STPDirectionalLight::calcLightSpace(float near, float far, const mat4& view) const {
+mat4 STPCascadedShadowMap::calcLightSpace(float near, float far, const mat4& view) const {
 	//min and max of float
 	static constexpr float minF = numeric_limits<float>::min(),
 		maxF = numeric_limits<float>::max();
@@ -116,7 +116,7 @@ mat4 STPDirectionalLight::calcLightSpace(float near, float far, const mat4& view
 	return lightProjection * lightView;
 }
 
-void STPDirectionalLight::calcAllLightSpace(mat4* light_space) const {
+void STPCascadedShadowMap::calcAllLightSpace(mat4* light_space) const {
 	const STPCamera& viewer = *this->LightFrustum.Focus;
 	const auto& shadow_level = this->LightFrustum.Division;
 
@@ -146,31 +146,31 @@ void STPDirectionalLight::calcAllLightSpace(mat4* light_space) const {
 	}
 }
 
-void STPDirectionalLight::onMove(const STPCamera&) {
+void STPCascadedShadowMap::onMove(const STPCamera&) {
 	//view matix changes
 	this->LightSpaceOutdated = true;
 }
 
-void STPDirectionalLight::onRotate(const STPCamera&) {
+void STPCascadedShadowMap::onRotate(const STPCamera&) {
 	//view matrix also changes
 	this->LightSpaceOutdated = true;
 }
 
-void STPDirectionalLight::onReshape(const STPCamera&) {
+void STPCascadedShadowMap::onReshape(const STPCamera&) {
 	//projection matrix changes
 	this->LightSpaceOutdated = true;
 }
 
-void STPDirectionalLight::setDirection(const vec3& dir) {
+void STPCascadedShadowMap::setDirection(const vec3& dir) {
 	this->LightDirection = dir;
 	this->LightSpaceOutdated = true;
 }
 
-const vec3& STPDirectionalLight::getDirection() const {
+const vec3& STPCascadedShadowMap::getDirection() const {
 	return this->LightDirection;
 }
 
-bool STPDirectionalLight::updateLightSpace(mat4* light_space) {
+bool STPCascadedShadowMap::updateLightSpace(mat4* light_space) {
 	if (this->LightSpaceOutdated) {
 		//need to also update light space matrix if shadow has been turned on for this light
 		this->calcAllLightSpace(light_space);
@@ -181,6 +181,6 @@ bool STPDirectionalLight::updateLightSpace(mat4* light_space) {
 	return false;
 }
 
-inline size_t STPDirectionalLight::lightSpaceSize() const {
+inline size_t STPCascadedShadowMap::lightSpaceSize() const {
 	return this->LightFrustum.Division.size() + 1ull;
 }

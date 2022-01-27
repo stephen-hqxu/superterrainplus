@@ -78,8 +78,8 @@ constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
 	0u
 };
 
-STPSun<false>::STPSunSpectrum::STPSunSpectrum(unsigned int iteration, const STPSun& sun, STPSpectrumLog& log) : 
-	STPLightSpectrum(iteration), SunElevation(sun.sunDirection().y) {
+STPSun<false>::STPSunSpectrum::STPSunSpectrum(unsigned int spectrum_length, const STPSun& sun, STPSpectrumLog& log) :
+	STPLightSpectrum(spectrum_length, STPSpectrumType::Bitonic, GL_RGBA16F), SunElevation(sun.sunDirection().y) {
 	//setup spectrum emulator
 	STPShaderManager spectrum_shader(GL_COMPUTE_SHADER);
 	STPShaderManager::STPShaderSource spectrum_source(*STPFile(SpectrumShaderFilename.data()));
@@ -132,8 +132,9 @@ float STPSun<false>::STPSunSpectrum::coordinate() const {
 	return (this->SunElevation - elev_start) / (elev_end - elev_start);
 }
 
-STPSun<false>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLog& log) : SunSetting(sun_setting),
-	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), SunDirectionCache(0.0) {
+STPSun<false>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, unsigned int spectrum_length, STPSunLog& raw_log) : SunSetting(sun_setting),
+	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), SunDirectionCache(0.0), 
+	SunSpectrum(spectrum_length, *this, raw_log.SpectrumGenerator) {
 	//validate the setting
 	if (!this->SunSetting.validate()) {
 		throw STPException::STPInvalidEnvironment("Sun setting provided is invalid");
@@ -154,6 +155,7 @@ STPSun<false>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, STPSunLo
 		.binding();
 	this->RayDirectionArray.enable(0u);
 
+	auto& log = raw_log.SunRenderer;
 	//setup sky renderer
 	STPShaderManager sky_shader[SkyShaderFilename.size()] = 
 		{ GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
@@ -259,10 +261,6 @@ void STPSun<false>::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& at
 	STPSun::updateAtmosphere(this->SkyRenderer, atmo_setting);
 }
 
-STPSun<false>::STPSunSpectrum STPSun<false>::createSpectrum(unsigned int iteration, STPSunSpectrum::STPSpectrumLog& log) const {
-	return STPSun::STPSunSpectrum(iteration, *this, log);
-}
-
 void STPSun<false>::render() const {
 	//setup context
 	this->SkyRenderer.use();
@@ -276,8 +274,9 @@ void STPSun<false>::render() const {
 	STPProgramManager::unuse();
 }
 
-STPSun<true>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPDirectionalLight::STPLightFrustum& shadow_frustum, STPSunLog& log) :
-	STPSun<false>(sun_setting, log), STPDirectionalLight(shadow_frustum) {
+STPSun<true>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, unsigned int spectrum_length, 
+	const STPCascadedShadowMap::STPLightFrustum& shadow_frustum, STPSunLog& log) :
+	STPSun<false>(sun_setting, spectrum_length, log), STPCascadedShadowMap(shadow_frustum) {
 
 }
 

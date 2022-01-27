@@ -55,6 +55,10 @@ void STPFrameBuffer::drawBuffer(STPOpenGL::STPenum buf) {
 	glNamedFramebufferDrawBuffer(this->FrameBuffer.get(), buf);
 }
 
+void STPFrameBuffer::drawBuffers(const std::vector<STPOpenGL::STPenum>& bufs) {
+	glNamedFramebufferDrawBuffers(this->FrameBuffer.get(), static_cast<GLsizei>(bufs.size()), bufs.data());
+}
+
 void STPFrameBuffer::readBuffer(STPOpenGL::STPenum mode) {
 	glNamedFramebufferReadBuffer(this->FrameBuffer.get(), mode);
 }

@@ -1,10 +1,7 @@
 #include <SuperRealism+/Renderer/STPPostProcess.h>
 #include <SuperRealism+/STPRealismInfo.h>
-//Command
-#include <SuperRealism+/Utility/STPIndirectCommand.hpp>
 
 //Error
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
 
 //IO
@@ -18,10 +15,8 @@
 #include <glm/vec4.hpp>
 
 //System
-#include <array>
 #include <type_traits>
 
-using std::array;
 using std::underlying_type_t;
 
 using glm::vec2;
@@ -31,127 +26,48 @@ using glm::vec3;
 using glm::ivec4;
 using glm::vec4;
 
-using SuperTerrainPlus::STPFile;
-using SuperTerrainPlus::SuperRealismPlus_ShaderPath;
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static auto OffScreenShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPPostProcess", ".vert", ".frag");
-
-constexpr static array<signed char, 16ull> QuadVertex = {
-	//Position		//TexCoord
-	-1, +1,			0, 1,
-	-1, -1,			0, 0,
-	+1, -1,			1, 0,
-	+1, +1,			1, 1
-};
-constexpr static array<unsigned char, 6ull> QuadIndex = {
-	0, 1, 2,
-	0, 2, 3
-};
-constexpr static STPIndirectCommand::STPDrawElement QuadDrawCommand = {
-	static_cast<unsigned int>(QuadIndex.size()),
-	1u,
-	0u,
-	0u,
-	0u
-};
+constexpr static auto PostProcessShaderFilename = 
+	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPPostProcess", ".frag");
 
 STPPostProcess::STPToneMappingCurve::STPToneMappingCurve(STPToneMappingFunction function) : Function(function) {
 
 }
 
-STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, STPPostProcessLog& log) : Resolution(0u) {
-	//send of off screen quad
-	this->ScreenBuffer.bufferStorageSubData(QuadVertex.data(), QuadVertex.size() * sizeof(signed char), GL_NONE);
-	this->ScreenIndex.bufferStorageSubData(QuadIndex.data(), QuadIndex.size() * sizeof(unsigned char), GL_NONE);
-	//rendering command
-	this->ScreenRenderCommand.bufferStorageSubData(&QuadDrawCommand, sizeof(QuadDrawCommand), GL_NONE);
-	//vertex array
-	STPVertexArray::STPVertexAttributeBuilder attr = this->ScreenArray.attribute();
-	attr.format(2, GL_BYTE, GL_FALSE, sizeof(signed char))
-		.format(2, GL_BYTE, GL_FALSE, sizeof(signed char))
-		.vertexBuffer(this->ScreenBuffer, 0)
-		.elementBuffer(this->ScreenIndex)
-		.binding();
-	this->ScreenArray.enable(0u, 2u);
-
+STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, STPPostProcessLog& log) {
 	//setup post process shader
-	STPShaderManager postprocess_shader[OffScreenShaderFilename.size()] = 
-		{ GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
-	for (unsigned int i = 0u; i < OffScreenShaderFilename.size(); i++) {
-		STPShaderManager::STPShaderSource shader_source(*STPFile(OffScreenShaderFilename[i].data()));
+	STPShaderManager screen_shader(std::move(STPPostProcess::compileScreenVertexShader(log.QuadShader))),
+		postprocess_shader(GL_FRAGMENT_SHADER);
+	STPShaderManager::STPShaderSource shader_source(*STPFile(PostProcessShaderFilename.data()));
 
-		if (i == 1u) {
-			//fragment shader
-			STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
+	//fragment shader
+	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
+	//define post process macros
+	Macro("TONE_MAPPING", static_cast<underlying_type_t<STPToneMappingFunction>>(tone_mapping.Function));
+	//update macros in the source code
+	shader_source.define(Macro);
+	log.PostProcessShader.Log[0] = postprocess_shader(shader_source);
 
-			//define post process macros
-			Macro("TONE_MAPPING", static_cast<underlying_type_t<STPToneMappingFunction>>(tone_mapping.Function));
-
-			//update macros in the source code
-			shader_source.define(Macro);
-		}
-		log.Log[i] = postprocess_shader[i](shader_source);
-
-		//add to program
-		this->PostProcessor.attach(postprocess_shader[i]);
-	}
+	//add to program, along with the screen shader
+	this->PostProcessor
+		.attach(screen_shader)
+		.attach(postprocess_shader);
 	//program link
-	log.Log[2] = this->PostProcessor.finalise();
+	log.PostProcessShader.Log[1] = this->PostProcessor.finalise();
 	if (!this->PostProcessor) {
 		throw STPException::STPGLError("Post processor program has error during compilation");
 	}
 
 	/* -------------------------------- setup sampler ---------------------------------- */
-	this->RenderingSampler.filter(GL_NEAREST, GL_NEAREST);
-	this->RenderingSampler.wrap(GL_CLAMP_TO_BORDER);
-	this->RenderingSampler.borderColor(vec4(vec3(0.0f), 1.0f));
+	this->ImageSampler.filter(GL_NEAREST, GL_NEAREST);
+	this->ImageSampler.wrap(GL_CLAMP_TO_BORDER);
+	this->ImageSampler.borderColor(vec4(vec3(0.0f), 1.0f));
 
 	/* -------------------------------- setup uniform ---------------------------------- */
 	this->PostProcessor.uniform(glProgramUniform1i, "ScreenBuffer", 0);
 	//prepare for tone mapping function definition
 	tone_mapping(this->PostProcessor);
-}
-
-void STPPostProcess::capture() {
-	this->SampleContainer.bind(GL_FRAMEBUFFER);
-}
-
-void STPPostProcess::setResolution(unsigned int sample, uvec2 resolution) {
-	if (sample == 0u) {
-		throw STPException::STPBadNumericRange("The number of sample should be greater than zero");
-	}
-	this->Resolution = resolution;
-
-	const uvec3 dimension = uvec3(this->Resolution, 1u);
-	//(re)allocate memory for texture
-	STPTexture msTexture(GL_TEXTURE_2D_MULTISAMPLE), imageTexture(GL_TEXTURE_2D);
-	//using a floating-point format allows color to go beyond the standard range of [0.0, 1.0]
-	msTexture.textureStorageMultisample<STPTexture::STPDimension::TWO>(sample, GL_RGB16F, dimension, GL_TRUE);
-	imageTexture.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGB16F, dimension);
-
-	//do the same for render buffer
-	STPRenderBuffer msBuffer;
-	msBuffer.renderbufferStorageMultisample(sample, GL_DEPTH_COMPONENT24, this->Resolution);
-
-	//attach to framebuffer
-	STPFrameBuffer::unbind(GL_FRAMEBUFFER);
-	this->SampleContainer.attach(GL_COLOR_ATTACHMENT0, msTexture, 0);
-	this->SampleContainer.attach(GL_DEPTH_ATTACHMENT, msBuffer);
-
-	this->PostProcessContainer.attach(GL_COLOR_ATTACHMENT0, imageTexture, 0);
-
-	//verify
-	if (this->SampleContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE 
-		|| this->PostProcessContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		throw STPException::STPGLError("Post process framebuffer validation fails");
-	}
-
-	using std::move;
-	//re-initialise the current objects
-	this->RenderingSample.emplace(move(msTexture));
-	this->RenderingImage.emplace(move(imageTexture));
-	this->PostProcessBuffer.emplace(move(msBuffer));
 }
 
 #define SET_EFFECT(EFF, NAME) template<> STP_REALISM_API void STPPostProcess::setEffect<STPPostProcess::STPPostEffect::EFF>(float val) { \
@@ -160,29 +76,14 @@ void STPPostProcess::setResolution(unsigned int sample, uvec2 resolution) {
 
 SET_EFFECT(Gamma, "Gamma")
 
-void STPPostProcess::clear() {
-	static constexpr vec4 NoColor = vec4(vec3(0.0f), 1.0f);
-	//clear color and depth buffer of all frame buffer
-	this->SampleContainer.clearColor(0, NoColor);
-	//the default clear depth value is 1.0
-	this->SampleContainer.clearDepth(1.0f);
-	//no need to clear the display framebuffer because it will be overwritten later anyway.
-}
-
-void STPPostProcess::process() {
-	//multisample resolve
-	const ivec4 bound = ivec4(0, 0, this->Resolution);
-	this->PostProcessContainer.blitFrom(this->SampleContainer, bound, bound, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
+void STPPostProcess::process(const STPTexture& texture) const {
 	//prepare to render
-	this->RenderingImage->bind(0);
-	this->RenderingSampler.bind(0);
+	texture.bind(0);
+	this->ImageSampler.bind(0);
 
-	this->ScreenArray.bind();
-	this->ScreenRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
 	this->PostProcessor.use();
 
-	glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_BYTE, nullptr);
+	this->drawScreen();
 
 	STPProgramManager::unuse();
 	//must unbind sampler otherwise it will affect texture in other renderer.

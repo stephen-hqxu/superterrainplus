@@ -1,11 +1,10 @@
 target_sources(${STP_REALISM_ENGINE} PRIVATE
 STPRealismDefine.h
 STPRendererInitialiser.h
-STPScenePipeline.h
-STPScenePipeline.inl
 # /Environment
 Environment/STPAtmosphereSetting.h
 Environment/STPCameraSetting.h
+Environment/STPLightSetting.h
 Environment/STPMeshSetting.h
 Environment/STPOrthographicCameraSetting.h
 Environment/STPPerspectiveCameraSetting.h
@@ -25,11 +24,16 @@ Object/STPShaderManager.inl
 Object/STPTexture.h
 Object/STPVertexArray.h
 # /Renderer
-Renderer/STPDirectionalLight.h
 Renderer/STPHeightfieldTerrain.h
-Renderer/STPLightSpectrum.h
 Renderer/STPPostProcess.h
+Renderer/STPScreen.h
 Renderer/STPSun.h
+# /Scene
+Scene/STPCascadedShadowMap.h
+Scene/STPLightSpectrum.h
+Scene/STPSceneObject.hpp
+Scene/STPScenePipeline.h
+Scene/STPScenePipeline.inl
 # /Utility/Camera
 Utility/Camera/STPCamera.h
 Utility/Camera/STPOrthographicCamera.h

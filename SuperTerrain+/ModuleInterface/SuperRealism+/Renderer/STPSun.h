@@ -13,8 +13,8 @@
 #include "../Utility/STPLogStorage.hpp"
 
 //Lighting
-#include "STPLightSpectrum.h"
-#include "STPDirectionalLight.h"
+#include "../Scene/STPLightSpectrum.h"
+#include "../Scene/STPCascadedShadowMap.h"
 
 //GLM
 #include <glm/vec3.hpp>
@@ -38,6 +38,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief STPSunSpectrum allows generating an approximation of spectrum for looking up sky and sun color using sun elevation.
+		 * This spectrum contains two color strips, being the indirect and direct color.
 		*/
 		class STP_REALISM_API STPSunSpectrum : public STPLightSpectrum {
 		public:
@@ -74,9 +75,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 			/**
 			 * @brief Initialise a sun spectrum generator and generate the spectrum.
-			 * @param iteration The number of iteration to be performed for the spectrum generation.
+			 * @param spectrum_length The number of color in the spectrum.
 			 * @param sun The pointer to the sun to be linked with the sun spectrum emulator.
-			 * @param log The pointer to where the shader log will be stored to.
+			 * @param raw_log The pointer to where the shader log will be stored to.
 			*/
 			STPSunSpectrum(unsigned int, const STPSun&, STPSpectrumLog&);
 
@@ -144,15 +145,23 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		//The log for STPSun, coming from sun and sky renderer.
-		typedef STPLogStorage<3ull> STPSunLog;
+		STPSunSpectrum SunSpectrum;
+
+		struct STPSunLog {
+		public:
+
+			STPLogStorage<3ull> SunRenderer;
+			STPSunSpectrum::STPSpectrumLog SpectrumGenerator;
+
+		};
 
 		/**
 		 * @brief Init the sun with settings.
 		 * @param sun_setting The sun setting.
+		 * @param spectrum_length To initialise a sun spectrum, denotes the length of the sun spectrum.
 		 * @param log Logs output from the shader compilation.
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, STPSunLog&);
+		STPSun(const STPEnvironment::STPSunSetting&, unsigned int, STPSunLog&);
 
 		STPSun(const STPSun&) = delete;
 
@@ -185,16 +194,6 @@ namespace SuperTerrainPlus::STPRealism {
 		void setAtmoshpere(const STPEnvironment::STPAtmosphereSetting&);
 
 		/**
-		 * @brief Create a new sun spectrum instance that is used to emulate the light spectrum of the current sun.
-		 * @see STPSunSpectrum
-		 * @param iteration The number of iteration to be performed.
-		 * @param log The compilation log.
-		 * @return The sun spectrum instance.
-		 * This spectrum instance is linked to the current sun hence the current STPSun should remain valid.
-		*/
-		STPSunSpectrum createSpectrum(unsigned int, STPSunSpectrum::STPSpectrumLog&) const;
-
-		/**
 		 * @brief Render the sun with atmospheric scattering effect.
 		*/
 		void render() const;
@@ -202,7 +201,7 @@ namespace SuperTerrainPlus::STPRealism {
 	};
 
 	template<>
-	class STP_REALISM_API STPSun<true> : public STPSun<false>, public STPDirectionalLight {
+	class STP_REALISM_API STPSun<true> : public STPCascadedShadowMap, public STPSun<false> {
 	public:
 
 		/**
@@ -210,7 +209,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Arguments are nearly the same as the base class except the extra pointer to sun shadow light frustum setting.
 		 * @see STPSun<false>
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, const STPDirectionalLight::STPLightFrustum&, STPSunLog&);
+		STPSun(const STPEnvironment::STPSunSetting&, unsigned int, const STPCascadedShadowMap::STPLightFrustum&, STPSunLog&);
 
 		~STPSun() = default;
 

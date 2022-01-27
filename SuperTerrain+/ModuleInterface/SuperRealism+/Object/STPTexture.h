@@ -44,10 +44,10 @@ namespace SuperTerrainPlus::STPRealism {
 		//TBO
 		STPSmartTexture Texture;
 
-	public:
-
 		//The target this texture object is bound to.
-		const STPOpenGL::STPenum Target;
+		STPOpenGL::STPenum Target;
+
+	public:
 
 		/**
 		 * @brief Init a new and empty STPTexture.
@@ -64,6 +64,12 @@ namespace SuperTerrainPlus::STPRealism {
 		STPTexture& operator=(STPTexture&&) noexcept = default;
 
 		~STPTexture() = default;
+
+		/**
+		 * @brief Get the target this texture object is bound to.
+		 * @return The texture target bounded.
+		*/
+		STPOpenGL::STPenum target() const;
 
 		/**
 		 * @brief Get the underlying texture buffer object.

@@ -83,9 +83,6 @@ private:
 		if (typeStr == "normal") {
 			return STPTextureType::Normal;
 		}
-		if (typeStr == "disp") {
-			return STPTextureType::Displacement;
-		}
 
 		throw STPException::STPInvalidArgument("Cannot determine the type of this texture");
 	}
@@ -112,8 +109,7 @@ public:
 		for_each(std::execution::par, IndexedFilename.cbegin(), IndexedFilename.cend(),
 			[&texArr = this->LoadedData, &prefix](const auto& data) {
 			const auto [index, filename] = data;
-			//displacement map has only one channel
-			const int channel = (STPWorldSplattingAgent::getType(string_view(filename)) == STPTextureType::Displacement) ? 1 : 3;
+			const int channel = 3;
 
 			//all our images don't have alpha channel.
 			//loading texture from file system can be done in parallel

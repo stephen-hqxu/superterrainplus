@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_DIRECTIONAL_LIGHT_H_
-#define _STP_DIRECTIONAL_LIGHT_H_
+#ifndef _STP_CASCADED_SHADOW_MAP_H_
+#define _STP_CASCADED_SHADOW_MAP_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Rendering Utility
@@ -18,13 +18,12 @@
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
-	 * @brief STPDirectionalLight is a type of light source that does not have defined position but shoot parallel light.
-	 * As it does not have position, shadow mapping is handled using cascaded shadow mapping technique.
+	 * @brief STPCascadedShadowMap is a type of shadow mapping technique for directional light source.
 	 * This algorithm divides view frustum into N subfrusta and 
 	 * fits the ortho matrix for each frustum, for each frustum render a shader map as if seen from the directional light.
 	 * Finally render the scene with shadow according to fragment depth value from corrected shadow map.
 	*/
-	class STP_REALISM_API STPDirectionalLight : private STPCamera::STPStatusChangeCallback {
+	class STP_REALISM_API STPCascadedShadowMap : private STPCamera::STPStatusChangeCallback {
 	public:
 
 		/**
@@ -33,9 +32,6 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STPLightFrustum {
 		public:
 
-			//The X and Y resolution of the shadow map. 
-			//Higher resolution gives less jagged shadow but significantly increase memory usageand render time.
-			glm::uvec2 Resolution;
 			//An array of float that determines the planes position of each camera frustum cut, 
 			//starting from the viewing camera near plane as the first array element.
 			std::vector<float> Division;
@@ -45,8 +41,6 @@ namespace SuperTerrainPlus::STPRealism {
 			//Specifies the depth multiplier of the light frustum.
 			//A value of 1.0 specifies a minimum light frustum bounded around the camera view frustum.
 			float ShadowDistanceMultiplier;
-			//Specify the max and min bias based on the angle of light and fragment position.
-			float MaxBias, MinBias;
 
 		};
 
@@ -91,17 +85,17 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Initialise a directional light instance.
 		 * @param light_frustum The property of the shadow map light frustum.
 		*/
-		STPDirectionalLight(const STPLightFrustum&);
+		STPCascadedShadowMap(const STPLightFrustum&);
 
-		STPDirectionalLight(const STPDirectionalLight&) = delete;
+		STPCascadedShadowMap(const STPCascadedShadowMap&) = delete;
 
-		STPDirectionalLight(STPDirectionalLight&&) = delete;
+		STPCascadedShadowMap(STPCascadedShadowMap&&) = delete;
 
-		STPDirectionalLight& operator=(const STPDirectionalLight&) = delete;
+		STPCascadedShadowMap& operator=(const STPCascadedShadowMap&) = delete;
 
-		STPDirectionalLight& operator=(STPDirectionalLight&&) = delete;
+		STPCascadedShadowMap& operator=(STPCascadedShadowMap&&) = delete;
 
-		virtual ~STPDirectionalLight();
+		virtual ~STPCascadedShadowMap();
 
 		/**
 		 * @brief Update the direction of light.
@@ -117,13 +111,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 		bool updateLightSpace(glm::mat4*);
 
-		/**
-		 * @brief Get the number of light space matrix, or the number of frustum division plane plus 1.
-		 * @return The number of light space matrix.
-		*/
 		size_t lightSpaceSize() const;
 
 	};
 
 }
-#endif//_STP_DIRECTIONAL_LIGHT_H_
+#endif//_STP_CASCADED_SHADOW_MAP_H_

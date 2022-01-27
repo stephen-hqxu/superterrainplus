@@ -3,30 +3,24 @@
 #define _STP_POST_PROCESS_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
+//Base Screen Renderer
+#include "STPScreen.h"
 //GL Object
-#include "../Object/STPShaderManager.h"
 #include "../Object/STPProgramManager.h"
-#include "../Object/STPBuffer.h"
-#include "../Object/STPVertexArray.h"
 #include "../Object/STPTexture.h"
 #include "../Object/STPSampler.h"
-#include "../Object/STPFrameBuffer.h"
-#include "../Object/STPRenderBuffer.h"
 
 #include "../Utility/STPLogStorage.hpp"
 
 //GLM
 #include <glm/vec2.hpp>
 
-//System
-#include <optional>
-
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
 	 * @brief STPPostProcess captures rendering buffer, process the buffer and display the final image.
 	*/
-	class STP_REALISM_API STPPostProcess {
+	class STP_REALISM_API STPPostProcess : private STPScreen {
 	public:
 
 		/**
@@ -106,23 +100,20 @@ namespace SuperTerrainPlus::STPRealism {
 
 	private:
 
-		//The buffer to represent the off-screen rendering screen
-		STPBuffer ScreenBuffer, ScreenIndex, ScreenRenderCommand;
-		STPVertexArray ScreenArray;
 		//The post process capturing unit
-		std::optional<STPTexture> RenderingSample, RenderingImage;
-		STPSampler RenderingSampler;
-		std::optional<STPRenderBuffer> PostProcessBuffer;
-		STPFrameBuffer SampleContainer, PostProcessContainer;
+		STPSampler ImageSampler;
 
 		STPProgramManager PostProcessor;
 
-		//The resolution of current framebuffers
-		glm::uvec2 Resolution;
-
 	public:
 
-		typedef STPLogStorage<3ull> STPPostProcessLog;
+		struct STPPostProcessLog {
+		public:
+
+			STPScreenLog QuadShader;
+			STPLogStorage<2ull> PostProcessShader;
+
+		};
 
 		/**
 		 * @brief Init the post processor.
@@ -142,21 +133,6 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPPostProcess() = default;
 
 		/**
-		 * @brief Activate the post process framebuffer and all rendered contents will be drawn onto the post process frame buffer.
-		 * To stop capturing, bind to any other framebuffers.
-		*/
-		void capture();
-
-		/**
-		 * @brief Set the resolution of the post process framebuffer.
-		 * @param sample The number of sample for multisampled framebuffer.
-		 * @param resolution The X and Y resolution.
-		 * Note that doing this will cause reallocation of all post process buffer and hence
-		 * this should only be done whenever truely necessary.
-		*/
-		void setResolution(unsigned int, glm::uvec2);
-
-		/**
 		 * @brief Set the value of a particular effect.
 		 * @tparap E The type of the effect.
 		 * @param val The value to be set to.
@@ -165,14 +141,10 @@ namespace SuperTerrainPlus::STPRealism {
 		void setEffect(float);
 
 		/**
-		 * @brief Clear all contents in the post process buffer.
-		*/
-		void clear();
-
-		/**
 		 * @brief Render post processed rendering output to the screen.
+		 * @param texture The pointer to the texture to be post-processed.
 		*/
-		void process();
+		void process(const STPTexture&) const;
 
 	};
 

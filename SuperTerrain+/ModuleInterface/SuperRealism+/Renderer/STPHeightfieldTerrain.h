@@ -3,6 +3,8 @@
 #define _STP_HEIGHTFIELD_TERRAIN_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
+//Scene Node
+#include "../Scene/STPSceneObject.hpp"
 //GL Utility
 #include "../Object/STPPipelineManager.h"
 #include "../Object/STPBuffer.h"
@@ -15,9 +17,6 @@
 //Terrain Generator
 #include <SuperTerrain+/World/STPWorldPipeline.h>
 #include "../Environment/STPMeshSetting.h"
-
-//Lighting
-#include "STPLightSpectrum.h"
 
 //GLM
 #include <glm/vec3.hpp>
@@ -35,7 +34,7 @@ namespace SuperTerrainPlus::STPRealism {
 	class STPHeightfieldTerrain;
 
 	template<>
-	class STP_REALISM_API STPHeightfieldTerrain<false> {
+	class STP_REALISM_API STPHeightfieldTerrain<false> : public STPSceneObject::STPOpaqueObject<false> {
 	public:
 
 		/**
@@ -69,12 +68,7 @@ namespace SuperTerrainPlus::STPRealism {
 			glm::uvec3 NoiseDimension;
 			//Specify the normalmap blending algorithm to be used during rendering.
 			STPNormalBlendingAlgorithm NormalBlender;
-			//The light spectrum for indirect and direct light respectively for the terrain.
-			//The spectrum must remain valid during the lifetime of initialised terrain renderer.
-			//The spectrum must not be NULL.
-			const STPLightSpectrum* Spectrum;
 
-			STPShadowInformation_opt TerrainShadowInfo;
 		};
 
 	protected:
@@ -86,9 +80,6 @@ namespace SuperTerrainPlus::STPRealism {
 		STPBuffer TileBuffer, TileIndex, TerrainRenderCommand;
 		STPVertexArray TileArray;
 		STPTexture NoiseSample;
-
-		//spectrum for lighting supplied by user.
-		const STPLightSpectrum& LightSpectrum;
 
 		//Shader program for terrain rendering
 		//modeller contains vertex, tes control and tes eval, shader contains geom and frag.
@@ -150,32 +141,15 @@ namespace SuperTerrainPlus::STPRealism {
 		void setViewPosition(const glm::vec3&);
 
 		/**
-		 * @brief Set the terrain light direction.
-		 * @param dir The direction of the light.
-		*/
-		void setLightDirection(const glm::vec3&);
-
-		/**
-		 * @brief Update the sampling coordinate on the light spectrum for spectrum lighting.
-		*/
-		void updateSpectrumCoordinate();
-
-		/**
 		 * @brief Render a regular procedural heightfield terrain.
 		 * Terrain texture must be prepared prior to this call, and this function sync with the generator automatically.
 		*/
-		void render() const;
-
-		/**
-		 * @brief Render the procedural heightfield terrain, this time fragment shading is pruned.
-		 * This is useful for rendering to depth texture.
-		*/
-		virtual void renderDepth() const {};
+		void render() const override;
 
 	};
 
 	template<>
-	class STP_REALISM_API STPHeightfieldTerrain<true> : public STPHeightfieldTerrain<false> {
+	class STP_REALISM_API STPHeightfieldTerrain<true> : public STPSceneObject::STPOpaqueObject<true>, public STPHeightfieldTerrain<false> {
 	public:
 
 		struct STPHeightfieldTerrainLog {
@@ -202,7 +176,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Arguments are nearly the same as its base class except some additional information required.
 		 * @see STPHeightfieldTerrain<false>.
 		*/
-		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, const STPTerrainShaderOption&);
+		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, const STPTerrainShaderOption&, const STPShadowInformation&);
 
 		~STPHeightfieldTerrain() = default;
 

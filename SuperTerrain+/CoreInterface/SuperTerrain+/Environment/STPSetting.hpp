@@ -15,7 +15,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		*/
 		STPSetting() = default;
 
-		~STPSetting() = default;
+		virtual ~STPSetting() = default;
 
 	public:
 

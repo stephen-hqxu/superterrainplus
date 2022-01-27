@@ -7,7 +7,7 @@
 #include "../Object/STPTexture.h"
 
 //GLM
-#include <glm/vec4.hpp>
+#include <glm/vec3.hpp>
 
 //System
 #include <vector>
@@ -18,6 +18,20 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPLightSpectrum allows generating a light spectrum for looking up color for indirect and direct lighting.
 	*/
 	class STP_REALISM_API STPLightSpectrum {
+	public:
+
+		/**
+		 * @brief Specify the type of spectrum.
+		*/
+		enum class STPSpectrumType : unsigned char {
+			//The spectrum only has one color strip.
+			//The spectrum will have the type of a 1D texture.
+			Monotonic = 0x00u,
+			//The spectrum has two color strips.
+			//The spectrum will have the type of a 1D texture array.
+			Bitonic = 0x01u
+		};
+
 	protected:
 
 		//The generated spectrum, it is a texture 1D array with the first array being the spectrum for indirect lighting and the second for direct lighting
@@ -31,8 +45,10 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Init a light spectrum object.
 		 * @param length The length of the light spectrum.
+		 * @param type The type of the spectrum.
+		 * @param format Specify the sized channel format for the spectrum.
 		*/
-		STPLightSpectrum(unsigned int);
+		STPLightSpectrum(unsigned int, STPSpectrumType, STPOpenGL::STPenum);
 
 		STPLightSpectrum(const STPLightSpectrum&) = delete;
 
@@ -61,7 +77,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 	/**
 	 * @brief STPStaticLightSpectrum is a simple implementation of light spectrum.
-	 * It provides a single monotonic color each for indirect and direct lighting.
+	 * It provides a single monotonic color for lighting.
 	*/
 	class STP_REALISM_API STPStaticLightSpectrum : public STPLightSpectrum {
 	public:
@@ -83,17 +99,16 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Set the color of the static light spectrum.
-		 * @param indirect The color for indirect lighting.
-		 * @param direct The color for direct lighting.
+		 * @param color The color for the spectrum.
 		*/
-		void operator()(const glm::vec4&, const glm::vec4&);
+		void operator()(glm::vec3);
 
 		float coordinate() const override;
 
 	};
 
 	/**
-	 * @brief STPArrayLightSpectrum allows specifying light spectrum with custom color array.
+	 * @brief STPArrayLightSpectrum allows specifying light spectrum with custom color array with one color channel.
 	*/
 	class STP_REALISM_API STPArrayLightSpectrum : public STPLightSpectrum {
 	private:
@@ -103,7 +118,7 @@ namespace SuperTerrainPlus::STPRealism {
 	public:
 
 		//Contains an array of color
-		typedef std::vector<glm::vec4> STPColorArray;
+		typedef std::vector<glm::vec3> STPColorArray;
 
 		/**
 		 * @brief Init a new array light spectrum.
@@ -122,12 +137,10 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPArrayLightSpectrum() = default;
 
 		/**
-		 * @brief Set the light spectrum with new arrays of colors.
-		 * Note that two arrays must have the same size.
-		 * @param indirect The pointer to the array of indirect color to be set.
-		 * @param direct The pointer to the array of direct color to be set.
+		 * @brief Set the light spectrum with new array of colors.
+		 * @param color The array of color to be filled into the spectrum.
 		*/
-		void operator()(const STPColorArray&, const STPColorArray&);
+		void operator()(const STPColorArray&);
 
 		/**
 		 * @brief Set the sampling coordinate on the light spectrum.

@@ -31,6 +31,10 @@ void STPBuffer::bindBase(STPOpenGL::STPenum target, STPOpenGL::STPuint index) co
 	glBindBufferBase(target, index, this->Buffer.get());
 }
 
+void STPBuffer::unbindBase(STPOpenGL::STPenum target, STPOpenGL::STPuint index) {
+	glBindBufferBase(target, index, 0);
+}
+
 void* STPBuffer::mapBuffer(STPOpenGL::STPenum access) {
 	return glMapNamedBuffer(this->Buffer.get(), access);
 }

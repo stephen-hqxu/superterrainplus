@@ -25,11 +25,7 @@ static constexpr char* RenderingVariables[] = {
 	"kernel_radius",
 	"kernel_scale",
 	"noise_scale",
-	"uv_scale_factor",
-	"ambient",
-	"diffuse",
-	"specular",
-	"shineness"
+	"uv_scale_factor"
 };
 
 static constexpr char* ChunkVariables[] = {
@@ -113,7 +109,6 @@ STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const S
 	STPEnvironment::STPMeshSetting rendering_options;
 	STPEnvironment::STPMeshSetting::STPTessellationSetting tess_options;
 	STPEnvironment::STPMeshSetting::STPTextureRegionSmoothSetting smooth_options;
-	STPEnvironment::STPMeshSetting::STPPhongLightSetting light_options;
 
 	rendering_options.Strength = section(RenderingVariables[0]).to<float>();
 	rendering_options.Altitude = section(RenderingVariables[1]).to<float>();
@@ -129,14 +124,8 @@ STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const S
 
 	rendering_options.UVScaleFactor = section(RenderingVariables[9]).to<unsigned int>();
 
-	light_options.AmbientStrength = section(RenderingVariables[10]).to<float>();
-	light_options.DiffuseStrength = section(RenderingVariables[11]).to<float>();
-	light_options.SpecularStrength = section(RenderingVariables[12]).to<float>();
-	light_options.Shineness = section(RenderingVariables[13]).to<float>();
-
 	rendering_options.TessSetting = tess_options;
 	rendering_options.RegionSmoothSetting = smooth_options;
-	rendering_options.LightSetting = light_options;
 
 	return rendering_options;
 }

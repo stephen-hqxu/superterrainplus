@@ -6,10 +6,10 @@
 #define HEIGHTFIELD_SHADOW_PASS 0
 
 //Settings for CSM before include
-#define CSM_LIGHT_SPACE_COUNT 1
+#define LIGHT_SPACE_COUNT 1
 /* -------------------------------------------------------------------------------- */
 
-layout (triangles, invocations = CSM_LIGHT_SPACE_COUNT) in;
+layout (triangles, invocations = LIGHT_SPACE_COUNT) in;
 layout (triangle_strip, max_vertices = 3) out;
 
 #if HEIGHTFIELD_SHADOW_PASS
@@ -27,7 +27,6 @@ in gl_PerVertex
 } gl_in[];
 in VertexTES{
 	vec2 texCoord;
-	vec3 normal;
 } gs_in[];
 //Output
 out gl_PerVertex
@@ -39,7 +38,6 @@ out gl_PerVertex
 #if !HEIGHTFIELD_SHADOW_PASS
 out VertexGS{
 	vec3 position_world;
-	vec4 position_clip;
 	vec2 texCoord;
 } gs_out;
 #endif
@@ -55,7 +53,6 @@ void main(){
 		gl_Position = gl_in[i].gl_Position;
 		gs_out.position_world = gl_Position.xyz;
 		gl_Position = CameraProjection * CameraView * gl_Position;
-		gs_out.position_clip = gl_Position;
 		gs_out.texCoord = gs_in[i].texCoord;
 #endif
 		EmitVertex();

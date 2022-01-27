@@ -12,6 +12,8 @@
 //GLM
 #include <glm/vec4.hpp>
 
+#include <vector>
+
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -96,6 +98,12 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param buf The buffer for the framebuffer.
 		*/
 		void drawBuffer(STPOpenGL::STPenum);
+
+		/**
+		 * @brief Specifies a list of color buffers to be drawn into.
+		 * @param bufs Points to an array of symbolic constants specifying the buffers into which fragment colors or data values will be written.
+		*/
+		void drawBuffers(const std::vector<STPOpenGL::STPenum>&);
 
 		/**
 		 * @brief Select a color buffer source for pixels.

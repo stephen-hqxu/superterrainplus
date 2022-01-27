@@ -26,6 +26,10 @@ STPTexture::STPTexture(STPOpenGL::STPenum target) : Texture(createTexture(target
 	
 }
 
+SuperTerrainPlus::STPOpenGL::STPenum STPTexture::target() const {
+	return this->Target;
+}
+
 SuperTerrainPlus::STPOpenGL::STPuint STPTexture::operator*() const {
 	return this->Texture.get();
 }

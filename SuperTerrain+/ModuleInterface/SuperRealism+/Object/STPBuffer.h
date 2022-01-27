@@ -63,9 +63,16 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Bind a buffer object to an indexed buffer target.
 		 * @param target Specify the target of the bind operation.
-		 * @param Specify the index of the binding point within the array specified by target.
+		 * @param index Specify the index of the binding point within the array specified by target.
 		*/
 		void bindBase(STPOpenGL::STPenum, STPOpenGL::STPuint) const;
+
+		/**
+		 * @brief Unbind from an indexed buffer target.
+		 * @param target The targe to be unbound.
+		 * @param index The index to be unbound.
+		*/
+		static void unbindBase(STPOpenGL::STPenum, STPOpenGL::STPuint);
 
 		/**
 		 * @brief Map all of a buffer object's data store into the client's address space.
