@@ -261,7 +261,11 @@ void STPSun<false>::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& at
 	STPSun::updateAtmosphere(this->SkyRenderer, atmo_setting);
 }
 
-void STPSun<false>::render() const {
+const STPLightSpectrum& STPSun<false>::getLightSpectrum() const {
+	return this->SunSpectrum;
+}
+
+void STPSun<false>::renderEnvironment() {
 	//setup context
 	this->SkyRenderer.use();
 	this->RayDirectionArray.bind();
@@ -276,7 +280,7 @@ void STPSun<false>::render() const {
 
 STPSun<true>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, unsigned int spectrum_length, 
 	const STPCascadedShadowMap::STPLightFrustum& shadow_frustum, STPSunLog& log) :
-	STPSun<false>(sun_setting, spectrum_length, log), STPCascadedShadowMap(shadow_frustum) {
+	STPSun<false>(sun_setting, spectrum_length, log), STPEnvironmentLight<true>(shadow_frustum) {
 
 }
 
@@ -285,5 +289,5 @@ void STPSun<true>::advanceTick(unsigned long long tick) {
 	this->STPSun<false>::advanceTick(tick);
 
 	//update sun direction in the shadow light space
-	this->setDirection(this->SunDirectionCache);
+	this->EnvironmentLightShadow.setDirection(this->SunDirectionCache);
 }

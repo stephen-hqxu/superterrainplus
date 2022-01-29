@@ -13,7 +13,7 @@ layout (triangles, invocations = LIGHT_SPACE_COUNT) in;
 layout (triangle_strip, max_vertices = 3) out;
 
 #if HEIGHTFIELD_SHADOW_PASS
-#include </Common/STPCascadedShadowMap.glsl>
+#include </Common/STPLightSpaceInformation.glsl>
 #else
 #include </Common/STPCameraInformation.glsl>
 #endif
@@ -46,7 +46,7 @@ void main(){
 	for(int i = 0; i < gl_in.length; i++){
 #if HEIGHTFIELD_SHADOW_PASS
 		//output light information
-		gl_Position = ShadowLightSpace[gl_InvocationID] * gl_in[i].gl_Position;
+		gl_Position = LightProjectionView[gl_InvocationID] * gl_in[i].gl_Position;
 		gl_Layer = gl_InvocationID;
 #else
 		//output the primitive information

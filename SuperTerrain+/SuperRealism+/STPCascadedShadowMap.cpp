@@ -125,7 +125,7 @@ void STPCascadedShadowMap::calcAllLightSpace(mat4* light_space) const {
 	const STPEnvironment::STPCameraSetting& camSetting = viewer.cameraStatus();
 	const float near = camSetting.Near, far = camSetting.Far;
 
-	const size_t lightSpaceCount = this->lightSpaceSize();
+	const size_t lightSpaceCount = this->lightSpaceDimension();
 	//calculate the light view matrix for each subfrusta
 	for (unsigned int i = 0u; i < lightSpaceCount; i++) {
 		//current light space in the mapped buffer
@@ -161,6 +161,10 @@ void STPCascadedShadowMap::onReshape(const STPCamera&) {
 	this->LightSpaceOutdated = true;
 }
 
+const STPCascadedShadowMap::STPCascadePlane& STPCascadedShadowMap::getDivision() const {
+	return this->LightFrustum.Division;
+}
+
 void STPCascadedShadowMap::setDirection(const vec3& dir) {
 	this->LightDirection = dir;
 	this->LightSpaceOutdated = true;
@@ -170,7 +174,7 @@ const vec3& STPCascadedShadowMap::getDirection() const {
 	return this->LightDirection;
 }
 
-bool STPCascadedShadowMap::updateLightSpace(mat4* light_space) {
+bool STPCascadedShadowMap::updateLightSpace(mat4* light_space) const {
 	if (this->LightSpaceOutdated) {
 		//need to also update light space matrix if shadow has been turned on for this light
 		this->calcAllLightSpace(light_space);
@@ -181,6 +185,10 @@ bool STPCascadedShadowMap::updateLightSpace(mat4* light_space) {
 	return false;
 }
 
-inline size_t STPCascadedShadowMap::lightSpaceSize() const {
+inline size_t STPCascadedShadowMap::lightSpaceDimension() const {
 	return this->LightFrustum.Division.size() + 1ull;
+}
+
+void STPCascadedShadowMap::forceLightSpaceUpdate() {
+	this->LightSpaceOutdated = true;
 }

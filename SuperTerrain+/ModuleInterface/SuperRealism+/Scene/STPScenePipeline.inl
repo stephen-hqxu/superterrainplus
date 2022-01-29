@@ -1,9 +1,6 @@
 //TEMPLATE DEFINITION FOR SCENE PIPELINE, DO NOT INCLUDE MANUALLY
 #ifdef _STP_SCENE_PIPELINE_H_
 
-//Error
-#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
-
 #include <type_traits>
 
 template<class Obj, typename ...Arg>
@@ -32,7 +29,7 @@ inline Obj& SuperTerrainPlus::STPRealism::STPScenePipeline::STPSceneInitialiser:
 	}
 
 	//using the same logic for the rests
-	if constexpr (is_base_of_v<STPSun<false>, Obj>) {
+	if constexpr (is_base_of_v<STPSceneLight::STPEnvironmentLight<false>, Obj>) {
 		if (this->InitialiserComponent.EnvironmentObjectDatabase.size() == 1ull) {
 			throw STPException::STPUnsupportedFunctionality("The system currently only supports one light that can cast shadow, "
 				"this will be supported in the future release");
@@ -40,10 +37,10 @@ inline Obj& SuperTerrainPlus::STPRealism::STPScenePipeline::STPSceneInitialiser:
 		Obj* const env_obj_ptr = new Obj(forward<Arg>(arg)...);
 		this->InitialiserComponent.EnvironmentObjectDatabase.emplace_back(env_obj_ptr);
 
-		if constexpr (is_same_v<STPSun<true>, Obj>) {
+		if constexpr (is_base_of_v<STPSceneLight::STPEnvironmentLight<true>, Obj>) {
 			this->InitialiserComponent.ShadowEnvironmentObject.emplace_back(env_obj_ptr);
 
-			this->LightSpaceCount += env_obj_ptr->lightSpaceSize();
+			this->LightSpaceCount += static_cast<unsigned int>(env_obj_ptr->getLightShadow().lightSpaceDimension());
 		}
 
 		return *env_obj_ptr;
@@ -54,8 +51,6 @@ inline Obj& SuperTerrainPlus::STPRealism::STPScenePipeline::STPSceneInitialiser:
 
 		return *this->InitialiserComponent.PostProcessObject;
 	}
-
-	throw STPException::STPUnsupportedFunctionality("This object is not a valid renderer-traversable node");
 }
 
 #endif//_STP_SCENE_PIPELINE_H_

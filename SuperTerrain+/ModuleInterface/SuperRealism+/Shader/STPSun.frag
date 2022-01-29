@@ -3,6 +3,8 @@
 
 #include </Common/STPAtmosphericScattering.glsl>
 
+layout(early_fragment_tests) in;
+
 //Input
 //normalized ray direction, typically a ray cast from the observers eye through a pixel
 in vec3 RayDirection;

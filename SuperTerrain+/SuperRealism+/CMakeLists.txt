@@ -17,6 +17,8 @@ STPRealismEnvironment.cpp
 STPRenderBuffer.cpp
 STPRendererInitialiser.cpp
 STPSampler.cpp
+STPSceneLight.cpp
+STPSceneObject.cpp
 STPScenePipeline.cpp
 STPScreen.cpp
 STPShaderManager.cpp

@@ -5,6 +5,8 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //Rendering Utility
 #include "../Utility/Camera/STPCamera.h"
+//Base Shadow
+#include "STPLightShadow.hpp"
 
 //System
 #include <array>
@@ -23,18 +25,21 @@ namespace SuperTerrainPlus::STPRealism {
 	 * fits the ortho matrix for each frustum, for each frustum render a shader map as if seen from the directional light.
 	 * Finally render the scene with shadow according to fragment depth value from corrected shadow map.
 	*/
-	class STP_REALISM_API STPCascadedShadowMap : private STPCamera::STPStatusChangeCallback {
+	class STP_REALISM_API STPCascadedShadowMap : public STPLightShadow, private STPCamera::STPStatusChangeCallback {
 	public:
+
+		//An array of float that determines the planes position of each camera frustum cut, 
+		//starting from the viewing camera near plane as the first array element.
+		typedef std::vector<float> STPCascadePlane;
 
 		/**
 		 * @brief STPLightFrustum defines the properties of the light frustum.
 		*/
 		struct STPLightFrustum {
 		public:
-
-			//An array of float that determines the planes position of each camera frustum cut, 
-			//starting from the viewing camera near plane as the first array element.
-			std::vector<float> Division;
+			
+			//Specifies each level of shadow plane.
+			STPCascadePlane Division;
 			//The pointer to the camera where the light frustum will be constructed based on this camera.
 			//This camera must remain valid until the current instance is destroyed.
 			const STPCamera* Focus;
@@ -52,8 +57,10 @@ namespace SuperTerrainPlus::STPRealism {
 		//CSM handles directional light rather than positional.
 		glm::vec3 LightDirection;
 
+		const STPLightFrustum LightFrustum;
+
 		//A flag to indicate if light space matrices need to be recalculated
-		bool LightSpaceOutdated;
+		mutable bool LightSpaceOutdated;
 
 		/**
 		 * @brief Calculate the light space matrix for a particular view frustum.
@@ -79,8 +86,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		const STPLightFrustum LightFrustum;
-
 		/**
 		 * @brief Initialise a directional light instance.
 		 * @param light_frustum The property of the shadow map light frustum.
@@ -98,6 +103,12 @@ namespace SuperTerrainPlus::STPRealism {
 		virtual ~STPCascadedShadowMap();
 
 		/**
+		 * @brief Get an array of float that specifies how the camera is divided into different levels of cascade.
+		 * @return An array of float with division information.
+		*/
+		const STPCascadePlane& getDivision() const;
+
+		/**
 		 * @brief Update the direction of light.
 		 * @param dir The new light direction.
 		*/
@@ -109,9 +120,11 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		const glm::vec3& getDirection() const;
 
-		bool updateLightSpace(glm::mat4*);
+		bool updateLightSpace(glm::mat4*) const override;
 
-		size_t lightSpaceSize() const;
+		size_t lightSpaceDimension() const override;
+
+		void forceLightSpaceUpdate() override;
 
 	};
 

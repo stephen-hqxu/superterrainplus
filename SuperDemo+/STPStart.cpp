@@ -133,8 +133,6 @@ namespace STPStart {
 			using namespace SuperTerrainPlus;
 			using namespace STPDemo;
 
-			throw STPException::STPUnsupportedFunctionality("The demo program is not yet completed for deferred rendering pipeline");
-
 			//loading terrain parameters
 			STPEnvironment::STPConfiguration config;
 			STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI["simplex"]);
@@ -185,7 +183,8 @@ namespace STPStart {
 			if (!STPDebugCallback::support()) {
 				throw STPException::STPUnsupportedFunctionality("The current GL does not support debug callback");
 			}
-			glEnable(GL_MULTISAMPLE);
+			//MS is unnecessary in deferred shading
+			glDisable(GL_MULTISAMPLE);
 			glEnable(GL_DEBUG_OUTPUT);
 			STPDebugCallback::registerAsyncCallback(cout);
 			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
@@ -247,7 +246,7 @@ namespace STPStart {
 					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform
 				};
 
-				scene_init.add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_log, terrain_opt, scene_shadow);
+				this->TerrainRenderer = &scene_init.add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_log, terrain_opt, scene_shadow);
 				STPMasterRenderer::printLog(terrain_log.ShaderComponent);
 				STPMasterRenderer::printLog(terrain_log.DepthComponent);
 				//initial setup
@@ -260,16 +259,26 @@ namespace STPStart {
 				STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::Lottes> postprocess_def;
 				STPPostProcess::STPPostProcessLog postprocess_log;
 
-				scene_init.add<STPPostProcess>(postprocess_def, postprocess_log);
+				this->FinalProcess = &scene_init.add<STPPostProcess>(postprocess_def, postprocess_log);
 				STPMasterRenderer::printLog(postprocess_log.QuadShader);
 				STPMasterRenderer::printLog(postprocess_log.PostProcessShader);
 			}
 
 			//setup rendering pipeline
-			this->RenderPipeline.emplace(std::move(scene_init), camera);
+			STPScenePipeline::STPScenePipelineLog scene_log;
+			this->RenderPipeline.emplace(std::move(scene_init), camera, scene_log);
+			const auto& lighting_log = scene_log.GeometryBufferResolution;
+			STPMasterRenderer::printLog(lighting_log.QuadShader);
+			STPMasterRenderer::printLog(lighting_log.LightingShader);
 			//basic setup
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
 			//TODO: read light property from INI and set to the rendering pipeline
+			STPEnvironment::STPLightSetting::STPAmbientLightSetting ambient;
+			ambient.AmbientStrength = 0.3f;
+			STPEnvironment::STPLightSetting::STPDirectionalLightSetting directional;
+			directional.DiffuseStrength = 1.4f;
+			directional.SpecularStrength = 0.85f;
+			this->RenderPipeline->setLightProperty(ambient, directional, 35.5f);
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
@@ -292,7 +301,7 @@ namespace STPStart {
 			//change the sun position
 			this->SunRenderer->advanceTick(1ull);
 			//updat terrain rendering settings.
-			this->RenderPipeline->updateLightStatus();
+			this->RenderPipeline->updateLightStatus(this->SunRenderer->sunDirection());
 
 			//render, all async operations are sync automatically
 			using namespace SuperTerrainPlus::STPRealism;
@@ -399,6 +408,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwWindowHint(GLFW_ALPHA_BITS, 8);
 		glfwWindowHint(GLFW_DEPTH_BITS, 24);
 		glfwWindowHint(GLFW_STENCIL_BITS, 8);
+		glfwWindowHint(GLFW_SAMPLES, 0);
 
 		//creation of the rendering window
 		GLCanvas = glfwCreateWindow(InitialCanvasSize.x, InitialCanvasSize.y, "SuperTerrain+ Demo", nullptr, nullptr);

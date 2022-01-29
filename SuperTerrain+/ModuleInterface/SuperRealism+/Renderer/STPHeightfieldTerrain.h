@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Scene Node
-#include "../Scene/STPSceneObject.hpp"
+#include "../Scene/STPSceneObject.h"
 //GL Utility
 #include "../Object/STPPipelineManager.h"
 #include "../Object/STPBuffer.h"
@@ -180,7 +180,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		~STPHeightfieldTerrain() = default;
 
-		void renderDepth() const override;
+		void renderDepth(unsigned int, unsigned int) const override;
 
 	};
 

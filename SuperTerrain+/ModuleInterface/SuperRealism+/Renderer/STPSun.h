@@ -14,7 +14,7 @@
 
 //Lighting
 #include "../Scene/STPLightSpectrum.h"
-#include "../Scene/STPCascadedShadowMap.h"
+#include "../Scene/STPSceneLight.h"
 
 //GLM
 #include <glm/vec3.hpp>
@@ -33,7 +33,7 @@ namespace SuperTerrainPlus::STPRealism {
 	class STPSun;
 	
 	template<>
-	class STP_REALISM_API STPSun<false> {
+	class STP_REALISM_API STPSun<false> : public STPSceneLight::STPEnvironmentLight<false> {
 	public:
 
 		/**
@@ -193,15 +193,14 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void setAtmoshpere(const STPEnvironment::STPAtmosphereSetting&);
 
-		/**
-		 * @brief Render the sun with atmospheric scattering effect.
-		*/
-		void render() const;
+		const STPLightSpectrum& getLightSpectrum() const override;
+
+		void renderEnvironment() override;
 
 	};
 
 	template<>
-	class STP_REALISM_API STPSun<true> : public STPCascadedShadowMap, public STPSun<false> {
+	class STP_REALISM_API STPSun<true> : public STPSun<false>, public STPSceneLight::STPEnvironmentLight<true> {
 	public:
 
 		/**

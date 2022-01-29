@@ -4,6 +4,8 @@
 //For non-uniform access to bindless texture
 #extension GL_NV_gpu_shader5 : require
 
+layout(early_fragment_tests) in;
+
 //Input
 in vec2 FragTexCoord;
 //Output
@@ -71,8 +73,15 @@ void main(){
 }
 
 vec3 depthReconstruction(){
+	//depth has range [0, 1]
 	const float Depth = texture(G_DEPTH, FragTexCoord).r;
-	
+	//OpenGL requires NDC to be in range [-1, 1], so we need to convert the range
+	//Note that texture coordinate is also a [0, 1] range.
+	const vec4 position_clip = vec4(vec3(FragTexCoord, Depth) * 2.0f - 1.0f, 1.0f),
+		//TODO: it might be slow to do runtime matrix mul and inv, find a better way...
+		position_world = inverse(CameraProjection * CameraView) * position_clip;
+
+	return position_world.xyz / position_world.w;
 }
 
 vec3 calcCasterLight(vec3 position_world, vec3 normal, float specular_strength, float ambient_strength){

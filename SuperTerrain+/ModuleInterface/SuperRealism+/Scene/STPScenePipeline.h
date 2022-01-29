@@ -5,8 +5,8 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //Rendering Component
 #include "../Renderer/STPPostProcess.h"
-#include "STPSceneObject.hpp"
-#include "../Renderer/STPSun.h"
+#include "STPSceneObject.h"
+#include "STPSceneLight.h"
 #include "../Renderer/STPPostProcess.h"
 //Lighting
 #include "../Environment/STPLightSetting.h"
@@ -14,8 +14,6 @@
 #include "../Utility/Camera/STPCamera.h"
 //GL Object
 #include "../Object/STPTexture.h"
-#include "../Object/STPRenderBuffer.h"
-#include "../Object/STPFrameBuffer.h"
 #include "../Object/STPBuffer.h"
 
 #include "../Utility/STPShadowInformation.hpp"
@@ -72,8 +70,8 @@ namespace SuperTerrainPlus::STPRealism {
 			std::vector<STPSceneObject::STPOpaqueObject<true>*> ShadowOpaqueObject;
 
 			//Light nodes
-			std::vector<std::unique_ptr<STPSun<false>>> EnvironmentObjectDatabase;
-			std::vector<STPSun<true>*> ShadowEnvironmentObject;
+			std::vector<std::unique_ptr<STPSceneLight::STPEnvironmentLight<false>>> EnvironmentObjectDatabase;
+			std::vector<STPSceneLight::STPEnvironmentLight<true>*> ShadowEnvironmentObject;
 
 			//Post process node
 			std::unique_ptr<STPPostProcess> PostProcessObject;
@@ -134,7 +132,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @param arg... The argument lists.
 			 * @return The pointer to the newly constructed rendering component.
 			 * This pointer is managed by the current scene pipeline.
-			 * If the object type is not supported, error is thrown.
+			 * If the object type is not supported, operation is ignored.
 			*/
 			template<class Obj, typename... Arg>
 			Obj& add(Arg&&...);
@@ -157,8 +155,7 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STPSharedTexture {
 		public:
 
-			STPTexture Depth;
-			STPRenderBuffer Stencil;
+			STPTexture DepthStencil;
 
 			/**
 			 * @brief Default initialise shared texture memory.
@@ -204,13 +201,33 @@ namespace SuperTerrainPlus::STPRealism {
 	public:
 
 		/**
+		 * @brief STPScenePipelineLog contains logs from compilations of scene pipeline shaders.
+		*/
+		struct STPScenePipelineLog {
+		public:
+
+			/**
+			 * @brief STPGeometryBufferResolutionLog stores log for the lighting pipeline. 
+			*/
+			struct STPGeometryBufferResolutionLog {
+			public:
+
+				STPScreen::STPScreenLog QuadShader;
+				STPLogStorage<2ull> LightingShader;
+
+			} GeometryBufferResolution;
+
+		};
+
+		/**
 		 * @brief Initialise an empty scene pipeline.
 		 * @param init The pointer to the scene pipeline initialiser.
 		 * After construction, the scene graph within the initialiser will be moved under the scene pipeline and become undefined.
 		 * @param camera The pointer to the camera.
 		 * The camera must remain valid as long as the current scene pipeline is valid.
+		 * @param log The pointer to log to output the initial compilation results for scene pipeline.
 		*/
-		STPScenePipeline(STPSceneInitialiser&&, const STPCamera&);
+		STPScenePipeline(STPSceneInitialiser&&, const STPCamera&, STPScenePipelineLog&);
 
 		STPScenePipeline(const STPScenePipeline&) = delete;
 
@@ -239,8 +256,9 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Flush the light direction and spectrum coordinate.
 		 * TODO: The system currently only supports a single light.
+		 * @param direction The pointer to the new light direction.
 		*/
-		void updateLightStatus();
+		void updateLightStatus(const glm::vec3&);
 
 		/**
 		 * @brief Update the light property in the scene.

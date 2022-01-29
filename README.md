@@ -1,4 +1,5 @@
 <h1 align="center"> Super Terrain + </h1>
+<p align="center"> A modern procedural terrain engine aiming for real-time and photorealism </p>
 
 <p align="center">
 	<img src="https://img.shields.io/badge/C%2B%2B_17-00599C?style=flat&logo=c%2B%2B&logoColor=white" />
@@ -11,15 +12,19 @@
 
 ## :eyes: Overview
 
-*SuperTerrain+* is a modern procedural terrain generator with physics simulations and aiming for real-time photo-realistic rendering. It was started as my computer science dissertation project and inspired by many games, software and movies with procedural generation features. The time allowance as a school project is too limited to explore all of the amazing stuff in this topic, therefore I would like to keep going.
+*SuperTerrain+* is a modern procedural terrain generator with physics simulations and aiming for real-time photorealistic rendering. It was started as my computer science dissertation project and inspired by many games, software and movies with procedural generation features. The time allowance as a school project is too limited to explore all the amazing stuff in this topic, therefore I would like to keep going.
 
 Procedural generation is one of the most popular topics in computer graphics and allows us to create data using the power of algorithm and minimise efforts spent on pre-modelling/computing.
 
 *SuperTerrain+* provides engine-like object-oriented interfaces to allow developers to customise the scenery as they preferred. Rather than considering it as a piece of software, it is also a collection of modern computer graphics techniques; with the help of detailed inline documentations, this is also a great place for learning.
 
-*SuperTerrain+* is focusing on the next-generation computer graphics, so I have to spend most of my time on the latest technologies, therefore there is no intention for backward compatibility and the system requirement will be evolving.
+*SuperTerrain+* is focusing on the next-generation computer graphics, so I have to spend most of my time on the latest technologies, therefore there is no intention for backward compatibility and the development environment such as programming language standard and hardware requirement, will be evolving over time.
 
 ## :bulb: Main Features
+
+*SuperTerrain+* is definitely not the first application that brings out procedural generation, then why we need yet another one?
+
+There is no perfect answer to this question, every application has its own pros and cons. Other than being modern, flexible and specialised for terrain generation and real-time photorealistic rendering, and of course for fun, these features are believed to differentiate *SuperTerrain+* from the others.
 
 ### Procedural heightfield infinite terrain
 
@@ -29,15 +34,15 @@ Procedural generation is one of the most popular topics in computer graphics and
 - [x] Continuous level-of-detail
 - [x] Concurrent heightfield generation
 - [x] Particle-based free-slip hydraulic erosion
-- [x] Programmable static/runtime-compiled pipeline stage
+- [x] Programmable static/runtime-compiled pipeline
 - [x] Biome generation with classic *Minecraft* [Grown Biomes](http://cuberite.xoft.cz/docs/Generator.html) algorithm
-- [x] Multi-biome heightfield generation with smooth transition
+- [x] Single histogram filter for Multi-biome heightfield generation with smooth transition
 - [x] Rule-based biome-dependent terrain texture splatting with smooth transition
 - [ ] River and lake generation
 
 ### Procedural volumetric infinite terrain
 
-- [ ] Come up with a nice plan for this topic
+- [ ] Come up with a nice plan for this challenging topic
 
 ### Procedural geometry generation
 
@@ -46,27 +51,35 @@ Procedural generation is one of the most popular topics in computer graphics and
 - [ ] Procedural parameter-based tree generation
 - [ ] Volumetric cloud generation
 
-### Real-time photo-realistic rendering
+### Real-time photorealistic rendering
 
-- [x] Procedural sun rendering
 - [x] Procedural atmospheric scattering
-- [x] Physically-based day-night cycle
-- [x] High dynamic range with filmic tone mapping
-- [x] Post-processing
-- [x] Shadow for directional light with cascaded shadow map
-- [ ] Deferred rendering pipeline
+- [x] Realistic sun orbiting
+- [ ] Post-processing
+  - [x] Filmic tone mapping
+  - [x] Gamma correction
+  - [ ] Auto-exposure
+  - [ ] Contrast
+- [ ] Shadow mapping
+  - [ ] Simple shadow mapping for spotlight
+  - [ ] Cubemap shadow mapping for pointlight
+  - [x] Parallel-split cascaded shadow mapping for directional light
+- [ ] Deferred shading
 - [ ] Screen-space ambient occlusion
 - [ ] Anti-aliasing for deferred renderer
 - [ ] Multiple lights
-- [ ] Clustered deferred shading
 - [ ] Night rendering
 - [ ] Procedural weather effect
 - [ ] Screen-space reflection/refraction for water rendering
 - [ ] ~~Real-time~~ raster-ray tracing hybrid rendering
 
-## :bricks: Middleware
+### Optimisation technique
 
-### External libraries
+- [ ] Frustum culling
+- [ ] Sparse virtual texture (a.k.a. mega-texture) for shadow map
+- [ ] Deferred clustered lighting
+
+## :bricks: Middleware
 
 Those are some third-party libraries used by the main engine.
 
@@ -80,7 +93,7 @@ Here is a list of additional dependencies if you are running the demo program.
 - [stb_image.h](https://github.com/nothings/stb/blob/master/stb_image.h)
 - [SIMPLE](https://github.com/stephen-hqxu/SIMPLE)
 
-The main engine is unit-tested with.
+The application is unit-tested with.
 
 - [Catch2 v3.0.0-preview4](https://github.com/catchorg/Catch2)
 
@@ -101,7 +114,7 @@ The main engine is unit-tested with.
   - SuperAlgorithm+: A library of useful algorithms for terrain generation.
     - SuperAlgorithm+Host: Algorithms that are best suited for CPU execution.
     - SuperAlgorithm+Device:  Algorithms that can be benefited from mass parallel computing using GPU.
-  - SuperRealism+: A rendering engine for photo-realistic rendering, with some handy GL functions and object wrappers.
+  - SuperRealism+: A rendering engine for photorealistic rendering, with some handy GL functions and object wrappers.
 - SuperDemo+: An application which demonstrates the usage of the main engine.
 - SuperTest+: Unit test program.
 
@@ -132,7 +145,7 @@ The main engine is unit-tested with.
 	<img src="https://img.shields.io/badge/NVIDIA-GTX_1660-76B900?style=flat&logo=nvidia&logoColor=white" />
 </p>
 
-> Unfortunately AMD and Intel GPU are not supported as CUDA only works on Nvidia GPU. *SuperTerrain+* is mostly optimised for *Turing* (CUDA compute capability 7.5) and newer, consumer-level architectures.
+> Sorry for AMD and Intel GPU because they are not supported by CUDA. *SuperTerrain+* is mostly optimised for *Turing* (CUDA compute capability 7.5) and newer, consumer-level Nvidia GPUs. The GPU requirement here is a very trivial approximation, the performance depends highly on configuration and level of re-programming to the engine.
 
 - RAM: 4GB
 - OS
@@ -152,7 +165,7 @@ The main engine is unit-tested with.
 
 ### :gear: How to build
 
-1. Master branch is considered as a *dev* branch in this project, so make sure you have grabbed the latest stable source code from [**Releases**](https://github.com/stephen-hqxu/superterrainplus/releases) :point_left: :grinning:
+1. Master branch is considered as a *work-in-progress* branch in this project, so make sure you have grabbed the latest stable source code from [Releases](https://github.com/stephen-hqxu/superterrainplus/releases) :point_left: :grinning:
 
 2. Unzip the source code and go to project root.
 
@@ -208,7 +221,7 @@ You may obtain the following executables:
 
 This section contains source code and libraries that are not dependencies of this project but they are where ideas and inspirations are taken from.
 
-For academic style references with *BibTex*, check out the project dissertation as linked above.
+For academic style *BibTex* references, check out the project dissertation as linked above.
 
 Please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com) if you find your publication is being used but not listed below.
 
@@ -223,7 +236,7 @@ Please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com) if yo
 
 - [Animated grassland generation](https://github.com/spacejack/terra)
 
-### Photo-realistic rendering
+### Photorealistic rendering
 
 - [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
 - [Simulating the Colors of the Sky](https://www.scratchapixel.com/lessons/procedural-generation-virtual-worlds/simulating-sky) from *Scratchapixel*

@@ -30,8 +30,10 @@ Renderer/STPScreen.h
 Renderer/STPSun.h
 # /Scene
 Scene/STPCascadedShadowMap.h
+Scene/STPLightShadow.hpp
 Scene/STPLightSpectrum.h
-Scene/STPSceneObject.hpp
+Scene/STPSceneLight.h
+Scene/STPSceneObject.h
 Scene/STPScenePipeline.h
 Scene/STPScenePipeline.inl
 # /Utility/Camera

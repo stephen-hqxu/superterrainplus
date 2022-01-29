@@ -338,7 +338,7 @@ STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_p
 		.finalise();
 }
 
-void STPHeightfieldTerrain<true>::renderDepth() const {
+void STPHeightfieldTerrain<true>::renderDepth(unsigned int, unsigned int) const {
 	this->TerrainGenerator.wait();
 
 	//in this case we only need heightfield for tessellation
