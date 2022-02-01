@@ -4,10 +4,10 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Light
-#include "STPLightSpectrum.h"
+#include "./Light/STPLightSpectrum.h"
 
 //Light Shadow Solution
-#include "STPCascadedShadowMap.h"
+#include "./Light/STPCascadedShadowMap.h"
 
 namespace SuperTerrainPlus::STPRealism {
 

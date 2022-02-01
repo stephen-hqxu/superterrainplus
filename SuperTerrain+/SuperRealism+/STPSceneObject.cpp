@@ -3,36 +3,41 @@
 //Error
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
-//System
-#include <algorithm>
-
-using std::vector;
-using std::binary_search;
-using std::lower_bound;
+using std::array;
+using std::make_pair;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-inline auto STPSceneObject::STPDepthRendererGroup::getKeyLocation(unsigned int light_space_count) const {
-	return lower_bound(this->LightSpaceSize.cbegin(), this->LightSpaceSize.cend(), light_space_count);
+template<size_t GS>
+bool STPSceneObject::STPDepthRenderGroup<GS>::exist(unsigned int light_space_count) const {
+	return this->LightSpaceDatabase.find(light_space_count) != this->LightSpaceDatabase.cend();
 }
 
-bool STPSceneObject::STPDepthRendererGroup::exist(unsigned int light_space_count) const {
-	return binary_search(this->LightSpaceSize.cbegin(), this->LightSpaceSize.cend(), light_space_count);
-}
-
-STPPipelineManager& STPSceneObject::STPDepthRendererGroup::addGroup(unsigned int light_space_count) {
-	const auto key_loc = this->getKeyLocation(light_space_count);
-	if (*key_loc == light_space_count) {
+template<size_t GS>
+typename STPSceneObject::STPDepthRenderGroup<GS>::STPGroupMember& STPSceneObject::STPDepthRenderGroup<GS>::addGroup(unsigned int light_space_count) {
+	//the values are default constructable
+	auto [it, inserted] = this->LightSpaceDatabase.try_emplace(light_space_count);
+	if (!inserted) {
 		throw STPException::STPMemoryError("Another depth renderer group with the same configuration has been added previously");
 	}
 
-	//insert the new key while maintaining sorted order, get the index to locate the pipeline
-	const size_t index = this->LightSpaceSize.insert(key_loc, light_space_count) - this->LightSpaceSize.begin();
-	return *this->LightSpaceDepthRenderer.emplace(this->LightSpaceDepthRenderer.cbegin() + index);
+	//ok to return a new member
+	return it->second;
 }
 
-STPPipelineManager& STPSceneObject::STPDepthRendererGroup::findGroup(unsigned int light_space_count) {
-	const size_t index = this->getKeyLocation(light_space_count) - this->LightSpaceSize.cbegin();
-
-	return this->LightSpaceDepthRenderer[index];
+template<size_t GS>
+STPPipelineManager& STPSceneObject::STPDepthRenderGroup<GS>::findPipeline(unsigned int light_space_count) {
+	return const_cast<STPPipelineManager&>(const_cast<const STPDepthRenderGroup*>(this)->findPipeline(light_space_count));
 }
+
+template<size_t GS>
+inline const STPPipelineManager& STPSceneObject::STPDepthRenderGroup<GS>::findPipeline(unsigned int light_space_count) const {
+	//error checking is not needed, we have informed the user for the UB
+	//because this function might get called multiple times every frame, just to make it cheaper.
+	return this->LightSpaceDatabase.find(light_space_count)->second.first;
+}
+
+//Explicit Instantiation
+#define DEPTH_RENDER_GROUP(COUNT) template class STP_REALISM_API STPSceneObject::STPDepthRenderGroup<COUNT>
+DEPTH_RENDER_GROUP(1ull);
+DEPTH_RENDER_GROUP(2ull);

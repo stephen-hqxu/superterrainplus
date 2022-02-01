@@ -12,10 +12,10 @@ out vec3 RayDirection;
 void main(){
 	RayDirection = normalize(Position);
 	
-	const mat3 viewRotation = mat3(CameraView);
+	const mat3 viewRotation = mat3(Camera.View);
 	const vec3 SkyBoxPosition = viewRotation * vec3(Position);
 	//An optimisation, depth buffer of this sky box will always be 1.0
 	//So the sky box will only be rendered when there is no visible object in between
 	//depth function should be set to less than or equal to
-	gl_Position = (CameraProjection * vec4(SkyBoxPosition, 1.0f)).xyww;
+	gl_Position = (Camera.Projection * vec4(SkyBoxPosition, 1.0f)).xyww;
 }

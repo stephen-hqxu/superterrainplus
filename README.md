@@ -64,7 +64,7 @@ There is no perfect answer to this question, every application has its own pros 
   - [ ] Simple shadow mapping for spotlight
   - [ ] Cubemap shadow mapping for pointlight
   - [x] Parallel-split cascaded shadow mapping for directional light
-- [ ] Deferred shading
+- [x] Deferred shading
 - [ ] Screen-space ambient occlusion
 - [ ] Anti-aliasing for deferred renderer
 - [ ] Multiple lights

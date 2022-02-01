@@ -4,24 +4,24 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Scene Node
-#include "../Scene/STPSceneObject.h"
+#include "../STPSceneObject.h"
 //GL Utility
-#include "../Object/STPPipelineManager.h"
-#include "../Object/STPBuffer.h"
-#include "../Object/STPVertexArray.h"
-#include "../Object/STPTexture.h"
-#include "../Object/STPBindlessTexture.h"
-#include "../Utility/STPLogStorage.hpp"
-#include "../Utility/STPShadowInformation.hpp"
+#include "../../Object/STPPipelineManager.h"
+#include "../../Object/STPBuffer.h"
+#include "../../Object/STPVertexArray.h"
+#include "../../Object/STPTexture.h"
+#include "../../Object/STPBindlessTexture.h"
+#include "../../Utility/STPLogStorage.hpp"
 
 //Terrain Generator
 #include <SuperTerrain+/World/STPWorldPipeline.h>
-#include "../Environment/STPMeshSetting.h"
+#include "../../Environment/STPMeshSetting.h"
 
 //GLM
 #include <glm/vec3.hpp>
 
 //System
+#include <list>
 #include <optional>
 
 namespace SuperTerrainPlus::STPRealism {
@@ -152,35 +152,37 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPHeightfieldTerrain<true> : public STPSceneObject::STPOpaqueObject<true>, public STPHeightfieldTerrain<false> {
 	public:
 
-		struct STPHeightfieldTerrainLog {
-		public:
-
-			//Log belongs to the basic renderer.
-			STPHeightfieldTerrain<false>::STPHeightfieldTerrainLog ShaderComponent;
-			//Log for depth renderer.
-			STPLogStorage<3ull> DepthComponent;
-
-		};
+		typedef STPLogStorage<3ull> STPTerrainDepthLog;
 
 	private:
 
-		//depth writer contains an empty geometry shader and no shading, for depth map rendering
-		STPProgramManager TerrainDepthWriter;
 		//depth renderer prunes the frag shader.
-		STPPipelineManager TerrainDepthRenderer;
+		STPSceneObject::STPDepthRenderGroup<1ull> TerrainDepthRenderer;
+
+		//An array holds all logs for compiling depth
+		//std::list<STPTerrainDepthLog> TerrainDepthLogDatabase;
 
 	public:
 
 		/**
 		 * @brief Initialise the heightfield terrain rendering engine with shadow rendering.
-		 * Arguments are nearly the same as its base class except some additional information required.
+		 * Arguments are exactly the same as the base version.
 		 * @see STPHeightfieldTerrain<false>.
 		*/
-		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, const STPTerrainShaderOption&, const STPShadowInformation&);
+		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, const STPTerrainShaderOption&);
 
 		~STPHeightfieldTerrain() = default;
 
-		void renderDepth(unsigned int, unsigned int) const override;
+		/**
+		 * @brief Specifically adjust the mesh quality when rendering to depth buffer.
+		 * @param tess The pointer to the tessellation setting.
+		 * It is recommended to use a (much) lower quality than the actual rendering.
+		*/
+		void setDepthMeshQuality(const STPEnvironment::STPMeshSetting::STPTessellationSetting&);
+
+		bool addDepthConfiguration(unsigned int) override;
+
+		void renderDepth(unsigned int) const override;
 
 	};
 

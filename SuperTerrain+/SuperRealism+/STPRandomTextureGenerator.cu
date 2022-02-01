@@ -111,6 +111,4 @@ __global__ void generateRandomTextureKERNEL(cudaSurfaceObject_t surface, uvec3 d
 #define GENERATE(TYPE) \
 template __host__ void STPRandomTextureGenerator::generate(cudaArray_t, uvec3, unsigned long long, TYPE, TYPE)
 
-GENERATE(float);
 GENERATE(unsigned char);
-GENERATE(unsigned short);

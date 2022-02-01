@@ -51,7 +51,7 @@ void main(){
 			//override the altitude of view position and vertex position
 			//to make sure they are at the same height and will not be affected by displacement of vertices later.
 			const vec2 vertexPos = gl_in[i].gl_Position.xz,
-				viewPos = CameraPosition.xz;
+				viewPos = Camera.Position.xz;
 
 			//perform linear interpolation to the distance
 			vertexDistance[i] = clamp((distance(vertexPos, viewPos) - Tess.MinDis) / (Tess.MaxDis - Tess.MinDis), 0.0f, 1.0f);

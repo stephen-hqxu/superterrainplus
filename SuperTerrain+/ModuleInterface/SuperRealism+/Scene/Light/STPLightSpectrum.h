@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Object
-#include "../Object/STPTexture.h"
+#include "../../Object/STPTexture.h"
 
 //GLM
 #include <glm/vec3.hpp>

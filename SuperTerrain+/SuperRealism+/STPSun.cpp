@@ -1,4 +1,4 @@
-#include <SuperRealism+/Renderer/STPSun.h>
+#include <SuperRealism+/Scene/Component/STPSun.h>
 //Shader Dir
 #include <SuperRealism+/STPRealismInfo.h>
 

@@ -4,17 +4,17 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Setting
-#include "../Environment/STPSunSetting.h"
-#include "../Environment/STPAtmosphereSetting.h"
+#include "../../Environment/STPSunSetting.h"
+#include "../../Environment/STPAtmosphereSetting.h"
 //Rendering Engine
-#include "../Object/STPProgramManager.h"
-#include "../Object/STPBuffer.h"
-#include "../Object/STPVertexArray.h"
-#include "../Utility/STPLogStorage.hpp"
+#include "../../Object/STPProgramManager.h"
+#include "../../Object/STPBuffer.h"
+#include "../../Object/STPVertexArray.h"
+#include "../../Utility/STPLogStorage.hpp"
 
 //Lighting
-#include "../Scene/STPLightSpectrum.h"
-#include "../Scene/STPSceneLight.h"
+#include "../Light/STPLightSpectrum.h"
+#include "../STPSceneLight.h"
 
 //GLM
 #include <glm/vec3.hpp>

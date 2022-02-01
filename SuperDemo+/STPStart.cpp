@@ -12,10 +12,10 @@
 //SuperRealism+ Engine
 #include <SuperRealism+/STPRendererInitialiser.h>
 #include <SuperRealism+/Utility/Camera/STPPerspectiveCamera.h>
-#include <SuperRealism+/Scene/STPScenePipeline.h>
-#include <SuperRealism+/Renderer/STPHeightfieldTerrain.h>
-#include <SuperRealism+/Renderer/STPSun.h>
-#include <SuperRealism+/Renderer/STPPostProcess.h>
+#include <SuperRealism+/STPScenePipeline.h>
+#include <SuperRealism+/Scene/Component/STPHeightfieldTerrain.h>
+#include <SuperRealism+/Scene/Component/STPSun.h>
+#include <SuperRealism+/Scene/Component/STPPostProcess.h>
 //GL helper
 #include <SuperRealism+/Utility/STPDebugCallback.h>
 
@@ -191,7 +191,6 @@ namespace STPStart {
 			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE);
 
 			STPScenePipeline::STPSceneInitialiser scene_init;
-			scene_init.ShadowMapResolution = uvec2(2048u);
 			scene_init.ShadowFilter = STPScenePipeline::STPShadowMapFilter::Bilinear;
 			scene_init.ShadowMapBias = vec2(0.05f, 0.005f);
 			//setup light
@@ -199,14 +198,16 @@ namespace STPStart {
 			{
 				//sun shadow setting
 				const float camFar = camera.cameraStatus().Far;
-				STPCascadedShadowMap::STPLightFrustum frustum;
-				frustum.Division = {
-					camFar / 8.0f,
-					camFar / 4.0f,
-					camFar / 2.0f
+				const STPCascadedShadowMap::STPLightFrustum frustum = {
+					uvec2(2048u),
+					{
+						camFar / 8.0f,
+						camFar / 4.0f,
+						camFar / 2.0f
+					},
+					&camera,
+					250.5f
 				};
-				frustum.Focus = &camera;
-				frustum.ShadowDistanceMultiplier = 250.5f;
 
 				//sun
 				STPSun<true>::STPSunLog sun_log;
@@ -233,9 +234,6 @@ namespace STPStart {
 				this->SunRenderer->SunSpectrum(spectrum_spec);
 			}
 
-			//get the scene shadow information
-			const STPShadowInformation scene_shadow = scene_init.shadowInitialiser();
-
 			//setup solid object
 			//-------------------------------------------
 			{
@@ -246,9 +244,8 @@ namespace STPStart {
 					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform
 				};
 
-				this->TerrainRenderer = &scene_init.add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_log, terrain_opt, scene_shadow);
-				STPMasterRenderer::printLog(terrain_log.ShaderComponent);
-				STPMasterRenderer::printLog(terrain_log.DepthComponent);
+				this->TerrainRenderer = &scene_init.add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
+				STPMasterRenderer::printLog(terrain_log);
 				//initial setup
 				this->TerrainRenderer->setMesh(MeshSetting);
 				this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
@@ -277,7 +274,7 @@ namespace STPStart {
 			ambient.AmbientStrength = 0.3f;
 			STPEnvironment::STPLightSetting::STPDirectionalLightSetting directional;
 			directional.DiffuseStrength = 1.4f;
-			directional.SpecularStrength = 0.85f;
+			directional.SpecularStrength = 5.5f;
 			this->RenderPipeline->setLightProperty(ambient, directional, 35.5f);
 		}
 

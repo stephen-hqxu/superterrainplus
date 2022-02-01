@@ -1,4 +1,4 @@
-#include <SuperRealism+/Renderer/STPHeightfieldTerrain.h>
+#include <SuperRealism+/Scene/Component/STPHeightfieldTerrain.h>
 #include <SuperRealism+/STPRealismInfo.h>
 //Noise Generator
 #include <SuperRealism+/Utility/STPRandomTextureGenerator.cuh>
@@ -298,10 +298,21 @@ void STPHeightfieldTerrain<false>::render() const {
 	STPPipelineManager::unbind();
 }
 
-STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& raw_log, 
-	const STPTerrainShaderOption& option, const STPShadowInformation& terrain_shadow_info) :
-	STPHeightfieldTerrain<false>(generator_pipeline, raw_log.ShaderComponent, option) {
-	auto& log = raw_log.DepthComponent;
+STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, 
+	const STPTerrainShaderOption& option) :
+	STPHeightfieldTerrain<false>(generator_pipeline, log, option) {
+	
+}
+
+bool STPHeightfieldTerrain<true>::addDepthConfiguration(unsigned int light_space_count) {
+	STPTerrainDepthLog log;
+	//create a new render group
+	if (this->TerrainDepthRenderer.exist(light_space_count)) {
+		//group exists, don't add
+		return false;
+	}
+	auto& [depth_renderer, depth_writer_arr] = this->TerrainDepthRenderer.addGroup(light_space_count);
+	auto& [depth_writer] = depth_writer_arr;
 
 	//now the base renderer is finished, setup depth renderer
 	STPShaderManager terrain_shadow_shader(GL_GEOMETRY_SHADER);
@@ -311,34 +322,32 @@ STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_p
 	STPShaderManager::STPShaderSource shadow_shader_source(*STPFile(HeightfieldTerrainShaderFilename[3].data()));
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
-	Macro("HEIGHTFIELD_SHADOW_PASS", 1);
-	//load settings for shadow mapping directly
-	//no sampling implementaion because geometry shader only renders to depth
-	for (const auto& [name, value] : terrain_shadow_info) {
-		Macro(name, value);
-	}
+	Macro("HEIGHTFIELD_SHADOW_PASS", 1)
+		("HEIGHTFIELD_SHADOW_PASS_INVOCATION", light_space_count);
 
 	shadow_shader_source.define(Macro);
 	log.Log[0] = terrain_shadow_shader(shadow_shader_source);
 
 	//attach program for depth writing
-	this->TerrainDepthWriter.attach(terrain_shadow_shader)
+	depth_writer.attach(terrain_shadow_shader)
 		.separable(true);
 
 	//link
-	log.Log[1] = this->TerrainDepthWriter.finalise();
-	if (!this->TerrainDepthWriter) {
+	log.Log[1] = depth_writer.finalise();
+	if (!depth_writer) {
 		throw STPException::STPGLError("Heightfield terrain shadow renderer setup failed");
 	}
 
 	//build shadow pipeline
-	log.Log[2] = this->TerrainDepthRenderer
+	log.Log[2] = depth_renderer
 		.stage(GL_VERTEX_SHADER_BIT | GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
-		.stage(GL_GEOMETRY_SHADER_BIT, this->TerrainDepthWriter)
+		.stage(GL_GEOMETRY_SHADER_BIT, depth_writer)
 		.finalise();
+
+	return true;
 }
 
-void STPHeightfieldTerrain<true>::renderDepth(unsigned int, unsigned int) const {
+void STPHeightfieldTerrain<true>::renderDepth(unsigned int light_space_count) const {
 	this->TerrainGenerator.wait();
 
 	//in this case we only need heightfield for tessellation
@@ -347,7 +356,8 @@ void STPHeightfieldTerrain<true>::renderDepth(unsigned int, unsigned int) const 
 	this->TileArray.bind();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
 
-	this->TerrainDepthRenderer.bind();
+	//find the correct render group
+	this->TerrainDepthRenderer.findPipeline(light_space_count).bind();
 	//render
 	glDrawElementsIndirect(GL_PATCHES, GL_UNSIGNED_BYTE, nullptr);
 

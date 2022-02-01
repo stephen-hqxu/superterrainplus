@@ -1,6 +1,8 @@
 target_sources(${STP_REALISM_ENGINE} PRIVATE
 STPRealismDefine.h
 STPRendererInitialiser.h
+STPScenePipeline.h
+STPScenePipeline.inl
 # /Environment
 Environment/STPAtmosphereSetting.h
 Environment/STPCameraSetting.h
@@ -23,19 +25,18 @@ Object/STPShaderManager.h
 Object/STPShaderManager.inl
 Object/STPTexture.h
 Object/STPVertexArray.h
-# /Renderer
-Renderer/STPHeightfieldTerrain.h
-Renderer/STPPostProcess.h
-Renderer/STPScreen.h
-Renderer/STPSun.h
+# /Scene/Component
+Scene/Component/STPHeightfieldTerrain.h
+Scene/Component/STPPostProcess.h
+Scene/Component/STPScreen.h
+Scene/Component/STPSun.h
+# /Scene/Light
+Scene/Light/STPCascadedShadowMap.h
+Scene/Light/STPLightShadow.hpp
+Scene/Light/STPLightSpectrum.h
 # /Scene
-Scene/STPCascadedShadowMap.h
-Scene/STPLightShadow.hpp
-Scene/STPLightSpectrum.h
 Scene/STPSceneLight.h
 Scene/STPSceneObject.h
-Scene/STPScenePipeline.h
-Scene/STPScenePipeline.inl
 # /Utility/Camera
 Utility/Camera/STPCamera.h
 Utility/Camera/STPOrthographicCamera.h
@@ -45,7 +46,6 @@ Utility/STPDebugCallback.h
 Utility/STPIndirectCommand.hpp
 Utility/STPLogStorage.hpp
 Utility/STPRandomTextureGenerator.cuh
-Utility/STPShadowInformation.hpp
 )
 
 # config file for the realism rendering engine

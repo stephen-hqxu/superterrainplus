@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Rendering Utility
-#include "../Utility/Camera/STPCamera.h"
+#include "../../Utility/Camera/STPCamera.h"
 //Base Shadow
 #include "STPLightShadow.hpp"
 
@@ -38,6 +38,8 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STPLightFrustum {
 		public:
 			
+			//Set the resolution of the shadow map for each cascade.
+			glm::uvec2 Resolution;
 			//Specifies each level of shadow plane.
 			STPCascadePlane Division;
 			//The pointer to the camera where the light frustum will be constructed based on this camera.
@@ -123,6 +125,8 @@ namespace SuperTerrainPlus::STPRealism {
 		bool updateLightSpace(glm::mat4*) const override;
 
 		size_t lightSpaceDimension() const override;
+
+		glm::uvec2 shadowMapResolution() const override;
 
 		void forceLightSpaceUpdate() override;
 

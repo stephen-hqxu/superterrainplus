@@ -1,4 +1,4 @@
-#include <SuperRealism+/Scene/STPLightSpectrum.h>
+#include <SuperRealism+/Scene/Light/STPLightSpectrum.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>

@@ -39,8 +39,6 @@ inline Obj& SuperTerrainPlus::STPRealism::STPScenePipeline::STPSceneInitialiser:
 
 		if constexpr (is_base_of_v<STPSceneLight::STPEnvironmentLight<true>, Obj>) {
 			this->InitialiserComponent.ShadowEnvironmentObject.emplace_back(env_obj_ptr);
-
-			this->LightSpaceCount += static_cast<unsigned int>(env_obj_ptr->getLightShadow().lightSpaceDimension());
 		}
 
 		return *env_obj_ptr;

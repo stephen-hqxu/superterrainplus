@@ -4,12 +4,12 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Object
+#include "../Object/STPProgramManager.h"
 #include "../Object/STPPipelineManager.h"
 
-#include "../Utility/STPShadowInformation.hpp" 
-
-//System
-#include <vector>
+//Container
+#include <array>
+#include <unordered_map>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -51,56 +51,69 @@ namespace SuperTerrainPlus::STPRealism {
 		public:
 
 			/**
-			 * @brief Initialise a new opaque object that cast shadow.
+			 * @brief Initialise a new opaque object that casts shadow.
 			*/
 			STPOpaqueObject() = default;
 
 			virtual ~STPOpaqueObject() = default;
 
 			/**
+			 * @brief Add a new depth configuration.
+			 * A depth configuration can be considered as a group of shadow-casting light sources with the same light parameters.
+			 * @param light_space_count The number of light space to be captured as a depth texture, as consecutive layered depth textures.
+			 * @return The implementation should guarantee the depth configuration is unique in an opaque object,
+			 * therefore if this depth configuration has been added previously, no operation should be performed and false should be returned.
+			 * If a new configuration is added, returns true.
+			*/
+			virtual bool addDepthConfiguration(unsigned int) = 0;
+
+			/**
 			 * @brief Render the opaque object to a depth texture, with shading pruned.
-			 * @param light_space_start The starting index to locate the current light space information in the shared memory in shader.
 			 * @param light_space_count The number of light space to be captured as a depth texture, as consecutive layered depth textures.
 			*/
-			virtual void renderDepth(unsigned int, unsigned int) const = 0;
+			virtual void renderDepth(unsigned int) const = 0;
 
 		};
 
 		/**
-		 * @brief STPDepthRendererGroup is a utility that helps storing GL program pipeline with different light space count.
+		 * @brief STPDepthRenderGroup is a utility that helps storing GL program pipeline with different light space count.
 		 * This allows compiling one program for each light space count.
 		 * Any greater-then-one light space requires layered rendering, a common way is by doing geometry shader instancing.
 		 * Yet, geometry shader instancing is configured at shader compile-time.
 		 * By grouping depth texture with the same number of layer, this allows choosing a different pipeline and reusing program.
+		 * @param GS Group size. Specifies how many specialised shader program should exist in a rendering pipeline, therefore group size.
+		 * As GL pipeline object allows free-combination of different programs, so it it recommended to reuse shader program 
+		 * and only create those that change based on different depth rendering configuration.
 		*/
-		class STP_REALISM_API STPDepthRendererGroup {
+		template<size_t GS>
+		class STP_REALISM_API STPDepthRenderGroup {
+		public:
+
+			static_assert(GS <= 2ull, "Depth render group currently only supports group size upto 2");
+
+			//Contains all depth shader program in a group
+			typedef std::array<STPProgramManager, GS> STPShaderCollection;
+			//All members in a depth group
+			typedef std::pair<STPPipelineManager, STPShaderCollection> STPGroupMember;
+
 		private:
 
-			//It is basically a map.
 			//Light space size is used for searching for an index, and use this index to locate the pipeline in the other array.
-			std::vector<unsigned int> LightSpaceSize;
-			std::vector<STPPipelineManager> LightSpaceDepthRenderer;
-
-			/**
-			 * @brief Find the first iterator to the configuration table that has configuration no less than the range.
-			 * @param light_space_count The number of light space as a key.
-			 * @return The iterator to the first element in range of configuration table that is not less than the key.
-			*/
-			auto getKeyLocation(unsigned int) const;
+			std::unordered_map<unsigned int, STPGroupMember> LightSpaceDatabase;
 
 		public:
 
-			STPDepthRendererGroup() = default;
+			STPDepthRenderGroup() = default;
 
-			STPDepthRendererGroup(const STPDepthRendererGroup&) = delete;
+			STPDepthRenderGroup(const STPDepthRenderGroup&) = delete;
 
-			STPDepthRendererGroup(STPDepthRendererGroup&&) = delete;
+			STPDepthRenderGroup(STPDepthRenderGroup&&) = delete;
 
-			STPDepthRendererGroup& operator=(const STPDepthRendererGroup&) = delete;
+			STPDepthRenderGroup& operator=(const STPDepthRenderGroup&) = delete;
 
-			STPDepthRendererGroup& operator=(STPDepthRendererGroup&&) = delete;
+			STPDepthRenderGroup& operator=(STPDepthRenderGroup&&) = delete;
 
-			~STPDepthRendererGroup() = default;
+			~STPDepthRenderGroup() = default;
 
 			/**
 			 * @brief Check if a depth rendering group has been added.
@@ -113,19 +126,25 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @brief Add a new rendering pipeline to depth renderer group.
 			 * @param light_space_count The number of light space information given to this group.
 			 * This will be used as a key to find this group later.
-			 * @return The pointer to the newly created group.
+			 * @return A pointer to a pair of pointers to an array of shader program and a program pipeline.
+			 * It is recommended that the implementation uses the given program shader to create the pipeline.
+			 * All pointers returned is guaranteed to be valid until the end of life of the depth render group instance.
 			 * Exception is thrown if another group with such key exists.
 			*/
-			STPPipelineManager& addGroup(unsigned int);
+			typename STPGroupMember& addGroup(unsigned int);
+
+			/**
+			 * @see The const version of this function
+			*/
+			STPPipelineManager& findPipeline(unsigned int);
 
 			/**
 			 * @brief Find the pipeline for a corresponding light space configuration.
 			 * @param light_space_count The number of light space information in the shader.
 			 * @return The pointer to the pipeline with given configuration.
-			 * Note that for the sake of runtime performance, no error checking is performed.
-			 * It is an undefined behaviour if there was no pipeline with such configuration added previously.
+			 * It is an undefined behaviour if no such pipeline exists, to avoid expensive runtime check.
 			*/
-			STPPipelineManager& findGroup(unsigned int);
+			const STPPipelineManager& findPipeline(unsigned int) const;
 
 		};
 

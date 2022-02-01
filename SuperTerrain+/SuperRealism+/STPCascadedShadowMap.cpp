@@ -1,4 +1,4 @@
-#include <SuperRealism+/Scene/STPCascadedShadowMap.h>
+#include <SuperRealism+/Scene/Light/STPCascadedShadowMap.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
@@ -16,6 +16,7 @@
 #include <limits>
 #include <functional>
 
+using glm::uvec2;
 using glm::vec3;
 using glm::mat4;
 using glm::vec4;
@@ -28,6 +29,9 @@ using namespace SuperTerrainPlus::STPRealism;
 
 STPCascadedShadowMap::STPCascadedShadowMap(const STPLightFrustum& light_frustum) : LightDirection(vec3(0.0f)),
 	LightSpaceOutdated(true), LightFrustum(light_frustum) {
+	if (this->LightFrustum.Resolution == uvec2(0u)) {
+		throw STPException::STPBadNumericRange("All components of the shadow map resolution should be a positive integer");
+	}
 	if (this->LightFrustum.ShadowDistanceMultiplier < 1.0f) {
 		throw STPException::STPBadNumericRange("A less-than-one shadow distance is not able to cover the view frustum");
 	}
@@ -187,6 +191,10 @@ bool STPCascadedShadowMap::updateLightSpace(mat4* light_space) const {
 
 inline size_t STPCascadedShadowMap::lightSpaceDimension() const {
 	return this->LightFrustum.Division.size() + 1ull;
+}
+
+uvec2 STPCascadedShadowMap::shadowMapResolution() const {
+	return this->LightFrustum.Resolution;
 }
 
 void STPCascadedShadowMap::forceLightSpaceUpdate() {

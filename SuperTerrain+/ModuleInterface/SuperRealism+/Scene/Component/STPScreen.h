@@ -4,11 +4,11 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Object
-#include "../Object/STPBuffer.h"
-#include "../Object/STPVertexArray.h"
-#include "../Object/STPShaderManager.h"
+#include "../../Object/STPBuffer.h"
+#include "../../Object/STPVertexArray.h"
+#include "../../Object/STPShaderManager.h"
 
-#include "../Utility/STPLogStorage.hpp"
+#include "../../Utility/STPLogStorage.hpp"
 
 namespace SuperTerrainPlus::STPRealism {
 

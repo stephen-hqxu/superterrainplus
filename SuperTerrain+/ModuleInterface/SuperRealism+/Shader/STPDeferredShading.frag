@@ -32,7 +32,7 @@ layout(bindless_sampler) uniform sampler1DArray LightSpectrum;
 /* -------------------------------- Shadow ----------------------------------- */
 #include </Common/STPLightSpaceInformation.glsl>
 
-layout(bindless_sampler) uniform sampler2DArrayShadow Shadowmap;
+layout(bindless_sampler) uniform sampler2DArrayShadow Shadowmap[1];
 uniform float CascadePlaneDistance[LIGHT_SPACE_COUNT - 1];
 uniform float LightFrustumFar;
 uniform float MaxBias, MinBias;
@@ -78,8 +78,7 @@ vec3 depthReconstruction(){
 	//OpenGL requires NDC to be in range [-1, 1], so we need to convert the range
 	//Note that texture coordinate is also a [0, 1] range.
 	const vec4 position_clip = vec4(vec3(FragTexCoord, Depth) * 2.0f - 1.0f, 1.0f),
-		//TODO: it might be slow to do runtime matrix mul and inv, find a better way...
-		position_world = inverse(CameraProjection * CameraView) * position_clip;
+		position_world = Camera.InvProjectionView * position_clip;
 
 	return position_world.xyz / position_world.w;
 }
@@ -98,7 +97,7 @@ vec3 calcCasterLight(vec3 position_world, vec3 normal, float specular_strength, 
 	const vec3 lightDir = normalize(LightDirection);
 	const float diffuse = Lighting.Kd * max(dot(lightDir, normal), 0.0f);
 	//specular
-	const vec3 viewDir = normalize(CameraPosition - position_world),
+	const vec3 viewDir = normalize(Camera.Position - position_world),
 		reflectDir = reflect(-lightDir, normal),
 		halfwayDir = normalize(lightDir + viewDir);
 	const float specular = specular_strength * Lighting.Ks * pow(max(dot(normal, halfwayDir), 0.0f), Lighting.Shin);
@@ -111,7 +110,7 @@ vec3 calcCasterLight(vec3 position_world, vec3 normal, float specular_strength, 
 
 float sampleShadow(vec3 fragworldPos, vec3 normal, vec3 lightDir) {
 	//select cascade level from array shadow texture
-	const vec4 fragviewPos = CameraView * vec4(fragworldPos, 1.0f);
+	const vec4 fragviewPos = Camera.View * vec4(fragworldPos, 1.0f);
 	const float depthValue = abs(fragviewPos.z);
 	const int cascadeCount = CascadePlaneDistance.length;
 
@@ -129,7 +128,7 @@ float sampleShadow(vec3 fragworldPos, vec3 normal, vec3 lightDir) {
 
 	//convert world position to light clip space
 	//as we are dealing with directional light, w component is always 1.0
-	const vec4 fraglightPos = LightProjectionView[layer] * vec4(fragworldPos, 1.0f);
+	const vec4 fraglightPos = LightSpace.ProjectionView[layer] * vec4(fragworldPos, 1.0f);
 	//perform perspective division and transform to [0, 1] range
 	const vec3 projCoord = (fraglightPos.xyz / fraglightPos.w) * 0.5f + 0.5f;
 
@@ -151,6 +150,6 @@ float sampleShadow(vec3 fragworldPos, vec3 normal, vec3 lightDir) {
 
 #else
 	//no filter, nearest and linear filtering are done by hardware automatically
-	return texture(Shadowmap, vec4(projCoord.xy, layer, currentDepth - bias)).r;
+	return texture(Shadowmap[0], vec4(projCoord.xy, layer, currentDepth - bias)).r;
 #endif
 }

@@ -4,19 +4,16 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Rendering Component
-#include "../Renderer/STPPostProcess.h"
-#include "STPSceneObject.h"
-#include "STPSceneLight.h"
-#include "../Renderer/STPPostProcess.h"
+#include "./Scene/STPSceneObject.h"
+#include "./Scene/STPSceneLight.h"
+#include "./Scene/Component/STPPostProcess.h"
 //Lighting
-#include "../Environment/STPLightSetting.h"
+#include "./Environment/STPLightSetting.h"
 //Camera
-#include "../Utility/Camera/STPCamera.h"
+#include "./Utility/Camera/STPCamera.h"
 //GL Object
-#include "../Object/STPTexture.h"
-#include "../Object/STPBuffer.h"
-
-#include "../Utility/STPShadowInformation.hpp"
+#include "./Object/STPTexture.h"
+#include "./Object/STPBuffer.h"
 
 //Container
 #include <list>
@@ -58,6 +55,19 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 
 		/**
+		 * @brief STPSceneShaderArrayLimit controls declared array length when compiling scene shaders.
+		 * Using large limits allow more flexible control to adding and removing rendering components to the scene later,
+		 * using small limits save memory if user finds configure the scene dynamically unnecessary.
+		*/
+		struct STPSceneShaderArrayLimit {
+		public:
+
+			//You know, I am a place holder to waste memroy :D
+			size_t PlaceHolder = 1234567890ull;
+
+		};
+
+		/**
 		 * @brief STPSceneGraph contains all rendering components for a scene pipeline to be rendered.
 		*/
 		struct STPSceneGraph {
@@ -90,18 +100,8 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief STPSceneShadowInitialiser specifies settings for scene shadow.
 		*/
 		struct STPSceneShadowInitialiser {
-		protected:
-
-			friend class STPScenePipeline;
-
-			//Increment when a shadow-casting light is added.
-			unsigned int LightSpaceCount = 0u;
-
 		public:
 
-			//Set the global resolution of the shadow map.
-			//For performance consideration, the resolution of shadow maps in all shadow-casting light will be the same.
-			glm::uvec2 ShadowMapResolution;
 			//Max bias and min bias
 			glm::vec2 ShadowMapBias;
 			//Specify the algorithm used to filter the shadow map.
@@ -112,7 +112,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief STPSceneInitialiser pre-setup environment for scene pipeline.
 		 * It helps building up a scene graph and passes to the scene pipeline.
 		*/
-		class STP_REALISM_API STPSceneInitialiser : public STPSceneShadowInitialiser {
+		class STPSceneInitialiser : public STPSceneShadowInitialiser {
 		private:
 
 			friend class STPScenePipeline;
@@ -136,14 +136,6 @@ namespace SuperTerrainPlus::STPRealism {
 			*/
 			template<class Obj, typename... Arg>
 			Obj& add(Arg&&...);
-
-			/**
-			 * @brief Generate a shadow initialiser based on the current setup.
-			 * @return This variable can be used to initialise shadow-casting opaque objects after all shadow casting lights are added
-			 * to the scene initialiser.
-			 * The returned shadow information does not change unless more shadow-casting lights are added.
-			*/
-			STPShadowInformation shadowInitialiser() const;
 
 		};
 

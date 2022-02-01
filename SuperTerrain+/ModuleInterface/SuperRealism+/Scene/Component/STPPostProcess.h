@@ -6,11 +6,11 @@
 //Base Screen Renderer
 #include "STPScreen.h"
 //GL Object
-#include "../Object/STPProgramManager.h"
-#include "../Object/STPTexture.h"
-#include "../Object/STPSampler.h"
+#include "../../Object/STPProgramManager.h"
+#include "../../Object/STPTexture.h"
+#include "../../Object/STPSampler.h"
 
-#include "../Utility/STPLogStorage.hpp"
+#include "../../Utility/STPLogStorage.hpp"
 
 //GLM
 #include <glm/vec2.hpp>
