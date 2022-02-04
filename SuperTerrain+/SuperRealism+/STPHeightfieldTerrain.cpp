@@ -4,7 +4,6 @@
 #include <SuperRealism+/Utility/STPRandomTextureGenerator.cuh>
 
 //Error
-#include <SuperTerrain+/Exception/STPGLError.h>
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
@@ -27,8 +26,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 using std::array;
-using std::string;
-using std::to_string;
 using std::numeric_limits;
 using std::unique_ptr;
 using std::make_unique;
@@ -95,7 +92,8 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 		GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER, GL_GEOMETRY_SHADER, GL_FRAGMENT_SHADER
 	};
 	for (unsigned int i = 0u; i < HeightfieldTerrainShaderFilename.size(); i++) {
-		STPShaderManager::STPShaderSource shader_source(*STPFile(HeightfieldTerrainShaderFilename[i].data()));
+		const char* const source_file = HeightfieldTerrainShaderFilename[i].data();
+		STPShaderManager::STPShaderSource shader_source(source_file, *STPFile(source_file));
 
 		if (i == 4u) {
 			//fragment shader
@@ -142,10 +140,6 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 	//link
 	log.Log[5] = this->TerrainModeller.finalise();
 	log.Log[6] = this->TerrainShader.finalise();
-	if (!this->TerrainModeller || !this->TerrainShader) {
-		//program not usable
-		throw STPException::STPGLError("Heightfield terrain renderer program returns a failed status");
-	}
 
 	//build pipeline
 	log.Log[7] = this->TerrainRenderer
@@ -304,8 +298,8 @@ STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_p
 	
 }
 
-bool STPHeightfieldTerrain<true>::addDepthConfiguration(unsigned int light_space_count) {
-	STPTerrainDepthLog log;
+bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count) {
+	STPTerrainDepthLog& log = this->TerrainDepthLogStorage.emplace();
 	//create a new render group
 	if (this->TerrainDepthRenderer.exist(light_space_count)) {
 		//group exists, don't add
@@ -319,7 +313,8 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(unsigned int light_space
 
 	//geometry shader for depth writting
 	//make a copy of the original source because we need to modify it
-	STPShaderManager::STPShaderSource shadow_shader_source(*STPFile(HeightfieldTerrainShaderFilename[3].data()));
+	const char* const shadow_source_file = HeightfieldTerrainShaderFilename[3].data();
+	STPShaderManager::STPShaderSource shadow_shader_source(shadow_source_file, *STPFile(shadow_source_file));
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 	Macro("HEIGHTFIELD_SHADOW_PASS", 1)
@@ -334,9 +329,6 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(unsigned int light_space
 
 	//link
 	log.Log[1] = depth_writer.finalise();
-	if (!depth_writer) {
-		throw STPException::STPGLError("Heightfield terrain shadow renderer setup failed");
-	}
 
 	//build shadow pipeline
 	log.Log[2] = depth_renderer
@@ -347,7 +339,7 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(unsigned int light_space
 	return true;
 }
 
-void STPHeightfieldTerrain<true>::renderDepth(unsigned int light_space_count) const {
+void STPHeightfieldTerrain<true>::renderDepth(size_t light_space_count) const {
 	this->TerrainGenerator.wait();
 
 	//in this case we only need heightfield for tessellation

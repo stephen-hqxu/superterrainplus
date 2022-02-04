@@ -39,18 +39,8 @@ namespace SuperTerrainPlus::STPRealism {
 		//A shader program
 		STPSmartProgram Program;
 
-		//Program linking log
-		std::string Log;
-		//A value to denotes if the program is linked and validated.
-		bool Linked = false, Valid = false;
-
 		//Use shader type as key, find the shader reference number
 		std::unordered_map<STPOpenGL::STPenum, STPOpenGL::STPuint> AttachedShader;
-
-		/**
-		 * @brief Reset program status flag to initial.
-		*/
-		void resetStatus();
 
 	public:
 
@@ -102,7 +92,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Linkage may fail and exception is thrown.
 		 * @return The program linking log.
 		*/
-		const std::string& finalise();
+		std::string finalise();
 
 		/**
 		 * @brief Get the uniform location for a uniform in the current program.
@@ -129,18 +119,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return A vector of 3 intergers containing the local workgroup size
 		*/
 		glm::ivec3 workgroupSize() const;
-
-		/**
-		 * @brief Get the log from the last program object linking.
-		 * @return The pointer to the program log.
-		 * If there is no such log, empty string is returned.
-		*/
-		const std::string& lastLog() const;
-
-		/**
-		 * @brief Check if the program is linked and validated such that it can be used.
-		*/
-		explicit operator bool() const;
 
 		/**
 		 * @brief Get the underlying program object.

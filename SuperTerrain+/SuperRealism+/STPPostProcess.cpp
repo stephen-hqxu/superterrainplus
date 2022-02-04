@@ -1,9 +1,6 @@
 #include <SuperRealism+/Scene/Component/STPPostProcess.h>
 #include <SuperRealism+/STPRealismInfo.h>
 
-//Error
-#include <SuperTerrain+/Exception/STPGLError.h>
-
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 
@@ -39,7 +36,8 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, STPPostP
 	//setup post process shader
 	STPShaderManager screen_shader(std::move(STPPostProcess::compileScreenVertexShader(log.QuadShader))),
 		postprocess_shader(GL_FRAGMENT_SHADER);
-	STPShaderManager::STPShaderSource shader_source(*STPFile(PostProcessShaderFilename.data()));
+	const char* const source_file = PostProcessShaderFilename.data();
+	STPShaderManager::STPShaderSource shader_source(source_file, *STPFile(source_file));
 
 	//fragment shader
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
@@ -55,9 +53,6 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, STPPostP
 		.attach(postprocess_shader);
 	//program link
 	log.PostProcessShader.Log[1] = this->PostProcessor.finalise();
-	if (!this->PostProcessor) {
-		throw STPException::STPGLError("Post processor program has error during compilation");
-	}
 
 	/* -------------------------------- setup sampler ---------------------------------- */
 	this->ImageSampler.filter(GL_NEAREST, GL_NEAREST);

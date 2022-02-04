@@ -173,12 +173,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		~STPSun() = default;
 
-		/**
-		 * @brief Get the current sun direction.
-		 * @return The pointer to the current calulated sun direction cache, 
-		 * A unit vector of sun direction, this is calculate directly from elevation and azimuth angle.
-		*/
-		const glm::vec3& sunDirection() const;
+		const glm::vec3& lightDirection() const override;
 
 		/**
 		 * @brief Bring the timer forward by a delta amount and update the sun position.

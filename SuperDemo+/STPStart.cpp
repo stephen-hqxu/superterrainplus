@@ -87,6 +87,9 @@ namespace STPStart {
 		SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>* TerrainRenderer;
 		SuperTerrainPlus::STPRealism::STPPostProcess* FinalProcess;
 
+		//A number that locates the renderer in the scene
+		size_t SunIndex;
+
 		const vec3& ViewPosition;
 
 		/**
@@ -190,9 +193,27 @@ namespace STPStart {
 			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
 			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE);
 
-			STPScenePipeline::STPSceneInitialiser scene_init;
-			scene_init.ShadowFilter = STPScenePipeline::STPShadowMapFilter::Bilinear;
-			scene_init.ShadowMapBias = vec2(0.05f, 0.005f);
+			//setup scene pipeline
+			//-------------------------------------------------------------------------
+			{
+				//initialisation
+				STPScenePipeline::STPSceneShadowInitialiser scene_shadow;
+				scene_shadow.ShadowFilter = STPScenePipeline::STPShadowMapFilter::Bilinear;
+				scene_shadow.ShadowMapBias = vec2(0.05f, 0.005f);
+
+				STPScenePipeline::STPSceneShaderCapacity scene_cap;
+				scene_cap.EnvironmentLight = 1ull;
+				scene_cap.DirectionalLightShadow = 1ull;
+				scene_cap.LightSpaceMatrix = 5ull;
+				scene_cap.LightFrustumDivisionPlane = 5ull;
+
+				//construct rendering pipeline
+				STPScenePipeline::STPScenePipelineLog scene_log;
+				this->RenderPipeline.emplace(camera, scene_cap, scene_shadow, scene_log);
+				const auto& lighting_log = scene_log.GeometryBufferResolution;
+				STPMasterRenderer::printLog(lighting_log.QuadShader);
+				STPMasterRenderer::printLog(lighting_log.LightingShader);
+			}
 			//setup light
 			//-------------------------------------------
 			{
@@ -211,7 +232,7 @@ namespace STPStart {
 
 				//sun
 				STPSun<true>::STPSunLog sun_log;
-				this->SunRenderer = &scene_init.add<STPSun<true>>(this->SunSetting, 8192u, frustum, sun_log);
+				this->SunRenderer = this->RenderPipeline->add<STPSun<true>>(this->SunSetting, 8192u, frustum, sun_log);
 				//print log
 				STPMasterRenderer::printLog(sun_log.SpectrumGenerator);
 				STPMasterRenderer::printLog(sun_log.SunRenderer);
@@ -244,11 +265,20 @@ namespace STPStart {
 					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform
 				};
 
-				this->TerrainRenderer = &scene_init.add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
+				this->TerrainRenderer = this->RenderPipeline->add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
 				STPMasterRenderer::printLog(terrain_log);
 				//initial setup
 				this->TerrainRenderer->setMesh(MeshSetting);
 				this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
+
+				//read logs from renering components after pipeline setup
+				//some compilation happens after pipeline initialisation
+				auto& terrain_depth_log_db = this->TerrainRenderer->TerrainDepthLogStorage;
+				while (!terrain_depth_log_db.empty()) {
+					const auto& terrain_depth_log = terrain_depth_log_db.front();
+					STPMasterRenderer::printLog(terrain_depth_log);
+					terrain_depth_log_db.pop();
+				}
 			}
 			//-------------------------------------------
 			{
@@ -256,26 +286,19 @@ namespace STPStart {
 				STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::Lottes> postprocess_def;
 				STPPostProcess::STPPostProcessLog postprocess_log;
 
-				this->FinalProcess = &scene_init.add<STPPostProcess>(postprocess_def, postprocess_log);
+				this->FinalProcess = this->RenderPipeline->add<STPPostProcess>(postprocess_def, postprocess_log);
 				STPMasterRenderer::printLog(postprocess_log.QuadShader);
 				STPMasterRenderer::printLog(postprocess_log.PostProcessShader);
 			}
 
-			//setup rendering pipeline
-			STPScenePipeline::STPScenePipelineLog scene_log;
-			this->RenderPipeline.emplace(std::move(scene_init), camera, scene_log);
-			const auto& lighting_log = scene_log.GeometryBufferResolution;
-			STPMasterRenderer::printLog(lighting_log.QuadShader);
-			STPMasterRenderer::printLog(lighting_log.LightingShader);
-			//basic setup
+			using PT = STPScenePipeline::STPLightPropertyType;
+			//basic preset
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
-			//TODO: read light property from INI and set to the rendering pipeline
-			STPEnvironment::STPLightSetting::STPAmbientLightSetting ambient;
-			ambient.AmbientStrength = 0.3f;
-			STPEnvironment::STPLightSetting::STPDirectionalLightSetting directional;
-			directional.DiffuseStrength = 1.4f;
-			directional.SpecularStrength = 5.5f;
-			this->RenderPipeline->setLightProperty(ambient, directional, 35.5f);
+			//store this index so later we can update the light quicker
+			this->SunIndex = this->RenderPipeline->locateLight(this->SunRenderer);
+			this->RenderPipeline->setLight<PT::AmbientStrength>(this->SunIndex, 0.3f);
+			this->RenderPipeline->setLight<PT::DiffuseStrength>(this->SunIndex, 1.4f);
+			this->RenderPipeline->setLight<PT::SpecularStrength>(this->SunIndex, 5.5f);
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
@@ -295,10 +318,12 @@ namespace STPStart {
 			//prepare terrain texture first (async), because this is a slow operation
 			this->TerrainRenderer->setViewPosition(this->ViewPosition);
 
+			using PT = SuperTerrainPlus::STPRealism::STPScenePipeline::STPLightPropertyType;
 			//change the sun position
 			this->SunRenderer->advanceTick(1ull);
 			//updat terrain rendering settings.
-			this->RenderPipeline->updateLightStatus(this->SunRenderer->sunDirection());
+			this->RenderPipeline->setLight<PT::SpectrumCoordinate>(this->SunIndex);
+			this->RenderPipeline->setLight<PT::Direction>(this->SunIndex);
 
 			//render, all async operations are sync automatically
 			using namespace SuperTerrainPlus::STPRealism;
@@ -547,6 +572,8 @@ int main() {
 
 		//event update
 		glfwPollEvents();
+		//make sure the GPU has finished rendering the backbuffer before swapping
+		glFinish();
 		//buffer swapping
 		glfwSwapBuffers(STPStart::GLCanvas);
 	}

@@ -30,14 +30,6 @@ STPProgramManager::STPProgramManager() : Program(glCreateProgram()) {
 
 }
 
-void STPProgramManager::resetStatus() {
-	this->Linked = false;
-	this->Valid = false;
-
-	//make sure old logs are cleared
-	this->Log.clear();
-}
-
 STPProgramManager& STPProgramManager::attach(const STPShaderManager& shader) {
 	//attach shader to the program
 	const GLenum shaderType = shader.Type;
@@ -87,49 +79,46 @@ void STPProgramManager::clear() {
 		glDetachShader(this->Program.get(), shader);
 	}
 	this->AttachedShader.clear();
-	this->resetStatus();
 }
 
 void STPProgramManager::separable(bool separable) {
 	glProgramParameteri(this->Program.get(), GL_PROGRAM_SEPARABLE, separable ? GL_TRUE : GL_FALSE);
 }
 
-const string& STPProgramManager::finalise() {
-	//reset old status, because there are two different flags
-	//if the first flag throws error, the second flag should be false but not old value
-	this->resetStatus();
-
+string STPProgramManager::finalise() {
 	//link
 	glLinkProgram(this->Program.get());
 	//get log
 	GLint logLength;
 	glGetProgramiv(this->Program.get(), GL_INFO_LOG_LENGTH, &logLength);
+
+	string log;
 	//get any log
 	if (logLength > 0) {
 		//shader compilation has log
-		this->Log.resize(logLength);
-		glGetProgramInfoLog(this->Program.get(), logLength, NULL, this->Log.data());
+		log.resize(logLength);
+		glGetProgramInfoLog(this->Program.get(), logLength, NULL, log.data());
 	}
 
-	auto handle_error = [pro = this->Program.get(), &log = this->Log](GLenum status_request, bool& final_status) -> void {
+	auto handle_error = [pro = this->Program.get(), &log](GLenum status_request) -> void {
 		//link status error handling
 		GLint status;
 		glGetProgramiv(pro, status_request, &status);
 		//store
-		final_status = status == GL_TRUE ? true : false;
+		const bool valid = status == GL_TRUE ? true : false;
 
-		if (!final_status) {
+		if (!valid) {
 			//error for this stage
 			throw STPException::STPGLError(log.c_str());
 		}
 	};
 
 	//link status error handling
-	handle_error(GL_LINK_STATUS, this->Linked);
+	handle_error(GL_LINK_STATUS);
 	//validation checks if the program can be used as a GL application
-	handle_error(GL_VALIDATE_STATUS, this->Valid);
+	handle_error(GL_VALIDATE_STATUS);
 
-	return this->lastLog();
+	return log;
 }
 
 SuperTerrainPlus::STPOpenGL::STPint STPProgramManager::uniformLocation(const char* uni) const {
@@ -145,14 +134,6 @@ ivec3 STPProgramManager::workgroupSize() const {
 	ivec3 size;
 	glGetProgramiv(this->Program.get(), GL_COMPUTE_WORK_GROUP_SIZE, value_ptr(size));
 	return size;
-}
-
-const string& STPProgramManager::lastLog() const {
-	return this->Log;
-}
-
-STPProgramManager::operator bool() const {
-	return this->Linked && this->Valid;
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint STPProgramManager::operator*() const {

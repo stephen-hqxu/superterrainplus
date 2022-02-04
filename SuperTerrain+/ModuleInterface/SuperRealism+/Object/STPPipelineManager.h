@@ -31,9 +31,6 @@ namespace SuperTerrainPlus::STPRealism {
 		//A program pipeline
 		STPSmartPipeline Pipeline;
 
-		//Pipeline linking log
-		std::string Log;
-
 	public:
 
 		/**
@@ -64,19 +61,13 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The log from instantiation of the pipeline, if any.
 		 * If instantiation fails, exception is thrown with error log.
 		*/
-		const std::string& finalise();
+		std::string finalise();
 
 		/**
 		 * @brief Get the underlying program pipeline object.
 		 * @return The program pipeline object.
 		*/
 		STPOpenGL::STPuint operator*() const;
-
-		/**
-		 * @brief Retrieve the last pipeling log during initialisation.
-		 * @return Pipeline log.
-		*/
-		const std::string& lastLog() const;
 
 		/**
 		 * @brief Bind the current program pipeline to the context to make it active.

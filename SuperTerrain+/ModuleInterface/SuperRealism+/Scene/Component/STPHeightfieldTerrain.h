@@ -21,8 +21,8 @@
 #include <glm/vec3.hpp>
 
 //System
+#include <queue>
 #include <list>
-#include <optional>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -159,10 +159,10 @@ namespace SuperTerrainPlus::STPRealism {
 		//depth renderer prunes the frag shader.
 		STPSceneObject::STPDepthRenderGroup<1ull> TerrainDepthRenderer;
 
-		//An array holds all logs for compiling depth
-		//std::list<STPTerrainDepthLog> TerrainDepthLogDatabase;
-
 	public:
+
+		//An array holds all logs for compiling depth shaders.
+		std::queue<STPTerrainDepthLog, std::list<STPTerrainDepthLog>> TerrainDepthLogStorage;
 
 		/**
 		 * @brief Initialise the heightfield terrain rendering engine with shadow rendering.
@@ -180,9 +180,9 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void setDepthMeshQuality(const STPEnvironment::STPMeshSetting::STPTessellationSetting&);
 
-		bool addDepthConfiguration(unsigned int) override;
+		bool addDepthConfiguration(size_t) override;
 
-		void renderDepth(unsigned int) const override;
+		void renderDepth(size_t) const override;
 
 	};
 

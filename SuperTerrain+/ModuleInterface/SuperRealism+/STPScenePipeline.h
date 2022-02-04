@@ -16,7 +16,6 @@
 #include "./Object/STPBuffer.h"
 
 //Container
-#include <list>
 #include <vector>
 #include <memory>
 
@@ -55,17 +54,62 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 
 		/**
-		 * @brief STPSceneShaderArrayLimit controls declared array length when compiling scene shaders.
+		 * @brief STPSceneShaderCapacity controls declared array length when compiling scene shaders.
 		 * Using large limits allow more flexible control to adding and removing rendering components to the scene later,
 		 * using small limits save memory if user finds configure the scene dynamically unnecessary.
+		 * All capacity settings are specified in terms of the number of element.
 		*/
-		struct STPSceneShaderArrayLimit {
+		struct STPSceneShaderCapacity {
 		public:
 
-			//You know, I am a place holder to waste memroy :D
-			size_t PlaceHolder = 1234567890ull;
+			//The maximum number of environment light
+			size_t EnvironmentLight;
+			//The maximum number of directional light that can cast shadow.
+			size_t DirectionalLightShadow;
+
+			//The maximum number of light space matrix, as a 4 by 4 matrix of floats.
+			size_t LightSpaceMatrix;
+			//The maximum number of plane that divides light frustum into subfrusta, as float.
+			size_t LightFrustumDivisionPlane;
 
 		};
+
+		/**
+		 * @brief STPSceneShadowInitialiser specifies settings for scene shadow pipeline.
+		*/
+		struct STPSceneShadowInitialiser {
+		public:
+
+			//Max bias and min bias
+			glm::vec2 ShadowMapBias;
+			//Specify the algorithm used to filter the shadow map.
+			STPShadowMapFilter ShadowFilter;
+		};
+
+		/**
+		 * @brief STPLightPropertyType indicates the type of light property to be selected.
+		 * The corresponded data type for the property type is also documented.
+		 * When calling functions using a specific property, make sure the data type supplied is correct, otherwise it will give compile-time error.
+		*/
+		enum class STPLightPropertyType : unsigned char {
+			//The multiplier to the ambient light
+			//Float
+			AmbientStrength = 0x00u,
+			//The multiplier to the diffuse light
+			//Float
+			DiffuseStrength = 0x01u,
+			//The multiplier to the specular light
+			//Float
+			SpecularStrength = 0x02u,
+			//The sampling coordinate to the light spectrum
+			//No data
+			SpectrumCoordinate = 0x03u,
+			//Light direction for directional light
+			//No data
+			Direction = 0x04u
+		};
+
+	private:
 
 		/**
 		 * @brief STPSceneGraph contains all rendering components for a scene pipeline to be rendered.
@@ -80,66 +124,14 @@ namespace SuperTerrainPlus::STPRealism {
 			std::vector<STPSceneObject::STPOpaqueObject<true>*> ShadowOpaqueObject;
 
 			//Light nodes
+			std::vector<size_t> UniqueLightSpaceSize;
 			std::vector<std::unique_ptr<STPSceneLight::STPEnvironmentLight<false>>> EnvironmentObjectDatabase;
 			std::vector<STPSceneLight::STPEnvironmentLight<true>*> ShadowEnvironmentObject;
 
 			//Post process node
 			std::unique_ptr<STPPostProcess> PostProcessObject;
 
-			STPSceneGraph() = default;
-
-			STPSceneGraph(STPSceneGraph&&) noexcept = default;
-
-			STPSceneGraph& operator=(STPSceneGraph&&) noexcept = default;
-
-			~STPSceneGraph() = default;
-
 		};
-
-		/**
-		 * @brief STPSceneShadowInitialiser specifies settings for scene shadow.
-		*/
-		struct STPSceneShadowInitialiser {
-		public:
-
-			//Max bias and min bias
-			glm::vec2 ShadowMapBias;
-			//Specify the algorithm used to filter the shadow map.
-			STPShadowMapFilter ShadowFilter;
-		};
-
-		/**
-		 * @brief STPSceneInitialiser pre-setup environment for scene pipeline.
-		 * It helps building up a scene graph and passes to the scene pipeline.
-		*/
-		class STPSceneInitialiser : public STPSceneShadowInitialiser {
-		private:
-
-			friend class STPScenePipeline;
-
-			STPSceneGraph InitialiserComponent;
-
-		public:
-
-			STPSceneInitialiser() = default;
-
-			~STPSceneInitialiser() = default;
-
-			/**
-			 * @brief Add a rendering component to the scene pipeline.
-			 * @tparam Obj The type of the object.
-			 * @tparam ...Arg Arguments for constructing the object.
-			 * @param arg... The argument lists.
-			 * @return The pointer to the newly constructed rendering component.
-			 * This pointer is managed by the current scene pipeline.
-			 * If the object type is not supported, operation is ignored.
-			*/
-			template<class Obj, typename... Arg>
-			Obj& add(Arg&&...);
-
-		};
-
-	private:
 
 		/**
 		 * @brief STPSharedTexture contains texture data that are shared with the children components in the scene pipeline.
@@ -161,6 +153,9 @@ namespace SuperTerrainPlus::STPRealism {
 			~STPSharedTexture() = default;
 
 		};
+
+		STPSceneShaderCapacity SceneMemoryCurrent;
+		const STPSceneShaderCapacity SceneMemoryLimit;
 
 		//Shared buffer between different scene processors.
 		STPSharedTexture SceneTexture;
@@ -190,6 +185,24 @@ namespace SuperTerrainPlus::STPRealism {
 		class STPSceneRenderMemory;
 		std::unique_ptr<STPSceneRenderMemory> RenderMemory;
 
+		/**
+		 * @brief Check if this light can be added to this scene without running out of memory.
+		 * @param light_shadow The pointer to the shadow instance, or nullptr. Note that this light should not be added to the scene prior to this function call.
+		 * If this light cannot be added, exception is thrown.
+		 * This function always assumes a non-shadow casting light will be added.
+		*/
+		void canLightBeAdded(const STPSceneLight::STPEnvironmentLight<true>*) const;
+
+		/**
+		 * @brief For a newly added light, allocate light memory and flush light settings to the scene pipeline shader.
+		 * This function does not thrown any error if the result of adding this light causes memory overflow, which results in UB.
+		 * @param light The pointer to the newly added light.
+		 * This light must have been added to the scene prior to this function call.
+		 * @param light_shadow The pointer to the shadow instance of the light.
+		 * The pointer can be null if this light does not cast shadow.
+		*/
+		void addLight(const STPSceneLight::STPEnvironmentLight<false>&, const STPSceneLight::STPEnvironmentLight<true>*);
+
 	public:
 
 		/**
@@ -213,13 +226,13 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Initialise an empty scene pipeline.
-		 * @param init The pointer to the scene pipeline initialiser.
-		 * After construction, the scene graph within the initialiser will be moved under the scene pipeline and become undefined.
 		 * @param camera The pointer to the camera.
 		 * The camera must remain valid as long as the current scene pipeline is valid.
+		 * @param shader_cap The pointer to a struct that defines the maximum memory to be allocated for each array in the shader.
+		 * @param shadow_init The pointer to the configurations for shadow rendering pipeline in the scene.
 		 * @param log The pointer to log to output the initial compilation results for scene pipeline.
 		*/
-		STPScenePipeline(STPSceneInitialiser&&, const STPCamera&, STPScenePipelineLog&);
+		STPScenePipeline(const STPCamera&, const STPSceneShaderCapacity&, const STPSceneShadowInitialiser&, STPScenePipelineLog&);
 
 		STPScenePipeline(const STPScenePipeline&) = delete;
 
@@ -230,6 +243,39 @@ namespace SuperTerrainPlus::STPRealism {
 		STPScenePipeline& operator=(STPScenePipeline&&) = delete;
 
 		~STPScenePipeline();
+
+		/**
+		 * @brief Get information about the amount of memory being used by the scene pipeline currently.
+		 * @return The pointer to the scene memory usage.
+		*/
+		const STPSceneShaderCapacity& getMemoryUsage() const;
+
+		/**
+		 * @brief Get the information about the maximum amount of memory declared and allocated for the scene pipeline.
+		 * @return The pointer to the scene max memory usage.
+		*/
+		const STPSceneShaderCapacity& getMemoryLimit() const;
+
+		/**
+		 * @brief Locate the index of a given light that is added to the scene graph.
+		 * @param light The pointer to the light.
+		 * @return The index of this light in the scene graph array.
+		 * If the light is not registered with the scene, exception is thrown.
+		 * This index is valid until the light is removed from the scene, adding new lights won't cause the index to be invalidated.
+		*/
+		size_t locateLight(const STPSceneLight::STPEnvironmentLight<false>*) const;
+
+		/**
+		 * @brief Add a rendering component to the scene pipeline.
+		 * @tparam Obj The type of the object.
+		 * @tparam ...Arg Arguments for constructing the object.
+		 * @param arg... The argument lists.
+		 * @return The pointer to the newly constructed rendering component.
+		 * This pointer is managed by the current scene pipeline.
+		 * If the object type is not supported, operation is ignored.
+		*/
+		template<class Obj, typename... Arg>
+		Obj* add(Arg&&...);
 
 		/**
 		 * @brief Specify clear values for the color buffers.
@@ -246,21 +292,20 @@ namespace SuperTerrainPlus::STPRealism {
 		void setResolution(glm::uvec2);
 
 		/**
-		 * @brief Flush the light direction and spectrum coordinate.
-		 * TODO: The system currently only supports a single light.
-		 * @param direction The pointer to the new light direction.
+		 * @brief Set the light property
+		 * If the operation is invalid, nothing will be done and the function will return silently.
+		 * @tparam Prop The light property to be set.
+		 * Note that the operation is invalid if the given property is not applicable for this type of light.
+		 * @tparam T The type of the property data. The type must be in-lined with the data type specified by the type.
+		 * @param index The light index that uniquely identifies a light in the scene graph.
+		 * Operation is invalid if the index does not correspond to a valid light in the scene.
+		 * @param data The data supplied whenever it is applicable for a specific property.
 		*/
-		void updateLightStatus(const glm::vec3&);
-
-		/**
-		 * @brief Update the light property in the scene.
-		 * @param ambient The pointer to the ambient light setting.
-		 * @param directional The pointer to the directional light setting.
-		 * @param shininess The specular power of the light.
-		 * Shininess should be a material property rather than a light setting.
-		 * TODO: Put this to a material system in the future.
-		*/
-		void setLightProperty(const STPEnvironment::STPLightSetting::STPAmbientLightSetting&, STPEnvironment::STPLightSetting::STPDirectionalLightSetting&, float);
+		template<STPLightPropertyType Prop>
+		void setLight(size_t);
+		//-----------------------------------
+		template<STPLightPropertyType Prop>
+		void setLight(size_t, float);
 
 		/**
 		 * @brief Traverse the scene graph and render every component in sequential order.

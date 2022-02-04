@@ -161,7 +161,7 @@ The application is unit-tested with.
 - GL_ARB_shading_language_include
 - GL_NV_gpu_shader5
 
-> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed.
+> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. When you are downloading GLAD please make sure those extensions are included.
 
 ### :gear: How to build
 
@@ -231,6 +231,7 @@ Please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com) if yo
 - [Minecraft biome generator](https://github.com/KaptainWutax/BiomeUtils)
 - [Linear time Gaussian filter](http://blog.ivank.net/fastest-gaussian-blur.html) by *Ivan Kutskir*
 - [Stratified sampling technique](https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-17-efficient-soft-edged-shadows-using) from *GPU Gems 2*
+- [Simple C++ lexer](https://gist.github.com/arrieta/1a309138689e09375b90b3b1aa768e20)
 
 ### Geometry generation
 

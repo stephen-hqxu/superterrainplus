@@ -58,7 +58,8 @@ STPScreen::STPScreen() {
 STPShaderManager STPScreen::compileScreenVertexShader(STPScreenLog& log) {
 	STPShaderManager screen_shader(GL_VERTEX_SHADER);
 	//read source
-	STPShaderManager::STPShaderSource shader_source(*STPFile(ScreenShaderFilename.data()));
+	const char* const screen_source_file = ScreenShaderFilename.data();
+	STPShaderManager::STPShaderSource shader_source(screen_source_file, *STPFile(screen_source_file));
 	//compile
 	log.Log[0] = screen_shader(shader_source);
 

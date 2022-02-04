@@ -45,7 +45,7 @@ STPShaderManager::STPShaderSource::STPShaderIncludePath& STPShaderManager::STPSh
 	return *this;
 }
 
-STPShaderManager::STPShaderSource::STPShaderSource(const string& source) : Cache(source) {
+STPShaderManager::STPShaderSource::STPShaderSource(const string& name, const string& source) : SourceName(name), Cache(source) {
 
 }
 
@@ -98,6 +98,10 @@ unsigned int STPShaderManager::STPShaderSource::define(const STPMacroValueDictio
 	return macroReplaced;
 }
 
+inline const string& STPShaderManager::STPShaderSource::getName() const {
+	return this->SourceName;
+}
+
 STPShaderManager::STPShaderManager(STPOpenGL::STPenum type) : Shader(glCreateShader(type)), Type(type) {
 	
 }
@@ -136,7 +140,7 @@ void STPShaderManager::uninclude(const string& name) {
 	glDeleteNamedStringARB(static_cast<GLint>(name.size()), name.c_str());
 }
 
-const string& STPShaderManager::operator()(const STPShaderSource& source) {
+string STPShaderManager::operator()(const STPShaderSource& source) {
 	const string& src_str = *source;
 	const auto& include = source.Include.Pathname;
 
@@ -170,30 +174,34 @@ const string& STPShaderManager::operator()(const STPShaderSource& source) {
 	glGetShaderiv(this->Shader.get(), GL_COMPILE_STATUS, &status);
 
 	//store information
-	this->Valid = status == GL_TRUE ? true : false;
+	string log;
+	const bool valid = status == GL_TRUE ? true : false;
 	if (logLength > 0) {
 		//shader compilation has log
-		this->Log.resize(logLength);
-		glGetShaderInfoLog(this->Shader.get(), logLength, NULL, this->Log.data());
-	}
-	else {
-		//clear old compilation old, leaving no log at current
-		this->Log.clear();
+		log.resize(logLength);
+		glGetShaderInfoLog(this->Shader.get(), logLength, NULL, log.data());
+
+		const string& name = source.getName();
+		if (!name.empty()) {
+			ostringstream identifier;
+			identifier << name << endl;
+
+			//print a horizontal bar
+			for (int i = 0; i < name.length(); i++) {
+				identifier << '-';
+			}
+			identifier << endl;
+
+			//append the source name to the log
+			log.insert(0, identifier.str());
+		}
 	}
 
-	if (!this->Valid) {
+	if (!valid) {
 		//compilation error
-		throw STPException::STPGLError(this->Log.c_str());
+		throw STPException::STPGLError(log.c_str());
 	}
-	return this->lastLog();
-}
-
-const string& STPShaderManager::lastLog() const {
-	return this->Log;
-}
-
-STPShaderManager::operator bool() const {
-	return this->Valid;
+	return log;
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint STPShaderManager::operator*() const {

@@ -8,8 +8,8 @@
 #include <memory>
 //Container
 #include <list>
-#include <vector>
 #include <queue>
+#include <unordered_map>
 
 namespace SuperTerrainPlus {
 
@@ -54,14 +54,8 @@ namespace SuperTerrainPlus {
 		typedef std::unique_ptr<void, STPMemoryDeleter> STPMemoryChunk;
 		//A memory block contains memory chunks with the same size.
 		typedef std::queue<STPMemoryChunk, std::list<STPMemoryChunk>> STPMemoryBlock;
-		//All memory blocks in different sizes
-		typedef std::list<STPMemoryBlock> STPMemoryBlockPool;
 
-		STPMemoryBlockPool BlockPool;
-		//A lookup table to locate the block given size
-		//we simply use binary search to locate because we expect a small number of blocks and hash table will be an overkill
-		//also list iterators are stable
-		std::vector<std::pair<size_t, typename STPMemoryBlockPool::iterator>> BlockPoolEntry;
+		std::unordered_map<size_t, STPMemoryBlock> BlockPool;
 
 		std::mutex PoolLock;
 
@@ -79,14 +73,6 @@ namespace SuperTerrainPlus {
 		 * @return content The header of the content.
 		*/
 		static typename STPHeader decodeHeader(unsigned char*);
-
-		/**
-		 * @brief Get the memory block with the given size.
-		 * If memory block does not exist, a new one will be created
-		 * @param size The size of the memory, in byte
-		 * @return The pointer to the memory block with given size
-		*/
-		typename STPMemoryBlock& getBlock(size_t);
 
 	public:
 

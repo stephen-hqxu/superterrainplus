@@ -9,6 +9,9 @@
 //Light Shadow Solution
 #include "./Light/STPCascadedShadowMap.h"
 
+//GLM
+#include <glm/vec3.hpp>
+
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -91,6 +94,13 @@ namespace SuperTerrainPlus::STPRealism {
 			STPEnvironmentLight() = default;
 
 			virtual ~STPEnvironmentLight() = default;
+
+			/**
+			 * @brief Get the current light direction.
+			 * @return The pointer to the current light direction cache.
+			 * This pointer should point to a cached member variable under the instance.
+			*/
+			virtual const glm::vec3& lightDirection() const = 0;
 
 			/**
 			 * @brief Render the environment.

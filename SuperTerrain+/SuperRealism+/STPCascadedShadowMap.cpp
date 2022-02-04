@@ -1,3 +1,4 @@
+#define GLM_FORCE_INTRINSICS
 #include <SuperRealism+/Scene/Light/STPCascadedShadowMap.h>
 
 //Error
@@ -10,11 +11,13 @@
 //GLM
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 //System
 #include <numeric>
 #include <limits>
 #include <functional>
+#include <algorithm>
 
 using glm::uvec2;
 using glm::vec3;
@@ -22,6 +25,7 @@ using glm::mat4;
 using glm::vec4;
 
 using glm::radians;
+using glm::make_vec4;
 
 using std::numeric_limits;
 
@@ -51,28 +55,35 @@ mat4 STPCascadedShadowMap::calcLightSpace(float near, float far, const mat4& vie
 	//min and max of float
 	static constexpr float minF = numeric_limits<float>::min(),
 		maxF = numeric_limits<float>::max();
-	static auto calcCorner = [](const mat4& projection, const mat4& view) -> STPFrustumCorner {
-		//convert from clip space back to world space
-		const mat4 inv = glm::inverse(projection * view);
+	//unit frusum corner, as a lookup table to avoid recomputation.
+	static constexpr STPFrustumCornerFloat4 unitCorner = []() constexpr -> STPFrustumCornerFloat4 {
+		STPFrustumCornerFloat4 frustumCorner = { };
 
-		STPFrustumCorner frustumCorner;
 		unsigned int index = 0u;
 		for (unsigned int x = 0u; x < 2u; x++) {
 			for (unsigned int y = 0u; y < 2u; y++) {
 				for (unsigned int z = 0u; z < 2u; z++) {
-					//convert from normalised device coordinate to clip space
-					const vec4 pt = inv * vec4(2.0f * vec3(x, y, z) - 1.0f, 1.0f);
-					frustumCorner[index++] = pt / pt.w;
+					frustumCorner[index++] = {
+						2.0f * x - 1.0f,
+						2.0f * y - 1.0f,
+						2.0f * z - 1.0f,
+						1.0f
+					};
 				}
 			}
 		}
 
 		return frustumCorner;
-	};
+	}();
 
 	//calculate the projection matrix for this view frustum
 	const mat4 projection = this->LightFrustum.Focus->projection(near, far);
-	const STPFrustumCorner corner = calcCorner(projection, view);
+	STPFrustumCornerVec4 corner;
+	std::transform(unitCorner.cbegin(), unitCorner.cend(), corner.begin(), [inv = glm::inverse(projection * view)](const auto& v) {
+		//convert from normalised device coordinate to clip space
+		const vec4 pt = inv * make_vec4(v.data());
+		return pt / pt.w;
+	});
 
 	//each corner is normalised, so sum them up to get the coordinate of centre
 	const vec3 centre = std::reduce(corner.cbegin(), corner.cend(), vec3(0.0f), std::plus<vec3>()) / (1.0f * corner.size());
@@ -80,26 +91,20 @@ mat4 STPCascadedShadowMap::calcLightSpace(float near, float far, const mat4& vie
 
 	//align the light frusum tightly around the current view frustum
 	//we need to find the eight corners of the light frusum.
-	float minX = maxF,
-		maxX = minF,
-		minY = maxF,
-		maxY = minF,
-		minZ = maxF,
-		maxZ = minF;
+	vec3 minExt = vec3(maxF),
+		maxExt = vec3(minF);
 	for (const auto& v : corner) {
 		//convert the camera view frustum from world space to light view space
-		const vec4 trf = lightView * v;
+		const vec3 trf = static_cast<vec3>(lightView * v);
 
-		minX = glm::min(minX, trf.x);
-		maxX = glm::max(maxX, trf.x);
-		minY = glm::min(minY, trf.y);
-		maxY = glm::max(maxY, trf.y);
-		minZ = glm::min(minZ, trf.z);
-		maxZ = glm::max(maxZ, trf.z);
+		minExt = glm::min(minExt, trf);
+		maxExt = glm::max(maxExt, trf);
 	}
 
 	const float zDistance = this->LightFrustum.ShadowDistanceMultiplier;
 	//Tune the depth (maximum shadow distance)
+	float& minZ = minExt.z, 
+		&maxZ = maxExt.z;
 	if (minZ < 0.0f) {
 		minZ *= zDistance;
 	}
@@ -115,7 +120,7 @@ mat4 STPCascadedShadowMap::calcLightSpace(float near, float far, const mat4& vie
 	}
 
 	//finally, we are dealing with a directional light so shadow is parallel
-	const mat4 lightProjection = glm::ortho(minX, maxX, minY, maxY, minZ, maxZ);
+	const mat4 lightProjection = glm::ortho(minExt.x, maxExt.x, minExt.y, maxExt.y, minZ, maxZ);
 
 	return lightProjection * lightView;
 }

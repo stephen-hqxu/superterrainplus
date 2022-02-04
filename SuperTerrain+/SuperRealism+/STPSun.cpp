@@ -4,7 +4,6 @@
 
 //Error
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
-#include <SuperTerrain+/Exception/STPGLError.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 //Indirect
@@ -79,18 +78,16 @@ constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
 };
 
 STPSun<false>::STPSunSpectrum::STPSunSpectrum(unsigned int spectrum_length, const STPSun& sun, STPSpectrumLog& log) :
-	STPLightSpectrum(spectrum_length, STPSpectrumType::Bitonic, GL_RGBA16F), SunElevation(sun.sunDirection().y) {
+	STPLightSpectrum(spectrum_length, STPSpectrumType::Bitonic, GL_RGBA16F), SunElevation(sun.lightDirection().y) {
 	//setup spectrum emulator
 	STPShaderManager spectrum_shader(GL_COMPUTE_SHADER);
-	STPShaderManager::STPShaderSource spectrum_source(*STPFile(SpectrumShaderFilename.data()));
+	const char* const spectrum_source_file = SpectrumShaderFilename.data();
+	STPShaderManager::STPShaderSource spectrum_source(spectrum_source_file, *STPFile(spectrum_source_file));
 
 	log.Log[0] = spectrum_shader(spectrum_source);
 	this->SpectrumEmulator.attach(spectrum_shader);
 	//link
 	log.Log[1] = this->SpectrumEmulator.finalise();
-	if (!this->SpectrumEmulator) {
-		throw STPException::STPGLError("Spectrum generator program fails to validate");
-	}
 
 	//the number of iteration is a fixed number and does not allow to be changed
 	this->SpectrumEmulator.uniform(glProgramUniform1ui, "SpectrumDimension", this->SpectrumLength);
@@ -161,7 +158,8 @@ STPSun<false>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, unsigned
 		{ GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
 	for (unsigned int i = 0u; i < SkyShaderFilename.size(); i++) {
 		//build the shader filename
-		STPShaderManager::STPShaderSource sky_source(*STPFile(SkyShaderFilename[i].data()));
+		const char* const sky_source_file = SkyShaderFilename[i].data();
+		STPShaderManager::STPShaderSource sky_source(sky_source_file, *STPFile(sky_source_file));
 
 		//compile
 		log.Log[i] = sky_shader[i](sky_source);
@@ -172,9 +170,6 @@ STPSun<false>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, unsigned
 
 	//link
 	log.Log[2] = this->SkyRenderer.finalise();
-	if (!this->SkyRenderer) {
-		throw STPException::STPGLError("Sky renderer program returns a failed status");
-	}
 }
 
 inline void STPSun<false>::updateAtmosphere(STPProgramManager& program, const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
@@ -196,7 +191,7 @@ inline void STPSun<false>::updateAtmosphere(STPProgramManager& program, const ST
 		.uniform(glProgramUniform1ui, "Atmo.secStep", atmo_setting.SecondaryRayStep);
 }
 
-const vec3& STPSun<false>::sunDirection() const {
+const vec3& STPSun<false>::lightDirection() const {
 	return this->SunDirectionCache;
 }
 

@@ -65,13 +65,13 @@ namespace SuperTerrainPlus::STPRealism {
 			 * therefore if this depth configuration has been added previously, no operation should be performed and false should be returned.
 			 * If a new configuration is added, returns true.
 			*/
-			virtual bool addDepthConfiguration(unsigned int) = 0;
+			virtual bool addDepthConfiguration(size_t) = 0;
 
 			/**
 			 * @brief Render the opaque object to a depth texture, with shading pruned.
 			 * @param light_space_count The number of light space to be captured as a depth texture, as consecutive layered depth textures.
 			*/
-			virtual void renderDepth(unsigned int) const = 0;
+			virtual void renderDepth(size_t) const = 0;
 
 		};
 
@@ -99,7 +99,7 @@ namespace SuperTerrainPlus::STPRealism {
 		private:
 
 			//Light space size is used for searching for an index, and use this index to locate the pipeline in the other array.
-			std::unordered_map<unsigned int, STPGroupMember> LightSpaceDatabase;
+			std::unordered_map<size_t, STPGroupMember> LightSpaceDatabase;
 
 		public:
 
@@ -120,7 +120,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @param light_space_count The group configuration.
 			 * @return True if a group with this configuration is found.
 			*/
-			bool exist(unsigned int) const;
+			bool exist(size_t) const;
 
 			/**
 			 * @brief Add a new rendering pipeline to depth renderer group.
@@ -131,12 +131,12 @@ namespace SuperTerrainPlus::STPRealism {
 			 * All pointers returned is guaranteed to be valid until the end of life of the depth render group instance.
 			 * Exception is thrown if another group with such key exists.
 			*/
-			typename STPGroupMember& addGroup(unsigned int);
+			typename STPGroupMember& addGroup(size_t);
 
 			/**
 			 * @see The const version of this function
 			*/
-			STPPipelineManager& findPipeline(unsigned int);
+			STPPipelineManager& findPipeline(size_t);
 
 			/**
 			 * @brief Find the pipeline for a corresponding light space configuration.
@@ -144,7 +144,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @return The pointer to the pipeline with given configuration.
 			 * It is an undefined behaviour if no such pipeline exists, to avoid expensive runtime check.
 			*/
-			const STPPipelineManager& findPipeline(unsigned int) const;
+			const STPPipelineManager& findPipeline(size_t) const;
 
 		};
 

@@ -30,27 +30,21 @@ STPPipelineManager& STPPipelineManager::stage(STPOpenGL::STPbitfield stage, cons
 	return *this;
 }
 
-const string& STPPipelineManager::finalise() {
+string STPPipelineManager::finalise() {
+	string log;
 	//check for log
 	GLint logLength;
 	glGetProgramPipelineiv(this->Pipeline.get(), GL_INFO_LOG_LENGTH, &logLength);
 	if (logLength > 0) {
-		this->Log.resize(logLength);
-		glGetProgramPipelineInfoLog(this->Pipeline.get(), logLength, NULL, this->Log.data());
-	}
-	else {
-		this->Log.clear();
+		log.resize(logLength);
+		glGetProgramPipelineInfoLog(this->Pipeline.get(), logLength, NULL, log.data());
 	}
 
-	return this->lastLog();
+	return log;
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint STPPipelineManager::operator*() const {
 	return this->Pipeline.get();
-}
-
-const string& STPPipelineManager::lastLog() const {
-	return this->Log;
 }
 
 void STPPipelineManager::bind() const {

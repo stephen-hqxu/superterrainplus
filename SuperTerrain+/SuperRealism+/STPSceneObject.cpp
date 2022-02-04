@@ -9,12 +9,12 @@ using std::make_pair;
 using namespace SuperTerrainPlus::STPRealism;
 
 template<size_t GS>
-bool STPSceneObject::STPDepthRenderGroup<GS>::exist(unsigned int light_space_count) const {
+bool STPSceneObject::STPDepthRenderGroup<GS>::exist(size_t light_space_count) const {
 	return this->LightSpaceDatabase.find(light_space_count) != this->LightSpaceDatabase.cend();
 }
 
 template<size_t GS>
-typename STPSceneObject::STPDepthRenderGroup<GS>::STPGroupMember& STPSceneObject::STPDepthRenderGroup<GS>::addGroup(unsigned int light_space_count) {
+typename STPSceneObject::STPDepthRenderGroup<GS>::STPGroupMember& STPSceneObject::STPDepthRenderGroup<GS>::addGroup(size_t light_space_count) {
 	//the values are default constructable
 	auto [it, inserted] = this->LightSpaceDatabase.try_emplace(light_space_count);
 	if (!inserted) {
@@ -26,12 +26,12 @@ typename STPSceneObject::STPDepthRenderGroup<GS>::STPGroupMember& STPSceneObject
 }
 
 template<size_t GS>
-STPPipelineManager& STPSceneObject::STPDepthRenderGroup<GS>::findPipeline(unsigned int light_space_count) {
+STPPipelineManager& STPSceneObject::STPDepthRenderGroup<GS>::findPipeline(size_t light_space_count) {
 	return const_cast<STPPipelineManager&>(const_cast<const STPDepthRenderGroup*>(this)->findPipeline(light_space_count));
 }
 
 template<size_t GS>
-inline const STPPipelineManager& STPSceneObject::STPDepthRenderGroup<GS>::findPipeline(unsigned int light_space_count) const {
+inline const STPPipelineManager& STPSceneObject::STPDepthRenderGroup<GS>::findPipeline(size_t light_space_count) const {
 	//error checking is not needed, we have informed the user for the UB
 	//because this function might get called multiple times every frame, just to make it cheaper.
 	return this->LightSpaceDatabase.find(light_space_count)->second.first;

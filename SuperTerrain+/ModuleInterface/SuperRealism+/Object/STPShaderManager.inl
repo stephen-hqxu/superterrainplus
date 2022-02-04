@@ -11,10 +11,12 @@ inline SuperTerrainPlus::STPRealism::STPShaderManager::STPShaderSource::STPMacro
 	using std::disjunction_v;
 	using std::is_same;
 
+	using RawType = std::remove_const_t<T>;
+
 	if constexpr (disjunction_v<
-		is_same<T, std::string>, 
-		is_same<T, std::string_view>, 
-		is_same<T, char*>>) {
+		is_same<RawType, std::string>, 
+		is_same<RawType, std::string_view>, 
+		is_same<RawType, char*>>) {
 		//target is a string, can be inserted directly
 		this->Macro.try_emplace(macro, std::forward<T>(value));
 	}

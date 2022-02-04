@@ -78,19 +78,22 @@ namespace SuperTerrainPlus::STPRealism {
 
 		private:
 
+			//The name of the source as an identifier in the compilation log;
+			const std::string SourceName;
 			//Attached source code.
 			std::string Cache;
 
 		public:
-
 			//A list of string that contains include paths of a shader.
 			STPShaderIncludePath Include;
 
 			/**
 			 * @brief Create a new shader source class.
+			 * @param name The pointer to a source name as an identifier in the compilation log.
+			 * If both the source name and the log is not empty, this source name will be prepended to the log output for easier debugging.
 			 * @param source The pointer to the source code. It will be copied.
 			*/
-			STPShaderSource(const std::string&);
+			STPShaderSource(const std::string&, const std::string&);
 
 			STPShaderSource(const STPShaderSource&) = default;
 
@@ -116,14 +119,15 @@ namespace SuperTerrainPlus::STPRealism {
 			*/
 			unsigned int define(const STPMacroValueDictionary&);
 
+			/**
+			 * @brief Get the identifier string as the name of this shader source.
+			 * @return The pointer to the source name.
+			*/
+			const std::string& getName() const;
+
 		};
 
 	private:
-
-		//Any log that comes from the compilation.
-		std::string Log;
-		//Indication of compilation status
-		bool Valid = false;
 
 		/**
 		 * @brief STPShaderDeleter calls glDeleteShader to remove a shader.
@@ -187,19 +191,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return Compilation log, if any.
 		 * If compilation fails, exception is thrown with error log.
 		*/
-		const std::string& operator()(const STPShaderSource&);
-
-		/**
-		 * @brief Get the compilation log from the last shader object compilation.
-		 * @return The compilation log from last time.
-		 * If there is no compilation log, nothing is returned.
-		*/
-		const std::string& lastLog() const;
-
-		/**
-		 * @brief Check if the current shader manager is valid.
-		*/
-		explicit operator bool() const;
+		std::string operator()(const STPShaderSource&);
 
 		/**
 		 * @brief Get the underlying shader object.

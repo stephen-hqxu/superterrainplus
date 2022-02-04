@@ -5,6 +5,7 @@
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 #include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 //Base Off-screen Rendering
 #include <SuperRealism+/Scene/Component/STPScreen.h>
@@ -21,10 +22,10 @@
 
 //System
 #include <optional>
-#include <functional>
-#include <array>
 #include <algorithm>
-#include <numeric>
+#include <array>
+//Container
+#include <unordered_map>
 
 //GLAD
 #include <glad/glad.h>
@@ -44,8 +45,11 @@ using glm::mat4;
 using glm::value_ptr;
 
 using std::optional;
+using std::string;
+using std::to_string;
 using std::vector;
 using std::array;
+using std::unordered_map;
 using std::unique_ptr;
 using std::make_unique;
 using std::pair;
@@ -185,6 +189,12 @@ public:
 class STPScenePipeline::STPShadowPipeline {
 private:
 
+	STPSampler LightDepthSampler;
+	vector<STPTexture> LightDepthTexture;
+	vector<STPBindlessTexture> LightDepthTextureHandle;
+	vector<STPFrameBuffer> LightDepthContainer;
+
+	STPBuffer LightSpaceBuffer;
 	/**
 	 * @brief STPLightSpaceBuffer contains pointers to the mapped light space buffer.
 	*/
@@ -192,17 +202,10 @@ private:
 	public:
 
 		unsigned int* LightLocation = nullptr;
+		//Pointers for each shadow-casting components with requested length allocated
 		vector<mat4*> LightSpacePV;
 
-	};
-
-	STPSampler LightDepthSampler;
-	vector<STPTexture> LightDepthTexture;
-	vector<STPBindlessTexture> LightDepthTextureHandle;
-	vector<STPFrameBuffer> LightDepthContainer;
-
-	STPBuffer LightSpaceBuffer;
-	STPLightSpaceBuffer MappedLightSpaceBuffer;
+	} MappedLightSpaceBuffer;
 
 	/**
 	 * @brief Query the viewport information in the current context.
@@ -217,20 +220,13 @@ private:
 
 public:
 
-	const size_t TotalLightSpaceCount;
-
 	/**
 	 * @brief Init a new STPShadowPipeline.
-	 * @param shadow_light The pointer to the an array of shadow-casting light;
 	 * @param shadow_init The pointer to the scene shadow initialiser.
+	 * @param light_space_limit The maximum number of light space matrix the buffer can hold.
 	*/
-	STPShadowPipeline(const vector<STPSceneLight::STPEnvironmentLight<true>*>& shadow_light, const STPSceneShadowInitialiser& shadow_init) : 
-		TotalLightSpaceCount(std::reduce(shadow_light.cbegin(), shadow_light.cend(), 0ull,
-			[](auto init, const auto* val) {
-				//compute the total number of light space among all registering lights
-				return init + val->getLightShadow().lightSpaceDimension();
-			})) {
-		/* --------------------------------------- depth sampler setup ----------------------------------------------- */
+	STPShadowPipeline(const STPSceneShadowInitialiser& shadow_init, size_t light_space_limit) {
+		//setup depth sampler
 		if (shadow_init.ShadowFilter == STPShadowMapFilter::Nearest) {
 			this->LightDepthSampler.filter(GL_NEAREST, GL_NEAREST);
 		}
@@ -244,43 +240,13 @@ public:
 		this->LightDepthSampler.compareFunction(GL_LESS);
 		this->LightDepthSampler.compareMode(GL_COMPARE_REF_TO_TEXTURE);
 
-		/* --------------------------------------- depth texture setup ------------------------------------------------ */
-		this->LightDepthTexture.reserve(shadow_light.size());
-		for (const auto light : shadow_light) {
-			const STPLightShadow& shadow_instance = light->getLightShadow();
-
-			const uvec3 dimension = uvec3(shadow_instance.shadowMapResolution(), shadow_instance.lightSpaceDimension());
-			this->LightDepthTexture.emplace_back(GL_TEXTURE_2D_ARRAY).textureStorage<STPTexture::STPDimension::THREE>(1, GL_DEPTH_COMPONENT24, dimension);
-		}
-
-		//create handle
-		this->LightDepthTextureHandle.reserve(this->LightDepthTexture.size());
-		for (const auto& texture : this->LightDepthTexture) {
-			this->LightDepthTextureHandle.emplace_back(texture, this->LightDepthSampler);
-		}
-
-		/* -------------------------------------- depth texture framebuffer ------------------------------------------- */
-		this->LightDepthContainer.reserve(this->LightDepthTexture.size());
-		for (const auto& depth_tex : this->LightDepthTexture) {
-			STPFrameBuffer& depth_container = this->LightDepthContainer.emplace_back();
-			//attach the new depth texture to the framebuffer
-			depth_container.attach(GL_DEPTH_ATTACHMENT, depth_tex, 0);
-			//we are rendering shadow and colors are not needed.
-			depth_container.drawBuffer(GL_NONE);
-			depth_container.readBuffer(GL_NONE);
-
-			if (depth_container.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-				throw STPException::STPGLError("Framebuffer for capturing shadow map fails to setup");
-			}
-		}
-
-		/* ----------------------------------------- shadow pipeline ------------------------------------------------- */
+		/* ----------------------------------------- light space buffer ------------------------------------------------- */
 		//the light space size takes paddings into account
-		const size_t lightSpaceSize = 16ull + sizeof(mat4) * this->TotalLightSpaceCount;
+		const size_t lightSpaceSize = 16ull + sizeof(mat4) * light_space_limit;
 		//setup light space information buffer
 		this->LightSpaceBuffer.bufferStorage(lightSpaceSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
 		this->LightSpaceBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 1u);
-		unsigned char* const light_space_buffer = 
+		unsigned char* const light_space_buffer =
 			reinterpret_cast<unsigned char*>(this->LightSpaceBuffer.mapBufferRange(0, lightSpaceSize,
 				GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
 		if (!light_space_buffer) {
@@ -293,16 +259,7 @@ public:
 		auto& [light_location, light_PV] = this->MappedLightSpaceBuffer;
 		light_location = reinterpret_cast<unsigned int*>(light_space_buffer);
 		//the matrix is aligned to 16 byte in the shader
-		mat4* light_space_PV = reinterpret_cast<mat4*>(light_space_buffer + 16);
-
-		//assign light space buffer for each shadow-casting light
-		light_PV.reserve(this->LightDepthTexture.size());
-		for (const auto light : shadow_light) {
-			light_PV.emplace_back(light_space_PV);
-
-			//increment the pointer to the light space matrix of the next light
-			light_space_PV += light->getLightShadow().lightSpaceDimension();
-		}
+		light_PV.emplace_back(reinterpret_cast<mat4*>(light_space_buffer + 16));
 	}
 
 	STPShadowPipeline(const STPShadowPipeline&) = delete;
@@ -319,17 +276,42 @@ public:
 	}
 
 	/**
-	 * @brief Get the bindless handle to the shadow map.
-	 * @return An array of bindless handles, this handle remains valid as long as the instance is valid.
+	 * @brief Manage a new light that casts shadow.
+	 * @param shadow_light The pointer to the an array of shadow-casting light.
+	 * @return The depth bindless texture handle for this new light.
 	*/
-	inline auto handle() const {
-		const size_t handle_count = this->LightDepthTextureHandle.size();
-		//extract raw handles
-		unique_ptr<GLuint64[]> raw_handle = make_unique<GLuint64[]>(handle_count);
-		std::transform(this->LightDepthTextureHandle.cbegin(), this->LightDepthTextureHandle.cend(), raw_handle.get(), 
-			[](const auto& handle) { return *handle; });
+	GLuint64 addLight(const STPSceneLight::STPEnvironmentLight<true>& shadow_light) {
+		/* --------------------------------------- depth texture setup ------------------------------------------------ */
+		const STPLightShadow& shadow_instance = shadow_light.getLightShadow();
+		const uvec3 dimension = uvec3(shadow_instance.shadowMapResolution(), shadow_instance.lightSpaceDimension());
+		//allocate new depth texture for this light
+		STPTexture& depth_texture = this->LightDepthTexture.emplace_back(GL_TEXTURE_2D_ARRAY);
+		depth_texture.textureStorage<STPTexture::STPDimension::THREE>(1, GL_DEPTH_COMPONENT24, dimension);
 
-		return make_pair(std::move(raw_handle), handle_count);
+		//create handle
+		const GLuint64 depth_handle = *this->LightDepthTextureHandle.emplace_back(depth_texture, this->LightDepthSampler);
+
+		/* -------------------------------------- depth texture framebuffer ------------------------------------------- */
+		STPFrameBuffer& depth_container = this->LightDepthContainer.emplace_back();
+		//attach the new depth texture to the framebuffer
+		depth_container.attach(GL_DEPTH_ATTACHMENT, depth_texture, 0);
+		//we are rendering shadow and colors are not needed.
+		depth_container.drawBuffer(GL_NONE);
+		depth_container.readBuffer(GL_NONE);
+
+		if (depth_container.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+			throw STPException::STPGLError("Framebuffer for capturing shadow map fails to setup");
+		}
+
+		/* ----------------------------------------- light space buffer ---------------------------------------------- */
+		auto& light_PV = this->MappedLightSpaceBuffer.LightSpacePV;
+		//last PV pointer indicates the start of the current one
+		//the vector is guaranteed to have at least one pointer in it pointing to the start of the matrix array
+		const size_t last_PV_loc = light_PV.size() - 1ull;
+		//write a new pointer to indicate the start of the next pointer
+		light_PV.emplace_back(light_PV[last_PV_loc] + dimension.z);
+
+		return depth_handle;
 	}
 
 	/**
@@ -344,7 +326,7 @@ public:
 		size_t current_light_space_start = 0ull;
 		for (int i = 0; i < shadow_light.size(); i++) {
 			const auto* const shadowable_light = shadow_light[i];
-			auto& [light_location, light_PV] = this->MappedLightSpaceBuffer;
+			const auto& [light_location, light_PV] = this->MappedLightSpaceBuffer;
 			mat4* const current_light_PV = light_PV[i];
 			const STPLightShadow& shadow_instance = shadowable_light->getLightShadow();
 
@@ -390,6 +372,9 @@ public:
 class STPScenePipeline::STPGeometryBufferResolution : private STPScreen {
 private:
 
+	//A memory pool for creating dynamic uniform name.
+	string UniformNameBuffer;
+
 	//The dependent scene pipeline.
 	const STPScenePipeline& Pipeline;
 
@@ -405,12 +390,39 @@ private:
 	STPFrameBuffer GeometryContainer;
 
 	//Bindless handle for all lights from the scene pipeline
-	optional<STPBindlessTexture> SpectrumHandle;
+	vector<STPBindlessTexture> SpectrumHandle;
 
 	constexpr static auto DeferredShaderFilename =
 		STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPDeferredShading", ".frag");
+	
+	//A constant value to be assigned to a shadow data index to indicate a non-shadow-casting light
+	constexpr static unsigned int UnusedShadow = std::numeric_limits<unsigned int>::max();
+
+	/**
+	 * @brief Create a uniform name that reuses string memory.
+	 * @param pre The first segment of the string.
+	 * @param index The middle segment.
+	 * @param post The final segment.
+	 * @return A pointer to the final string, this pointer is valid until next time this function is called.
+	*/
+	inline const char* createUniformName(const char* pre, const string& index, const char* post) {
+		this->UniformNameBuffer.clear();
+		//this is valid in C++17 and later version, each sub-expression will guarantee to be evaluated in order.
+		this->UniformNameBuffer.append(pre).append(index).append(post);
+		return this->UniformNameBuffer.c_str();
+	}
 
 public:
+
+	/**
+	 * @brief STPLightIndexLocator is a lookup table, given an instance of light, find the index in the scene graph.
+	*/
+	struct STPLightIndexLocator {
+	public:
+
+		unordered_map<const STPSceneLight::STPEnvironmentLight<false>*, size_t> Env;
+
+	} IndexLocator;
 
 	STPProgramManager LightingProcessor;
 
@@ -418,9 +430,10 @@ public:
 	 * @brief Init a new geometry buffer resolution instance.
 	 * @param pipeline The pointer to the dependent scene pipeline.
 	 * @param shadow_init The pointer to the scene shadow initialiser.
+	 * @param memory_cap The pointer to the memory capacity that specifies the maximum amount of memory to be allocated in the shader.
 	 * @param log The log from compiling light pass shader.
 	*/
-	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPSceneShadowInitialiser& shadow_init, 
+	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPSceneShadowInitialiser& shadow_init,
 		STPScenePipelineLog::STPGeometryBufferResolutionLog& log) : Pipeline(pipeline),
 		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GSpecular(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D) {
 		//setup geometry buffer shader
@@ -428,11 +441,17 @@ public:
 			g_shader(GL_FRAGMENT_SHADER);
 
 		//do something to the fragment shader
-		STPShaderManager::STPShaderSource source(*STPFile(DeferredShaderFilename.data()));
+		const char* const lighting_source_file = DeferredShaderFilename.data();
+		STPShaderManager::STPShaderSource source(lighting_source_file, *STPFile(lighting_source_file));
 		STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
-		Macro("LIGHT_SPACE_COUNT", this->Pipeline.GeometryShadowPass->TotalLightSpaceCount)
-			("LIGHT_SHADOW_FILTER", static_cast<std::underlying_type_t<STPShadowMapFilter>>(shadow_init.ShadowFilter));
+		const STPSceneShaderCapacity& memory_cap = this->Pipeline.SceneMemoryLimit;
+		Macro("ENVIRONMENT_LIGHT_CAPACITY", memory_cap.EnvironmentLight)
+			("DIRECTIONAL_LIGHT_SHADOW_CAPACITY", memory_cap.DirectionalLightShadow)
+			("LIGHT_FRUSTUM_DIVISOR_CAPACITY", memory_cap.LightFrustumDivisionPlane)
+
+			("LIGHT_SHADOW_FILTER", static_cast<std::underlying_type_t<STPShadowMapFilter>>(shadow_init.ShadowFilter))
+			("UNUSED_SHADOW", STPGeometryBufferResolution::UnusedShadow);
 
 		source.define(Macro);
 		//compile shader
@@ -443,10 +462,6 @@ public:
 			.attach(screen_shader)
 			.attach(g_shader);
 		log.LightingShader.Log[1] = this->LightingProcessor.finalise();
-		//error checking
-		if (!this->LightingProcessor) {
-			throw STPException::STPGLError("Geometry buffer resolution program fails to validate");
-		}
 
 		/* ------------------------------- setup G-buffer sampler ------------------------------------- */
 		this->GSampler.filter(GL_NEAREST, GL_NEAREST);
@@ -463,27 +478,8 @@ public:
 		});
 
 		/* --------------------------------- initial buffer setup -------------------------------------- */
-		const auto& env_obj_db = this->Pipeline.SceneComponent.EnvironmentObjectDatabase;
-		const auto& sha_env_obj = this->Pipeline.SceneComponent.ShadowEnvironmentObject;
-		if (sha_env_obj.size() != 1ull) {
-			//Because I am too buzy to implement all features right now, add a fatal flag to remind myself in the future
-			//if I attempt to do so.
-			throw STPException::STPUnsupportedFunctionality("Currently the system must have one shadow-casting environment light source, "
-				"please remind the maintainer to support this feature :)");
-		}
-
-		//create light spectrum handle
-		this->SpectrumHandle.emplace(env_obj_db[0]->getLightSpectrum().spectrum());
-		//send to shader
-		this->LightingProcessor.uniform(glProgramUniformHandleui64ARB, "LightSpectrum", **this->SpectrumHandle);
-
-		//shadow setting
-		const auto& sha_env = sha_env_obj[0]->getEnvironmentLightShadow();
-		const STPCascadedShadowMap::STPCascadePlane& frustum_plane = sha_env.getDivision();
-		const auto [depth_handle, handle_count] = this->Pipeline.GeometryShadowPass->handle();
+		//global shadow setting
 		this->LightingProcessor
-			.uniform(glProgramUniformHandleui64vARB, "Shadowmap", static_cast<GLsizei>(handle_count), depth_handle.get())
-			.uniform(glProgramUniform1fv, "CascadePlaneDistance", static_cast<GLsizei>(frustum_plane.size()), frustum_plane.data())
 			.uniform(glProgramUniform1f, "LightFrustumFar", this->Pipeline.CameraMemory->Camera.cameraStatus().Far)
 			.uniform(glProgramUniform1f, "MaxBias", shadow_init.ShadowMapBias.x)
 			.uniform(glProgramUniform1f, "MinBias", shadow_init.ShadowMapBias.y);
@@ -498,6 +494,67 @@ public:
 	STPGeometryBufferResolution& operator=(STPGeometryBufferResolution&&) = delete;
 
 	~STPGeometryBufferResolution() = default;
+
+	/**
+	 * @brief Add shadow information for a shadow casting light.
+	 * @param light The pointer to the newly added light.
+	 * @param shadow_light The pointer to the shadow light instance, or nullptr.
+	 * @param shadow_handle The bindless handle to the depth texture for this newlyt added light.
+	 * For non shadow-casting light, this parameter can be null.
+	*/
+	void addLight(const STPSceneLight::STPEnvironmentLight<false>& light, const STPSceneLight::STPEnvironmentLight<true>* shadow_light = nullptr,
+		optional<GLuint64> shadow_handle = std::nullopt) {
+		const STPSceneGraph& scene_graph = this->Pipeline.SceneComponent;
+		//current memory usage in the shader, remember this is the current memory usage without this light being added.
+		const STPSceneShaderCapacity& scene_mem_current = this->Pipeline.SceneMemoryCurrent;
+		auto& [env] = this->IndexLocator;
+
+		//add pointer-index lookup entry
+		//we can safely assumes the new light is emplaced at the back of the light object array
+		env.try_emplace(&light, scene_graph.EnvironmentObjectDatabase.size() - 1ull);
+
+		//setup light uniform
+		const size_t lightLoc = scene_mem_current.EnvironmentLight;
+		const string lightLoc_str = to_string(lightLoc);
+		//create light spectrum handle and send to the program
+		this->LightingProcessor.uniform(glProgramUniformHandleui64ARB, this->createUniformName("EnvironmentLightList[", lightLoc_str, "].LightSpectrum"),
+			*this->SpectrumHandle.emplace_back(light.getLightSpectrum().spectrum()))
+			.uniform(glProgramUniform1ui, "EnvLightCount", static_cast<unsigned int>(lightLoc + 1ull));
+
+		if (shadow_light) {
+			const STPCascadedShadowMap& lightShadow = shadow_light->getEnvironmentLightShadow();
+
+			const size_t lightSpaceCount = lightShadow.lightSpaceDimension();
+			//prepare shadow data for directional light
+			const size_t lightShadowLoc = scene_mem_current.DirectionalLightShadow,
+				frustumDivStart = scene_mem_current.LightFrustumDivisionPlane;
+			const string lightShadowLoc_str = to_string(lightShadowLoc);
+
+			this->LightingProcessor.uniform(glProgramUniform1ui,
+					this->createUniformName("EnvironmentLightList[", lightLoc_str, "].DirShadowIdx"), static_cast<unsigned int>(lightShadowLoc))
+
+				.uniform(glProgramUniformHandleui64ARB,
+					this->createUniformName("DirectionalShadowList[", lightShadowLoc_str, "].CascadedShadowMap"), shadow_handle.value())
+				.uniform(glProgramUniform1ui,
+					//the index start from the length of the current array, basically we are doing am emplace_back operation
+					this->createUniformName("DirectionalShadowList[", lightShadowLoc_str, "].LightSpaceStart"), 
+					static_cast<unsigned int>(scene_mem_current.LightSpaceMatrix))
+				.uniform(glProgramUniform1ui,
+					this->createUniformName("DirectionalShadowList[", lightShadowLoc_str, "].DivisorStart"), 
+					static_cast<unsigned int>(frustumDivStart))
+				.uniform(glProgramUniform1ui,
+					this->createUniformName("DirectionalShadowList[", lightShadowLoc_str, "].LightSpaceDim"), static_cast<unsigned int>(lightSpaceCount))
+				.uniform(glProgramUniform1fv, 
+					this->createUniformName("LightFrustumDivisor[", to_string(frustumDivStart), "]"), 
+					static_cast<unsigned int>(lightSpaceCount - 1ull), lightShadow.getDivision().data());
+		}
+		else {
+			//not shadow-casting? indicate in the shader this light does not cast shadow
+			this->LightingProcessor.uniform(glProgramUniform1ui, 
+				this->createUniformName("EnvironmentLightList[", lightLoc_str, "].DirShadowIdx"), STPGeometryBufferResolution::UnusedShadow);
+		}
+	}
+
 
 	/**
 	 * @brief Set the resolution of all buffers.
@@ -572,6 +629,31 @@ public:
 		STPProgramManager::unuse();
 	}
 
+	/**
+	 * @see STPScenePipeline::setLight
+	 * For spectrum coordinate, the coordinate must be provided through the data.
+	*/
+	template<STPScenePipeline::STPLightPropertyType Prop, typename T>
+	inline void setLight(const string& index, T&& data) {
+		const auto forwardedData = std::forward<T>(data);
+
+		if constexpr (Prop == STPLightPropertyType::AmbientStrength) {
+			this->LightingProcessor.uniform(glProgramUniform1f, this->createUniformName("EnvironmentLightList[", index, "].Ka"), forwardedData);
+		}
+		if constexpr (Prop == STPLightPropertyType::DiffuseStrength) {
+			this->LightingProcessor.uniform(glProgramUniform1f, this->createUniformName("EnvironmentLightList[", index, "].Kd"), forwardedData);
+		}
+		if constexpr (Prop == STPLightPropertyType::SpecularStrength) {
+			this->LightingProcessor.uniform(glProgramUniform1f, this->createUniformName("EnvironmentLightList[", index, "].Ks"), forwardedData);
+		}
+		if constexpr (Prop == STPLightPropertyType::Direction) {
+			this->LightingProcessor.uniform(glProgramUniform3fv, this->createUniformName("EnvironmentLightList[", index, "].Dir"), 1, value_ptr(forwardedData));
+		}
+		if constexpr (Prop == STPLightPropertyType::SpectrumCoordinate) {
+			this->LightingProcessor.uniform(glProgramUniform1f, this->createUniformName("EnvironmentLightList[", index, "].SpectrumCoord"), forwardedData);
+		}
+	}
+
 };
 
 class STPScenePipeline::STPSceneRenderMemory {
@@ -642,19 +724,13 @@ public:
 
 };
 
-STPScenePipeline::STPScenePipeline(STPSceneInitialiser&& init, const STPCamera& camera, STPScenePipelineLog& log) :
-	SceneComponent(std::move(init.InitialiserComponent)), 
+STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneShaderCapacity& shader_cap, 
+	const STPSceneShadowInitialiser& shadow_init, STPScenePipelineLog& log) :
+	SceneMemoryCurrent{ }, SceneMemoryLimit(shader_cap),
 	CameraMemory(make_unique<STPCameraInformationMemory>(camera)), 
-	GeometryShadowPass(make_unique<STPShadowPipeline>(this->SceneComponent.ShadowEnvironmentObject, init)), 
-	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, init, log.GeometryBufferResolution)), 
+	GeometryShadowPass(make_unique<STPShadowPipeline>(shadow_init, this->SceneMemoryLimit.LightSpaceMatrix)),
+	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, shadow_init, log.GeometryBufferResolution)),
 	RenderMemory(make_unique<STPSceneRenderMemory>()) {
-	//add light group configuration for all shadow-casting object
-	for (const auto obj_shadow : this->SceneComponent.ShadowOpaqueObject) {
-		//TODO: because we only have one shadow-casting light for now.
-		//It is better to keep a list of unique light space dimension and add each unique depth configuration one by one.
-		obj_shadow->addDepthConfiguration(static_cast<unsigned int>(this->GeometryShadowPass->TotalLightSpaceCount));
-	}
-
 	//set up initial GL context states
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
@@ -677,6 +753,88 @@ STPScenePipeline::STPScenePipeline(STPSceneInitialiser&& init, const STPCamera& 
 }
 
 STPScenePipeline::~STPScenePipeline() = default;
+
+void STPScenePipeline::canLightBeAdded(const STPSceneLight::STPEnvironmentLight<true>* light_shadow) const {
+	const STPSceneShaderCapacity& current_usage = this->SceneMemoryCurrent, 
+		limit_usage = this->SceneMemoryLimit;
+
+	//one env light takes one space for environment light list and array shadow map, each
+	if (current_usage.EnvironmentLight == limit_usage.EnvironmentLight) {
+		throw STPException::STPMemoryError("The number of environment light has reached the limit");
+	}
+	if (current_usage.DirectionalLightShadow == limit_usage.DirectionalLightShadow) {
+		throw STPException::STPMemoryError("The number of shadow-casting directional light has reached the limit");
+	}
+
+	if (light_shadow) {
+		const size_t lightSpaceCount = light_shadow->getLightShadow().lightSpaceDimension(),
+			divisionPlaneCount = lightSpaceCount - 1ull;
+
+		//one env light takes "light space" number of light space matrix
+		if (current_usage.LightSpaceMatrix + lightSpaceCount > limit_usage.LightSpaceMatrix) {
+			throw STPException::STPMemoryError("Unable to add more light because there is not enough memory to hold more light space matrix");
+		}
+		//and "light space" - 1 number of division plane
+		if (current_usage.LightFrustumDivisionPlane + divisionPlaneCount > limit_usage.LightFrustumDivisionPlane) {
+			throw STPException::STPMemoryError("Insufficient memory to hold more light frustum division plane");
+		}
+	}
+}
+
+void STPScenePipeline::addLight(const STPSceneLight::STPEnvironmentLight<false>& light, const STPSceneLight::STPEnvironmentLight<true>* light_shadow) {
+	STPSceneGraph& scene_graph = this->SceneComponent;
+
+	if (light_shadow) {
+		//this is a shadow-casting light
+		//allocate shadow memory for this light
+		const GLuint64 shadow_handle = this->GeometryShadowPass->addLight(*light_shadow);
+
+		//check and see if we need to update the array that stores unique ligit space count
+		auto& unique_light_space = scene_graph.UniqueLightSpaceSize;
+		const size_t newLightSpaceCount = light_shadow->getLightShadow().lightSpaceDimension();
+
+		const auto it = lower_bound(unique_light_space.begin(), unique_light_space.end(), newLightSpaceCount);
+		if (it == unique_light_space.end() || *it != newLightSpaceCount) {
+			//the new light space size is new in that array
+			unique_light_space.insert(it, newLightSpaceCount);
+
+			//also we need to add this new light configuration to all shadow-casting objects
+			for (auto shadow_obj : scene_graph.ShadowOpaqueObject) {
+				shadow_obj->addDepthConfiguration(newLightSpaceCount);
+			}
+		}
+
+		//add light settings to the lighting shader
+		this->GeometryLightPass->addLight(light, light_shadow, shadow_handle);
+	}
+	else {
+		this->GeometryLightPass->addLight(light);
+	}
+
+	//update memory usage
+	STPSceneShaderCapacity& mem_usage = this->SceneMemoryCurrent;
+
+	mem_usage.EnvironmentLight++;
+	if (light_shadow) {
+		const size_t lightSpaceDim = light_shadow->getLightShadow().lightSpaceDimension();
+
+		mem_usage.DirectionalLightShadow++;
+		mem_usage.LightSpaceMatrix += lightSpaceDim;
+		mem_usage.LightFrustumDivisionPlane += lightSpaceDim - 1ull;
+	}
+}
+
+const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryUsage() const {
+	return this->SceneMemoryCurrent;
+}
+
+const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryLimit() const {
+	return this->SceneMemoryLimit;
+}
+
+size_t STPScenePipeline::locateLight(const STPSceneLight::STPEnvironmentLight<false>* light) const {
+	return this->GeometryLightPass->IndexLocator.Env.at(light);
+}
 
 void STPScenePipeline::setClearColor(vec4 color) {
 	glClearColor(color.r, color.g, color.b, color.a);
@@ -707,30 +865,31 @@ void STPScenePipeline::setResolution(uvec2 resolution) {
 	this->SceneTexture = move(scene_texture);
 }
 
-void STPScenePipeline::updateLightStatus(const vec3& direction) {
-	//we don't need to care if the light casts shadow
-	const STPSceneLight::STPEnvironmentLight<false>& env = *this->SceneComponent.EnvironmentObjectDatabase[0];
+//TODO: later when we have different types of light, 
+//we can introduce a smarter system that helps us to determine the light type based on the range of index.
+//For example when index < 10000 it is an environment light.
 
-	this->GeometryLightPass->LightingProcessor
-		.uniform(glProgramUniform1f, "Lighting.SpectrumCoord", env.getLightSpectrum().coordinate())
-		.uniform(glProgramUniform3fv, "LightDirection", 1, value_ptr(direction));
+template<STPScenePipeline::STPLightPropertyType Prop>
+void STPScenePipeline::setLight(size_t index) {
+	const STPSceneLight::STPEnvironmentLight<false>& env = *this->SceneComponent.EnvironmentObjectDatabase[index];
+	const string index_str = to_string(index);
+
+	//these data can be retrieved from the scene graph directly
+	if constexpr (Prop == STPLightPropertyType::SpectrumCoordinate) {
+		this->GeometryLightPass->setLight<Prop>(index_str, env.getLightSpectrum().coordinate());
+	}
+	if constexpr (Prop == STPLightPropertyType::Direction) {
+		this->GeometryLightPass->setLight<Prop>(index_str, env.lightDirection());
+	}
 }
 
-void STPScenePipeline::setLightProperty(const STPEnvironment::STPLightSetting::STPAmbientLightSetting& ambient, 
-	STPEnvironment::STPLightSetting::STPDirectionalLightSetting& directional, float shiniess) {
-	if (!ambient.validate() || !directional.validate()) {
-		throw STPException::STPInvalidEnvironment("The light settings are not validated");
-	}
-
-	this->GeometryLightPass->LightingProcessor
-		.uniform(glProgramUniform1f, "Lighting.Ka", ambient.AmbientStrength)
-		.uniform(glProgramUniform1f, "Lighting.Kd", directional.DiffuseStrength)
-		.uniform(glProgramUniform1f, "Lighting.Ks", directional.SpecularStrength)
-		.uniform(glProgramUniform1f, "Lighting.Shin", shiniess);
+template<STPScenePipeline::STPLightPropertyType Prop>
+void STPScenePipeline::setLight(size_t index, float data) {
+	this->GeometryLightPass->setLight<Prop>(to_string(index), data);
 }
 
 void STPScenePipeline::traverse() {
-	const auto& [object, object_shadow, env, env_shadow, post_process] = this->SceneComponent;
+	const auto& [object, object_shadow, unique_light_space_size, env, env_shadow, post_process] = this->SceneComponent;
 
 	//Stencil rule: the first bit denotes a fragment rendered during geometry pass in deferred rendering.
 
@@ -801,3 +960,12 @@ void STPScenePipeline::traverse() {
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
 }
+
+//Explicit Instantiation
+#define SET_LIGHT_NO_DATA(PROP) template STP_REALISM_API void STPScenePipeline::setLight<STPScenePipeline::STPLightPropertyType::PROP>(size_t)
+#define SET_LIGHT_FLOAT(PROP) template STP_REALISM_API void STPScenePipeline::setLight<STPScenePipeline::STPLightPropertyType::PROP>(size_t, float)
+SET_LIGHT_FLOAT(AmbientStrength);
+SET_LIGHT_FLOAT(DiffuseStrength);
+SET_LIGHT_FLOAT(SpecularStrength);
+SET_LIGHT_NO_DATA(SpectrumCoordinate);
+SET_LIGHT_NO_DATA(Direction);
