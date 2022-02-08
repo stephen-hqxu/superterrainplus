@@ -6,8 +6,6 @@
 
 layout(early_fragment_tests) in;
 
-#define UINT_MAX 4294967295
-
 //Input
 in vec2 FragTexCoord;
 //Output
@@ -52,9 +50,17 @@ struct DirectionalShadowData{
 uniform DirectionalShadowData DirectionalShadowList[DIRECTIONAL_LIGHT_SHADOW_CAPACITY];
 uniform float LightFrustumDivisor[LIGHT_FRUSTUM_DIVISOR_CAPACITY];
 
+struct ShadowMapFilter{
+#if LIGHT_SHADOW_FILTER == 2
+	//filter kernel properties
+	uint Kr;
+	float Ks;
+#endif
+	float MaxBias, MinBias;
+};
 //global shadow setting
 uniform float LightFrustumFar;
-uniform float MaxBias, MinBias;
+uniform ShadowMapFilter Filter;
 
 /* -------------------------------------------------------------------------- */
 #include </Common/STPCameraInformation.glsl>
@@ -71,9 +77,8 @@ layout(bindless_sampler) uniform sampler2D GBuffer[5];
 vec3 depthReconstruction();
 //Calculate light color for the current fragment position
 vec3 calcCasterLight(vec3, vec3, float, float, EnvironmentLight);
-//input normal must be normalised
 //This function returns the light intensity multiplier in the range [0.0, 1.0], with 0.0 means no light and 1.0 means full light.
-float sampleShadow(vec3, vec3, vec3, DirectionalShadowData);
+float sampleShadow(vec3, float, DirectionalShadowData);
 
 void main(){
 	const vec3 position_world = depthReconstruction(),
@@ -126,29 +131,35 @@ vec3 calcCasterLight(vec3 position_world, vec3 normal, float specular_strength, 
 	const float specular = specular_strength * env_light.Ks * pow(max(dot(normal, halfwayDir), 0.0f), 32.0f);
 	
 	const uint dirShadowIdx = env_light.DirShadowIdx;
+	//calcualte bias based on depth map resolution and slope
+	const float bias = max(Filter.MaxBias * (1.0f - dot(normal, lightDir)), Filter.MinBias);
 	//if this light has shadow, calculate light intensity after shadow calculation
 	//the returned value represents the light intensity multiplier
-	const float light_intensity = (dirShadowIdx != UNUSED_SHADOW) ? sampleShadow(position_world, normal, lightDir, DirectionalShadowList[dirShadowIdx]) : 1.0f;
+	const float light_intensity = (dirShadowIdx != UNUSED_SHADOW) ? sampleShadow(position_world, bias, DirectionalShadowList[dirShadowIdx]) : 1.0f;
 	return indirect_color * ambient + direct_color * (diffuse + specular) * light_intensity;
 }
 
-float sampleShadow(vec3 fragworldPos, vec3 normal, vec3 lightDir, DirectionalShadowData dir_shadow) {
-	//select cascade level from array shadow texture
-	const vec4 fragviewPos = Camera.View * vec4(fragworldPos, 1.0f);
-	const float depthValue = abs(fragviewPos.z);
-	const uint cascadeCount = dir_shadow.LightSpaceDim - 1u;
-
-	uint layer = UINT_MAX;
-	for (uint i = 0u; i < cascadeCount; i++) {
-		if (depthValue < LightFrustumDivisor[dir_shadow.DivisorStart + i]) {
+uint determineShadowLayer(uint totalCount, float currentDepth, uint frustumDivStart){
+	//use the last layer in case if no layer can be determined
+	uint layer = totalCount;
+	for (uint i = 0u; i < totalCount; i++) {
+		if (currentDepth < LightFrustumDivisor[frustumDivStart + i]) {
 			layer = i;
 			break;
 		}
 	}
-	//no layer can be determined
-	if (layer == UINT_MAX) {
-		layer = cascadeCount;
-	}
+
+	return layer;
+}
+
+float sampleShadow(vec3 fragworldPos, float bias, DirectionalShadowData dir_shadow) {
+	//select cascade level from array shadow texture
+	const vec4 fragviewPos = Camera.View * vec4(fragworldPos, 1.0f);
+	const float depthValue = abs(fragviewPos.z);
+	const uint cascadeCount = dir_shadow.LightSpaceDim - 1u;
+	
+	//determine the correct shadow layer to use
+	const uint layer = determineShadowLayer(cascadeCount, depthValue, dir_shadow.DivisorStart);
 
 	//convert world position to light clip space
 	//as we are dealing with directional light, w component is always 1.0
@@ -163,15 +174,25 @@ float sampleShadow(vec3 fragworldPos, vec3 normal, vec3 lightDir, DirectionalSha
 		return 1.0f;
 	}
 
-	//calcualte bias based on depth map resolution and slope
-	float bias = max(MaxBias * (1.0f - dot(normal, lightDir)), MinBias);
+	//scale the bias depends on how far the frustum plane is
 	bias /= ((layer == cascadeCount) ? LightFrustumFar : LightFrustumDivisor[dir_shadow.DivisorStart + layer]) * 0.5f;
 
 	//get closest depth value from light's perspective
 	//the `texture` function computes the shadow value and returns (1.0 - shadow).
 #if LIGHT_SHADOW_FILTER == 2
 	//Percentage-Closer Filtering
+	const int radius = int(Filter.Kr);
+	const vec2 uv_unit = Filter.Ks / vec2(textureSize(dir_shadow.CascadedShadowMap, 0).xy);
 
+	float intensity = 0.0f;
+	for(int i = -radius; i <= radius; i++){
+		for(int j = -radius; j <= radius; j++){
+			intensity += texture(dir_shadow.CascadedShadowMap, vec4(projCoord.xy + uv_unit * vec2(i, j), layer, currentDepth - bias)).r;
+		}
+	}
+
+	const uint totalKernel = Filter.Kr * 2u + 1u; 
+	return intensity / float(totalKernel * totalKernel);
 #else
 	//no filter, nearest and linear filtering are done by hardware automatically
 	return texture(dir_shadow.CascadedShadowMap, vec4(projCoord.xy, layer, currentDepth - bias)).r;

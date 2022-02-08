@@ -223,7 +223,7 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 			);
 			
 			//now apply the sampling points to the actual texture
-			const vec2 uv_offset = SmoothSetting.Ks * (disk_domain * 2.0f - 1.0f) / getHeightmapRes(),
+			const vec2 uv_offset = SmoothSetting.Ks * disk_domain / getHeightmapRes(),
 				sampling_uv = fs_in.texCoord + uv_offset;
 			const uint region = getRegion(sampling_uv);
 

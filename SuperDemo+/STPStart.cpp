@@ -88,7 +88,7 @@ namespace STPStart {
 		SuperTerrainPlus::STPRealism::STPPostProcess* FinalProcess;
 
 		//A number that locates the renderer in the scene
-		size_t SunIndex;
+		SuperTerrainPlus::STPRealism::STPScenePipeline::STPLightIdentifier SunIndex;
 
 		const vec3& ViewPosition;
 
@@ -197,9 +197,10 @@ namespace STPStart {
 			//-------------------------------------------------------------------------
 			{
 				//initialisation
-				STPScenePipeline::STPSceneShadowInitialiser scene_shadow;
-				scene_shadow.ShadowFilter = STPScenePipeline::STPShadowMapFilter::Bilinear;
-				scene_shadow.ShadowMapBias = vec2(0.05f, 0.005f);
+				STPScenePipeline::STPShadowMapFilterKernel<STPScenePipeline::STPShadowMapFilter::PCF> scene_shadow_function;
+				scene_shadow_function.Bias = vec2(0.05f, 0.005f);
+				scene_shadow_function.KernelRadius = 3u;
+				scene_shadow_function.KernelDistance = 1.5f;
 
 				STPScenePipeline::STPSceneShaderCapacity scene_cap;
 				scene_cap.EnvironmentLight = 1ull;
@@ -209,7 +210,7 @@ namespace STPStart {
 
 				//construct rendering pipeline
 				STPScenePipeline::STPScenePipelineLog scene_log;
-				this->RenderPipeline.emplace(camera, scene_cap, scene_shadow, scene_log);
+				this->RenderPipeline.emplace(camera, scene_cap, scene_shadow_function, scene_log);
 				const auto& lighting_log = scene_log.GeometryBufferResolution;
 				STPMasterRenderer::printLog(lighting_log.QuadShader);
 				STPMasterRenderer::printLog(lighting_log.LightingShader);
@@ -264,11 +265,14 @@ namespace STPStart {
 					uvec3(128u, 128u, 6u),
 					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform
 				};
+				STPEnvironment::STPMeshSetting::STPTessellationSetting DepthTessSetting = MeshSetting.TessSetting;
+				DepthTessSetting.MaxTessLevel *= 0.5f;
 
 				this->TerrainRenderer = this->RenderPipeline->add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
 				STPMasterRenderer::printLog(terrain_log);
 				//initial setup
 				this->TerrainRenderer->setMesh(MeshSetting);
+				this->TerrainRenderer->setDepthMeshQuality(DepthTessSetting);
 				this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
 
 				//read logs from renering components after pipeline setup
@@ -296,9 +300,15 @@ namespace STPStart {
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
 			//store this index so later we can update the light quicker
 			this->SunIndex = this->RenderPipeline->locateLight(this->SunRenderer);
-			this->RenderPipeline->setLight<PT::AmbientStrength>(this->SunIndex, 0.3f);
-			this->RenderPipeline->setLight<PT::DiffuseStrength>(this->SunIndex, 1.4f);
-			this->RenderPipeline->setLight<PT::SpecularStrength>(this->SunIndex, 5.5f);
+
+			STPEnvironment::STPLightSetting::STPAmbientLightSetting sun_ambient;
+			sun_ambient.AmbientStrength = 0.3f;
+			STPEnvironment::STPLightSetting::STPDirectionalLightSetting sun_directional;
+			sun_directional.DiffuseStrength = 1.4f;
+			sun_directional.SpecularStrength = 6.3f;
+
+			this->RenderPipeline->setLight(this->SunIndex, sun_ambient);
+			this->RenderPipeline->setLight(this->SunIndex, sun_directional);
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;

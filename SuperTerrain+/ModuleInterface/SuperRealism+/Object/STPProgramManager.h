@@ -114,6 +114,18 @@ namespace SuperTerrainPlus::STPRealism {
 		STPProgramManager& uniform(Uni&&, const char*, Arg&&...);
 
 		/**
+		 * @brief Perform glProgramUniform... operation for the current program object using an explicit uniform location.
+		 * @tparam Uni The uniform function.
+		 * @tparam ...Arg Argument to be passed to the function.
+		 * @param uniform_function A uniform function to be executed. Must be a valid glProgramUniform... function.
+		 * @param location The location of the uniform. No operation will be performed if the uniform location is indicated as not found.
+		 * @param ...args The arguments for the function.
+		 * @return The pointer to the current instace for chaining.
+		*/
+		template<typename Uni, typename... Arg>
+		STPProgramManager& uniform(Uni&&, STPOpenGL::STPint, Arg&&...);
+
+		/**
 		 * @brief Query the local work group size of the compute program as specified by its input layout qualifier(s).
 		 * If the program is not a compute program, exception is thrown.
 		 * @return A vector of 3 intergers containing the local workgroup size

@@ -37,12 +37,16 @@ out VertexTCS{
 	vec3 normal;
 } tcs_out[];
 
-//Uniforms
-uniform TessellationSetting Tess;
+//There are two tessellation settings, one for normal rendering, the other low quality one is for depth rendering.
+uniform TessellationSetting Tess[2];
+uniform unsigned int ActiveTess = 0u;
 
-float calcLoD(float, float);
+float calcLoD(TessellationSetting, float, float);
 
 void main(){
+	//determine which tessellation setting to use
+	const TessellationSetting selected_tess = Tess[ActiveTess];
+
 	//tessllation settings are shared across all local invocations, so only need to set it once
 	if(gl_InvocationID == 0){
 		float vertexDistance[3];
@@ -54,12 +58,12 @@ void main(){
 				viewPos = Camera.Position.xz;
 
 			//perform linear interpolation to the distance
-			vertexDistance[i] = clamp((distance(vertexPos, viewPos) - Tess.MinDis) / (Tess.MaxDis - Tess.MinDis), 0.0f, 1.0f);
+			vertexDistance[i] = clamp((distance(vertexPos, viewPos) - selected_tess.MinDis) / (selected_tess.MaxDis - selected_tess.MinDis), 0.0f, 1.0f);
 		}
 
-		gl_TessLevelOuter[0] = calcLoD(vertexDistance[1], vertexDistance[2]);
-		gl_TessLevelOuter[1] = calcLoD(vertexDistance[2], vertexDistance[0]);
-		gl_TessLevelOuter[2] = calcLoD(vertexDistance[0], vertexDistance[1]);
+		gl_TessLevelOuter[0] = calcLoD(selected_tess, vertexDistance[1], vertexDistance[2]);
+		gl_TessLevelOuter[1] = calcLoD(selected_tess, vertexDistance[2], vertexDistance[0]);
+		gl_TessLevelOuter[2] = calcLoD(selected_tess, vertexDistance[0], vertexDistance[1]);
 		gl_TessLevelInner[0] = (gl_TessLevelOuter[0] + gl_TessLevelOuter[1] + gl_TessLevelOuter[2]) / 3.0f;
 	}
 	
@@ -69,6 +73,6 @@ void main(){
 	tcs_out[gl_InvocationID].normal = tcs_in[gl_InvocationID].normal;
 }
 
-float calcLoD(float v1, float v2){
-	return mix(Tess.MaxLod, Tess.MinLod, (v1 + v2) * 0.5f);
+float calcLoD(TessellationSetting tess, float v1, float v2){
+	return mix(tess.MaxLod, tess.MinLod, (v1 + v2) * 0.5f);
 }

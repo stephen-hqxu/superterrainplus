@@ -34,6 +34,9 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPScenePipeline {
 	public:
 
+		//An integer to identify a light added to the scene in the shader.
+		typedef size_t STPLightIdentifier;
+
 		/**
 		 * @brief STPShadowMapFilter defines filtering technologies used for post-process shadow maps.
 		*/
@@ -44,13 +47,70 @@ namespace SuperTerrainPlus::STPRealism {
 			Bilinear = 0x01u,
 			//Percentage-Closer filter, it attempts to smooth the edge of the shadow using a blur kernel.
 			PCF = 0x02u,
-			//Multi-Sampled Variance Shadow Mapping, it uses variance to estimate the likelihood of a pixel that should have shadow 
-			//after having the shadow map blurred, and also it is optionally multi-sampled.
-			MSVSM = 0x03u,
+			//Variance Shadow Mapping, it uses variance to estimate the likelihood of a pixel that should have shadow 
+			//after having the shadow map blurred.
+			VSM = 0x03u,
 			//Percentage-Closer Soft Shadow
 			PCSS = 0x04u,
 			//Exponential Shadow Mapping
 			ESM = 0x05u
+		};
+
+		/**
+		 * @brief STPShadowMapFilterFunction is an adaptive shadow map filter manager for any shadow map filter.
+		*/
+		class STP_REALISM_API STPShadowMapFilterFunction {
+		private:
+
+			friend class STPScenePipeline;
+
+			/**
+			 * @brief Flush the shadow map filter settings to a given program.
+			 * @param program The pointer to the program to be flushed.
+			*/
+			virtual void operator()(STPProgramManager&) const = 0;
+
+		public:
+
+			const STPShadowMapFilter Filter;
+
+			//For most shadow map filters, this controls the max and min bias respectively.
+			//TODO: add documentations for other types of filter.
+			glm::vec2 Bias;
+
+			/**
+			 * @brief Init a STPShadowMapFilterFunction.
+			 * @param filter The type of shadow map filter.
+			*/
+			STPShadowMapFilterFunction(STPShadowMapFilter);
+
+			STPShadowMapFilterFunction(const STPShadowMapFilterFunction&) = default;
+
+			STPShadowMapFilterFunction(STPShadowMapFilterFunction&&) noexcept = default;
+
+			STPShadowMapFilterFunction& operator=(const STPShadowMapFilterFunction&) = delete;
+
+			STPShadowMapFilterFunction& operator=(STPShadowMapFilterFunction&&) = delete;
+
+			virtual ~STPShadowMapFilterFunction() = default;
+
+		};
+
+		/**
+		 * @brief STPShadowMapFilterKernel defines the kernel of a shadow map filter.
+		*/
+		template<STPShadowMapFilter Fil>
+		struct STPShadowMapFilterKernel : public STPShadowMapFilterFunction {
+		private:
+
+			void operator()(STPProgramManager&) const override {};
+
+		public:
+
+			STPShadowMapFilterKernel();
+
+			~STPShadowMapFilterKernel() = default;
+
 		};
 
 		/**
@@ -72,18 +132,6 @@ namespace SuperTerrainPlus::STPRealism {
 			//The maximum number of plane that divides light frustum into subfrusta, as float.
 			size_t LightFrustumDivisionPlane;
 
-		};
-
-		/**
-		 * @brief STPSceneShadowInitialiser specifies settings for scene shadow pipeline.
-		*/
-		struct STPSceneShadowInitialiser {
-		public:
-
-			//Max bias and min bias
-			glm::vec2 ShadowMapBias;
-			//Specify the algorithm used to filter the shadow map.
-			STPShadowMapFilter ShadowFilter;
 		};
 
 		/**
@@ -229,10 +277,10 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param camera The pointer to the camera.
 		 * The camera must remain valid as long as the current scene pipeline is valid.
 		 * @param shader_cap The pointer to a struct that defines the maximum memory to be allocated for each array in the shader.
-		 * @param shadow_init The pointer to the configurations for shadow rendering pipeline in the scene.
+		 * @param shadow_filter The pointer to the shadow map filter function to be used in the scene.
 		 * @param log The pointer to log to output the initial compilation results for scene pipeline.
 		*/
-		STPScenePipeline(const STPCamera&, const STPSceneShaderCapacity&, const STPSceneShadowInitialiser&, STPScenePipelineLog&);
+		STPScenePipeline(const STPCamera&, const STPSceneShaderCapacity&, const STPShadowMapFilterFunction&, STPScenePipelineLog&);
 
 		STPScenePipeline(const STPScenePipeline&) = delete;
 
@@ -259,11 +307,11 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Locate the index of a given light that is added to the scene graph.
 		 * @param light The pointer to the light.
-		 * @return The index of this light in the scene graph array.
+		 * @return The identifier of this light in the scene graph array.
 		 * If the light is not registered with the scene, exception is thrown.
 		 * This index is valid until the light is removed from the scene, adding new lights won't cause the index to be invalidated.
 		*/
-		size_t locateLight(const STPSceneLight::STPEnvironmentLight<false>*) const;
+		STPLightIdentifier locateLight(const STPSceneLight::STPEnvironmentLight<false>*) const;
 
 		/**
 		 * @brief Add a rendering component to the scene pipeline.
@@ -297,15 +345,18 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @tparam Prop The light property to be set.
 		 * Note that the operation is invalid if the given property is not applicable for this type of light.
 		 * @tparam T The type of the property data. The type must be in-lined with the data type specified by the type.
-		 * @param index The light index that uniquely identifies a light in the scene graph.
+		 * @param identifier The light identifier that uniquely identifies a light in the scene graph.
 		 * Operation is invalid if the index does not correspond to a valid light in the scene.
 		 * @param data The data supplied whenever it is applicable for a specific property.
 		*/
 		template<STPLightPropertyType Prop>
-		void setLight(size_t);
+		void setLight(STPLightIdentifier);
 		//-----------------------------------
 		template<STPLightPropertyType Prop>
-		void setLight(size_t, float);
+		void setLight(STPLightIdentifier, float);
+		//----------------------------------------
+		void setLight(STPLightIdentifier, const STPEnvironment::STPLightSetting::STPAmbientLightSetting&);
+		void setLight(STPLightIdentifier, const STPEnvironment::STPLightSetting::STPDirectionalLightSetting&);
 
 		/**
 		 * @brief Traverse the scene graph and render every component in sequential order.
@@ -316,6 +367,30 @@ namespace SuperTerrainPlus::STPRealism {
 		void traverse();
 
 	};
+
+#define SHADOW_MAP_FILTER_DEF(FILT) \
+template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STPScenePipeline::STPShadowMapFilter::FILT> : public STPScenePipeline::STPShadowMapFilterFunction
+
+	SHADOW_MAP_FILTER_DEF(PCF) {
+	private:
+
+		void operator()(STPProgramManager&) const override;
+
+	public:
+
+		STPShadowMapFilterKernel();
+
+		~STPShadowMapFilterKernel() = default;
+
+		//Specifies the radius of the filter kernel.
+		//Larger radius gives smoother shadow but also slower.
+		unsigned int KernelRadius;
+		//Specifies the distance between each sampling points.
+		float KernelDistance;
+
+	};
+
+#undef SHADOW_MAP_FILTER_DEF
 
 }
 #include "STPScenePipeline.inl"

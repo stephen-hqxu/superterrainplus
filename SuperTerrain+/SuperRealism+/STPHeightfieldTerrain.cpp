@@ -211,10 +211,10 @@ void STPHeightfieldTerrain<false>::setMesh(const STPEnvironment::STPMeshSetting&
 	const auto& smooth_setting = mesh_setting.RegionSmoothSetting;
 
 	//update tessellation LoD control
-	this->TerrainModeller.uniform(glProgramUniform1f, "Tess.MaxLod", tess_setting.MaxTessLevel)
-		.uniform(glProgramUniform1f, "Tess.MinLod", tess_setting.MinTessLevel)
-		.uniform(glProgramUniform1f, "Tess.MaxDis", tess_setting.FurthestTessDistance)
-		.uniform(glProgramUniform1f, "Tess.MinDis", tess_setting.NearestTessDistance)
+	this->TerrainModeller.uniform(glProgramUniform1f, "Tess[0].MaxLod", tess_setting.MaxTessLevel)
+		.uniform(glProgramUniform1f, "Tess[0].MinLod", tess_setting.MinTessLevel)
+		.uniform(glProgramUniform1f, "Tess[0].MaxDis", tess_setting.FurthestTessDistance)
+		.uniform(glProgramUniform1f, "Tess[0].MinDis", tess_setting.NearestTessDistance)
 		//update other mesh-related parameters
 		.uniform(glProgramUniform1f, "Altitude", mesh_setting.Altitude);
 
@@ -294,8 +294,15 @@ void STPHeightfieldTerrain<false>::render() const {
 
 STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, 
 	const STPTerrainShaderOption& option) :
-	STPHeightfieldTerrain<false>(generator_pipeline, log, option) {
-	
+	STPHeightfieldTerrain<false>(generator_pipeline, log, option), MeshQualityLocation(this->TerrainModeller.uniformLocation("ActiveTess")) {
+
+}
+
+void STPHeightfieldTerrain<true>::setDepthMeshQuality(const STPEnvironment::STPMeshSetting::STPTessellationSetting& tess) {
+	this->TerrainModeller.uniform(glProgramUniform1f, "Tess[1].MaxLod", tess.MaxTessLevel)
+		.uniform(glProgramUniform1f, "Tess[1].MinLod", tess.MinTessLevel)
+		.uniform(glProgramUniform1f, "Tess[1].MaxDis", tess.FurthestTessDistance)
+		.uniform(glProgramUniform1f, "Tess[1].MinDis", tess.NearestTessDistance);
 }
 
 bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count) {
@@ -347,6 +354,8 @@ void STPHeightfieldTerrain<true>::renderDepth(size_t light_space_count) const {
 
 	this->TileArray.bind();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
+	//enable low quality mesh
+	this->TerrainModeller.uniform(glProgramUniform1ui, this->MeshQualityLocation, 1u);
 
 	//find the correct render group
 	this->TerrainDepthRenderer.findPipeline(light_space_count).bind();
@@ -355,4 +364,6 @@ void STPHeightfieldTerrain<true>::renderDepth(size_t light_space_count) const {
 
 	//clear up
 	STPPipelineManager::unbind();
+	//change back to normal rendering
+	this->TerrainModeller.uniform(glProgramUniform1ui, this->MeshQualityLocation, 0u);
 }

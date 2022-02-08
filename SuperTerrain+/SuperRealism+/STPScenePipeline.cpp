@@ -19,12 +19,14 @@
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+//Hash
+#include <SuperTerrain+/Utility/STPHashCombine.h>
 
 //System
 #include <optional>
 #include <algorithm>
-#include <array>
 //Container
+#include <array>
 #include <unordered_map>
 
 //GLAD
@@ -36,6 +38,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 using glm::uvec2;
+using glm::vec2;
 using glm::uvec3;
 using glm::vec3;
 using glm::ivec4;
@@ -56,6 +59,15 @@ using std::pair;
 using std::make_pair;
 
 using namespace SuperTerrainPlus::STPRealism;
+
+STPScenePipeline::STPShadowMapFilterFunction::STPShadowMapFilterFunction(STPShadowMapFilter filter) : Filter(filter), Bias(vec2(0.0f)) {
+
+}
+
+template<STPScenePipeline::STPShadowMapFilter Fil>
+STPScenePipeline::STPShadowMapFilterKernel<Fil>::STPShadowMapFilterKernel() : STPShadowMapFilterFunction(Fil) {
+
+}
 
 STPScenePipeline::STPSharedTexture::STPSharedTexture() : 
 	DepthStencil(GL_TEXTURE_2D) {
@@ -222,12 +234,12 @@ public:
 
 	/**
 	 * @brief Init a new STPShadowPipeline.
-	 * @param shadow_init The pointer to the scene shadow initialiser.
+	 * @param shadow_filter The pointer to the scene shadow filter.
 	 * @param light_space_limit The maximum number of light space matrix the buffer can hold.
 	*/
-	STPShadowPipeline(const STPSceneShadowInitialiser& shadow_init, size_t light_space_limit) {
+	STPShadowPipeline(const STPShadowMapFilterFunction& shadow_filter, size_t light_space_limit) {
 		//setup depth sampler
-		if (shadow_init.ShadowFilter == STPShadowMapFilter::Nearest) {
+		if (shadow_filter.Filter == STPShadowMapFilter::Nearest) {
 			this->LightDepthSampler.filter(GL_NEAREST, GL_NEAREST);
 		}
 		else {
@@ -372,6 +384,23 @@ public:
 class STPScenePipeline::STPGeometryBufferResolution : private STPScreen {
 private:
 
+	//A pair of light identifier and light property to locate a specific light property.
+	typedef pair<STPLightIdentifier, STPLightPropertyType> STPLightPropertyIdentifier;
+	/**
+	 * @brief Hash function for light identifier and light property.
+	*/
+	struct STPHashLightProperty {
+	public:
+
+		inline size_t operator()(const STPLightPropertyIdentifier& prop) const {
+			const auto& [id, type] = prop;
+			return STPHashCombine::combine(0ull, id, type);
+		}
+
+	};
+	//This lookup table can quickly locate uniforms to property of a given light identifier.
+	unordered_map<STPLightPropertyIdentifier, GLint, STPHashLightProperty> LightUniformLocation;
+
 	//A memory pool for creating dynamic uniform name.
 	string UniformNameBuffer;
 
@@ -429,11 +458,11 @@ public:
 	/**
 	 * @brief Init a new geometry buffer resolution instance.
 	 * @param pipeline The pointer to the dependent scene pipeline.
-	 * @param shadow_init The pointer to the scene shadow initialiser.
+	 * @param shadow_filter The pointer to the scene shadow filter.
 	 * @param memory_cap The pointer to the memory capacity that specifies the maximum amount of memory to be allocated in the shader.
 	 * @param log The log from compiling light pass shader.
 	*/
-	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPSceneShadowInitialiser& shadow_init,
+	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadowMapFilterFunction& shadow_filter,
 		STPScenePipelineLog::STPGeometryBufferResolutionLog& log) : Pipeline(pipeline),
 		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GSpecular(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D) {
 		//setup geometry buffer shader
@@ -450,7 +479,7 @@ public:
 			("DIRECTIONAL_LIGHT_SHADOW_CAPACITY", memory_cap.DirectionalLightShadow)
 			("LIGHT_FRUSTUM_DIVISOR_CAPACITY", memory_cap.LightFrustumDivisionPlane)
 
-			("LIGHT_SHADOW_FILTER", static_cast<std::underlying_type_t<STPShadowMapFilter>>(shadow_init.ShadowFilter))
+			("LIGHT_SHADOW_FILTER", static_cast<std::underlying_type_t<STPShadowMapFilter>>(shadow_filter.Filter))
 			("UNUSED_SHADOW", STPGeometryBufferResolution::UnusedShadow);
 
 		source.define(Macro);
@@ -481,8 +510,31 @@ public:
 		//global shadow setting
 		this->LightingProcessor
 			.uniform(glProgramUniform1f, "LightFrustumFar", this->Pipeline.CameraMemory->Camera.cameraStatus().Far)
-			.uniform(glProgramUniform1f, "MaxBias", shadow_init.ShadowMapBias.x)
-			.uniform(glProgramUniform1f, "MinBias", shadow_init.ShadowMapBias.y);
+			.uniform(glProgramUniform1f, "Filter.MaxBias", shadow_filter.Bias.x)
+			.uniform(glProgramUniform1f, "Filter.MinBias", shadow_filter.Bias.y);
+		//send specialised filter kernel parameters based on type
+		shadow_filter(this->LightingProcessor);
+		
+		//build the uniform location lookup table
+		for (size_t id = 0u; id < this->Pipeline.SceneMemoryLimit.EnvironmentLight; id++) {
+			const string id_str = to_string(id);
+
+			//for every property in every allocated light space, get the uniform location.
+			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::AmbientStrength),
+				this->LightingProcessor.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Ka")));
+
+			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::DiffuseStrength),
+				this->LightingProcessor.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Kd")));
+
+			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::SpecularStrength),
+				this->LightingProcessor.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Ks")));
+
+			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::SpectrumCoordinate),
+				this->LightingProcessor.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].SpectrumCoord")));
+
+			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::Direction),
+				this->LightingProcessor.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Dir")));
+		}
 	}
 
 	STPGeometryBufferResolution(const STPGeometryBufferResolution&) = delete;
@@ -634,23 +686,15 @@ public:
 	 * For spectrum coordinate, the coordinate must be provided through the data.
 	*/
 	template<STPScenePipeline::STPLightPropertyType Prop, typename T>
-	inline void setLight(const string& index, T&& data) {
+	inline void setLight(STPLightIdentifier identifier, T&& data) {
 		const auto forwardedData = std::forward<T>(data);
+		const GLint location = this->LightUniformLocation.find(make_pair(identifier, Prop))->second;
 
-		if constexpr (Prop == STPLightPropertyType::AmbientStrength) {
-			this->LightingProcessor.uniform(glProgramUniform1f, this->createUniformName("EnvironmentLightList[", index, "].Ka"), forwardedData);
-		}
-		if constexpr (Prop == STPLightPropertyType::DiffuseStrength) {
-			this->LightingProcessor.uniform(glProgramUniform1f, this->createUniformName("EnvironmentLightList[", index, "].Kd"), forwardedData);
-		}
-		if constexpr (Prop == STPLightPropertyType::SpecularStrength) {
-			this->LightingProcessor.uniform(glProgramUniform1f, this->createUniformName("EnvironmentLightList[", index, "].Ks"), forwardedData);
-		}
 		if constexpr (Prop == STPLightPropertyType::Direction) {
-			this->LightingProcessor.uniform(glProgramUniform3fv, this->createUniformName("EnvironmentLightList[", index, "].Dir"), 1, value_ptr(forwardedData));
+			this->LightingProcessor.uniform(glProgramUniform3fv, location, 1, value_ptr(forwardedData));
 		}
-		if constexpr (Prop == STPLightPropertyType::SpectrumCoordinate) {
-			this->LightingProcessor.uniform(glProgramUniform1f, this->createUniformName("EnvironmentLightList[", index, "].SpectrumCoord"), forwardedData);
+		else {
+			this->LightingProcessor.uniform(glProgramUniform1f, location, forwardedData);
 		}
 	}
 
@@ -725,11 +769,11 @@ public:
 };
 
 STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneShaderCapacity& shader_cap, 
-	const STPSceneShadowInitialiser& shadow_init, STPScenePipelineLog& log) :
+	const STPShadowMapFilterFunction& shadow_filter, STPScenePipelineLog& log) :
 	SceneMemoryCurrent{ }, SceneMemoryLimit(shader_cap),
 	CameraMemory(make_unique<STPCameraInformationMemory>(camera)), 
-	GeometryShadowPass(make_unique<STPShadowPipeline>(shadow_init, this->SceneMemoryLimit.LightSpaceMatrix)),
-	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, shadow_init, log.GeometryBufferResolution)),
+	GeometryShadowPass(make_unique<STPShadowPipeline>(shadow_filter, this->SceneMemoryLimit.LightSpaceMatrix)),
+	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, shadow_filter, log.GeometryBufferResolution)),
 	RenderMemory(make_unique<STPSceneRenderMemory>()) {
 	//set up initial GL context states
 	glEnable(GL_DEPTH_TEST);
@@ -832,7 +876,7 @@ const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryLimit
 	return this->SceneMemoryLimit;
 }
 
-size_t STPScenePipeline::locateLight(const STPSceneLight::STPEnvironmentLight<false>* light) const {
+STPScenePipeline::STPLightIdentifier STPScenePipeline::locateLight(const STPSceneLight::STPEnvironmentLight<false>* light) const {
 	return this->GeometryLightPass->IndexLocator.Env.at(light);
 }
 
@@ -870,22 +914,38 @@ void STPScenePipeline::setResolution(uvec2 resolution) {
 //For example when index < 10000 it is an environment light.
 
 template<STPScenePipeline::STPLightPropertyType Prop>
-void STPScenePipeline::setLight(size_t index) {
-	const STPSceneLight::STPEnvironmentLight<false>& env = *this->SceneComponent.EnvironmentObjectDatabase[index];
-	const string index_str = to_string(index);
+void STPScenePipeline::setLight(STPLightIdentifier identifier) {
+	const STPSceneLight::STPEnvironmentLight<false>& env = *this->SceneComponent.EnvironmentObjectDatabase[identifier];
 
 	//these data can be retrieved from the scene graph directly
 	if constexpr (Prop == STPLightPropertyType::SpectrumCoordinate) {
-		this->GeometryLightPass->setLight<Prop>(index_str, env.getLightSpectrum().coordinate());
+		this->GeometryLightPass->setLight<Prop>(identifier, env.getLightSpectrum().coordinate());
 	}
 	if constexpr (Prop == STPLightPropertyType::Direction) {
-		this->GeometryLightPass->setLight<Prop>(index_str, env.lightDirection());
+		this->GeometryLightPass->setLight<Prop>(identifier, env.lightDirection());
 	}
 }
 
 template<STPScenePipeline::STPLightPropertyType Prop>
-void STPScenePipeline::setLight(size_t index, float data) {
-	this->GeometryLightPass->setLight<Prop>(to_string(index), data);
+void STPScenePipeline::setLight(STPLightIdentifier identifier, float data) {
+	this->GeometryLightPass->setLight<Prop>(identifier, data);
+}
+
+void STPScenePipeline::setLight(STPLightIdentifier identifier, const STPEnvironment::STPLightSetting::STPAmbientLightSetting& ambient) {
+	if (!ambient.validate()) {
+		throw STPException::STPInvalidEnvironment("Ambient light setting is not valid");
+	}
+
+	this->setLight<STPLightPropertyType::AmbientStrength>(identifier, ambient.AmbientStrength);
+}
+
+void STPScenePipeline::setLight(STPLightIdentifier identifier, const STPEnvironment::STPLightSetting::STPDirectionalLightSetting& directional) {
+	if (!directional.validate()) {
+		throw STPException::STPInvalidEnvironment("Directional light setting is not valid");
+	}
+
+	this->setLight<STPLightPropertyType::DiffuseStrength>(identifier, directional.DiffuseStrength);
+	this->setLight<STPLightPropertyType::SpecularStrength>(identifier, directional.SpecularStrength);
 }
 
 void STPScenePipeline::traverse() {
@@ -961,11 +1021,30 @@ void STPScenePipeline::traverse() {
 	glDepthMask(GL_TRUE);
 }
 
-//Explicit Instantiation
-#define SET_LIGHT_NO_DATA(PROP) template STP_REALISM_API void STPScenePipeline::setLight<STPScenePipeline::STPLightPropertyType::PROP>(size_t)
-#define SET_LIGHT_FLOAT(PROP) template STP_REALISM_API void STPScenePipeline::setLight<STPScenePipeline::STPLightPropertyType::PROP>(size_t, float)
-SET_LIGHT_FLOAT(AmbientStrength);
-SET_LIGHT_FLOAT(DiffuseStrength);
-SET_LIGHT_FLOAT(SpecularStrength);
+#define SHADOW_FILTER_CLASS(FILT) template struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STPScenePipeline::STPShadowMapFilter::FILT>
+#define SHADOW_FILTER_NAME(FILT) STPScenePipeline::STPShadowMapFilterKernel<STPScenePipeline::STPShadowMapFilter::FILT>
+#define SHADOW_FILTER_DEF(FILT) void SHADOW_FILTER_NAME(FILT)::operator()(STPProgramManager& program) const
+
+//Explicit Instantiation of some shadow filters
+SHADOW_FILTER_CLASS(Nearest);
+SHADOW_FILTER_CLASS(Bilinear);
+
+//Explicit Specialisation of some even more complicated shadow filters
+SHADOW_FILTER_NAME(PCF)::STPShadowMapFilterKernel() : STPShadowMapFilterFunction(STPShadowMapFilter::PCF), 
+	KernelRadius(1u), KernelDistance(1.0f) {
+
+}
+
+SHADOW_FILTER_DEF(PCF) {
+	if (this->KernelRadius == 0u || this->KernelDistance <= 0.0f) {
+		throw STPException::STPBadNumericRange("Both kernel radius and distance should be positive");
+	}
+
+	program.uniform(glProgramUniform1ui, "Filter.Kr", this->KernelRadius)
+		.uniform(glProgramUniform1f, "Filter.Ks", this->KernelDistance);
+}
+
+//Explicit Instantiation for templates that are not used by the source
+#define SET_LIGHT_NO_DATA(PROP) template STP_REALISM_API void STPScenePipeline::setLight<STPScenePipeline::STPLightPropertyType::PROP>(STPLightIdentifier)
 SET_LIGHT_NO_DATA(SpectrumCoordinate);
 SET_LIGHT_NO_DATA(Direction);

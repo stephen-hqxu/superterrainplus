@@ -83,7 +83,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//Shader program for terrain rendering
 		//modeller contains vertex, tes control and tes eval, shader contains geom and frag.
-		STPProgramManager TerrainModeller, TerrainShader;
+		mutable STPProgramManager TerrainModeller, TerrainShader;
 		STPPipelineManager TerrainRenderer;
 
 		std::vector<STPBindlessTexture> SplatTextureHandle;
@@ -158,6 +158,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//depth renderer prunes the frag shader.
 		STPSceneObject::STPDepthRenderGroup<1ull> TerrainDepthRenderer;
+
+		const STPOpenGL::STPint MeshQualityLocation;
 
 	public:
 

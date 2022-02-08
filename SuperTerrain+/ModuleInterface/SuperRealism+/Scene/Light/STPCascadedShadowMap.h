@@ -107,7 +107,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPCascadedShadowMap& operator=(STPCascadedShadowMap&&) = delete;
 
-		virtual ~STPCascadedShadowMap();
+		~STPCascadedShadowMap();
 
 		/**
 		 * @brief Get an array of float that specifies how the camera is divided into different levels of cascade.
