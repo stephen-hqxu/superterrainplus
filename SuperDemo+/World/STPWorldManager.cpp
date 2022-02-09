@@ -120,6 +120,7 @@ public:
 		//create group
 		STPTextureDatabase::STPTextureDescription tex_desc;
 		tex_desc.Dimension = uvec2(1024u);
+		tex_desc.MipMapLevel = 4u;
 		tex_desc.PixelFormat = GL_UNSIGNED_BYTE;
 		tex_desc.ChannelFormat = GL_RGB;
 		tex_desc.InteralFormat = GL_SRGB8;

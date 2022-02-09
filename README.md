@@ -243,6 +243,8 @@ Please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com) if yo
 - [Simulating the Colors of the Sky](https://www.scratchapixel.com/lessons/procedural-generation-virtual-worlds/simulating-sky) from *Scratchapixel*
 - [Physically-based atmospheric scattering](https://github.com/wwwtyro/glsl-atmosphere/)
 - [Cascaded Shadow Mapping](https://learnopengl.com/Guest-Articles/2021/CSM) by *Márton Árbócz* from *Learn OpenGL*
+- [Cascaded Shadow Maps](https://docs.microsoft.com/en-us/windows/win32/dxtecharts/cascaded-shadow-maps) from *Microsoft*
+- [Variance Shadow Maps](https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-8-summed-area-variance-shadow-maps)
 - [A Primer On Efficient Rendering Algorithms & Clustered Shading](http://www.aortiz.me/2018/12/21/CG.html#part-2) by *Ángel Ortiz*
 - [Forward vs Deferred vs Forward+ Rendering with DirectX 11](https://www.3dgep.com/forward-plus/#Experiment_Setup_and_Performance_Results) by *Jeremiah van Oosten*
 

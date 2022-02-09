@@ -40,8 +40,15 @@ uniform unsigned int EnvLightCount = 0u;
 #define LIGHT_SHADOW_FILTER 255
 #define UNUSED_SHADOW 1
 
+//choose different sampler type based on the filter used automcatically
+#if LIGHT_SHADOW_FILTER == 16
+#define SHADOW_MAP_FORMAT sampler2DArray
+#else
+#define SHADOW_MAP_FORMAT sampler2DArrayShadow
+#endif
+
 struct DirectionalShadowData{
-	layout(bindless_sampler) sampler2DArrayShadow CascadedShadowMap;
+	layout(bindless_sampler) SHADOW_MAP_FORMAT CascadedShadowMap;
 	//The starting index to the light space matrix array and frustum divisor array
 	unsigned int LightSpaceStart, DivisorStart;
 	unsigned int LightSpaceDim;
@@ -52,9 +59,10 @@ uniform float LightFrustumDivisor[LIGHT_FRUSTUM_DIVISOR_CAPACITY];
 
 struct ShadowMapFilter{
 #if LIGHT_SHADOW_FILTER == 2
-	//filter kernel properties
 	uint Kr;
 	float Ks;
+#elif LIGHT_SHADOW_FILTER == 16
+	float minVar;
 #endif
 	float MaxBias, MinBias;
 };
@@ -131,7 +139,7 @@ vec3 calcCasterLight(vec3 position_world, vec3 normal, float specular_strength, 
 	const float specular = specular_strength * env_light.Ks * pow(max(dot(normal, halfwayDir), 0.0f), 32.0f);
 	
 	const uint dirShadowIdx = env_light.DirShadowIdx;
-	//calcualte bias based on depth map resolution and slope
+	//calcualte bias based on light angle
 	const float bias = max(Filter.MaxBias * (1.0f - dot(normal, lightDir)), Filter.MinBias);
 	//if this light has shadow, calculate light intensity after shadow calculation
 	//the returned value represents the light intensity multiplier
@@ -193,6 +201,23 @@ float sampleShadow(vec3 fragworldPos, float bias, DirectionalShadowData dir_shad
 
 	const uint totalKernel = Filter.Kr * 2u + 1u; 
 	return intensity / float(totalKernel * totalKernel);
+#elif LIGHT_SHADOW_FILTER == 16
+	//Variance Shadow Map
+	const vec2 moment = texture(dir_shadow.CascadedShadowMap, vec3(projCoord.xy, layer)).rg;
+	//one tail inequality is only valid if current depth > moment.x
+	if(currentDepth <= moment.x){
+		return 1.0f;
+	}
+
+	const float mean = moment.x,
+		variance = max(moment.y - mean * mean, Filter.minVar),
+		//use Chebyshev's inequality to compute an upper bound on the probability that the currently 
+		//shaded surface at this depth is occluded
+		difference = (currentDepth - mean),
+		max_probability = variance / (variance + difference * difference);
+
+	//return the probability the surface is lit
+	return max_probability;
 #else
 	//no filter, nearest and linear filtering are done by hardware automatically
 	return texture(dir_shadow.CascadedShadowMap, vec4(projCoord.xy, layer, currentDepth - bias)).r;

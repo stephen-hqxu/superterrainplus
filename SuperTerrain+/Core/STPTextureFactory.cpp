@@ -64,7 +64,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			const auto& [group_id, member_count, group_props] = *group_it;
 
 			//allocate memory for each layer
-			glTextureStorage3D(*gl_texture_it, 1, group_props.InteralFormat, group_props.Dimension.x, group_props.Dimension.y, static_cast<GLsizei>(member_count));
+			glTextureStorage3D(*gl_texture_it, group_props.MipMapLevel, group_props.InteralFormat, group_props.Dimension.x, group_props.Dimension.y, static_cast<GLsizei>(member_count));
 			//build texture ownership table, so we can lookup texture buffer using group ID later
 			this->TextureOwnership.try_emplace(group_id, *gl_texture_it);
 

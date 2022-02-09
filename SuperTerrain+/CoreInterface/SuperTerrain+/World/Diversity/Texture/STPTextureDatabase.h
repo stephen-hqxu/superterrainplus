@@ -43,6 +43,8 @@ namespace SuperTerrainPlus::STPDiversity {
 
 			//The dimension of the texture
 			glm::uvec2 Dimension;
+			//The total number of mipmap level for the texture
+			unsigned int MipMapLevel;
 			//The internal format of the texture during memory allocation
 			STPOpenGL::STPenum InteralFormat;
 			//The channel format of each image in the group during memory transaction

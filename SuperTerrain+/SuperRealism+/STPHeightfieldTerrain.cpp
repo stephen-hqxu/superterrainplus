@@ -305,7 +305,7 @@ void STPHeightfieldTerrain<true>::setDepthMeshQuality(const STPEnvironment::STPM
 		.uniform(glProgramUniform1f, "Tess[1].MinDis", tess.NearestTessDistance);
 }
 
-bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count) {
+bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count, const STPShaderManager* depth_shader) {
 	STPTerrainDepthLog& log = this->TerrainDepthLogStorage.emplace();
 	//create a new render group
 	if (this->TerrainDepthRenderer.exist(light_space_count)) {
@@ -331,6 +331,9 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count
 	log.Log[0] = terrain_shadow_shader(shadow_shader_source);
 
 	//attach program for depth writing
+	if (depth_shader) {
+		depth_writer.attach(*depth_shader);
+	}
 	depth_writer.attach(terrain_shadow_shader)
 		.separable(true);
 
@@ -340,7 +343,7 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count
 	//build shadow pipeline
 	log.Log[2] = depth_renderer
 		.stage(GL_VERTEX_SHADER_BIT | GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
-		.stage(GL_GEOMETRY_SHADER_BIT, depth_writer)
+		.stage(GL_GEOMETRY_SHADER_BIT | (depth_shader ? GL_FRAGMENT_SHADER_BIT : 0), depth_writer)
 		.finalise();
 
 	return true;

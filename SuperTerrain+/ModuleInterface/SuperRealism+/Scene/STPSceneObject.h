@@ -4,6 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Object
+#include "../Object/STPShaderManager.h"
 #include "../Object/STPProgramManager.h"
 #include "../Object/STPPipelineManager.h"
 
@@ -61,11 +62,13 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @brief Add a new depth configuration.
 			 * A depth configuration can be considered as a group of shadow-casting light sources with the same light parameters.
 			 * @param light_space_count The number of light space to be captured as a depth texture, as consecutive layered depth textures.
+			 * @param depth_shader A fragment shader for processing additional operations during depth rendering.
+			 * The depth shader can be optionally null to denote there is no depth shader to be used.
 			 * @return The implementation should guarantee the depth configuration is unique in an opaque object,
 			 * therefore if this depth configuration has been added previously, no operation should be performed and false should be returned.
 			 * If a new configuration is added, returns true.
 			*/
-			virtual bool addDepthConfiguration(size_t) = 0;
+			virtual bool addDepthConfiguration(size_t, const STPShaderManager*) = 0;
 
 			/**
 			 * @brief Render the opaque object to a depth texture, with shading pruned.

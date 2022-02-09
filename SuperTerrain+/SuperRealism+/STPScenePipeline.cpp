@@ -44,7 +44,6 @@ using glm::vec3;
 using glm::ivec4;
 using glm::vec4;
 using glm::mat4;
-
 using glm::value_ptr;
 
 using std::optional;
@@ -199,6 +198,10 @@ public:
 };
 
 class STPScenePipeline::STPShadowPipeline {
+public:
+
+	optional<STPShaderManager> DepthPassShader;
+
 private:
 
 	STPSampler LightDepthSampler;
@@ -230,27 +233,62 @@ private:
 		return viewport;
 	}
 
+	//this shader is used to do some additional operations during depth rendering
+	constexpr static auto ShadowDepthPassShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPShadowDepthPass", ".frag");
+
 public:
+
+	const STPShadowMapFilter ShadowFilter;
+	//Denotes if this is a VSM dereived shadow map filter technique
+	const bool isVSMDerived;
 
 	/**
 	 * @brief Init a new STPShadowPipeline.
 	 * @param shadow_filter The pointer to the scene shadow filter.
 	 * @param light_space_limit The maximum number of light space matrix the buffer can hold.
+	 * @param log The pointer to the depth shader log where depth shader compilation result will be stored.
 	*/
-	STPShadowPipeline(const STPShadowMapFilterFunction& shadow_filter, size_t light_space_limit) {
+	STPShadowPipeline(const STPShadowMapFilterFunction& shadow_filter, size_t light_space_limit, STPScenePipelineLog::STPDepthShaderLog& log) :
+		ShadowFilter(shadow_filter.Filter), isVSMDerived(this->ShadowFilter >= STPShadowMapFilter::VSM) {
 		//setup depth sampler
-		if (shadow_filter.Filter == STPShadowMapFilter::Nearest) {
+		if (this->ShadowFilter == STPShadowMapFilter::Nearest) {
 			this->LightDepthSampler.filter(GL_NEAREST, GL_NEAREST);
+		}
+		else if(this->isVSMDerived) {
+			this->LightDepthSampler.filter(GL_LINEAR, GL_LINEAR);
+			//TODO: don't hardcode this value
+			this->LightDepthSampler.anisotropy(16.0f);
 		}
 		else {
 			//all other filter options implies linear filtering.
 			this->LightDepthSampler.filter(GL_LINEAR, GL_LINEAR);
 		}
+
 		this->LightDepthSampler.wrap(GL_CLAMP_TO_BORDER);
 		this->LightDepthSampler.borderColor(vec4(1.0f));
-		//setup compare function so we can use shadow sampler in the shader
-		this->LightDepthSampler.compareFunction(GL_LESS);
-		this->LightDepthSampler.compareMode(GL_COMPARE_REF_TO_TEXTURE);
+		if (!this->isVSMDerived) {
+			//enable depth sampler for regular shadow maps
+			//setup compare function so we can use shadow sampler in the shader
+			this->LightDepthSampler.compareFunction(GL_LESS);
+			this->LightDepthSampler.compareMode(GL_COMPARE_REF_TO_TEXTURE);
+		}
+
+		/* ------------------------------------------- depth shader setup -------------------------------------------------- */
+		if (this->isVSMDerived) {
+			//create a new depth shader
+			this->DepthPassShader.emplace(GL_FRAGMENT_SHADER);
+
+			const char* const shader_source_file = STPShadowPipeline::ShadowDepthPassShaderFilename.data();
+			STPShaderManager::STPShaderSource shader_source(shader_source_file, *STPFile(shader_source_file));
+			STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
+
+			//VSM uses moments instead of regular depth value to calculate shadows
+			Macro("WRITE_MOMENT", 1);
+
+			shader_source.define(Macro);
+			//compile the shader
+			log.Log[0] = (*this->DepthPassShader)(shader_source);
+		}
 
 		/* ----------------------------------------- light space buffer ------------------------------------------------- */
 		//the light space size takes paddings into account
@@ -298,18 +336,25 @@ public:
 		const uvec3 dimension = uvec3(shadow_instance.shadowMapResolution(), shadow_instance.lightSpaceDimension());
 		//allocate new depth texture for this light
 		STPTexture& depth_texture = this->LightDepthTexture.emplace_back(GL_TEXTURE_2D_ARRAY);
-		depth_texture.textureStorage<STPTexture::STPDimension::THREE>(1, GL_DEPTH_COMPONENT24, dimension);
+		//VSM requires two channels, one for depth, another one for depth squared
+		depth_texture.textureStorage<STPTexture::STPDimension::THREE>(1, (this->isVSMDerived ? GL_RG16 : GL_DEPTH_COMPONENT24), dimension);
 
 		//create handle
 		const GLuint64 depth_handle = *this->LightDepthTextureHandle.emplace_back(depth_texture, this->LightDepthSampler);
 
 		/* -------------------------------------- depth texture framebuffer ------------------------------------------- */
 		STPFrameBuffer& depth_container = this->LightDepthContainer.emplace_back();
-		//attach the new depth texture to the framebuffer
-		depth_container.attach(GL_DEPTH_ATTACHMENT, depth_texture, 0);
-		//we are rendering shadow and colors are not needed.
-		depth_container.drawBuffer(GL_NONE);
-		depth_container.readBuffer(GL_NONE);
+		if (this->isVSMDerived) {
+			//write to color instead of depth channel
+			depth_container.attach(GL_COLOR_ATTACHMENT0, depth_texture, 0);
+		}
+		else {
+			//attach the new depth texture to the framebuffer
+			depth_container.attach(GL_DEPTH_ATTACHMENT, depth_texture, 0);
+			//we are rendering shadow and colors are not needed.
+			depth_container.drawBuffer(GL_NONE);
+			depth_container.readBuffer(GL_NONE);
+		}
 
 		if (depth_container.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 			throw STPException::STPGLError("Framebuffer for capturing shadow map fails to setup");
@@ -772,7 +817,7 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneShader
 	const STPShadowMapFilterFunction& shadow_filter, STPScenePipelineLog& log) :
 	SceneMemoryCurrent{ }, SceneMemoryLimit(shader_cap),
 	CameraMemory(make_unique<STPCameraInformationMemory>(camera)), 
-	GeometryShadowPass(make_unique<STPShadowPipeline>(shadow_filter, this->SceneMemoryLimit.LightSpaceMatrix)),
+	GeometryShadowPass(make_unique<STPShadowPipeline>(shadow_filter, this->SceneMemoryLimit.LightSpaceMatrix, log.DepthShader)),
 	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, shadow_filter, log.GeometryBufferResolution)),
 	RenderMemory(make_unique<STPSceneRenderMemory>()) {
 	//set up initial GL context states
@@ -797,6 +842,11 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneShader
 }
 
 STPScenePipeline::~STPScenePipeline() = default;
+
+inline const STPShaderManager* STPScenePipeline::getDepthShader() const {
+	//if depth shader is not applicable, return nullptr
+	return this->GeometryShadowPass->DepthPassShader.has_value() ? &this->GeometryShadowPass->DepthPassShader.value() : nullptr;
+}
 
 void STPScenePipeline::canLightBeAdded(const STPSceneLight::STPEnvironmentLight<true>* light_shadow) const {
 	const STPSceneShaderCapacity& current_usage = this->SceneMemoryCurrent, 
@@ -843,8 +893,9 @@ void STPScenePipeline::addLight(const STPSceneLight::STPEnvironmentLight<false>&
 			unique_light_space.insert(it, newLightSpaceCount);
 
 			//also we need to add this new light configuration to all shadow-casting objects
+			const STPShaderManager* const depth_shader = this->getDepthShader();
 			for (auto shadow_obj : scene_graph.ShadowOpaqueObject) {
-				shadow_obj->addDepthConfiguration(newLightSpaceCount);
+				shadow_obj->addDepthConfiguration(newLightSpaceCount, depth_shader);
 			}
 		}
 
@@ -1042,6 +1093,15 @@ SHADOW_FILTER_DEF(PCF) {
 
 	program.uniform(glProgramUniform1ui, "Filter.Kr", this->KernelRadius)
 		.uniform(glProgramUniform1f, "Filter.Ks", this->KernelDistance);
+}
+
+SHADOW_FILTER_NAME(VSM)::STPShadowMapFilterKernel() : STPShadowMapFilterFunction(STPShadowMapFilter::VSM), 
+	minVariance(0.0f) {
+
+}
+
+SHADOW_FILTER_DEF(VSM) {
+	program.uniform(glProgramUniform1f, "Filter.minVar", this->minVariance);
 }
 
 //Explicit Instantiation for templates that are not used by the source

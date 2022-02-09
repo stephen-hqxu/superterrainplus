@@ -198,9 +198,9 @@ namespace STPStart {
 			{
 				//initialisation
 				STPScenePipeline::STPShadowMapFilterKernel<STPScenePipeline::STPShadowMapFilter::PCF> scene_shadow_function;
-				scene_shadow_function.Bias = vec2(0.05f, 0.005f);
-				scene_shadow_function.KernelRadius = 3u;
-				scene_shadow_function.KernelDistance = 1.5f;
+				scene_shadow_function.Bias = vec2(0.05, 0.005f);
+				scene_shadow_function.KernelRadius = 5u;
+				scene_shadow_function.KernelDistance = 1.95f;
 
 				STPScenePipeline::STPSceneShaderCapacity scene_cap;
 				scene_cap.EnvironmentLight = 1ull;
@@ -214,6 +214,7 @@ namespace STPStart {
 				const auto& lighting_log = scene_log.GeometryBufferResolution;
 				STPMasterRenderer::printLog(lighting_log.QuadShader);
 				STPMasterRenderer::printLog(lighting_log.LightingShader);
+				STPMasterRenderer::printLog(scene_log.DepthShader);
 			}
 			//setup light
 			//-------------------------------------------

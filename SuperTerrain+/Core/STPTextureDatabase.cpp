@@ -507,6 +507,13 @@ const STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::getSplatBu
 }
 
 STPTextureInformation::STPTextureGroupID STPTextureDatabase::addGroup(const STPTextureDescription& desc) {
+	if (desc.Dimension == uvec2(0u)) {
+		throw STPException::STPBadNumericRange("Dimension of a texture should be positive");
+	}
+	if (desc.MipMapLevel == 0u) {
+		throw STPException::STPBadNumericRange("The number of mipmap should be positive");
+	}
+
 	static constexpr string_view AddGroup =
 		"INSERT INTO TextureGroup (TGID, Description) VALUES(?, ?);";
 	sqlite3_stmt* const group_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddGroup, AddGroup);

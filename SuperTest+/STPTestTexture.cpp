@@ -21,6 +21,7 @@ using glm::uvec2;
 
 bool operator==(const STPTextureDatabase::STPTextureDescription& v1, const STPTextureDatabase::STPTextureDescription& v2) {
 	return v1.Dimension == v2.Dimension && 
+		v1.MipMapLevel == v2.MipMapLevel &&
 		v1.ChannelFormat == v2.ChannelFormat && 
 		v1.InteralFormat == v2.InteralFormat &&
 		v1.PixelFormat == v2.PixelFormat;
@@ -61,6 +62,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 		WHEN("Some texture containers are inserted") {
 			static constexpr STPTextureDatabase::STPTextureDescription Description = {
 				uvec2(2u),
+				2u,
 				//for simplicity we just mimic some random values for GL constants
 				0u,
 				1u,
@@ -194,16 +196,19 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 			STPTextureInformation::STPTextureGroupID Group[5];
 			static constexpr STPTextureDatabase::STPTextureDescription x2_rgb = {
 					uvec2(2u),
+					4u,
 					0u,
 					1u,
 					2u
 			}, x4_rgb = {
 					uvec2(4u),
+					4u,
 					0u,
 					2u,
 					3u
 			}, x4_r = {
 					uvec2(4u),
+					2u,
 					1u,
 					2u,
 					3u

@@ -39,6 +39,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief STPShadowMapFilter defines filtering technologies used for post-process shadow maps.
+		 * Underlying value greater than VSM denotes VSM-derived shadow map filters.
 		*/
 		enum class STPShadowMapFilter : unsigned char {
 			//Nearest-Neighbour filter, shadow value is read from the nearest pixel.
@@ -49,11 +50,11 @@ namespace SuperTerrainPlus::STPRealism {
 			PCF = 0x02u,
 			//Variance Shadow Mapping, it uses variance to estimate the likelihood of a pixel that should have shadow 
 			//after having the shadow map blurred.
-			VSM = 0x03u,
+			VSM = 0x10u,
 			//Percentage-Closer Soft Shadow
 			PCSS = 0x04u,
 			//Exponential Shadow Mapping
-			ESM = 0x05u
+			ESM = 0x11u
 		};
 
 		/**
@@ -234,6 +235,12 @@ namespace SuperTerrainPlus::STPRealism {
 		std::unique_ptr<STPSceneRenderMemory> RenderMemory;
 
 		/**
+		 * @brief Get the shader used for performing additional operations during depth rendering.
+		 * @return The poitner to the depth shader. Nullprt is returned if depth shader is unused.
+		*/
+		const STPShaderManager* getDepthShader() const;
+
+		/**
 		 * @brief Check if this light can be added to this scene without running out of memory.
 		 * @param light_shadow The pointer to the shadow instance, or nullptr. Note that this light should not be added to the scene prior to this function call.
 		 * If this light cannot be added, exception is thrown.
@@ -269,6 +276,10 @@ namespace SuperTerrainPlus::STPRealism {
 				STPLogStorage<2ull> LightingShader;
 
 			} GeometryBufferResolution;
+
+			//Log for depth shader compilation
+			typedef STPLogStorage<1ull> STPDepthShaderLog;
+			STPDepthShaderLog DepthShader;
 
 		};
 
@@ -387,6 +398,23 @@ template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STP
 		unsigned int KernelRadius;
 		//Specifies the distance between each sampling points.
 		float KernelDistance;
+
+	};
+
+	SHADOW_MAP_FILTER_DEF(VSM) {
+	private:
+
+		void operator()(STPProgramManager&) const override;
+
+	public:
+
+		STPShadowMapFilterKernel();
+
+		~STPShadowMapFilterKernel() = default;
+
+		//The minimum variance value. 
+		//This helps to reduce shadow acen effects when light direction is parallel to the surface.
+		float minVariance;
 
 	};
 

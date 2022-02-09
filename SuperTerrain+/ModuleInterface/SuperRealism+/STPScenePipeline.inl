@@ -25,8 +25,9 @@ Obj* SuperTerrainPlus::STPRealism::STPScenePipeline::add(Arg&&... arg) {
 			scene_graph.ShadowOpaqueObject.emplace_back(opaque_obj_ptr);
 
 			//now configure this shadow-casting object with each depth configuration
+			const STPShaderManager* const depth_shader = this->getDepthShader();
 			for (const auto depth_config : scene_graph.UniqueLightSpaceSize) {
-				opaque_obj_ptr->addDepthConfiguration(depth_config);
+				opaque_obj_ptr->addDepthConfiguration(depth_config, depth_shader);
 			}
 		}
 

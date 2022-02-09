@@ -182,7 +182,7 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void setDepthMeshQuality(const STPEnvironment::STPMeshSetting::STPTessellationSetting&);
 
-		bool addDepthConfiguration(size_t) override;
+		bool addDepthConfiguration(size_t, const STPShaderManager*) override;
 
 		void renderDepth(size_t) const override;
 
