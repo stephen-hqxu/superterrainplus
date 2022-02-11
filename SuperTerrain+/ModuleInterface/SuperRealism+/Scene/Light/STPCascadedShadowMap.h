@@ -39,9 +39,14 @@ namespace SuperTerrainPlus::STPRealism {
 		public:
 			
 			//Set the resolution of the shadow map for each cascade.
-			glm::uvec2 Resolution;
+			//The shadow map must be a square, such that this value specifies the extent length.
+			unsigned int Resolution;
 			//Specifies each level of shadow plane.
 			STPCascadePlane Division;
+			//Specifies a bias value to each sub-frusta.
+			//This expands each sub-frusta near and far outward by this amount to allow capturing some contents outside the current view.
+			//This value is useful when performing cross-cascade blending, such as doing shadow filtering
+			float CascadeBandRadius;
 			//The pointer to the camera where the light frustum will be constructed based on this camera.
 			//This camera must remain valid until the current instance is destroyed.
 			const STPCamera* Focus;
@@ -131,7 +136,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		size_t lightSpaceDimension() const override;
 
-		glm::uvec2 shadowMapResolution() const override;
+		unsigned int shadowMapResolution() const override;
 
 		void forceLightSpaceUpdate() override;
 

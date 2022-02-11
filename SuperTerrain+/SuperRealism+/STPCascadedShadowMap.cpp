@@ -19,7 +19,6 @@
 #include <functional>
 #include <algorithm>
 
-using glm::uvec2;
 using glm::vec3;
 using glm::mat4;
 using glm::vec4;
@@ -33,18 +32,22 @@ using namespace SuperTerrainPlus::STPRealism;
 
 STPCascadedShadowMap::STPCascadedShadowMap(const STPLightFrustum& light_frustum) : LightDirection(vec3(0.0f)),
 	LightSpaceOutdated(true), LightFrustum(light_frustum) {
-	if (this->LightFrustum.Resolution == uvec2(0u)) {
-		throw STPException::STPBadNumericRange("All components of the shadow map resolution should be a positive integer");
+	const auto& [res, div, band_radius, focus_camera, distance_mul] = this->LightFrustum;
+
+	if (res == 0u) {
+		throw STPException::STPBadNumericRange("The shadow map resolution should be a positive integer");
 	}
-	if (this->LightFrustum.ShadowDistanceMultiplier < 1.0f) {
+	if (distance_mul < 1.0f) {
 		throw STPException::STPBadNumericRange("A less-than-one shadow distance is not able to cover the view frustum");
 	}
-	if (this->LightFrustum.Division.size() == 0ull) {
+	if (div.size() == 0ull) {
 		throw STPException::STPBadNumericRange("There is no shadow level being defined");
 	}
-	
+	if (band_radius < 0.0f) {
+		throw STPException::STPBadNumericRange("Shadow cascade band radius must be non-negative");
+	}
 	//register a camera callback
-	this->LightFrustum.Focus->registerListener(this);
+	focus_camera->registerListener(this);
 }
 
 STPCascadedShadowMap::~STPCascadedShadowMap() {
@@ -128,6 +131,8 @@ mat4 STPCascadedShadowMap::calcLightSpace(float near, float far, const mat4& vie
 void STPCascadedShadowMap::calcAllLightSpace(mat4* light_space) const {
 	const STPCamera& viewer = *this->LightFrustum.Focus;
 	const auto& shadow_level = this->LightFrustum.Division;
+	//this offset pushes the far plane away and near plane in
+	const float level_offset = this->LightFrustum.CascadeBandRadius;
 
 	//The camera class has smart cache to the view matrix.
 	const mat4& camView = viewer.view();
@@ -142,15 +147,15 @@ void STPCascadedShadowMap::calcAllLightSpace(mat4* light_space) const {
 
 		if (i == 0u) {
 			//the first frustum
-			current_light = this->calcLightSpace(near, shadow_level[i], camView);
+			current_light = this->calcLightSpace(near, shadow_level[i] + level_offset, camView);
 		}
 		else if (i < shadow_level.size()) {
 			//the middle
-			current_light = this->calcLightSpace(shadow_level[i - 1u], shadow_level[i], camView);
+			current_light = this->calcLightSpace(shadow_level[i - 1u] - level_offset, shadow_level[i] + level_offset, camView);
 		}
 		else {
 			//the last one
-			current_light = this->calcLightSpace(shadow_level[i - 1u], far, camView);
+			current_light = this->calcLightSpace(shadow_level[i - 1u] - level_offset, far, camView);
 		}
 	}
 }
@@ -198,7 +203,7 @@ inline size_t STPCascadedShadowMap::lightSpaceDimension() const {
 	return this->LightFrustum.Division.size() + 1ull;
 }
 
-uvec2 STPCascadedShadowMap::shadowMapResolution() const {
+unsigned int STPCascadedShadowMap::shadowMapResolution() const {
 	return this->LightFrustum.Resolution;
 }
 

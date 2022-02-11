@@ -198,9 +198,12 @@ namespace STPStart {
 			{
 				//initialisation
 				STPScenePipeline::STPShadowMapFilterKernel<STPScenePipeline::STPShadowMapFilter::PCF> scene_shadow_function;
-				scene_shadow_function.Bias = vec2(0.05, 0.005f);
-				scene_shadow_function.KernelRadius = 5u;
-				scene_shadow_function.KernelDistance = 1.95f;
+				scene_shadow_function.DepthBias = vec2(0.055f, 0.0055f);
+				scene_shadow_function.NormalBias = vec2(23.5f, 4.5f);
+				scene_shadow_function.BiasFarMultiplier = 0.45f;
+				scene_shadow_function.CascadeBlendArea = 40.5f;
+				scene_shadow_function.KernelRadius = 4u;
+				scene_shadow_function.KernelDistance = 2.45f;
 
 				STPScenePipeline::STPSceneShaderCapacity scene_cap;
 				scene_cap.EnvironmentLight = 1ull;
@@ -222,14 +225,15 @@ namespace STPStart {
 				//sun shadow setting
 				const float camFar = camera.cameraStatus().Far;
 				const STPCascadedShadowMap::STPLightFrustum frustum = {
-					uvec2(2048u),
+					2048u,
 					{
 						camFar / 8.0f,
 						camFar / 4.0f,
 						camFar / 2.0f
 					},
+					32.5f,
 					&camera,
-					250.5f
+					234.5f
 				};
 
 				//sun
@@ -532,6 +536,7 @@ int main() {
 		cam.WorldUp = vec3(0.0f, 1.0f, 0.0f);
 		cam.Near = 1.0f;
 		cam.Far = 2500.0f;
+		cam.LogarithmicConstant = 1.0f;
 		
 		STPEnvironment::STPPerspectiveCameraSetting proj = { };
 		proj.ViewAngle = radians(60.0f);

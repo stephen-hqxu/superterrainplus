@@ -59,8 +59,14 @@ using std::make_pair;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPScenePipeline::STPShadowMapFilterFunction::STPShadowMapFilterFunction(STPShadowMapFilter filter) : Filter(filter), Bias(vec2(0.0f)) {
+STPScenePipeline::STPShadowMapFilterFunction::STPShadowMapFilterFunction(STPShadowMapFilter filter) : Filter(filter), 
+	DepthBias(vec2(0.0f)), NormalBias(vec2(0.0f)), BiasFarMultiplier(1.0f), CascadeBlendArea(0.0f) {
 
+}
+
+bool STPScenePipeline::STPShadowMapFilterFunction::valid() const {
+	return this->DepthBias.x > this->DepthBias.y
+		&& this->NormalBias.x > this->NormalBias.y;
 }
 
 template<STPScenePipeline::STPShadowMapFilter Fil>
@@ -103,10 +109,9 @@ private:
 
 		vec3 Pos;
 		float _padPos;
-		mat4 V;
-		mat4 P;
-		mat4 PV;
-		mat4 InvPV;
+		mat4 V, P, PV, InvPV;
+
+		float C, Far;
 	};
 
 public:
@@ -114,7 +119,7 @@ public:
 	//The master camera for the rendering scene.
 	const STPCamera& Camera;
 	STPBuffer Buffer;
-	void* MappedBuffer;
+	STPPackedCameraBuffer* MappedBuffer;
 
 	/**
 	 * @brief Init a new camera memory.
@@ -126,13 +131,19 @@ public:
 		this->Buffer.bufferStorage(sizeof(STPPackedCameraBuffer), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
 		this->Buffer.bindBase(GL_SHADER_STORAGE_BUFFER, 0u);
 		this->MappedBuffer =
-			this->Buffer.mapBufferRange(0, sizeof(STPPackedCameraBuffer),
-				GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+			reinterpret_cast<STPPackedCameraBuffer*>(this->Buffer.mapBufferRange(0, sizeof(STPPackedCameraBuffer),
+				GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
 		if (!this->MappedBuffer) {
 			throw STPException::STPGLError("Unable to map camera buffer to shader storage buffer");
 		}
 		//buffer has been setup, clear the buffer before use
 		memset(this->MappedBuffer, 0x00u, sizeof(STPPackedCameraBuffer));
+
+		//setup initial values
+		const STPEnvironment::STPCameraSetting& camSet = this->Camera.cameraStatus();
+		this->MappedBuffer->C = camSet.LogarithmicConstant;
+		this->MappedBuffer->Far = camSet.Far;
+		//update values
 		this->Buffer.flushMappedBufferRange(0, sizeof(STPPackedCameraBuffer));
 
 		//register camera callback
@@ -159,7 +170,7 @@ public:
 	 * @brief Update data in scene pipeline buffer.
 	*/
 	void updateBuffer() {
-		STPPackedCameraBuffer* camBuf = reinterpret_cast<STPPackedCameraBuffer*>(this->MappedBuffer);
+		STPPackedCameraBuffer* const camBuf = this->MappedBuffer;
 		const bool PV_changed = this->updateView || this->updateProjection;
 
 		//only update buffer when necessary
@@ -251,19 +262,25 @@ public:
 	STPShadowPipeline(const STPShadowMapFilterFunction& shadow_filter, size_t light_space_limit, STPScenePipelineLog::STPDepthShaderLog& log) :
 		ShadowFilter(shadow_filter.Filter), isVSMDerived(this->ShadowFilter >= STPShadowMapFilter::VSM) {
 		//setup depth sampler
-		if (this->ShadowFilter == STPShadowMapFilter::Nearest) {
+		//texture filtering settings
+		switch (this->ShadowFilter) {
+		case STPShadowMapFilter::Nearest:
 			this->LightDepthSampler.filter(GL_NEAREST, GL_NEAREST);
+			break;
+		case STPShadowMapFilter::VSM:
+		case STPShadowMapFilter::ESM:
+		{
+			const auto& vsm_filter = dynamic_cast<const STPShadowMapFilterKernel<STPShadowMapFilter::VSM>&>(shadow_filter);
+
+			this->LightDepthSampler.anisotropy(vsm_filter.AnisotropyFilter);
 		}
-		else if(this->isVSMDerived) {
-			this->LightDepthSampler.filter(GL_LINEAR, GL_LINEAR);
-			//TODO: don't hardcode this value
-			this->LightDepthSampler.anisotropy(16.0f);
-		}
-		else {
+		default:
 			//all other filter options implies linear filtering.
 			this->LightDepthSampler.filter(GL_LINEAR, GL_LINEAR);
+			break;
 		}
 
+		//others
 		this->LightDepthSampler.wrap(GL_CLAMP_TO_BORDER);
 		this->LightDepthSampler.borderColor(vec4(1.0f));
 		if (!this->isVSMDerived) {
@@ -333,7 +350,8 @@ public:
 	GLuint64 addLight(const STPSceneLight::STPEnvironmentLight<true>& shadow_light) {
 		/* --------------------------------------- depth texture setup ------------------------------------------------ */
 		const STPLightShadow& shadow_instance = shadow_light.getLightShadow();
-		const uvec3 dimension = uvec3(shadow_instance.shadowMapResolution(), shadow_instance.lightSpaceDimension());
+		//shadow map is a square texture
+		const uvec3 dimension = uvec3(uvec2(shadow_instance.shadowMapResolution()), shadow_instance.lightSpaceDimension());
 		//allocate new depth texture for this light
 		STPTexture& depth_texture = this->LightDepthTexture.emplace_back(GL_TEXTURE_2D_ARRAY);
 		//VSM requires two channels, one for depth, another one for depth squared
@@ -404,12 +422,16 @@ public:
 			this->LightSpaceBuffer.flushMappedBufferRange(buffer_start, current_buffer_size);
 
 			//re-render shadow map
-			this->LightDepthContainer[i].bind(GL_FRAMEBUFFER);
-			glClear(GL_DEPTH_BUFFER_BIT);
+			STPFrameBuffer& depth_capturer = this->LightDepthContainer[i];
+			//clear old values
+			depth_capturer.clearColor(0, vec4(1.0f));
+			depth_capturer.clearDepth(1.0f);
+
+			depth_capturer.bind(GL_FRAMEBUFFER);
 
 			//change the view port to fit the shadow map
-			const uvec2 shadow_res = shadow_instance.shadowMapResolution();
-			glViewport(0, 0, shadow_res.x, shadow_res.y);
+			const unsigned int shadow_extent = shadow_instance.shadowMapResolution();
+			glViewport(0, 0, shadow_extent, shadow_extent);
 
 			//for those opaque render components (those can cast shadow), render depth
 			for (auto shadowable_object : shadow_object) {
@@ -510,6 +532,8 @@ public:
 	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadowMapFilterFunction& shadow_filter,
 		STPScenePipelineLog::STPGeometryBufferResolutionLog& log) : Pipeline(pipeline),
 		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GSpecular(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D) {
+		const bool cascadeLayerBlend = shadow_filter.CascadeBlendArea > 0.0f;
+
 		//setup geometry buffer shader
 		STPShaderManager screen_shader(std::move(STPGeometryBufferResolution::compileScreenVertexShader(log.QuadShader))),
 			g_shader(GL_FRAGMENT_SHADER);
@@ -525,6 +549,7 @@ public:
 			("LIGHT_FRUSTUM_DIVISOR_CAPACITY", memory_cap.LightFrustumDivisionPlane)
 
 			("LIGHT_SHADOW_FILTER", static_cast<std::underlying_type_t<STPShadowMapFilter>>(shadow_filter.Filter))
+			("SHADOW_CASCADE_BLEND", cascadeLayerBlend ? 1 : 0)
 			("UNUSED_SHADOW", STPGeometryBufferResolution::UnusedShadow);
 
 		source.define(Macro);
@@ -554,9 +579,12 @@ public:
 		/* --------------------------------- initial buffer setup -------------------------------------- */
 		//global shadow setting
 		this->LightingProcessor
-			.uniform(glProgramUniform1f, "LightFrustumFar", this->Pipeline.CameraMemory->Camera.cameraStatus().Far)
-			.uniform(glProgramUniform1f, "Filter.MaxBias", shadow_filter.Bias.x)
-			.uniform(glProgramUniform1f, "Filter.MinBias", shadow_filter.Bias.y);
+			.uniform(glProgramUniform2fv, "Filter.Db", 1, value_ptr(shadow_filter.DepthBias))
+			.uniform(glProgramUniform2fv, "Filter.Nb", 1, value_ptr(shadow_filter.NormalBias))
+			.uniform(glProgramUniform1f, "Filter.FarBias", shadow_filter.BiasFarMultiplier);
+		if (cascadeLayerBlend) {
+			this->LightingProcessor.uniform(glProgramUniform1f, "Filter.Br", shadow_filter.CascadeBlendArea);
+		}
 		//send specialised filter kernel parameters based on type
 		shadow_filter(this->LightingProcessor);
 		
@@ -820,6 +848,9 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneShader
 	GeometryShadowPass(make_unique<STPShadowPipeline>(shadow_filter, this->SceneMemoryLimit.LightSpaceMatrix, log.DepthShader)),
 	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, shadow_filter, log.GeometryBufferResolution)),
 	RenderMemory(make_unique<STPSceneRenderMemory>()) {
+	if (!shadow_filter.valid()) {
+		throw STPException::STPBadNumericRange("The shadow filter has invalid settings");
+	}
 	//set up initial GL context states
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
@@ -1096,7 +1127,7 @@ SHADOW_FILTER_DEF(PCF) {
 }
 
 SHADOW_FILTER_NAME(VSM)::STPShadowMapFilterKernel() : STPShadowMapFilterFunction(STPShadowMapFilter::VSM), 
-	minVariance(0.0f) {
+	minVariance(0.0f), AnisotropyFilter(1.0f) {
 
 }
 

@@ -57,7 +57,7 @@ STPCameraSetting::STPCameraSetting() :
 	Yaw(radians(-90.0f)), Pitch(0.0f),
 	MovementSpeed(2.5f), RotationSensitivity(0.1f),
 	Position(vec3(0.0f)), WorldUp(0.0f, 1.0f, 0.0f), 
-	Near(0.1f), Far(1.0f) {
+	Near(0.1f), Far(1.0f), LogarithmicConstant(1.0f) {
 
 }
 
@@ -73,7 +73,8 @@ bool STPCameraSetting::validate() const {
 		&& this->RotationSensitivity > 0.0f
 		&& this->Near > 0.0f
 		&& this->Far > 0.0f
-		&& this->Near < this->Far;
+		&& this->Near < this->Far
+		&& this->LogarithmicConstant > 0.0f;
 }
 
 //STPLightSetting.h

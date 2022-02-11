@@ -3,7 +3,6 @@
 #define _STP_LIGHT_SHADOW_HPP_
 
 //GLM
-#include <glm/vec2.hpp>
 #include <glm/mat4x4.hpp>
 
 namespace SuperTerrainPlus::STPRealism {
@@ -38,9 +37,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Get the resolution of the shadow map.
-		 * @return The X, Y value representing the resolution of shadow map.
+		 * @return The extent length representing the resolution of shadow map.
 		*/
-		virtual glm::uvec2 shadowMapResolution() const = 0;
+		virtual unsigned int shadowMapResolution() const = 0;
 
 		/**
 		 * @brief Trigger a force update to the light space information.

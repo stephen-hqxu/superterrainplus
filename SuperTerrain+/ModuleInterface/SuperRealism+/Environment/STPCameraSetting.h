@@ -27,6 +27,10 @@ namespace SuperTerrainPlus::STPEnvironment {
 
 		//Define the depth of the view frustum.
 		float Near, Far;
+		//A constant value as a multiplier for logarithmic depth buffer conversion.
+		//This modifies the resolution near the camera.
+		//Larger value shifts the depth resolution towards near object.
+		float LogarithmicConstant;
 
 		/**
 		 * @brief Init STPCameraSetting with default values.

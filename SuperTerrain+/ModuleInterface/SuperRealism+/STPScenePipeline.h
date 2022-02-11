@@ -48,12 +48,13 @@ namespace SuperTerrainPlus::STPRealism {
 			Bilinear = 0x01u,
 			//Percentage-Closer filter, it attempts to smooth the edge of the shadow using a blur kernel.
 			PCF = 0x02u,
+			//Stratified Sampled PCF, this is a variant of PCF which uses random stratified sampling when convolving the kernel.
+			SSPCF = 0x03u,
 			//Variance Shadow Mapping, it uses variance to estimate the likelihood of a pixel that should have shadow 
 			//after having the shadow map blurred.
 			VSM = 0x10u,
-			//Percentage-Closer Soft Shadow
-			PCSS = 0x04u,
-			//Exponential Shadow Mapping
+			//Exponential Shadow Mapping, it is a derivation of VSM. Instead of using Chebyshev's inequality to approximate the probability,
+			//an exponential function is used.
 			ESM = 0x11u
 		};
 
@@ -76,8 +77,20 @@ namespace SuperTerrainPlus::STPRealism {
 			const STPShadowMapFilter Filter;
 
 			//For most shadow map filters, this controls the max and min bias respectively.
-			//TODO: add documentations for other types of filter.
-			glm::vec2 Bias;
+			//The pixel is moved in the direction of the light.
+			//The depth bias is applied to normalised depth, which is in the range [0,1].
+			glm::vec2 DepthBias;
+			//The pixels are moved in the direction of the surface normal.
+			//The normal bias is applied to world space normal.
+			glm::vec2 NormalBias;
+			//Specifies the how the bias should scale with the far plane of light frustum for directional light shadow.
+			//Higher value gives less bias for further far plane.
+			float BiasFarMultiplier;
+
+			//Amount to overlap when blending between cascades.
+			//Set to a positive value to enable cascade blending, which makes the program faster but leaving sharp edges at cascade transition.
+			//This option only applies to directional light shadow.
+			float CascadeBlendArea;
 
 			/**
 			 * @brief Init a STPShadowMapFilterFunction.
@@ -94,6 +107,12 @@ namespace SuperTerrainPlus::STPRealism {
 			STPShadowMapFilterFunction& operator=(STPShadowMapFilterFunction&&) = delete;
 
 			virtual ~STPShadowMapFilterFunction() = default;
+
+			/**
+			 * @brief Check if all values for the filter are valid.
+			 * @return True if all of them are valid.
+			*/
+			bool valid() const;
 
 		};
 
@@ -415,6 +434,9 @@ template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STP
 		//The minimum variance value. 
 		//This helps to reduce shadow acen effects when light direction is parallel to the surface.
 		float minVariance;
+
+		//Specifies the anisotropy filter level. 
+		float AnisotropyFilter;
 
 	};
 
