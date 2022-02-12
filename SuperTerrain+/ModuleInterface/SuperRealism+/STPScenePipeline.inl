@@ -70,10 +70,12 @@ Obj* SuperTerrainPlus::STPRealism::STPScenePipeline::add(Arg&&... arg) {
 		return env_obj_ptr;
 	}
 
-	if constexpr (is_same_v<STPPostProcess, Obj>) {
-		scene_graph.PostProcessObject = make_unique<Obj>(forward<Arg>(arg)...);
+	if constexpr (is_same_v<STPAmbientOcclusion, Obj>) {
+		return &scene_graph.AmbientOcclusionObject.emplace(forward<Arg>(arg)...);
+	}
 
-		return scene_graph.PostProcessObject.get();
+	if constexpr (is_same_v<STPPostProcess, Obj>) {
+		return &scene_graph.PostProcessObject.emplace(forward<Arg>(arg)...);
 	}
 }
 

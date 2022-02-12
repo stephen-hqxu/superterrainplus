@@ -12,6 +12,7 @@
 #include <SuperRealism+/Environment/STPMeshSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>
 #include <SuperRealism+/Environment/STPAtmosphereSetting.h>
+#include <SuperRealism+/Environment/STPOcclusionKernelSetting.h>
 
 #include <utility>
 
@@ -53,12 +54,19 @@ namespace STPDemo {
 		SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting getSimplexSetting(const SIMPLE::SISection&);
 
 		/**
-		 * @brief Load the settings for procedural sky rendering/
+		 * @brief Load the settings for procedural sky rendering.
 		 * @param section The INI section that contains all sky setting.
 		 * @return Setting for sun and atmoshpere.
 		*/
 		std::pair<SuperTerrainPlus::STPEnvironment::STPSunSetting, SuperTerrainPlus::STPEnvironment::STPAtmosphereSetting>
 			getSkySetting(const SIMPLE::SISection&);
+
+		/**
+		 * @brief Load the settings for ambient occlusion.
+		 * @param section The INI section that contains the AO setting.
+		 * @return The AO setting.
+		*/
+		SuperTerrainPlus::STPEnvironment::STPOcclusionKernelSetting getAOSetting(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load all biome parameters into STPBiomeRegistry

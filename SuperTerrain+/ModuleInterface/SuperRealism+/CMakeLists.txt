@@ -8,6 +8,7 @@ Environment/STPAtmosphereSetting.h
 Environment/STPCameraSetting.h
 Environment/STPLightSetting.h
 Environment/STPMeshSetting.h
+Environment/STPOcclusionKernelSetting.h
 Environment/STPOrthographicCameraSetting.h
 Environment/STPPerspectiveCameraSetting.h
 Environment/STPSunSetting.h
@@ -26,6 +27,7 @@ Object/STPShaderManager.inl
 Object/STPTexture.h
 Object/STPVertexArray.h
 # /Scene/Component
+Scene/Component/STPAmbientOcclusion.h
 Scene/Component/STPHeightfieldTerrain.h
 Scene/Component/STPPostProcess.h
 Scene/Component/STPScreen.h

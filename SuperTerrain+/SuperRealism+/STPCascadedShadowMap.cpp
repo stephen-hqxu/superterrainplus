@@ -1,4 +1,3 @@
-#define GLM_FORCE_INTRINSICS
 #include <SuperRealism+/Scene/Light/STPCascadedShadowMap.h>
 
 //Error

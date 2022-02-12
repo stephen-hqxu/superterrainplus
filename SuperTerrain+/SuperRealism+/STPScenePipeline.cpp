@@ -109,10 +109,22 @@ private:
 
 		vec3 Pos;
 		float _padPos;
-		mat4 V, P, PV, InvPV;
+		mat4 V, P, InvP, PV, InvPV;
 
 		float C, Far;
 	};
+
+	static_assert(
+		offsetof(STPPackedCameraBuffer, Pos) == 0
+		&& offsetof(STPPackedCameraBuffer, V) == 16
+		&& offsetof(STPPackedCameraBuffer, P) == 80
+		&& offsetof(STPPackedCameraBuffer, InvP) == 144
+		&& offsetof(STPPackedCameraBuffer, PV) == 208
+		&& offsetof(STPPackedCameraBuffer, InvPV) == 272
+
+		&& offsetof(STPPackedCameraBuffer, C) == 336
+		&& offsetof(STPPackedCameraBuffer, Far) == 340,
+	"The alignment of camera buffer does not obey std430 packing rule");
 
 public:
 
@@ -173,6 +185,7 @@ public:
 		STPPackedCameraBuffer* const camBuf = this->MappedBuffer;
 		const bool PV_changed = this->updateView || this->updateProjection;
 
+		//camera matrix is cached to avoid repetitive calculation so it is cheap to call these functions multiple times
 		//only update buffer when necessary
 		if (this->updatePosition || this->updateView) {
 			//position has changed
@@ -192,17 +205,23 @@ public:
 		}
 		if (this->updateProjection) {
 			//projection matrix has changed
-			camBuf->P = this->Camera.projection();
-			this->Buffer.flushMappedBufferRange(80, sizeof(mat4));
+			const mat4& proj = this->Camera.projection();
+
+			camBuf->P = proj;
+			camBuf->InvP = glm::inverse(proj);
+			this->Buffer.flushMappedBufferRange(80, sizeof(mat4) * 2);
 
 			this->updateProjection = false;
 		}
+
+		//update compond matrices
 		if (PV_changed) {
 			const mat4 proj_view = this->Camera.projection() * this->Camera.view();
+
 			//update the precomputed values
 			camBuf->PV = proj_view;
 			camBuf->InvPV = glm::inverse(proj_view);
-			this->Buffer.flushMappedBufferRange(144, sizeof(mat4) * 2);
+			this->Buffer.flushMappedBufferRange(208, sizeof(mat4) * 2);
 		}
 	}
 
@@ -734,6 +753,14 @@ public:
 	}
 
 	/**
+	 * @brief Get the normal geometry buffer.
+	 * @return The pointer to the normal geometry buffer.
+	*/
+	inline const STPTexture& getNormal() const {
+		return this->GNormal;
+	}
+
+	/**
 	 * @brief Enable rendering to geometry buffer and captured under the current G-buffer resolution instance.
 	 * To disable further rendering to this buffer, bind framebuffer to any other target.
 	*/
@@ -985,6 +1012,11 @@ void STPScenePipeline::setResolution(uvec2 resolution) {
 	STPFrameBuffer::unbind(GL_FRAMEBUFFER);
 	this->GeometryLightPass->setResolution(scene_texture, dimension);
 	this->RenderMemory->setResolution(scene_texture, dimension);
+	//update scene component (if needed)
+	STPSceneGraph& scene = this->SceneComponent;
+	if (scene.AmbientOcclusionObject.has_value()) {
+		scene.AmbientOcclusionObject->setScreenSpaceDimension(resolution);
+	}
 
 	using std::move;
 	//store the new buffer
@@ -1031,7 +1063,10 @@ void STPScenePipeline::setLight(STPLightIdentifier identifier, const STPEnvironm
 }
 
 void STPScenePipeline::traverse() {
-	const auto& [object, object_shadow, unique_light_space_size, env, env_shadow, post_process] = this->SceneComponent;
+	const auto& [object, object_shadow, unique_light_space_size, env, env_shadow, ao, post_process] = this->SceneComponent;
+	//determine the state of these optional stages
+	const bool has_effect_ao = ao.has_value(),
+		has_effect_post_process = post_process.has_value();
 
 	//Stencil rule: the first bit denotes a fragment rendered during geometry pass in deferred rendering.
 
@@ -1047,8 +1082,7 @@ void STPScenePipeline::traverse() {
 	this->GeometryShadowPass->renderToShadow(object_shadow, env_shadow);
 	glEnable(GL_CULL_FACE);
 
-	/* ----------------------------------------------------------------------------------------- */
-
+	/* ====================================== geometry rendering ================================== */
 	//deferred shading geometry pass
 	//remember the depth and stencil buffer of geometry framebuffer and output framebuffer is shared.
 	this->GeometryLightPass->capture();
@@ -1063,10 +1097,7 @@ void STPScenePipeline::traverse() {
 		rendering_object->render();
 	}
 
-	//render the final scene to an internal buffer memory
-	this->RenderMemory->capture();
-	//no need to clear anything, just draw the quad over it.
-	
+	/* ==================================== start final scene rendering =================================== */
 	//from this step we start performing off-screen rendering using the buffer we got from previous steps.
 	//off-screen rendering does not need depth test
 	glDisable(GL_DEPTH_TEST);
@@ -1076,6 +1107,19 @@ void STPScenePipeline::traverse() {
 	glStencilMask(0x00);
 	//face culling is useless for screen drawing
 	glDisable(GL_CULL_FACE);
+
+	//there is a potential feedback loop inside as the framebuffer has the depth texture attached even though we have only bound to stencil attachment point,
+	//while the shader is reading from the depth texture.
+	//this function makes sure the GPU flushes all texture cache.
+	glTextureBarrier();
+	/* ------------------------------------ screen-space ambient occlusion ------------------------------- */
+	if (has_effect_ao) {
+		ao->occlude(this->SceneTexture.DepthStencil, this->GeometryLightPass->getNormal());
+	}
+
+	//render the final scene to an internal buffer memory
+	this->RenderMemory->capture();
+	//no need to clear anything, just draw the quad over it.
 	/* ----------------------------------------- light resolve ------------------------------------ */
 	//we want to start rendering light, at the same time capture everything onto the post process buffer
 	//now we only want to shade pixels with geometry data, empty space should be culled
@@ -1096,7 +1140,12 @@ void STPScenePipeline::traverse() {
 	/* -------------------------------------- post processing -------------------------------- */
 	glDisable(GL_STENCIL_TEST);
 	//use the previously rendered buffer image for post processing
-	post_process->process(this->RenderMemory->getImageBuffer());
+	if (has_effect_post_process) {
+		post_process->process(this->RenderMemory->getImageBuffer());
+	}
+	else {
+		throw STPException::STPUnsupportedFunctionality("The renderer currently only supports rendering with post processing");
+	}
 
 	/* --------------------------------- reset states to defualt -------------------------------- */
 	glEnable(GL_DEPTH_TEST);

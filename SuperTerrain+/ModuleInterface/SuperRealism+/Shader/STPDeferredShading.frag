@@ -78,6 +78,8 @@ struct ShadowMapFilter{
 uniform ShadowMapFilter Filter;
 
 /* -------------------------------------------------------------------------- */
+//enable depth reconstruction to world space
+#define EMIT_DEPTH_RECON_IMPL 0
 #include </Common/STPCameraInformation.glsl>
 
 //Geometry Buffer
@@ -88,15 +90,15 @@ layout(bindless_sampler) uniform sampler2D GBuffer[5];
 #define G_AO GBuffer[3]
 #define G_DEPTH GBuffer[4]
 
-//Recover fragment world position from depth buffer
-vec3 depthReconstruction();
 //Calculate light color for the current fragment position
 vec3 calcCasterLight(vec3, vec3, float, float, EnvironmentLight);
 //This function returns the light intensity multiplier in the range [0.0, 1.0], with 0.0 means no light and 1.0 means full light.
 float sampleShadow(vec3, float, DirectionalShadowData);
 
 void main(){
-	const vec3 position_world = depthReconstruction(),
+	const float fragment_depth = texture(G_DEPTH, FragTexCoord).r;
+	//recover world position
+	const vec3 position_world = fragDepthReconstruction(fragment_depth, FragTexCoord),
 		normal_world = normalize(texture(G_NORMAL, FragTexCoord).rgb);
 	//get material data from the G-buffer
 	const vec3 Albedo = texture(G_ALBEDO, FragTexCoord).rgb;
@@ -112,17 +114,6 @@ void main(){
 	//because the light calculation only calculates light color, 
 	//we need to burn the geometry color into the final color
 	FragColor = vec4(Albedo * LightColor, 1.0f);
-}
-
-vec3 depthReconstruction(){
-	//depth has range [0, 1]
-	const float Depth = texture(G_DEPTH, FragTexCoord).r;
-	//OpenGL requires NDC to be in range [-1, 1], so we need to convert the range
-	//Note that texture coordinate is also a [0, 1] range.
-	const vec4 position_clip = vec4(vec3(FragTexCoord, Depth) * 2.0f - 1.0f, 1.0f),
-		position_world = Camera.InvProjectionView * position_clip;
-
-	return position_world.xyz / position_world.w;
 }
 
 vec3 calcCasterLight(vec3 position_world, vec3 normal, float specular_strength, float ambient_strength, EnvironmentLight env_light){

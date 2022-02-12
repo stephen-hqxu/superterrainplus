@@ -1,5 +1,6 @@
 #shading and rendering library
 add_library(${STP_REALISM_ENGINE} SHARED
+STPAmbientOcclusion.cpp
 STPBindlessTexture.cpp
 STPBuffer.cpp
 STPCamera.cpp

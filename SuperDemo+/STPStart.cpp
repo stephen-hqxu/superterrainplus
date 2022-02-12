@@ -15,6 +15,7 @@
 #include <SuperRealism+/STPScenePipeline.h>
 #include <SuperRealism+/Scene/Component/STPHeightfieldTerrain.h>
 #include <SuperRealism+/Scene/Component/STPSun.h>
+#include <SuperRealism+/Scene/Component/STPAmbientOcclusion.h>
 #include <SuperRealism+/Scene/Component/STPPostProcess.h>
 //GL helper
 #include <SuperRealism+/Utility/STPDebugCallback.h>
@@ -85,6 +86,7 @@ namespace STPStart {
 		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
 		SuperTerrainPlus::STPRealism::STPSun<true>* SunRenderer;
 		SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>* TerrainRenderer;
+		SuperTerrainPlus::STPRealism::STPAmbientOcclusion* AOEffect;
 		SuperTerrainPlus::STPRealism::STPPostProcess* FinalProcess;
 
 		//A number that locates the renderer in the scene
@@ -290,6 +292,14 @@ namespace STPStart {
 				}
 			}
 			//-------------------------------------------
+			{
+				//ambient occlusion
+				const STPEnvironment::STPOcclusionKernelSetting ao_setting = STPTerrainParaLoader::getAOSetting(engine["AmbientOcclusion"]);
+				STPAmbientOcclusion::STPAmbientOcclusionLog ao_log;
+
+				STPMasterRenderer::printLog(ao_log.QuadShader);
+				STPMasterRenderer::printLog(ao_log.AOShader);
+			}
 			{
 				//post process
 				STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::Lottes> postprocess_def;

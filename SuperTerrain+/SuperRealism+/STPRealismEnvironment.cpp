@@ -2,6 +2,7 @@
 #include <SuperRealism+/Environment/STPCameraSetting.h>
 #include <SuperRealism+/Environment/STPLightSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
+#include <SuperRealism+/Environment/STPOcclusionKernelSetting.h>
 #include <SuperRealism+/Environment/STPOrthographicCameraSetting.h>
 #include <SuperRealism+/Environment/STPPerspectiveCameraSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>
@@ -9,6 +10,7 @@
 #include <glm/trigonometric.hpp>
 #include <glm/ext/scalar_constants.hpp>
 
+using glm::uvec2;
 using glm::vec3;
 using glm::radians;
 
@@ -142,6 +144,24 @@ bool STPMeshSetting::validate() const {
 		&& this->UVScaleFactor > 0u
 		&& this->TessSetting.validate()
 		&& this->RegionSmoothSetting.validate();
+}
+
+//STPOcclusionKernelSetting.h
+
+STPOcclusionKernelSetting::STPOcclusionKernelSetting() : 
+	RandomSampleSeed(0ull), 
+	KernelSize(1u), 
+	RotationVectorSize(uvec2(1u)), 
+	SampleRadius(1.0f), 
+	Bias(0.0f) {
+
+}
+
+bool STPOcclusionKernelSetting::validate() const {
+	return this->KernelSize > 0u
+		&& this->RotationVectorSize != uvec2(0u)
+		&& this->SampleRadius > 0.0f
+		&& this->Bias > 0.0f;
 }
 
 //STPOrthographicCameraSetting.h

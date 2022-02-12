@@ -7,6 +7,7 @@
 #include "./Scene/STPSceneObject.h"
 #include "./Scene/STPSceneLight.h"
 #include "./Scene/Component/STPPostProcess.h"
+#include "./Scene/Component/STPAmbientOcclusion.h"
 //Lighting
 #include "./Environment/STPLightSetting.h"
 //Camera
@@ -18,6 +19,7 @@
 //Container
 #include <vector>
 #include <memory>
+#include <optional>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -196,8 +198,9 @@ namespace SuperTerrainPlus::STPRealism {
 			std::vector<std::unique_ptr<STPSceneLight::STPEnvironmentLight<false>>> EnvironmentObjectDatabase;
 			std::vector<STPSceneLight::STPEnvironmentLight<true>*> ShadowEnvironmentObject;
 
-			//Post process node
-			std::unique_ptr<STPPostProcess> PostProcessObject;
+			//Special effect nodes
+			std::optional<STPAmbientOcclusion> AmbientOcclusionObject;
+			std::optional<STPPostProcess> PostProcessObject;
 
 		};
 
