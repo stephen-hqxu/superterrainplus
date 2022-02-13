@@ -34,6 +34,8 @@
 
 //GLM
 #include <glm/vec3.hpp>
+#include <glm/mat3x3.hpp>
+#include <glm/mat3x4.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -43,6 +45,8 @@ using glm::uvec3;
 using glm::vec3;
 using glm::ivec4;
 using glm::vec4;
+using glm::mat3;
+using glm::mat3x4;
 using glm::mat4;
 using glm::value_ptr;
 
@@ -109,21 +113,30 @@ private:
 
 		vec3 Pos;
 		float _padPos;
-		mat4 V, P, InvP, PV, InvPV;
+
+		mat4 V;
+		mat3x4 VNorm;
 
 		float C, Far;
+		vec2 _padFar;
+
+		mat4 P, InvP, PV, InvPV;
+
 	};
 
 	static_assert(
 		offsetof(STPPackedCameraBuffer, Pos) == 0
 		&& offsetof(STPPackedCameraBuffer, V) == 16
-		&& offsetof(STPPackedCameraBuffer, P) == 80
-		&& offsetof(STPPackedCameraBuffer, InvP) == 144
-		&& offsetof(STPPackedCameraBuffer, PV) == 208
-		&& offsetof(STPPackedCameraBuffer, InvPV) == 272
+		&& offsetof(STPPackedCameraBuffer, VNorm) == 80
 
-		&& offsetof(STPPackedCameraBuffer, C) == 336
-		&& offsetof(STPPackedCameraBuffer, Far) == 340,
+		&& offsetof(STPPackedCameraBuffer, C) == 128
+		&& offsetof(STPPackedCameraBuffer, Far) == 132
+
+		&& offsetof(STPPackedCameraBuffer, P) == 144
+		&& offsetof(STPPackedCameraBuffer, InvP) == 208
+
+		&& offsetof(STPPackedCameraBuffer, PV) == 272
+		&& offsetof(STPPackedCameraBuffer, InvPV) == 336,
 	"The alignment of camera buffer does not obey std430 packing rule");
 
 public:
@@ -197,9 +210,12 @@ public:
 			}
 
 			//if position changes, view must also change
+			const mat4& view = this->Camera.view();
+
 			//view matrix has changed
-			camBuf->V = this->Camera.view();
-			this->Buffer.flushMappedBufferRange(16, sizeof(mat4));
+			camBuf->V = view;
+			camBuf->VNorm = static_cast<mat3x4>(glm::transpose(glm::inverse(static_cast<mat3>(view))));
+			this->Buffer.flushMappedBufferRange(16, sizeof(mat4) + sizeof(mat3x4));
 
 			this->updateView = false;
 		}
@@ -209,7 +225,7 @@ public:
 
 			camBuf->P = proj;
 			camBuf->InvP = glm::inverse(proj);
-			this->Buffer.flushMappedBufferRange(80, sizeof(mat4) * 2);
+			this->Buffer.flushMappedBufferRange(144, sizeof(mat4) * 2);
 
 			this->updateProjection = false;
 		}
@@ -221,7 +237,7 @@ public:
 			//update the precomputed values
 			camBuf->PV = proj_view;
 			camBuf->InvPV = glm::inverse(proj_view);
-			this->Buffer.flushMappedBufferRange(208, sizeof(mat4) * 2);
+			this->Buffer.flushMappedBufferRange(272, sizeof(mat4) * 2);
 		}
 	}
 
@@ -529,6 +545,8 @@ private:
 
 public:
 
+	STPFrameBuffer AmbientOcclusionContainer;
+
 	/**
 	 * @brief STPLightIndexLocator is a lookup table, given an instance of light, find the index in the scene graph.
 	*/
@@ -725,9 +743,12 @@ public:
 		this->GeometryContainer.attach(GL_COLOR_ATTACHMENT2, specular, 0);
 		this->GeometryContainer.attach(GL_COLOR_ATTACHMENT3, ao, 0);
 		this->GeometryContainer.attach(GL_DEPTH_STENCIL_ATTACHMENT, depth_stencil, 0);
+		//a separate framebuffer with ambient occlusion attachment
+		this->AmbientOcclusionContainer.attach(GL_COLOR_ATTACHMENT0, ao, 0);
 
 		//verify
-		if (this->GeometryContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		if (this->GeometryContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE
+			|| this->AmbientOcclusionContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 			throw STPException::STPGLError("Geometry buffer framebuffer fails to verify");
 		}
 
@@ -763,6 +784,7 @@ public:
 	/**
 	 * @brief Enable rendering to geometry buffer and captured under the current G-buffer resolution instance.
 	 * To disable further rendering to this buffer, bind framebuffer to any other target.
+	 * All old geometry buffer will be cleared.
 	*/
 	inline void capture() {
 		this->GeometryContainer.bind(GL_FRAMEBUFFER);
@@ -800,81 +822,12 @@ public:
 
 };
 
-class STPScenePipeline::STPSceneRenderMemory {
-private:
-
-	STPTexture InputImage;
-	STPFrameBuffer InputContainer;
-
-public:
-
-	STPSceneRenderMemory() : InputImage(GL_TEXTURE_2D) {
-
-	}
-
-	STPSceneRenderMemory(const STPSceneRenderMemory&) = delete;
-
-	STPSceneRenderMemory(STPSceneRenderMemory&&) = delete;
-
-	STPSceneRenderMemory& operator=(const STPSceneRenderMemory&) = delete;
-
-	STPSceneRenderMemory& operator=(STPSceneRenderMemory&&) = delete;
-
-	~STPSceneRenderMemory() = default;
-
-	/**
-	 * @brief Set the resolution of the post process framebuffer.
-	 * @param texture The pointer to the shared texture memory.
-	 * @param dimension The new dimension for the post process input buffer.
-	 * Note that doing this will cause reallocation of all post process buffer and hence
-	 * this should only be done whenever truely necessary.
-	*/
-	void setResolution(const STPSharedTexture& texture, const uvec3& dimension) {
-		//(re)allocate memory for texture
-		STPTexture imageTexture(GL_TEXTURE_2D);
-		const auto& [depth_stencil] = texture;
-		//using a floating-point format allows color to go beyond the standard range of [0.0, 1.0]
-		imageTexture.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGB16F, dimension);
-
-		//attach to framebuffer
-		this->InputContainer.attach(GL_COLOR_ATTACHMENT0, imageTexture, 0);
-		this->InputContainer.attach(GL_STENCIL_ATTACHMENT, depth_stencil, 0);
-
-		//verify
-		if (this->InputContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			throw STPException::STPGLError("Post process framebuffer validation fails");
-		}
-
-		using std::move;
-		//re-initialise the current objects
-		this->InputImage = move(imageTexture);
-	}
-
-	/**
-	 * @brief Activate the post process framebuffer and all rendered contents will be drawn onto the post process frame buffer.
-	 * To stop capturing, bind to any other framebuffers.
-	*/
-	inline void capture() {
-		this->InputContainer.bind(GL_FRAMEBUFFER);
-	}
-
-	/**
-	 * @brief Get the pointer to the captured post process input image buffer.
-	 * @return The pointer to the image buffer.
-	*/
-	inline const STPTexture& getImageBuffer() const {
-		return this->InputImage;
-	}
-
-};
-
 STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneShaderCapacity& shader_cap, 
 	const STPShadowMapFilterFunction& shadow_filter, STPScenePipelineLog& log) :
 	SceneMemoryCurrent{ }, SceneMemoryLimit(shader_cap),
 	CameraMemory(make_unique<STPCameraInformationMemory>(camera)), 
 	GeometryShadowPass(make_unique<STPShadowPipeline>(shadow_filter, this->SceneMemoryLimit.LightSpaceMatrix, log.DepthShader)),
-	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, shadow_filter, log.GeometryBufferResolution)),
-	RenderMemory(make_unique<STPSceneRenderMemory>()) {
+	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, shadow_filter, log.GeometryBufferResolution)) {
 	if (!shadow_filter.valid()) {
 		throw STPException::STPBadNumericRange("The shadow filter has invalid settings");
 	}
@@ -890,8 +843,10 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneShader
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glStencilMask(0xFF);
 	glClearStencil(0x00);
+	glClearDepth(1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 	//tessellation settings
@@ -989,11 +944,6 @@ STPScenePipeline::STPLightIdentifier STPScenePipeline::locateLight(const STPScen
 	return this->GeometryLightPass->IndexLocator.Env.at(light);
 }
 
-void STPScenePipeline::setClearColor(vec4 color) {
-	glClearColor(color.r, color.g, color.b, color.a);
-	glClear(GL_COLOR_BUFFER_BIT);
-}
-
 void STPScenePipeline::setResolution(uvec2 resolution) {
 	if (resolution == uvec2(0u)) {
 		throw STPException::STPBadNumericRange("The rendering resolution must be both non-zero positive integers");
@@ -1011,11 +961,14 @@ void STPScenePipeline::setResolution(uvec2 resolution) {
 	//resize children rendering components
 	STPFrameBuffer::unbind(GL_FRAMEBUFFER);
 	this->GeometryLightPass->setResolution(scene_texture, dimension);
-	this->RenderMemory->setResolution(scene_texture, dimension);
+	
 	//update scene component (if needed)
 	STPSceneGraph& scene = this->SceneComponent;
+	if (scene.PostProcessObject.has_value()) {
+		scene.PostProcessObject->setPostProcessBuffer(&depth_stencil, resolution);
+	}
 	if (scene.AmbientOcclusionObject.has_value()) {
-		scene.AmbientOcclusionObject->setScreenSpaceDimension(resolution);
+		scene.AmbientOcclusionObject->setScreenSpace(&depth_stencil, resolution);
 	}
 
 	using std::move;
@@ -1088,7 +1041,7 @@ void STPScenePipeline::traverse() {
 	this->GeometryLightPass->capture();
 	//enable clearing stencil buffer
 	glStencilMask(0x01);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	/* ------------------------------------ opaque object rendering ----------------------------- */
 	//initially the stencil is empty, we want to mark the geometries on the stencil buffer, no testing is needed.
 	glEnable(GL_STENCIL_TEST);
@@ -1103,10 +1056,14 @@ void STPScenePipeline::traverse() {
 	glDisable(GL_DEPTH_TEST);
 	//preserve the original geometry depth to avoid drawing stuff over the geometries later.
 	glDepthMask(GL_FALSE);
-	//like the depth mask, we need to preserve geometry stencil
-	glStencilMask(0x00);
 	//face culling is useless for screen drawing
 	glDisable(GL_CULL_FACE);
+
+	//like the depth mask, we need to preserve geometry stencil
+	glStencilMask(0x00);
+	//we want to start rendering light, at the same time capture everything onto the post process buffer
+	//now we only want to shade pixels with geometry data, empty space should be culled
+	glStencilFunc(GL_EQUAL, 0x01, 0x01);
 
 	//there is a potential feedback loop inside as the framebuffer has the depth texture attached even though we have only bound to stencil attachment point,
 	//while the shader is reading from the depth texture.
@@ -1114,16 +1071,31 @@ void STPScenePipeline::traverse() {
 	glTextureBarrier();
 	/* ------------------------------------ screen-space ambient occlusion ------------------------------- */
 	if (has_effect_ao) {
-		ao->occlude(this->SceneTexture.DepthStencil, this->GeometryLightPass->getNormal());
+		//ambient occlusion results will be blened with the AO from geometry buffer
+		glEnable(GL_BLEND);
+		//computed AO will be multiplicative blended to the geometry AO
+		//ambient occlusion does not have alpha
+		glBlendEquation(GL_FUNC_ADD);
+		glBlendFunc(GL_DST_COLOR, GL_ZERO);
+
+		ao->occlude(this->SceneTexture.DepthStencil, this->GeometryLightPass->getNormal(), this->GeometryLightPass->AmbientOcclusionContainer);
+
+		glDisable(GL_BLEND);
 	}
 
-	//render the final scene to an internal buffer memory
-	this->RenderMemory->capture();
+	if (has_effect_post_process) {
+		//render the final scene to an post process buffer memory
+		post_process->capture();
+	}
+	else {
+		throw STPException::STPUnsupportedFunctionality("It is currently not allowed to render to default framebuffer without post processing, "
+			"because there is no stencil information written.");
+
+		//otherwise perform direct rendering
+		STPFrameBuffer::unbind(GL_FRAMEBUFFER);
+	}
 	//no need to clear anything, just draw the quad over it.
 	/* ----------------------------------------- light resolve ------------------------------------ */
-	//we want to start rendering light, at the same time capture everything onto the post process buffer
-	//now we only want to shade pixels with geometry data, empty space should be culled
-	glStencilFunc(GL_EQUAL, 0x01, 0x01);
 	this->GeometryLightPass->resolve();
 
 	/* ------------------------------------- environment rendering ----------------------------- */
@@ -1134,17 +1106,15 @@ void STPScenePipeline::traverse() {
 		rendering_env->renderEnvironment();
 	}
 
-	//time to draw onto the main framebuffer
-	STPFrameBuffer::unbind(GL_FRAMEBUFFER);
-	//depth and stencil are not written, color will be overwritten, no need to clear
 	/* -------------------------------------- post processing -------------------------------- */
-	glDisable(GL_STENCIL_TEST);
-	//use the previously rendered buffer image for post processing
 	if (has_effect_post_process) {
-		post_process->process(this->RenderMemory->getImageBuffer());
-	}
-	else {
-		throw STPException::STPUnsupportedFunctionality("The renderer currently only supports rendering with post processing");
+		glDisable(GL_STENCIL_TEST);
+		//time to draw onto the main framebuffer
+		STPFrameBuffer::unbind(GL_FRAMEBUFFER);
+		//depth and stencil are not written, color will be overwritten, no need to clear
+
+		//use the previously rendered buffer image for post processing
+		post_process->process();
 	}
 
 	/* --------------------------------- reset states to defualt -------------------------------- */

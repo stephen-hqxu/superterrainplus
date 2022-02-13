@@ -103,6 +103,8 @@ namespace SuperTerrainPlus::STPRealism {
 		//The post process capturing unit
 		STPSampler ImageSampler;
 
+		STPSimpleScreenFrameBuffer PostProcessResultContainer;
+
 		STPProgramManager PostProcessor;
 
 	public:
@@ -141,10 +143,23 @@ namespace SuperTerrainPlus::STPRealism {
 		void setEffect(float);
 
 		/**
-		 * @brief Render post processed rendering output to the screen.
-		 * @param texture The pointer to the texture to be post-processed.
+		 * @brief Set the buffer property for post processing.
+		 * @param stencil An optional pointer to stencil buffer to be attached to the post process buffer.
+		 * @param dimension Specifies the new dimension.
+		 * This causes the post process buffer to be reallocated.
 		*/
-		void process(const STPTexture&) const;
+		void setPostProcessBuffer(STPTexture*, glm::uvec2);
+
+		/**
+		 * @brief Start rendering to post process buffer.
+		 * To stop rendering, bind framebuffer target to any other binding points.
+		*/
+		void capture() const;
+
+		/**
+		 * @brief Render post processed rendering output to the screen.
+		*/
+		void process() const;
 
 	};
 

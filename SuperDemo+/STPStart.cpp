@@ -293,9 +293,18 @@ namespace STPStart {
 			}
 			//-------------------------------------------
 			{
+				//blur
+				STPGaussianFilter::STPGaussianFilterLog filter_log;
+				STPGaussianFilter blur_filter(2.8, 1.1, 4u, filter_log);
+				
+				STPMasterRenderer::printLog(filter_log.QuadShader);
+				STPMasterRenderer::printLog(filter_log.GaussianShader);
+
 				//ambient occlusion
 				const STPEnvironment::STPOcclusionKernelSetting ao_setting = STPTerrainParaLoader::getAOSetting(engine["AmbientOcclusion"]);
 				STPAmbientOcclusion::STPAmbientOcclusionLog ao_log;
+
+				this->AOEffect = this->RenderPipeline->add<STPAmbientOcclusion>(ao_setting, std::move(blur_filter), ao_log);
 
 				STPMasterRenderer::printLog(ao_log.QuadShader);
 				STPMasterRenderer::printLog(ao_log.AOShader);
@@ -311,8 +320,6 @@ namespace STPStart {
 			}
 
 			using PT = STPScenePipeline::STPLightPropertyType;
-			//basic preset
-			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
 			//store this index so later we can update the light quicker
 			this->SunIndex = this->RenderPipeline->locateLight(this->SunRenderer);
 

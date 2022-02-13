@@ -51,6 +51,14 @@ void STPFrameBuffer::attach(STPOpenGL::STPenum attachment, const STPRenderBuffer
 	glNamedFramebufferRenderbuffer(this->FrameBuffer.get(), attachment, GL_RENDERBUFFER, *renderbuffer);
 }
 
+void STPFrameBuffer::detachTexture(STPOpenGL::STPenum attachment) {
+	glNamedFramebufferTexture(this->FrameBuffer.get(), attachment, 0u, 0);
+}
+
+void STPFrameBuffer::detachRenderBuffer(STPOpenGL::STPenum attachment) {
+	glNamedFramebufferRenderbuffer(this->FrameBuffer.get(), attachment, GL_RENDERBUFFER, 0u);
+}
+
 void STPFrameBuffer::drawBuffer(STPOpenGL::STPenum buf) {
 	glNamedFramebufferDrawBuffer(this->FrameBuffer.get(), buf);
 }

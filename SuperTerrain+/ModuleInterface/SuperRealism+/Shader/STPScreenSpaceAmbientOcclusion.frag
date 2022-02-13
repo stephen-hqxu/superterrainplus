@@ -2,6 +2,8 @@
 #extension GL_ARB_bindless_texture : require
 #extension GL_ARB_shading_language_include : require
 
+layout(early_fragment_tests) in;
+
 //depth reconstruction to view space
 #define EMIT_DEPTH_RECON_IMPL 1
 #include </Common/STPCameraInformation.glsl>
@@ -31,14 +33,12 @@ layout (binding = 1) uniform sampler2D GeoNormal;
 layout (bindless_sampler) uniform sampler2D NoiseVector;
 
 void main(){
-	//convert normal from world to view space
-	const mat3 normalMatrix = transpose(inverse(mat3(Camera.View)));
-
 	//get inputs for SSAO
 	const vec3 fragPos = fragDepthReconstruction(texture(GeoDepth, FragTexCoord).r, FragTexCoord),
 		//our normal in the G-Buffer is in world space, we need to convert it to view space
-		fragNormal = normalize(normalMatrix * texture(GeoNormal, FragTexCoord).rgb),
-		randomVec = normalize(texture(NoiseVector, FragTexCoord * NoiseTexScale).rgb),
+		fragNormal = normalize(Camera.ViewNormal * texture(GeoNormal, FragTexCoord).rgb),
+		//the random vector rotates normal around z-axis so the z component is zero
+		randomVec = normalize(vec3(texture(NoiseVector, FragTexCoord * NoiseTexScale).rg, 0.0f)),
 		//create TBN change of basis matrix: from tangent-space to view-space
 		tangent = normalize(randomVec - fragNormal * dot(randomVec, fragNormal)),
 		bitangent = cross(fragNormal, tangent);

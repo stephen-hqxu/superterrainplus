@@ -4,15 +4,17 @@
 layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 	layout(offset = 0) vec3 Position;
 	layout(offset = 16) mat4 View;
-	layout(offset = 80) mat4 Projection;
-	//The values below are calcuated from the values above
-	layout(offset = 144) mat4 InvProjection;
-	layout(offset = 208) mat4 ProjectionView;
-	layout(offset = 272) mat4 InvProjectionView;
+	layout(offset = 80) mat3 ViewNormal;//normal matrix that encapsulated view matrix only
 
 	//Depth buffer tweaking
-	layout(offset = 336) float LogConstant;
-	layout(offset = 340) float Far;
+	layout(offset = 128) float LogConstant;
+	layout(offset = 132) float Far;
+
+	layout(offset = 144) mat4 Projection;
+	layout(offset = 208) mat4 InvProjection;
+
+	layout(offset = 272) mat4 ProjectionView;
+	layout(offset = 336) mat4 InvProjectionView;
 } Camera;
 
 /* -------------------------------------------------------------------- */

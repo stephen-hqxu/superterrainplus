@@ -9,10 +9,11 @@
 #include "../../Object/STPSampler.h"
 #include "../../Object/STPTexture.h"
 #include "../../Object/STPBindlessTexture.h"
-#include "../../Object/STPFrameBuffer.h"
 #include "../../Object/STPProgramManager.h"
 
 #include "../../Environment/STPOcclusionKernelSetting.h"
+//Output Processing
+#include "STPGaussianFilter.h"
 
 //GLM
 #include <glm/vec2.hpp>
@@ -34,13 +35,14 @@ namespace SuperTerrainPlus::STPRealism {
 		STPSampler GBufferSampler;
 
 		//ambient occlusion output
-		STPTexture OcclusionResult;
-		STPFrameBuffer OcclusionContainer;
+		mutable STPSimpleScreenFrameBuffer OcclusionResultContainer;
 
 		STPProgramManager OcclusionCalculator;
 
 		//Store the dimension of the texture which contains random rotation vectors
 		const glm::uvec2 NoiseDimension;
+
+		STPGaussianFilter BlurWorker;
 
 	public:
 
@@ -55,9 +57,10 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Initialise a new ambient occlusion rendering component.
 		 * @param kernel_setting The pointer to the setting to configure how ambient occlusion will be performed.
+		 * @param filter A rvalue reference to a Gaussian filter which will be used to blurred the output ambient occlusion.
 		 * @param log The pointer to log to hold the shader compilation output.
 		*/
-		STPAmbientOcclusion(const STPEnvironment::STPOcclusionKernelSetting&, STPAmbientOcclusionLog&);
+		STPAmbientOcclusion(const STPEnvironment::STPOcclusionKernelSetting&, STPGaussianFilter&&, STPAmbientOcclusionLog&);
 
 		STPAmbientOcclusion(const STPAmbientOcclusion&) = delete;
 
@@ -70,30 +73,21 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPAmbientOcclusion() = default;
 
 		/**
-		 * @brief Get the texture where the occlusion result is stored to.
-		 * @return The pointer to the texture with the occlusion result.
-		 * Note that it is not recommended to create a bindless handle from this texture 
-		 * since the texture is subject to change.
-		*/
-		const STPTexture& operator*() const;
-
-		/**
-		 * @brief Set the size of the rendering screen.
-		 * This function changes how the screen-space buffer is sampled and triggers reallocation to the internal buffer,
-		 * therefore it is considered to be expensive.
+		 * @brief Set new screen space dimension and re-initialise ambient occlusion framebuffer.
+		 * @param stencil The pointer to the stencil buffer to be used to control ambient occlusion region, or nullptr if not used.
 		 * @param dimension The new dimension for the rendering screen.
 		*/
-		void setScreenSpaceDimension(glm::uvec2);
+		void setScreenSpace(STPTexture*, glm::uvec2);
 
 		/**
 		 * @brief Start performing ambient occlusion calculation.
 		 * The occlusion result is stored in the internal buffer, this call clears all previous data.
-		 * The framebuffer state is changed by this function.
 		 * @param depth The texture which contains geometry depth data.
 		 * This depth data will be used to reconstruct geometry position.
 		 * @param normal The texture which contains geometry normal data.
+		 * @param output The pointer to the framebuffer where the final ambient occlusion output will be stored.
 		*/
-		void occlude(const STPTexture&, const STPTexture&) const;
+		void occlude(const STPTexture&, const STPTexture&, STPFrameBuffer&) const;
 
 	};
 

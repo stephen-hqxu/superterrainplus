@@ -250,11 +250,6 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		class STPGeometryBufferResolution;
 		std::unique_ptr<STPGeometryBufferResolution> GeometryLightPass;
-		/**
-		 * @brief STPSceneRenderMemory captures the previously rendered image into an internal memory.
-		*/
-		class STPSceneRenderMemory;
-		std::unique_ptr<STPSceneRenderMemory> RenderMemory;
 
 		/**
 		 * @brief Get the shader used for performing additional operations during depth rendering.
@@ -357,12 +352,6 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		template<class Obj, typename... Arg>
 		Obj* add(Arg&&...);
-
-		/**
-		 * @brief Specify clear values for the color buffers.
-		 * @param color Specify the red, green, blue, and alpha values used when the color buffers are cleared. The initial values are all 0.
-		*/
-		void setClearColor(glm::vec4);
 
 		/**
 		 * @brief Set the rendering resolution.

@@ -34,6 +34,16 @@ namespace SuperTerrainPlus::STPRealism {
 
 		};
 
+		/**
+		 * @brief Provides indirect command for glDispatchCompute function.
+		*/
+		struct STPDispatchCompute {
+		public:
+
+			STPOpenGL::STPuint GroupCountX, GroupCountY, GroupCountZ;
+
+		};
+
 	}
 
 }

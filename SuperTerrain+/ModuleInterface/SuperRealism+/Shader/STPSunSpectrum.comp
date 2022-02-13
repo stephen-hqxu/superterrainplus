@@ -11,7 +11,6 @@ layout(binding = 0, rgba16f) uniform writeonly restrict image1DArray Spectrum;
 #include </Common/STPAtmosphericScattering.glsl>
 
 uniform AtmosphereSetting Atmo;
-uniform uint SpectrumDimension;
 //Transforms sun direction to ray direction.
 //Identity matrix denotes that the ray has the same direction as sun.
 uniform mat3 SunToRayDirection;
@@ -19,16 +18,18 @@ uniform mat3 SunToRayDirection;
 uniform vec3 SunDirectionStart, SunDirectionEnd;
 
 void main(){
+	//get the valid size of the spectrum
+	const int spectrum_length = imageSize(Spectrum).x;
 	//current working pixel
 	const uint index = gl_GlobalInvocationID.x;
-	if(index >= SpectrumDimension){
+	if(index >= spectrum_length){
 		//index out of bound
 		return;
 	}
 
 	//sun direction interpolation
 	//we divide spectrum into fractions based on the spectrum dimension.
-	const float factor = 1.0f * index / (1.0f * SpectrumDimension);
+	const float factor = 1.0f * index / (1.0f * spectrum_length);
 	const vec3 current_sun = normalize(mix(SunDirectionStart, SunDirectionEnd, factor)), 
 		current_ray = normalize(SunToRayDirection * current_sun);
 	

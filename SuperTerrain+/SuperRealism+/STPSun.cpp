@@ -89,8 +89,8 @@ STPSun<false>::STPSunSpectrum::STPSunSpectrum(unsigned int spectrum_length, cons
 	//link
 	log.Log[1] = this->SpectrumEmulator.finalise();
 
-	//the number of iteration is a fixed number and does not allow to be changed
-	this->SpectrumEmulator.uniform(glProgramUniform1ui, "SpectrumDimension", this->SpectrumLength);
+	//setup sampler
+	this->SpectrumEmulator.uniform(glProgramUniform1i, "Spectrum", 0);
 }
 
 void STPSun<false>::STPSunSpectrum::operator()(const STPSpectrumSpecification& spectrum_setting) {
@@ -113,8 +113,8 @@ void STPSun<false>::STPSunSpectrum::operator()(const STPSpectrumSpecification& s
 	//compute
 	this->SpectrumEmulator.use();
 	glDispatchCompute(gridDim, 1u, 1u);
-	//sync
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	//sync to ensure valid texture access later
+	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT);
 
 	//clear up
 	STPTexture::unbindImage(0u);

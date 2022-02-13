@@ -94,6 +94,18 @@ namespace SuperTerrainPlus::STPRealism {
 		void attach(STPOpenGL::STPenum, const STPRenderBuffer&);
 
 		/**
+		 * @brief Detach a texture target from the framebuffer.
+		 * @param attachment The attachment on the framebuffer to be detached.
+		*/
+		void detachTexture(STPOpenGL::STPenum);
+
+		/**
+		 * @brief Detach a renderbuffer target from the framebuffer.
+		 * @param attachment The attachment on the framebuffer to be detached.
+		*/
+		void detachRenderBuffer(STPOpenGL::STPenum);
+
+		/**
 		 * @brief Specify which color buffers are to be drawn into.
 		 * @param buf The buffer for the framebuffer.
 		*/

@@ -28,6 +28,7 @@ Object/STPTexture.h
 Object/STPVertexArray.h
 # /Scene/Component
 Scene/Component/STPAmbientOcclusion.h
+Scene/Component/STPGaussianFilter.h
 Scene/Component/STPHeightfieldTerrain.h
 Scene/Component/STPPostProcess.h
 Scene/Component/STPScreen.h

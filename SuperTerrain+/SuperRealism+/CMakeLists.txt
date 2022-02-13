@@ -7,6 +7,7 @@ STPCamera.cpp
 STPCascadedShadowMap.cpp
 STPDebugCallback.cpp
 STPFrameBuffer.cpp
+STPGaussianFilter.cpp
 STPHeightfieldTerrain.cpp
 STPLightSpectrum.cpp
 STPOrthographicCamera.cpp

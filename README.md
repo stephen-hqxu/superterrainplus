@@ -65,7 +65,7 @@ There is no perfect answer to this question, every application has its own pros 
   - [ ] Cubemap shadow mapping for pointlight
   - [x] Parallel-split cascaded shadow mapping for directional light
 - [x] Deferred shading
-- [ ] Screen-space ambient occlusion
+- [x] Screen-space ambient occlusion
 - [ ] Anti-aliasing for deferred renderer
 - [ ] Multiple lights
 - [ ] Night rendering

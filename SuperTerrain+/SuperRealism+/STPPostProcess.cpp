@@ -71,9 +71,17 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, STPPostP
 
 SET_EFFECT(Gamma, "Gamma")
 
-void STPPostProcess::process(const STPTexture& texture) const {
+void STPPostProcess::setPostProcessBuffer(STPTexture* stencil, uvec2 dimension) {
+	this->PostProcessResultContainer.setScreenBuffer(stencil, dimension, GL_RGB16F);
+}
+
+void STPPostProcess::capture() const {
+	this->PostProcessResultContainer.capture();
+}
+
+void STPPostProcess::process() const {
 	//prepare to render
-	texture.bind(0);
+	this->PostProcessResultContainer.ScreenColor.bind(0);
 	this->ImageSampler.bind(0);
 
 	this->PostProcessor.use();
