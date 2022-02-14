@@ -195,11 +195,28 @@ namespace STPStart {
 			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
 			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE);
 
+			//setup vertex shader for off-screen rendering that can be shared
+			STPScreen::STPScreenVertexShader::STPScreenVertexShaderLog screen_shader_log;
+			const STPScreen::STPScreenVertexShader ScreenVertexShader(screen_shader_log);
+			STPMasterRenderer::printLog(screen_shader_log);
+
+			//this buffer is a shared pointer wrapper and we don't need to manage its lifetime
+			const STPScreen::STPSharableScreenVertexBuffer OffScreenVertexBuffer = 
+				std::make_shared<STPScreen::STPScreenVertexBuffer>();
+			STPScreen::STPScreenLog screen_renderer_log;
+			STPScreen::STPScreenInitialiser screen_renderer_init;
+			screen_renderer_init.VertexShader = &ScreenVertexShader;
+			screen_renderer_init.SharedVertexBuffer = &OffScreenVertexBuffer;
+			screen_renderer_init.Log = &screen_renderer_log;
+
 			//setup scene pipeline
 			//-------------------------------------------------------------------------
 			{
+				STPScenePipeline::STPScenePipelineInitialiser scene_init;
+
 				//initialisation
 				STPScenePipeline::STPShadowMapFilterKernel<STPScenePipeline::STPShadowMapFilter::PCF> scene_shadow_function;
+				scene_init.ShadowFilter = &scene_shadow_function;
 				scene_shadow_function.DepthBias = vec2(0.055f, 0.0055f);
 				scene_shadow_function.NormalBias = vec2(23.5f, 4.5f);
 				scene_shadow_function.BiasFarMultiplier = 0.45f;
@@ -207,19 +224,19 @@ namespace STPStart {
 				scene_shadow_function.KernelRadius = 4u;
 				scene_shadow_function.KernelDistance = 2.45f;
 
-				STPScenePipeline::STPSceneShaderCapacity scene_cap;
+				STPScenePipeline::STPSceneShaderCapacity& scene_cap = scene_init.ShaderCapacity;
 				scene_cap.EnvironmentLight = 1ull;
 				scene_cap.DirectionalLightShadow = 1ull;
 				scene_cap.LightSpaceMatrix = 5ull;
 				scene_cap.LightFrustumDivisionPlane = 5ull;
 
 				//construct rendering pipeline
-				STPScenePipeline::STPScenePipelineLog scene_log;
-				this->RenderPipeline.emplace(camera, scene_cap, scene_shadow_function, scene_log);
-				const auto& lighting_log = scene_log.GeometryBufferResolution;
-				STPMasterRenderer::printLog(lighting_log.QuadShader);
-				STPMasterRenderer::printLog(lighting_log.LightingShader);
-				STPMasterRenderer::printLog(scene_log.DepthShader);
+				scene_init.GeometryBufferInitialiser = &screen_renderer_init;
+
+				this->RenderPipeline.emplace(camera, scene_init);
+
+				STPMasterRenderer::printLog(screen_renderer_log);
+				STPMasterRenderer::printLog(scene_init.DepthShader);
 			}
 			//setup light
 			//-------------------------------------------
@@ -293,30 +310,29 @@ namespace STPStart {
 			}
 			//-------------------------------------------
 			{
+				const SIMPLE::SISection& ao_section = engine["AmbientOcclusion"];
 				//blur
-				STPGaussianFilter::STPGaussianFilterLog filter_log;
-				STPGaussianFilter blur_filter(2.8, 1.1, 4u, filter_log);
+				STPGaussianFilter blur_filter(
+					ao_section("variance").to<double>(),
+					ao_section("kernel_distance").to<double>(),
+					ao_section("kernel_radius").to<unsigned int>(),
+				screen_renderer_init);
 				
-				STPMasterRenderer::printLog(filter_log.QuadShader);
-				STPMasterRenderer::printLog(filter_log.GaussianShader);
+				STPMasterRenderer::printLog(screen_renderer_log);
 
 				//ambient occlusion
-				const STPEnvironment::STPOcclusionKernelSetting ao_setting = STPTerrainParaLoader::getAOSetting(engine["AmbientOcclusion"]);
-				STPAmbientOcclusion::STPAmbientOcclusionLog ao_log;
+				const STPEnvironment::STPOcclusionKernelSetting ao_setting = STPTerrainParaLoader::getAOSetting(ao_section);
 
-				this->AOEffect = this->RenderPipeline->add<STPAmbientOcclusion>(ao_setting, std::move(blur_filter), ao_log);
+				this->AOEffect = this->RenderPipeline->add<STPAmbientOcclusion>(ao_setting, std::move(blur_filter), screen_renderer_init);
 
-				STPMasterRenderer::printLog(ao_log.QuadShader);
-				STPMasterRenderer::printLog(ao_log.AOShader);
+				STPMasterRenderer::printLog(screen_renderer_log);
 			}
 			{
 				//post process
 				STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::Lottes> postprocess_def;
-				STPPostProcess::STPPostProcessLog postprocess_log;
 
-				this->FinalProcess = this->RenderPipeline->add<STPPostProcess>(postprocess_def, postprocess_log);
-				STPMasterRenderer::printLog(postprocess_log.QuadShader);
-				STPMasterRenderer::printLog(postprocess_log.PostProcessShader);
+				this->FinalProcess = this->RenderPipeline->add<STPPostProcess>(postprocess_def, screen_renderer_init);
+				STPMasterRenderer::printLog(screen_renderer_log);
 			}
 
 			using PT = STPScenePipeline::STPLightPropertyType;
@@ -324,13 +340,14 @@ namespace STPStart {
 			this->SunIndex = this->RenderPipeline->locateLight(this->SunRenderer);
 
 			STPEnvironment::STPLightSetting::STPAmbientLightSetting sun_ambient;
-			sun_ambient.AmbientStrength = 0.3f;
+			sun_ambient.AmbientStrength = 0.45f;
 			STPEnvironment::STPLightSetting::STPDirectionalLightSetting sun_directional;
-			sun_directional.DiffuseStrength = 1.4f;
-			sun_directional.SpecularStrength = 6.3f;
+			sun_directional.DiffuseStrength = 1.6f;
+			sun_directional.SpecularStrength = 6.5f;
 
 			this->RenderPipeline->setLight(this->SunIndex, sun_ambient);
 			this->RenderPipeline->setLight(this->SunIndex, sun_directional);
+			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
@@ -515,6 +532,9 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 	 * @brief Terminate the engine and exit.
 	*/
 	static void clearup() {
+		//make sure pipeline is deleted before the context is destroyed
+		STPStart::MasterEngine.reset();
+
 		if (GLCanvas != nullptr) {
 			glfwMakeContextCurrent(nullptr);
 			glfwDestroyWindow(GLCanvas);
@@ -614,8 +634,6 @@ int main() {
 	//termination
 	cout << "Terminated, waiting for clear up..." << endl;
 
-	//make sure pipeline is deleted before the context is destroyed
-	STPStart::MasterEngine.reset();
 	STPStart::clearup();
 
 	cout << "Done... Program now exit." << endl;

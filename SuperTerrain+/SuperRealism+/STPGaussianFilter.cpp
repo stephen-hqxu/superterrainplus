@@ -36,7 +36,8 @@ using namespace SuperTerrainPlus::STPRealism;
 static constexpr auto FilterShaderFilename = 
 	STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPGaussianFilterKernel", ".frag");
 
-STPGaussianFilter::STPGaussianFilter(double variance, double sample_distance, unsigned int radius, STPGaussianFilterLog& log) : BorderColor(0.0f) {
+STPGaussianFilter::STPGaussianFilter(double variance, double sample_distance, unsigned int radius, const STPScreenInitialiser& filter_init) :
+	STPScreen(*filter_init.SharedVertexBuffer), BorderColor(vec4(vec3(0.0f), 1.0f)) {
 	if (radius == 0u) {
 		throw STPException::STPBadNumericRange("The radius of the filter kernel must be positive");
 	}
@@ -47,7 +48,6 @@ STPGaussianFilter::STPGaussianFilter(double variance, double sample_distance, un
 
 	//setup filter compute shader
 	const char* const filter_source_file = FilterShaderFilename.data();
-	STPShaderManager screen_shader(std::move(STPScreen::compileScreenVertexShader(log.QuadShader))), filter_shader(GL_FRAGMENT_SHADER);
 	//process source code
 	STPShaderManager::STPShaderSource filter_source(filter_source_file, *STPFile(filter_source_file));
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
@@ -55,13 +55,7 @@ STPGaussianFilter::STPGaussianFilter(double variance, double sample_distance, un
 	Macro("GAUSSIAN_KERNEL_SIZE", kernel_length);
 
 	filter_source.define(Macro);
-	log.GaussianShader.Log[0] = filter_shader(filter_source);
-
-	//setup compute program
-	log.GaussianShader.Log[1] = this->FilterComputer
-		.attach(screen_shader)
-		.attach(filter_shader)
-		.finalise();
+	this->initScreenRenderer(filter_source, filter_init);
 
 	/* -------------------------------------- Gaussian filter kernel generation ---------------------------- */
 	//because we are using a separable filter, only a 1D kernel is needed
@@ -81,7 +75,7 @@ STPGaussianFilter::STPGaussianFilter(double variance, double sample_distance, un
 		[kernel_sum = reduce(kernel_start, kernel_end, 0.0f, std::plus<float>())](auto val) { return val / kernel_sum; });
 
 	/* ------------------------------------------- uniform ------------------------------------------ */
-	this->FilterComputer.uniform(glProgramUniform1i, "ImgInput", 0)
+	this->OffScreenRenderer.uniform(glProgramUniform1i, "ImgInput", 0)
 		.uniform(glProgramUniform1i, "FilterOutput", 1)
 		//kernel data
 		.uniform(glProgramUniform1fv, "GaussianKernel", kernel_length, GaussianKernel.get())
@@ -89,7 +83,7 @@ STPGaussianFilter::STPGaussianFilter(double variance, double sample_distance, un
 
 	/* ------------------------------------- sampler for input data ---------------------------------- */
 	this->InputImageSampler.wrap(GL_CLAMP_TO_BORDER);
-	this->InputImageSampler.borderColor(vec4(vec3(0.0f), 1.0f));
+	this->InputImageSampler.borderColor(this->BorderColor);
 	this->InputImageSampler.filter(GL_NEAREST, GL_LINEAR);
 }
 
@@ -99,6 +93,7 @@ void STPGaussianFilter::setFilterCacheDimension(STPTexture* stencil, uvec2 dimen
 
 void STPGaussianFilter::setBorderColor(vec4 border) {
 	this->BorderColor = border;
+	this->InputImageSampler.borderColor(this->BorderColor);
 }
 
 void STPGaussianFilter::filter(const STPTexture& input, STPFrameBuffer& output) const {
@@ -108,7 +103,8 @@ void STPGaussianFilter::filter(const STPTexture& input, STPFrameBuffer& output) 
 	//clear old intermediate cache because convolutional filter reads data from neighbour pixels
 	this->IntermediateCache.clearScreenBuffer(this->BorderColor);
 
-	this->FilterComputer.use();
+	this->ScreenVertex->bind();
+	this->OffScreenRenderer.use();
 	GLuint subroutine_idx;
 	/* ----------------------------- horizontal pass -------------------------------- */
 	//for horizontal pass, read input from user and store output to the first buffer

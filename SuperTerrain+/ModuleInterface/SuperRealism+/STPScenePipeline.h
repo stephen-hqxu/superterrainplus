@@ -251,6 +251,9 @@ namespace SuperTerrainPlus::STPRealism {
 		class STPGeometryBufferResolution;
 		std::unique_ptr<STPGeometryBufferResolution> GeometryLightPass;
 
+		//The albedo color to be cleared to for all off-screen framebuffer.
+		glm::vec4 DefaultClearColor;
+
 		/**
 		 * @brief Get the shader used for performing additional operations during depth rendering.
 		 * @return The poitner to the depth shader. Nullprt is returned if depth shader is unused.
@@ -278,21 +281,18 @@ namespace SuperTerrainPlus::STPRealism {
 	public:
 
 		/**
-		 * @brief STPScenePipelineLog contains logs from compilations of scene pipeline shaders.
+		 * @brief STPScenePipelineInitialiser contains initialisers and logs from compilations of scene pipeline shaders.
 		*/
-		struct STPScenePipelineLog {
+		struct STPScenePipelineInitialiser {
 		public:
 
-			/**
-			 * @brief STPGeometryBufferResolutionLog stores log for the lighting pipeline. 
-			*/
-			struct STPGeometryBufferResolutionLog {
-			public:
+			//Defines the maximum memory to be allocated for each array in the shader.
+			STPSceneShaderCapacity ShaderCapacity;
+			//Specifies shadow map filter function to be used in the scene.
+			const STPShadowMapFilterFunction* ShadowFilter;
 
-				STPScreen::STPScreenLog QuadShader;
-				STPLogStorage<2ull> LightingShader;
-
-			} GeometryBufferResolution;
+			//Pointer to lighting shader initialiser
+			const STPScreen::STPScreenInitialiser* GeometryBufferInitialiser;
 
 			//Log for depth shader compilation
 			typedef STPLogStorage<1ull> STPDepthShaderLog;
@@ -304,11 +304,9 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Initialise an empty scene pipeline.
 		 * @param camera The pointer to the camera.
 		 * The camera must remain valid as long as the current scene pipeline is valid.
-		 * @param shader_cap The pointer to a struct that defines the maximum memory to be allocated for each array in the shader.
-		 * @param shadow_filter The pointer to the shadow map filter function to be used in the scene.
-		 * @param log The pointer to log to output the initial compilation results for scene pipeline.
+		 * @param scene_init The pointer to scene initialiser.
 		*/
-		STPScenePipeline(const STPCamera&, const STPSceneShaderCapacity&, const STPShadowMapFilterFunction&, STPScenePipelineLog&);
+		STPScenePipeline(const STPCamera&, STPScenePipelineInitialiser&);
 
 		STPScenePipeline(const STPScenePipeline&) = delete;
 
@@ -352,6 +350,12 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		template<class Obj, typename... Arg>
 		Obj* add(Arg&&...);
+
+		/**
+		 * @brief Specify clear values for the color buffers.
+		 * @param color Specify the red, green, blue, and alpha values used when the color buffers are cleared. The initial values are all 0.
+		*/
+		void setClearColor(glm::vec4);
 
 		/**
 		 * @brief Set the rendering resolution.

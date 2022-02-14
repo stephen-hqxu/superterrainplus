@@ -294,7 +294,7 @@ public:
 	 * @param light_space_limit The maximum number of light space matrix the buffer can hold.
 	 * @param log The pointer to the depth shader log where depth shader compilation result will be stored.
 	*/
-	STPShadowPipeline(const STPShadowMapFilterFunction& shadow_filter, size_t light_space_limit, STPScenePipelineLog::STPDepthShaderLog& log) :
+	STPShadowPipeline(const STPShadowMapFilterFunction& shadow_filter, size_t light_space_limit, STPScenePipelineInitialiser::STPDepthShaderLog& log) :
 		ShadowFilter(shadow_filter.Filter), isVSMDerived(this->ShadowFilter >= STPShadowMapFilter::VSM) {
 		//setup depth sampler
 		//texture filtering settings
@@ -458,11 +458,11 @@ public:
 
 			//re-render shadow map
 			STPFrameBuffer& depth_capturer = this->LightDepthContainer[i];
+
 			//clear old values
 			depth_capturer.clearColor(0, vec4(1.0f));
-			depth_capturer.clearDepth(1.0f);
-
 			depth_capturer.bind(GL_FRAMEBUFFER);
+			glClear(GL_DEPTH_BUFFER_BIT);
 
 			//change the view port to fit the shadow map
 			const unsigned int shadow_extent = shadow_instance.shadowMapResolution();
@@ -557,23 +557,17 @@ public:
 
 	} IndexLocator;
 
-	STPProgramManager LightingProcessor;
-
 	/**
 	 * @brief Init a new geometry buffer resolution instance.
 	 * @param pipeline The pointer to the dependent scene pipeline.
 	 * @param shadow_filter The pointer to the scene shadow filter.
 	 * @param memory_cap The pointer to the memory capacity that specifies the maximum amount of memory to be allocated in the shader.
-	 * @param log The log from compiling light pass shader.
+	 * @param lighting_init The pointer to the lighting shader initialiser
 	*/
-	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadowMapFilterFunction& shadow_filter,
-		STPScenePipelineLog::STPGeometryBufferResolutionLog& log) : Pipeline(pipeline),
+	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadowMapFilterFunction& shadow_filter, 
+		const STPScreenInitialiser& lighting_init) : STPScreen(*lighting_init.SharedVertexBuffer), Pipeline(pipeline),
 		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GSpecular(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D) {
 		const bool cascadeLayerBlend = shadow_filter.CascadeBlendArea > 0.0f;
-
-		//setup geometry buffer shader
-		STPShaderManager screen_shader(std::move(STPGeometryBufferResolution::compileScreenVertexShader(log.QuadShader))),
-			g_shader(GL_FRAGMENT_SHADER);
 
 		//do something to the fragment shader
 		const char* const lighting_source_file = DeferredShaderFilename.data();
@@ -591,13 +585,7 @@ public:
 
 		source.define(Macro);
 		//compile shader
-		log.LightingShader.Log[0] = g_shader(source);
-
-		//attach to the G-buffer resolution program
-		this->LightingProcessor
-			.attach(screen_shader)
-			.attach(g_shader);
-		log.LightingShader.Log[1] = this->LightingProcessor.finalise();
+		this->initScreenRenderer(source, lighting_init);
 
 		/* ------------------------------- setup G-buffer sampler ------------------------------------- */
 		this->GSampler.filter(GL_NEAREST, GL_NEAREST);
@@ -615,15 +603,15 @@ public:
 
 		/* --------------------------------- initial buffer setup -------------------------------------- */
 		//global shadow setting
-		this->LightingProcessor
+		this->OffScreenRenderer
 			.uniform(glProgramUniform2fv, "Filter.Db", 1, value_ptr(shadow_filter.DepthBias))
 			.uniform(glProgramUniform2fv, "Filter.Nb", 1, value_ptr(shadow_filter.NormalBias))
 			.uniform(glProgramUniform1f, "Filter.FarBias", shadow_filter.BiasFarMultiplier);
 		if (cascadeLayerBlend) {
-			this->LightingProcessor.uniform(glProgramUniform1f, "Filter.Br", shadow_filter.CascadeBlendArea);
+			this->OffScreenRenderer.uniform(glProgramUniform1f, "Filter.Br", shadow_filter.CascadeBlendArea);
 		}
 		//send specialised filter kernel parameters based on type
-		shadow_filter(this->LightingProcessor);
+		shadow_filter(this->OffScreenRenderer);
 		
 		//build the uniform location lookup table
 		for (size_t id = 0u; id < this->Pipeline.SceneMemoryLimit.EnvironmentLight; id++) {
@@ -631,19 +619,19 @@ public:
 
 			//for every property in every allocated light space, get the uniform location.
 			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::AmbientStrength),
-				this->LightingProcessor.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Ka")));
+				this->OffScreenRenderer.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Ka")));
 
 			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::DiffuseStrength),
-				this->LightingProcessor.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Kd")));
+				this->OffScreenRenderer.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Kd")));
 
 			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::SpecularStrength),
-				this->LightingProcessor.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Ks")));
+				this->OffScreenRenderer.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Ks")));
 
 			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::SpectrumCoordinate),
-				this->LightingProcessor.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].SpectrumCoord")));
+				this->OffScreenRenderer.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].SpectrumCoord")));
 
 			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::Direction),
-				this->LightingProcessor.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Dir")));
+				this->OffScreenRenderer.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Dir")));
 		}
 	}
 
@@ -679,7 +667,7 @@ public:
 		const size_t lightLoc = scene_mem_current.EnvironmentLight;
 		const string lightLoc_str = to_string(lightLoc);
 		//create light spectrum handle and send to the program
-		this->LightingProcessor.uniform(glProgramUniformHandleui64ARB, this->createUniformName("EnvironmentLightList[", lightLoc_str, "].LightSpectrum"),
+		this->OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, this->createUniformName("EnvironmentLightList[", lightLoc_str, "].LightSpectrum"),
 			*this->SpectrumHandle.emplace_back(light.getLightSpectrum().spectrum()))
 			.uniform(glProgramUniform1ui, "EnvLightCount", static_cast<unsigned int>(lightLoc + 1ull));
 
@@ -692,7 +680,7 @@ public:
 				frustumDivStart = scene_mem_current.LightFrustumDivisionPlane;
 			const string lightShadowLoc_str = to_string(lightShadowLoc);
 
-			this->LightingProcessor.uniform(glProgramUniform1ui,
+			this->OffScreenRenderer.uniform(glProgramUniform1ui,
 					this->createUniformName("EnvironmentLightList[", lightLoc_str, "].DirShadowIdx"), static_cast<unsigned int>(lightShadowLoc))
 
 				.uniform(glProgramUniformHandleui64ARB,
@@ -712,7 +700,7 @@ public:
 		}
 		else {
 			//not shadow-casting? indicate in the shader this light does not cast shadow
-			this->LightingProcessor.uniform(glProgramUniform1ui, 
+			this->OffScreenRenderer.uniform(glProgramUniform1ui,
 				this->createUniformName("EnvironmentLightList[", lightLoc_str, "].DirShadowIdx"), STPGeometryBufferResolution::UnusedShadow);
 		}
 	}
@@ -763,7 +751,7 @@ public:
 		//upload new handles
 		STPGeometryBufferRawHandle raw_handle;
 		std::transform(this->GHandle->cbegin(), this->GHandle->cend(), raw_handle.begin(), [](const auto& handle) { return *handle; });
-		this->LightingProcessor.uniform(glProgramUniformHandleui64vARB, "GBuffer", static_cast<GLsizei>(raw_handle.size()), raw_handle.data());
+		this->OffScreenRenderer.uniform(glProgramUniformHandleui64vARB, "GBuffer", static_cast<GLsizei>(raw_handle.size()), raw_handle.data());
 
 		using std::move;
 		//store the new objects
@@ -782,9 +770,23 @@ public:
 	}
 
 	/**
+	 * @brief Clear geometry buffers that are bound to color attachments.
+	 * Depth and stencil attachments are not cleared by this function.
+	*/
+	inline void clearColorAttachment() {
+		constexpr static vec4 ClearNormal = vec4(0.0f, 1.0f, 0.0f, 1.0f),
+			ClearOne = vec4(1.0f);
+
+		//clear geometry buffer because we cannot just clear to the clear color buffer
+		this->GeometryContainer.clearColor(0, this->Pipeline.DefaultClearColor);//albedo
+		this->GeometryContainer.clearColor(1, ClearNormal);//normal
+		this->GeometryContainer.clearColor(2, ClearOne);//specular
+		this->GeometryContainer.clearColor(3, ClearOne);//ambient occlusion
+	}
+
+	/**
 	 * @brief Enable rendering to geometry buffer and captured under the current G-buffer resolution instance.
 	 * To disable further rendering to this buffer, bind framebuffer to any other target.
-	 * All old geometry buffer will be cleared.
 	*/
 	inline void capture() {
 		this->GeometryContainer.bind(GL_FRAMEBUFFER);
@@ -795,7 +797,8 @@ public:
 	*/
 	inline void resolve() {
 		//prepare for rendering the screen
-		this->LightingProcessor.use();
+		this->ScreenVertex->bind();
+		this->OffScreenRenderer.use();
 
 		this->drawScreen();
 
@@ -813,22 +816,22 @@ public:
 		const GLint location = this->LightUniformLocation.find(make_pair(identifier, Prop))->second;
 
 		if constexpr (Prop == STPLightPropertyType::Direction) {
-			this->LightingProcessor.uniform(glProgramUniform3fv, location, 1, value_ptr(forwardedData));
+			this->OffScreenRenderer.uniform(glProgramUniform3fv, location, 1, value_ptr(forwardedData));
 		}
 		else {
-			this->LightingProcessor.uniform(glProgramUniform1f, location, forwardedData);
+			this->OffScreenRenderer.uniform(glProgramUniform1f, location, forwardedData);
 		}
 	}
 
 };
 
-STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneShaderCapacity& shader_cap, 
-	const STPShadowMapFilterFunction& shadow_filter, STPScenePipelineLog& log) :
-	SceneMemoryCurrent{ }, SceneMemoryLimit(shader_cap),
+STPScenePipeline::STPScenePipeline(const STPCamera& camera, STPScenePipelineInitialiser& scene_init) :
+	SceneMemoryCurrent{ }, SceneMemoryLimit(scene_init.ShaderCapacity),
 	CameraMemory(make_unique<STPCameraInformationMemory>(camera)), 
-	GeometryShadowPass(make_unique<STPShadowPipeline>(shadow_filter, this->SceneMemoryLimit.LightSpaceMatrix, log.DepthShader)),
-	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, shadow_filter, log.GeometryBufferResolution)) {
-	if (!shadow_filter.valid()) {
+	GeometryShadowPass(make_unique<STPShadowPipeline>(*scene_init.ShadowFilter, this->SceneMemoryLimit.LightSpaceMatrix, scene_init.DepthShader)),
+	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, *scene_init.ShadowFilter, *scene_init.GeometryBufferInitialiser)), 
+	DefaultClearColor(vec4(vec3(0.0f), 1.0f)) {
+	if (!scene_init.ShadowFilter->valid()) {
 		throw STPException::STPBadNumericRange("The shadow filter has invalid settings");
 	}
 	//set up initial GL context states
@@ -837,14 +840,15 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPSceneShader
 	glDepthMask(GL_TRUE);
 
 	glDisable(GL_STENCIL_TEST);
+	glStencilMask(0xFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
 	glDisable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-	glStencilMask(0xFF);
 	glClearStencil(0x00);
 	glClearDepth(1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -944,6 +948,13 @@ STPScenePipeline::STPLightIdentifier STPScenePipeline::locateLight(const STPScen
 	return this->GeometryLightPass->IndexLocator.Env.at(light);
 }
 
+void STPScenePipeline::setClearColor(vec4 color) {
+	glClearColor(color.r, color.g, color.b, color.a);
+	glClear(GL_COLOR_BUFFER_BIT);
+	//update member variable
+	this->DefaultClearColor = color;
+}
+
 void STPScenePipeline::setResolution(uvec2 resolution) {
 	if (resolution == uvec2(0u)) {
 		throw STPException::STPBadNumericRange("The rendering resolution must be both non-zero positive integers");
@@ -1036,10 +1047,11 @@ void STPScenePipeline::traverse() {
 	glEnable(GL_CULL_FACE);
 
 	/* ====================================== geometry rendering ================================== */
-	//deferred shading geometry pass
+	//deferred shading geometry pass. Old geometry buffer (except depth and stencil) is cleared automatically
+	this->GeometryLightPass->clearColorAttachment();
 	//remember the depth and stencil buffer of geometry framebuffer and output framebuffer is shared.
 	this->GeometryLightPass->capture();
-	//enable clearing stencil buffer
+	//enable stencil buffer for clearing
 	glStencilMask(0x01);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	/* ------------------------------------ opaque object rendering ----------------------------- */
@@ -1086,6 +1098,8 @@ void STPScenePipeline::traverse() {
 	if (has_effect_post_process) {
 		//render the final scene to an post process buffer memory
 		post_process->capture();
+		//clear old color data to default clear color
+		glClear(GL_COLOR_BUFFER_BIT);
 	}
 	else {
 		throw STPException::STPUnsupportedFunctionality("It is currently not allowed to render to default framebuffer without post processing, "
@@ -1111,7 +1125,7 @@ void STPScenePipeline::traverse() {
 		glDisable(GL_STENCIL_TEST);
 		//time to draw onto the main framebuffer
 		STPFrameBuffer::unbind(GL_FRAMEBUFFER);
-		//depth and stencil are not written, color will be overwritten, no need to clear
+		//depth and stencil are not written, color will be all overwritten, no need to clear
 
 		//use the previously rendered buffer image for post processing
 		post_process->process();

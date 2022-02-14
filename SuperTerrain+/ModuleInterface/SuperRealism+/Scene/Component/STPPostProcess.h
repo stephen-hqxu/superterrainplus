@@ -6,11 +6,8 @@
 //Base Screen Renderer
 #include "STPScreen.h"
 //GL Object
-#include "../../Object/STPProgramManager.h"
 #include "../../Object/STPTexture.h"
 #include "../../Object/STPSampler.h"
-
-#include "../../Utility/STPLogStorage.hpp"
 
 //GLM
 #include <glm/vec2.hpp>
@@ -105,24 +102,14 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPSimpleScreenFrameBuffer PostProcessResultContainer;
 
-		STPProgramManager PostProcessor;
-
 	public:
-
-		struct STPPostProcessLog {
-		public:
-
-			STPScreenLog QuadShader;
-			STPLogStorage<2ull> PostProcessShader;
-
-		};
 
 		/**
 		 * @brief Init the post processor.
 		 * @param tone_mapping A pointer to a base tone mapping curve with specific tone mapping function chosen and parameters loaded.
-		 * @param log The pointer to the post process shader compilation log.
+		 * @param post_process_init The pointer to the post process initialiser.
 		*/
-		STPPostProcess(const STPToneMappingCurve&, STPPostProcessLog&);
+		STPPostProcess(const STPToneMappingCurve&, const STPScreenInitialiser&);
 
 		STPPostProcess(const STPPostProcess&) = delete;
 

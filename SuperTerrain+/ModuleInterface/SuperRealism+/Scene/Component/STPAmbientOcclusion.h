@@ -9,7 +9,6 @@
 #include "../../Object/STPSampler.h"
 #include "../../Object/STPTexture.h"
 #include "../../Object/STPBindlessTexture.h"
-#include "../../Object/STPProgramManager.h"
 
 #include "../../Environment/STPOcclusionKernelSetting.h"
 //Output Processing
@@ -26,7 +25,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPAmbientOcclusion is an indirect lighting approximation that 
 	 * tries to to approximate indirect lighting by darkening creases, holes and surfaces that are closed to each other.
 	*/
-	class STP_REALISM_API STPAmbientOcclusion : public STPScreen {
+	class STP_REALISM_API STPAmbientOcclusion : private STPScreen {
 	private:
 
 		STPTexture RandomRotationVector;
@@ -37,8 +36,6 @@ namespace SuperTerrainPlus::STPRealism {
 		//ambient occlusion output
 		mutable STPSimpleScreenFrameBuffer OcclusionResultContainer;
 
-		STPProgramManager OcclusionCalculator;
-
 		//Store the dimension of the texture which contains random rotation vectors
 		const glm::uvec2 NoiseDimension;
 
@@ -46,21 +43,13 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		struct STPAmbientOcclusionLog {
-		public:
-
-			STPScreenLog QuadShader;
-			STPLogStorage<2ull> AOShader;
-
-		};
-
 		/**
 		 * @brief Initialise a new ambient occlusion rendering component.
 		 * @param kernel_setting The pointer to the setting to configure how ambient occlusion will be performed.
 		 * @param filter A rvalue reference to a Gaussian filter which will be used to blurred the output ambient occlusion.
-		 * @param log The pointer to log to hold the shader compilation output.
+		 * @param kernel_init The pointer to ambient occlusion initialiser.
 		*/
-		STPAmbientOcclusion(const STPEnvironment::STPOcclusionKernelSetting&, STPGaussianFilter&&, STPAmbientOcclusionLog&);
+		STPAmbientOcclusion(const STPEnvironment::STPOcclusionKernelSetting&, STPGaussianFilter&&, const STPScreenInitialiser&);
 
 		STPAmbientOcclusion(const STPAmbientOcclusion&) = delete;
 

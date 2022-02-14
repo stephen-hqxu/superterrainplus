@@ -9,10 +9,6 @@
 #include "../../Object/STPTexture.h"
 #include "../../Object/STPSampler.h"
 #include "../../Object/STPFrameBuffer.h"
-#include "../../Object/STPShaderManager.h"
-#include "../../Object/STPProgramManager.h"
-//Log
-#include "../../Utility/STPLogStorage.hpp"
 
 #include <optional>
 
@@ -29,35 +25,25 @@ namespace SuperTerrainPlus::STPRealism {
 	 * This filter currently only supports a single 8-bit channel filtering.
 	 * TODO: extend this filter so it support more channel type
 	*/
-	class STP_REALISM_API STPGaussianFilter : public STPScreen {
+	class STP_REALISM_API STPGaussianFilter : private STPScreen {
 	private:
 
 		STPSampler InputImageSampler;
 		//Separable filter requires a cache to store intermediate result
 		mutable STPSimpleScreenFrameBuffer IntermediateCache;
 
-		STPProgramManager FilterComputer;
-
 		glm::vec4 BorderColor;
 
 	public:
-
-		struct STPGaussianFilterLog {
-		public:
-
-			STPScreenLog QuadShader;
-			STPLogStorage<2ull> GaussianShader;
-
-		};
 
 		/**
 		 * @brief Initialise a Gaussian filter instance.
 		 * @param variance Specifies the variance for Gaussian function.
 		 * @param sample_distance Specifies the distance between each sampling point on the Gaussian kernel.
 		 * @param radius Specifies the radius of the filter kernel.
-		 * @param log The pointer to the log where shader compilation will be written to.
+		 * @param filter_init The pointer to the filter initialiser.
 		*/
-		STPGaussianFilter(double, double, unsigned int, STPGaussianFilterLog&);
+		STPGaussianFilter(double, double, unsigned int, const STPScreenInitialiser&);
 
 		STPGaussianFilter(const STPGaussianFilter&) = delete;
 

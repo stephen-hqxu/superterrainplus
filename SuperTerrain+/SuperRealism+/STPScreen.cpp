@@ -86,7 +86,19 @@ void STPScreen::STPSimpleScreenFrameBuffer::capture() const {
 	this->ScreenColorContainer.bind(GL_FRAMEBUFFER);
 }
 
-STPScreen::STPScreen() {
+STPScreen::STPScreenVertexShader::STPScreenVertexShader(STPScreenVertexShaderLog& log) : ScreenVertexShader(GL_VERTEX_SHADER) {
+	//read source
+	const char* const screen_source_file = ScreenShaderFilename.data();
+	STPShaderManager::STPShaderSource shader_source(screen_source_file, *STPFile(screen_source_file));
+	//compile
+	log.Log[0] = this->ScreenVertexShader(shader_source);
+}
+
+const STPShaderManager& STPScreen::STPScreenVertexShader::operator*() const {
+	return this->ScreenVertexShader;
+}
+
+STPScreen::STPScreenVertexBuffer::STPScreenVertexBuffer() {
 	//send of off screen quad
 	this->ScreenBuffer.bufferStorageSubData(QuadVertex.data(), QuadVertex.size() * sizeof(signed char), GL_NONE);
 	this->ScreenIndex.bufferStorageSubData(QuadIndex.data(), QuadIndex.size() * sizeof(unsigned char), GL_NONE);
@@ -103,21 +115,29 @@ STPScreen::STPScreen() {
 	this->ScreenArray.enable(0u, 2u);
 }
 
-STPShaderManager STPScreen::compileScreenVertexShader(STPScreenLog& log) {
-	STPShaderManager screen_shader(GL_VERTEX_SHADER);
-	//read source
-	const char* const screen_source_file = ScreenShaderFilename.data();
-	STPShaderManager::STPShaderSource shader_source(screen_source_file, *STPFile(screen_source_file));
-	//compile
-	log.Log[0] = screen_shader(shader_source);
-
-	return screen_shader;
-}
-
-void STPScreen::drawScreen() const {
+inline void STPScreen::STPScreenVertexBuffer::bind() const {
 	//bind vertex buffer
 	this->ScreenArray.bind();
 	this->ScreenRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
+}
 
+STPScreen::STPScreen(const STPSharableScreenVertexBuffer& screen_vb) : ScreenVertex(screen_vb) {
+	
+}
+
+void STPScreen::initScreenRenderer(const STPShaderManager::STPShaderSource& screen_fs_source, const STPScreenInitialiser& screen_init) {
+	const auto [vs, vb, log] = screen_init;
+
+	STPShaderManager screen_fs(GL_FRAGMENT_SHADER);
+	log->Log[0] = screen_fs(screen_fs_source);
+
+	//setup compute program
+	log->Log[1] = this->OffScreenRenderer
+		.attach(**vs)
+		.attach(screen_fs)
+		.finalise();
+}
+
+void STPScreen::drawScreen() const {
 	glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_BYTE, nullptr);
 }

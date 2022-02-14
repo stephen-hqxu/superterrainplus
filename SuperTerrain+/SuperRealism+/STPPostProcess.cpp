@@ -32,10 +32,9 @@ STPPostProcess::STPToneMappingCurve::STPToneMappingCurve(STPToneMappingFunction 
 
 }
 
-STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, STPPostProcessLog& log) {
+STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const STPScreenInitialiser& post_process_init) : 
+	STPScreen(*post_process_init.SharedVertexBuffer) {
 	//setup post process shader
-	STPShaderManager screen_shader(std::move(STPPostProcess::compileScreenVertexShader(log.QuadShader))),
-		postprocess_shader(GL_FRAGMENT_SHADER);
 	const char* const source_file = PostProcessShaderFilename.data();
 	STPShaderManager::STPShaderSource shader_source(source_file, *STPFile(source_file));
 
@@ -45,14 +44,8 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, STPPostP
 	Macro("TONE_MAPPING", static_cast<underlying_type_t<STPToneMappingFunction>>(tone_mapping.Function));
 	//update macros in the source code
 	shader_source.define(Macro);
-	log.PostProcessShader.Log[0] = postprocess_shader(shader_source);
-
-	//add to program, along with the screen shader
-	this->PostProcessor
-		.attach(screen_shader)
-		.attach(postprocess_shader);
-	//program link
-	log.PostProcessShader.Log[1] = this->PostProcessor.finalise();
+	
+	this->initScreenRenderer(shader_source, post_process_init);
 
 	/* -------------------------------- setup sampler ---------------------------------- */
 	this->ImageSampler.filter(GL_NEAREST, GL_NEAREST);
@@ -60,13 +53,13 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, STPPostP
 	this->ImageSampler.borderColor(vec4(vec3(0.0f), 1.0f));
 
 	/* -------------------------------- setup uniform ---------------------------------- */
-	this->PostProcessor.uniform(glProgramUniform1i, "ScreenBuffer", 0);
+	this->OffScreenRenderer.uniform(glProgramUniform1i, "ScreenBuffer", 0);
 	//prepare for tone mapping function definition
-	tone_mapping(this->PostProcessor);
+	tone_mapping(this->OffScreenRenderer);
 }
 
 #define SET_EFFECT(EFF, NAME) template<> STP_REALISM_API void STPPostProcess::setEffect<STPPostProcess::STPPostEffect::EFF>(float val) { \
-	this->PostProcessor.uniform(glProgramUniform1f, NAME, val); \
+	this->OffScreenRenderer.uniform(glProgramUniform1f, NAME, val); \
 }
 
 SET_EFFECT(Gamma, "Gamma")
@@ -84,7 +77,8 @@ void STPPostProcess::process() const {
 	this->PostProcessResultContainer.ScreenColor.bind(0);
 	this->ImageSampler.bind(0);
 
-	this->PostProcessor.use();
+	this->ScreenVertex->bind();
+	this->OffScreenRenderer.use();
 
 	this->drawScreen();
 

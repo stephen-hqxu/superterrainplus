@@ -41,8 +41,9 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static auto SSAOShaderFilename = 
 	STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPScreenSpaceAmbientOcclusion", ".frag");
 
-STPAmbientOcclusion::STPAmbientOcclusion(const STPEnvironment::STPOcclusionKernelSetting& kernel_setting, STPGaussianFilter&& filter, STPAmbientOcclusionLog& log) :
-	RandomRotationVector(GL_TEXTURE_2D), NoiseDimension(kernel_setting.RotationVectorSize), BlurWorker(std::move(filter)) {
+STPAmbientOcclusion::STPAmbientOcclusion(const STPEnvironment::STPOcclusionKernelSetting& kernel_setting, STPGaussianFilter&& filter, 
+	const STPScreenInitialiser& kernel_init) :
+	STPScreen(*kernel_init.SharedVertexBuffer), RandomRotationVector(GL_TEXTURE_2D), NoiseDimension(kernel_setting.RotationVectorSize), BlurWorker(std::move(filter)) {
 	if (!kernel_setting.validate()) {
 		throw STPException::STPInvalidEnvironment("Occlusion kernel setting cannot be validated");
 	}
@@ -50,8 +51,6 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPEnvironment::STPOcclusionKerne
 		return a + f * (b - a);
 	};
 
-	STPShaderManager screen_shader(std::move(STPScreen::compileScreenVertexShader(log.QuadShader))),
-		ao_shader(GL_FRAGMENT_SHADER);
 	const char* const ssao_source_file = SSAOShaderFilename.data();
 	STPShaderManager::STPShaderSource ssao_source(ssao_source_file, *STPFile(ssao_source_file));
 
@@ -61,14 +60,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPEnvironment::STPOcclusionKerne
 	Macro("SSAO_KERNEL_SAMPLE_SIZE", kernel_setting.KernelSize);
 
 	ssao_source.define(Macro);
-	log.AOShader.Log[0] = ao_shader(ssao_source);
-
-	//setup program
-	log.AOShader.Log[1] = this->OcclusionCalculator
-		.attach(screen_shader)
-		.attach(ao_shader)
-		//link
-		.finalise();
+	this->initScreenRenderer(ssao_source, kernel_init);
 
 	/* ----------------------------------- setup AO kernel data ------------------------------------- */
 	//setup random number generators
@@ -102,11 +94,11 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPEnvironment::STPOcclusionKerne
 	unique_ptr<vec2[]> ssaoRotVec = make_unique<vec2[]>(ssaoRotVec_size);
 	std::generate_n(ssaoRotVec.get(), ssaoRotVec_size, [&next_random]() {
 		//rotate around z-axis (in tangent space)
-		return vec2(
+		return normalize(vec2(
 			next_random() * 2.0f - 1.0f,
 			next_random() * 2.0f - 1.0f
 			//z component is zero, it can be ignored to save memory
-		);
+		));
 	});
 
 	/* ------------------------------------------ setup texture ------------------------------------ */
@@ -114,7 +106,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPEnvironment::STPOcclusionKerne
 	this->GBufferSampler.filter(GL_NEAREST, GL_NEAREST);
 
 	const uvec3 rotVecDim = uvec3(rotVec, 1.0f);
-	this->RandomRotationVector.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RG32F, rotVecDim);
+	this->RandomRotationVector.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RG16_SNORM, rotVecDim);
 	this->RandomRotationVector.textureSubImage<STPTexture::STPDimension::TWO>(0, ivec3(0), rotVecDim, GL_RG, GL_FLOAT, ssaoRotVec.get());
 	this->RandomRotationVector.filter(GL_NEAREST, GL_NEAREST);
 	this->RandomRotationVector.wrap(GL_REPEAT);
@@ -122,7 +114,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPEnvironment::STPOcclusionKerne
 	this->RandomRotationVectorHandle.emplace(this->RandomRotationVector);
 
 	/* ------------------------------------------ setup uniform ------------------------------------- */
-	this->OcclusionCalculator.uniform(glProgramUniform3fv, "KernelSample", static_cast<GLsizei>(ssaoKernel_size), value_ptr(ssaoKernel[0]))
+	this->OffScreenRenderer.uniform(glProgramUniform3fv, "KernelSample", static_cast<GLsizei>(ssaoKernel_size), value_ptr(ssaoKernel[0]))
 		.uniform(glProgramUniform1f, "KernelRadius", kernel_setting.SampleRadius)
 		.uniform(glProgramUniform1f, "SampleDepthBias", kernel_setting.Bias)
 		//sampler setup
@@ -142,7 +134,7 @@ void STPAmbientOcclusion::setScreenSpace(STPTexture* stencil, uvec2 dimension) {
 	//update uniform
 	//tile noise texture over screen based on screen dimensions divided by noise size
 	const vec2 noise_scale = static_cast<vec2>(dimension) / static_cast<vec2>(this->NoiseDimension);
-	this->OcclusionCalculator.uniform(glProgramUniform2fv, "NoiseTexScale", 1, value_ptr(noise_scale));
+	this->OffScreenRenderer.uniform(glProgramUniform2fv, "NoiseTexScale", 1, value_ptr(noise_scale));
 }
 
 void STPAmbientOcclusion::occlude(const STPTexture& depth, const STPTexture& normal, STPFrameBuffer& output) const {
@@ -152,15 +144,14 @@ void STPAmbientOcclusion::occlude(const STPTexture& depth, const STPTexture& nor
 	this->GBufferSampler.bind(0);
 	this->GBufferSampler.bind(1);
 
-	this->OcclusionCalculator.use();
+	this->ScreenVertex->bind();
+	this->OffScreenRenderer.use();
 
-	//capture data into the internal framebuffer
-	this->OcclusionResultContainer.capture();
 	//we need to clear the old ambient occlusion data
 	//because when we blur it later, we might accidentally read the old data which were culled due to stencil testing
 	this->OcclusionResultContainer.clearScreenBuffer(vec4(1.0f));
-	//there is no need to clear the framebuffer because everything will be overdrawn
-	//and there is no depth/stencil testing
+	//capture data into the internal framebuffer
+	this->OcclusionResultContainer.capture();
 	this->drawScreen();
 
 	//clear up for ambient occlusion stage so it won't overwrite state later
