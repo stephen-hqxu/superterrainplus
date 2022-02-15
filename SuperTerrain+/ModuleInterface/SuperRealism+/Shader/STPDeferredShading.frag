@@ -79,7 +79,7 @@ uniform ShadowMapFilter Filter;
 
 /* -------------------------------------------------------------------------- */
 //enable depth reconstruction to world space
-#define EMIT_DEPTH_RECON_IMPL 0
+#define EMIT_DEPTH_RECON_WORLD_IMPL
 #include </Common/STPCameraInformation.glsl>
 
 //Geometry Buffer
@@ -89,6 +89,9 @@ layout(bindless_sampler) uniform sampler2D GBuffer[5];
 #define G_SPECULAR GBuffer[2]
 #define G_AO GBuffer[3]
 #define G_DEPTH GBuffer[4]
+
+//General settings for shading
+uniform float ExtinctionBand;
 
 //Calculate light color for the current fragment position
 vec3 calcCasterLight(vec3, vec3, float, float, EnvironmentLight);
@@ -111,9 +114,15 @@ void main(){
 		LightColor += calcCasterLight(position_world, normal_world, Specular, Ambient, EnvironmentLightList[i]);
 	}
 	
+	//extinction calculation, making the transition to camera far clipping plane smooth instead of having a strong cut
+	const float cameraDistance = distance(Camera.Position, position_world),
+		extinctionStart = Camera.Far * ExtinctionBand,
+		//linearly interpolate within the extinction band, 0 means no extiontion while 1 means the geometry is fully extincted
+		extinctionFactor = (cameraDistance - extinctionStart) / (Camera.Far - extinctionStart);
+
 	//because the light calculation only calculates light color, 
 	//we need to burn the geometry color into the final color
-	FragColor = vec4(Albedo * LightColor, 1.0f);
+	FragColor = vec4(Albedo * LightColor, clamp(extinctionFactor, 0.0f, 1.0f));
 }
 
 vec3 calcCasterLight(vec3 position_world, vec3 normal, float specular_strength, float ambient_strength, EnvironmentLight env_light){

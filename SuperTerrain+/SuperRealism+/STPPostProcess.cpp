@@ -58,6 +58,10 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const ST
 	tone_mapping(this->OffScreenRenderer);
 }
 
+const STPTexture& STPPostProcess::operator*() const {
+	return this->PostProcessResultContainer.ScreenColor;
+}
+
 #define SET_EFFECT(EFF, NAME) template<> STP_REALISM_API void STPPostProcess::setEffect<STPPostProcess::STPPostEffect::EFF>(float val) { \
 	this->OffScreenRenderer.uniform(glProgramUniform1f, NAME, val); \
 }
@@ -65,7 +69,7 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const ST
 SET_EFFECT(Gamma, "Gamma")
 
 void STPPostProcess::setPostProcessBuffer(STPTexture* stencil, uvec2 dimension) {
-	this->PostProcessResultContainer.setScreenBuffer(stencil, dimension, GL_RGB16F);
+	this->PostProcessResultContainer.setScreenBuffer(stencil, dimension, GL_RGBA16F);
 }
 
 void STPPostProcess::capture() const {

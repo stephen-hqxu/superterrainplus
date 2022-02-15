@@ -122,6 +122,12 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPPostProcess() = default;
 
 		/**
+		 * @brief Get the buffer where all post process memory is stored.
+		 * @return A pointer to a texture containing all post process data.
+		*/
+		const STPTexture& operator*() const;
+
+		/**
 		 * @brief Set the value of a particular effect.
 		 * @tparap E The type of the effect.
 		 * @param val The value to be set to.

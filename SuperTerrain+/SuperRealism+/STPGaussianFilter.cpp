@@ -105,15 +105,15 @@ void STPGaussianFilter::filter(const STPTexture& input, STPFrameBuffer& output) 
 
 	this->ScreenVertex->bind();
 	this->OffScreenRenderer.use();
-	GLuint subroutine_idx;
+	GLuint filter_pass;
 	/* ----------------------------- horizontal pass -------------------------------- */
 	//for horizontal pass, read input from user and store output to the first buffer
 	input.bind(0u);
 	this->IntermediateCache.capture();
 
 	//enable horizontal filter subroutine
-	subroutine_idx = 0u;
-	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &subroutine_idx);
+	filter_pass = 0u;
+	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
 
 	this->drawScreen();
 
@@ -123,8 +123,8 @@ void STPGaussianFilter::filter(const STPTexture& input, STPFrameBuffer& output) 
 	output.bind(GL_FRAMEBUFFER);
 
 	//enable vertical filter subroutine
-	subroutine_idx = 1u;
-	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &subroutine_idx);
+	filter_pass = 1u;
+	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
 
 	this->drawScreen();
 

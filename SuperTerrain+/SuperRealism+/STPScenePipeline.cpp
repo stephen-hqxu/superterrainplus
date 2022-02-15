@@ -9,6 +9,7 @@
 
 //Base Off-screen Rendering
 #include <SuperRealism+/Scene/Component/STPScreen.h>
+#include <SuperRealism+/Scene/Component/STPAlphaCulling.h>
 //GL Object
 #include <SuperRealism+/Object/STPSampler.h>
 #include <SuperRealism+/Object/STPBindlessTexture.h>
@@ -503,9 +504,6 @@ private:
 	//This lookup table can quickly locate uniforms to property of a given light identifier.
 	unordered_map<STPLightPropertyIdentifier, GLint, STPHashLightProperty> LightUniformLocation;
 
-	//A memory pool for creating dynamic uniform name.
-	string UniformNameBuffer;
-
 	//The dependent scene pipeline.
 	const STPScenePipeline& Pipeline;
 
@@ -520,6 +518,9 @@ private:
 	optional<STPGeometryBufferHandle> GHandle;
 	STPFrameBuffer GeometryContainer;
 
+	//This object updates stencil buffer to update geometries that are in the extinction zone
+	STPAlphaCulling ExtinctionStencilCuller;
+
 	//Bindless handle for all lights from the scene pipeline
 	vector<STPBindlessTexture> SpectrumHandle;
 
@@ -528,6 +529,9 @@ private:
 	
 	//A constant value to be assigned to a shadow data index to indicate a non-shadow-casting light
 	constexpr static unsigned int UnusedShadow = std::numeric_limits<unsigned int>::max();
+
+	//A memory pool for creating dynamic uniform name.
+	string UniformNameBuffer;
 
 	/**
 	 * @brief Create a uniform name that reuses string memory.
@@ -545,7 +549,7 @@ private:
 
 public:
 
-	STPFrameBuffer AmbientOcclusionContainer;
+	STPFrameBuffer AmbientOcclusionContainer, ExtinctionCullingContainer;
 
 	/**
 	 * @brief STPLightIndexLocator is a lookup table, given an instance of light, find the index in the scene graph.
@@ -566,7 +570,8 @@ public:
 	*/
 	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadowMapFilterFunction& shadow_filter, 
 		const STPScreenInitialiser& lighting_init) : STPScreen(*lighting_init.SharedVertexBuffer), Pipeline(pipeline),
-		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GSpecular(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D) {
+		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GSpecular(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D), 
+		ExtinctionStencilCuller(STPAlphaCulling::STPCullOperator::LessEqual, lighting_init) {
 		const bool cascadeLayerBlend = shadow_filter.CascadeBlendArea > 0.0f;
 
 		//do something to the fragment shader
@@ -612,6 +617,13 @@ public:
 		}
 		//send specialised filter kernel parameters based on type
 		shadow_filter(this->OffScreenRenderer);
+
+		//alpha culling, set to discard pixels that are not in the extinction zone
+		//remember 0 means no extinction whereas 1 means fully invisible
+		this->ExtinctionStencilCuller.setAlphaLimit(0.0f);
+		//no color will be written to the extinction buffer
+		this->ExtinctionCullingContainer.readBuffer(GL_NONE);
+		this->ExtinctionCullingContainer.drawBuffer(GL_NONE);
 		
 		//build the uniform location lookup table
 		for (size_t id = 0u; id < this->Pipeline.SceneMemoryLimit.EnvironmentLight; id++) {
@@ -710,6 +722,8 @@ public:
 	 * @brief Set the resolution of all buffers.
 	 * This will trigger a memory reallocation on all buffers which is extremely expensive.
 	 * @param texture The pointer to the newly allocated shared texture.
+	 * The old texture memory stored in the scene pipeline may not yet been updated at the time this function is called,
+	 * so don't use that.
 	 * @param dimension The buffer resolution, which should be the size of the viewport.
 	 * The resolution should have the last component as one.
 	*/
@@ -731,12 +745,16 @@ public:
 		this->GeometryContainer.attach(GL_COLOR_ATTACHMENT2, specular, 0);
 		this->GeometryContainer.attach(GL_COLOR_ATTACHMENT3, ao, 0);
 		this->GeometryContainer.attach(GL_DEPTH_STENCIL_ATTACHMENT, depth_stencil, 0);
+
 		//a separate framebuffer with ambient occlusion attachment
 		this->AmbientOcclusionContainer.attach(GL_COLOR_ATTACHMENT0, ao, 0);
+		//update the stencil buffer used for extinction culling
+		this->ExtinctionCullingContainer.attach(GL_STENCIL_ATTACHMENT, depth_stencil, 0);
 
 		//verify
 		if (this->GeometryContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE
-			|| this->AmbientOcclusionContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+			|| this->AmbientOcclusionContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE
+			|| this->ExtinctionCullingContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 			throw STPException::STPGLError("Geometry buffer framebuffer fails to verify");
 		}
 
@@ -807,6 +825,14 @@ public:
 	}
 
 	/**
+	 * @brief Perform culling for geometries that are not in the extinction area.
+	 * @param color The color texture where the scene was rendered onto.
+	*/
+	inline void cullNonExtinction(const STPTexture& color) {
+		this->ExtinctionStencilCuller.cull(color);
+	}
+
+	/**
 	 * @see STPScenePipeline::setLight
 	 * For spectrum coordinate, the coordinate must be provided through the data.
 	*/
@@ -821,6 +847,15 @@ public:
 		else {
 			this->OffScreenRenderer.uniform(glProgramUniform1f, location, forwardedData);
 		}
+	}
+
+	/**
+	 * @brief Set a float uniform.
+	 * @param name The name of the uniform.
+	 * @param val The float value to be set.
+	*/
+	inline void setFloat(const char* name, float val) {
+		this->OffScreenRenderer.uniform(glProgramUniform1f, name, val);
 	}
 
 };
@@ -847,8 +882,11 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera, STPScenePipelineInit
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 
+	glDisable(GL_BLEND);
+	glBlendEquation(GL_FUNC_ADD);
+
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClearStencil(0x00);
 	glClearDepth(1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -1026,11 +1064,23 @@ void STPScenePipeline::setLight(STPLightIdentifier identifier, const STPEnvironm
 	this->setLight<STPLightPropertyType::SpecularStrength>(identifier, directional.SpecularStrength);
 }
 
+void STPScenePipeline::setExtinctionArea(float factor) const {
+	if (factor < 0.0f && factor > 1.0f) {
+		throw STPException::STPBadNumericRange("The extinction factor is a multiplier to far viewing distance and hence it should be a normalised value");
+	}
+
+	this->GeometryLightPass->setFloat("ExtinctionBand", factor);
+}
+
 void STPScenePipeline::traverse() {
 	const auto& [object, object_shadow, unique_light_space_size, env, env_shadow, ao, post_process] = this->SceneComponent;
 	//determine the state of these optional stages
 	const bool has_effect_ao = ao.has_value(),
 		has_effect_post_process = post_process.has_value();
+	if (!has_effect_post_process) {
+		throw STPException::STPUnsupportedFunctionality("It is currently not allowed to render to default framebuffer without post processing, "
+			"because there is no stencil information written.");
+	}
 
 	//Stencil rule: the first bit denotes a fragment rendered during geometry pass in deferred rendering.
 
@@ -1087,7 +1137,6 @@ void STPScenePipeline::traverse() {
 		glEnable(GL_BLEND);
 		//computed AO will be multiplicative blended to the geometry AO
 		//ambient occlusion does not have alpha
-		glBlendEquation(GL_FUNC_ADD);
 		glBlendFunc(GL_DST_COLOR, GL_ZERO);
 
 		ao->occlude(this->SceneTexture.DepthStencil, this->GeometryLightPass->getNormal(), this->GeometryLightPass->AmbientOcclusionContainer);
@@ -1095,41 +1144,53 @@ void STPScenePipeline::traverse() {
 		glDisable(GL_BLEND);
 	}
 
-	if (has_effect_post_process) {
-		//render the final scene to an post process buffer memory
-		post_process->capture();
-		//clear old color data to default clear color
-		glClear(GL_COLOR_BUFFER_BIT);
-	}
-	else {
-		throw STPException::STPUnsupportedFunctionality("It is currently not allowed to render to default framebuffer without post processing, "
-			"because there is no stencil information written.");
-
-		//otherwise perform direct rendering
-		STPFrameBuffer::unbind(GL_FRAMEBUFFER);
-	}
-	//no need to clear anything, just draw the quad over it.
+	//render the final scene to an post process buffer memory
+	post_process->capture();
+	//clear old color data to default clear color
+	glClear(GL_COLOR_BUFFER_BIT);
 	/* ----------------------------------------- light resolve ------------------------------------ */
 	this->GeometryLightPass->resolve();
 
+	/* --------------------------------------- extinction culling ---------------------------------- */
+	//update the stencil buffer to include objects in the extinction area such that it can be blended with the environment
+	glStencilMask(0x01);
+	//cull for all geometry data, and replace to the environment stencil
+	glStencilFunc(GL_NOTEQUAL, 0x00, 0x01);
+	//no synchoronisation of the color attachment is needed as the extinction culling is performed on another framebuffer
+	
+	this->GeometryLightPass->ExtinctionCullingContainer.bind(GL_FRAMEBUFFER);
+	this->GeometryLightPass->cullNonExtinction(**post_process);
+
+	//turn off stencil writing
+	glStencilMask(0x00);
+	//switch back to post process buffer
+	post_process->capture();
+
 	/* ------------------------------------- environment rendering ----------------------------- */
 	//stencil test happens before depth test, no need to worry about depth test
-	//draw the environment on everything that is not geometry
+	//draw the environment on everything that is not solid geometry
 	glStencilFunc(GL_NOTEQUAL, 0x01, 0x01);
+
+	//enable extinction blending
+	glEnable(GL_BLEND);
+	//alpha 1 means there is no object (default alpha), or object is fully extincted
+	//alpha 0 means object is fully visible
+	glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA, GL_ONE, GL_ONE);
+
 	for (const auto& rendering_env : env) {
 		rendering_env->renderEnvironment();
 	}
 
-	/* -------------------------------------- post processing -------------------------------- */
-	if (has_effect_post_process) {
-		glDisable(GL_STENCIL_TEST);
-		//time to draw onto the main framebuffer
-		STPFrameBuffer::unbind(GL_FRAMEBUFFER);
-		//depth and stencil are not written, color will be all overwritten, no need to clear
+	glDisable(GL_BLEND);
 
-		//use the previously rendered buffer image for post processing
-		post_process->process();
-	}
+	/* -------------------------------------- post processing -------------------------------- */
+	glDisable(GL_STENCIL_TEST);
+	//time to draw onto the main framebuffer
+	STPFrameBuffer::unbind(GL_FRAMEBUFFER);
+	//depth and stencil are not written, color will be all overwritten, no need to clear
+
+	//use the previously rendered buffer image for post processing
+	post_process->process();
 
 	/* --------------------------------- reset states to defualt -------------------------------- */
 	glEnable(GL_DEPTH_TEST);

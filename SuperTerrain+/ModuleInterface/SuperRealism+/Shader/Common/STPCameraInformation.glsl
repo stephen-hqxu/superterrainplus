@@ -28,11 +28,10 @@ vec4 linearToLogarithmDepth(vec4 clip) {
 
 /* --------------------------------------------------------------------- */
 //Define this macro to use implementation to reconstruct depth to position
-//Define to 0 to convert to world space, define to 1 to convert to view space
-#ifdef EMIT_DEPTH_RECON_IMPL
-#if EMIT_DEPTH_RECON_IMPL == 0
+#if defined(EMIT_DEPTH_RECON_WORLD_IMPL) || defined(EMIT_DEPTH_RECON_VIEW_IMPL)
+#ifdef EMIT_DEPTH_RECON_WORLD_IMPL
 #define DEPTH_CONVERSION_MAT Camera.InvProjectionView
-#elif EMIT_DEPTH_RECON_IMPL == 1
+#elif defined(EMIT_DEPTH_RECON_VIEW_IMPL)
 #define DEPTH_CONVERSION_MAT Camera.InvProjection
 #endif
 
@@ -48,6 +47,6 @@ vec3 fragDepthReconstruction(float frag_depth, vec2 frag_coord) {
 }
 
 #undef DEPTH_CONVERSION_MAT
-#endif//EMIT_DEPTH_RECON_IMPL
+#endif//EMIT_DEPTH_RECON_WORLD_IMPL || EMIT_DEPTH_RECON_VIEW_IMPL
 
 #endif//_STP_CAMERA_INFORMATION_GLSL_

@@ -385,6 +385,12 @@ namespace SuperTerrainPlus::STPRealism {
 		void setLight(STPLightIdentifier, const STPEnvironment::STPLightSetting::STPDirectionalLightSetting&);
 
 		/**
+		 * @brief Set the region where the distant object starts to fade off.
+		 * @param factor A multipler to the camera far distance where the extinction zone starts.
+		*/
+		void setExtinctionArea(float) const;
+
+		/**
 		 * @brief Traverse the scene graph and render every component in sequential order.
 		 * This function does not modify the state of any rendering component.
 		 * Any update need to be called by the caller prior to rendering.

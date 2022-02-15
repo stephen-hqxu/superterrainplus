@@ -11,7 +11,9 @@ inline SuperTerrainPlus::STPRealism::STPShaderManager::STPShaderSource::STPMacro
 	using std::disjunction_v;
 	using std::is_same;
 
-	using RawType = std::remove_const_t<T>;
+	using NoRef = std::remove_reference_t<T>;
+	//make sure it can recognise const char* and char*
+	using RawType = std::conditional_t<std::is_pointer_v<NoRef>, std::add_pointer_t<std::remove_const_t<std::remove_pointer_t<NoRef>>>, NoRef>;
 
 	if constexpr (disjunction_v<
 		is_same<RawType, std::string>, 

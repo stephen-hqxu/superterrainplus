@@ -5,7 +5,7 @@
 layout(early_fragment_tests) in;
 
 //depth reconstruction to view space
-#define EMIT_DEPTH_RECON_IMPL 1
+#define EMIT_DEPTH_RECON_VIEW_IMPL
 #include </Common/STPCameraInformation.glsl>
 
 /* ------------------- sampling controls ---------------------- */

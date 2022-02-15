@@ -27,6 +27,7 @@ Object/STPShaderManager.inl
 Object/STPTexture.h
 Object/STPVertexArray.h
 # /Scene/Component
+Scene/Component/STPAlphaCulling.h
 Scene/Component/STPAmbientOcclusion.h
 Scene/Component/STPGaussianFilter.h
 Scene/Component/STPHeightfieldTerrain.h

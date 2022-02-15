@@ -348,6 +348,7 @@ namespace STPStart {
 			this->RenderPipeline->setLight(this->SunIndex, sun_ambient);
 			this->RenderPipeline->setLight(this->SunIndex, sun_directional);
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
+			this->RenderPipeline->setExtinctionArea(0.7f);
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
