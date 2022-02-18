@@ -102,7 +102,7 @@ private:
 		const size_t current_size = this->size();
 
 		//allocate a cache
-		static auto deleter = [](T* ptr, RebindAlloc alloc, size_t size) -> void {
+		constexpr static auto deleter = [](T* ptr, RebindAlloc alloc, size_t size) constexpr -> void {
 			//ptr is trivially destructor so we don't need to call destroy
 			AllocTr::deallocate(alloc, ptr, size);
 		};

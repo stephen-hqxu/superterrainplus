@@ -122,7 +122,7 @@ void STPCamera::move(const STPMoveDirection direction, float delta) {
 
 void STPCamera::rotate(const vec2& offset) {
 	static constexpr float YAW_LIM = radians(360.0f), PITCH_LIM = radians(89.0f);
-	static auto modulof = [](float val, float bound) constexpr -> float {
+	static constexpr auto modulof = [](float val, float bound) constexpr -> float {
 		//a float modulo function
 		if (val >= bound || val <= -bound) {
 			return val - bound;

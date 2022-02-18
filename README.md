@@ -132,7 +132,7 @@ The application is unit-tested with.
 
 ### :desktop_computer: Prerequisites
 
-**Hardware requirement**
+#### Hardware requirement
 
 - CPU
 <p align="left">
@@ -154,14 +154,21 @@ The application is unit-tested with.
 	<img src="https://img.shields.io/badge/Windows_10-0078D6?style=flat&logo=windows&logoColor=white" />
 </p>
 
-**OpenGL extension requirement**
+#### OpenGL extension requirement
 
 - OpenGL 4.6 core profile
-- GL_ARB_bindless_texture
-- GL_ARB_shading_language_include
-- GL_NV_gpu_shader5
+- [GL_ARB_shading_language_include](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_shading_language_include.txt)
+- [GL_NV_gpu_shader5](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt)
 
-> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. When you are downloading GLAD please make sure those extensions are included.
+Say goodbye to expensive binding...
+
+- [GL_ARB_bindless_texture](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_bindless_texture.txt)
+- [GL_NV_bindless_multi_draw_indirect](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_bindless_multi_draw_indirect.txt)
+- [GL_NV_vertex_buffer_unified_memory](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_vertex_buffer_unified_memory.txt)
+- [GL_NV_shader_buffer_load](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_load.txt)
+- [GL_NV_command_list](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_command_list.txt)
+
+> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. When you are downloading GLAD please make sure those extensions are included. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview).
 
 ### :gear: How to build
 
@@ -247,6 +254,7 @@ Please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com) if yo
 - [Variance Shadow Maps](https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-8-summed-area-variance-shadow-maps)
 - [A Primer On Efficient Rendering Algorithms & Clustered Shading](http://www.aortiz.me/2018/12/21/CG.html#part-2) by *Ángel Ortiz*
 - [Forward vs Deferred vs Forward+ Rendering with DirectX 11](https://www.3dgep.com/forward-plus/#Experiment_Setup_and_Performance_Results) by *Jeremiah van Oosten*
+- [SSAO](https://learnopengl.com/Advanced-Lighting/SSAO) from *Learn OpenGL*
 
 **Tone mapping**
 

@@ -27,7 +27,7 @@ STPChunkSetting::STPChunkSetting() : STPSetting(),
 }
 
 bool STPChunkSetting::validate() const {
-	static auto isOdd = [](uvec2 num) constexpr -> bool {
+	static constexpr auto isOdd = [](uvec2 num) constexpr -> bool {
 		constexpr uvec2 VecOne = uvec2(1u);
 		return (num & VecOne) == VecOne;
 	};
@@ -54,7 +54,7 @@ STPHeightfieldSetting::STPHeightfieldSetting() : STPRainDropSetting(),
 }
 
 bool STPHeightfieldSetting::validate() const {
-	static auto checkRange = [](float value, float lower, float upper) constexpr -> bool {
+	static constexpr auto checkRange = [](float value, float lower, float upper) constexpr -> bool {
 		return value >= lower && value <= upper;
 	};
 	//check the raindrop parameter plus also heightmap parameter

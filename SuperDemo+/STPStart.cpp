@@ -94,6 +94,9 @@ namespace STPStart {
 
 		const vec3& ViewPosition;
 
+		//This time record the frametime from last frame that is not enough to round up to one tick
+		double FrametimeRemainer = 0.0;
+
 		/**
 		 * @brief Try to print all logs provided to cout.
 		 * @tparam L The log storage.
@@ -218,7 +221,7 @@ namespace STPStart {
 				STPScenePipeline::STPShadowMapFilterKernel<STPScenePipeline::STPShadowMapFilter::PCF> scene_shadow_function;
 				scene_init.ShadowFilter = &scene_shadow_function;
 				scene_shadow_function.DepthBias = vec2(0.055f, 0.0055f);
-				scene_shadow_function.NormalBias = vec2(23.5f, 4.5f);
+				scene_shadow_function.NormalBias = vec2(15.5f, 5.5f);
 				scene_shadow_function.BiasFarMultiplier = 0.45f;
 				scene_shadow_function.CascadeBlendArea = 40.5f;
 				scene_shadow_function.KernelRadius = 4u;
@@ -246,9 +249,9 @@ namespace STPStart {
 				const STPCascadedShadowMap::STPLightFrustum frustum = {
 					2048u,
 					{
-						camFar / 8.0f,
-						camFar / 4.0f,
-						camFar / 2.0f
+						camFar / 16.0f,
+						camFar / 3.5f,
+						camFar / 1.5f
 					},
 					32.5f,
 					&camera,
@@ -348,7 +351,7 @@ namespace STPStart {
 			this->RenderPipeline->setLight(this->SunIndex, sun_ambient);
 			this->RenderPipeline->setLight(this->SunIndex, sun_directional);
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
-			this->RenderPipeline->setExtinctionArea(0.7f);
+			this->RenderPipeline->setExtinctionArea(0.785f);
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
@@ -363,14 +366,26 @@ namespace STPStart {
 
 		/**
 		 * @brief Main rendering functions, called every frame.
+		 * @param delta The time difference from the last frame.
 		*/
-		inline void render() {
+		inline void render(double delta) {
+			//Advance one tick after that many seconds have built up
+			constexpr static double TickScale = 0.1;
+			//update timer
+			this->FrametimeRemainer += delta;
+			//calculate how many tick has elapsed
+			unsigned long long tickGain = static_cast<unsigned long long>(glm::floor(this->FrametimeRemainer / TickScale));
+			//deduct used ticks and store the remainder
+			this->FrametimeRemainer -= TickScale * tickGain;
+
 			//prepare terrain texture first (async), because this is a slow operation
 			this->TerrainRenderer->setViewPosition(this->ViewPosition);
 
 			using PT = SuperTerrainPlus::STPRealism::STPScenePipeline::STPLightPropertyType;
-			//change the sun position
-			this->SunRenderer->advanceTick(1ull);
+			if (tickGain > 0ull) {
+				//change the sun position
+				this->SunRenderer->advanceTick(tickGain);
+			}
 			//updat terrain rendering settings.
 			this->RenderPipeline->setLight<PT::SpectrumCoordinate>(this->SunIndex);
 			this->RenderPipeline->setLight<PT::Direction>(this->SunIndex);
@@ -471,6 +486,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_FALSE);//not neccessary for forward compat
 #ifdef _DEBUG
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+		glfwWindowHint(GLFW_CONTEXT_ROBUSTNESS, GLFW_LOSE_CONTEXT_ON_RESET);
 #endif
 
 		//rendering preferences
@@ -616,7 +632,7 @@ int main() {
 		//draw
 		STPStart::process_event(static_cast<float>(deltaTime));
 		try {
-			STPStart::MasterEngine->render();
+			STPStart::MasterEngine->render(deltaTime);
 		}
 		catch (std::exception& e) {
 			cerr << e.what() << endl;

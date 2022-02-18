@@ -21,12 +21,12 @@ namespace STPDemo {
 		static double sqrtDist(Seed seed, int x, int y, int z, double xFrac, double yFrac, double zFrac) {
 			namespace STPSeedMixer = SuperTerrainPlus::STPDiversity::STPSeedMixer;
 
-			static auto distribute = [](Seed seed) constexpr -> double {
+			static constexpr auto distribute = [](Seed seed) constexpr -> double {
 				const double d = static_cast<double>(static_cast<unsigned int>((seed >> 24ull) % 1024ull)) / 1024.0;
 				return (d - 0.5) * 0.9;
 			};
 
-			static auto sqr = [](double n) constexpr -> double {
+			static constexpr auto sqr = [](double n) constexpr -> double {
 				return n * n;
 			};
 

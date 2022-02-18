@@ -388,11 +388,11 @@ void STPTextureDefinitionLanguage::processTexture() {
 }
 
 void STPTextureDefinitionLanguage::processRule() {
-	auto stoSample = [](const string_view& str) -> Sample {
+	static constexpr auto stoSample = [](const string_view& str) -> Sample {
 		//one disadvantage of this method is it will create a string from the string_view
 		return static_cast<Sample>(std::stoul(str.data()));
 	};
-	auto stoFloat = [](const string_view& str) -> float {
+	static constexpr auto stoFloat = [](const string_view& str) -> float {
 		return std::stof(str.data());
 	};
 	typedef STPTDLLexer::STPToken::STPType TokenType;

@@ -37,7 +37,7 @@ __host__ STPRainDropSetting::~STPRainDropSetting() {
 }
 
 __host__ bool STPRainDropSetting::validate() const {
-	static auto checkRange = []__host__(float value, float lower, float upper) constexpr -> bool {
+	static constexpr auto checkRange = []__host__(float value, float lower, float upper) constexpr -> bool {
 		return value >= lower && value <= upper;
 	};
 

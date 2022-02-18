@@ -47,7 +47,7 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		public:
 
-			~STPLocalRNG();
+			~STPLocalRNG() = default;
 
 			/**
 			 * @brief Get the next random number in the sequence

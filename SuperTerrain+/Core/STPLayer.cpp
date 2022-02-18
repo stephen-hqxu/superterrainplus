@@ -6,10 +6,6 @@ STPLayer::STPLocalRNG::STPLocalRNG(Seed layer_seed, Seed local_seed) : LayerSeed
 
 }
 
-STPLayer::STPLocalRNG::~STPLocalRNG() {
-	
-}
-
 Sample STPLayer::STPLocalRNG::nextVal(Sample range) const {
 	//TODO: feel free to use your own algorithm to generate a random number
 	//Please do not use standard library rng, it will trash the performance

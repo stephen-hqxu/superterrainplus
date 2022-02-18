@@ -64,7 +64,7 @@ STPCameraSetting::STPCameraSetting() :
 }
 
 bool STPCameraSetting::validate() const {
-	static auto range = [](float val, float min, float max) constexpr -> bool {
+	static constexpr auto range = [](float val, float min, float max) constexpr -> bool {
 		return val > min && val < max;
 	};
 	static constexpr float PI = glm::pi<float>(), PI_BY_2 = PI * 0.5f;
@@ -186,7 +186,7 @@ STPPerspectiveCameraSetting::STPPerspectiveCameraSetting() :
 }
 
 bool STPPerspectiveCameraSetting::validate() const {
-	static auto range = [](float val, float min, float max) constexpr -> bool {
+	static constexpr auto range = [](float val, float min, float max) constexpr -> bool {
 		return val > min && val < max;
 	};
 	static constexpr float TWO_PI = glm::pi<float>() * 2.0f;
@@ -213,7 +213,7 @@ STPSunSetting::STPSunSetting() :
 
 bool STPSunSetting::validate() const {
 	static constexpr double PI_BY_2 = glm::pi<double>() * 0.5;
-	static auto range_check = [](double val, double min, double max) constexpr -> bool {
+	static constexpr auto range_check = [](double val, double min, double max) constexpr -> bool {
 		return val >= min && val <= max;
 	};
 

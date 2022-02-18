@@ -86,7 +86,7 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 	}
 
 	//Retrieve all flags
-	static auto isFlagged = [](STPGeneratorOperation op, STPGeneratorOperation flag) constexpr -> bool {
+	static constexpr auto isFlagged = [](STPGeneratorOperation op, STPGeneratorOperation flag) constexpr -> bool {
 		return (op & flag) != 0u;
 	};
 	const bool flag[3] = {

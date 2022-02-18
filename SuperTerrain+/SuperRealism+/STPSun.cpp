@@ -210,7 +210,7 @@ void STPSun<false>::advanceTick(unsigned long long tick) {
 
 	//the old direction cache is no longer accurate, needs to recalculate
 	static constexpr double TWO_PI = glm::pi<double>() * 2.0;
-	static auto saturate = [](double val) constexpr -> double {
+	static constexpr auto saturate = [](double val) constexpr -> double {
 		return clamp(val, -1.0, 1.0);
 	};
 	//calculate hour angle

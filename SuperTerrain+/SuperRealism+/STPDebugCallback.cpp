@@ -10,7 +10,7 @@ using namespace SuperTerrainPlus::STPRealism;
 
 static void defaultDebugOutput(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei, const GLchar* message, const void* userParam) {
 	//string convertion
-	static auto getSourceStr = [](GLenum source) constexpr -> char* {
+	static constexpr auto getSourceStr = [](GLenum source) constexpr -> char* {
 		switch (source) {
 		case GL_DEBUG_SOURCE_API: return "API";
 		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
@@ -21,7 +21,7 @@ static void defaultDebugOutput(GLenum source, GLenum type, GLuint id, GLenum sev
 		default: return "NULL";
 		}
 	};
-	static auto getTypeStr = [](GLenum type) constexpr -> char* {
+	static constexpr auto getTypeStr = [](GLenum type) constexpr -> char* {
 		switch (type) {
 		case GL_DEBUG_TYPE_ERROR: return "ERROR";
 		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
@@ -33,7 +33,7 @@ static void defaultDebugOutput(GLenum source, GLenum type, GLuint id, GLenum sev
 		default: return "NULL";
 		}
 	};
-	static auto getSeverityStr = [](GLenum severity) constexpr -> char* {
+	static constexpr auto getSeverityStr = [](GLenum severity) constexpr -> char* {
 		switch (severity) {
 		case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION";
 		case GL_DEBUG_SEVERITY_LOW: return "LOW";
