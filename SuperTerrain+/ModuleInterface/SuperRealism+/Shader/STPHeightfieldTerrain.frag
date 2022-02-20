@@ -8,9 +8,10 @@
 
 /* ------------------ Texture Splatting ---------------------------- */
 //Macros are define by the main application, having an arbitary number just to make the compiler happy.
-#define REGION_COUNT 1
+#define GROUP_COUNT 1
 #define REGISTRY_COUNT 1
 #define REGISTRY_DICTIONARY_COUNT 1
+#define SPLAT_REGION_COUNT 1
 
 //texture type indexing
 #define ALBEDO 1
@@ -19,14 +20,24 @@
 #define SPECULAR 1
 #define AO 1
 
+//default texture values if a specific type is not used
+#define DEFAULT_ALBEDO vec3(0.5f)
+#define DEFAULT_NORMAL vec3(vec2(0.5f), 1.0f)
+#define DEFAULT_ROUGHNESS 0.0f
+#define DEFAULT_SPECULAR 1.0f
+#define DEFAULT_AO 1.0f
+
 #define TYPE_STRIDE 6
-#define UNUSED_TYPE 0
 #define UNREGISTERED_TYPE 0
 
 struct TextureRegionSmoothSetting{
 	unsigned int Kr;
 	float Ks;
-	float Ns;
+	unsigned int Ns;
+};
+
+struct TextureRegionScaleSetting{
+	float Prim, Seco, Tert;
 };
 
 struct TerrainTextureData{
@@ -48,18 +59,22 @@ struct TerrainTextureData{
 };
 
 //Rule-based texturing system
-layout (bindless_sampler) uniform sampler2DArray RegionTexture[REGION_COUNT];
+layout (bindless_sampler) uniform sampler2DArray RegionTexture[GROUP_COUNT];
 //x: array index, y: layer index
 uniform uvec2 RegionRegistry[REGISTRY_COUNT];
 uniform uint RegistryDictionary[REGISTRY_DICTIONARY_COUNT];
+//each texture region will have one and only one scale setting
+uniform uvec3 RegionScaleRegistry[SPLAT_REGION_COUNT];
 
 uniform TextureRegionSmoothSetting SmoothSetting;
-uniform unsigned int UVScaleFactor;
+uniform TextureRegionScaleSetting ScaleSetting;
 /* -------------------------- Terrain Lighting ------------------------- */
 //Normalmap blending algorithm
 #define NORMALMAP_BLENDING 255
 
 /* --------------------------------------------------------------------- */
+
+#include </Common/STPCameraInformation.glsl>
 
 //Input
 in VertexGS{
@@ -91,15 +106,8 @@ const ivec2 ConvolutionKernelOffset[8] = {
 	{ +1, +1 },
 };
 
-//heightmap resolution
-ivec2 getHeightmapRes();
-//Get region index
-uint getRegion(vec2);
-vec3 getRegionTexture(vec2, vec3, unsigned int, unsigned int);
 //Get all types of available texture using texture region smoothing algorithm
 TerrainTextureData getSmoothTexture(vec2);
-//Calculate the UV scaling based on the size of texture
-vec2 getUVScale(ivec2);
 /**
  * We have three normal systems for terrain, plane normal, terrain normal and terrain texture normal.
  * plane normal is simply (0,1,0), that's how our model is defined (model space normal)
@@ -173,35 +181,53 @@ void main(){
 	writeGeometryData(RenderingColor, RenderingNormal, RenderingSpecular, RenderingAO);
 }
 
-ivec2 getHeightmapRes(){
-	return textureSize(Heightmap, 0).xy;
-}
-
-uint getRegion(vec2 splatmap_uv){
-	return texture(Splatmap, splatmap_uv).r;
-}
-
-vec3 getRegionTexture(vec2 world_uv, vec3 replacement, unsigned int region, unsigned int type){
-	if(type == UNREGISTERED_TYPE || region >= REGISTRY_DICTIONARY_COUNT){
-		//type not used
-		//no region is defined
+//dx_dy is the derivative used for sampling texture, the first two components store dx while the last two store dy.
+vec3 getRegionTexture(vec2 texture_uv, vec3 replacement, unsigned int region, unsigned int type, vec4 dx_dy){
+	const uint dictLoc = region * TYPE_STRIDE + type;
+	if(dictLoc >= REGISTRY_DICTIONARY_COUNT){
+		//type not used or no region is defined
 		return replacement;
 	}
 
-	const uint regionLoc = RegistryDictionary[region * TYPE_STRIDE + type];
+	const uint regionLoc = RegistryDictionary[dictLoc];
 	if(regionLoc >= REGISTRY_COUNT){
 		//handle the case when texture type is not used
 		return replacement;
 	}
-	const uvec2 textureLoc = RegionRegistry[regionLoc];
 
+	const uvec2 textureLoc = RegionRegistry[regionLoc];
 	const sampler2DArray selected_sampler = RegionTexture[textureLoc.x];
 	//region is valid
-	return texture(selected_sampler, vec3(world_uv * getUVScale(textureSize(selected_sampler, 0).xy), textureLoc.y)).rgb;
+	return textureGrad(selected_sampler, vec3(texture_uv, textureLoc.y), dx_dy.xy, dx_dy.zw).rgb;
+}
+
+void sampleTerrainTexture(in out TerrainTextureData data, vec2 sampling_uv, unsigned int region, float weight, vec4 dx_dy){
+#if ALBEDO != UNREGISTERED_TYPE
+	data.TerrainColor += getRegionTexture(sampling_uv, DEFAULT_ALBEDO, region, ALBEDO, dx_dy) * weight;
+#endif
+#if NORMAL != UNREGISTERED_TYPE
+	data.TerrainNormal += getRegionTexture(sampling_uv, DEFAULT_NORMAL, region, NORMAL, dx_dy) * weight;
+#endif
+#if ROUGHNESS != UNREGISTERED_TYPE
+	data.TerrainRoughness += getRegionTexture(sampling_uv, vec3(DEFAULT_ROUGHNESS), region, ROUGHNESS, dx_dy).r * weight;
+#endif
+#if SPECULAR != UNREGISTERED_TYPE
+	data.TerrainSpecular += getRegionTexture(sampling_uv, vec3(DEFAULT_SPECULAR), region, SPECULAR, dx_dy).r * weight;
+#endif
+#if AO != UNREGISTERED_TYPE
+	data.TerrainAmbientOcclusion += getRegionTexture(sampling_uv, vec3(DEFAULT_AO), region, AO, dx_dy).r * weight;
+#endif
 }
 
 TerrainTextureData getSmoothTexture(vec2 world_uv){
-	TerrainTextureData TerrainTexture;
+	const uint regionBinSize = SPLAT_REGION_COUNT + 1u;
+	//the bin is used to record the number of each region presented in the smoothing kernel.
+	//The last bin acts as a dummy bin to handle any invalid region
+	uint RegionBin[regionBinSize];
+	//zero initialise
+	for(uint i = 0u; i < regionBinSize; i++){
+		RegionBin[i] = 0u;
+	}
 
 	const float Kr_inv = 1.0f / (1.0f * SmoothSetting.Kr),
 		Kr_2_inv = 1.0f / (1.0f * SmoothSetting.Kr * SmoothSetting.Kr);
@@ -223,56 +249,116 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 			);
 			
 			//now apply the sampling points to the actual texture
-			const vec2 uv_offset = SmoothSetting.Ks * disk_domain / getHeightmapRes(),
+			const vec2 uv_offset = SmoothSetting.Ks * disk_domain / vec2(textureSize(Heightmap, 0).xy),
 				sampling_uv = fs_in.texCoord + uv_offset;
-			const uint region = getRegion(sampling_uv);
+			const uint region = texture(Splatmap, sampling_uv).r;
 
-#if ALBEDO != UNREGISTERED_TYPE
-			TerrainTexture.TerrainColor += getRegionTexture(world_uv, vec3(0.5f), region, ALBEDO);
-#endif
-#if NORMAL != UNREGISTERED_TYPE
-			TerrainTexture.TerrainNormal += getRegionTexture(world_uv, vec3(vec2(0.5f), 1.0f), region, NORMAL);
-#endif
-#if ROUGHNESS != UNREGISTERED_TYPE
-			TerrainTexture.TerrainRoughness += getRegionTexture(world_uv, vec3(0.0f), region, ROUGHNESS).r;
-#endif
-#if SPECULAR != UNREGISTERED_TYPE
-			TerrainTexture.TerrainSpecular += getRegionTexture(world_uv, vec3(1.0f), region, SPECULAR).r;
-#endif
-#if AO != UNREGISTERED_TYPE
-			TerrainTexture.TerrainAmbientOcclusion += getRegionTexture(world_uv, vec3(1.0f), region, AO).r;
-#endif
+			//accumulate region count
+			if(region < SPLAT_REGION_COUNT){
+				//valid region
+				RegionBin[region]++;
+			}else{
+				//invalid region to be recorded to the dummy bin at the end
+				RegionBin[SPLAT_REGION_COUNT]++;
+			}
 		}
 	}
 
-	//average the final color
+	//prepare for the final output texture data
+	TerrainTextureData TerrainTexture;
+	//zero initialise
 #if ALBEDO != UNREGISTERED_TYPE
-	TerrainTexture.TerrainColor *= Kr_2_inv;
+	TerrainTexture.TerrainColor = vec3(0.0f);
 #endif
 #if NORMAL != UNREGISTERED_TYPE
-	TerrainTexture.TerrainNormal *= Kr_2_inv;
+	TerrainTexture.TerrainNormal = vec3(0.0f);
 #endif
 #if ROUGHNESS != UNREGISTERED_TYPE
-	TerrainTexture.TerrainRoughness *= Kr_2_inv;
+	TerrainTexture.TerrainRoughness = 0.0f;
 #endif
 #if SPECULAR != UNREGISTERED_TYPE
-	TerrainTexture.TerrainSpecular *= Kr_2_inv;
+	TerrainTexture.TerrainSpecular = 0.0f;
 #endif
 #if AO != UNREGISTERED_TYPE
-	TerrainTexture.TerrainAmbientOcclusion *= Kr_2_inv;
+	TerrainTexture.TerrainAmbientOcclusion = 0.0f;
 #endif
 	
-	return TerrainTexture;
-}
+	const float texelDistance = distance(Camera.Position, fs_in.position_world);
+	//for each region, calculate their weights which is used as a blending factor to the final texture data
+	for(uint region = 0u; region < SPLAT_REGION_COUNT; region++){
+		const uint regionCount = RegionBin[region];
+		if(regionCount == 0u){
+			//skip region that does not contribute to the final color
+			continue;	
+		}
+		//normalise the region count as a weight
+		const float regionWeight = regionCount * Kr_2_inv;
 
-vec2 getUVScale(ivec2 texDim){
-	return float(UVScaleFactor) / vec2(texDim);
+		//pre-compute derivatives for each scale levels because they branch
+		vec4 UVScaleDxDy[3];
+		for(int level = 0; level < 3; level++){
+			const vec2 level_uv = world_uv * RegionScaleRegistry[region][level];
+			
+			UVScaleDxDy[level].xy = dFdx(level_uv);
+			UVScaleDxDy[level].zw = dFdy(level_uv);
+		}
+
+		//determine uv for the current region
+		if(texelDistance < ScaleSetting.Prim){
+			//use the primary scale only
+			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].x, region, regionWeight, UVScaleDxDy[0]);
+		}
+		else if(texelDistance < ScaleSetting.Seco){
+			//blend between primary and secondary
+			const float blendFactor = smoothstep(ScaleSetting.Prim, ScaleSetting.Seco, texelDistance);
+
+			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].x, region, regionWeight * (1.0f - blendFactor), UVScaleDxDy[0]);
+			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].y, region, regionWeight * blendFactor, UVScaleDxDy[1]);
+		}
+		else if(texelDistance < ScaleSetting.Tert){
+			//blend between secondary and tertiary
+			const float blendFactor = smoothstep(ScaleSetting.Seco, ScaleSetting.Tert, texelDistance);
+
+			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].y, region, regionWeight * (1.0f - blendFactor), UVScaleDxDy[1]);
+			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].z, region, regionWeight * blendFactor, UVScaleDxDy[2]);
+		}
+		else{
+			//use tertiary only
+			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].z, region, regionWeight, UVScaleDxDy[2]);
+		}
+	}
+
+	//in case the dummy bin is non-zero, the invalid region is used to fetch the texture.
+	//The region texture fetching function will handle this case and output the alternative value.
+	//This can ensure the output is normalised (sum of all weights is one) and not purely black when the region is not valid.
+	const uint invalidRegionCount = RegionBin[SPLAT_REGION_COUNT];
+	if(invalidRegionCount != 0u){
+		const float weight = invalidRegionCount * Kr_2_inv;
+
+#if ALBEDO != UNREGISTERED_TYPE
+		TerrainTexture.TerrainColor = DEFAULT_ALBEDO * weight;
+#endif
+#if NORMAL != UNREGISTERED_TYPE
+		TerrainTexture.TerrainNormal = DEFAULT_NORMAL * weight;
+#endif
+#if ROUGHNESS != UNREGISTERED_TYPE
+		TerrainTexture.TerrainRoughness = DEFAULT_ROUGHNESS * weight;
+#endif
+#if SPECULAR != UNREGISTERED_TYPE
+		TerrainTexture.TerrainSpecular = DEFAULT_SPECULAR * weight;
+#endif
+#if AO != UNREGISTERED_TYPE
+		TerrainTexture.TerrainAmbientOcclusion = DEFAULT_AO * weight;
+#endif
+	}
+
+	return TerrainTexture;
 }
 
 vec3 calcTerrainNormal(){
 	//calculate terrain normal from the heightfield
 	//the uv increment for each pixel on the heightfield
-	const vec2 unit_uv = 1.0f / vec2(getHeightmapRes());
+	const vec2 unit_uv = 1.0f / vec2(textureSize(Heightmap, 0).xy);
 
 	float cell[ConvolutionKernelOffset.length()];
 	//convolve a 3x3 kernel with Sobel operator

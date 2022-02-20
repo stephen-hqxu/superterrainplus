@@ -1,5 +1,10 @@
 #texture [gravel, dirt, grass, stone];
 
+#group view {
+	gravel, dirt, grass := (40u, 20u, 5u),
+	stone := (20u, 8u, 2u)
+}
+
 #rule altitude {
 	100u := (0.2f -> gravel, 0.7f -> grass, 1.0f -> dirt),
 	101u := (0.45f -> dirt, 1.0f -> stone),

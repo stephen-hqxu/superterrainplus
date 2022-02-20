@@ -101,9 +101,10 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 			//prepare identifiers for texture splatting
 			using namespace SuperTerrainPlus::STPDiversity;
 			//general info
-			Macro("REGION_COUNT", splat_texture.TextureBufferCount)
+			Macro("GROUP_COUNT", splat_texture.TextureBufferCount)
 				("REGISTRY_COUNT", splat_texture.LocationRegistryCount)
 				("REGISTRY_DICTIONARY_COUNT", splat_texture.LocationRegistryDictionaryCount)
+				("SPLAT_REGION_COUNT", splat_texture.SplatRegionCount)
 
 			//texture type
 			("ALBEDO", splatmap_generator.convertType(STPTextureType::Albedo))
@@ -113,7 +114,6 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 			("AO", splatmap_generator.convertType(STPTextureType::AmbientOcclusion))
 
 			("TYPE_STRIDE", splatmap_generator.usedType())
-			("UNUSED_TYPE", STPTextureFactory::UnusedType)
 			("UNREGISTERED_TYPE", STPTextureFactory::UnregisteredType)
 
 			("NORMALMAP_BLENDING", static_cast<std::underlying_type_t<STPNormalBlendingAlgorithm>>(option.NormalBlender));
@@ -174,7 +174,7 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 
 	/* --------------------------------- setup texture splatting ------------------------------------ */
 	//get splatmap dataset
-	const auto& [tbo, tbo_count, reg, reg_count, dict, dict_count] = splat_texture;
+	const auto& [tbo, tbo_count, reg, reg_count, dict, dict_count, view_reg, region_count] = splat_texture;
 
 	//prepare bindless texture
 	this->SplatTextureHandle.reserve(tbo_count);
@@ -184,11 +184,17 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 		rawHandle[i] = *this->SplatTextureHandle.emplace_back(tbo[i]);
 	}
 
+	//prepare texture region scaling data
+	unique_ptr<uvec3[]> scale_factors = make_unique<uvec3[]>(region_count);
+	std::transform(view_reg, view_reg + region_count, scale_factors.get(), [](const auto& tex_view) {
+		return uvec3(tex_view.PrimaryScale, tex_view.SecondaryScale, tex_view.TertiaryScale);
+	});
 	//send bindless handle to the shader
 	this->TerrainShader.uniform(glProgramUniformHandleui64vARB, "RegionTexture", static_cast<GLsizei>(tbo_count), rawHandle.get())
 		//prepare registry
 		.uniform(glProgramUniform2uiv, "RegionRegistry", static_cast<GLsizei>(reg_count), reinterpret_cast<const unsigned int*>(reg))
-		.uniform(glProgramUniform1uiv, "RegistryDictionary", static_cast<GLsizei>(dict_count), dict);
+		.uniform(glProgramUniform1uiv, "RegistryDictionary", static_cast<GLsizei>(dict_count), dict)
+		.uniform(glProgramUniform3uiv, "RegionScaleRegistry", static_cast<GLsizei>(region_count), value_ptr(scale_factors[0]));
 
 	/* --------------------------------- shader noise texture preparation ------------------------------ */
 	this->NoiseSample.textureStorage<STPTexture::STPDimension::THREE>(1, GL_R8, this->RandomTextureDimension);
@@ -209,6 +215,7 @@ void STPHeightfieldTerrain<false>::setMesh(const STPEnvironment::STPMeshSetting&
 	}
 	const auto& tess_setting = mesh_setting.TessSetting;
 	const auto& smooth_setting = mesh_setting.RegionSmoothSetting;
+	const auto& scale_setting = mesh_setting.RegionScaleSetting;
 
 	//update tessellation LoD control
 	this->TerrainModeller.uniform(glProgramUniform1f, "Tess[0].MaxLod", tess_setting.MaxTessLevel)
@@ -223,8 +230,11 @@ void STPHeightfieldTerrain<false>::setMesh(const STPEnvironment::STPMeshSetting&
 		//texture splatting smoothing
 		.uniform(glProgramUniform1ui, "SmoothSetting.Kr", smooth_setting.KernelRadius)
 		.uniform(glProgramUniform1f, "SmoothSetting.Ks", smooth_setting.KernelScale)
-		.uniform(glProgramUniform1f, "SmoothSetting.Ns", smooth_setting.NoiseScale)
-		.uniform(glProgramUniform1ui, "UVScaleFactor", mesh_setting.UVScaleFactor);
+		.uniform(glProgramUniform1ui, "SmoothSetting.Ns", smooth_setting.NoiseScale)
+		//texture region scaling
+		.uniform(glProgramUniform1f, "ScaleSetting.Prim", scale_setting.PrimaryFar)
+		.uniform(glProgramUniform1f, "ScaleSetting.Seco", scale_setting.SecondaryFar)
+		.uniform(glProgramUniform1f, "ScaleSetting.Tert", scale_setting.TertiaryFar);
 }
 
 void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {

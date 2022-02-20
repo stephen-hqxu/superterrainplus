@@ -1,5 +1,10 @@
 #texture [redrock, grass, mossrock, sand, soil, darkrock];
 
+#group view {
+	redrock, mossrock, darkrock, sand, soil := (40u, 20u, 10u),
+	grass := (64u, 60u, 55u)
+}
+
 #rule altitude {
 	0u := (1.0f -> soil),
 	1u := (0.5f -> sand, 0.72f -> mossrock, 1.0 -> grass)

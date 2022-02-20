@@ -63,7 +63,7 @@ private:
 	constexpr static char TDLFilename[] = "./Script/STPBiomeSplatRule.tdl";
 
 	//Group ID recording
-	STPTextureInformation::STPTextureGroupID x1024_srgb, x1024_rgb;
+	STPTextureInformation::STPMapGroupID x1024_srgb, x1024_rgb;
 
 	/**
 	 * @brief Determine the texture type based on the filename.
@@ -118,15 +118,15 @@ public:
 		});
 
 		//create group
-		STPTextureDatabase::STPTextureDescription tex_desc;
+		STPTextureDatabase::STPMapGroupDescription tex_desc;
 		tex_desc.Dimension = uvec2(1024u);
-		tex_desc.MipMapLevel = 4u;
+		tex_desc.MipMapLevel = 7u;
 		tex_desc.PixelFormat = GL_UNSIGNED_BYTE;
 		tex_desc.ChannelFormat = GL_RGB;
 		tex_desc.InteralFormat = GL_SRGB8;
-		this->x1024_srgb = this->Database.addGroup(tex_desc);
+		this->x1024_srgb = this->Database.addMapGroup(tex_desc);
 		tex_desc.InteralFormat = GL_RGB8;
-		this->x1024_rgb = this->Database.addGroup(tex_desc);
+		this->x1024_rgb = this->Database.addMapGroup(tex_desc);
 
 		STPDiversity::STPTextureDefinitionLanguage TDLParser(*STPFile(STPWorldSplattingAgent::TDLFilename));
 		//build texture splatting rules
@@ -136,10 +136,10 @@ public:
 			//grab the texture ID using the texture name
 			const string_view currTexFile(STPWorldSplattingAgent::Filename[i]);
 			//our filename always follows this pattern: (texture name)_(type).(suffix), we can search using that
-			const STPTextureInformation::STPTextureID currTexID = textureName.at(currTexFile.substr(0ull, currTexFile.find_first_of('_')));
+			const STPTextureInformation::STPTextureID currTexID = textureName.at(currTexFile.substr(0ull, currTexFile.find_first_of('_'))).first;
 
 			STPTextureType texType = STPWorldSplattingAgent::getType(currTexFile);
-			STPTextureInformation::STPTextureGroupID texGroup = this->x1024_rgb;
+			STPTextureInformation::STPMapGroupID texGroup = this->x1024_rgb;
 			//change group ID conditionally
 			if (texType == STPTextureType::Albedo) {
 				//color texture is usually in gamma space, we need to transform it to linear space.

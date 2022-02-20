@@ -7,8 +7,10 @@
 #include <vector>
 #include <utility>
 #include <tuple>
+#include <string_view>
 //System
 #include <memory>
+#include <optional>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -36,9 +38,10 @@ namespace SuperTerrainPlus::STPDiversity {
 	public:
 
 		/**
-		 * @brief STPTextureDescription contains information about a texture
+		 * @brief STPMapGroupDescription contains information about a texture map group.
+		 * A texture map group holds a texture maps data with the same texture format.
 		*/
-		struct STPTextureDescription {
+		struct STPMapGroupDescription {
 		public:
 
 			//The dimension of the texture
@@ -53,6 +56,12 @@ namespace SuperTerrainPlus::STPDiversity {
 			STPOpenGL::STPenum PixelFormat;
 
 		};
+
+		/**
+		 * @brief STPViewGroupDescription contains information about a texture view group.
+		 * A texture view group holds all texture with the same viewing properties.
+		*/
+		typedef STPTextureInformation::STPTextureView STPViewGroupDescription;
 
 		/**
 		 * @brief STPTextureSplatBuilder is a simple utility that allows each biome to have different texture.
@@ -82,27 +91,6 @@ namespace SuperTerrainPlus::STPDiversity {
 
 			~STPTextureSplatBuilder() = default;
 
-			//TODO: template lambda...
-			/**
-			 * @brief Expand tuple of arguments and add each group into the configuration
-			 * @tparam ...Arg Arguments that are packed into tuple
-			 * @param sample The sample to be operated
-			 * @param Indices to get the arguments from tuple
-			 * @param args All arguments packed
-			*/
-			template<size_t... Is, class... Arg>
-			void expandAddAltitudes(Sample, std::index_sequence<Is...>, std::tuple<Arg...>);
-
-			/**
-			 * @brief Expand tuple of arguments and add each group into the configurations
-			 * @tparam ...Arg Arguments that are packed into tuple
-			 * @param sample The sample to be operated
-			 * @param Indices to get the arguments from tuple
-			 * @param args All arguments packed
-			*/
-			template<size_t... Is, class... Arg>
-			void expandAddGradients(Sample, std::index_sequence<Is...>, std::tuple<Arg...>);
-
 		public:
 
 			/**
@@ -113,15 +101,6 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param texture_id The texture to be used in this region
 			*/
 			void addAltitude(Sample, float, STPTextureInformation::STPTextureID);
-
-			/**
-			 * @brief Add a set of new configurations for specified biome into altitude structure
-			 * @tparam ...Arg Argument pack to be added. Must follow the argument structure of addAltitude() function
-			 * @param sample The sample that the new altitude configurations belong to
-			 * @param ...args Arguments grouped to be added
-			*/
-			template<class... Arg>
-			void addAltitudes(Sample, Arg&&...);
 
 			/**
 			 * @brief Get the number of altitude structure in the table
@@ -139,15 +118,6 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param texture_id The texture ID to be used in this region
 			*/
 			void addGradient(Sample, float, float, float, float, STPTextureInformation::STPTextureID);
-
-			/**
-			 * @brief Add a set of new configurations for specified biome into gradient structure
-			 * @tparam ...Arg Argument pack to be added. Must follow the argument structure of addGradient() function
-			 * @param sample The sample that the new gradient configurations belong to
-			 * @param ...args Arguments grouped to be addded
-			*/
-			template<class... Arg>
-			void addGradients(Sample, Arg&&...);
 
 			/**
 			 * @brief Get the number of gradient structure in the table
@@ -181,18 +151,23 @@ namespace SuperTerrainPlus::STPDiversity {
 			typedef STPNodeRecord<STPTextureInformation::STPGradientNode> STPGradientRecord;
 			typedef std::vector<std::tuple<Sample, size_t, size_t>> STPSampleRecord;
 
-			//A vector contains group ID with corresponding group properties
+			//A vector contains map group ID with corresponding map group properties
 			typedef std::vector<std::tuple<
-				STPTextureInformation::STPTextureGroupID,
-				//The number of texture data in this group
+				STPTextureInformation::STPMapGroupID,
+				//The number of texture data in this map group
 				size_t,
-				STPTextureDescription
-			>> STPGroupRecord;
+				STPMapGroupDescription
+			>> STPMapGroupRecord;
+
 			//A vector of texture ID
-			typedef std::vector<STPTextureInformation::STPTextureID> STPTextureRecord;
+			typedef std::vector<std::pair<
+				STPTextureInformation::STPTextureID, 
+				STPViewGroupDescription
+			>> STPTextureRecord;
+
 			//A vector contains texture data
 			typedef std::vector<std::tuple<
-				STPTextureInformation::STPTextureGroupID,
+				STPTextureInformation::STPMapGroupID,
 				STPTextureInformation::STPTextureID,
 				STPTextureType,
 				const void*
@@ -216,7 +191,7 @@ namespace SuperTerrainPlus::STPDiversity {
 
 			~STPDatabaseView() = default;
 
-			/* -- Splat Builder --*/
+			/* ---------------------------- Splat Builder -------------------------------- */
 
 			/**
 			 * @brief Retrieve all stored altitude configurations.
@@ -241,15 +216,15 @@ namespace SuperTerrainPlus::STPDiversity {
 			*/
 			STPSampleRecord getValidSample(unsigned int = 0u) const;
 
-			/* -- Database -- */
+			/* ----------------------- Database ----------------------------- */
 
 			/**
-			 * @brief Retrieve a record of all groups that have been referenced by some texture data, and their properties.
+			 * @brief Retrieve a record of all map groups that have been referenced by some texture map data, and their properties.
 			 * Note that group only being added to the database but not referenced by any splat rule does not count.
 			 * Results are sorted by group ID in ascending order.
-			 * @return An array of group record.
+			 * @return An array of map group record.
 			*/
-			STPGroupRecord getValidGroup() const;
+			STPMapGroupRecord getValidMapGroup() const;
 
 			/**
 			 * @brief Retrieve a record of all texture ID in this database.
@@ -282,23 +257,13 @@ namespace SuperTerrainPlus::STPDiversity {
 		//incremental accumulators for ID
 		inline static unsigned int GeneralIDAccumulator = 10000u;
 		inline static STPTextureInformation::STPTextureID TextureIDAccumulator = 10000u;
-		inline static STPTextureInformation::STPTextureGroupID GroupIDAccumulator = 9999u;
+		inline static STPTextureInformation::STPMapGroupID MapGroupIDAccumulator = 10000u;
+		inline static STPTextureInformation::STPViewGroupID ViewGroupIDAccumulator = 10000u;
 
 		//A database which stores all biome texture settings
 		std::unique_ptr<STPTextureDatabaseImpl> Database;
 		//implementations that depend on the database
 		STPTextureSplatBuilder SplatBuilder;
-
-		/**
-		 * @brief Expand parameter packs for addMaps() template function and group parameters into callable arguments for non-template function.
-		 * TODO: make this a lambda template in C++20
-		 * @tparam ...Arg All parameters passed as parameter pack
-		 * @param texture_id The texture ID to be operated on
-		 * @param Striding index sequence to index the tuple
-		 * @param args The argument to be expanded.
-		*/
-		template<size_t... Is, class... Arg>
-		void expandAddMaps(STPTextureInformation::STPTextureID, std::index_sequence<Is...>, std::tuple<Arg...>);
 
 	public:
 
@@ -336,48 +301,69 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPDatabaseView visit() const;
 
 		/**
-		 * @brief Insert a new texture group into the texture database
-		 * @param desc The texture format description, it will be applied to all texture data in this group
-		 * @return The group ID of the newly inserted texture.
-		 * A group will always be inserted since group ID is managed by the database and guaranteed to be unique
+		 * @brief Insert a new texture map group into the texture database.
+		 * @param desc The texture format description, it will be applied to all texture map data in this group.
+		 * @return The unique map group ID of the newly inserted texture.
 		*/
-		STPTextureInformation::STPTextureGroupID addGroup(const STPTextureDescription&);
+		STPTextureInformation::STPMapGroupID addMapGroup(const STPMapGroupDescription&);
 
 		/**
-		 * @brief Remove a texture group from the texture database, all texture maps in the group will be dropped.
-		 * No operation will be performed if group ID is invalid.
-		 * @param group_id The group with ID to be removed
+		 * @brief Insert a new texture view group into the texture database.
+		 * @param desc The texture view description, it will be applied to all texture in this group.
+		 * @return The unique view group ID of the newly inserted texture.
 		*/
-		void removeGroup(STPTextureInformation::STPTextureGroupID);
+		STPTextureInformation::STPViewGroupID addViewGroup(const STPViewGroupDescription&);
 
 		/**
-		 * @brief Get the pointer to the texture group, given a group ID
-		 * @param id The texture group ID
-		 * @return The group description for requested group
+		 * @brief Remove a texture map group from the texture database, all texture maps in this group will be dropped.
+		 * No operation will be performed if map group ID is invalid.
+		 * @param group_id The map group with ID to be removed
+		*/
+		void removeMapGroup(STPTextureInformation::STPMapGroupID);
+
+		/**
+		 * @brief Remove a texture view group from the texture database, all texture in this group and all associated texture map will be dropped.
+		 * No operation will be performed if view group is invalid.
+		 * @param group_id The view group ID to be removed.
+		*/
+		void removeViewGroup(STPTextureInformation::STPViewGroupID);
+
+		/**
+		 * @brief Get the texture map group, given a map group ID.
+		 * @param id The texture map group ID.
+		 * @return The map group description for requested group.
 		 * If group ID is not found, exception is thrown.
 		*/
-		STPTextureDescription getGroupDescription(STPTextureInformation::STPTextureGroupID) const;
+		STPMapGroupDescription getMapGroupDescription(STPTextureInformation::STPMapGroupID) const;
 
 		/**
-		 * @brief Get the number of texture group registered
-		 * @return The number of registered texture group
+		 * @brief Get the texture view group, given a view group ID.
+		 * @param id The texture view group ID.
+		 * @return The view group description for requested group. Exception is thrown if no such group ID is found.
 		*/
-		size_t groupSize() const;
+		STPViewGroupDescription getViewGroupDescription(STPTextureInformation::STPViewGroupID) const;
+
+		/**
+		 * @brief Get the number of texture map group registered.
+		 * @return The number of registered texture map group.
+		*/
+		size_t mapGroupSize() const;
+
+		/**
+		 * @brief Get the number of texture view group registered.
+		 * @return The number of registered texture view group.
+		*/
+		size_t viewGroupSize() const;
 
 		/**
 		 * @brief Insert a new texture into texture database. New texture has no map, and can be added by calling addMap().
 		 * A texture may have a collection of different type of maps associated with the texture.
-		 * @return The texture ID(s) that can be used to reference the texture
+		 * @param group_id The ID of the texture view group. All texture collection in the view group shares the same view properties.
+		 * @param name An optional name assigned to this texture for user-identification.
+		 * There is no requirement on the format of the name and it is user-defined.
+		 * @return The texture ID that can be used to reference the texture
 		*/
-		STPTextureInformation::STPTextureID addTexture();
-
-		/**
-		 * @brief Insert a few new texture containers into the texture database. New texture has no map, and can be added by calling addMap().
-		 * A texture may have a collection of different type of maps associated with the texture.
-		 * @param count The number of texture ID to be added.
-		 * @param texture_id The pointer to the returning texture ID, must have the same of greater size than count.
-		*/
-		void addTexture(unsigned int, STPTextureInformation::STPTextureID*);
+		STPTextureInformation::STPTextureID addTexture(STPTextureInformation::STPViewGroupID, const std::optional<std::string_view>& = std::nullopt);
 
 		/**
 		 * @brief Remove a texture from the texture database. 
@@ -395,19 +381,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param texture_data The pointer to the texture data. Texture data is not owned by the database, thus user should guarantees the lifetime;
 		 * the texture data should match the property of the group when it was created it.
 		*/
-		void addMap(STPTextureInformation::STPTextureID, STPTextureType, STPTextureInformation::STPTextureGroupID, const void*);
-
-		/**
-		 * @brief For a texture, add a sequence of texture map with different types to the texture to the texture database.
-		 * If any of the insert texture data operation fails, exception will be thrown immediately and subsequent operations will be halted.
-		 * @tparam ...Ret A tuple of booleans to indicate insert status
-		 * @tparam ...Arg Sequence of arguments for adding texture
-		 * @param texture_id The texture ID to be added
-		 * @param ...args A sequence of argument packs to add the texture data. See the non-template version of addMap()
-		 * The last 3 arguments can be repeated.
-		*/
-		template<class... Arg>
-		void addMaps(STPTextureInformation::STPTextureID, Arg&&...);
+		void addMap(STPTextureInformation::STPTextureID, STPTextureType, STPTextureInformation::STPMapGroupID, const void*);
 
 		/**
 		 * @brief Get the number of texture map, that contains all texture with all types, in the database.
@@ -425,5 +399,4 @@ namespace SuperTerrainPlus::STPDiversity {
 	};
 
 }
-#include "STPTextureDatabase.inl"
 #endif//_STP_TEXTURE_DATABASE_H_

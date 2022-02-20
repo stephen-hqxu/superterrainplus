@@ -11,9 +11,9 @@
 //System
 #include <string>
 #include <string_view>
+#include <limits>
 //Container
 #include <vector>
-#include <unordered_set>
 #include <unordered_map>
 #include <tuple>
 
@@ -33,8 +33,13 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		std::unique_ptr<STPTDLLexer> Lexer;
 
+		//Indicates an index that is not pointing to any thing, i.e., null index.
+		constexpr static size_t UnreferencedIndex = std::numeric_limits<size_t>::max();
+
 		//Information from the source code after lexing and parsing
-		std::unordered_set<std::string_view> DeclaredTexture;
+		std::vector<STPTextureDatabase::STPViewGroupDescription> DeclaredViewGroup;
+		//For each texture name, maps to an index to the view group data structure.
+		std::unordered_map<std::string_view, size_t> DeclaredTexture;
 		std::vector<std::tuple<Sample, float, std::string_view>> Altitude;
 		std::vector<std::tuple<Sample, float, float, float, float, std::string_view>> Gradient;
 
@@ -51,14 +56,19 @@ namespace SuperTerrainPlus::STPDiversity {
 		void processTexture();
 
 		/**
-		 * @brief Process identifier rule
+		 * @brief Process identifier rule.
 		*/
 		void processRule();
 
+		/**
+		 * @brief Process identifier group.
+		*/
+		void processGroup();
+
 	public:
 		
-		//A table of texture variable, corresponds to texture ID
-		typedef std::unordered_map<std::string_view, STPTextureInformation::STPTextureID> STPTextureVariable;
+		//A table of texture variable, corresponds to texture ID and the belonging view group ID
+		typedef std::unordered_map<std::string_view, std::pair<STPTextureInformation::STPTextureID, STPTextureInformation::STPViewGroupID>> STPTextureVariable;
 
 		/**
 		 * @brief Construct a TDL parser with an input.

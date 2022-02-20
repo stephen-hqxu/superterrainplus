@@ -17,8 +17,23 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		//Each texture collection has a unique ID to uniquely identify a texture with different types in the database
 		typedef unsigned int STPTextureID;
-		//Each group has an ID to uniquely identify a texture group in the database
-		typedef unsigned int STPTextureGroupID;
+		//To uniquely identify a texture map group.
+		typedef unsigned int STPMapGroupID;
+		//To uniquely identify a texture view group.
+		typedef unsigned int STPViewGroupID;
+
+		/**
+		 * @brief STPTextureView allows specifying view of a texture.
+		*/
+		struct STPTextureView {
+		public:
+
+			//Control the UV scaling factor of a texture.
+			//The primary scale will be used when the viewer is very closed, 
+			//the the scale is reduced to secondary when the viewer is further, then tertiary.
+			unsigned int PrimaryScale, SecondaryScale, TertiaryScale;
+
+		};
 
 		/**
 		 * @brief STPTextureDataLocation defines the location of a specific texture data in an array of layered texture
@@ -133,6 +148,10 @@ namespace SuperTerrainPlus::STPDiversity {
 			const unsigned int* LocationRegistryDictionary;
 			size_t LocationRegistryDictionaryCount;
 
+			//An array of texture views for each texture in the splat region.
+			const STPTextureView* TextureViewRegistry;
+			//The total number of splat region used on a splatmap.
+			size_t SplatRegionCount;
 		};
 
 		/**

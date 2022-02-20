@@ -17,8 +17,9 @@ using glm::vec3;
 
 STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const SIMPLE::SISection& section) {
 	STPEnvironment::STPMeshSetting rendering_options;
-	STPEnvironment::STPMeshSetting::STPTessellationSetting tess_options;
-	STPEnvironment::STPMeshSetting::STPTextureRegionSmoothSetting smooth_options;
+	STPEnvironment::STPMeshSetting::STPTessellationSetting& tess_options = rendering_options.TessSetting;
+	STPEnvironment::STPMeshSetting::STPTextureRegionSmoothSetting& smooth_options = rendering_options.RegionSmoothSetting;
+	STPEnvironment::STPMeshSetting::STPTextureScaleDistanceSetting& scale_options = rendering_options.RegionScaleSetting;
 
 	rendering_options.Strength = section("strength").to<float>();
 	rendering_options.Altitude = section("altitude").to<float>();
@@ -30,12 +31,11 @@ STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const S
 
 	smooth_options.KernelRadius = section("kernel_radius").to<unsigned int>();
 	smooth_options.KernelScale = section("kernel_scale").to<float>();
-	smooth_options.NoiseScale = section("noise_scale").to<float>();
+	smooth_options.NoiseScale = section("noise_scale").to<unsigned int>();
 
-	rendering_options.UVScaleFactor = section("uv_scale_factor").to<unsigned int>();
-
-	rendering_options.TessSetting = tess_options;
-	rendering_options.RegionSmoothSetting = smooth_options;
+	scale_options.PrimaryFar = section("uv_scale_primary_far").to<float>();
+	scale_options.SecondaryFar = section("uv_scale_secondary_far").to<float>();
+	scale_options.TertiaryFar = section("uv_scale_tertiary_far").to<float>();
 
 	return rendering_options;
 }

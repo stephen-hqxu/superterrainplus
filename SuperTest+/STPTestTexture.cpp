@@ -19,12 +19,18 @@ using namespace SuperTerrainPlus::STPDiversity;
 
 using glm::uvec2;
 
-bool operator==(const STPTextureDatabase::STPTextureDescription& v1, const STPTextureDatabase::STPTextureDescription& v2) {
+bool operator==(const STPTextureDatabase::STPMapGroupDescription& v1, const STPTextureDatabase::STPMapGroupDescription& v2) {
 	return v1.Dimension == v2.Dimension && 
 		v1.MipMapLevel == v2.MipMapLevel &&
 		v1.ChannelFormat == v2.ChannelFormat && 
 		v1.InteralFormat == v2.InteralFormat &&
 		v1.PixelFormat == v2.PixelFormat;
+}
+
+bool operator==(const STPTextureDatabase::STPViewGroupDescription& v1, const STPTextureDatabase::STPViewGroupDescription& v2) {
+	return v1.PrimaryScale == v2.PrimaryScale &&
+		v1.SecondaryScale == v2.SecondaryScale &&
+		v1.TertiaryScale == v2.TertiaryScale;
 }
 
 SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture information and retrieve whenever needed",
@@ -37,7 +43,8 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 		WHEN("The database is freshly created") {
 
 			THEN("Database should have zero size") {
-				REQUIRE(this->groupSize() == 0ull);
+				REQUIRE(this->mapGroupSize() == 0ull);
+				REQUIRE(this->viewGroupSize() == 0ull);
 				REQUIRE(this->mapSize() == 0ull);
 				REQUIRE(this->textureSize() == 0ull);
 				//internal components in the database
@@ -47,20 +54,22 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 
 			THEN("Deletion of members have no effect (by design) on the database") {
 				REQUIRE_NOTHROW(this->removeTexture(0u));
-				REQUIRE_NOTHROW(this->removeGroup(0u));
+				REQUIRE_NOTHROW(this->removeMapGroup(0u));
+				REQUIRE_NOTHROW(this->removeViewGroup(0u));
 			}
 
 			AND_WHEN("Trying to retrieve data that does not exist in the database") {
 
 				THEN("Operation is halted and error is reported") {
-					REQUIRE_THROWS_AS(this->getGroupDescription(123u), SuperTerrainPlus::STPException::STPDatabaseError);
+					REQUIRE_THROWS_AS(this->getMapGroupDescription(123u), SuperTerrainPlus::STPException::STPDatabaseError);
+					REQUIRE_THROWS_AS(this->getViewGroupDescription(456u), SuperTerrainPlus::STPException::STPDatabaseError);
 				}
 
 			}
 		}
 
 		WHEN("Some texture containers are inserted") {
-			static constexpr STPTextureDatabase::STPTextureDescription Description = {
+			static constexpr STPTextureDatabase::STPMapGroupDescription MapDescription = {
 				uvec2(2u),
 				2u,
 				//for simplicity we just mimic some random values for GL constants
@@ -68,23 +77,47 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 				1u,
 				2u
 			};
-			const auto DummyTex = this->addTexture();
-			const auto DummyGroup = this->addGroup(Description);
+			static constexpr STPTextureDatabase::STPViewGroupDescription ViewDescription = {
+				8u,
+				4u,
+				2u
+			};
+			const auto DummyMapGroup = this->addMapGroup(MapDescription);
+			const auto DummyViewGroup = this->addViewGroup(ViewDescription);
+			const auto DummyTex = this->addTexture(DummyViewGroup);
 
 			THEN("Container can inserted by verifying the number of each member in the database") {
 				REQUIRE(this->textureSize() == 1ull);
-				REQUIRE(this->groupSize() == 1ull);
+				REQUIRE(this->mapGroupSize() == 1ull);
+				REQUIRE(this->viewGroupSize() == 1ull);
 
 				AND_THEN("Container and container info can be retrieved and the same data is returned") {
 					//group desc
-					REQUIRE((this->getGroupDescription(DummyGroup) == Description));
+					REQUIRE((this->getMapGroupDescription(DummyMapGroup) == MapDescription));
+					REQUIRE((this->getViewGroupDescription(DummyViewGroup) == ViewDescription));
 
 					AND_THEN("Container can erased from the database by verifying the size") {
-						this->removeTexture(DummyTex);
-						this->removeGroup(DummyGroup);
+						const auto Path = GENERATE(range(0u, 2u));
+						switch (Path) {
+						case 0u://remove non-dependent containers
+							this->removeTexture(DummyTex);
+							this->removeMapGroup(DummyMapGroup);
+							this->removeViewGroup(DummyViewGroup);
 
-						REQUIRE(this->textureSize() == 0ull);
-						REQUIRE(this->groupSize() == 0ull);
+							REQUIRE(this->textureSize() == 0ull);
+							REQUIRE(this->mapGroupSize() == 0ull);
+							REQUIRE(this->viewGroupSize() == 0ull);
+							break;
+						case 1u://remove dependent container
+							this->removeViewGroup(DummyViewGroup);
+
+							REQUIRE(this->textureSize() == 0ull);
+							REQUIRE(this->mapGroupSize() == 1ull);
+							REQUIRE(this->viewGroupSize() == 0ull);
+							break;
+						default:
+							break;
+						}
 					}
 				}
 			}
@@ -97,20 +130,23 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 				}
 
 				THEN("Map can be inserted into the container by verifying the number of them") {
-					REQUIRE_NOTHROW(this->addMap(DummyTex, STPTextureType::Albedo, DummyGroup, DummyTexture));
+					REQUIRE_NOTHROW(this->addMap(DummyTex, STPTextureType::Albedo, DummyMapGroup, DummyTexture));
 					REQUIRE(this->mapSize() == 1u);
 
 					AND_THEN("Map should be erased if dependent container(s) is/are removed") {
-						const auto Path = GENERATE(range(0u, 3u));
+						const auto Path = GENERATE(range(0u, 4u));
 						//removal of any dependent container should delete the map
 						switch (Path) {
-						case 0u: this->removeGroup(DummyGroup);
+						case 0u: this->removeMapGroup(DummyMapGroup);
 							break;
 						case 1u: this->removeTexture(DummyTex);
 							break;
 						case 2u:
 							this->removeTexture(DummyTex);
-							this->removeGroup(DummyGroup);
+							this->removeMapGroup(DummyMapGroup);
+							break;
+						case 3u:
+							this->removeViewGroup(DummyViewGroup);
 							break;
 						default:
 							break;
@@ -175,26 +211,35 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 
 	GIVEN("A texture database with a lot of data to be loaded") {
 
-		WHEN("Trying to insert zero number of texture into the database") {
-
-			THEN("Insertion should be rejected") {
-				STPTextureInformation::STPTextureID BrokenTex;
-				REQUIRE_THROWS_AS(this->addTexture(0u, &BrokenTex), STPException::STPBadNumericRange);
-			}
-
-		}
-
 		THEN("Loading all data into the database in batch should be successful") {
+			//view group
+			STPTextureInformation::STPViewGroupID ViewGroup[2];
+			static constexpr STPTextureDatabase::STPViewGroupDescription big_scale = {
+				64u,
+				32u,
+				16u
+			}, small_scale = {
+				16u,
+				8u,
+				4u
+			};
+			ViewGroup[0] = this->addViewGroup(big_scale);
+			ViewGroup[1] = this->addViewGroup(small_scale);
+
 			//let's create some scenarios
 			//we deliberately add data in a random order, so we can verify later if all result sets are ordered correctly
 			//we will also be adding some unused texture and group and check if the database filters out unused containers
 			//texture
 			STPTextureInformation::STPTextureID Tex[5];
-			REQUIRE_NOTHROW(this->addTexture(5u, Tex));
+			Tex[0] = this->addTexture(ViewGroup[0], "grass");
+			Tex[1] = this->addTexture(ViewGroup[1]);
+			Tex[2] = this->addTexture(ViewGroup[1], "small_grass");
+			Tex[3] = this->addTexture(ViewGroup[0], "stone");
+			Tex[4] = this->addTexture(ViewGroup[1], "soil");
 
-			//group
-			STPTextureInformation::STPTextureGroupID Group[5];
-			static constexpr STPTextureDatabase::STPTextureDescription x2_rgb = {
+			//map group
+			STPTextureInformation::STPMapGroupID MapGroup[5];
+			static constexpr STPTextureDatabase::STPMapGroupDescription x2_rgb = {
 					uvec2(2u),
 					4u,
 					0u,
@@ -213,49 +258,67 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					2u,
 					3u
 			};
-			Group[0] = this->addGroup(x2_rgb);
-			Group[1] = this->addGroup(x2_rgb);
-			Group[2] = this->addGroup(x2_rgb);
-			Group[3] = this->addGroup(x4_rgb);
-			Group[4] = this->addGroup(x4_r);
+			MapGroup[0] = this->addMapGroup(x2_rgb);
+			MapGroup[1] = this->addMapGroup(x2_rgb);
+			MapGroup[2] = this->addMapGroup(x2_rgb);
+			MapGroup[3] = this->addMapGroup(x4_rgb);
+			MapGroup[4] = this->addMapGroup(x4_r);
 
 			//map
 			static constexpr unsigned char TexGrassColor[4] = { 66u }, TexGrassNormal[4] = { 13u },
 				TexStoneColor[4] = { 3u };
 			static constexpr unsigned char TexSoilColor[16] = { 6u }, TexSoilNormal[16] = { 11u }, TexSoilSpec[16] = { 133u };
 			REQUIRE_NOTHROW(this->addMap(Tex[3],
-				STPTextureType::Albedo, Group[2], TexStoneColor
+				STPTextureType::Albedo, MapGroup[2], TexStoneColor
 			));
 			//this texture will not be used by any rule, by definition texture0, group0 will all be "invalid" and will be removed in the batch result
 			REQUIRE_NOTHROW(this->addMap(Tex[0], 
-				STPTextureType::Normal, Group[0], TexGrassNormal
+				STPTextureType::Normal, MapGroup[0], TexGrassNormal
 			));
-			REQUIRE_NOTHROW(this->addMaps(Tex[4],
-				STPTextureType::Albedo, Group[3], TexSoilColor,
-				STPTextureType::Normal, Group[3], TexSoilNormal,
-				STPTextureType::Specular, Group[4], TexSoilSpec
+			//------------------------------------------------------
+			REQUIRE_NOTHROW(this->addMap(Tex[4],
+				STPTextureType::Albedo, MapGroup[3], TexSoilColor
 			));
-			REQUIRE_NOTHROW(this->addMaps(Tex[2],
-				STPTextureType::Albedo, Group[2], TexGrassColor,
-				STPTextureType::Normal, Group[2], TexGrassNormal
+			REQUIRE_NOTHROW(this->addMap(Tex[4],
+				STPTextureType::Normal, MapGroup[3], TexSoilNormal
 			));
+			REQUIRE_NOTHROW(this->addMap(Tex[4],
+				STPTextureType::Specular, MapGroup[4], TexSoilSpec
+			));
+			//-----------------------------------------------------
+			REQUIRE_NOTHROW(this->addMap(Tex[2],
+				STPTextureType::Albedo, MapGroup[2], TexGrassColor
+			));
+			REQUIRE_NOTHROW(this->addMap(Tex[2],
+				STPTextureType::Normal, MapGroup[2], TexGrassNormal
+			));
+			//-----------------------------------------------------
 
 			//splat rule
-			REQUIRE_NOTHROW(Splat.addGradients(66u,
-				0.0f, 0.6f, 0.0f, 0.55f, Tex[2],
+			REQUIRE_NOTHROW(Splat.addGradient(66u,
+				0.0f, 0.6f, 0.0f, 0.55f, Tex[2]
+			));
+			REQUIRE_NOTHROW(Splat.addGradient(66u,
 				0.65f, 1.0f, 0.55f, 0.95f, Tex[4]
 			));
-			REQUIRE_NOTHROW(Splat.addAltitudes(13u,
-				0.7f, Tex[2],
+			//--------------------------------------
+			REQUIRE_NOTHROW(Splat.addAltitude(13u,
+				0.7f, Tex[2]
+			));
+			REQUIRE_NOTHROW(Splat.addAltitude(13u,
 				1.0f, Tex[4]
 			));
-			REQUIRE_NOTHROW(Splat.addAltitudes(66u,
-				1.0f, Tex[3],
+			//--------------------------------------
+			REQUIRE_NOTHROW(Splat.addAltitude(66u,
+				1.0f, Tex[3]
+			));
+			REQUIRE_NOTHROW(Splat.addAltitude(66u,
 				0.6f, Tex[4]
 			));
 
 			AND_THEN("The number of data in the database should be consistent with what have been added") {
-				REQUIRE(this->groupSize() == 5ull);
+				REQUIRE(this->mapGroupSize() == 5ull);
+				REQUIRE(this->viewGroupSize() == 2ull);
 				REQUIRE(this->mapSize() == 7ull);
 				REQUIRE(this->textureSize() == 5ull);
 				//internal components in the database
@@ -312,10 +375,10 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 						}
 						{
 							//get group that has any map being used by any valid texture
-							const auto GroupRec = BatchVisitor.getValidGroup();
+							const auto GroupRec = BatchVisitor.getValidMapGroup();
 							CHECK(GroupRec.size() == 3ull);
 							const auto& [id, data_count, desc] = GroupRec[0];
-							CHECK(id == Group[2]);
+							CHECK(id == MapGroup[2]);
 							CHECK(data_count == 3ull);
 							CHECK((desc == x2_rgb));
 						}
@@ -323,9 +386,14 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 							//get textures that are referenced by any rule
 							const auto TexRec = BatchVisitor.getValidTexture();
 							CHECK(TexRec.size() == 3ull);
-							CHECK(TexRec[0] == Tex[2]);
-							CHECK(TexRec[1] == Tex[3]);
-							CHECK(TexRec[2] == Tex[4]);
+							CHECK(TexRec[0].first == Tex[2]);
+							CHECK((TexRec[0].second == small_scale));
+
+							CHECK(TexRec[1].first == Tex[3]);
+							CHECK((TexRec[1].second == big_scale));
+
+							CHECK(TexRec[2].first == Tex[4]);
+							CHECK((TexRec[2].second == small_scale));
 						}
 						{
 							//get maps that are used by valid texture
@@ -333,7 +401,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 							CHECK(MapRec.size() == 6ull);
 							const auto [group, tex, type, data] = MapRec[3];
 							const unsigned char* data_uc = reinterpret_cast<const unsigned char*>(data);
-							CHECK(group == Group[3]);
+							CHECK(group == MapGroup[3]);
 							CHECK(tex == Tex[4]);
 							CHECK(type == STPTextureType::Albedo);
 							CHECK(std::equal(data_uc, data_uc + sizeof(TexSoilColor), TexSoilColor));

@@ -66,7 +66,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 			float KernelScale;
 			//The UV multiplier applied to noise texture.
 			//Lower value gives smoother noise.
-			float NoiseScale;
+			unsigned int NoiseScale;
 
 			/**
 			 * @brief Init STPTextureRegionSmoothSetting with default settings.
@@ -74,6 +74,30 @@ namespace SuperTerrainPlus::STPEnvironment {
 			STPTextureRegionSmoothSetting();
 
 			~STPTextureRegionSmoothSetting() = default;
+
+			bool validate() const override;
+
+		};
+
+		/**
+		 * @brief STPTextureScaleDistanceSetting specifies how the system should use the multi-scale texture blending.
+		*/
+		struct STPTextureScaleDistanceSetting : public STPSetting {
+		public:
+
+			//The i-th far specifies the minimum distance from camera to texel to enable N-th texture scale, otherwise (i+1)-th scale is used.
+			//If none of the distance is satisfied, the N-th scale is used where N is the number scale settings in total.
+			//Except for the first distance which will always use the first scale, 
+			//and the texel distances outside the last far distance which will always use the last scale,
+			//any other i-th distance makes the texture being blended with texture scaled by the (i-1)-th.
+			float PrimaryFar, SecondaryFar, TertiaryFar;
+
+			/**
+			 * @brief Init STPTextureScaleDistance.
+			*/
+			STPTextureScaleDistanceSetting();
+
+			~STPTextureScaleDistanceSetting() = default;
 
 			bool validate() const override;
 
@@ -94,12 +118,8 @@ namespace SuperTerrainPlus::STPEnvironment {
 		STPTessellationSetting TessSetting;
 
 		//Fragment Control
+		STPTextureScaleDistanceSetting RegionScaleSetting;
 		STPTextureRegionSmoothSetting RegionSmoothSetting;
-		//Texture coordinate scaling control
-		//Texture coordinate will be calculated like this:
-		//UV * (Factor * TextureDimension ^ -1)
-		//The result should be a multiple of number of rendered chunk to avoid artifacts.
-		unsigned int UVScaleFactor;
 
 		/**
 		 * @brief Init STPMeshSettings with defaults

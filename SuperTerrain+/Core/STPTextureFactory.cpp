@@ -33,11 +33,11 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 	//temporary cache
 	STPIDConverter<STPTextureInformation::STPTextureID> textureID_converter;
 	STPIDConverter<STPTextureType> textureType_converter;
-	STPIDConverter<STPTextureInformation::STPTextureGroupID> groupID_converter;
+	STPIDConverter<STPTextureInformation::STPMapGroupID> map_groupID_converter;
 
 	typedef STPTextureDatabase::STPDatabaseView DbView;
 	//get all the data
-	const DbView::STPGroupRecord group_rec = database_view.getValidGroup();
+	const DbView::STPMapGroupRecord group_rec = database_view.getValidMapGroup();
 	const DbView::STPTextureRecord texture_rec = database_view.getValidTexture();
 	const DbView::STPMapRecord texture_map_rec = database_view.getValidMap();
 	const DbView::STPSampleRecord sample_rec = database_view.getValidSample();
@@ -58,7 +58,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 		glCreateTextures(GL_TEXTURE_2D_ARRAY, static_cast<GLsizei>(this->Texture.size()), this->Texture.data());
 		//loop through all groups
 		//we can also iterate through the GL texture array at the same time since they have the same dimension
-		groupID_converter.reserve(group_rec.size());
+		map_groupID_converter.reserve(group_rec.size());
 		for (auto [group_it, gl_texture_it, group_index] = make_tuple(group_rec.cbegin(), this->Texture.cbegin(), 0u);
 			group_it != group_rec.cend() && gl_texture_it != this->Texture.cend(); group_it++, gl_texture_it++, group_index++) {
 			const auto& [group_id, member_count, group_props] = *group_it;
@@ -69,14 +69,18 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			this->TextureOwnership.try_emplace(group_id, *gl_texture_it);
 
 			//build group ID converter
-			groupID_converter.emplace(group_id, group_index);
+			map_groupID_converter.emplace(group_id, group_index);
 		}
 
 		//now we build the texture ID to index converter
 		//loop through all texture collection
 		textureID_converter.reserve(texture_rec.size());
+		this->TextureViewRecord.reserve(texture_rec.size());
 		for (auto [texture_it, texture_index] = make_pair(texture_rec.cbegin(), 0u); texture_it != texture_rec.cend(); texture_it++, texture_index++) {
-			textureID_converter.emplace(*texture_it, texture_index);
+			const auto& [texture_id, texture_view] = *texture_it;
+
+			textureID_converter.emplace(texture_id, texture_index);
+			this->TextureViewRecord.emplace_back(texture_view);
 		}
 
 		//build texture type converter
@@ -90,7 +94,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 		this->TextureRegion.reserve(texture_map_rec.size());
 		this->TextureRegionLookup.resize(database_view.Database.textureSize() * UsedTypeCount, STPTextureFactory::UnusedType);
 		//loop through all texture data
-		STPTextureInformation::STPTextureGroupID prev_group = std::numeric_limits<STPTextureInformation::STPTextureGroupID>::max();
+		STPTextureInformation::STPMapGroupID prev_group = std::numeric_limits<STPTextureInformation::STPMapGroupID>::max();
 		unsigned int layer_idx = 0u;
 		for (const auto [group_id, texture_id, type, img] : texture_map_rec) {
 			//we know texture data has group index sorted in ascending order, the same as the group array
@@ -100,10 +104,10 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 				prev_group = group_id;
 				layer_idx = 0u;
 			}
-			const unsigned int group_idx = groupID_converter.at(group_id),
+			const unsigned int group_idx = map_groupID_converter.at(group_id),
 				texture_idx = textureID_converter.at(texture_id);
 			const TEXTYPE_TYPE type_idx = static_cast<TEXTYPE_TYPE>(textureType_converter.at(type));
-			const STPTextureDatabase::STPTextureDescription& desc = std::get<2>(group_rec[group_idx]);
+			const STPTextureDatabase::STPMapGroupDescription& desc = std::get<2>(group_rec[group_idx]);
 			const uvec2 dimension = desc.Dimension;
 
 			//populate memory for each layer
@@ -219,7 +223,7 @@ void STPTextureFactory::operator()(cudaTextureObject_t biomemap_tex, cudaTexture
 	}, stream);
 }
 
-STPOpenGL::STPuint STPTextureFactory::operator[](STPTextureInformation::STPTextureGroupID group_id) const {
+STPOpenGL::STPuint STPTextureFactory::operator[](STPTextureInformation::STPMapGroupID group_id) const {
 	return this->TextureOwnership.at(group_id);
 }
 
@@ -232,7 +236,10 @@ STPTextureInformation::STPSplatTextureDatabase STPTextureFactory::getSplatTextur
 		this->TextureRegion.size(),
 
 		this->TextureRegionLookup.data(),
-		this->TextureRegionLookup.size()
+		this->TextureRegionLookup.size(),
+
+		this->TextureViewRecord.data(),
+		this->TextureViewRecord.size()
 	};
 }
 

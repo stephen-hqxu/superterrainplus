@@ -122,7 +122,7 @@ bool STPMeshSetting::STPTessellationSetting::validate() const {
 STPMeshSetting::STPTextureRegionSmoothSetting::STPTextureRegionSmoothSetting() :
 	KernelRadius(1u), 
 	KernelScale(1.0f), 
-	NoiseScale(1.0f) {
+	NoiseScale(1u) {
 
 }
 
@@ -131,19 +131,31 @@ bool STPMeshSetting::STPTextureRegionSmoothSetting::validate() const {
 		&& this->KernelScale > 0.0f;
 }
 
+STPMeshSetting::STPTextureScaleDistanceSetting::STPTextureScaleDistanceSetting() : 
+	PrimaryFar(0.0f), SecondaryFar(0.0f), TertiaryFar(0.0f) {
+
+}
+
+bool STPMeshSetting::STPTextureScaleDistanceSetting::validate() const {
+	return this->PrimaryFar > 0.0f
+		&& this->SecondaryFar > 0.0f
+		&& this->TertiaryFar > 0.0f
+		&& this->PrimaryFar <= this->SecondaryFar
+		&& this->SecondaryFar <= this->TertiaryFar;
+}
+
 STPMeshSetting::STPMeshSetting() :
 	Strength(1.0f),
-	Altitude(1.0f), 
-	UVScaleFactor(1u) {
+	Altitude(1.0f) {
 
 }
 
 bool STPMeshSetting::validate() const {
 	return this->Strength > 0.0f
 		&& this->Altitude > 0.0f
-		&& this->UVScaleFactor > 0u
 		&& this->TessSetting.validate()
-		&& this->RegionSmoothSetting.validate();
+		&& this->RegionSmoothSetting.validate()
+		&& this->RegionScaleSetting.validate();
 }
 
 //STPOcclusionKernelSetting.h

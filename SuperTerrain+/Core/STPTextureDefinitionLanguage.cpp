@@ -2,6 +2,7 @@
 
 //Error
 #include <SuperTerrain+/Exception/STPInvalidSyntax.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 //Matching
 #include <ctype.h>
@@ -15,11 +16,13 @@
 
 using namespace SuperTerrainPlus::STPDiversity;
 
+using std::vector;
 using std::string;
 using std::string_view;
 using std::stringstream;
 using std::make_unique;
 using std::make_pair;
+using std::make_optional;
 using std::unique_ptr;
 
 using std::distance;
@@ -344,6 +347,9 @@ STPTextureDefinitionLanguage::STPTextureDefinitionLanguage(const string& source)
 		else if (operation == "rule") {
 			this->processRule();
 		}
+		else if (operation == "group") {
+			this->processGroup();
+		}
 		else {
 			//invalid operation
 			stringstream msg;
@@ -375,7 +381,8 @@ void STPTextureDefinitionLanguage::processTexture() {
 	while (true) {
 		const string_view textureName = this->Lexer->expect(TokenType::String).getLexeme();
 		//found a texture, store it
-		this->DeclaredTexture.emplace(textureName);
+		//initially the texture has no view information
+		this->DeclaredTexture.emplace(textureName, STPTextureDefinitionLanguage::UnreferencedIndex);
 
 		if (this->Lexer->expect(TokenType::Comma, TokenType::RightSquare).getType() == TokenType::RightSquare) {
 			//no more texture
@@ -438,6 +445,12 @@ void STPTextureDefinitionLanguage::processRule() {
 				//store a gradient rule
 				this->Gradient.emplace_back(rule4Sample, minG, maxG, LB, UB, map2Texture);
 			}
+			else {
+				stringstream msg;
+				this->Lexer->composeInitialErrorInfo(msg, "unrecognised rule type")
+					<< "Rule type \'" << rule_type << "\' is not recognised." << endl;
+				throw STPException::STPInvalidSyntax(msg.str().c_str());
+			}
 
 			if (this->Lexer->expect(TokenType::Comma, TokenType::RightBracket).getType() == TokenType::RightBracket) {
 				//no more rule setting
@@ -452,18 +465,98 @@ void STPTextureDefinitionLanguage::processRule() {
 	}
 }
 
+void STPTextureDefinitionLanguage::processGroup() {
+	static constexpr auto stoUint = [](const string_view& str) -> unsigned int {
+		return static_cast<unsigned int>(std::stoul(str.data()));
+	};
+	typedef STPTDLLexer::STPToken::STPType TokenType;
+
+	//the declared type of this group
+	const string_view group_type = this->Lexer->expect(TokenType::String).getLexeme();
+	this->Lexer->expect(TokenType::LeftCurly);
+	
+	//record all textures to be added to a new group,
+	//always make sure data being parsed are valid before adding to the parsing memory.
+	vector<string_view> texture_in_group;
+	//for each group
+	while (true) {
+		//clear old data
+		texture_in_group.clear();
+
+		//for each texture name assigned to this group
+		while (true) {
+			const string_view& assignedTexture = texture_in_group.emplace_back(this->Lexer->expect(TokenType::String).getLexeme());
+			this->checkTextureDeclared(assignedTexture);
+
+			if (this->Lexer->expect(TokenType::Comma, TokenType::Colon).getType() == TokenType::Colon) {
+				//no more texture to be assigned to this group
+				break;
+			}
+		}
+		this->Lexer->expect(TokenType::Equal);
+
+		//beginning of a group definition tuple
+		this->Lexer->expect(TokenType::LeftBracket);
+		if (group_type == "view") {
+			STPTextureDatabase::STPViewGroupDescription& view = this->DeclaredViewGroup.emplace_back();
+
+			view.PrimaryScale = stoUint(this->Lexer->expect(TokenType::Number).getLexeme());
+			this->Lexer->expect(TokenType::Comma);
+			view.SecondaryScale = stoUint(this->Lexer->expect(TokenType::Number).getLexeme());
+			this->Lexer->expect(TokenType::Comma);
+			view.TertiaryScale = stoUint(this->Lexer->expect(TokenType::Number).getLexeme());
+		}
+		else {
+			stringstream msg;
+			this->Lexer->composeInitialErrorInfo(msg, "unrecognised group type")
+				<< "Group type \'" << group_type << "\' is not reconogised." << endl;
+			throw STPException::STPInvalidSyntax(msg.str().c_str());
+		}
+		//end of a group definition tuple
+		this->Lexer->expect(TokenType::RightBracket);
+
+		//assign texture with group index
+		std::for_each(texture_in_group.cbegin(), texture_in_group.cend(), 
+		[&texture_table = this->DeclaredTexture, view_group_index = this->DeclaredViewGroup.size() - 1ull](const auto& name) {
+			//assign all texture to be added with the group just parsed
+			texture_table[name] = view_group_index;
+		});
+
+		if (this->Lexer->expect(TokenType::Comma, TokenType::RightCurly).getType() == TokenType::RightCurly) {
+			//end of group
+			break;
+		}
+	}
+}
+
 STPTextureDefinitionLanguage::STPTextureVariable STPTextureDefinitionLanguage::operator()(STPTextureDatabase& database) const {
 	//prepare variable dictionary for return
 	STPTextureVariable varDic;
 	const unsigned int textureCount = static_cast<unsigned int>(this->DeclaredTexture.size());
 	varDic.reserve(textureCount);
 
+	//to convert view group index to corresponded ID in the database
+	vector<STPTextureInformation::STPViewGroupID> ViewGroupIDLookup;
+	ViewGroupIDLookup.resize(this->DeclaredViewGroup.size());
+	//add texture view group
+	std::transform(this->DeclaredViewGroup.cbegin(), this->DeclaredViewGroup.cend(), ViewGroupIDLookup.begin(), [&database](const auto& view_desc) {
+		return database.addViewGroup(view_desc);
+	});
+
 	//requesting texture
-	auto textureID = make_unique<STPTextureInformation::STPTextureID[]>(textureCount);
-	database.addTexture(textureCount, textureID.get());
 	//assigne each variable with those texture ID
 	for (auto [texture_it, i] = make_pair(this->DeclaredTexture.cbegin(), 0u); texture_it != this->DeclaredTexture.cend(); texture_it++, i++) {
-		varDic.try_emplace(*texture_it, textureID[i]);
+		const auto& [texture_name, view_group_index] = *texture_it;
+		if (view_group_index == STPTextureDefinitionLanguage::UnreferencedIndex) {
+			//this index has no corresponding view group
+			stringstream msg;
+			msg << "View group reference for \'" << texture_name << "\' is undefined." << endl;
+
+			throw STPException::STPMemoryError(msg.str().c_str());
+		}
+
+		const STPTextureInformation::STPViewGroupID view_group_id = ViewGroupIDLookup[view_group_index];
+		varDic.try_emplace(texture_name, database.addTexture(view_group_id, make_optional(texture_name)), view_group_id);
 	}
 
 	//add splat rules into the database
@@ -471,10 +564,10 @@ STPTextureDefinitionLanguage::STPTextureVariable STPTextureDefinitionLanguage::o
 	STPTextureDatabase::STPTextureSplatBuilder& splat_builder = database.getSplatBuilder();
 	for (const auto& [sample, ub, textureName] : this->Altitude) {
 		//one way to call function using tuple is std::apply, however we need to replace textureName with textureID in this database.
-		splat_builder.addAltitude(sample, ub, varDic[textureName]);
+		splat_builder.addAltitude(sample, ub, varDic[textureName].first);
 	}
 	for (const auto& [sample, minG, maxG, lb, ub, textureName] : this->Gradient) {
-		splat_builder.addGradient(sample, minG, maxG, lb, ub, varDic[textureName]);
+		splat_builder.addGradient(sample, minG, maxG, lb, ub, varDic[textureName].first);
 	}
 
 	//DONE!!!

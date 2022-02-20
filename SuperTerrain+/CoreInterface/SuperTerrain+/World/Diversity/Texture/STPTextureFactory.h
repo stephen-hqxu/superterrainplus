@@ -55,7 +55,10 @@ namespace SuperTerrainPlus::STPDiversity {
 		//A collection of all texture data
 		std::vector<STPOpenGL::STPuint> Texture;
 		//this is a 1-to-1 mapping to the texture, group to a texture buffer.
-		std::unordered_map<STPTextureInformation::STPTextureGroupID, STPOpenGL::STPuint> TextureOwnership;
+		std::unordered_map<STPTextureInformation::STPMapGroupID, STPOpenGL::STPuint> TextureOwnership;
+		//texture view settings for each valid texture. View of a texture can be located using the region ID on the splatmap.
+		//This data structure ensures all texture regions have one and only one view record.
+		std::vector<STPTextureInformation::STPTextureView> TextureViewRecord;
 
 		std::vector<STPTextureInformation::STPTextureDataLocation> TextureRegion;
 		//texture region lookup table, if region is not used equivalent -1 will be filled
@@ -157,7 +160,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @return The textuer buffer object associating with the group ID specified.
 		 * If group ID is not valid, exception will eb thrown.
 		*/
-		STPOpenGL::STPuint operator[](STPTextureInformation::STPTextureGroupID) const;
+		STPOpenGL::STPuint operator[](STPTextureInformation::STPMapGroupID) const;
 
 		/**
 		 * @brief Get a data structure containing splat texture.

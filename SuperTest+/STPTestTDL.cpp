@@ -63,7 +63,10 @@ SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTexture
 						const auto [id, altNode] = alt.at(1);
 						CHECK(id == 100u);
 						CHECK(altNode.UpperBound == 0.7f);
-						CHECK(altNode.Reference.DatabaseKey == TexVar.at("grass"));
+
+						const auto [texture_id, view_id] = TexVar.at("grass");
+						CHECK(altNode.Reference.DatabaseKey == texture_id);
+						CHECK(Database.getViewGroupDescription(view_id).SecondaryScale == 20u);
 					}
 					{
 						//check gradient rules
@@ -73,7 +76,10 @@ SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTexture
 						CHECK(graNode.maxGradient == 0.5f);
 						CHECK(graNode.LowerBound == 0.2f);
 						CHECK(graNode.UpperBound == 0.55f);
-						CHECK(graNode.Reference.DatabaseKey == TexVar.at("gravel"));
+
+						const auto [texture_id, view_id] = TexVar.at("gravel");
+						CHECK(graNode.Reference.DatabaseKey == texture_id);
+						CHECK(Database.getViewGroupDescription(view_id).PrimaryScale == 40u);
 					}
 				}
 			}
@@ -89,12 +95,13 @@ SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTexture
 		};
 
 		WHEN("There is a syntatic error") {
-			constexpr char BrokenTDL1[] = "#texture [x]; \n #rule altitude{0:=(0.4f -> x)";
-			constexpr char BrokenTDL2[] = "#texture [x]; \n #rule gradient{0:=(0.1f, 0.2f, 0.3f -> x)}";
-			constexpr char BrokenTDL3[] = "#texture [x] \n #rule altitude{0:=(0.4f -> x)}";
-			constexpr char BrokenTDL4[] = "#texture [x]; \n #rule gradient{0:=(0.1f, 0.2f, 0.3f, 0.4f, x)}";
-			constexpr char BrokenTDL5[] = "#texture [x]; \n #rule altitude{0:=(0.4f -> x)};";
-			constexpr char BrokenTDL6[] = "#texture [x]; \n #rule altitude{0:=(0.4f $ x)}";
+			constexpr char BrokenTDL1[] = "#texture [x]; #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(0.4f -> x)";
+			constexpr char BrokenTDL2[] = "#texture [x]; #group view{x:=(1u,2u,3u)} \n #rule gradient{0:=(0.1f, 0.2f, 0.3f -> x)}";
+			constexpr char BrokenTDL3[] = "#texture [x] #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(0.4f -> x)}";
+			constexpr char BrokenTDL4[] = "#texture [x]; #group view{x:=(1u,2u,3u)} \n #rule gradient{0:=(0.1f, 0.2f, 0.3f, 0.4f, x)}";
+			constexpr char BrokenTDL5[] = "#texture [x]; #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(0.4f -> x)};";
+			constexpr char BrokenTDL6[] = "#texture [x]; #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(0.4f $ x)}";
+			constexpr char BrokenTDL7[] = "#texture [x]; #group view{x:=(1u,2u,3u} \n #rule altitude{0:=(0.4f -> x)}";
 
 			THEN("TDL interpreter should report the incorrectness and expected syntax") {
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("}"));
@@ -103,17 +110,20 @@ SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTexture
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL4), ContainsSubstring("-"));
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL5), ContainsSubstring("#"));
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL6), ContainsSubstring("$"));
+				REQUIRE_THROWS_WITH(tryParse(BrokenTDL7), ContainsSubstring(")"));
 			}
 
 		}
 
 		WHEN("There is a semantic error") {
-			constexpr char BrokenTDL1[] = "#texture [x]; \n #rule altitude{0:=(0.15f -> y)}";
-			constexpr char BrokenTDL2[] = "#texture [x]; \n #altitude{0:=(0.9f -> x)";
+			constexpr char BrokenTDL1[] = "#texture [x]; #group view{x:=(3u,2u,1u)} \n #rule altitude{0:=(0.15f -> y)}";
+			constexpr char BrokenTDL2[] = "#texture [x]; #group view{x:=(3u,2u,1u)} \n #altitude{0:=(0.9f -> x)";
+			constexpr char BrokenTDL3[] = "#texture [x]; #group hey{x:=(3u,2u,1u)} \n #rule altitude{0:=(0.5f -> x)";
 
 			THEN("TDL interpreter should report the incorrect semantic") {
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("y"));
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring("altitude") && ContainsSubstring("Operation code"));
+				REQUIRE_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring("hey") && ContainsSubstring("Group type"));
 			}
 
 		}
