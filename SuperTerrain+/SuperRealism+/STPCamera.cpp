@@ -11,9 +11,9 @@
 
 #include <algorithm>
 
-using glm::vec2;
-using glm::vec3;
-using glm::mat4;
+using glm::dvec2;
+using glm::dvec3;
+using glm::dmat4;
 
 using glm::normalize;
 using glm::radians;
@@ -22,7 +22,7 @@ using glm::cross;
 using namespace SuperTerrainPlus::STPRealism;
 
 STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) : 
-	Camera(props), View(mat4(0.0f)), ViewOutdated(true) {
+	Camera(props), View(glm::identity<dmat4>()), ViewOutdated(true) {
 	if (!this->Camera.validate()) {
 		throw STPException::STPInvalidEnvironment("Camera setting not validated");
 	}
@@ -33,8 +33,8 @@ STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) :
 
 void STPCamera::updateViewSpace() {
 	//calculate front based on the orientation
-	const float cos_pitch = glm::cos(this->Camera.Pitch);
-	this->Front = normalize(vec3(
+	const double cos_pitch = glm::cos(this->Camera.Pitch);
+	this->Front = normalize(dvec3(
 		glm::cos(this->Camera.Yaw) * cos_pitch,
 		glm::sin(this->Camera.Pitch),
 		glm::sin(this->Camera.Yaw) * cos_pitch
@@ -72,7 +72,7 @@ void STPCamera::removeListener(STPStatusChangeCallback* listener) const {
 	this->CallbackRegistry.erase(it);
 }
 
-const mat4& STPCamera::view() const {
+const dmat4& STPCamera::view() const {
 	if (this->ViewOutdated) {
 		//update view matrix
 		this->View = glm::lookAt(
@@ -90,9 +90,9 @@ const SuperTerrainPlus::STPEnvironment::STPCameraSetting& STPCamera::cameraStatu
 	return this->Camera;
 }
 
-void STPCamera::move(const STPMoveDirection direction, float delta) {
+void STPCamera::move(const STPMoveDirection direction, double delta) {
 	//scale the movement speed with delta, delta usually is the frametime
-	const float velocity = this->Camera.MovementSpeed * delta;
+	const double velocity = this->Camera.MovementSpeed * delta;
 
 	switch (direction) {
 	case STPMoveDirection::Forward: this->Camera.Position += this->Front * velocity;
@@ -120,10 +120,10 @@ void STPCamera::move(const STPMoveDirection direction, float delta) {
 	}
 }
 
-void STPCamera::rotate(const vec2& offset) {
-	static constexpr float YAW_LIM = radians(360.0f), PITCH_LIM = radians(89.0f);
-	static constexpr auto modulof = [](float val, float bound) constexpr -> float {
-		//a float modulo function
+void STPCamera::rotate(const dvec2& offset) {
+	static constexpr double YAW_LIM = radians(360.0), PITCH_LIM = radians(89.0);
+	static constexpr auto modulof = [](double val, double bound) constexpr -> double {
+		//a floating point modulo function
 		if (val >= bound || val <= -bound) {
 			return val - bound;
 		}
@@ -131,7 +131,7 @@ void STPCamera::rotate(const vec2& offset) {
 	};
 
 	//using sensitivity to scale the offset
-	const vec2 rotateAmount = offset * this->Camera.RotationSensitivity;
+	const dvec2 rotateAmount = offset * this->Camera.RotationSensitivity;
 	this->Camera.Yaw += rotateAmount.x;
 	//modulo the angle
 	this->Camera.Yaw = modulof(this->Camera.Yaw, YAW_LIM);

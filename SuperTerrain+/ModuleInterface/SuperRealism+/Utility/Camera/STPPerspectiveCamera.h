@@ -21,7 +21,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPEnvironment::STPPerspectiveCameraSetting Frustum;
 		//The projection matrix
-		mutable glm::mat4 PerspectiveProjection;
+		mutable glm::dmat4 PerspectiveProjection;
 		//Denotes if the projection matrix is no longer correct with the current setting.
 		mutable bool ProjectionOutdated;
 
@@ -61,29 +61,29 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The pointer to the current perspective matrix which is cached by the current camera.
 		 * Like the base camera class, this pointer will not be updated by the instance automatically.
 		*/
-		const glm::mat4& perspective() const;
+		const glm::dmat4& perspective() const;
 
-		const glm::mat4& projection() const override;
+		const glm::dmat4& projection() const override;
 
-		glm::mat4 projection(float, float) const override;
+		glm::dmat4 projection(double, double) const override;
 
 		/**
 		 * @brief Zoom the view frustum to change the perspective field-of-view.
 		 * @param delta The angle to be changed by, in radians.
 		*/
-		void zoom(float);
+		void zoom(double);
 
 		/**
 		 * @brief Rescale the view frustum by changing the aspect ratio.
 		 * @param aspect The new aspect ratio.
 		*/
-		void rescale(float);
+		void rescale(double);
 
 		/**
 		 * @brief Reshape the view frustum, specifically the near and far plane for the perspective view frustum.
 		 * @param shape The new shape, with near and far plane distance respectively in each component.
 		*/
-		void reshape(glm::vec2);
+		void reshape(glm::dvec2);
 
 	};
 

@@ -138,7 +138,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Set the new view position and signal the terrain generator to prepare heightfield texture.
 		 * @param viewPos The world position of the viewing coordinate to be prepared.
 		*/
-		void setViewPosition(const glm::vec3&);
+		void setViewPosition(const glm::dvec3&);
 
 		/**
 		 * @brief Render a regular procedural heightfield terrain.

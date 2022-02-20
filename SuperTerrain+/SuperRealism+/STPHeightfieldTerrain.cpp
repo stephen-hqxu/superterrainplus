@@ -35,7 +35,9 @@ using glm::uvec2;
 using glm::vec2;
 using glm::uvec3;
 using glm::vec3;
+using glm::dvec3;
 using glm::mat4;
+using glm::dmat4;
 using glm::value_ptr;
 
 using namespace SuperTerrainPlus;
@@ -256,29 +258,29 @@ void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 	STPcudaCheckErr(cudaGraphicsUnregisterResource(res));
 }
 
-void STPHeightfieldTerrain<false>::setViewPosition(const vec3& viewPos) {
+void STPHeightfieldTerrain<false>::setViewPosition(const dvec3& viewPos) {
 	//prepare heightfield
-	if (!this->TerrainGenerator.load(viewPos)) {
+	if (!this->TerrainGenerator.load(static_cast<vec3>(viewPos))) {
 		//centre chunk has yet changed, nothing to do.
 		return;
 	}
 
 	//update model matrix
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
-	mat4 Model = glm::identity<mat4>();
+	dmat4 Model = glm::identity<dmat4>();
 	//move the terrain centre to the camera
 	const vec2& chunkCentre = this->TerrainGenerator.centre();
-	Model = glm::translate(Model, vec3(
+	Model = glm::translate(Model, dvec3(
 		chunkCentre.x,
 		chunk_setting.ChunkOffset.y,
 		chunkCentre.y
 	));
-	Model = glm::scale(Model, vec3(
+	Model = glm::scale(Model, dvec3(
 		chunk_setting.ChunkScaling,
 		1.0f,
 		chunk_setting.ChunkScaling
 	));
-	this->TerrainModeller.uniform(glProgramUniformMatrix4fv, "MeshModel", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(Model));
+	this->TerrainModeller.uniform(glProgramUniformMatrix4fv, "MeshModel", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(static_cast<mat4>(Model)));
 }
 
 void STPHeightfieldTerrain<false>::render() const {

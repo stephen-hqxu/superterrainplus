@@ -30,7 +30,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//An array of float that determines the planes position of each camera frustum cut, 
 		//starting from the viewing camera near plane as the first array element.
-		typedef std::vector<float> STPCascadePlane;
+		typedef std::vector<double> STPCascadePlane;
 
 		/**
 		 * @brief STPLightFrustum defines the properties of the light frustum.
@@ -46,13 +46,13 @@ namespace SuperTerrainPlus::STPRealism {
 			//Specifies a bias value to each sub-frusta.
 			//This expands each sub-frusta near and far outward by this amount to allow capturing some contents outside the current view.
 			//This value is useful when performing cross-cascade blending, such as doing shadow filtering
-			float CascadeBandRadius;
+			double CascadeBandRadius;
 			//The pointer to the camera where the light frustum will be constructed based on this camera.
 			//This camera must remain valid until the current instance is destroyed.
 			const STPCamera* Focus;
 			//Specifies the depth multiplier of the light frustum.
 			//A value of 1.0 specifies a minimum light frustum bounded around the camera view frustum.
-			float ShadowDistanceMultiplier;
+			double ShadowDistanceMultiplier;
 
 		};
 
@@ -62,9 +62,9 @@ namespace SuperTerrainPlus::STPRealism {
 		template<class T>
 		using STPFrustumCorner = std::array<T, 8ull>;
 		//Frustum corner defined using vec4
-		typedef STPFrustumCorner<glm::vec4> STPFrustumCornerVec4;
+		typedef STPFrustumCorner<glm::dvec4> STPFrustumCornerDVec4;
 		//Frustum corner defined using 4 floats
-		typedef STPFrustumCorner<std::array<float, 4ull>> STPFrustumCornerFloat4;
+		typedef STPFrustumCorner<std::array<double, 4ull>> STPFrustumCornerDouble4;
 
 		//CSM handles directional light rather than positional.
 		glm::vec3 LightDirection;
@@ -81,7 +81,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param view The view matrix of the camera.
 		 * @return The light space view matrix.
 		*/
-		glm::mat4 calcLightSpace(float, float, const glm::mat4&) const;
+		glm::dmat4 calcLightSpace(double, double, const glm::dmat4&) const;
 
 		/**
 		 * @brief Calculate the light space view matrices for all divisions of view frustum and store them into mapped light buffer.

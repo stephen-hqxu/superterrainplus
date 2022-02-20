@@ -56,27 +56,27 @@ bool STPAtmosphereSetting::validate() const {
 //STPCameraSetting.h
 
 STPCameraSetting::STPCameraSetting() : 
-	Yaw(radians(-90.0f)), Pitch(0.0f),
-	MovementSpeed(2.5f), RotationSensitivity(0.1f),
-	Position(vec3(0.0f)), WorldUp(0.0f, 1.0f, 0.0f), 
-	Near(0.1f), Far(1.0f), LogarithmicConstant(1.0f) {
+	Yaw(radians(-90.0)), Pitch(0.0),
+	MovementSpeed(2.5), RotationSensitivity(0.1),
+	Position(vec3(0.0)), WorldUp(0.0, 1.0, 0.0), 
+	Near(0.1), Far(1.0), LogarithmicConstant(1.0) {
 
 }
 
 bool STPCameraSetting::validate() const {
-	static constexpr auto range = [](float val, float min, float max) constexpr -> bool {
+	static constexpr auto range = [](double val, double min, double max) constexpr -> double {
 		return val > min && val < max;
 	};
-	static constexpr float PI = glm::pi<float>(), PI_BY_2 = PI * 0.5f;
+	static constexpr double PI = glm::pi<double>(), PI_BY_2 = PI * 0.5;
 
 	return range(this->Yaw, -PI, PI) 
 		&& range(this->Pitch, -PI_BY_2, PI_BY_2) 
-		&& this->MovementSpeed > 0.0f 
-		&& this->RotationSensitivity > 0.0f
-		&& this->Near > 0.0f
-		&& this->Far > 0.0f
+		&& this->MovementSpeed > 0.0 
+		&& this->RotationSensitivity > 0.0
+		&& this->Near > 0.0
+		&& this->Far > 0.0
 		&& this->Near < this->Far
-		&& this->LogarithmicConstant > 0.0f;
+		&& this->LogarithmicConstant > 0.0;
 }
 
 //STPLightSetting.h
@@ -179,7 +179,7 @@ bool STPOcclusionKernelSetting::validate() const {
 //STPOrthographicCameraSetting.h
 
 STPOrthographicCameraSetting::STPOrthographicCameraSetting() : 
-	Left(-1.0f), Right(1.0f), Bottom(-1.0f), Top(1.0f) {
+	Left(-1.0), Right(1.0), Bottom(-1.0), Top(1.0) {
 
 }
 
@@ -191,24 +191,24 @@ bool STPOrthographicCameraSetting::validate() const {
 //STPPerspectiveCameraSetting.h
 
 STPPerspectiveCameraSetting::STPPerspectiveCameraSetting() :
-	ViewAngle(radians(45.0f)), ZoomSensitivity(1.0f),
-	ZoomLimit(radians(1.0f), radians(90.0f)),
-	Aspect(1.0f) {
+	ViewAngle(radians(45.0)), ZoomSensitivity(1.0),
+	ZoomLimit(radians(1.0), radians(90.0)),
+	Aspect(1.0) {
 
 }
 
 bool STPPerspectiveCameraSetting::validate() const {
-	static constexpr auto range = [](float val, float min, float max) constexpr -> bool {
+	static constexpr auto range = [](double val, double min, double max) constexpr -> double {
 		return val > min && val < max;
 	};
-	static constexpr float TWO_PI = glm::pi<float>() * 2.0f;
+	static constexpr double TWO_PI = glm::pi<double>() * 2.0;
 
-	return range(this->ViewAngle, 0.0f, TWO_PI)
-		&& this->ZoomSensitivity > 0.0f
-		&& this->ZoomLimit.x > 0.0f
-		&& this->ZoomLimit.y > 0.0f
+	return range(this->ViewAngle, 0.0, TWO_PI)
+		&& this->ZoomSensitivity > 0.0
+		&& this->ZoomLimit.x > 0.0
+		&& this->ZoomLimit.y > 0.0
 		&& this->ZoomLimit.x <= this->ZoomLimit.y
-		&& this->Aspect > 0.0f;
+		&& this->Aspect > 0.0;
 }
 
 //STPSunSetting.h

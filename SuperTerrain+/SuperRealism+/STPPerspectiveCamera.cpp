@@ -9,14 +9,14 @@
 
 using glm::radians;
 
-using glm::vec2;
-using glm::mat4;
+using glm::dvec2;
+using glm::dmat4;
 
 using namespace SuperTerrainPlus::STPRealism;
 
 STPPerspectiveCamera::STPPerspectiveCamera(const STPEnvironment::STPPerspectiveCameraSetting& projection_props, 
 	const STPEnvironment::STPCameraSetting& camera_pros) :
-	STPCamera(camera_pros), Frustum(projection_props), PerspectiveProjection(glm::identity<mat4>()), ProjectionOutdated(true) {
+	STPCamera(camera_pros), Frustum(projection_props), PerspectiveProjection(glm::identity<dmat4>()), ProjectionOutdated(true) {
 	if (!this->Frustum.validate()) {
 		throw STPException::STPInvalidEnvironment("Perspective projection setting not validated");
 	}
@@ -35,7 +35,7 @@ const SuperTerrainPlus::STPEnvironment::STPPerspectiveCameraSetting& STPPerspect
 	return this->Frustum;
 }
 
-inline const mat4& STPPerspectiveCamera::perspective() const {
+inline const dmat4& STPPerspectiveCamera::perspective() const {
 	if (this->ProjectionOutdated) {
 		//update the projection matrix
 		this->PerspectiveProjection = glm::perspective(
@@ -51,11 +51,11 @@ inline const mat4& STPPerspectiveCamera::perspective() const {
 	return this->PerspectiveProjection;
 }
 
-const mat4& STPPerspectiveCamera::projection() const {
+const dmat4& STPPerspectiveCamera::projection() const {
 	return this->perspective();
 }
 
-mat4 STPPerspectiveCamera::projection(float near, float far) const {
+dmat4 STPPerspectiveCamera::projection(double near, double far) const {
 	return glm::perspective(
 		this->Frustum.ViewAngle,
 		this->Frustum.Aspect,
@@ -64,7 +64,7 @@ mat4 STPPerspectiveCamera::projection(float near, float far) const {
 	);
 }
 
-void STPPerspectiveCamera::zoom(float delta) {
+void STPPerspectiveCamera::zoom(double delta) {
 	//change the view angle
 	this->Frustum.ViewAngle += delta * this->Frustum.ZoomSensitivity;
 	//limit the zoom angle
@@ -77,13 +77,13 @@ void STPPerspectiveCamera::zoom(float delta) {
 	this->setOutdated();
 }
 
-void STPPerspectiveCamera::rescale(float aspect) {
+void STPPerspectiveCamera::rescale(double aspect) {
 	this->Frustum.Aspect = aspect;
 
 	this->setOutdated();
 }
 
-void STPPerspectiveCamera::reshape(vec2 shape) {
+void STPPerspectiveCamera::reshape(dvec2 shape) {
 	this->Camera.Near = shape.x;
 	this->Camera.Far = shape.y;
 

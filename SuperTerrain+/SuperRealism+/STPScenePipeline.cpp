@@ -47,8 +47,10 @@ using glm::vec3;
 using glm::ivec4;
 using glm::vec4;
 using glm::mat3;
+using glm::dmat3;
 using glm::mat3x4;
 using glm::mat4;
+using glm::dmat4;
 using glm::value_ptr;
 
 using std::optional;
@@ -167,8 +169,8 @@ public:
 
 		//setup initial values
 		const STPEnvironment::STPCameraSetting& camSet = this->Camera.cameraStatus();
-		this->MappedBuffer->C = camSet.LogarithmicConstant;
-		this->MappedBuffer->Far = camSet.Far;
+		this->MappedBuffer->C = static_cast<float>(camSet.LogarithmicConstant);
+		this->MappedBuffer->Far = static_cast<float>(camSet.Far);
 		//update values
 		this->Buffer.flushMappedBufferRange(0, sizeof(STPPackedCameraBuffer));
 
@@ -211,18 +213,18 @@ public:
 			}
 
 			//if position changes, view must also change
-			const mat4& view = this->Camera.view();
+			const dmat4& view = this->Camera.view();
 
 			//view matrix has changed
 			camBuf->V = view;
-			camBuf->VNorm = static_cast<mat3x4>(glm::transpose(glm::inverse(static_cast<mat3>(view))));
+			camBuf->VNorm = static_cast<mat3x4>(glm::transpose(glm::inverse(static_cast<dmat3>(view))));
 			this->Buffer.flushMappedBufferRange(16, sizeof(mat4) + sizeof(mat3x4));
 
 			this->updateView = false;
 		}
 		if (this->updateProjection) {
 			//projection matrix has changed
-			const mat4& proj = this->Camera.projection();
+			const dmat4& proj = this->Camera.projection();
 
 			camBuf->P = proj;
 			camBuf->InvP = glm::inverse(proj);
@@ -233,7 +235,7 @@ public:
 
 		//update compond matrices
 		if (PV_changed) {
-			const mat4 proj_view = this->Camera.projection() * this->Camera.view();
+			const dmat4 proj_view = this->Camera.projection() * this->Camera.view();
 
 			//update the precomputed values
 			camBuf->PV = proj_view;
@@ -692,6 +694,11 @@ public:
 				frustumDivStart = scene_mem_current.LightFrustumDivisionPlane;
 			const string lightShadowLoc_str = to_string(lightShadowLoc);
 
+			//convert double frustum divisor to float
+			const size_t frustumDivisorCount = lightSpaceCount - 1ull;
+			unique_ptr<float[]> frustumDivisor = make_unique<float[]>(frustumDivisorCount);
+			std::copy_n(lightShadow.getDivision().data(), frustumDivisorCount, frustumDivisor.get());
+
 			this->OffScreenRenderer.uniform(glProgramUniform1ui,
 					this->createUniformName("EnvironmentLightList[", lightLoc_str, "].DirShadowIdx"), static_cast<unsigned int>(lightShadowLoc))
 
@@ -708,7 +715,7 @@ public:
 					this->createUniformName("DirectionalShadowList[", lightShadowLoc_str, "].LightSpaceDim"), static_cast<unsigned int>(lightSpaceCount))
 				.uniform(glProgramUniform1fv, 
 					this->createUniformName("LightFrustumDivisor[", to_string(frustumDivStart), "]"), 
-					static_cast<unsigned int>(lightSpaceCount - 1ull), lightShadow.getDivision().data());
+					static_cast<GLsizei>(frustumDivisorCount), frustumDivisor.get());
 		}
 		else {
 			//not shadow-casting? indicate in the shader this light does not cast shadow

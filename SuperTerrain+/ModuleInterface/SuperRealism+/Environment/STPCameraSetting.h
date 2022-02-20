@@ -18,19 +18,19 @@ namespace SuperTerrainPlus::STPEnvironment {
 	public:
 
 		//Euler's angles to define the rotation of the camera, expressed in radians
-		float Yaw, Pitch;
+		double Yaw, Pitch;
 		//These parameters define the animation of the camera.
-		float MovementSpeed, RotationSensitivity;
+		double MovementSpeed, RotationSensitivity;
 
 		//These vectors define a camera coordinate in world space and can be used to construct view matrix.
-		glm::vec3 Position, WorldUp;
+		glm::dvec3 Position, WorldUp;
 
 		//Define the depth of the view frustum.
-		float Near, Far;
+		double Near, Far;
 		//A constant value as a multiplier for logarithmic depth buffer conversion.
 		//This modifies the resolution near the camera.
 		//Larger value shifts the depth resolution towards near object.
-		float LogarithmicConstant;
+		double LogarithmicConstant;
 
 		/**
 		 * @brief Init STPCameraSetting with default values.

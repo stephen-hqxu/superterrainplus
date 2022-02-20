@@ -24,6 +24,7 @@ using std::make_unique;
 using std::make_pair;
 using std::make_optional;
 using std::unique_ptr;
+using std::make_unique;
 
 using std::distance;
 
@@ -536,10 +537,9 @@ STPTextureDefinitionLanguage::STPTextureVariable STPTextureDefinitionLanguage::o
 	varDic.reserve(textureCount);
 
 	//to convert view group index to corresponded ID in the database
-	vector<STPTextureInformation::STPViewGroupID> ViewGroupIDLookup;
-	ViewGroupIDLookup.resize(this->DeclaredViewGroup.size());
+	unique_ptr<STPTextureInformation::STPViewGroupID[]> ViewGroupIDLookup = make_unique<STPTextureInformation::STPViewGroupID[]>(this->DeclaredViewGroup.size());
 	//add texture view group
-	std::transform(this->DeclaredViewGroup.cbegin(), this->DeclaredViewGroup.cend(), ViewGroupIDLookup.begin(), [&database](const auto& view_desc) {
+	std::transform(this->DeclaredViewGroup.cbegin(), this->DeclaredViewGroup.cend(), ViewGroupIDLookup.get(), [&database](const auto& view_desc) {
 		return database.addViewGroup(view_desc);
 	});
 

@@ -18,11 +18,11 @@ namespace SuperTerrainPlus::STPEnvironment {
 	public:
 
 		//Controls the FoV of the perspective camera and the zooming speed. Angle is defined in radians.
-		float ViewAngle, ZoomSensitivity;
+		double ViewAngle, ZoomSensitivity;
 		//The min and max allowed zooming angle, in radians.
-		glm::vec2 ZoomLimit;
+		glm::dvec2 ZoomLimit;
 		//Frustum aspect ratio
-		float Aspect;
+		double Aspect;
 
 		/**
 		 * @brief Init STPPerspectiveCameraSetting with default settings.

@@ -70,7 +70,7 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		//The view matrix to transform from world space to view space.
-		mutable glm::mat4 View;
+		mutable glm::dmat4 View;
 		//Flag to indicate if the camera has changed its state since last time the view matrix was computed.
 		//The flag will be reset until view matrix is recomputed.
 		mutable bool ViewOutdated;
@@ -92,7 +92,7 @@ namespace SuperTerrainPlus::STPRealism {
 		STPEnvironment::STPCameraSetting Camera;
 
 		//A vector defines to the up and right of the camera
-		glm::vec3 Front, Up, Right;
+		glm::dvec3 Front, Up, Right;
 
 		mutable std::vector<STPStatusChangeCallback*> CallbackRegistry;
 
@@ -134,13 +134,13 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The pointer to the view matrix cached by the camera.
 		 * Note that this pointer will not be updated by the camera automatically unless this function is called.
 		*/
-		const glm::mat4& view() const;
+		const glm::dmat4& view() const;
 
 		/**
 		 * @brief Get the camera projection matrix that transform from view to clip space.
 		 * @return The pointer to the projection matrix.
 		*/
-		virtual const glm::mat4& projection() const = 0;
+		virtual const glm::dmat4& projection() const = 0;
 
 		/**
 		 * @brief Get the camera projection matrix that overrides the camera near and far plane settings.
@@ -148,7 +148,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param far The far plane of the projection frustum.
 		 * @return The projection matrix.
 		*/
-		virtual glm::mat4 projection(float, float) const = 0;
+		virtual glm::dmat4 projection(double, double) const = 0;
 
 		/**
 		 * @brief Get the current camera status.
@@ -161,13 +161,13 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param direction Specify in which direction the camera should be moved to.
 		 * @param delta A multiplier to the movement speed.
 		*/
-		void move(STPMoveDirection, float);
+		void move(STPMoveDirection, double);
 
 		/**
 		 * @brief Rotate the orientation of the camera in the world.
 		 * @param offset The relative angle of offset of the camera.
 		*/
-		void rotate(const glm::vec2&);
+		void rotate(const glm::dvec2&);
 
 	};
 

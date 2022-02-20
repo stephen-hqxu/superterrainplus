@@ -49,12 +49,6 @@ namespace SuperTerrainPlus::STPCompute {
 		*/
 		__device__ float grad2D(int, int) const;
 
-		/**
-		 * @brief Get the number of element in the gradient 2D table
-		 * @return The number of element
-		*/
-		__device__ unsigned int grad2D_size() const;
-
 	public:
 
 		/**

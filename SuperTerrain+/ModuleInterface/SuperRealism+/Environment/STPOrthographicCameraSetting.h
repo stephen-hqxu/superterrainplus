@@ -15,7 +15,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 	public:
 
 		//Define the bounding surface.
-		float Left, Right, Bottom, Top;
+		double Left, Right, Bottom, Top;
 
 		/**
 		 * @brief Init a STPOrthographicCameraSetting with default settings.

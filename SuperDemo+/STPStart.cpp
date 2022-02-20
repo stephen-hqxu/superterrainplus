@@ -58,6 +58,7 @@ using glm::dvec2;
 using glm::ivec3;
 using glm::uvec3;
 using glm::vec3;
+using glm::dvec3;
 using glm::vec4;
 using glm::mat3;
 using glm::mat4;
@@ -92,7 +93,7 @@ namespace STPStart {
 		//A number that locates the renderer in the scene
 		SuperTerrainPlus::STPRealism::STPScenePipeline::STPLightIdentifier SunIndex;
 
-		const vec3& ViewPosition;
+		const dvec3& ViewPosition;
 
 		//This time record the frametime from last frame that is not enough to round up to one tick
 		double FrametimeRemainer = 0.0;
@@ -245,17 +246,17 @@ namespace STPStart {
 			//-------------------------------------------
 			{
 				//sun shadow setting
-				const float camFar = camera.cameraStatus().Far;
+				const double camFar = camera.cameraStatus().Far;
 				const STPCascadedShadowMap::STPLightFrustum frustum = {
 					2048u,
 					{
-						camFar / 16.0f,
-						camFar / 3.5f,
-						camFar / 1.5f
+						camFar / 16.0,
+						camFar / 3.5,
+						camFar / 1.5
 					},
-					32.5f,
+					32.5,
 					&camera,
-					234.5f
+					234.5
 				};
 
 				//sun
@@ -427,7 +428,7 @@ namespace STPStart {
 		if (width != 0 && height != 0) {
 			//user has not minimised the window
 			//updating the screen size variable
-			MainCamera->rescale(1.0f * width / (1.0f * height));
+			MainCamera->rescale(1.0 * width / (1.0 * height));
 			//update main renderer
 			MasterEngine->resize(uvec2(width, height));
 			//adjust viewport
@@ -437,8 +438,8 @@ namespace STPStart {
 
 	static void cursor_moved(GLFWwindow*, double X, double Y) {
 		//we reverse Y since Y goes from bottom to top (from negative axis to positive)
-		const dvec2 currentPos = vec2(X, Y);
-		const vec2 offset = vec2(currentPos.x - LastRotation.x, LastRotation.y - currentPos.y);
+		const dvec2 currentPos = dvec2(X, Y);
+		const dvec2 offset = dvec2(currentPos.x - LastRotation.x, LastRotation.y - currentPos.y);
 		MainCamera->rotate(offset);
 
 		//update last rotation
@@ -447,7 +448,7 @@ namespace STPStart {
 
 	static void scrolled(GLFWwindow*, double, double Yoffset) {
 		//we only need vertical scroll
-		MainCamera->zoom(-static_cast<float>(Yoffset));
+		MainCamera->zoom(-Yoffset);
 	}
 
 #define STP_GET_KEY(KEY, FUNC) \
@@ -455,7 +456,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 	FUNC; \
 }
 
-	inline static void process_event(float delta) {
+	inline static void process_event(double delta) {
 		using Dir = SuperTerrainPlus::STPRealism::STPCamera::STPMoveDirection;
 
 		STP_GET_KEY(GLFW_KEY_W, MainCamera->move(Dir::Forward, delta))
@@ -582,21 +583,21 @@ int main() {
 	{
 		using namespace SuperTerrainPlus;
 		STPEnvironment::STPCameraSetting cam = { };
-		cam.Yaw = radians(90.0f);
-		cam.Pitch = 0.0f;
-		cam.MovementSpeed = engineINI("movementSpeed").to<float>();
-		cam.RotationSensitivity = engineINI("mouseSensitivity").to<float>();
-		cam.Position = vec3(0.0f, 600.0f, 0.0f);
-		cam.WorldUp = vec3(0.0f, 1.0f, 0.0f);
-		cam.Near = 1.0f;
-		cam.Far = 2500.0f;
-		cam.LogarithmicConstant = 1.0f;
+		cam.Yaw = radians(90.0);
+		cam.Pitch = 0.0;
+		cam.MovementSpeed = engineINI("movementSpeed").to<double>();
+		cam.RotationSensitivity = engineINI("mouseSensitivity").to<double>();
+		cam.Position = dvec3(0.0, 600.0, 0.0);
+		cam.WorldUp = dvec3(0.0, 1.0, 0.0);
+		cam.Near = 1.0;
+		cam.Far = 2500.0;
+		cam.LogarithmicConstant = 1.0;
 		
 		STPEnvironment::STPPerspectiveCameraSetting proj = { };
-		proj.ViewAngle = radians(60.0f);
-		proj.ZoomLimit = radians(vec2(20.0f, 100.0f));
-		proj.ZoomSensitivity = engineINI("zoomSensitivity").to<float>();
-		proj.Aspect = 1.0f * STPStart::InitialCanvasSize.x / (1.0f * STPStart::InitialCanvasSize.y);
+		proj.ViewAngle = radians(60.0);
+		proj.ZoomLimit = radians(dvec2(20.0, 140.0));
+		proj.ZoomSensitivity = engineINI("zoomSensitivity").to<double>();
+		proj.Aspect = 1.0 * STPStart::InitialCanvasSize.x / (1.0 * STPStart::InitialCanvasSize.y);
 
 		STPStart::MainCamera.emplace(proj, cam);
 	}
@@ -618,7 +619,7 @@ int main() {
 	}
 
 	//rendering loop
-	double currentTime, lastTime = 0.0f, deltaTime, FPS = engineINI("FPS").to<double>();
+	double currentTime, lastTime = 0.0, deltaTime, FPS = engineINI("FPS").to<double>();
 	cout << "Start..." << endl;
 	while (!glfwWindowShouldClose(STPStart::GLCanvas)) {
 		//frametime logic
@@ -630,7 +631,7 @@ int main() {
 		lastTime = currentTime;
 
 		//draw
-		STPStart::process_event(static_cast<float>(deltaTime));
+		STPStart::process_event(deltaTime);
 		try {
 			STPStart::MasterEngine->render(deltaTime);
 		}
