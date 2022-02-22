@@ -5,6 +5,7 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //Scene Node
 #include "../STPSceneObject.h"
+#include "../../Geometry/STPPlaneGeometry.h"
 //GL Utility
 #include "../../Object/STPPipelineManager.h"
 #include "../../Object/STPBuffer.h"
@@ -76,9 +77,9 @@ namespace SuperTerrainPlus::STPRealism {
 		//The main terrain generator
 		STPWorldPipeline& TerrainGenerator;
 
-		//A buffer representing the a tile (a unit plane).
-		STPBuffer TileBuffer, TileIndex, TerrainRenderCommand;
-		STPVertexArray TileArray;
+		//A buffer representing the terrain plane.
+		std::optional<STPPlaneGeometry> TerrainMesh;
+		STPBuffer TerrainRenderCommand;
 		STPTexture NoiseSample;
 
 		//Shader program for terrain rendering
@@ -97,7 +98,13 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		typedef STPLogStorage<8ull> STPHeightfieldTerrainLog;
+		struct STPHeightfieldTerrainLog {
+		public:
+
+			STPLogStorage<8ull> TerrainShader;
+			STPPlaneGeometry::STPPlaneGeometryLog PlaneGenerator;
+
+		};
 
 		//The size of the texture storing rangom numbers.
 		const glm::uvec3 RandomTextureDimension;
@@ -105,7 +112,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Initialise the heightfield terrain rendering engine without shadow.
 		 * @param generator_pipeline A pointer to the world pipeline that provides heightfield.
-		 * @param log The pointer to the log output from GL shader and program compiler.
+		 * @param raw_log The pointer to the log output from GL shader and program compiler.
 		 * @param option The pointer to various compiler options.
 		*/
 		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, const STPTerrainShaderOption&);

@@ -1,8 +1,5 @@
 #include <SuperRealism+/Object/STPBindlessTexture.h>
 
-//Error
-#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
-
 //GLAD
 #include <glad/glad.h>
 
@@ -13,9 +10,6 @@ void STPBindlessTexture::STPBindlessTextureInvalidater::operator()(STPOpenGL::ST
 }
 
 inline void STPBindlessTexture::enableHandle() const {
-	if (!GLAD_GL_ARB_bindless_texture) {
-		throw STPException::STPUnsupportedFunctionality("The current rendering context does not support ARB_bindless_texture");
-	}
 	glMakeTextureHandleResidentARB(this->Handle.get());
 }
 

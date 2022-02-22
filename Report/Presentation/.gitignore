@@ -1,4 +1,6 @@
 #ignore images for now
-#presentation slides is temporarily moved into the image folder to prevent git from tracking it
-#add it back later when the slides is all done
 Image/
+
+#presentation slides is temporarily removed from git to reduce repo size
+#add it back later when the slides is all done
+*.pptx

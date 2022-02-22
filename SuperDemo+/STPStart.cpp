@@ -297,7 +297,8 @@ namespace STPStart {
 				DepthTessSetting.MaxTessLevel *= 0.5f;
 
 				this->TerrainRenderer = this->RenderPipeline->add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
-				STPMasterRenderer::printLog(terrain_log);
+				STPMasterRenderer::printLog(terrain_log.PlaneGenerator);
+				STPMasterRenderer::printLog(terrain_log.TerrainShader);
 				//initial setup
 				this->TerrainRenderer->setMesh(MeshSetting);
 				this->TerrainRenderer->setDepthMeshQuality(DepthTessSetting);

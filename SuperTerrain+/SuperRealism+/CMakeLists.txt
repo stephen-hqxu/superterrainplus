@@ -2,6 +2,7 @@
 add_library(${STP_REALISM_ENGINE} SHARED
 STPAlphaCulling.cpp
 STPAmbientOcclusion.cpp
+STPBindlessBuffer.cpp
 STPBindlessTexture.cpp
 STPBuffer.cpp
 STPCamera.cpp
@@ -14,6 +15,7 @@ STPLightSpectrum.cpp
 STPOrthographicCamera.cpp
 STPPerspectiveCamera.cpp
 STPPipelineManager.cpp
+STPPlaneGeometry.cpp
 STPPostProcess.cpp
 STPProgramManager.cpp
 STPRealismEnvironment.cpp

@@ -1,0 +1,99 @@
+#version 460 core
+//Allow write to bindless buffer
+#extension GL_NV_gpu_shader5 : require
+
+layout(
+	local_size_x = 32, 
+	local_size_y = 32
+) in;
+
+struct TileStride{
+	float X, Y, Z;
+	float U, V;
+};
+struct TileGeometry{
+	TileStride TS[4];
+};
+struct TileElement{
+	unsigned int TE[6];
+};
+
+//Output
+uniform writeonly restrict TileGeometry* TileBuffer;
+uniform writeonly restrict TileElement* TileIndex;
+
+//Some information about tile plane
+uniform uvec2 TotalTile;
+uniform dvec2 BaseTilePosition;//The coordinate of the most top-left tile in world position, contains x and z
+
+//Unit-tile template data
+const dvec2 PlaneVertex[4] = {
+	//For position, it only includes x and z coordinate;
+	//For texture coordinate, it is interpreted as u and v.
+	{0.0, 0.0},
+	{0.0, 1.0},
+	{1.0, 1.0},
+	{1.0, 0.0}
+};
+const uvec3 PlaneIndex[2] = {
+	//Each tile has two faces
+	{0, 1, 2}, 
+	{0, 2, 3}
+};
+
+void main(){
+	//We need to instancing the unit plane and build up chunks
+	//Each chunk is again build by multiple unit planes
+	//So the number of instance will be chunk_size*number_of_chunk
+	//Chunks will be built up from top-left to bottom-right corner
+	//Unit planes in each chunk will be again built from top-left to bottom-right
+
+	//All calculations are performed in FP64 and casted to FP32 before writing to output.
+
+	//Calculate the x,y offset of the local unit plane within the chunk we are currently in
+	const uvec2 local_offset = gl_GlobalInvocationID.xy;
+	if(local_offset.x >= TotalTile.x || local_offset.y >= TotalTile.y){
+		return;
+	}
+	//Locate the output buffer
+	const uint output_index = local_offset.x + local_offset.y * TotalTile.x;
+
+	/* ------------------------------ process vertex data ------------------------------ */
+	const dvec2 uv_increment = 1.0 / dvec2(TotalTile);
+	writeonly restrict TileGeometry* OutputBuffer = TileBuffer + output_index;
+
+	for(int i = 0; i < PlaneVertex.length; i++){
+		dvec2 local_plane_position = PlaneVertex[i] + BaseTilePosition,
+			local_plane_uv = PlaneVertex[i];
+
+		//Preparation done, starting moving instanced unit planes
+		//offset the local unit plane
+		local_plane_position += local_offset;
+		//remap the uv
+		local_plane_uv *= uv_increment;
+		local_plane_uv += uv_increment * local_offset;
+
+		//output to vertex buffer
+		OutputBuffer->TS[i].X = float(local_plane_position.x);
+		//tiles are always at zero altitude
+		OutputBuffer->TS[i].Y = 0.0f;
+		OutputBuffer->TS[i].Z = float(local_plane_position.y);
+		OutputBuffer->TS[i].U = float(local_plane_uv.s);
+		OutputBuffer->TS[i].V = float(local_plane_uv.t);
+	}
+
+	/* ------------------------------- process index data ------------------------------ */
+	//each tile has that many indices, we stride it to get an offset.
+	//each tile has 4 vertices
+	const uint face_offset = PlaneVertex.length * output_index;
+	writeonly restrict TileElement* OutputIndex = TileIndex + output_index;
+
+	for(int i = 0; i < PlaneIndex.length; i++){
+		const uvec3 local_face = PlaneIndex[i] + face_offset;
+
+		//output to index buffer
+		for(int j = 0; j < 3; j++){
+			OutputIndex->TE[i * 3 + j] = local_face[j];
+		}
+	}
+}

@@ -12,7 +12,10 @@ Environment/STPOcclusionKernelSetting.h
 Environment/STPOrthographicCameraSetting.h
 Environment/STPPerspectiveCameraSetting.h
 Environment/STPSunSetting.h
+# /Geometry
+Geometry/STPPlaneGeometry.h
 # /Object
+Object/STPBindlessBuffer.h
 Object/STPBindlessTexture.h
 Object/STPBuffer.h
 Object/STPFrameBuffer.h

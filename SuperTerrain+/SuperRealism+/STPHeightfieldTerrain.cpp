@@ -46,50 +46,34 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static auto HeightfieldTerrainShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPHeightfieldTerrain", 
 	".vert", ".tesc", ".tese", ".geom", ".frag");
 
-constexpr static array<unsigned char, 20ull> PlaneVertex = {
-	//Position		//Texcoords
-	0, 0, 0,		0, 0,
-	0, 0, 1,		0, 1,
-	1, 0, 1,		1, 1,
-	1, 0, 0,		1, 0
-};
-constexpr static array<unsigned char, 6ull> PlaneIndex = {
-	0, 1, 2,
-	0, 2, 3
-};
 constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
-	static_cast<unsigned int>(PlaneIndex.size()),
-	//Needs to set instance count manually during runtime
+	//Need to set the number of terrain tile during initialisation
+	0u,
 	1u,
 	0u,
 	0u,
 	0u
 };
 
-STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, const STPTerrainShaderOption& option) :
+STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& raw_log, const STPTerrainShaderOption& option) :
 	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(option.NoiseDimension) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	const STPDiversity::STPTextureFactory& splatmap_generator = this->TerrainGenerator.splatmapGenerator();
 	const STPDiversity::STPTextureInformation::STPSplatTextureDatabase splat_texture = splatmap_generator.getSplatTexture();
 
-	//setup rendering buffer
-	this->TileBuffer.bufferStorageSubData(PlaneVertex.data(), PlaneVertex.size() * sizeof(unsigned char), GL_NONE);
-	this->TileIndex.bufferStorageSubData(PlaneIndex.data(), PlaneIndex.size() * sizeof(unsigned char), GL_NONE);
-	//setup indirect buffer
+	/* ---------------------------------------- setup terrain tile buffer ---------------------------------------- */
+	const vec2 chunkHorizontalOffset = vec2(chunk_setting.ChunkOffset.x, chunk_setting.ChunkOffset.z);
 	const uvec2 tileDimension = chunk_setting.ChunkSize * chunk_setting.RenderedChunk;
-	STPIndirectCommand::STPDrawElement cmd = TerrainDrawCommand;
-	cmd.InstancedCount = tileDimension.x * tileDimension.y;
-	this->TerrainRenderCommand.bufferStorageSubData(&cmd, sizeof(cmd), GL_NONE);
-	//attributing
-	STPVertexArray::STPVertexAttributeBuilder attr = this->TileArray.attribute();
-	attr.format(3, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(unsigned char))
-		.format(2, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(unsigned char))
-		.vertexBuffer(this->TileBuffer, 0)
-		.elementBuffer(this->TileIndex)
-		.binding();
-	this->TileArray.enable(0u, 2u);
 
-	//setup shader
+	//generate terrain mesh
+	this->TerrainMesh.emplace(tileDimension, this->calcBaseChunkPosition(chunkHorizontalOffset), raw_log.PlaneGenerator);
+	//setup indirect buffer
+	STPIndirectCommand::STPDrawElement cmd = TerrainDrawCommand;
+	cmd.Count = this->TerrainMesh->planeIndexCount();
+	this->TerrainRenderCommand.bufferStorageSubData(&cmd, sizeof(cmd), GL_NONE);
+
+	/* ------------------------------------------ setup terrain shader ---------------------------------------------- */
+	auto& log = raw_log.TerrainShader;
 	STPShaderManager terrain_shader[HeightfieldTerrainShaderFilename.size()] = {
 		GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER, GL_GEOMETRY_SHADER, GL_FRAGMENT_SHADER
 	};
@@ -150,18 +134,10 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 		.finalise();
 
 	/* ------------------------------- setup initial immutable uniforms ---------------------------------- */
-	const vec2 chunkHorizontalOffset = vec2(chunk_setting.ChunkOffset.x, chunk_setting.ChunkOffset.z);
-	const vec2 baseChunkPosition = this->calcBaseChunkPosition(chunkHorizontalOffset);
-	const uvec2 rendered_chunk = chunk_setting.RenderedChunk;
-
 	//setup program for meshing the terrain
 	this->TerrainModeller
 		//heightfield for displacement mapping
-		.uniform(glProgramUniform1i, "Heightfield", 1)
-		//chunk setting
-		.uniform(glProgramUniform2uiv, "RenderedChunk", 1, value_ptr(rendered_chunk))
-		.uniform(glProgramUniform2uiv, "ChunkSize", 1, value_ptr(chunk_setting.ChunkSize))
-		.uniform(glProgramUniform2fv, "BaseChunkPosition", 1, value_ptr(baseChunkPosition));
+		.uniform(glProgramUniform1i, "Heightfield", 1);
 
 	//setup program that shades terrain with color
 	this->TerrainShader
@@ -171,7 +147,7 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 		.uniform(glProgramUniform1i, "Splatmap", 2)
 		.uniform(glProgramUniform1i, "Noisemap", 3)
 		//extra terrain info for rendering
-		.uniform(glProgramUniform2uiv, "VisibleChunk", 1, value_ptr(rendered_chunk))
+		.uniform(glProgramUniform2uiv, "VisibleChunk", 1, value_ptr(chunk_setting.RenderedChunk))
 		.uniform(glProgramUniform2fv, "ChunkHorizontalOffset", 1, value_ptr(chunkHorizontalOffset));
 
 	/* --------------------------------- setup texture splatting ------------------------------------ */
@@ -293,12 +269,12 @@ void STPHeightfieldTerrain<false>::render() const {
 	glBindTextureUnit(2, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::SPLAT]);
 	this->NoiseSample.bind(3);
 
-	this->TileArray.bind();
+	this->TerrainMesh->bindPlaneVertexArray();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
 
 	this->TerrainRenderer.bind();
 	//render
-	glDrawElementsIndirect(GL_PATCHES, GL_UNSIGNED_BYTE, nullptr);
+	glDrawElementsIndirect(GL_PATCHES, GL_UNSIGNED_INT, nullptr);
 
 	//clear up
 	STPPipelineManager::unbind();
@@ -367,7 +343,7 @@ void STPHeightfieldTerrain<true>::renderDepth(size_t light_space_count) const {
 	//in this case we only need heightfield for tessellation
 	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
 
-	this->TileArray.bind();
+	this->TerrainMesh->bindPlaneVertexArray();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
 	//enable low quality mesh
 	this->TerrainModeller.uniform(glProgramUniform1ui, this->MeshQualityLocation, 1u);
@@ -375,7 +351,7 @@ void STPHeightfieldTerrain<true>::renderDepth(size_t light_space_count) const {
 	//find the correct render group
 	this->TerrainDepthRenderer.findPipeline(light_space_count).bind();
 	//render
-	glDrawElementsIndirect(GL_PATCHES, GL_UNSIGNED_BYTE, nullptr);
+	glDrawElementsIndirect(GL_PATCHES, GL_UNSIGNED_INT, nullptr);
 
 	//clear up
 	STPPipelineManager::unbind();
