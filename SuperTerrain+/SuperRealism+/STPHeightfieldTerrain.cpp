@@ -88,8 +88,8 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 			using namespace SuperTerrainPlus::STPDiversity;
 			//general info
 			Macro("GROUP_COUNT", splat_texture.TextureBufferCount)
-				("REGISTRY_COUNT", splat_texture.LocationRegistryCount)
-				("REGISTRY_DICTIONARY_COUNT", splat_texture.LocationRegistryDictionaryCount)
+				//The registry contains region that either has and has no texture data.
+				("REGISTRY_COUNT", splat_texture.LocationRegistryDictionaryCount)
 				("SPLAT_REGION_COUNT", splat_texture.SplatRegionCount)
 
 			//texture type
@@ -152,7 +152,28 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 
 	/* --------------------------------- setup texture splatting ------------------------------------ */
 	//get splatmap dataset
-	const auto& [tbo, tbo_count, reg, reg_count, dict, dict_count, view_reg, region_count] = splat_texture;
+	const auto& [tbo, tbo_count, registry, registry_count, dict, dict_count, view_reg, region_count] = splat_texture;
+
+	using STPDiversity::STPTextureInformation::STPTextureDataLocation;
+	//prepare region registry
+	//store all region registry data into a buffer and grab the device address
+	this->SplatRegion.bufferStorageSubData(registry, sizeof(STPTextureDataLocation) * registry_count, GL_NONE);
+	this->SplatRegionAddress.emplace(this->SplatRegion, GL_READ_ONLY);
+	const GLuint64EXT region_address_beg = **this->SplatRegionAddress;
+
+	//next build the registry lookup dictionary
+	unique_ptr<GLuint64EXT[]> region_data_address = make_unique<GLuint64EXT[]>(dict_count);
+	for (unsigned int i = 0u; i < dict_count; i++) {
+		const unsigned int reg_loc = dict[i];
+		//some region might have no associated texture data, therefore we assign a null pointer
+		if (reg_loc >= registry_count) {
+			region_data_address[i] = 0ull;
+			continue;
+		}
+
+		//if this region has texture data, we lookup the address of it.
+		region_data_address[i] = region_address_beg + sizeof(STPTextureDataLocation) * reg_loc;
+	}
 
 	//prepare bindless texture
 	this->SplatTextureHandle.reserve(tbo_count);
@@ -170,8 +191,7 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 	//send bindless handle to the shader
 	this->TerrainShader.uniform(glProgramUniformHandleui64vARB, "RegionTexture", static_cast<GLsizei>(tbo_count), rawHandle.get())
 		//prepare registry
-		.uniform(glProgramUniform2uiv, "RegionRegistry", static_cast<GLsizei>(reg_count), reinterpret_cast<const unsigned int*>(reg))
-		.uniform(glProgramUniform1uiv, "RegistryDictionary", static_cast<GLsizei>(dict_count), dict)
+		.uniform(glProgramUniformui64vNV, "RegionRegistry", static_cast<GLsizei>(dict_count), region_data_address.get())
 		.uniform(glProgramUniform3uiv, "RegionScaleRegistry", static_cast<GLsizei>(region_count), value_ptr(scale_factors[0]));
 
 	/* --------------------------------- shader noise texture preparation ------------------------------ */

@@ -29,11 +29,12 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static array<string_view, 4ull> mShaderIncludeRegistry = {
+constexpr static array<string_view, 5ull> mShaderIncludeRegistry = {
 	"/Common/STPAtmosphericScattering.glsl",
 	"/Common/STPCameraInformation.glsl",
 	"/Common/STPGeometryBufferWriter.glsl",
-	"/Common/STPLightSpaceInformation.glsl"
+	"/Common/STPLightSpaceInformation.glsl",
+	"/Common/STPNullPointer.glsl"
 };
 
 void STPShaderManager::STPShaderDeleter::operator()(STPOpenGL::STPuint shader) const {

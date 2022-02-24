@@ -9,6 +9,7 @@
 //GL Utility
 #include "../../Object/STPPipelineManager.h"
 #include "../../Object/STPBuffer.h"
+#include "../../Object/STPBindlessBuffer.h"
 #include "../../Object/STPVertexArray.h"
 #include "../../Object/STPTexture.h"
 #include "../../Object/STPBindlessTexture.h"
@@ -87,6 +88,9 @@ namespace SuperTerrainPlus::STPRealism {
 		mutable STPProgramManager TerrainModeller, TerrainShader;
 		STPPipelineManager TerrainRenderer;
 
+		//data for texture splatting
+		STPBuffer SplatRegion;
+		std::optional<STPBindlessBuffer> SplatRegionAddress;
 		std::vector<STPBindlessTexture> SplatTextureHandle;
 
 		/**

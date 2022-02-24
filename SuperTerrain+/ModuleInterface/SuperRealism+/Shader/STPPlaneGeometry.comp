@@ -19,8 +19,8 @@ struct TileElement{
 };
 
 //Output
-uniform writeonly restrict TileGeometry* TileBuffer;
-uniform writeonly restrict TileElement* TileIndex;
+uniform writeonly TileGeometry* restrict TileBuffer;
+uniform writeonly TileElement* restrict TileIndex;
 
 //Some information about tile plane
 uniform uvec2 TotalTile;
@@ -60,7 +60,7 @@ void main(){
 
 	/* ------------------------------ process vertex data ------------------------------ */
 	const dvec2 uv_increment = 1.0 / dvec2(TotalTile);
-	writeonly restrict TileGeometry* OutputBuffer = TileBuffer + output_index;
+	TileGeometry* restrict const OutputBuffer = TileBuffer + output_index;
 
 	for(int i = 0; i < PlaneVertex.length; i++){
 		dvec2 local_plane_position = PlaneVertex[i] + BaseTilePosition,
@@ -86,7 +86,7 @@ void main(){
 	//each tile has that many indices, we stride it to get an offset.
 	//each tile has 4 vertices
 	const uint face_offset = PlaneVertex.length * output_index;
-	writeonly restrict TileElement* OutputIndex = TileIndex + output_index;
+	TileElement* restrict const OutputIndex = TileIndex + output_index;
 
 	for(int i = 0; i < PlaneIndex.length; i++){
 		const uvec3 local_face = PlaneIndex[i] + face_offset;

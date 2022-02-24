@@ -3,6 +3,7 @@
 #extension GL_ARB_shading_language_include : require
 //this extension allows access array of bindless samplers non-uniformly
 #extension GL_NV_gpu_shader5 : require
+#extension GL_NV_shader_buffer_load : require
 
 #define TWO_PI 6.283185307179586476925286766559
 
@@ -10,7 +11,6 @@
 //Macros are define by the main application, having an arbitary number just to make the compiler happy.
 #define GROUP_COUNT 1
 #define REGISTRY_COUNT 1
-#define REGISTRY_DICTIONARY_COUNT 1
 #define SPLAT_REGION_COUNT 1
 
 //texture type indexing
@@ -60,9 +60,10 @@ struct TerrainTextureData{
 
 //Rule-based texturing system
 layout (bindless_sampler) uniform sampler2DArray RegionTexture[GROUP_COUNT];
-//x: array index, y: layer index
-uniform uvec2 RegionRegistry[REGISTRY_COUNT];
-uniform uint RegistryDictionary[REGISTRY_DICTIONARY_COUNT];
+//Each pointer is pointing to a location to texture region.
+//The pointer might be null to indicate this region has no texture.
+//For the location data, x: array index, y: layer index
+uniform uvec2* RegionRegistry[REGISTRY_COUNT];
 //each texture region will have one and only one scale setting
 uniform uvec3 RegionScaleRegistry[SPLAT_REGION_COUNT];
 
@@ -75,6 +76,7 @@ uniform TextureRegionScaleSetting ScaleSetting;
 /* --------------------------------------------------------------------- */
 
 #include </Common/STPCameraInformation.glsl>
+#include </Common/STPNullPointer.glsl>
 
 //Input
 in VertexGS{
@@ -183,22 +185,21 @@ void main(){
 
 //dx_dy is the derivative used for sampling texture, the first two components store dx while the last two store dy.
 vec3 getRegionTexture(vec2 texture_uv, vec3 replacement, unsigned int region, unsigned int type, vec4 dx_dy){
-	const uint dictLoc = region * TYPE_STRIDE + type;
-	if(dictLoc >= REGISTRY_DICTIONARY_COUNT){
-		//type not used or no region is defined
-		return replacement;
-	}
-
-	const uint regionLoc = RegistryDictionary[dictLoc];
+	const uint regionLoc = region * TYPE_STRIDE + type;
+	//invalid region
 	if(regionLoc >= REGISTRY_COUNT){
-		//handle the case when texture type is not used
 		return replacement;
 	}
 
-	const uvec2 textureLoc = RegionRegistry[regionLoc];
-	const sampler2DArray selected_sampler = RegionTexture[textureLoc.x];
+	uvec2* restrict const textureLoc = RegionRegistry[regionLoc];
+	if(isNull(textureLoc)){
+		//this region has no texture data
+		return replacement;
+	}
+
+	const sampler2DArray selected_sampler = RegionTexture[textureLoc->x];
 	//region is valid
-	return textureGrad(selected_sampler, vec3(texture_uv, textureLoc.y), dx_dy.xy, dx_dy.zw).rgb;
+	return textureGrad(selected_sampler, vec3(texture_uv, textureLoc->y), dx_dy.st, dx_dy.pq).rgb;
 }
 
 void sampleTerrainTexture(in out TerrainTextureData data, vec2 sampling_uv, unsigned int region, float weight, vec4 dx_dy){

@@ -54,6 +54,7 @@ There is no perfect answer to this question, every application has its own pros 
 ### Real-time photorealistic rendering
 
 - [x] Procedural atmospheric scattering
+- [x] Aerial perspective
 - [x] Realistic sun orbiting
 - [ ] Post-processing
   - [x] Filmic tone mapping
@@ -75,7 +76,7 @@ There is no perfect answer to this question, every application has its own pros 
 
 ### Optimisation technique
 
-- [ ] Frustum culling
+- [x] Frustum culling
 - [ ] Sparse virtual texture (a.k.a. mega-texture) for shadow map
 - [ ] Deferred clustered lighting
 
@@ -157,22 +158,18 @@ The application is unit-tested with.
 #### OpenGL extension requirement
 
 - OpenGL 4.6 core profile
-- [GL_ARB_shading_language_include](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_shading_language_include.txt)
-- [GL_NV_gpu_shader5](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt)
-
-Say goodbye to expensive binding...
-
 - [GL_ARB_bindless_texture](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_bindless_texture.txt)
-- [GL_NV_bindless_multi_draw_indirect](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_bindless_multi_draw_indirect.txt)
-- [GL_NV_vertex_buffer_unified_memory](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_vertex_buffer_unified_memory.txt)
-- [GL_NV_shader_buffer_load](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_load.txt)
+- [GL_ARB_shading_language_include](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_shading_language_include.txt)
 - [GL_NV_command_list](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_command_list.txt)
+- [GL_NV_gpu_shader5](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt)
+- [GL_NV_shader_buffer_load](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_load.txt)
+- [GL_NV_shader_buffer_store](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_store.txt)
 
 > This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. When you are downloading GLAD please make sure those extensions are included. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview).
 
 ### :gear: How to build
 
-1. Master branch is considered as a *work-in-progress* branch in this project, so make sure you have grabbed the latest stable source code from [Releases](https://github.com/stephen-hqxu/superterrainplus/releases) :point_left: :grinning:
+1. Master branch is considered as a *work-in-progress* branch in this project, so make sure you are using the latest stable source code from [Releases](https://github.com/stephen-hqxu/superterrainplus/releases).
 
 2. Unzip the source code and go to project root.
 

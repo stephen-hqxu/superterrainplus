@@ -11,9 +11,7 @@ layout(binding = 0) uniform sampler2D ColorInput;
 uniform float AlphaThreshold;
 
 void main(){
-	const vec4 color = texture(ColorInput, FragTexCoord);
-
-	if(color.a ALPHA_TEST_OPERATOR AlphaThreshold){
+	if(texture(ColorInput, FragTexCoord).a ALPHA_TEST_OPERATOR AlphaThreshold){
 		discard;
 	}
 }

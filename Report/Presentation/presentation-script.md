@@ -208,13 +208,15 @@ With all the rules a splatmap can be generated. Using the same principle as in b
 
 ### Rule-based biome-dependent texture splatting
 
-This is totally expected because there is no information about how much each texture should contribute to a pixel. I can simply reuse the single histogram filter developed earlier to smooth it. However sending a large histogram to the shader is much slower, because terrain generation happens only once and I can reuse the result while in the shader this is done on per-frame basis.
+This is totally expected because there is no information about how much each texture should contribute to a pixel. For texture there is usually no need to use a very large kernel radius so a simple convolution should be sufficient in runtime. Do you still remember PCF earlier, splatmap has the same principle as the shadow map and biomemap for being not applicable for linear interpolation.
 
-### Percentage-closer filtering
+### Region smoothing
 
-For texture there is usually no need to use a very large kernel radius so a simple convolution should be sufficient in runtime. Do you still remember PCF earlier, splatmap has the same principle as the shadow map and biomemap for being not applicable for linear interpolation.
+Just out of curiosity, I tried both PCF, and the single histogram filter developed earlier to see which one is the best. In fact even a simple filter over a small kernel hurts performance more than I was expecting. And our home-made filter is the winner in both biomemap and splatmap smoothing.
 
-One of the major drawbacks of PCF is, it creates colour banding, as shown in the screenshot.
+*Next slide*
+
+And here is the result. One of the major drawbacks of both filters, is, as being discrete they both create colour banding, as shown in the screenshot.
 
 ### Stratified sampling
 
