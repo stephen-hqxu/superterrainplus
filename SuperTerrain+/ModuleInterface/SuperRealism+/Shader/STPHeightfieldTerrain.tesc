@@ -64,7 +64,7 @@ void main(){
 		gl_TessLevelOuter[0] = calcLoD(selected_tess, vertexDistance[1], vertexDistance[2]);
 		gl_TessLevelOuter[1] = calcLoD(selected_tess, vertexDistance[2], vertexDistance[0]);
 		gl_TessLevelOuter[2] = calcLoD(selected_tess, vertexDistance[0], vertexDistance[1]);
-		gl_TessLevelInner[0] = (gl_TessLevelOuter[0] + gl_TessLevelOuter[1] + gl_TessLevelOuter[2]) / 3.0f;
+		gl_TessLevelInner[0] = (gl_TessLevelOuter[0] + gl_TessLevelOuter[1] + gl_TessLevelOuter[2]) * 0.33333333f;
 	}
 	
 	//copy pasting the input to output

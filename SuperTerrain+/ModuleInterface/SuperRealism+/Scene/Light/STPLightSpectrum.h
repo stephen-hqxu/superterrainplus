@@ -4,13 +4,14 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Object
-#include "../../Object/STPTexture.h"
+#include "../../Object/STPBindlessTexture.h"
 
 //GLM
 #include <glm/vec3.hpp>
 
 //System
 #include <vector>
+#include <optional>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -36,6 +37,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//The generated spectrum, it is a texture 1D array with the first array being the spectrum for indirect lighting and the second for direct lighting
 		STPTexture Spectrum;
+		std::optional<STPBindlessTexture> SpectrumHandle;
 
 	public:
 
@@ -66,6 +68,12 @@ namespace SuperTerrainPlus::STPRealism {
 		 * The first array contains the spectrum for indirect lighting while the second array contains that for direct lighting.
 		*/
 		const STPTexture& spectrum() const;
+
+		/**
+		 * @brief Get the light spectrum handle.
+		 * @return The texture handle to the light spectrum.
+		*/
+		STPOpenGL::STPuint64 spectrumHandle() const;
 
 		/**
 		 * @brief Get the spectrum sampling coordinate.

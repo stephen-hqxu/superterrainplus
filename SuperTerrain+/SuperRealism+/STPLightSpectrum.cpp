@@ -34,10 +34,17 @@ STPLightSpectrum::STPLightSpectrum(unsigned int length, STPSpectrumType type, ST
 	}
 	this->Spectrum.filter(GL_NEAREST, GL_LINEAR);
 	this->Spectrum.wrap(GL_CLAMP_TO_EDGE);
+
+	//create spectrum texture handle
+	this->SpectrumHandle.emplace(this->Spectrum);
 }
 
 const STPTexture& STPLightSpectrum::spectrum() const {
 	return this->Spectrum;
+}
+
+SuperTerrainPlus::STPOpenGL::STPuint64 STPLightSpectrum::spectrumHandle() const {
+	return *this->SpectrumHandle.value();
 }
 
 STPStaticLightSpectrum::STPStaticLightSpectrum() : STPLightSpectrum(1u, STPSpectrumType::Monotonic, GL_RGB8) {

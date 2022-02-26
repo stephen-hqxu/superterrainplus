@@ -3,7 +3,7 @@
 
 <p align="center">
 	<img src="https://img.shields.io/badge/C%2B%2B_17-00599C?style=flat&logo=c%2B%2B&logoColor=white" />
-	<img src="https://img.shields.io/badge/NVIDIA-CUDA_11-76B900?style=flat&logo=nvidia&logoColor=white" />
+	<img src="https://img.shields.io/badge/NVIDIA-CUDA_11.3-76B900?style=flat&logo=nvidia&logoColor=white" />
 	<img src="https://img.shields.io/badge/OpenGL_4.6-FFFFFF?style=flat&logo=opengl" />
 	</br>
 	<img src="https://img.shields.io/badge/SQLite_3-07405E?style=flat&logo=sqlite&logoColor=white" />
@@ -220,6 +220,8 @@ You may obtain the following executables:
 [Release Note](https://github.com/stephen-hqxu/superterrainplus/releases)
 
 [Dissertation](https://github.com/stephen-hqxu/superterrainplus/tree/master/Report)
+
+[Documentation](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/index.md)
 
 ## :books: Credits
 

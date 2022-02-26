@@ -523,9 +523,6 @@ private:
 	//This object updates stencil buffer to update geometries that are in the extinction zone
 	STPAlphaCulling ExtinctionStencilCuller;
 
-	//Bindless handle for all lights from the scene pipeline
-	vector<STPBindlessTexture> SpectrumHandle;
-
 	constexpr static auto DeferredShaderFilename =
 		STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPDeferredShading", ".frag");
 	
@@ -682,7 +679,7 @@ public:
 		const string lightLoc_str = to_string(lightLoc);
 		//create light spectrum handle and send to the program
 		this->OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, this->createUniformName("EnvironmentLightList[", lightLoc_str, "].LightSpectrum"),
-			*this->SpectrumHandle.emplace_back(light.getLightSpectrum().spectrum()))
+			light.getLightSpectrum().spectrumHandle())
 			.uniform(glProgramUniform1ui, "EnvLightCount", static_cast<unsigned int>(lightLoc + 1ull));
 
 		if (shadow_light) {
