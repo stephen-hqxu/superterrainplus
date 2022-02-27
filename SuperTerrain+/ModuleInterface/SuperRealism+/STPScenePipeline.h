@@ -8,6 +8,7 @@
 #include "./Scene/STPSceneLight.h"
 #include "./Scene/Component/STPPostProcess.h"
 #include "./Scene/Component/STPAmbientOcclusion.h"
+#include "./Scene/STPShadowMapFilter.hpp"
 //Lighting
 #include "./Environment/STPLightSetting.h"
 //Camera
@@ -38,27 +39,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//An integer to identify a light added to the scene in the shader.
 		typedef size_t STPLightIdentifier;
-
-		/**
-		 * @brief STPShadowMapFilter defines filtering technologies used for post-process shadow maps.
-		 * Underlying value greater than VSM denotes VSM-derived shadow map filters.
-		*/
-		enum class STPShadowMapFilter : unsigned char {
-			//Nearest-Neighbour filter, shadow value is read from the nearest pixel.
-			Nearest = 0x00u,
-			//Bilinear filter, shadow value is read from its neighbours and linearly interpolated.
-			Bilinear = 0x01u,
-			//Percentage-Closer filter, it attempts to smooth the edge of the shadow using a blur kernel.
-			PCF = 0x02u,
-			//Stratified Sampled PCF, this is a variant of PCF which uses random stratified sampling when convolving the kernel.
-			SSPCF = 0x03u,
-			//Variance Shadow Mapping, it uses variance to estimate the likelihood of a pixel that should have shadow 
-			//after having the shadow map blurred.
-			VSM = 0x10u,
-			//Exponential Shadow Mapping, it is a derivation of VSM. Instead of using Chebyshev's inequality to approximate the probability,
-			//an exponential function is used.
-			ESM = 0x11u
-		};
 
 		/**
 		 * @brief STPShadowMapFilterFunction is an adaptive shadow map filter manager for any shadow map filter.
@@ -146,13 +126,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 			//The maximum number of environment light
 			size_t EnvironmentLight;
-			//The maximum number of directional light that can cast shadow.
-			size_t DirectionalLightShadow;
-
-			//The maximum number of light space matrix, as a 4 by 4 matrix of floats.
-			size_t LightSpaceMatrix;
-			//The maximum number of plane that divides light frustum into subfrusta, as float.
-			size_t LightFrustumDivisionPlane;
 
 		};
 
@@ -251,12 +224,12 @@ namespace SuperTerrainPlus::STPRealism {
 		class STPGeometryBufferResolution;
 		std::unique_ptr<STPGeometryBufferResolution> GeometryLightPass;
 
-		//The albedo color to be cleared to for all off-screen framebuffer.
+		//The albedo colour to be cleared to for all off-screen framebuffer.
 		glm::vec4 DefaultClearColor;
 
 		/**
 		 * @brief Get the shader used for performing additional operations during depth rendering.
-		 * @return The poitner to the depth shader. Nullprt is returned if depth shader is unused.
+		 * @return The pointer to the depth shader. Nullprt is returned if depth shader is unused.
 		*/
 		const STPShaderManager* getDepthShader() const;
 
@@ -266,7 +239,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * If this light cannot be added, exception is thrown.
 		 * This function always assumes a non-shadow casting light will be added.
 		*/
-		void canLightBeAdded(const STPSceneLight::STPEnvironmentLight<true>*) const;
+		void canLightBeAdded() const;
 
 		/**
 		 * @brief For a newly added light, allocate light memory and flush light settings to the scene pipeline shader.
@@ -276,7 +249,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param light_shadow The pointer to the shadow instance of the light.
 		 * The pointer can be null if this light does not cast shadow.
 		*/
-		void addLight(const STPSceneLight::STPEnvironmentLight<false>&, const STPSceneLight::STPEnvironmentLight<true>*);
+		void addLight(const STPSceneLight::STPEnvironmentLight<false>&, STPSceneLight::STPEnvironmentLight<true>*);
 
 	public:
 
@@ -352,8 +325,8 @@ namespace SuperTerrainPlus::STPRealism {
 		Obj* add(Arg&&...);
 
 		/**
-		 * @brief Specify clear values for the color buffers.
-		 * @param color Specify the red, green, blue, and alpha values used when the color buffers are cleared. The initial values are all 0.
+		 * @brief Specify clear values for the colour buffers.
+		 * @param colour Specify the red, green, blue, and alpha values used when the colour buffers are cleared. The initial values are all 0.
 		*/
 		void setClearColor(glm::vec4);
 
@@ -386,7 +359,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Set the region where the distant object starts to fade off.
-		 * @param factor A multipler to the camera far distance where the extinction zone starts.
+		 * @param factor A multiplier to the camera far distance where the extinction zone starts.
 		*/
 		void setExtinctionArea(float) const;
 
@@ -401,7 +374,7 @@ namespace SuperTerrainPlus::STPRealism {
 	};
 
 #define SHADOW_MAP_FILTER_DEF(FILT) \
-template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STPScenePipeline::STPShadowMapFilter::FILT> : public STPScenePipeline::STPShadowMapFilterFunction
+template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STPShadowMapFilter::FILT> : public STPScenePipeline::STPShadowMapFilterFunction
 
 	SHADOW_MAP_FILTER_DEF(PCF) {
 	private:
@@ -434,7 +407,7 @@ template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STP
 		~STPShadowMapFilterKernel() = default;
 
 		//The minimum variance value. 
-		//This helps to reduce shadow acen effects when light direction is parallel to the surface.
+		//This helps to reduce shadow acne effects when light direction is parallel to the surface.
 		float minVariance;
 
 		//Specifies the anisotropy filter level. 

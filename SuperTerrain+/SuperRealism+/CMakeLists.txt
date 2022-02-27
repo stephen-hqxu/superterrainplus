@@ -11,6 +11,7 @@ STPDebugCallback.cpp
 STPFrameBuffer.cpp
 STPGaussianFilter.cpp
 STPHeightfieldTerrain.cpp
+STPLightShadow.cpp
 STPLightSpectrum.cpp
 STPOrthographicCamera.cpp
 STPPerspectiveCamera.cpp

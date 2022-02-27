@@ -1,5 +1,6 @@
 #version 460 core
 #extension GL_ARB_shading_language_include : require
+#extension GL_NV_shader_buffer_load : require
 
 /* -------------------------------- output setting -------------------------------- */
 //Define to 0 to disable output to fragment shader, this is useful for shadow mapping.
@@ -49,7 +50,7 @@ void main(){
 	for(int i = 0; i < gl_in.length; i++){
 #if HEIGHTFIELD_SHADOW_PASS
 		//output light information
-		gl_Position = LightSpace.ProjectionView[LightSpace.CurrentLightSpaceStart + gl_InvocationID] * gl_in[i].gl_Position;
+		gl_Position = LightSpace.ProjectionView[gl_InvocationID] * gl_in[i].gl_Position;
 		gl_Layer = gl_InvocationID;
 #else
 		//output the primitive information

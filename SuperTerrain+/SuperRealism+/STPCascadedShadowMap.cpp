@@ -28,17 +28,31 @@ using glm::dvec4;
 using glm::radians;
 using glm::make_vec4;
 
+using std::unique_ptr;
+using std::make_unique;
 using std::numeric_limits;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPCascadedShadowMap::STPCascadedShadowMap(const STPLightFrustum& light_frustum) : LightDirection(vec3(0.0f)),
-	LightSpaceOutdated(true), LightFrustum(light_frustum) {
-	const auto& [res, div, band_radius, focus_camera, distance_mul] = this->LightFrustum;
+/**
+ * @brief CSM data buffer packed according to alignment rule specified in GL_NV_shader_buffer_load.
+ * This struct only contains fixed data, variable length data are appended at the end.
+*/
+struct STPPackedCSMBufferHeader {
+public:
 
-	if (res == 0u) {
-		throw STPException::STPBadNumericRange("The shadow map resolution should be a positive integer");
-	}
+	GLuint64 TexHandle;
+	unsigned int LiDim;
+	unsigned int _padLiDim;
+	GLuint64EXT LiSpacePtr, DivPtr;
+	//mat4 LiSpace[LiDim];
+	//float Div[LiDim - 1];
+
+};
+
+STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLightFrustum& light_frustum) : STPLightShadow(resolution), 
+	LightDirection(vec3(0.0f)), LightSpaceOutdated(true), LightFrustum(light_frustum) {
+	const auto& [div, band_radius, focus_camera, distance_mul] = this->LightFrustum;
 	if (distance_mul < 1.0f) {
 		throw STPException::STPBadNumericRange("A less-than-one shadow distance is not able to cover the view frustum");
 	}
@@ -50,17 +64,55 @@ STPCascadedShadowMap::STPCascadedShadowMap(const STPLightFrustum& light_frustum)
 	}
 	//register a camera callback
 	focus_camera->registerListener(this);
+
+	/* -------------------------------- shadow data buffer allocation ---------------------------- */
+	const size_t lightSpaceDim = this->lightSpaceDimension(),
+		shadowBufferMat_size = sizeof(mat4) * lightSpaceDim,
+		shadowBufferMat_offset = sizeof(STPPackedCSMBufferHeader),
+		shadowBufferDiv_offset = shadowBufferMat_offset + shadowBufferMat_size,
+		shadowBuffer_size = shadowBufferDiv_offset + sizeof(float) * (lightSpaceDim - 1ull);
+
+	//allocate memory shadow data buffer for cascaded shadow map
+	this->ShadowData.bufferStorage(shadowBuffer_size,
+		GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+	//grab the address of buffer
+	this->ShadowDataAddress.emplace(this->ShadowData, GL_READ_ONLY);
+	const GLuint64EXT shadowData_addr = *this->ShadowDataAddress.value();
+
+	//assigned the light space matrix pointer
+	this->LightSpaceMatrix = reinterpret_cast<mat4*>(this->ShadowData.mapBufferRange(shadowBufferMat_offset, shadowBufferMat_size,
+		GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
+	if (!this->LightSpaceMatrix) {
+		throw STPException::STPGLError("Unable to map the shadow data buffer for cascaded shadow map");
+	}
+
+	/* ----------------------------------- initial shadow data fill up --------------------------------------- */
+	unique_ptr<unsigned char[]> shadowData_cache = make_unique<unsigned char[]>(shadowBuffer_size);
+	//zero fill
+	memset(shadowData_cache.get(), 0x00, shadowBuffer_size);
+	//fixed data header
+	STPPackedCSMBufferHeader* const dataHeader = reinterpret_cast<STPPackedCSMBufferHeader*>(shadowData_cache.get());
+	dataHeader->LiDim = static_cast<unsigned int>(lightSpaceDim);
+	dataHeader->LiSpacePtr = shadowData_addr + shadowBufferMat_offset;
+	dataHeader->DivPtr = shadowData_addr + shadowBufferDiv_offset;
+	//skip light space matrix, send frustum divisor
+	float* const shadowData_div = reinterpret_cast<float*>(shadowData_cache.get() + shadowBufferDiv_offset);
+	std::copy(div.cbegin(), div.cend(), shadowData_div);
+
+	//flush data, with persistent mapping it is allowed to perform buffer subdata operation
+	this->ShadowData.bufferSubData(shadowData_cache.get(), shadowBuffer_size, 0);
 }
 
 STPCascadedShadowMap::~STPCascadedShadowMap() {
 	this->LightFrustum.Focus->removeListener(this);
+	this->ShadowData.unmapBuffer();
 }
 
 dmat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const dmat4& view) const {
 	//min and max of float
 	static constexpr double minD = numeric_limits<double>::min(),
 		maxD = numeric_limits<double>::max();
-	//unit frusum corner, as a lookup table to avoid recomputation.
+	//unit frustum corner, as a lookup table to avoid re-computation.
 	static constexpr STPFrustumCornerDouble4 unitCorner = []() constexpr -> STPFrustumCornerDouble4 {
 		STPFrustumCornerDouble4 frustumCorner = { };
 
@@ -94,8 +146,8 @@ dmat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const dmat4&
 	const dvec3 centre = std::reduce(corner.cbegin(), corner.cend(), dvec3(0.0), std::plus<dvec3>()) / (1.0 * corner.size());
 	const dmat4 lightView = glm::lookAt(centre + static_cast<dvec3>(this->LightDirection), centre, dvec3(0.0, 1.0, 0.0));
 
-	//align the light frusum tightly around the current view frustum
-	//we need to find the eight corners of the light frusum.
+	//align the light frustum tightly around the current view frustum
+	//we need to find the eight corners of the light frustum.
 	dvec3 minExt = dvec3(maxD),
 		maxExt = dvec3(minD);
 	for (const auto& v : corner) {
@@ -163,7 +215,7 @@ void STPCascadedShadowMap::calcAllLightSpace(mat4* light_space) const {
 }
 
 void STPCascadedShadowMap::onMove(const STPCamera&) {
-	//view matix changes
+	//view matrix changes
 	this->LightSpaceOutdated = true;
 }
 
@@ -177,8 +229,9 @@ void STPCascadedShadowMap::onReshape(const STPCamera&) {
 	this->LightSpaceOutdated = true;
 }
 
-const STPCascadedShadowMap::STPCascadePlane& STPCascadedShadowMap::getDivision() const {
-	return this->LightFrustum.Division;
+void STPCascadedShadowMap::updateShadowMapHandle(STPOpenGL::STPuint64 handle) {
+	//send the new texture handle to the buffer
+	this->ShadowData.bufferSubData(&handle, sizeof(GLuint64), offsetof(STPPackedCSMBufferHeader, TexHandle));
 }
 
 void STPCascadedShadowMap::setDirection(const vec3& dir) {
@@ -190,10 +243,10 @@ const vec3& STPCascadedShadowMap::getDirection() const {
 	return this->LightDirection;
 }
 
-bool STPCascadedShadowMap::updateLightSpace(mat4* light_space) const {
+bool STPCascadedShadowMap::updateLightSpace() {
 	if (this->LightSpaceOutdated) {
 		//need to also update light space matrix if shadow has been turned on for this light
-		this->calcAllLightSpace(light_space);
+		this->calcAllLightSpace(this->LightSpaceMatrix);
 
 		this->LightSpaceOutdated = false;
 		return true;
@@ -205,8 +258,13 @@ inline size_t STPCascadedShadowMap::lightSpaceDimension() const {
 	return this->LightFrustum.Division.size() + 1ull;
 }
 
-unsigned int STPCascadedShadowMap::shadowMapResolution() const {
-	return this->LightFrustum.Resolution;
+SuperTerrainPlus::STPOpenGL::STPuint64 STPCascadedShadowMap::lightSpaceMatrixAddress() const {
+	return *this->ShadowDataAddress.value() + sizeof(STPPackedCSMBufferHeader);
+}
+
+STPCascadedShadowMap::STPShadowMapFormat STPCascadedShadowMap::shadowMapFormat() const {
+	//for CSM we use layered depth texture
+	return STPShadowMapFormat::Array;
 }
 
 void STPCascadedShadowMap::forceLightSpaceUpdate() {

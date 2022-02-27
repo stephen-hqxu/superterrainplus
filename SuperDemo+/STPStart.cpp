@@ -47,6 +47,7 @@
 using std::optional;
 using std::string;
 using std::make_pair;
+using std::make_unique;
 
 using std::cout;
 using std::endl;
@@ -219,7 +220,7 @@ namespace STPStart {
 				STPScenePipeline::STPScenePipelineInitialiser scene_init;
 
 				//initialisation
-				STPScenePipeline::STPShadowMapFilterKernel<STPScenePipeline::STPShadowMapFilter::PCF> scene_shadow_function;
+				STPScenePipeline::STPShadowMapFilterKernel<STPShadowMapFilter::PCF> scene_shadow_function;
 				scene_init.ShadowFilter = &scene_shadow_function;
 				scene_shadow_function.DepthBias = vec2(0.055f, 0.0055f);
 				scene_shadow_function.NormalBias = vec2(15.5f, 5.5f);
@@ -230,9 +231,6 @@ namespace STPStart {
 
 				STPScenePipeline::STPSceneShaderCapacity& scene_cap = scene_init.ShaderCapacity;
 				scene_cap.EnvironmentLight = 1ull;
-				scene_cap.DirectionalLightShadow = 1ull;
-				scene_cap.LightSpaceMatrix = 5ull;
-				scene_cap.LightFrustumDivisionPlane = 5ull;
 
 				//construct rendering pipeline
 				scene_init.GeometryBufferInitialiser = &screen_renderer_init;
@@ -248,7 +246,6 @@ namespace STPStart {
 				//sun shadow setting
 				const double camFar = camera.cameraStatus().Far;
 				const STPCascadedShadowMap::STPLightFrustum frustum = {
-					2048u,
 					{
 						camFar / 16.0,
 						camFar / 3.5,
@@ -261,7 +258,7 @@ namespace STPStart {
 
 				//sun
 				STPSun<true>::STPSunLog sun_log;
-				this->SunRenderer = this->RenderPipeline->add<STPSun<true>>(this->SunSetting, 8192u, frustum, sun_log);
+				this->SunRenderer = this->RenderPipeline->add<STPSun<true>>(this->SunSetting, 8192u, make_unique<STPCascadedShadowMap>(2048u, frustum), sun_log);
 				//print log
 				STPMasterRenderer::printLog(sun_log.SpectrumGenerator);
 				STPMasterRenderer::printLog(sun_log.SunRenderer);

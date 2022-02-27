@@ -46,10 +46,10 @@ Obj* SuperTerrainPlus::STPRealism::STPScenePipeline::add(Arg&&... arg) {
 		unique_ptr<Obj> env_obj_managed = make_unique<Obj>(forward<Arg>(arg)...);
 		//this validity checker may thrown exception, so we need to manage this memory
 		if constexpr (isShadowLight) {
-			this->canLightBeAdded(env_obj_managed.get());
+			this->canLightBeAdded();
 		}
 		else {
-			this->canLightBeAdded(nullptr);
+			this->canLightBeAdded();
 		}
 
 		//unique_ptr does not allow casting the underlying pointer, release it and re-create a new one.

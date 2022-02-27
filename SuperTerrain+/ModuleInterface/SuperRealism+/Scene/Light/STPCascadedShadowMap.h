@@ -6,7 +6,7 @@
 //Rendering Utility
 #include "../../Utility/Camera/STPCamera.h"
 //Base Shadow
-#include "STPLightShadow.hpp"
+#include "../STPLightShadow.h"
 
 //System
 #include <array>
@@ -22,7 +22,7 @@ namespace SuperTerrainPlus::STPRealism {
 	/**
 	 * @brief STPCascadedShadowMap is a type of shadow mapping technique for directional light source.
 	 * This algorithm divides view frustum into N subfrusta and 
-	 * fits the ortho matrix for each frustum, for each frustum render a shader map as if seen from the directional light.
+	 * fits the orthographic matrix for each frustum, for each frustum render a shader map as if seen from the directional light.
 	 * Finally render the scene with shadow according to fragment depth value from corrected shadow map.
 	*/
 	class STP_REALISM_API STPCascadedShadowMap : public STPLightShadow, private STPCamera::STPStatusChangeCallback {
@@ -38,9 +38,6 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STPLightFrustum {
 		public:
 			
-			//Set the resolution of the shadow map for each cascade.
-			//The shadow map must be a square, such that this value specifies the extent length.
-			unsigned int Resolution;
 			//Specifies each level of shadow plane.
 			STPCascadePlane Division;
 			//Specifies a bias value to each sub-frusta.
@@ -70,9 +67,11 @@ namespace SuperTerrainPlus::STPRealism {
 		glm::vec3 LightDirection;
 
 		const STPLightFrustum LightFrustum;
+		//Memory to where light space matrices should be stored
+		glm::mat4* LightSpaceMatrix;
 
 		//A flag to indicate if light space matrices need to be recalculated
-		mutable bool LightSpaceOutdated;
+		bool LightSpaceOutdated;
 
 		/**
 		 * @brief Calculate the light space matrix for a particular view frustum.
@@ -96,13 +95,17 @@ namespace SuperTerrainPlus::STPRealism {
 
 		void onReshape(const STPCamera&) override;
 
+		void updateShadowMapHandle(STPOpenGL::STPuint64) override;
+
 	public:
 
 		/**
 		 * @brief Initialise a directional light instance.
+		 * @param resolution Set the resolution of the shadow map for each cascade.
+		 * The shadow map must be a square, such that this value specifies the extent length.
 		 * @param light_frustum The property of the shadow map light frustum.
 		*/
-		STPCascadedShadowMap(const STPLightFrustum&);
+		STPCascadedShadowMap(unsigned int, const STPLightFrustum&);
 
 		STPCascadedShadowMap(const STPCascadedShadowMap&) = delete;
 
@@ -113,12 +116,6 @@ namespace SuperTerrainPlus::STPRealism {
 		STPCascadedShadowMap& operator=(STPCascadedShadowMap&&) = delete;
 
 		~STPCascadedShadowMap();
-
-		/**
-		 * @brief Get an array of float that specifies how the camera is divided into different levels of cascade.
-		 * @return An array of float with division information.
-		*/
-		const STPCascadePlane& getDivision() const;
 
 		/**
 		 * @brief Update the direction of light.
@@ -132,11 +129,13 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		const glm::vec3& getDirection() const;
 
-		bool updateLightSpace(glm::mat4*) const override;
+		bool updateLightSpace() override;
 
 		size_t lightSpaceDimension() const override;
 
-		unsigned int shadowMapResolution() const override;
+		STPOpenGL::STPuint64 lightSpaceMatrixAddress() const override;
+
+		STPShadowMapFormat shadowMapFormat() const override;
 
 		void forceLightSpaceUpdate() override;
 

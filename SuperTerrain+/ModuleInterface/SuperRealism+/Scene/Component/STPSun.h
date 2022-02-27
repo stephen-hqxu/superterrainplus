@@ -203,7 +203,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Arguments are nearly the same as the base class except the extra pointer to sun shadow light frustum setting.
 		 * @see STPSun<false>
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, unsigned int, const STPCascadedShadowMap::STPLightFrustum&, STPSunLog&);
+		STPSun(const STPEnvironment::STPSunSetting&, unsigned int, STPEnvironmentLightShadow&&, STPSunLog&);
 
 		~STPSun() = default;
 

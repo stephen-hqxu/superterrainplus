@@ -5,9 +5,10 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //Light
 #include "./Light/STPLightSpectrum.h"
-
 //Light Shadow Solution
 #include "./Light/STPCascadedShadowMap.h"
+
+#include <memory>
 
 //GLM
 #include <glm/vec3.hpp>
@@ -58,15 +59,21 @@ namespace SuperTerrainPlus::STPRealism {
 			virtual ~STPGlobalLight() = default;
 
 			/**
+			 * @brief Get the constant pointer to the light shadow instance.
+			 * @return The constant pointer to the light shadow of the current light.
+			*/
+			virtual const STPLightShadow& getLightShadow() const = 0;
+
+			/**
 			 * @brief Get the pointer to the light shadow instance.
 			 * @return The pointer to the light shadow of the current light.
 			*/
-			virtual const STPLightShadow& getLightShadow() const = 0;
+			STPLightShadow& getLightShadow();
 
 		};
 
 		/**
-		 * @brief Ambient light is a type of global light source that emulates indirect light color coming from all different lights.
+		 * @brief Ambient light is a type of global light source that emulates indirect light colour coming from all different lights.
 		 * It emits a dim constant light from unspecified location, thus it never leaves shadows, but instead it contributes to
 		 * ambient occlusion.
 		*/
@@ -111,28 +118,29 @@ namespace SuperTerrainPlus::STPRealism {
 
 		template<>
 		class STP_REALISM_API STPEnvironmentLight<true> : public STPGlobalLight<true> {
+		public:
+
+			typedef std::unique_ptr<STPCascadedShadowMap> STPEnvironmentLightShadow;
+
 		protected:
 
 			//The main light source in an environment light is a 
-			STPCascadedShadowMap EnvironmentLightShadow;
+			STPEnvironmentLightShadow Shadow;
 
 		public:
 
 			/**
 			 * @brief Initialise an environment light instance with shadow map initialised.
-			 * @param frustum The pointer to the shadow light frustum for initialising light camera for environment light.
+			 * @param env_shadow The pointer to the environment light shadow.
+			 * The instance pointed by the pointer will be moved under the current light instance upon construction.
 			*/
-			STPEnvironmentLight(const STPCascadedShadowMap::STPLightFrustum&);
+			STPEnvironmentLight(STPEnvironmentLightShadow&&);
 
 			virtual ~STPEnvironmentLight() = default;
 
 			const STPLightShadow& getLightShadow() const override;
 
-			/**
-			 * @brief Get the pointer to the concrete light shadow instance.
-			 * @return The pointer to the concrete implementation shadow instance for environment light.
-			*/
-			const STPCascadedShadowMap& getEnvironmentLightShadow() const;
+			using STPGlobalLight<true>::getLightShadow;
 
 		};
 

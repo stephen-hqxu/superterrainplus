@@ -274,8 +274,8 @@ void STPSun<false>::renderEnvironment() {
 }
 
 STPSun<true>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, unsigned int spectrum_length, 
-	const STPCascadedShadowMap::STPLightFrustum& shadow_frustum, STPSunLog& log) :
-	STPSun<false>(sun_setting, spectrum_length, log), STPEnvironmentLight<true>(shadow_frustum) {
+	STPEnvironmentLightShadow&& env_shadow, STPSunLog& log) :
+	STPSun<false>(sun_setting, spectrum_length, log), STPEnvironmentLight<true>(std::move(env_shadow)) {
 
 }
 
@@ -284,5 +284,5 @@ void STPSun<true>::advanceTick(unsigned long long tick) {
 	this->STPSun<false>::advanceTick(tick);
 
 	//update sun direction in the shadow light space
-	this->EnvironmentLightShadow.setDirection(this->SunDirectionCache);
+	this->Shadow->setDirection(this->SunDirectionCache);
 }
