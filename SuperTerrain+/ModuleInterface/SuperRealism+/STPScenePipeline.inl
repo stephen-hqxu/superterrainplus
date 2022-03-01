@@ -34,40 +34,30 @@ Obj* SuperTerrainPlus::STPRealism::STPScenePipeline::add(Arg&&... arg) {
 		return opaque_obj_ptr;
 	}
 
-	//using the same logic for light
-	if constexpr (is_base_of_v<STPSceneLight::STPEnvironmentLight<false>, Obj>) {
-		if (scene_graph.EnvironmentObjectDatabase.size() == 1ull) {
-			throw STPException::STPUnsupportedFunctionality("The system currently only supports one light, "
-				"this will be supported in the future release");
-		}
-		//can this light cast shadow?
-		constexpr static bool isShadowLight = is_base_of_v<STPSceneLight::STPEnvironmentLight<true>, Obj>;
-
-		unique_ptr<Obj> env_obj_managed = make_unique<Obj>(forward<Arg>(arg)...);
-		//this validity checker may thrown exception, so we need to manage this memory
-		if constexpr (isShadowLight) {
-			this->canLightBeAdded();
-		}
-		else {
-			this->canLightBeAdded();
-		}
-
-		//unique_ptr does not allow casting the underlying pointer, release it and re-create a new one.
-		Obj* const env_obj_ptr = env_obj_managed.release();
+	if constexpr (is_base_of_v<STPSceneObject::STPEnvironmentObject, Obj>) {
+		Obj* const env_obj_ptr = new Obj(forward<Arg>(arg)...);
 		scene_graph.EnvironmentObjectDatabase.emplace_back(env_obj_ptr);
 
-		if constexpr (isShadowLight) {
-			scene_graph.ShadowEnvironmentObject.emplace_back(env_obj_ptr);
-
-			//for a newly added light, the scene pipeline need to do something else
-			this->addLight(*env_obj_ptr, env_obj_ptr);
-		}
-		else {
-			//not a shadow casting light, shadow instance can be null
-			this->addLight(*env_obj_ptr, nullptr);
-		}
-
 		return env_obj_ptr;
+	}
+
+	if constexpr (is_base_of_v<STPSceneLight, Obj>) {
+		unique_ptr<Obj> light_ptr_managed = make_unique<Obj>(forward<Arg>(arg)...);
+		//Before record to the database, add to the scene renderer.
+		//This function might thrown an exception in case addition to the renderer fails.
+		this->addLight(*light_ptr_managed.get());
+
+		//unique_ptr does not allow casting the underlying pointer, release it and re-create a new one.
+		Obj* const light_ptr = light_ptr_managed.release();
+		scene_graph.LightDatabase.emplace_back(light_ptr);
+		//if this light casts shadow, we add to a subset list
+		if (light_ptr->getLightShadow()) {
+			//For now our system guarantees that if the light is initialised as a shadow-casting light it will stay.
+			//We don't need to worry about whether light becomes a non shadow-casting light later. And vice-versa.
+			scene_graph.ShadowLight.emplace_back(light_ptr);
+		}
+
+		return light_ptr;
 	}
 
 	if constexpr (is_same_v<STPAmbientOcclusion, Obj>) {

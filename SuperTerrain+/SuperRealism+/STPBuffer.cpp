@@ -66,3 +66,7 @@ void STPBuffer::bufferSubData(const void* data, size_t size, STPOpenGL::STPintpt
 void STPBuffer::bufferStorageSubData(const void* data, size_t size, STPOpenGL::STPbitfield flag) {
 	glNamedBufferStorage(this->Buffer.get(), size, data, flag);
 }
+
+void STPBuffer::copyBufferSubDataFrom(const STPBuffer& readBuffer, STPOpenGL::STPintptr readOffset, STPOpenGL::STPintptr writeOffset, size_t size) {
+	glCopyNamedBufferSubData(*readBuffer, this->Buffer.get(), readOffset, writeOffset, size);
+}

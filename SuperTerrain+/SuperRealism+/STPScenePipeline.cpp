@@ -10,11 +10,6 @@
 //Base Off-screen Rendering
 #include <SuperRealism+/Scene/Component/STPScreen.h>
 #include <SuperRealism+/Scene/Component/STPAlphaCulling.h>
-//GL Object
-#include <SuperRealism+/Object/STPSampler.h>
-#include <SuperRealism+/Object/STPBindlessTexture.h>
-#include <SuperRealism+/Object/STPFrameBuffer.h>
-#include <SuperRealism+/Object/STPProgramManager.h>
 
 #include <SuperRealism+/Utility/STPLogStorage.hpp>
 
@@ -26,9 +21,9 @@
 //System
 #include <optional>
 #include <algorithm>
+#include <sstream>
 //Container
 #include <array>
-#include <unordered_map>
 
 //GLAD
 #include <glad/glad.h>
@@ -53,16 +48,11 @@ using glm::mat4;
 using glm::dmat4;
 using glm::value_ptr;
 
+using std::ostringstream;
 using std::optional;
-using std::string;
-using std::to_string;
 using std::vector;
 using std::array;
-using std::unordered_map;
-using std::unique_ptr;
 using std::make_unique;
-using std::pair;
-using std::make_pair;
 
 using namespace SuperTerrainPlus::STPRealism;
 
@@ -342,26 +332,27 @@ public:
 
 	/**
 	 * @brief Manage a new light that casts shadow.
-	 * @param shadow_light The pointer to the an array of shadow-casting light.
+	 * @param light_shadow A pointer to the shadow instance of the light.
 	*/
-	inline void addLight(STPSceneLight::STPEnvironmentLight<true>& shadow_light) {
+	inline void addLight(STPLightShadow& light_shadow) {
 		//TODO: set mipmap level and anisotropy level for VSM
-		shadow_light.getLightShadow().setShadowMap(this->ShadowFilter);
+		light_shadow.setShadowMap(this->ShadowFilter);
 	}
 
 	/**
 	 * @brief Render the shadow-casting objects to shadow-casting light space.
 	 * @param shadow_obejct The pointer to all shadow-casting objects.
 	 * @param shadow_light The pointer to all shadow-casting light.
+	 * It is a undefined behaviour if any of the light is not shadow casting.
 	*/
-	void renderToShadow(const vector<STPSceneObject::STPOpaqueObject<true>*>& shadow_object, const vector<STPSceneLight::STPEnvironmentLight<true>*>& shadow_light) {
+	void renderToShadow(const vector<STPSceneObject::STPOpaqueObject<true>*>& shadow_object, const vector<STPSceneLight*>& shadow_light) {
 		//record the original viewport size
 		const ivec4 ori_vp = STPShadowPipeline::getViewport();
 
 		size_t current_light_space_start = 0ull;
 		for (int i = 0; i < shadow_light.size(); i++) {
 			auto* const shadowable_light = shadow_light[i];
-			STPLightShadow& shadow_instance = shadowable_light->getLightShadow();
+			STPLightShadow& shadow_instance = *shadowable_light->getLightShadow();
 
 			//check if the light needs to update
 			if (!shadow_instance.updateLightSpace()) {
@@ -404,23 +395,6 @@ public:
 class STPScenePipeline::STPGeometryBufferResolution : private STPScreen {
 private:
 
-	//A pair of light identifier and light property to locate a specific light property.
-	typedef pair<STPLightIdentifier, STPLightPropertyType> STPLightPropertyIdentifier;
-	/**
-	 * @brief Hash function for light identifier and light property.
-	*/
-	struct STPHashLightProperty {
-	public:
-
-		inline size_t operator()(const STPLightPropertyIdentifier& prop) const {
-			const auto& [id, type] = prop;
-			return STPHashCombine::combine(0ull, id, type);
-		}
-
-	};
-	//This lookup table can quickly locate uniforms to property of a given light identifier.
-	unordered_map<STPLightPropertyIdentifier, GLint, STPHashLightProperty> LightUniformLocation;
-
 	//The dependent scene pipeline.
 	const STPScenePipeline& Pipeline;
 
@@ -440,40 +414,10 @@ private:
 
 	constexpr static auto DeferredShaderFilename =
 		STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPDeferredShading", ".frag");
-	
-	//A constant value to be assigned to a shadow data index to indicate a non-shadow-casting light
-	constexpr static unsigned int UnusedShadow = std::numeric_limits<unsigned int>::max();
-
-	//A memory pool for creating dynamic uniform name.
-	string UniformNameBuffer;
-
-	/**
-	 * @brief Create a uniform name that reuses string memory.
-	 * @param pre The first segment of the string.
-	 * @param index The middle segment.
-	 * @param post The final segment.
-	 * @return A pointer to the final string, this pointer is valid until next time this function is called.
-	*/
-	inline const char* createUniformName(const char* pre, const string& index, const char* post) {
-		this->UniformNameBuffer.clear();
-		//this is valid in C++17 and later version, each sub-expression will guarantee to be evaluated in order.
-		this->UniformNameBuffer.append(pre).append(index).append(post);
-		return this->UniformNameBuffer.c_str();
-	}
 
 public:
 
 	STPFrameBuffer AmbientOcclusionContainer, ExtinctionCullingContainer;
-
-	/**
-	 * @brief STPLightIndexLocator is a lookup table, given an instance of light, find the index in the scene graph.
-	*/
-	struct STPLightIndexLocator {
-	public:
-
-		unordered_map<const STPSceneLight::STPEnvironmentLight<false>*, size_t> Env;
-
-	} IndexLocator;
 
 	/**
 	 * @brief Init a new geometry buffer resolution instance.
@@ -494,7 +438,8 @@ public:
 		STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 		const STPSceneShaderCapacity& memory_cap = this->Pipeline.SceneMemoryLimit;
-		Macro("ENVIRONMENT_LIGHT_CAPACITY", memory_cap.EnvironmentLight)
+		Macro("AMBIENT_LIGHT_CAPACITY", memory_cap.AmbientLight)
+			("DIRECTIONAL_LIGHT_CAPACITY", memory_cap.DirectionalLight)
 
 			("LIGHT_SHADOW_FILTER", static_cast<std::underlying_type_t<STPShadowMapFilter>>(shadow_filter.Filter))
 			("SHADOW_CASCADE_BLEND", cascadeLayerBlend ? 1 : 0);
@@ -535,27 +480,6 @@ public:
 		//no colour will be written to the extinction buffer
 		this->ExtinctionCullingContainer.readBuffer(GL_NONE);
 		this->ExtinctionCullingContainer.drawBuffer(GL_NONE);
-		
-		//build the uniform location lookup table
-		for (size_t id = 0u; id < this->Pipeline.SceneMemoryLimit.EnvironmentLight; id++) {
-			const string id_str = to_string(id);
-
-			//for every property in every allocated light space, get the uniform location.
-			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::AmbientStrength),
-				this->OffScreenRenderer.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Ka")));
-
-			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::DiffuseStrength),
-				this->OffScreenRenderer.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Kd")));
-
-			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::SpecularStrength),
-				this->OffScreenRenderer.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Ks")));
-
-			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::SpectrumCoordinate),
-				this->OffScreenRenderer.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].SpectrumCoord")));
-
-			this->LightUniformLocation.try_emplace(make_pair(id, STPLightPropertyType::Direction),
-				this->OffScreenRenderer.uniformLocation(STPGeometryBufferResolution::createUniformName("EnvironmentLightList[", id_str, "].Dir")));
-		}
 	}
 
 	STPGeometryBufferResolution(const STPGeometryBufferResolution&) = delete;
@@ -568,33 +492,40 @@ public:
 
 	~STPGeometryBufferResolution() = default;
 
+	
 	/**
-	 * @brief Add shadow information for a shadow casting light.
+	 * @brief Add a light to the rendering pipeline and flush the light information to the shader.
 	 * @param light The pointer to the newly added light.
-	 * @param shadow_light The pointer to the shadow light instance, or nullptr.
-	 * @param shadow_handle The bindless handle to the depth texture for this newly added light.
-	 * For non shadow-casting light, this parameter can be null.
+	 * This function assumes the light has yet been added to the scene graph.
 	*/
-	void addLight(const STPSceneLight::STPEnvironmentLight<false>& light, const STPSceneLight::STPEnvironmentLight<true>* shadow_light = nullptr) {
-		const STPSceneGraph& scene_graph = this->Pipeline.SceneComponent;
+	void addLight(const STPSceneLight& light) {
 		//current memory usage in the shader, remember this is the current memory usage without this light being added.
 		const STPSceneShaderCapacity& scene_mem_current = this->Pipeline.SceneMemoryCurrent;
-		auto& [env] = this->IndexLocator;
 
-		//add pointer-index lookup entry
-		//we can safely assumes the new light is emplaced at the back of the light object array
-		env.try_emplace(&light, scene_graph.EnvironmentObjectDatabase.size() - 1ull);
+		ostringstream list_name;
+		const char* count_name = nullptr;
+		size_t current_count = 0ull;
+		const GLuint64EXT light_data_addr = light.lightDataAddress();
+		//put the light into the correct bin based on its type
+		switch (light.Type) {
+		case STPSceneLight::STPLightType::Ambient:
+			current_count = scene_mem_current.AmbientLight;
+			list_name << "AmbientLightList[" << current_count << ']';
+			count_name = "AmbCount";
+			break;
+		case STPSceneLight::STPLightType::Directional:
+			current_count = scene_mem_current.DirectionalLight;
+			list_name << "DirectionalLightList[" << current_count << ']';
+			count_name = "DirCount";
+			break;
+		default:
+			break;
+		}
 
-		//setup light uniform
-		const size_t lightLoc = scene_mem_current.EnvironmentLight;
-		const string lightLoc_str = to_string(lightLoc);
-		//create light spectrum handle and send to the program
-		this->OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, this->createUniformName("EnvironmentLightList[", lightLoc_str, "].LightSpectrum"),
-			light.getLightSpectrum().spectrumHandle())
-			.uniform(glProgramUniform1ui, "EnvLightCount", static_cast<unsigned int>(lightLoc + 1ull));
-
-		this->OffScreenRenderer.uniform(glProgramUniformui64NV,
-			this->createUniformName("EnvironmentLightList[", lightLoc_str, "].DirShadow"), shadow_light ? shadow_light->getLightShadow().shadowDataAddress() : 0ull);
+		this->OffScreenRenderer.uniform(glProgramUniformui64NV, list_name.str().c_str(), light_data_addr)
+			//because we can safely assume this light has yet added to the scene, which mean after addition of this light,
+			//the memory usage will be incremented by 1.
+			.uniform(glProgramUniform1ui, count_name, static_cast<unsigned int>(current_count) + 1u);
 	}
 
 
@@ -713,23 +644,6 @@ public:
 	}
 
 	/**
-	 * @see STPScenePipeline::setLight
-	 * For spectrum coordinate, the coordinate must be provided through the data.
-	*/
-	template<STPScenePipeline::STPLightPropertyType Prop, typename T>
-	inline void setLight(STPLightIdentifier identifier, T&& data) {
-		const auto forwardedData = std::forward<T>(data);
-		const GLint location = this->LightUniformLocation.find(make_pair(identifier, Prop))->second;
-
-		if constexpr (Prop == STPLightPropertyType::Direction) {
-			this->OffScreenRenderer.uniform(glProgramUniform3fv, location, 1, value_ptr(forwardedData));
-		}
-		else {
-			this->OffScreenRenderer.uniform(glProgramUniform1f, location, forwardedData);
-		}
-	}
-
-	/**
 	 * @brief Set a float uniform.
 	 * @param name The name of the uniform.
 	 * @param val The float value to be set.
@@ -783,19 +697,33 @@ inline const STPShaderManager* STPScenePipeline::getDepthShader() const {
 	return this->GeometryShadowPass->DepthPassShader.has_value() ? &this->GeometryShadowPass->DepthPassShader.value() : nullptr;
 }
 
-void STPScenePipeline::canLightBeAdded() const {
-	const STPSceneShaderCapacity& current_usage = this->SceneMemoryCurrent, 
-		limit_usage = this->SceneMemoryLimit;
+//TODO: later when we have different types of light, 
+//we can introduce a smarter system that helps us to determine the light type based on the range of index.
+//For example when index < 10000 it is an environment light.
 
-	//one env light takes one space for environment light list and array shadow map, each
-	if (current_usage.EnvironmentLight == limit_usage.EnvironmentLight) {
-		throw STPException::STPMemoryError("The number of environment light has reached the limit");
+void STPScenePipeline::addLight(STPSceneLight& light) {
+	{
+		//test if we still have enough memory to add a light.
+		const STPSceneShaderCapacity& current_usage = this->SceneMemoryCurrent,
+			limit_usage = this->SceneMemoryLimit;
+		switch (light.Type) {
+		case STPSceneLight::STPLightType::Ambient:
+			if (current_usage.AmbientLight < limit_usage.AmbientLight) {
+				break;
+			}
+		case STPSceneLight::STPLightType::Directional:
+			if (current_usage.DirectionalLight < limit_usage.DirectionalLight) {
+				break;
+			}
+			throw STPException::STPMemoryError("The number of this type of light has reached the limit");
+		default:
+			break;
+		}
 	}
-}
 
-void STPScenePipeline::addLight(const STPSceneLight::STPEnvironmentLight<false>& light, STPSceneLight::STPEnvironmentLight<true>* light_shadow) {
 	STPSceneGraph& scene_graph = this->SceneComponent;
-
+	STPLightShadow* const light_shadow = light.getLightShadow();
+	//remember this light shadow pointer might be a null if the light does not cast shadow.
 	if (light_shadow) {
 		//this is a shadow-casting light
 		//allocate shadow memory for this light
@@ -803,7 +731,7 @@ void STPScenePipeline::addLight(const STPSceneLight::STPEnvironmentLight<false>&
 
 		//check and see if we need to update the array that stores unique light space count
 		auto& unique_light_space = scene_graph.UniqueLightSpaceSize;
-		const size_t newLightSpaceCount = light_shadow->getLightShadow().lightSpaceDimension();
+		const size_t newLightSpaceCount = light_shadow->lightSpaceDimension();
 
 		const auto it = lower_bound(unique_light_space.begin(), unique_light_space.end(), newLightSpaceCount);
 		if (it == unique_light_space.end() || *it != newLightSpaceCount) {
@@ -816,18 +744,21 @@ void STPScenePipeline::addLight(const STPSceneLight::STPEnvironmentLight<false>&
 				shadow_obj->addDepthConfiguration(newLightSpaceCount, depth_shader);
 			}
 		}
-
-		//add light settings to the lighting shader
-		this->GeometryLightPass->addLight(light, light_shadow);
 	}
-	else {
-		this->GeometryLightPass->addLight(light);
-	}
+	//add light to the lighting shader
+	this->GeometryLightPass->addLight(light);
 
 	//update memory usage
 	STPSceneShaderCapacity& mem_usage = this->SceneMemoryCurrent;
-
-	mem_usage.EnvironmentLight++;
+	switch (light.Type) {
+	case STPSceneLight::STPLightType::Ambient: mem_usage.AmbientLight++;
+		break;
+	case STPSceneLight::STPLightType::Directional: mem_usage.DirectionalLight++;
+		break;
+	default:
+		//impossible for exhaustive enum
+		break;
+	}
 }
 
 const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryUsage() const {
@@ -836,10 +767,6 @@ const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryUsage
 
 const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryLimit() const {
 	return this->SceneMemoryLimit;
-}
-
-STPScenePipeline::STPLightIdentifier STPScenePipeline::locateLight(const STPSceneLight::STPEnvironmentLight<false>* light) const {
-	return this->GeometryLightPass->IndexLocator.Env.at(light);
 }
 
 void STPScenePipeline::setClearColor(vec4 color) {
@@ -881,45 +808,6 @@ void STPScenePipeline::setResolution(uvec2 resolution) {
 	this->SceneTexture = move(scene_texture);
 }
 
-//TODO: later when we have different types of light, 
-//we can introduce a smarter system that helps us to determine the light type based on the range of index.
-//For example when index < 10000 it is an environment light.
-
-template<STPScenePipeline::STPLightPropertyType Prop>
-void STPScenePipeline::setLight(STPLightIdentifier identifier) {
-	const STPSceneLight::STPEnvironmentLight<false>& env = *this->SceneComponent.EnvironmentObjectDatabase[identifier];
-
-	//these data can be retrieved from the scene graph directly
-	if constexpr (Prop == STPLightPropertyType::SpectrumCoordinate) {
-		this->GeometryLightPass->setLight<Prop>(identifier, env.getLightSpectrum().coordinate());
-	}
-	if constexpr (Prop == STPLightPropertyType::Direction) {
-		this->GeometryLightPass->setLight<Prop>(identifier, env.lightDirection());
-	}
-}
-
-template<STPScenePipeline::STPLightPropertyType Prop>
-void STPScenePipeline::setLight(STPLightIdentifier identifier, float data) {
-	this->GeometryLightPass->setLight<Prop>(identifier, data);
-}
-
-void STPScenePipeline::setLight(STPLightIdentifier identifier, const STPEnvironment::STPLightSetting::STPAmbientLightSetting& ambient) {
-	if (!ambient.validate()) {
-		throw STPException::STPInvalidEnvironment("Ambient light setting is not valid");
-	}
-
-	this->setLight<STPLightPropertyType::AmbientStrength>(identifier, ambient.AmbientStrength);
-}
-
-void STPScenePipeline::setLight(STPLightIdentifier identifier, const STPEnvironment::STPLightSetting::STPDirectionalLightSetting& directional) {
-	if (!directional.validate()) {
-		throw STPException::STPInvalidEnvironment("Directional light setting is not valid");
-	}
-
-	this->setLight<STPLightPropertyType::DiffuseStrength>(identifier, directional.DiffuseStrength);
-	this->setLight<STPLightPropertyType::SpecularStrength>(identifier, directional.SpecularStrength);
-}
-
 void STPScenePipeline::setExtinctionArea(float factor) const {
 	if (factor < 0.0f && factor > 1.0f) {
 		throw STPException::STPBadNumericRange("The extinction factor is a multiplier to far viewing distance and hence it should be a normalised value");
@@ -929,7 +817,7 @@ void STPScenePipeline::setExtinctionArea(float factor) const {
 }
 
 void STPScenePipeline::traverse() {
-	const auto& [object, object_shadow, unique_light_space_size, env, env_shadow, ao, post_process] = this->SceneComponent;
+	const auto& [object, object_shadow, env_obj, unique_light_space_size, light, light_shadow, ao, post_process] = this->SceneComponent;
 	//determine the state of these optional stages
 	const bool has_effect_ao = ao.has_value(),
 		has_effect_post_process = post_process.has_value();
@@ -949,7 +837,7 @@ void STPScenePipeline::traverse() {
 	//out scene main consists of single-sided objects and light sources may travel between front face and back face
 	//it is the best to disable face culling to avoid having light bleeding
 	glDisable(GL_CULL_FACE);
-	this->GeometryShadowPass->renderToShadow(object_shadow, env_shadow);
+	this->GeometryShadowPass->renderToShadow(object_shadow, light_shadow);
 	glEnable(GL_CULL_FACE);
 
 	/* ====================================== geometry rendering ================================== */
@@ -1033,8 +921,8 @@ void STPScenePipeline::traverse() {
 	//alpha 0 means object is fully visible
 	glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA, GL_ONE, GL_ONE);
 
-	for (const auto& rendering_env : env) {
-		rendering_env->renderEnvironment();
+	for (const auto& rendering_env : env_obj) {
+		rendering_env->render();
 	}
 
 	glDisable(GL_BLEND);
@@ -1084,8 +972,3 @@ SHADOW_FILTER_NAME(VSM)::STPShadowMapFilterKernel() : STPShadowMapFilterFunction
 SHADOW_FILTER_DEF(VSM) {
 	program.uniform(glProgramUniform1f, "Filter.minVar", this->minVariance);
 }
-
-//Explicit Instantiation for templates that are not used by the source
-#define SET_LIGHT_NO_DATA(PROP) template STP_REALISM_API void STPScenePipeline::setLight<STPScenePipeline::STPLightPropertyType::PROP>(STPLightIdentifier)
-SET_LIGHT_NO_DATA(SpectrumCoordinate);
-SET_LIGHT_NO_DATA(Direction);

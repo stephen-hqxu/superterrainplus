@@ -12,9 +12,8 @@
 #include "../../Object/STPVertexArray.h"
 #include "../../Utility/STPLogStorage.hpp"
 
-//Lighting
 #include "../Light/STPLightSpectrum.h"
-#include "../STPSceneLight.h"
+#include "../STPSceneObject.h"
 
 //GLM
 #include <glm/vec3.hpp>
@@ -26,86 +25,16 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPSun is the main light source on the procedural terrain.
 	 * It manages the position of the sun based on the time, rotates around the sky.
 	 * It also allows, optionally, day-night cycle and switches light intensity.
-	 * Atmoshperic scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
-	 * @tparam SM True to indicate that the sun should cast shadow to opaque object, false otherwise.
+	 * Atmospheric scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
 	*/
-	template<bool SM>
-	class STPSun;
-	
-	template<>
-	class STP_REALISM_API STPSun<false> : public STPSceneLight::STPEnvironmentLight<false> {
+	class STP_REALISM_API STPSun : public STPSceneObject::STPEnvironmentObject {
 	public:
 
-		/**
-		 * @brief STPSunSpectrum allows generating an approximation of spectrum for looking up sky and sun color using sun elevation.
-		 * This spectrum contains two color strips, being the indirect and direct color.
-		*/
-		class STP_REALISM_API STPSunSpectrum : public STPLightSpectrum {
-		public:
+		//A pair of two equivalent types.
+		template<class T>
+		using STPBundledData = std::pair<T, T>;
 
-			/**
-			 * @brief STPSpectrumSpecification specifies the behaviour of the sun spectrum generator to 
-			 * control the precision of the spectrum.
-			*/
-			struct STPSpectrumSpecification {
-			public:
-
-				const STPEnvironment::STPAtmosphereSetting* Atmosphere;
-				//A matrix to convert from sun direction space to ray direction space.
-				glm::mat3 RaySpace;
-
-				//The sun direction for the first iteration and the last iteration.
-				//Sun direction in between will be interpolated.
-				std::pair<glm::vec3, glm::vec3> Domain;
-			};
-
-		private:
-
-			//A compute shader to generate an approximation of sky and sun spectrum
-			STPProgramManager SpectrumEmulator;
-
-			//The sun direction linked with a sun, and will be updated automatically.
-			const float& SunElevation;
-			//Record the elevation of sun direction domain of last computed spectrum.
-			std::pair<float, float> DomainElevation;
-
-		public:
-
-			typedef STPLogStorage<2ull> STPSpectrumLog;
-
-			/**
-			 * @brief Initialise a sun spectrum generator and generate the spectrum.
-			 * @param spectrum_length The number of color in the spectrum.
-			 * @param sun The pointer to the sun to be linked with the sun spectrum emulator.
-			 * @param raw_log The pointer to where the shader log will be stored to.
-			*/
-			STPSunSpectrum(unsigned int, const STPSun&, STPSpectrumLog&);
-
-			STPSunSpectrum(const STPSunSpectrum&) = delete;
-
-			STPSunSpectrum(STPSunSpectrum&&) noexcept = default;
-
-			STPSunSpectrum& operator=(const STPSunSpectrum&) = delete;
-
-			STPSunSpectrum& operator=(STPSunSpectrum&&) noexcept = default;
-
-			~STPSunSpectrum() = default;
-			
-			/**
-			 * @brief Generate a new sun spectrum.
-			 * @param spectrum_setting The pointer to the spectrum specification.
-			*/
-			void operator()(const STPSpectrumSpecification&);
-
-			/**
-			 * @brief Calculate the sun spectrum coordinate based on the sun direction.
-			 * @return The spectrum texture coordinate.
-			*/
-			float coordinate() const override;
-
-		};
-
-	protected:
+	private:
 
 		const STPEnvironment::STPSunSetting& SunSetting;
 
@@ -119,13 +48,11 @@ namespace SuperTerrainPlus::STPRealism {
 		//The integer part is the number of day, the fractional part is the local solar time.
 		//The time according to the position of the sun in the sky relative to one specific location on the ground, in tick
 		double Day;
-
 		//The angle changed per tick, in radians
 		const double AnglePerTick;
 		//Denotes the tick at noon time, equals to day length by 2
 		const unsigned long long NoonTime;
-
-		//Records the most recent calculation to avoid recomputation.
+		//Records the most recent calculation to avoid re-computation.
 		//The elevation angle is the angle between the sun and the horizontal. 
 		//The elevation angle is similar to the zenith angle but it is measured from the horizontal rather than from the vertical, 
 		//thus making the elevation angle = 90° - zenith.
@@ -136,8 +63,13 @@ namespace SuperTerrainPlus::STPRealism {
 		//In general however, the azimuth angle varies with the latitude and time of year.
 		glm::vec3 SunDirectionCache;
 
+		//A compute shader to generate an approximation of sky and sun spectrum
+		mutable STPProgramManager SpectrumEmulator;
+		//Record the elevation of sun direction domain of the spectrum.
+		STPBundledData<float> SpectrumDomainElevation;
+
 		/**
-		 * @brief Send new atmosphere settings as uniforms to the destintion program.
+		 * @brief Send new atmosphere settings as uniforms to the destination program.
 		 * @param program The program where the uniforms will be sent to.
 		 * @param atmo_setting The atmosphere setting to be updated.
 		*/
@@ -145,23 +77,17 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		STPSunSpectrum SunSpectrum;
-
-		struct STPSunLog {
-		public:
-
-			STPLogStorage<3ull> SunRenderer;
-			STPSunSpectrum::STPSpectrumLog SpectrumGenerator;
-
-		};
+		typedef STPLogStorage<5ull> STPSunLog;
 
 		/**
 		 * @brief Init the sun with settings.
 		 * @param sun_setting The sun setting.
-		 * @param spectrum_length To initialise a sun spectrum, denotes the length of the sun spectrum.
+		 * @param spectrum_domain For sun spectrum emulation.
+		 * Specifies The sun direction for the first iteration and the last iteration.
+		 * Sun direction in between will be interpolated.
 		 * @param log Logs output from the shader compilation.
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, unsigned int, STPSunLog&);
+		STPSun(const STPEnvironment::STPSunSetting&, const STPBundledData<glm::vec3>&, STPSunLog&);
 
 		STPSun(const STPSun&) = delete;
 
@@ -173,41 +99,42 @@ namespace SuperTerrainPlus::STPRealism {
 
 		~STPSun() = default;
 
-		const glm::vec3& lightDirection() const override;
+		/**
+		 * @brief Get the direction of the sun.
+		 * @return The pointer to the sun direction, which is associated with the current sun instance.
+		*/
+		const glm::vec3& sunDirection() const;
 
 		/**
 		 * @brief Bring the timer forward by a delta amount and update the sun position.
 		 * @param tick The number of tick to be added to the current LST.
 		*/
-		virtual void advanceTick(unsigned long long);
+		void advanceTick(unsigned long long);
 
 		/**
-		 * @brief Update the renderer with new atmoshpere setting.
+		 * @brief Update the renderer with new atmosphere setting.
 		 * No reference is retained after this function returns.
 		 * @param atmo_setting The atmosphere setting to be updated setting. 
 		*/
 		void setAtmoshpere(const STPEnvironment::STPAtmosphereSetting&);
 
-		const STPLightSpectrum& getLightSpectrum() const override;
-
-		void renderEnvironment() override;
-
-	};
-
-	template<>
-	class STP_REALISM_API STPSun<true> : public STPSun<false>, public STPSceneLight::STPEnvironmentLight<true> {
-	public:
+		/**
+		 * @brief Generate a new sun spectrum.
+		 * This spectrum takes the colour of the sky and sun at different sun elevation based on the spectrum domain initialised.
+		 * @param spectrum_length The number of colour in the spectrum.
+		 * @param ray_space A matrix to convert from sun direction space to ray direction space.
+		 * @return A pair of light spectrum.
+		 * The first element is the skylight spectrum and the second element is the sunlight spectrum.
+		*/
+		STPBundledData<STPLightSpectrum> generateSunSpectrum(unsigned int, const glm::mat3&) const;
 
 		/**
-		 * @brief Init the sun with settings.
-		 * Arguments are nearly the same as the base class except the extra pointer to sun shadow light frustum setting.
-		 * @see STPSun<false>
+		 * @brief Calculate the sun spectrum sampling coordinate based on the current sun direction.
+		 * @return The spectrum sampling coordinate.
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, unsigned int, STPEnvironmentLightShadow&&, STPSunLog&);
+		float spectrumCoordinate() const;
 
-		~STPSun() = default;
-
-		void advanceTick(unsigned long long) override;
+		void render() override;
 
 	};
 

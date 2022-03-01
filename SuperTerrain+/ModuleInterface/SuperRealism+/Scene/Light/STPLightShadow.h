@@ -1,14 +1,14 @@
 #pragma once
-#ifndef _STP_LIGHT_SHADOW_HPP_
-#define _STP_LIGHT_SHADOW_HPP_
+#ifndef _STP_LIGHT_SHADOW_H_
+#define _STP_LIGHT_SHADOW_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Shadow
 #include "STPShadowMapFilter.hpp"
 //GL Object
-#include "../Object/STPBindlessBuffer.h"
-#include "../Object/STPBindlessTexture.h"
-#include "../Object/STPFrameBuffer.h"
+#include "../../Object/STPBindlessBuffer.h"
+#include "../../Object/STPBindlessTexture.h"
+#include "../../Object/STPFrameBuffer.h"
 
 #include <optional>
 
@@ -65,6 +65,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
+		//The shadow map format which determines the texture target of the shadow map. 
+		//The format depends on which shadow map technique is used.
+		const STPShadowMapFormat ShadowMapFormat;
 		//The resolution of the shadow map.
 		//The shadow map is required to be a square such that this represents the extent length.
 		const unsigned int ShadowMapResolution;
@@ -72,8 +75,9 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Init a light shadow instance.
 		 * @param resolution The resolution of the shadow map. Specifically this should specify the extent length of the shadow map.
+		 * @param format Specifies the format of the targeting shadow map.
 		*/
-		STPLightShadow(unsigned int);
+		STPLightShadow(unsigned int, STPShadowMapFormat);
 
 		STPLightShadow(const STPLightShadow&) = delete;
 
@@ -107,13 +111,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The address to the light space matrix in the shadow data buffer.
 		*/
 		virtual STPOpenGL::STPuint64 lightSpaceMatrixAddress() const = 0;
-
-		/**
-		 * @brief Get the format of the shadow map.
-		 * @return The shadow map format which determines the texture target of the shadow map. 
-		 * The format depends on which shadow map technique is used.
-		*/
-		virtual STPShadowMapFormat shadowMapFormat() const = 0;
 
 		/**
 		 * @brief Trigger a force update to the light space information.
@@ -152,4 +149,4 @@ namespace SuperTerrainPlus::STPRealism {
 	};
 
 }
-#endif//_STP_LIGHT_SHADOW_HPP_
+#endif//_STP_LIGHT_SHADOW_H_

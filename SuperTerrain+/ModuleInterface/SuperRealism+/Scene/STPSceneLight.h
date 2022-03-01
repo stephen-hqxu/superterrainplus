@@ -5,146 +5,78 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //Light
 #include "./Light/STPLightSpectrum.h"
-//Light Shadow Solution
-#include "./Light/STPCascadedShadowMap.h"
-
-#include <memory>
-
-//GLM
-#include <glm/vec3.hpp>
+//Light Shadow
+#include "./Light/STPLightShadow.h"
+//GL Object
+#include "../Object/STPBindlessBuffer.h"
 
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
 	 * @brief STPSceneLight is a type of objects that emits light, it is a collection of all different types of light source.
-	 * Most light sources in the scene are given two options, being non-shadow-casting one (the false option) and the shadow-casting one (the true option).
+	 * Most light sources in the scene are allowed to be chosen between a shadow-casting and non shadow-casting light.
 	*/
-	namespace STPSceneLight {
+	class STP_REALISM_API STPSceneLight {
+	public:
 
 		/**
-		 * @brief STPLocalLight is one type of light that has limited range of lighting effect and has clearly defined position.
+		 * @brief STPLightType identifies the type of a light.
 		*/
-		template<bool SM>
-		class STPLocalLight;
-
-		/**
-		 * @brief STPGlobalLight is one type of light that emits light without attenuation to the whole scene, 
-		 * and usually it does not have defined position.
-		*/
-		template<bool SM>
-		class STPGlobalLight;
-
-		template<>
-		class STPGlobalLight<false> {
-		public:
-
-			STPGlobalLight() = default;
-
-			virtual ~STPGlobalLight() = default;
-
-			/**
-			 * @brief Get the pointer to the light spectrum.
-			 * @return The pointer to the spectrum of the current light.
-			*/
-			virtual const STPLightSpectrum& getLightSpectrum() const = 0;
-
+		enum class STPLightType : unsigned char {
+			Ambient = 0x00u,
+			Directional = 0x01u
 		};
 
-		template<>
-		class STPGlobalLight<true> {
-		public:
+	protected:
 
-			STPGlobalLight() = default;
+		//Please do note that all optional fields are required to be initialised before rendering.
 
-			virtual ~STPGlobalLight() = default;
+		//A buffer stores data of a light.
+		STPBuffer LightData;
+		//An address to the light data buffer to be shared with shaders.
+		std::optional<STPBindlessBuffer> LightDataAddress;
 
-			/**
-			 * @brief Get the constant pointer to the light shadow instance.
-			 * @return The constant pointer to the light shadow of the current light.
-			*/
-			virtual const STPLightShadow& getLightShadow() const = 0;
+	public:
 
-			/**
-			 * @brief Get the pointer to the light shadow instance.
-			 * @return The pointer to the light shadow of the current light.
-			*/
-			STPLightShadow& getLightShadow();
-
-		};
+		const STPLightType Type;
+		//The light spectrum specifies the colour of the light
+		const STPLightSpectrum LightSpectrum;
 
 		/**
-		 * @brief Ambient light is a type of global light source that emulates indirect light colour coming from all different lights.
-		 * It emits a dim constant light from unspecified location, thus it never leaves shadows, but instead it contributes to
-		 * ambient occlusion.
+		 * @brief Init a STPSceneLight instance.
+		 * @param spectrum The light spectrum used for this light instance.
+		 * This light spectrum will be moved under the current light instance upon construction.
+		 * @param type Specifies the type of light.
 		*/
-		class STPAmbientLight;
+		STPSceneLight(STPLightSpectrum&&, STPLightType);
+
+		virtual ~STPSceneLight();
 
 		/**
-		 * @brief Directional light is a type of global light that emits parallel light from undefined position, but rather,
-		 * it has a defined direction denoted by a unit vector.
+		 * @brief Get the pointer to the light shadow instance.
+		 * @return The pointer to the light shadow of the current light.
+		 * The pointer might be null to denote that this light should not cast any shadow.
 		*/
-		template<bool SM>
-		class STPDirectionalLight;
+		virtual const STPLightShadow* getLightShadow() const = 0;
 
 		/**
-		 * @brief Environment light is a special type of light source.
-		 * It is not only an ambient and directional light source, but also contributes to environment rendering.
-		 * Even being a renderable object, it does not have a solid body.
+		 * @brief Set the sampling coordinate of the light spectrum texture.
+		 * @param coord The spectrum coordinate.
 		*/
-		template<bool SM>
-		class STPEnvironmentLight;
+		virtual void setSpectrumCoordinate(float) = 0;
 
-		template<>
-		class STPEnvironmentLight<false> : public STPGlobalLight<false> {
-		public:
+		/**
+		 * @see getLightShadow() const
+		*/
+		STPLightShadow* getLightShadow();
 
-			STPEnvironmentLight() = default;
+		/**
+		 * @brief Get the address to the light data buffer.
+		 * @return The light data buffer address.
+		*/
+		STPOpenGL::STPuint64 lightDataAddress() const;
 
-			virtual ~STPEnvironmentLight() = default;
-
-			/**
-			 * @brief Get the current light direction.
-			 * @return The pointer to the current light direction cache.
-			 * This pointer should point to a cached member variable under the instance.
-			*/
-			virtual const glm::vec3& lightDirection() const = 0;
-
-			/**
-			 * @brief Render the environment.
-			*/
-			virtual void renderEnvironment() = 0;
-
-		};
-
-		template<>
-		class STP_REALISM_API STPEnvironmentLight<true> : public STPGlobalLight<true> {
-		public:
-
-			typedef std::unique_ptr<STPCascadedShadowMap> STPEnvironmentLightShadow;
-
-		protected:
-
-			//The main light source in an environment light is a 
-			STPEnvironmentLightShadow Shadow;
-
-		public:
-
-			/**
-			 * @brief Initialise an environment light instance with shadow map initialised.
-			 * @param env_shadow The pointer to the environment light shadow.
-			 * The instance pointed by the pointer will be moved under the current light instance upon construction.
-			*/
-			STPEnvironmentLight(STPEnvironmentLightShadow&&);
-
-			virtual ~STPEnvironmentLight() = default;
-
-			const STPLightShadow& getLightShadow() const override;
-
-			using STPGlobalLight<true>::getLightShadow;
-
-		};
-
-	}
+	};
 
 }
 #endif//_STP_SCENE_LIGHT_H_

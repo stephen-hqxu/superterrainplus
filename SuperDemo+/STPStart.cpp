@@ -17,6 +17,8 @@
 #include <SuperRealism+/Scene/Component/STPSun.h>
 #include <SuperRealism+/Scene/Component/STPAmbientOcclusion.h>
 #include <SuperRealism+/Scene/Component/STPPostProcess.h>
+#include <SuperRealism+/Scene/Light/STPAmbientLight.h>
+#include <SuperRealism+/Scene/Light/STPDirectionalLight.h>
 //GL helper
 #include <SuperRealism+/Utility/STPDebugCallback.h>
 
@@ -86,13 +88,14 @@ namespace STPStart {
 
 		//Rendering Pipeline
 		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
-		SuperTerrainPlus::STPRealism::STPSun<true>* SunRenderer;
+		//Object
+		SuperTerrainPlus::STPRealism::STPSun* SunRenderer;
 		SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>* TerrainRenderer;
 		SuperTerrainPlus::STPRealism::STPAmbientOcclusion* AOEffect;
 		SuperTerrainPlus::STPRealism::STPPostProcess* FinalProcess;
-
-		//A number that locates the renderer in the scene
-		SuperTerrainPlus::STPRealism::STPScenePipeline::STPLightIdentifier SunIndex;
+		//Light
+		SuperTerrainPlus::STPRealism::STPAmbientLight* Skylight;
+		SuperTerrainPlus::STPRealism::STPDirectionalLight* Sunlight;
 
 		const dvec3& ViewPosition;
 
@@ -230,7 +233,8 @@ namespace STPStart {
 				scene_shadow_function.KernelDistance = 2.45f;
 
 				STPScenePipeline::STPSceneShaderCapacity& scene_cap = scene_init.ShaderCapacity;
-				scene_cap.EnvironmentLight = 1ull;
+				scene_cap.AmbientLight = 1ull;
+				scene_cap.DirectionalLight = 1ull;
 
 				//construct rendering pipeline
 				scene_init.GeometryBufferInitialiser = &screen_renderer_init;
@@ -240,12 +244,12 @@ namespace STPStart {
 				STPMasterRenderer::printLog(screen_renderer_log);
 				STPMasterRenderer::printLog(scene_init.DepthShader);
 			}
-			//setup light
+			//setup environment and light
 			//-------------------------------------------
 			{
 				//sun shadow setting
 				const double camFar = camera.cameraStatus().Far;
-				const STPCascadedShadowMap::STPLightFrustum frustum = {
+				const STPCascadedShadowMap::STPLightFrustum shadow_frustum = {
 					{
 						camFar / 16.0,
 						camFar / 3.5,
@@ -257,28 +261,28 @@ namespace STPStart {
 				};
 
 				//sun
-				STPSun<true>::STPSunLog sun_log;
-				this->SunRenderer = this->RenderPipeline->add<STPSun<true>>(this->SunSetting, 8192u, make_unique<STPCascadedShadowMap>(2048u, frustum), sun_log);
+				STPSun::STPSunLog sun_log;
+				this->SunRenderer = this->RenderPipeline->add<STPSun>(this->SunSetting, 
+					make_pair(
+						normalize(vec3(1.0f, -0.1f, 0.0f)),
+						normalize(vec3(0.0f, 1.0f, 0.0f))
+					), sun_log);
 				//print log
-				STPMasterRenderer::printLog(sun_log.SpectrumGenerator);
-				STPMasterRenderer::printLog(sun_log.SunRenderer);
-				//setup atmoshpere
+				STPMasterRenderer::printLog(sun_log);
+				//setup atmosphere
 				const STPEnvironment::STPAtmosphereSetting& atm_setting = sky_setting.second;
 				this->SunRenderer->setAtmoshpere(atm_setting);
 				//-------------------------------------------
 				//setup the spectrum
 				mat4 raySpace = identity<mat4>();
 				raySpace = rotate(raySpace, radians(2.7f), normalize(vec3(vec2(0.0f), 1.0f)));
-				const STPSun<true>::STPSunSpectrum::STPSpectrumSpecification spectrum_spec = {
-					&atm_setting,
-					static_cast<mat3>(raySpace),
-					make_pair(
-						normalize(vec3(1.0f, -0.1f, 0.0f)),
-						normalize(vec3(0.0f, 1.0f, 0.0f))
-					)
-				};
 				//generate a new spectrum
-				this->SunRenderer->SunSpectrum(spectrum_spec);
+				auto [sky_spec, sun_spec] = this->SunRenderer->generateSunSpectrum(8192u, static_cast<mat3>(raySpace));
+
+				using std::move;
+				//setup light
+				this->Skylight = this->RenderPipeline->add<STPAmbientLight>(move(sky_spec));
+				this->Sunlight = this->RenderPipeline->add<STPDirectionalLight>(make_unique<STPCascadedShadowMap>(2048u, shadow_frustum), move(sun_spec));
 			}
 
 			//setup solid object
@@ -301,7 +305,7 @@ namespace STPStart {
 				this->TerrainRenderer->setDepthMeshQuality(DepthTessSetting);
 				this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
 
-				//read logs from renering components after pipeline setup
+				//read logs from rendering components after pipeline setup
 				//some compilation happens after pipeline initialisation
 				auto& terrain_depth_log_db = this->TerrainRenderer->TerrainDepthLogStorage;
 				while (!terrain_depth_log_db.empty()) {
@@ -337,18 +341,16 @@ namespace STPStart {
 				STPMasterRenderer::printLog(screen_renderer_log);
 			}
 
-			using PT = STPScenePipeline::STPLightPropertyType;
-			//store this index so later we can update the light quicker
-			this->SunIndex = this->RenderPipeline->locateLight(this->SunRenderer);
-
+			//light property setup
 			STPEnvironment::STPLightSetting::STPAmbientLightSetting sun_ambient;
 			sun_ambient.AmbientStrength = 0.45f;
 			STPEnvironment::STPLightSetting::STPDirectionalLightSetting sun_directional;
 			sun_directional.DiffuseStrength = 1.6f;
 			sun_directional.SpecularStrength = 6.5f;
+			this->Skylight->setAmbient(sun_ambient);
+			this->Sunlight->setDirectional(sun_directional);
 
-			this->RenderPipeline->setLight(this->SunIndex, sun_ambient);
-			this->RenderPipeline->setLight(this->SunIndex, sun_directional);
+			//scene pipeline setup
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
 			this->RenderPipeline->setExtinctionArea(0.785f);
 		}
@@ -380,17 +382,18 @@ namespace STPStart {
 			//prepare terrain texture first (async), because this is a slow operation
 			this->TerrainRenderer->setViewPosition(this->ViewPosition);
 
-			using PT = SuperTerrainPlus::STPRealism::STPScenePipeline::STPLightPropertyType;
 			if (tickGain > 0ull) {
 				//change the sun position
 				this->SunRenderer->advanceTick(tickGain);
+
+				const float sun_specUV =  this->SunRenderer->spectrumCoordinate();
+				//update light status.
+				this->Skylight->setSpectrumCoordinate(sun_specUV);
+				this->Sunlight->setSpectrumCoordinate(sun_specUV);
+				this->Sunlight->setLightDirection(this->SunRenderer->sunDirection());
 			}
-			//updat terrain rendering settings.
-			this->RenderPipeline->setLight<PT::SpectrumCoordinate>(this->SunIndex);
-			this->RenderPipeline->setLight<PT::Direction>(this->SunIndex);
 
 			//render, all async operations are sync automatically
-			using namespace SuperTerrainPlus::STPRealism;
 			this->RenderPipeline->traverse();
 		}
 
@@ -482,7 +485,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);//we are running at opengl 4.6
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_FALSE);//not neccessary for forward compat
+		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_FALSE);//not necessary for forward compatibility
 #ifdef _DEBUG
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 		glfwWindowHint(GLFW_CONTEXT_ROBUSTNESS, GLFW_LOSE_CONTEXT_ON_RESET);
@@ -538,7 +541,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		}
 		//cuda context init on device 0 (only one GPU)
 		SuperTerrainPlus::STPEngineInitialiser::init(0);
-		//must init the main engien first because the renderer is depended on that.
+		//must init the main engine first because the renderer is depended on that.
 		SuperTerrainPlus::STPRealism::STPRendererInitialiser::init();
 
 		return SuperTerrainPlus::STPEngineInitialiser::hasInit();

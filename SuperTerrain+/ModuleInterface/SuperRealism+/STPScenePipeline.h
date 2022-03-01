@@ -8,14 +8,9 @@
 #include "./Scene/STPSceneLight.h"
 #include "./Scene/Component/STPPostProcess.h"
 #include "./Scene/Component/STPAmbientOcclusion.h"
-#include "./Scene/STPShadowMapFilter.hpp"
-//Lighting
-#include "./Environment/STPLightSetting.h"
+#include "./Scene/Light/STPShadowMapFilter.hpp"
 //Camera
 #include "./Utility/Camera/STPCamera.h"
-//GL Object
-#include "./Object/STPTexture.h"
-#include "./Object/STPBuffer.h"
 
 //Container
 #include <vector>
@@ -124,32 +119,8 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STPSceneShaderCapacity {
 		public:
 
-			//The maximum number of environment light
-			size_t EnvironmentLight;
+			size_t AmbientLight, DirectionalLight;
 
-		};
-
-		/**
-		 * @brief STPLightPropertyType indicates the type of light property to be selected.
-		 * The corresponded data type for the property type is also documented.
-		 * When calling functions using a specific property, make sure the data type supplied is correct, otherwise it will give compile-time error.
-		*/
-		enum class STPLightPropertyType : unsigned char {
-			//The multiplier to the ambient light
-			//Float
-			AmbientStrength = 0x00u,
-			//The multiplier to the diffuse light
-			//Float
-			DiffuseStrength = 0x01u,
-			//The multiplier to the specular light
-			//Float
-			SpecularStrength = 0x02u,
-			//The sampling coordinate to the light spectrum
-			//No data
-			SpectrumCoordinate = 0x03u,
-			//Light direction for directional light
-			//No data
-			Direction = 0x04u
 		};
 
 	private:
@@ -165,11 +136,13 @@ namespace SuperTerrainPlus::STPRealism {
 			std::vector<std::unique_ptr<STPSceneObject::STPOpaqueObject<false>>> OpaqueObjectDatabase;
 			//This is a subset-view of opaque object database, a collection of opaque objects that can cast shadow.
 			std::vector<STPSceneObject::STPOpaqueObject<true>*> ShadowOpaqueObject;
+			//A special object that contributes to the environment and does not have a solid body.
+			std::vector<std::unique_ptr<STPSceneObject::STPEnvironmentObject>> EnvironmentObjectDatabase;
 
 			//Light nodes
 			std::vector<size_t> UniqueLightSpaceSize;
-			std::vector<std::unique_ptr<STPSceneLight::STPEnvironmentLight<false>>> EnvironmentObjectDatabase;
-			std::vector<STPSceneLight::STPEnvironmentLight<true>*> ShadowEnvironmentObject;
+			std::vector<std::unique_ptr<STPSceneLight>> LightDatabase;
+			std::vector<STPSceneLight*> ShadowLight;
 
 			//Special effect nodes
 			std::optional<STPAmbientOcclusion> AmbientOcclusionObject;
@@ -232,24 +205,13 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The pointer to the depth shader. Nullprt is returned if depth shader is unused.
 		*/
 		const STPShaderManager* getDepthShader() const;
-
+		
 		/**
-		 * @brief Check if this light can be added to this scene without running out of memory.
-		 * @param light_shadow The pointer to the shadow instance, or nullptr. Note that this light should not be added to the scene prior to this function call.
-		 * If this light cannot be added, exception is thrown.
-		 * This function always assumes a non-shadow casting light will be added.
+		 * @brief Add a light to the scene pipeline.
+		 * Exception is thrown if the scene pipeline has no more memory to hold more lights.
+		 * @param light The pointer to the light that should be added.
 		*/
-		void canLightBeAdded() const;
-
-		/**
-		 * @brief For a newly added light, allocate light memory and flush light settings to the scene pipeline shader.
-		 * This function does not thrown any error if the result of adding this light causes memory overflow, which results in UB.
-		 * @param light The pointer to the newly added light.
-		 * This light must have been added to the scene prior to this function call.
-		 * @param light_shadow The pointer to the shadow instance of the light.
-		 * The pointer can be null if this light does not cast shadow.
-		*/
-		void addLight(const STPSceneLight::STPEnvironmentLight<false>&, STPSceneLight::STPEnvironmentLight<true>*);
+		void addLight(STPSceneLight&);
 
 	public:
 
@@ -304,15 +266,6 @@ namespace SuperTerrainPlus::STPRealism {
 		const STPSceneShaderCapacity& getMemoryLimit() const;
 
 		/**
-		 * @brief Locate the index of a given light that is added to the scene graph.
-		 * @param light The pointer to the light.
-		 * @return The identifier of this light in the scene graph array.
-		 * If the light is not registered with the scene, exception is thrown.
-		 * This index is valid until the light is removed from the scene, adding new lights won't cause the index to be invalidated.
-		*/
-		STPLightIdentifier locateLight(const STPSceneLight::STPEnvironmentLight<false>*) const;
-
-		/**
 		 * @brief Add a rendering component to the scene pipeline.
 		 * @tparam Obj The type of the object.
 		 * @tparam ...Arg Arguments for constructing the object.
@@ -337,25 +290,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param resolution The new resolution to be set.
 		*/
 		void setResolution(glm::uvec2);
-
-		/**
-		 * @brief Set the light property
-		 * If the operation is invalid, nothing will be done and the function will return silently.
-		 * @tparam Prop The light property to be set.
-		 * Note that the operation is invalid if the given property is not applicable for this type of light.
-		 * @tparam T The type of the property data. The type must be in-lined with the data type specified by the type.
-		 * @param identifier The light identifier that uniquely identifies a light in the scene graph.
-		 * Operation is invalid if the index does not correspond to a valid light in the scene.
-		 * @param data The data supplied whenever it is applicable for a specific property.
-		*/
-		template<STPLightPropertyType Prop>
-		void setLight(STPLightIdentifier);
-		//-----------------------------------
-		template<STPLightPropertyType Prop>
-		void setLight(STPLightIdentifier, float);
-		//----------------------------------------
-		void setLight(STPLightIdentifier, const STPEnvironment::STPLightSetting::STPAmbientLightSetting&);
-		void setLight(STPLightIdentifier, const STPEnvironment::STPLightSetting::STPDirectionalLightSetting&);
 
 		/**
 		 * @brief Set the region where the distant object starts to fade off.

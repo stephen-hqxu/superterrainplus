@@ -79,20 +79,41 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 
 		/**
+		 * @brief STPEnvironmentObject is a special type of object that contributes to the environmental effects.
+		 * It does not have a solid body and does not interact with other objects in the scene.
+		*/
+		class STPEnvironmentObject {
+		public:
+
+			/**
+			 * @brief Init a new STPEnvironmentObject.
+			*/
+			STPEnvironmentObject() = default;
+
+			virtual ~STPEnvironmentObject() = default;
+
+			/**
+			 * @brief Render the environment.
+			*/
+			virtual void render() = 0;
+
+		};
+
+		/**
 		 * @brief STPDepthRenderGroup is a utility that helps storing GL program pipeline with different light space count.
 		 * This allows compiling one program for each light space count.
 		 * Any greater-then-one light space requires layered rendering, a common way is by doing geometry shader instancing.
 		 * Yet, geometry shader instancing is configured at shader compile-time.
 		 * By grouping depth texture with the same number of layer, this allows choosing a different pipeline and reusing program.
 		 * @param GS Group size. Specifies how many specialised shader program should exist in a rendering pipeline, therefore group size.
-		 * As GL pipeline object allows free-combination of different programs, so it it recommended to reuse shader program 
+		 * As GL pipeline object allows free-combination of different programs, so it is recommended to reuse shader program 
 		 * and only create those that change based on different depth rendering configuration.
 		*/
 		template<size_t GS>
 		class STP_REALISM_API STPDepthRenderGroup {
 		public:
 
-			static_assert(GS <= 2ull, "Depth render group currently only supports group size upto 2");
+			static_assert(GS <= 2ull, "Depth render group currently only supports group size up to 2");
 
 			//Contains all depth shader program in a group
 			typedef std::array<STPProgramManager, GS> STPShaderCollection;
@@ -137,7 +158,7 @@ namespace SuperTerrainPlus::STPRealism {
 			typename STPGroupMember& addGroup(size_t);
 
 			/**
-			 * @see The const version of this function
+			 * @see The constant version of this function
 			*/
 			STPPipelineManager& findPipeline(size_t);
 

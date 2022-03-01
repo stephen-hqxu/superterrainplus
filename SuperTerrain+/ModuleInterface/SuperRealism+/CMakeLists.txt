@@ -38,13 +38,15 @@ Scene/Component/STPPostProcess.h
 Scene/Component/STPScreen.h
 Scene/Component/STPSun.h
 # /Scene/Light
+Scene/Light/STPAmbientLight.h
 Scene/Light/STPCascadedShadowMap.h
+Scene/Light/STPDirectionalLight.h
+Scene/Light/STPLightShadow.h
 Scene/Light/STPLightSpectrum.h
+Scene/Light/STPShadowMapFilter.hpp
 # /Scene
-Scene/STPLightShadow.h
 Scene/STPSceneLight.h
 Scene/STPSceneObject.h
-Scene/STPShadowMapFilter.hpp
 # /Utility/Camera
 Utility/Camera/STPCamera.h
 Utility/Camera/STPOrthographicCamera.h

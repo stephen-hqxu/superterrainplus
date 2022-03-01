@@ -6,7 +6,7 @@
 //Rendering Utility
 #include "../../Utility/Camera/STPCamera.h"
 //Base Shadow
-#include "../STPLightShadow.h"
+#include "STPLightShadow.h"
 
 //System
 #include <array>
@@ -134,8 +134,6 @@ namespace SuperTerrainPlus::STPRealism {
 		size_t lightSpaceDimension() const override;
 
 		STPOpenGL::STPuint64 lightSpaceMatrixAddress() const override;
-
-		STPShadowMapFormat shadowMapFormat() const override;
 
 		void forceLightSpaceUpdate() override;
 

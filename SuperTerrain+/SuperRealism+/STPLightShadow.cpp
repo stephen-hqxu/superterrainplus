@@ -1,4 +1,4 @@
-#include <SuperRealism+/Scene/STPLightShadow.h>
+#include <SuperRealism+/Scene/Light/STPLightShadow.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
@@ -13,7 +13,7 @@ using glm::vec4;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPLightShadow::STPLightShadow(unsigned int resolution) : ShadowMapResolution(resolution) {
+STPLightShadow::STPLightShadow(unsigned int resolution, STPShadowMapFormat format) : ShadowMapFormat(format), ShadowMapResolution(resolution) {
 	if (this->ShadowMapResolution == 0u) {
 		throw STPException::STPBadNumericRange("The resolution of the shadow map should be a positive integer");
 	}
@@ -24,10 +24,9 @@ SuperTerrainPlus::STPOpenGL::STPuint64 STPLightShadow::shadowMapHandle() const {
 }
 
 void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::STPint level, STPOpenGL::STPfloat anisotropy) {
-	const STPShadowMapFormat shadow_format = this->shadowMapFormat();
 	//determine the texture target to be used based on shadow map format.
 	GLenum shadow_target = 0u;
-	switch (shadow_format) {
+	switch (this->ShadowMapFormat) {
 	case STPShadowMapFormat::Scalar: shadow_target = GL_TEXTURE_2D;
 		break;
 	case STPShadowMapFormat::Array: shadow_target = GL_TEXTURE_2D_ARRAY;
@@ -47,7 +46,7 @@ void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::S
 	STPTexture shadow_map(shadow_target);
 	//shadow map is a square texture
 	const uvec3 dimension = uvec3(uvec2(this->ShadowMapResolution), this->lightSpaceDimension());
-	if (shadow_format == STPShadowMapFormat::Scalar) {
+	if (this->ShadowMapFormat == STPShadowMapFormat::Scalar) {
 		shadow_map.textureStorage<STPTexture::STPDimension::TWO>(level, shadow_internal, dimension);
 	} else {
 		shadow_map.textureStorage<STPTexture::STPDimension::THREE>(level, shadow_internal, dimension);

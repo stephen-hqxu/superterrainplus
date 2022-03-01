@@ -50,7 +50,7 @@ public:
 
 };
 
-STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLightFrustum& light_frustum) : STPLightShadow(resolution), 
+STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLightFrustum& light_frustum) : STPLightShadow(resolution, STPShadowMapFormat::Array), 
 	LightDirection(vec3(0.0f)), LightSpaceOutdated(true), LightFrustum(light_frustum) {
 	const auto& [div, band_radius, focus_camera, distance_mul] = this->LightFrustum;
 	if (distance_mul < 1.0f) {
@@ -73,11 +73,34 @@ STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLig
 		shadowBuffer_size = shadowBufferDiv_offset + sizeof(float) * (lightSpaceDim - 1ull);
 
 	//allocate memory shadow data buffer for cascaded shadow map
-	this->ShadowData.bufferStorage(shadowBuffer_size,
+	this->ShadowData.bufferStorage(shadowBuffer_size, 
 		GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
 	//grab the address of buffer
 	this->ShadowDataAddress.emplace(this->ShadowData, GL_READ_ONLY);
 	const GLuint64EXT shadowData_addr = *this->ShadowDataAddress.value();
+
+	/* ----------------------------------- initial shadow data fill up --------------------------------------- */
+	unsigned char* const shadowData_init = reinterpret_cast<unsigned char*>(this->ShadowData.mapBufferRange(0, shadowBuffer_size, 
+		GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
+	if (!shadowData_init) {
+		throw STPException::STPGLError("Unable to map shadow data buffer to setup initial data for cascaded shadow map");
+	}
+
+	//zero fill
+	memset(shadowData_init, 0x00, shadowBuffer_size);
+	//fixed data header
+	STPPackedCSMBufferHeader* const dataHeader = reinterpret_cast<STPPackedCSMBufferHeader*>(shadowData_init);
+	dataHeader->LiDim = static_cast<unsigned int>(lightSpaceDim);
+	dataHeader->LiSpacePtr = shadowData_addr + shadowBufferMat_offset;
+	dataHeader->DivPtr = shadowData_addr + shadowBufferDiv_offset;
+
+	//skip light space matrix, send frustum divisor
+	float* const shadowData_div = reinterpret_cast<float*>(shadowData_init + shadowBufferDiv_offset);
+	std::copy(div.cbegin(), div.cend(), shadowData_div);
+
+	//flush data, with persistent mapping it is allowed to perform buffer subdata operation
+	this->ShadowData.unmapBuffer();
+	/* ------------------------------------------------------------------------------------------------------ */
 
 	//assigned the light space matrix pointer
 	this->LightSpaceMatrix = reinterpret_cast<mat4*>(this->ShadowData.mapBufferRange(shadowBufferMat_offset, shadowBufferMat_size,
@@ -85,22 +108,6 @@ STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLig
 	if (!this->LightSpaceMatrix) {
 		throw STPException::STPGLError("Unable to map the shadow data buffer for cascaded shadow map");
 	}
-
-	/* ----------------------------------- initial shadow data fill up --------------------------------------- */
-	unique_ptr<unsigned char[]> shadowData_cache = make_unique<unsigned char[]>(shadowBuffer_size);
-	//zero fill
-	memset(shadowData_cache.get(), 0x00, shadowBuffer_size);
-	//fixed data header
-	STPPackedCSMBufferHeader* const dataHeader = reinterpret_cast<STPPackedCSMBufferHeader*>(shadowData_cache.get());
-	dataHeader->LiDim = static_cast<unsigned int>(lightSpaceDim);
-	dataHeader->LiSpacePtr = shadowData_addr + shadowBufferMat_offset;
-	dataHeader->DivPtr = shadowData_addr + shadowBufferDiv_offset;
-	//skip light space matrix, send frustum divisor
-	float* const shadowData_div = reinterpret_cast<float*>(shadowData_cache.get() + shadowBufferDiv_offset);
-	std::copy(div.cbegin(), div.cend(), shadowData_div);
-
-	//flush data, with persistent mapping it is allowed to perform buffer subdata operation
-	this->ShadowData.bufferSubData(shadowData_cache.get(), shadowBuffer_size, 0);
 }
 
 STPCascadedShadowMap::~STPCascadedShadowMap() {
@@ -260,11 +267,6 @@ inline size_t STPCascadedShadowMap::lightSpaceDimension() const {
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPCascadedShadowMap::lightSpaceMatrixAddress() const {
 	return *this->ShadowDataAddress.value() + sizeof(STPPackedCSMBufferHeader);
-}
-
-STPCascadedShadowMap::STPShadowMapFormat STPCascadedShadowMap::shadowMapFormat() const {
-	//for CSM we use layered depth texture
-	return STPShadowMapFormat::Array;
 }
 
 void STPCascadedShadowMap::forceLightSpaceUpdate() {

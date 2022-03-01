@@ -133,6 +133,15 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void bufferStorageSubData(const void*, size_t, STPOpenGL::STPbitfield);
 
+		/**
+		 * @brief Copy all or part of the data store of a buffer object to the current buffer object.
+		 * @param readBuffer Specifies the source buffer object.
+		 * @param readOffset Specifies the offset, in basic machine units, within the data store of the source buffer object at which data will be read.
+		 * @param writeOffset Specifies the offset, in basic machine units, within the data store of the destination buffer object at which data will be written.
+		 * @param size Specifies the size, in basic machine units, of the data to be copied from the source buffer object to the destination buffer object.
+		*/
+		void copyBufferSubDataFrom(const STPBuffer&, STPOpenGL::STPintptr, STPOpenGL::STPintptr, size_t);
+
 	};
 
 }

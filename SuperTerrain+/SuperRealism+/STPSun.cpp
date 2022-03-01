@@ -14,6 +14,8 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+//Container
+#include <tuple>
 #include <array>
 
 #include <glad/glad.h>
@@ -29,9 +31,13 @@ using glm::rotate;
 using glm::uvec3;
 using glm::vec3;
 using glm::dvec3;
+using glm::mat3;
 
 using std::array;
+using std::tuple;
+using std::make_from_tuple;
 using std::make_pair;
+using std::make_tuple;
 
 using SuperTerrainPlus::STPFile;
 using SuperTerrainPlus::SuperRealismPlus_ShaderPath;
@@ -77,61 +83,8 @@ constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
 	0u
 };
 
-STPSun<false>::STPSunSpectrum::STPSunSpectrum(unsigned int spectrum_length, const STPSun& sun, STPSpectrumLog& log) :
-	STPLightSpectrum(spectrum_length, STPSpectrumType::Bitonic, GL_RGBA16F), SunElevation(sun.lightDirection().y) {
-	//setup spectrum emulator
-	STPShaderManager spectrum_shader(GL_COMPUTE_SHADER);
-	const char* const spectrum_source_file = SpectrumShaderFilename.data();
-	STPShaderManager::STPShaderSource spectrum_source(spectrum_source_file, *STPFile(spectrum_source_file));
-
-	log.Log[0] = spectrum_shader(spectrum_source);
-	this->SpectrumEmulator.attach(spectrum_shader);
-	//link
-	log.Log[1] = this->SpectrumEmulator.finalise();
-
-	//setup sampler
-	this->SpectrumEmulator.uniform(glProgramUniform1i, "Spectrum", 0);
-}
-
-void STPSun<false>::STPSunSpectrum::operator()(const STPSpectrumSpecification& spectrum_setting) {
-	//send uniforms to compute shader
-	STPSun::updateAtmosphere(this->SpectrumEmulator, *spectrum_setting.Atmosphere);
-
-	//record the sun direction domain
-	const auto& [sunDir_start, sunDir_end] = spectrum_setting.Domain;
-	this->SpectrumEmulator.uniform(glProgramUniformMatrix3fv, "SunToRayDirection", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(spectrum_setting.RaySpace))
-		.uniform(glProgramUniform3fv, "SunDirectionStart", 1, value_ptr(sunDir_start))
-		.uniform(glProgramUniform3fv, "SunDirectionEnd", 1, value_ptr(sunDir_end));
-	this->DomainElevation = make_pair(sunDir_start.y, sunDir_end.y);
-
-	//setup output
-	this->Spectrum.bindImage(0u, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA16F);
-
-	//calculate launch configuration
-	const unsigned int blockDim = static_cast<unsigned int>(this->SpectrumEmulator.workgroupSize().x),
-		gridDim = (this->SpectrumLength + blockDim - 1u) / blockDim;
-	//compute
-	this->SpectrumEmulator.use();
-	glDispatchCompute(gridDim, 1u, 1u);
-	//sync to ensure valid texture access later
-	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT);
-
-	//clear up
-	STPTexture::unbindImage(0u);
-	STPProgramManager::unuse();
-}
-
-float STPSun<false>::STPSunSpectrum::coordinate() const {
-	const auto [elev_start, elev_end] = this->DomainElevation;
-
-	//project current sun direction to the spectrum sun direction
-	//we assume the atmosphere is uniform, meaning the spectrum is independent of Azimuth angle, and depends only on Elevation.
-	return (this->SunElevation - elev_start) / (elev_end - elev_start);
-}
-
-STPSun<false>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, unsigned int spectrum_length, STPSunLog& raw_log) : SunSetting(sun_setting),
-	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), SunDirectionCache(0.0), 
-	SunSpectrum(spectrum_length, *this, raw_log.SpectrumGenerator) {
+STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundledData<vec3>& spectrum_domain, STPSunLog& log) : SunSetting(sun_setting),
+	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), SunDirectionCache(0.0) {
 	//validate the setting
 	if (!this->SunSetting.validate()) {
 		throw STPException::STPInvalidEnvironment("Sun setting provided is invalid");
@@ -152,7 +105,6 @@ STPSun<false>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, unsigned
 		.binding();
 	this->RayDirectionArray.enable(0u);
 
-	auto& log = raw_log.SunRenderer;
 	//setup sky renderer
 	STPShaderManager sky_shader[SkyShaderFilename.size()] = 
 		{ GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
@@ -170,14 +122,31 @@ STPSun<false>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, unsigned
 
 	//link
 	log.Log[2] = this->SkyRenderer.finalise();
+
+	/* ---------------------------------------- sun spectrum emulator ----------------------------------- */
+	//setup spectrum emulator
+	STPShaderManager spectrum_shader(GL_COMPUTE_SHADER);
+	const char* const spectrum_source_file = SpectrumShaderFilename.data();
+	STPShaderManager::STPShaderSource spectrum_source(spectrum_source_file, *STPFile(spectrum_source_file));
+
+	log.Log[3] = spectrum_shader(spectrum_source);
+	this->SpectrumEmulator.attach(spectrum_shader);
+	//link
+	log.Log[4] = this->SpectrumEmulator.finalise();
+
+	//record the sun direction domain
+	const auto& [sunDir_start, sunDir_end] = spectrum_domain;
+	this->SpectrumDomainElevation = make_pair(sunDir_start.y, sunDir_end.y);
+
+	//sampler location
+	this->SpectrumEmulator.uniform(glProgramUniform1i, "SkyLight", 0)
+		.uniform(glProgramUniform1i, "SunLight", 1)
+		//generator data
+		.uniform(glProgramUniform3fv, "SunDirectionStart", 1, value_ptr(sunDir_start))
+		.uniform(glProgramUniform3fv, "SunDirectionEnd", 1, value_ptr(sunDir_end));
 }
 
-inline void STPSun<false>::updateAtmosphere(STPProgramManager& program, const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
-	//validate
-	if (!atmo_setting.validate()) {
-		throw STPException::STPInvalidEnvironment("Atmoshpere setting is invalid");
-	}
-
+inline void STPSun::updateAtmosphere(STPProgramManager& program, const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
 	program.uniform(glProgramUniform1f, "Atmo.iSun", atmo_setting.SunIntensity)
 		.uniform(glProgramUniform1f, "Atmo.rPlanet", atmo_setting.PlanetRadius)
 		.uniform(glProgramUniform1f, "Atmo.rAtmos", atmo_setting.AtmosphereRadius)
@@ -191,11 +160,11 @@ inline void STPSun<false>::updateAtmosphere(STPProgramManager& program, const ST
 		.uniform(glProgramUniform1ui, "Atmo.secStep", atmo_setting.SecondaryRayStep);
 }
 
-const vec3& STPSun<false>::lightDirection() const {
+const vec3& STPSun::sunDirection() const {
 	return this->SunDirectionCache;
 }
 
-void STPSun<false>::advanceTick(unsigned long long tick) {
+void STPSun::advanceTick(unsigned long long tick) {
 	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
 
 	//offset the timer
@@ -252,15 +221,56 @@ void STPSun<false>::advanceTick(unsigned long long tick) {
 	this->SkyRenderer.uniform(glProgramUniform3fv, "SunPosition", 1, value_ptr(this->SunDirectionCache));
 }
 
-void STPSun<false>::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
+void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
+	//validate
+	if (!atmo_setting.validate()) {
+		throw STPException::STPInvalidEnvironment("Atmosphere setting is invalid");
+	}
+
 	STPSun::updateAtmosphere(this->SkyRenderer, atmo_setting);
+	STPSun::updateAtmosphere(this->SpectrumEmulator, atmo_setting);
 }
 
-const STPLightSpectrum& STPSun<false>::getLightSpectrum() const {
-	return this->SunSpectrum;
+STPSun::STPBundledData<STPLightSpectrum> STPSun::generateSunSpectrum(unsigned int spectrum_length, const mat3& ray_space) const {
+	this->SpectrumEmulator.uniform(glProgramUniformMatrix3fv, "SunToRayDirection", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(ray_space));
+	//setup output
+	const auto spectrum_creator = make_tuple(spectrum_length, GL_RGBA16F);
+	STPBundledData<STPLightSpectrum> spectrum = make_pair(
+		make_from_tuple<STPLightSpectrum>(spectrum_creator),
+		make_from_tuple<STPLightSpectrum>(spectrum_creator)
+	);
+	auto& [sky_spec, sun_spec] = spectrum;
+
+	//bind output
+	sky_spec.spectrum().bindImage(0u, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+	sun_spec.spectrum().bindImage(1u, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+
+	//calculate launch configuration
+	const unsigned int blockDim = static_cast<unsigned int>(this->SpectrumEmulator.workgroupSize().x),
+		gridDim = (spectrum_length + blockDim - 1u) / blockDim;
+	//compute
+	this->SpectrumEmulator.use();
+	glDispatchCompute(gridDim, 1u, 1u);
+	//sync to ensure valid texture access later
+	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT);
+
+	//clear up
+	STPTexture::unbindImage(0u);
+	STPTexture::unbindImage(1u);
+	STPProgramManager::unuse();
+
+	return spectrum;
 }
 
-void STPSun<false>::renderEnvironment() {
+float STPSun::spectrumCoordinate() const {
+	const auto [elev_start, elev_end] = this->SpectrumDomainElevation;
+
+	//project current sun direction to the spectrum sun direction
+	//we assume the atmosphere is uniform, meaning the spectrum is independent of Azimuth angle, and depends only on Elevation.
+	return (this->SunDirectionCache.y - elev_start) / (elev_end - elev_start);
+}
+
+void STPSun::render() {
 	//setup context
 	this->SkyRenderer.use();
 	this->RayDirectionArray.bind();
@@ -271,18 +281,4 @@ void STPSun<false>::renderEnvironment() {
 
 	//clear up
 	STPProgramManager::unuse();
-}
-
-STPSun<true>::STPSun(const STPEnvironment::STPSunSetting& sun_setting, unsigned int spectrum_length, 
-	STPEnvironmentLightShadow&& env_shadow, STPSunLog& log) :
-	STPSun<false>(sun_setting, spectrum_length, log), STPEnvironmentLight<true>(std::move(env_shadow)) {
-
-}
-
-void STPSun<true>::advanceTick(unsigned long long tick) {
-	//call the base class method
-	this->STPSun<false>::advanceTick(tick);
-
-	//update sun direction in the shadow light space
-	this->Shadow->setDirection(this->SunDirectionCache);
 }
