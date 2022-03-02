@@ -3,6 +3,9 @@
 //Error
 #include <SuperTerrain+/Exception/STPGLError.h>
 
+//Log
+#include <SuperRealism+/Utility/STPLogHandler.hpp>
+
 //GLAD
 #include <glad/glad.h>
 
@@ -30,7 +33,7 @@ STPPipelineManager& STPPipelineManager::stage(STPOpenGL::STPbitfield stage, cons
 	return *this;
 }
 
-string STPPipelineManager::finalise() {
+void STPPipelineManager::finalise() {
 	string log;
 	//check for log
 	GLint logLength;
@@ -40,7 +43,7 @@ string STPPipelineManager::finalise() {
 		glGetProgramPipelineInfoLog(this->Pipeline.get(), logLength, NULL, log.data());
 	}
 
-	return log;
+	STPLogHandler::ActiveLogHandler->handle(std::move(log));
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint STPPipelineManager::operator*() const {

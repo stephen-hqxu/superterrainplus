@@ -252,7 +252,7 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 			//now apply the sampling points to the actual texture
 			const vec2 uv_offset = SmoothSetting.Ks * disk_domain / vec2(textureSize(Heightmap, 0).xy),
 				sampling_uv = fs_in.texCoord + uv_offset;
-			const uint region = texture(Splatmap, sampling_uv).r;
+			const uint region = textureLod(Splatmap, sampling_uv, 0).r;
 
 			//accumulate region count
 			if(region < SPLAT_REGION_COUNT){
@@ -365,7 +365,7 @@ vec3 calcTerrainNormal(){
 	//convolve a 3x3 kernel with Sobel operator
 	for(int a = 0; a < cell.length(); a++){
 		const vec2 uv_offset = unit_uv * ConvolutionKernelOffset[a];
-		cell[a] = texture(Heightmap, fs_in.texCoord + uv_offset).r;
+		cell[a] = textureLod(Heightmap, fs_in.texCoord + uv_offset, 0).r;
 	}
 
 	//apply filter

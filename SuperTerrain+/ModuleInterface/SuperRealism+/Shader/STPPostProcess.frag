@@ -39,7 +39,7 @@ vec3 toneMapping(vec3);
 #endif//TONE_MAPPING
 
 void main(){
-	vec3 ScreenColor = texture(ScreenBuffer, FragTexCoord).rgb;
+	vec3 ScreenColor = textureLod(ScreenBuffer, FragTexCoord, 0).rgb;
 
 	//Tone Mapping
 #if TONE_MAPPING

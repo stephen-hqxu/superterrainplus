@@ -2,6 +2,8 @@
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperRealism+/STPRealismInfo.h>
+//Log Output
+#include <SuperRealism+/Utility/STPLogHandler.hpp>
 
 //Error
 #include <SuperTerrain+/Exception/STPGLError.h>
@@ -141,7 +143,7 @@ void STPShaderManager::uninclude(const string& name) {
 	glDeleteNamedStringARB(static_cast<GLint>(name.size()), name.c_str());
 }
 
-string STPShaderManager::operator()(const STPShaderSource& source) {
+void STPShaderManager::operator()(const STPShaderSource& source) {
 	const string& src_str = *source;
 	const auto& include = source.Include.Pathname;
 
@@ -202,7 +204,9 @@ string STPShaderManager::operator()(const STPShaderSource& source) {
 		//compilation error
 		throw STPException::STPGLError(log.c_str());
 	}
-	return log;
+
+	//write log
+	STPLogHandler::ActiveLogHandler->handle(std::move(log));
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint STPShaderManager::operator*() const {

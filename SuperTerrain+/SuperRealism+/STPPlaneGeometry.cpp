@@ -25,7 +25,7 @@ using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto PlaneGenerationShaderFilename = STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPPlaneGeometry", ".comp");
 
-STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position, STPPlaneGeometryLog& log) {
+STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position) {
 	if (tile_dimension.x == 0u || tile_dimension.y == 0u) {
 		throw STPException::STPBadNumericRange("Plane geometry must have positive dimension");
 	}
@@ -35,7 +35,7 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 	const unsigned int tileCount = tile_dimension.x * tile_dimension.y;
 	//each tile has two triangle faces, each triangle has 3 vertices
 	this->IndexCount = 6ull * tileCount;
-	//eacl tile has 4 strides, each stride has a 3-component float as position and 2-component float as texture coordinate
+	//each tile has 4 strides, each stride has a 3-component float as position and 2-component float as texture coordinate
 	buffer.bufferStorage(20ull * sizeof(float) * tileCount, GL_NONE);
 	index.bufferStorage(sizeof(unsigned int) * this->IndexCount, GL_NONE);
 	STPBindlessBuffer buffer_addr(buffer, GL_WRITE_ONLY), 
@@ -46,11 +46,11 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 	const char* const tile_source_file = PlaneGenerationShaderFilename.data();
 	STPShaderManager::STPShaderSource tile_source(tile_source_file, *STPFile(tile_source_file));
 	//compile shader
-	log.Log[0] = tile_generator(tile_source);
+	tile_generator(tile_source);
 
 	//setup tile generator program
 	STPProgramManager plane_generator;
-	log.Log[1] = plane_generator
+	plane_generator
 		.attach(tile_generator)
 		.finalise();
 

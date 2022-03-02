@@ -13,7 +13,6 @@
 #include "../../Object/STPVertexArray.h"
 #include "../../Object/STPTexture.h"
 #include "../../Object/STPBindlessTexture.h"
-#include "../../Utility/STPLogStorage.hpp"
 
 //Terrain Generator
 #include <SuperTerrain+/World/STPWorldPipeline.h>
@@ -51,7 +50,7 @@ namespace SuperTerrainPlus::STPRealism {
 			PartialDerivative = 0x02u,
 			//Blend by adding x,y together and use the mesh normal only as z component
 			UDN = 0x03u,
-			//Contruct a TBN matrix using mesh normal and transform texture normal to the terrain tangent space
+			//Create a TBN matrix using mesh normal and transform texture normal to the terrain tangent space
 			BasisTransform = 0x04u,
 			//Project the texture normal to mesh normal
 			RNM = 0x05u,
@@ -102,24 +101,15 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		struct STPHeightfieldTerrainLog {
-		public:
-
-			STPLogStorage<8ull> TerrainShader;
-			STPPlaneGeometry::STPPlaneGeometryLog PlaneGenerator;
-
-		};
-
-		//The size of the texture storing rangom numbers.
+		//The size of the texture storing random numbers.
 		const glm::uvec3 RandomTextureDimension;
 
 		/**
 		 * @brief Initialise the heightfield terrain rendering engine without shadow.
 		 * @param generator_pipeline A pointer to the world pipeline that provides heightfield.
-		 * @param raw_log The pointer to the log output from GL shader and program compiler.
 		 * @param option The pointer to various compiler options.
 		*/
-		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, const STPTerrainShaderOption&);
+		STPHeightfieldTerrain(STPWorldPipeline&, const STPTerrainShaderOption&);
 
 		STPHeightfieldTerrain(const STPHeightfieldTerrain&) = delete;
 
@@ -161,10 +151,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 	template<>
 	class STP_REALISM_API STPHeightfieldTerrain<true> : public STPSceneObject::STPOpaqueObject<true>, public STPHeightfieldTerrain<false> {
-	public:
-
-		typedef STPLogStorage<3ull> STPTerrainDepthLog;
-
 	private:
 
 		//depth renderer prunes the frag shader.
@@ -174,15 +160,12 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		//An array holds all logs for compiling depth shaders.
-		std::queue<STPTerrainDepthLog, std::list<STPTerrainDepthLog>> TerrainDepthLogStorage;
-
 		/**
 		 * @brief Initialise the heightfield terrain rendering engine with shadow rendering.
 		 * Arguments are exactly the same as the base version.
 		 * @see STPHeightfieldTerrain<false>.
 		*/
-		STPHeightfieldTerrain(STPWorldPipeline&, STPHeightfieldTerrainLog&, const STPTerrainShaderOption&);
+		STPHeightfieldTerrain(STPWorldPipeline&, const STPTerrainShaderOption&);
 
 		~STPHeightfieldTerrain() = default;
 

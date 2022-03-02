@@ -83,7 +83,7 @@ constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
 	0u
 };
 
-STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundledData<vec3>& spectrum_domain, STPSunLog& log) : SunSetting(sun_setting),
+STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundledData<vec3>& spectrum_domain) : SunSetting(sun_setting),
 	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), SunDirectionCache(0.0) {
 	//validate the setting
 	if (!this->SunSetting.validate()) {
@@ -114,14 +114,14 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 		STPShaderManager::STPShaderSource sky_source(sky_source_file, *STPFile(sky_source_file));
 
 		//compile
-		log.Log[i] = sky_shader[i](sky_source);
+		sky_shader[i](sky_source);
 
 		//put shader into the program
 		this->SkyRenderer.attach(sky_shader[i]);
 	}
 
 	//link
-	log.Log[2] = this->SkyRenderer.finalise();
+	this->SkyRenderer.finalise();
 
 	/* ---------------------------------------- sun spectrum emulator ----------------------------------- */
 	//setup spectrum emulator
@@ -129,10 +129,10 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 	const char* const spectrum_source_file = SpectrumShaderFilename.data();
 	STPShaderManager::STPShaderSource spectrum_source(spectrum_source_file, *STPFile(spectrum_source_file));
 
-	log.Log[3] = spectrum_shader(spectrum_source);
+	spectrum_shader(spectrum_source);
 	this->SpectrumEmulator.attach(spectrum_shader);
 	//link
-	log.Log[4] = this->SpectrumEmulator.finalise();
+	this->SpectrumEmulator.finalise();
 
 	//record the sun direction domain
 	const auto& [sunDir_start, sunDir_end] = spectrum_domain;

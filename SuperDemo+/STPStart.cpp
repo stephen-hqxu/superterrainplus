@@ -19,6 +19,8 @@
 #include <SuperRealism+/Scene/Component/STPPostProcess.h>
 #include <SuperRealism+/Scene/Light/STPAmbientLight.h>
 #include <SuperRealism+/Scene/Light/STPDirectionalLight.h>
+//Renderer Log
+#include <SuperRealism+/Utility/STPLogHandler.hpp>
 //GL helper
 #include <SuperRealism+/Utility/STPDebugCallback.h>
 
@@ -101,21 +103,6 @@ namespace STPStart {
 
 		//This time record the frametime from last frame that is not enough to round up to one tick
 		double FrametimeRemainer = 0.0;
-
-		/**
-		 * @brief Try to print all logs provided to cout.
-		 * @tparam L The log storage.
-		 * @param log The pointer to the log.
-		*/
-		template<class L>
-		static void printLog(const L& log) {
-			for (unsigned int i = 0u; i < L::Count; i++) {
-				const string& current_log = log.Log[i];
-				if (!current_log.empty()) {
-					cout << current_log << endl;
-				}
-			}
-		}
 
 		//A simple seed mixing function
 		unsigned long long CurrentSeed;
@@ -204,18 +191,14 @@ namespace STPStart {
 			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE);
 
 			//setup vertex shader for off-screen rendering that can be shared
-			STPScreen::STPScreenVertexShader::STPScreenVertexShaderLog screen_shader_log;
-			const STPScreen::STPScreenVertexShader ScreenVertexShader(screen_shader_log);
-			STPMasterRenderer::printLog(screen_shader_log);
+			const STPScreen::STPScreenVertexShader ScreenVertexShader;
 
 			//this buffer is a shared pointer wrapper and we don't need to manage its lifetime
 			const STPScreen::STPSharableScreenVertexBuffer OffScreenVertexBuffer = 
 				std::make_shared<STPScreen::STPScreenVertexBuffer>();
-			STPScreen::STPScreenLog screen_renderer_log;
 			STPScreen::STPScreenInitialiser screen_renderer_init;
 			screen_renderer_init.VertexShader = &ScreenVertexShader;
 			screen_renderer_init.SharedVertexBuffer = &OffScreenVertexBuffer;
-			screen_renderer_init.Log = &screen_renderer_log;
 
 			//setup scene pipeline
 			//-------------------------------------------------------------------------
@@ -240,9 +223,6 @@ namespace STPStart {
 				scene_init.GeometryBufferInitialiser = &screen_renderer_init;
 
 				this->RenderPipeline.emplace(camera, scene_init);
-
-				STPMasterRenderer::printLog(screen_renderer_log);
-				STPMasterRenderer::printLog(scene_init.DepthShader);
 			}
 			//setup environment and light
 			//-------------------------------------------
@@ -261,14 +241,11 @@ namespace STPStart {
 				};
 
 				//sun
-				STPSun::STPSunLog sun_log;
 				this->SunRenderer = this->RenderPipeline->add<STPSun>(this->SunSetting, 
 					make_pair(
 						normalize(vec3(1.0f, -0.1f, 0.0f)),
 						normalize(vec3(0.0f, 1.0f, 0.0f))
-					), sun_log);
-				//print log
-				STPMasterRenderer::printLog(sun_log);
+					));
 				//setup atmosphere
 				const STPEnvironment::STPAtmosphereSetting& atm_setting = sky_setting.second;
 				this->SunRenderer->setAtmoshpere(atm_setting);
@@ -289,7 +266,6 @@ namespace STPStart {
 			//-------------------------------------------
 			{
 				//terrain
-				STPHeightfieldTerrain<true>::STPHeightfieldTerrainLog terrain_log;
 				const STPHeightfieldTerrain<true>::STPTerrainShaderOption terrain_opt = {
 					uvec3(128u, 128u, 6u),
 					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform
@@ -297,22 +273,11 @@ namespace STPStart {
 				STPEnvironment::STPMeshSetting::STPTessellationSetting DepthTessSetting = MeshSetting.TessSetting;
 				DepthTessSetting.MaxTessLevel *= 0.5f;
 
-				this->TerrainRenderer = this->RenderPipeline->add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_log, terrain_opt);
-				STPMasterRenderer::printLog(terrain_log.PlaneGenerator);
-				STPMasterRenderer::printLog(terrain_log.TerrainShader);
+				this->TerrainRenderer = this->RenderPipeline->add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_opt);
 				//initial setup
 				this->TerrainRenderer->setMesh(MeshSetting);
 				this->TerrainRenderer->setDepthMeshQuality(DepthTessSetting);
 				this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
-
-				//read logs from rendering components after pipeline setup
-				//some compilation happens after pipeline initialisation
-				auto& terrain_depth_log_db = this->TerrainRenderer->TerrainDepthLogStorage;
-				while (!terrain_depth_log_db.empty()) {
-					const auto& terrain_depth_log = terrain_depth_log_db.front();
-					STPMasterRenderer::printLog(terrain_depth_log);
-					terrain_depth_log_db.pop();
-				}
 			}
 			//-------------------------------------------
 			{
@@ -323,22 +288,17 @@ namespace STPStart {
 					ao_section("kernel_distance").to<double>(),
 					ao_section("kernel_radius").to<unsigned int>(),
 				screen_renderer_init);
-				
-				STPMasterRenderer::printLog(screen_renderer_log);
 
 				//ambient occlusion
 				const STPEnvironment::STPOcclusionKernelSetting ao_setting = STPTerrainParaLoader::getAOSetting(ao_section);
 
 				this->AOEffect = this->RenderPipeline->add<STPAmbientOcclusion>(ao_setting, std::move(blur_filter), screen_renderer_init);
-
-				STPMasterRenderer::printLog(screen_renderer_log);
 			}
 			{
 				//post process
 				STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::Lottes> postprocess_def;
 
 				this->FinalProcess = this->RenderPipeline->add<STPPostProcess>(postprocess_def, screen_renderer_init);
-				STPMasterRenderer::printLog(screen_renderer_log);
 			}
 
 			//light property setup
@@ -414,7 +374,20 @@ namespace STPStart {
 		}
 
 	};
+
+	class STPLogConsolePrinter : public SuperTerrainPlus::STPRealism::STPLogHandler::STPLogHandlerSolution {
+	public:
+
+		void handle(string&& log) override {
+			if (!log.empty()) {
+				cout << log << endl;
+			}
+		}
+
+	};
+
 	static optional<STPMasterRenderer> MasterEngine;
+	static STPLogConsolePrinter RendererLogHandler;
 	//Camera
 	static optional<SuperTerrainPlus::STPRealism::STPPerspectiveCamera> MainCamera;
 	//Configuration
@@ -603,6 +576,8 @@ int main() {
 		STPStart::MainCamera.emplace(proj, cam);
 	}
 
+	//setup realism engine logging system
+	SuperTerrainPlus::STPRealism::STPLogHandler::ActiveLogHandler = &STPStart::RendererLogHandler;
 	//setup renderer
 	try {
 		STPStart::MasterEngine.emplace(engineINI, biomeINI, *STPStart::MainCamera);

@@ -11,8 +11,6 @@
 #include <SuperRealism+/Scene/Component/STPScreen.h>
 #include <SuperRealism+/Scene/Component/STPAlphaCulling.h>
 
-#include <SuperRealism+/Utility/STPLogStorage.hpp>
-
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 //Hash
@@ -271,6 +269,10 @@ private:
 	//this shader is used to do some additional operations during depth rendering
 	constexpr static auto ShadowDepthPassShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPShadowDepthPass", ".frag");
 
+	//shadow map texture properties
+	GLsizei ShadowLevel = 1;
+	GLfloat ShadowAni = 1.0f;
+
 public:
 
 	const STPShadowMapFilter ShadowFilter;
@@ -280,9 +282,8 @@ public:
 	/**
 	 * @brief Init a new STPShadowPipeline.
 	 * @param shadow_filter The pointer to the scene shadow filter.
-	 * @param log The pointer to the depth shader log where depth shader compilation result will be stored.
 	*/
-	STPShadowPipeline(const STPShadowMapFilterFunction& shadow_filter, STPScenePipelineInitialiser::STPDepthShaderLog& log) :
+	STPShadowPipeline(const STPShadowMapFilterFunction& shadow_filter) :
 		ShadowFilter(shadow_filter.Filter), isVSMDerived(this->ShadowFilter >= STPShadowMapFilter::VSM) {
 		/* ------------------------------------------- depth shader setup -------------------------------------------------- */
 		if (this->isVSMDerived) {
@@ -298,7 +299,12 @@ public:
 
 			shader_source.define(Macro);
 			//compile the shader
-			log.Log[0] = (*this->DepthPassShader)(shader_source);
+			(*this->DepthPassShader)(shader_source);
+
+			//stores shadow map settings for this type of shadow filters
+			const auto& vsm_filter = dynamic_cast<const STPShadowMapFilterKernel<STPShadowMapFilter::VSM>&>(shadow_filter);
+			this->ShadowLevel = vsm_filter.mipmapLevel;
+			this->ShadowAni = vsm_filter.AnisotropyFilter;
 		}
 
 		/* ----------------------------------------- light space buffer ------------------------------------------------- */
@@ -335,8 +341,7 @@ public:
 	 * @param light_shadow A pointer to the shadow instance of the light.
 	*/
 	inline void addLight(STPLightShadow& light_shadow) {
-		//TODO: set mipmap level and anisotropy level for VSM
-		light_shadow.setShadowMap(this->ShadowFilter);
+		light_shadow.setShadowMap(this->ShadowFilter, this->ShadowLevel, this->ShadowAni);
 	}
 
 	/**
@@ -380,6 +385,11 @@ public:
 			//for those opaque render components (those can cast shadow), render depth
 			for (auto shadowable_object : shadow_object) {
 				shadowable_object->renderDepth(static_cast<unsigned int>(current_light_space_dim));
+			}
+
+			if (this->ShadowLevel > 1) {
+				//shadow map has mipmap, generate
+				shadow_instance.generateShadowMipmap();
 			}
 
 			//increment to the next light
@@ -657,7 +667,7 @@ public:
 STPScenePipeline::STPScenePipeline(const STPCamera& camera, STPScenePipelineInitialiser& scene_init) :
 	SceneMemoryCurrent{ }, SceneMemoryLimit(scene_init.ShaderCapacity),
 	CameraMemory(make_unique<STPCameraInformationMemory>(camera)), 
-	GeometryShadowPass(make_unique<STPShadowPipeline>(*scene_init.ShadowFilter, scene_init.DepthShader)),
+	GeometryShadowPass(make_unique<STPShadowPipeline>(*scene_init.ShadowFilter)),
 	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, *scene_init.ShadowFilter, *scene_init.GeometryBufferInitialiser)), 
 	DefaultClearColor(vec4(vec3(0.0f), 1.0f)) {
 	if (!scene_init.ShadowFilter->valid()) {
@@ -965,7 +975,7 @@ SHADOW_FILTER_DEF(PCF) {
 }
 
 SHADOW_FILTER_NAME(VSM)::STPShadowMapFilterKernel() : STPShadowMapFilterFunction(STPShadowMapFilter::VSM), 
-	minVariance(0.0f), AnisotropyFilter(1.0f) {
+	minVariance(0.0f), mipmapLevel(1u), AnisotropyFilter(1.0f) {
 
 }
 

@@ -59,9 +59,10 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Instantiate a program pipeline. All previous pipeline instances will be removed.
 		 * @return The log from instantiation of the pipeline, if any.
-		 * If instantiation fails, exception is thrown with error log.
+		 * Log generated during pipeline building will be reflected to the log handler.
+		 * @see STPLogHandler
 		*/
-		std::string finalise();
+		void finalise();
 
 		/**
 		 * @brief Get the underlying program pipeline object.

@@ -107,14 +107,14 @@ vec3 calcDirectionalLight(vec3, vec3, float, DirectionalLight* restrict);
 float sampleShadow(vec3, float, DirectionalShadow* restrict);
 
 void main(){
-	const float fragment_depth = texture(G_DEPTH, FragTexCoord).r;
+	const float fragment_depth = textureLod(G_DEPTH, FragTexCoord, 0).r;
 	//recover world position
 	const vec3 position_world = fragDepthReconstruction(fragment_depth, FragTexCoord),
-		normal_world = normalize(texture(G_NORMAL, FragTexCoord).rgb);
+		normal_world = normalize(textureLod(G_NORMAL, FragTexCoord, 0).rgb);
 	//get material data from the G-buffer
-	const vec3 Albedo = texture(G_ALBEDO, FragTexCoord).rgb;
-	const float Specular = texture(G_SPECULAR, FragTexCoord).r,
-		Ambient = texture(G_AO, FragTexCoord).r;
+	const vec3 Albedo = textureLod(G_ALBEDO, FragTexCoord, 0).rgb;
+	const float Specular = textureLod(G_SPECULAR, FragTexCoord, 0).r,
+		Ambient = textureLod(G_AO, FragTexCoord, 0).r;
 	vec3 LightColor = vec3(0.0f);
 
 	//ambient light pass
@@ -138,14 +138,14 @@ void main(){
 }
 
 vec3 calcAmbientLight(float ambient_strength, AmbientLight* restrict amb_light){
-	const vec3 indirect_color = texture(amb_light->AmbSpec, amb_light->SpecCoord).rgb;
+	const vec3 indirect_color = textureLod(amb_light->AmbSpec, amb_light->SpecCoord, 0).rgb;
 	const float ambient = ambient_strength * amb_light->Ka;
 
 	return indirect_color * ambient;
 }
 
 vec3 calcDirectionalLight(vec3 position_world, vec3 normal, float specular_strength, DirectionalLight* restrict dir_light){
-	const vec3 direct_color = texture(dir_light->DirSpec, dir_light->SpecCoord).rgb;
+	const vec3 direct_color = textureLod(dir_light->DirSpec, dir_light->SpecCoord, 0).rgb;
 
 	//diffuse
 	const vec3 lightDir = normalize(dir_light->Dir);
@@ -188,7 +188,7 @@ float filterShadow(SHADOW_MAP_FORMAT shadow_map, vec2 projection_coord, float fr
 	float intensity = 0.0f;
 	for(int i = -radius; i <= radius; i++){
 		for(int j = -radius; j <= radius; j++){
-			intensity += texture(shadow_map, vec4(projection_coord + pcf_sampling_texel * vec2(i, j), layer, frag_depth)).r;
+			intensity += textureLod(shadow_map, vec4(projection_coord + pcf_sampling_texel * vec2(i, j), layer, frag_depth), 0).r;
 		}
 	}
 
@@ -212,7 +212,7 @@ float filterShadow(SHADOW_MAP_FORMAT shadow_map, vec2 projection_coord, float fr
 	return max_probability;
 #else
 	//no filter, nearest and linear filtering are done by hardware automatically
-	return texture(shadow_map, vec4(projection_coord, layer, frag_depth)).r;
+	return textureLod(shadow_map, vec4(projection_coord, layer, frag_depth), 0).r;
 #endif
 }
 

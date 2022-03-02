@@ -34,9 +34,9 @@ layout (bindless_sampler) uniform sampler2D NoiseVector;
 
 void main(){
 	//get inputs for SSAO
-	const vec3 fragPos = fragDepthReconstruction(texture(GeoDepth, FragTexCoord).r, FragTexCoord),
+	const vec3 fragPos = fragDepthReconstruction(textureLod(GeoDepth, FragTexCoord, 0).r, FragTexCoord),
 		//our normal in the G-Buffer is in world space, we need to convert it to view space
-		fragNormal = normalize(Camera.ViewNormal * texture(GeoNormal, FragTexCoord).rgb),
+		fragNormal = normalize(Camera.ViewNormal * textureLod(GeoNormal, FragTexCoord, 0).rgb),
 		//the random vector rotates normal around z-axis so the z component is zero
 		randomVec = normalize(vec3(texture(NoiseVector, FragTexCoord * NoiseTexScale).rg, 0.0f)),
 		//create TBN change of basis matrix: from tangent-space to view-space
@@ -63,7 +63,7 @@ void main(){
 		//get depth value for kernel sample	
 		//Depth reconstruction but in converts to view space and only grab the camera depth value,
 		//however, this formula assumes a perspective camera
-		const float sampleViewDepth = fragDepthReconstruction(texture(GeoDepth, offset.xy).r, offset.xy).z;
+		const float sampleViewDepth = fragDepthReconstruction(textureLod(GeoDepth, offset.xy, 0).r, offset.xy).z;
 
 		//range check and accumulate
 		const float rangeCheck = smoothstep(0.0f, 1.0f, KernelRadius / abs(fragPos.z - sampleViewDepth));

@@ -116,3 +116,7 @@ void STPLightShadow::captureDepth() const {
 void STPLightShadow::clearShadowMapColor(const vec4& clear_color) {
 	this->ShadowMapContainer.clearColor(0, clear_color);
 }
+
+void STPLightShadow::generateShadowMipmap() {
+	this->ShadowMap->generateMipmap();
+}

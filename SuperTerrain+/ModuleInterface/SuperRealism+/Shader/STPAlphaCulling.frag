@@ -11,7 +11,7 @@ layout(binding = 0) uniform sampler2D ColorInput;
 uniform float AlphaThreshold;
 
 void main(){
-	if(texture(ColorInput, FragTexCoord).a ALPHA_TEST_OPERATOR AlphaThreshold){
+	if(textureLod(ColorInput, FragTexCoord, 0).a ALPHA_TEST_OPERATOR AlphaThreshold){
 		discard;
 	}
 }

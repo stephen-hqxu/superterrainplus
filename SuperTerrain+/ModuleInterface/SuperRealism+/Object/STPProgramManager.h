@@ -90,9 +90,10 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Finalise the shader program by linking all shaders.
 		 * Any program parameters setting must be done before linking.
 		 * Linkage may fail and exception is thrown.
-		 * @return The program linking log.
+		 * Log generated during program linkage will be reflected to the log handler.
+		 * @see STPLogHandler
 		*/
-		std::string finalise();
+		void finalise();
 
 		/**
 		 * @brief Get the uniform location for a uniform in the current program.

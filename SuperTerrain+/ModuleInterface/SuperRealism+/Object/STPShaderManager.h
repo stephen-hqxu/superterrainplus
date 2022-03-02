@@ -6,7 +6,7 @@
 //GL Object Management
 #include <SuperTerrain+/Utility/STPNullablePrimitive.h>
 
-//System
+//Container
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -187,11 +187,11 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Attach source code to the current shader manager and compile. Previously attached source code will be removed.
+		 * Shader compilation log will be reflected to the shader log handler.
+		 * @see STPLogHandler
 		 * @param source The pointer to the shader source manager.
-		 * @return Compilation log, if any.
-		 * If compilation fails, exception is thrown with error log.
 		*/
-		std::string operator()(const STPShaderSource&);
+		void operator()(const STPShaderSource&);
 
 		/**
 		 * @brief Get the underlying shader object.

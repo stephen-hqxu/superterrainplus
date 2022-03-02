@@ -146,6 +146,11 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void clearShadowMapColor(const glm::vec4&);
 
+		/**
+		 * @brief Generate shadow mipmap.
+		*/
+		void generateShadowMipmap();
+
 	};
 
 }

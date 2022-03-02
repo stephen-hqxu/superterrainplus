@@ -86,12 +86,12 @@ void STPScreen::STPSimpleScreenFrameBuffer::capture() const {
 	this->ScreenColorContainer.bind(GL_FRAMEBUFFER);
 }
 
-STPScreen::STPScreenVertexShader::STPScreenVertexShader(STPScreenVertexShaderLog& log) : ScreenVertexShader(GL_VERTEX_SHADER) {
+STPScreen::STPScreenVertexShader::STPScreenVertexShader() : ScreenVertexShader(GL_VERTEX_SHADER) {
 	//read source
 	const char* const screen_source_file = ScreenShaderFilename.data();
 	STPShaderManager::STPShaderSource shader_source(screen_source_file, *STPFile(screen_source_file));
 	//compile
-	log.Log[0] = this->ScreenVertexShader(shader_source);
+	this->ScreenVertexShader(shader_source);
 }
 
 const STPShaderManager& STPScreen::STPScreenVertexShader::operator*() const {
@@ -126,13 +126,13 @@ STPScreen::STPScreen(const STPSharableScreenVertexBuffer& screen_vb) : ScreenVer
 }
 
 void STPScreen::initScreenRenderer(const STPShaderManager::STPShaderSource& screen_fs_source, const STPScreenInitialiser& screen_init) {
-	const auto [vs, vb, log] = screen_init;
+	const auto [vs, vb] = screen_init;
 
 	STPShaderManager screen_fs(GL_FRAGMENT_SHADER);
-	log->Log[0] = screen_fs(screen_fs_source);
+	screen_fs(screen_fs_source);
 
 	//setup compute program
-	log->Log[1] = this->OffScreenRenderer
+	this->OffScreenRenderer
 		.attach(**vs)
 		.attach(screen_fs)
 		.finalise();

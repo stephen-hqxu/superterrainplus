@@ -54,7 +54,7 @@ Utility/Camera/STPPerspectiveCamera.h
 # /Utility
 Utility/STPDebugCallback.h
 Utility/STPIndirectCommand.hpp
-Utility/STPLogStorage.hpp
+Utility/STPLogHandler.hpp
 Utility/STPRandomTextureGenerator.cuh
 )
 

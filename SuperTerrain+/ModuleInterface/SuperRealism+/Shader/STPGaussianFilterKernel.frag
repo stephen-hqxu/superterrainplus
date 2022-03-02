@@ -31,7 +31,7 @@ layout(index = 0) subroutine(SeparableFilter) float horizontalPass(int radius){
 
 	float acc = 0.0f;
 	for(int x = -radius; x <= radius; x++){
-		acc += texture(ImgInput, FragTexCoord + vec2(x * texel_unit.x, 0.0f)).r * GaussianKernel[x + radius];
+		acc += textureLod(ImgInput, FragTexCoord + vec2(x * texel_unit.x, 0.0f), 0).r * GaussianKernel[x + radius];
 	}
 
 	return acc;
@@ -42,7 +42,7 @@ layout(index = 1) subroutine(SeparableFilter) float verticalPass(int radius){
 
 	float acc = 0.0f;
 	for(int y = -radius; y <= radius; y++){
-		acc += texture(ImgInput, FragTexCoord + vec2(0, y * texel_unit.y)).r * GaussianKernel[y + radius];
+		acc += textureLod(ImgInput, FragTexCoord + vec2(0, y * texel_unit.y), 0).r * GaussianKernel[y + radius];
 	}
 
 	return acc;

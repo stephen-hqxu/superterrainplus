@@ -10,7 +10,6 @@
 #include "../../Object/STPProgramManager.h"
 #include "../../Object/STPBuffer.h"
 #include "../../Object/STPVertexArray.h"
-#include "../../Utility/STPLogStorage.hpp"
 
 #include "../Light/STPLightSpectrum.h"
 #include "../STPSceneObject.h"
@@ -77,17 +76,14 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		typedef STPLogStorage<5ull> STPSunLog;
-
 		/**
 		 * @brief Init the sun with settings.
 		 * @param sun_setting The sun setting.
 		 * @param spectrum_domain For sun spectrum emulation.
 		 * Specifies The sun direction for the first iteration and the last iteration.
 		 * Sun direction in between will be interpolated.
-		 * @param log Logs output from the shader compilation.
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, const STPBundledData<glm::vec3>&, STPSunLog&);
+		STPSun(const STPEnvironment::STPSunSetting&, const STPBundledData<glm::vec3>&);
 
 		STPSun(const STPSun&) = delete;
 

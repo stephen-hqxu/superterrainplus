@@ -3,6 +3,9 @@
 #include <SuperTerrain+/Exception/STPGLError.h>
 #include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 
+//Log Utility
+#include <SuperRealism+/Utility/STPLogHandler.hpp>
+
 //GLAD
 #include <glad/glad.h>
 
@@ -85,7 +88,7 @@ void STPProgramManager::separable(bool separable) {
 	glProgramParameteri(this->Program.get(), GL_PROGRAM_SEPARABLE, separable ? GL_TRUE : GL_FALSE);
 }
 
-string STPProgramManager::finalise() {
+void STPProgramManager::finalise() {
 	//link
 	glLinkProgram(this->Program.get());
 	//get log
@@ -118,7 +121,7 @@ string STPProgramManager::finalise() {
 	//validation checks if the program can be used as a GL application
 	handle_error(GL_VALIDATE_STATUS);
 
-	return log;
+	STPLogHandler::ActiveLogHandler->handle(std::move(log));
 }
 
 SuperTerrainPlus::STPOpenGL::STPint STPProgramManager::uniformLocation(const char* uni) const {

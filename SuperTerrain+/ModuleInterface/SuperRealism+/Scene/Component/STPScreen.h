@@ -12,8 +12,6 @@
 #include "../../Object/STPShaderManager.h"
 #include "../../Object/STPProgramManager.h"
 
-#include "../../Utility/STPLogStorage.hpp"
-
 //GLM
 #include <glm/vec2.hpp>
 
@@ -67,8 +65,8 @@ namespace SuperTerrainPlus::STPRealism {
 			void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum);
 
 			/**
-			 * @brief Clear the color attachment of the screen buffer.
-			 * @param color The color to be cleared to.
+			 * @brief Clear the colour attachment of the screen buffer.
+			 * @param colour The colour to be cleared to.
 			*/
 			void clearScreenBuffer(const glm::vec4&);
 
@@ -91,13 +89,10 @@ namespace SuperTerrainPlus::STPRealism {
 
 		public:
 
-			typedef STPLogStorage<1ull> STPScreenVertexShaderLog;
-
 			/**
 			 * @brief Init and compile a screen vertex shader.
-			 * @param log The pointer to the log to store shader compilation result.
 			*/
-			STPScreenVertexShader(STPScreenVertexShaderLog&);
+			STPScreenVertexShader();
 
 			STPScreenVertexShader(const STPScreenVertexShader&) = delete;
 
@@ -154,8 +149,6 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 		typedef std::shared_ptr<const STPScreenVertexBuffer> STPSharableScreenVertexBuffer;
 
-		typedef STPLogStorage<2ull> STPScreenLog;
-
 		/**
 		 * @brief Information necessary to create any screen instance.
 		 * None of the underlying pointer should be null.
@@ -170,8 +163,6 @@ namespace SuperTerrainPlus::STPRealism {
 			//This buffer is managed by all shared instances automatically and the caller
 			//do not have to retain the buffer.
 			const STPSharableScreenVertexBuffer* SharedVertexBuffer;
-			//The output log from shader compilation during initialisation.
-			STPScreenLog* Log;
 
 		};
 

@@ -55,7 +55,7 @@ constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 	0u
 };
 
-STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& raw_log, const STPTerrainShaderOption& option) :
+STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, const STPTerrainShaderOption& option) :
 	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(option.NoiseDimension) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	const STPDiversity::STPTextureFactory& splatmap_generator = this->TerrainGenerator.splatmapGenerator();
@@ -66,14 +66,13 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 	const uvec2 tileDimension = chunk_setting.ChunkSize * chunk_setting.RenderedChunk;
 
 	//generate terrain mesh
-	this->TerrainMesh.emplace(tileDimension, this->calcBaseChunkPosition(chunkHorizontalOffset), raw_log.PlaneGenerator);
+	this->TerrainMesh.emplace(tileDimension, this->calcBaseChunkPosition(chunkHorizontalOffset));
 	//setup indirect buffer
 	STPIndirectCommand::STPDrawElement cmd = TerrainDrawCommand;
 	cmd.Count = this->TerrainMesh->planeIndexCount();
 	this->TerrainRenderCommand.bufferStorageSubData(&cmd, sizeof(cmd), GL_NONE);
 
 	/* ------------------------------------------ setup terrain shader ---------------------------------------------- */
-	auto& log = raw_log.TerrainShader;
 	STPShaderManager terrain_shader[HeightfieldTerrainShaderFilename.size()] = {
 		GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER, GL_GEOMETRY_SHADER, GL_FRAGMENT_SHADER
 	};
@@ -108,7 +107,7 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 			shader_source.define(Macro);
 		}
 		//compile
-		log.Log[i] = terrain_shader[i](shader_source);
+		terrain_shader[i](shader_source);
 
 		//attach the complete terrain program
 		if (i < 3u) {
@@ -124,11 +123,11 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 	this->TerrainShader.separable(true);
 
 	//link
-	log.Log[5] = this->TerrainModeller.finalise();
-	log.Log[6] = this->TerrainShader.finalise();
+	this->TerrainModeller.finalise();
+	this->TerrainShader.finalise();
 
 	//build pipeline
-	log.Log[7] = this->TerrainRenderer
+	this->TerrainRenderer
 		.stage(GL_VERTEX_SHADER_BIT | GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
 		.stage(GL_GEOMETRY_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, this->TerrainShader)
 		.finalise();
@@ -139,7 +138,7 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 		//heightfield for displacement mapping
 		.uniform(glProgramUniform1i, "Heightfield", 1);
 
-	//setup program that shades terrain with color
+	//setup program that shades terrain with colour
 	this->TerrainShader
 		//some samplers
 		.uniform(glProgramUniform1i, "Biomemap", 0)
@@ -300,9 +299,8 @@ void STPHeightfieldTerrain<false>::render() const {
 	STPPipelineManager::unbind();
 }
 
-STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, STPHeightfieldTerrainLog& log, 
-	const STPTerrainShaderOption& option) :
-	STPHeightfieldTerrain<false>(generator_pipeline, log, option), MeshQualityLocation(this->TerrainModeller.uniformLocation("ActiveTess")) {
+STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, const STPTerrainShaderOption& option) :
+	STPHeightfieldTerrain<false>(generator_pipeline, option), MeshQualityLocation(this->TerrainModeller.uniformLocation("ActiveTess")) {
 
 }
 
@@ -314,7 +312,6 @@ void STPHeightfieldTerrain<true>::setDepthMeshQuality(const STPEnvironment::STPM
 }
 
 bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count, const STPShaderManager* depth_shader) {
-	STPTerrainDepthLog& log = this->TerrainDepthLogStorage.emplace();
 	//create a new render group
 	if (this->TerrainDepthRenderer.exist(light_space_count)) {
 		//group exists, don't add
@@ -326,7 +323,7 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count
 	//now the base renderer is finished, setup depth renderer
 	STPShaderManager terrain_shadow_shader(GL_GEOMETRY_SHADER);
 
-	//geometry shader for depth writting
+	//geometry shader for depth writing
 	//make a copy of the original source because we need to modify it
 	const char* const shadow_source_file = HeightfieldTerrainShaderFilename[3].data();
 	STPShaderManager::STPShaderSource shadow_shader_source(shadow_source_file, *STPFile(shadow_source_file));
@@ -336,7 +333,7 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count
 		("HEIGHTFIELD_SHADOW_PASS_INVOCATION", light_space_count);
 
 	shadow_shader_source.define(Macro);
-	log.Log[0] = terrain_shadow_shader(shadow_shader_source);
+	terrain_shadow_shader(shadow_shader_source);
 
 	//attach program for depth writing
 	if (depth_shader) {
@@ -346,10 +343,10 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count
 		.separable(true);
 
 	//link
-	log.Log[1] = depth_writer.finalise();
+	depth_writer.finalise();
 
 	//build shadow pipeline
-	log.Log[2] = depth_renderer
+	depth_renderer
 		.stage(GL_VERTEX_SHADER_BIT | GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
 		.stage(GL_GEOMETRY_SHADER_BIT | (depth_shader ? GL_FRAGMENT_SHADER_BIT : 0), depth_writer)
 		.finalise();

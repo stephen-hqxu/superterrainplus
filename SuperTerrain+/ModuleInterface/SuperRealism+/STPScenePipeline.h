@@ -229,10 +229,6 @@ namespace SuperTerrainPlus::STPRealism {
 			//Pointer to lighting shader initialiser
 			const STPScreen::STPScreenInitialiser* GeometryBufferInitialiser;
 
-			//Log for depth shader compilation
-			typedef STPLogStorage<1ull> STPDepthShaderLog;
-			STPDepthShaderLog DepthShader;
-
 		};
 
 		/**
@@ -344,6 +340,8 @@ template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STP
 		//This helps to reduce shadow acne effects when light direction is parallel to the surface.
 		float minVariance;
 
+		//Specifies the number of mipmap level to use.
+		unsigned int mipmapLevel;
 		//Specifies the anisotropy filter level. 
 		float AnisotropyFilter;
 

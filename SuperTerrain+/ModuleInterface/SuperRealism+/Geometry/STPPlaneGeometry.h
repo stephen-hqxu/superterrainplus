@@ -7,8 +7,6 @@
 #include "../Object/STPBuffer.h"
 #include "../Object/STPVertexArray.h"
 
-#include "../Utility/STPLogStorage.hpp"
-
 //GLM
 #include <glm/vec2.hpp>
 
@@ -42,16 +40,13 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		typedef STPLogStorage<2ull> STPPlaneGeometryLog;
-
 		/**
 		 * @brief Initialise a new plane geometry and generate a new plane geometry.
 		 * @param tile_dimension The number of tile on the plane in x and y direction.
 		 * The plane will be subdivided into equal sized tiles.
 		 * @param top_left_position Specifies top-left position of the plane geometry model.
-		 * @param log The log to be returned for compilation of plane generator shader.
 		*/
-		STPPlaneGeometry(glm::uvec2, glm::dvec2, STPPlaneGeometryLog&);
+		STPPlaneGeometry(glm::uvec2, glm::dvec2);
 
 		STPPlaneGeometry(const STPPlaneGeometry&) = delete;
 

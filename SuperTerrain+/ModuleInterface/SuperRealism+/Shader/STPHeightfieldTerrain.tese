@@ -41,7 +41,7 @@ void main(){
 
 	const vec3 terrain_normal = toCartesian3D(tes_in[0].normal, tes_in[1].normal, tes_in[2].normal);
 	//displace the terrain, moving the vertices upward
-	terrain_vertices.xyz += normalize(terrain_normal) * texture(Heightfield, tes_out.texCoord).r * Altitude;
+	terrain_vertices.xyz += normalize(terrain_normal) * textureLod(Heightfield, tes_out.texCoord, 0).r * Altitude;
 	gl_Position = terrain_vertices;
 }
 
