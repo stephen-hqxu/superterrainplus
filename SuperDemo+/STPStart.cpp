@@ -291,8 +291,14 @@ namespace STPStart {
 
 				//ambient occlusion
 				const STPEnvironment::STPOcclusionKernelSetting ao_setting = STPTerrainParaLoader::getAOSetting(ao_section);
+				STPAmbientOcclusion::STPOcclusionKernel<STPAmbientOcclusion::STPOcclusionAlgorithm::HBAO> ao_kernel(ao_setting);
+				//For SSAO
+				//ao_kernel.KernelSize = ao_section("kernel_size").to<unsigned int>();
+				//For HBAO
+				ao_kernel.DirectionStep = ao_section("direction_step").to<unsigned int>();
+				ao_kernel.RayStep = ao_section("ray_step").to<unsigned int>();
 
-				this->AOEffect = this->RenderPipeline->add<STPAmbientOcclusion>(ao_setting, std::move(blur_filter), screen_renderer_init);
+				this->AOEffect = this->RenderPipeline->add<STPAmbientOcclusion>(ao_kernel, std::move(blur_filter), screen_renderer_init);
 			}
 			{
 				//post process
@@ -312,7 +318,7 @@ namespace STPStart {
 
 			//scene pipeline setup
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
-			this->RenderPipeline->setExtinctionArea(0.785f);
+			this->RenderPipeline->setExtinctionArea(0.675f);
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;

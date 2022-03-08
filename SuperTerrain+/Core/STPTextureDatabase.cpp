@@ -75,10 +75,10 @@ public:
 	 * @brief Init STPTextureDatabaseImpl, setup database connection
 	*/
 	STPTextureDatabaseImpl() {
-		const string filename = "STPTextureDatabase_" + (STPTextureDatabaseImpl::InstanceCounter++);
+		const string filename = "STPTextureDatabase_" + std::to_string(STPTextureDatabaseImpl::InstanceCounter++);
 		//open database connection
 		STPsqliteCheckErr(sqlite3_open_v2(filename.c_str(), &this->SQL,
-			SQLITE_OPEN_MEMORY | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOFOLLOW, nullptr));
+			SQLITE_OPEN_MEMORY | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_NOFOLLOW | SQLITE_OPEN_PRIVATECACHE, nullptr));
 
 		auto configure = [SQL = this->SQL](int opt, int val) -> bool {
 			int report;
@@ -129,7 +129,7 @@ public:
 			STPsqliteCheckErr(sqlite3_exec(this->SQL, sql.data(), nullptr, nullptr, &err_msg));
 		}
 		catch (const STPException::STPDatabaseError& dbe) {
-			//concate error message and throw a new one
+			//concatenate error message and throw a new one
 			//usually exception should not be thrown since schema is created by developer not client
 			const string compound = string(dbe.what()) + "\nMessage: " + err_msg;
 			sqlite3_free(err_msg);
@@ -429,7 +429,7 @@ STPTextureDatabase::STPDatabaseView::STPMapGroupRecord STPTextureDatabase::STPDa
 	//estimate the size, the number of valid group must be less than or equal to the total number of group
 	group_rc.reserve(this->Database.mapGroupSize());
 
-	//loop through all group data and emplace them into a strutured array
+	//loop through all group data and emplace them into a structured array
 	while (this->Impl->execStmt(group_stmt)) {
 		group_rc.emplace_back(
 			static_cast<STPTextureInformation::STPMapGroupID>(sqlite3_column_int(group_stmt, 0)),
@@ -483,7 +483,7 @@ STPTextureDatabase::STPDatabaseView::STPMapRecord STPTextureDatabase::STPDatabas
 			static_cast<STPTextureInformation::STPTextureID>(sqlite3_column_int(texture_stmt, 1)),
 			static_cast<STPTextureType>(sqlite3_column_int(texture_stmt, 2)),
 			//sqlite will allocate new space for the blob result
-			//because we are efftively storing a pointer in the database previously, so the allocated memory is a pointer to pointer
+			//because we are effectively storing a pointer in the database previously, so the allocated memory is a pointer to pointer
 			*reinterpret_cast<const void* const*>(sqlite3_column_blob(texture_stmt, 3))
 		);
 	}

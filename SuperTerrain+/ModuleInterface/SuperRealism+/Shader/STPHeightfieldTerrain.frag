@@ -8,7 +8,7 @@
 #define TWO_PI 6.283185307179586476925286766559
 
 /* ------------------ Texture Splatting ---------------------------- */
-//Macros are define by the main application, having an arbitary number just to make the compiler happy.
+//Macros are define by the main application, having an arbitrary number just to make the compiler happy.
 #define GROUP_COUNT 1
 #define REGISTRY_COUNT 1
 #define SPLAT_REGION_COUNT 1
@@ -126,7 +126,7 @@ void main(){
 	const vec3 MeshNormal = calcTerrainNormal();
 	//this function make sure the UV is stable when the rendered chunk shifts
 	//here we need to use the UV of the current pixel (not the argument one)
-	//so when we are doing smoothing over a convolution kernel the texture color remains the same for the same pixel.
+	//so when we are doing smoothing over a convolution kernel the texture colour remains the same for the same pixel.
 	const vec2 worldUV = fs_in.texCoord * VisibleChunk + ChunkHorizontalOffset;
 
 	//terrain texture splatting
@@ -235,12 +235,12 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 	//perform smoothing to integer texture
 	for(int i = 0; i < SmoothSetting.Kr; i++){
 		for(int j = 0; j < SmoothSetting.Kr; j++){
-			//we first divide the kernel matric into cells with equal spaces
+			//we first divide the kernel matrix into cells with equal spaces
 			const vec2 domain = vec2(i, j) * Kr_inv,
 				//then we jittered each sampling points from the cell centre
 				//however we need to make sure samples are not jittered out of its cell
 				stratified_domain = clamp(domain + Kr_inv * 
-					texture(Noisemap, vec3(world_uv * SmoothSetting.Ns, (1.0f * i + j * SmoothSetting.Kr) * Kr_2_inv)).r, 0.0f, 1.0f);
+					textureLod(Noisemap, vec3(world_uv * SmoothSetting.Ns, (1.0f * i + j * SmoothSetting.Kr) * Kr_2_inv), 0).r, 0.0f, 1.0f);
 			
 			//then we map a squared domain into a disk domain.
 			const float sq_domain_x = TWO_PI * stratified_domain.x;
@@ -289,7 +289,7 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 	for(uint region = 0u; region < SPLAT_REGION_COUNT; region++){
 		const uint regionCount = RegionBin[region];
 		if(regionCount == 0u){
-			//skip region that does not contribute to the final color
+			//skip region that does not contribute to the final colour
 			continue;	
 		}
 		//normalise the region count as a weight
@@ -378,7 +378,7 @@ vec3 calcTerrainNormal(){
 
 //n1 is the main normalmap, n2 adds details
 vec3 blendNormal(vec3 n1, vec3 n2){
-	//there exixts many different algorithms for normal blending, pick one yourself
+	//there exists many different algorithms for normal blending, pick one yourself
 
 #if NORMALMAP_BLENDING == 0
 	//Linear

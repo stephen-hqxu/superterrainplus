@@ -7,7 +7,7 @@
 	<img src="https://img.shields.io/badge/OpenGL_4.6-FFFFFF?style=flat&logo=opengl" />
 	</br>
 	<img src="https://img.shields.io/badge/SQLite_3-07405E?style=flat&logo=sqlite&logoColor=white" />
-	<img src="https://img.shields.io/badge/CMake_3-064F8C?style=flat&logo=cmake&logoColor=white" />
+	<img src="https://img.shields.io/badge/CMake_3.18-064F8C?style=flat&logo=cmake&logoColor=white" />
 </p>
 
 ## :eyes: Overview
@@ -56,6 +56,7 @@ There is no perfect answer to this question, every application has its own pros 
 - [x] Procedural atmospheric scattering
 - [x] Aerial perspective
 - [x] Realistic sun orbiting
+- [x] Deferred shading
 - [ ] Post-processing
   - [x] Filmic tone mapping
   - [x] Gamma correction
@@ -64,21 +65,32 @@ There is no perfect answer to this question, every application has its own pros 
 - [ ] Shadow mapping
   - [ ] Simple shadow mapping for spotlight
   - [ ] Cubemap shadow mapping for pointlight
-  - [x] Parallel-split cascaded shadow mapping for directional light
-- [x] Deferred shading
-- [x] Screen-space ambient occlusion
-- [ ] Anti-aliasing for deferred renderer
+  - [x] Cascaded shadow mapping for directional light
+- [ ] Ambient occlusion
+  - [x] Screen-space ambient occlusion
+  - [ ] Horizon-based ambient occlusion
+- [ ] Anti-aliasing
+  - [x] ~~Multi-sample anti-aliasing~~
+  - [ ] Fast-approximate anti-aliasing
+  - [ ] Morphological anti-aliasing
+  - [ ] Temporal anti-aliasing
 - [ ] Multiple lights
+  - [x] Ambient light
+  - [x] Directional light
+  - [ ] Point light
+  - [ ] Spotlight
 - [ ] Night rendering
 - [ ] Procedural weather effect
-- [ ] Screen-space reflection/refraction for water rendering
+- [ ] Water rendering
 - [ ] ~~Real-time~~ raster-ray tracing hybrid rendering
 
 ### Optimisation technique
 
 - [x] Frustum culling
-- [ ] Sparse virtual texture (a.k.a. mega-texture) for shadow map
+- [ ] Variable rate shading
+- [ ] Mesh shading
 - [ ] Deferred clustered lighting
+- [ ] Sparse virtual texture (a.k.a. mega-texture)
 
 ## :bricks: Middleware
 
@@ -146,7 +158,7 @@ The application is unit-tested with.
 	<img src="https://img.shields.io/badge/NVIDIA-GTX_1660-76B900?style=flat&logo=nvidia&logoColor=white" />
 </p>
 
-> Sorry for AMD and Intel GPU because they are not supported by CUDA. *SuperTerrain+* is mostly optimised for *Turing* (CUDA compute capability 7.5) and newer, consumer-level Nvidia GPUs. The GPU requirement here is a very trivial approximation, the performance depends highly on configuration and level of re-programming to the engine.
+> *SuperTerrain+* currently relies heavily on CUDA and GL extensions exclusive to Nvidia GPUs. The GPU requirement stated here is a trivial assumption, runtime performance depends highly on configuration and level of re-programming to the engine.
 
 - RAM: 4GB
 - OS
@@ -160,12 +172,15 @@ The application is unit-tested with.
 - OpenGL 4.6 core profile
 - [GL_ARB_bindless_texture](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_bindless_texture.txt)
 - [GL_ARB_shading_language_include](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_shading_language_include.txt)
-- [GL_NV_command_list](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_command_list.txt)
 - [GL_NV_gpu_shader5](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt)
+- [GL_NV_mesh_shader](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_mesh_shader.txt)
+- [GL_NV_primitive_shading_rate](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_primitive_shading_rate.txt)
+- [GL_NV_representative_fragment_test](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_representative_fragment_test.txt)
 - [GL_NV_shader_buffer_load](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_load.txt)
 - [GL_NV_shader_buffer_store](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_store.txt)
+- [GL_NV_shading_rate_image](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shading_rate_image.txt)
 
-> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. When you are downloading GLAD please make sure those extensions are included. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview).
+> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. When you are downloading GLAD please make sure those extensions are included. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview) or [online extension database](https://opengl.gpuinfo.org/).
 
 ### :gear: How to build
 
@@ -254,6 +269,7 @@ Please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com) if yo
 - [A Primer On Efficient Rendering Algorithms & Clustered Shading](http://www.aortiz.me/2018/12/21/CG.html#part-2) by *Ángel Ortiz*
 - [Forward vs Deferred vs Forward+ Rendering with DirectX 11](https://www.3dgep.com/forward-plus/#Experiment_Setup_and_Performance_Results) by *Jeremiah van Oosten*
 - [SSAO](https://learnopengl.com/Advanced-Lighting/SSAO) from *Learn OpenGL*
+- [PBR theory](https://learnopengl.com/PBR/Theory) from *Learn OpenGL*
 
 **Tone mapping**
 

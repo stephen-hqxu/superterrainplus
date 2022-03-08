@@ -59,7 +59,7 @@ void STPEngineInitialiser::init(int device) {
 	STPcudaCheckErr(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte));
 
 	//SQLite3
-	STPsqliteCheckErr(sqlite3_enable_shared_cache(false));
+	STPsqliteCheckErr(sqlite3_initialize());
 
 	EngineInit = true;
 }

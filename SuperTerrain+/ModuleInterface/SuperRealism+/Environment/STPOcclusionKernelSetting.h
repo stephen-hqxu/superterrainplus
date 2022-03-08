@@ -18,9 +18,6 @@ namespace SuperTerrainPlus::STPEnvironment {
 
 		//The seed used to generate those random samples
 		unsigned long long RandomSampleSeed;
-		//Determine how many samples to be taken each pixels,
-		//more samples give less noise but it is also more computationally expensive.
-		unsigned int KernelSize;
 		//Specifies the number of random rotation vector to be used for sampling on the screen.
 		//More random vectors give better approximation but may lead to more noisy results.
 		//All rotation vectors are stored in a 2D texture and tile onto the rendering screen,

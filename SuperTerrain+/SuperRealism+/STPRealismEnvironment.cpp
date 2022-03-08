@@ -161,8 +161,7 @@ bool STPMeshSetting::validate() const {
 //STPOcclusionKernelSetting.h
 
 STPOcclusionKernelSetting::STPOcclusionKernelSetting() : 
-	RandomSampleSeed(0ull), 
-	KernelSize(1u), 
+	RandomSampleSeed(0ull),
 	RotationVectorSize(uvec2(1u)), 
 	SampleRadius(1.0f), 
 	Bias(0.0f) {
@@ -170,8 +169,7 @@ STPOcclusionKernelSetting::STPOcclusionKernelSetting() :
 }
 
 bool STPOcclusionKernelSetting::validate() const {
-	return this->KernelSize > 0u
-		&& this->RotationVectorSize != uvec2(0u)
+	return this->RotationVectorSize != uvec2(0u)
 		&& this->SampleRadius > 0.0f
 		&& this->Bias > 0.0f;
 }

@@ -141,7 +141,6 @@ STPEnvironment::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(con
 	STPEnvironment::STPOcclusionKernelSetting ao_kernel;
 
 	ao_kernel.RandomSampleSeed = section("sample_seed").to<unsigned long long>();
-	ao_kernel.KernelSize = section("kernel_size").to<unsigned int>();
 	ao_kernel.RotationVectorSize = uvec2(
 		section("rotation_vector_sizeX").to<unsigned int>(),
 		section("rotation_vector_sizeY").to<unsigned int>()

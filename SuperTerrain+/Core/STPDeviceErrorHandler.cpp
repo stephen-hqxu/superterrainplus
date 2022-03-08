@@ -45,7 +45,7 @@ ASSERT_FUNCTION(cudaError_t) {
 }
 
 ASSERT_FUNCTION(nvrtcResult) {
-	//CUDA Runtime Compilication
+	//CUDA Runtime Complication
 	if (err_code != NVRTC_SUCCESS) {
 		stringstream err_str;
 		WRITE_ERR_STRING(err_str) << "\nCUDA Runtime Compiler: " << nvrtcGetErrorString(err_code) << endl;

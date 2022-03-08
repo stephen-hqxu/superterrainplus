@@ -114,7 +114,7 @@ public:
 		 * @brief Create a new token.
 		 * @param type The type of this token.
 		 * @param beg The beginning iterator of this token.
-		 * @param count The numebr of character this token contains.
+		 * @param count The number of character this token contains.
 		*/
 		constexpr STPToken(STPType type, const char* beg, size_t count = 1ull) : Type(type), Lexeme(beg, count) {
 
@@ -123,7 +123,7 @@ public:
 		/**
 		 * @brief Create a new token.
 		 * @param type The type of this token.
-		 * @param beg The beginning interator of this token.
+		 * @param beg The beginning iterator of this token.
 		 * @param end The end iterator of this token.
 		*/
 		constexpr STPToken(STPType type, const char* beg, const char* end) : Type(type), Lexeme(beg, distance(beg, end)) {
@@ -300,7 +300,7 @@ public:
 	 * @return The same stringstream.
 	*/
 	stringstream& composeInitialErrorInfo(stringstream& str, const char* error_type) const {
-		str << "Texture Deinition Language(" << this->Line << ',' << this->Ch << "): " << error_type << endl;
+		str << "Texture Definition Language(" << this->Line << ',' << this->Ch << "): " << error_type << endl;
 		return str;
 	}
 
@@ -341,7 +341,7 @@ STPTextureDefinitionLanguage::STPTextureDefinitionLanguage(const string& source)
 		}
 		const string_view operation = this->Lexer->expect(TokenType::String).getLexeme();
 
-		//depends on opereations, we process them differently
+		//depends on operations, we process them differently
 		if (operation == "texture") {
 			this->processTexture();
 		}
@@ -510,7 +510,7 @@ void STPTextureDefinitionLanguage::processGroup() {
 		else {
 			stringstream msg;
 			this->Lexer->composeInitialErrorInfo(msg, "unrecognised group type")
-				<< "Group type \'" << group_type << "\' is not reconogised." << endl;
+				<< "Group type \'" << group_type << "\' is not recognised." << endl;
 			throw STPException::STPInvalidSyntax(msg.str().c_str());
 		}
 		//end of a group definition tuple
@@ -544,7 +544,7 @@ STPTextureDefinitionLanguage::STPTextureVariable STPTextureDefinitionLanguage::o
 	});
 
 	//requesting texture
-	//assigne each variable with those texture ID
+	//assign each variable with those texture ID
 	for (auto [texture_it, i] = make_pair(this->DeclaredTexture.cbegin(), 0u); texture_it != this->DeclaredTexture.cend(); texture_it++, i++) {
 		const auto& [texture_name, view_group_index] = *texture_it;
 		if (view_group_index == STPTextureDefinitionLanguage::UnreferencedIndex) {
