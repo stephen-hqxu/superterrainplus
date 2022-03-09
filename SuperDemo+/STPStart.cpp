@@ -183,8 +183,6 @@ namespace STPStart {
 			if (!STPDebugCallback::support()) {
 				throw STPException::STPUnsupportedFunctionality("The current GL does not support debug callback");
 			}
-			//MS is unnecessary in deferred shading
-			glDisable(GL_MULTISAMPLE);
 			glEnable(GL_DEBUG_OUTPUT);
 			STPDebugCallback::registerAsyncCallback(cout);
 			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
@@ -309,7 +307,7 @@ namespace STPStart {
 
 			//light property setup
 			STPEnvironment::STPLightSetting::STPAmbientLightSetting sun_ambient;
-			sun_ambient.AmbientStrength = 0.45f;
+			sun_ambient.AmbientStrength = 0.5f;
 			STPEnvironment::STPLightSetting::STPDirectionalLightSetting sun_directional;
 			sun_directional.DiffuseStrength = 1.6f;
 			sun_directional.SpecularStrength = 6.5f;
@@ -318,7 +316,10 @@ namespace STPStart {
 
 			//scene pipeline setup
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
-			this->RenderPipeline->setExtinctionArea(0.675f);
+			this->RenderPipeline->setExtinctionArea(engine("extinction_band", "Sky").to<float>());
+			if (this->RenderPipeline->setRepresentativeFragmentTest(true)) {
+				cout << "GL_NV_representative_fragment_test is available for the current GL renderer and has been enabled." << endl;
+			}
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
@@ -562,7 +563,7 @@ int main() {
 	//setup camera
 	{
 		using namespace SuperTerrainPlus;
-		STPEnvironment::STPCameraSetting cam = { };
+		STPEnvironment::STPCameraSetting cam;
 		cam.Yaw = radians(90.0);
 		cam.Pitch = 0.0;
 		cam.MovementSpeed = engineINI("movementSpeed").to<double>();
@@ -571,9 +572,8 @@ int main() {
 		cam.WorldUp = dvec3(0.0, 1.0, 0.0);
 		cam.Near = 1.0;
 		cam.Far = 2500.0;
-		cam.LogarithmicConstant = 1.0;
 		
-		STPEnvironment::STPPerspectiveCameraSetting proj = { };
+		STPEnvironment::STPPerspectiveCameraSetting proj;
 		proj.ViewAngle = radians(60.0);
 		proj.ZoomLimit = radians(dvec2(20.0, 140.0));
 		proj.ZoomSensitivity = engineINI("zoomSensitivity").to<double>();

@@ -35,6 +35,16 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 
 		/**
+		 * @brief STPProjectionCategory specifies the type of projection of the camera implementation.
+		*/
+		enum class STPProjectionCategory : unsigned char {
+			//Perspective projection
+			Perspective = 0x00u,
+			//Orthographic projection
+			Orthographic = 0xFFu
+		};
+
+		/**
 		 * @brief STPStatusChangeCallback allows actions to be taken when the camera status has changed outside of the environment.
 		*/
 		class STPStatusChangeCallback {
@@ -98,12 +108,16 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
+		//Specifies the type of projection this camera uses.
+		const STPProjectionCategory ProjectionType;
+
 		/**
 		 * @brief Initialise a new camera with user-defined settings.
 		 * @param props The pointer to the initial camera settings.
 		 * Settings are copied to the camera class.
+		 * @param proj_type The type of projection the camera class uses.
 		*/
-		STPCamera(const STPEnvironment::STPCameraSetting&);
+		STPCamera(const STPEnvironment::STPCameraSetting&, STPProjectionCategory);
 
 		STPCamera(const STPCamera&) = default;
 

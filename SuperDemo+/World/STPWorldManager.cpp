@@ -43,27 +43,32 @@ using glm::uvec2;
 class STPWorldManager::STPWorldSplattingAgent {
 private:
 
-	constexpr static size_t TextureCount = 11ull;
+	constexpr static size_t TextureCount = 16ull;
 	//All loaded texture data
 	STPTextureStorage LoadedData[STPWorldSplattingAgent::TextureCount];
 	//List of all texture name
 	constexpr static char* Filename[] = {
 		"darkrock_color.jpg",
 		"darkrock_normal.jpg",
+		"darkrock_ao.jpg",
 		"grass_color.jpg",
 		"grass_normal.jpg",
+		"grass_ao.jpg",
 		"mossrock_color.jpg",
 		"mossrock_normal.jpg",
+		"mossrock_ao.jpg",
 		"redrock_color.jpg",
 		"redrock_normal.jpg",
+		"redrock_ao.jpg",
 		"sand_color.jpg",
 		"sand_normal.jpg",
+		"sand_ao.jpg",
 		"soil_color.jpg"
 	};
 	constexpr static char TDLFilename[] = "./Script/STPBiomeSplatRule.tdl";
 
 	//Group ID recording
-	STPTextureInformation::STPMapGroupID x1024_srgb, x1024_rgb;
+	STPTextureInformation::STPMapGroupID x1024_srgb, x1024_rgb, x1024_r;
 
 	/**
 	 * @brief Determine the texture type based on the filename.
@@ -82,6 +87,9 @@ private:
 		}
 		if (typeStr == "normal") {
 			return STPTextureType::Normal;
+		}
+		if (typeStr == "ao") {
+			return STPTextureType::AmbientOcclusion;
 		}
 
 		throw STPException::STPInvalidArgument("Cannot determine the type of this texture");
@@ -109,7 +117,8 @@ public:
 		for_each(std::execution::par, IndexedFilename.cbegin(), IndexedFilename.cend(),
 			[&texArr = this->LoadedData, &prefix](const auto& data) {
 			const auto [index, filename] = data;
-			const int channel = 3;
+			//ambient occlusion texture only has one channel
+			const int channel = STPWorldSplattingAgent::getType(filename) == STPTextureType::AmbientOcclusion ? 1 : 3;
 
 			//all our images don't have alpha channel.
 			//loading texture from file system can be done in parallel
@@ -127,6 +136,9 @@ public:
 		this->x1024_srgb = this->Database.addMapGroup(tex_desc);
 		tex_desc.InteralFormat = GL_RGB8;
 		this->x1024_rgb = this->Database.addMapGroup(tex_desc);
+		tex_desc.ChannelFormat = GL_RED;
+		tex_desc.InteralFormat = GL_R8;
+		this->x1024_r = this->Database.addMapGroup(tex_desc);
 
 		STPDiversity::STPTextureDefinitionLanguage TDLParser(*STPFile(STPWorldSplattingAgent::TDLFilename));
 		//build texture splatting rules
@@ -139,11 +151,19 @@ public:
 			const STPTextureInformation::STPTextureID currTexID = textureName.at(currTexFile.substr(0ull, currTexFile.find_first_of('_'))).first;
 
 			STPTextureType texType = STPWorldSplattingAgent::getType(currTexFile);
-			STPTextureInformation::STPMapGroupID texGroup = this->x1024_rgb;
+			STPTextureInformation::STPMapGroupID texGroup = 0u;
 			//change group ID conditionally
-			if (texType == STPTextureType::Albedo) {
+			switch (texType) {
+			case STPTextureType::Albedo:
 				//color texture is usually in gamma space, we need to transform it to linear space.
 				texGroup = this->x1024_srgb;
+				break;
+			case STPTextureType::AmbientOcclusion:
+				texGroup = this->x1024_r;
+				break;
+			default:
+				texGroup = this->x1024_rgb;
+				break;
 			}
 			this->Database.addMap(currTexID, texType, texGroup, this->LoadedData[i].texture());
 		}
@@ -166,8 +186,8 @@ public:
 	*/
 	void setTextureParameter(const STPTextureFactory& factory, float anisotropy_filter) const {
 		//get the TBO based on group ID, currently we only have one group
-		const array<GLuint, 2ull> all_tbo = {
-			factory[this->x1024_srgb], factory[this->x1024_rgb]
+		const array<GLuint, 3ull> all_tbo = {
+			factory[this->x1024_srgb], factory[this->x1024_rgb], factory[this->x1024_r]
 		};
 
 		for (const auto tbo : all_tbo) {

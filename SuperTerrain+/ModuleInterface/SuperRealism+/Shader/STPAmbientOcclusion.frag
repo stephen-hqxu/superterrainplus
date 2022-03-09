@@ -56,10 +56,10 @@ void main(){
 //Basically the x, y coordinate is unchanged but the depth will be on the geometry, if the geometry exists.
 vec3 viewSnapToGeometry(vec3 viewPos){
 	//convert from view to clip space first
-	const vec4 clipPos = Camera.Projection * vec4(viewPos, 1.0f);
+	const vec2 clipPos = mat4x2(Camera.Projection) * vec4(viewPos, 1.0f);
 	//from clip space to NDC by perspective division
 	//range convert from [-1, 1] to [0, 1]
-	const vec2 uvPos = (clipPos.xy / clipPos.w) * 0.5f + 0.5f;
+	const vec2 uvPos = (clipPos / (Camera.useOrtho ? 1.0f : -viewPos.z)) * 0.5f + 0.5f;
 
 	//get the geometry depth at this coordinate and return
 	return fragDepthReconstruction(textureLod(GeoDepth, uvPos, 0).r, uvPos);
@@ -100,7 +100,7 @@ float computeOcclusion(vec3 position_view, vec3 normal_view){
 	//to determine the starting point of ray marching.
 	const vec3 randomVec = textureLod(RandomRotationVector, FragTexCoord * RotationVectorScale, 0).rgb;
 	//extract data
-	const vec2 randomRotation = randomVec.xy;
+	const vec2 randomRotation = normalize(randomVec.xy);
 	const float randomRayStart = randomVec.z;
 
 	//pre-compute fixed constants
@@ -152,6 +152,6 @@ float computeOcclusion(vec3 position_view, vec3 normal_view){
 	occlusion *= aoMul / float(DirectionStep * RayStep);
 	return clamp(1.0f - occlusion * 2.0f, 0.0f, 1.0f);
 #else
-#error "No ambient occlusion algorithm has been selected"
+#error No ambient occlusion algorithm has been selected
 #endif//AO_ALGORITHM
 }

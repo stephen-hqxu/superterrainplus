@@ -108,10 +108,10 @@ private:
 		mat4 V;
 		mat3x4 VNorm;
 
-		float C, Far;
-		vec2 _padFar;
-
 		mat4 P, InvP, PV, InvPV;
+
+		float Far;
+		bool Ortho;
 
 	};
 
@@ -120,14 +120,14 @@ private:
 		&& offsetof(STPPackedCameraBuffer, V) == 16
 		&& offsetof(STPPackedCameraBuffer, VNorm) == 80
 
-		&& offsetof(STPPackedCameraBuffer, C) == 128
-		&& offsetof(STPPackedCameraBuffer, Far) == 132
+		&& offsetof(STPPackedCameraBuffer, P) == 128
+		&& offsetof(STPPackedCameraBuffer, InvP) == 192
 
-		&& offsetof(STPPackedCameraBuffer, P) == 144
-		&& offsetof(STPPackedCameraBuffer, InvP) == 208
+		&& offsetof(STPPackedCameraBuffer, PV) == 256
+		&& offsetof(STPPackedCameraBuffer, InvPV) == 320
 
-		&& offsetof(STPPackedCameraBuffer, PV) == 272
-		&& offsetof(STPPackedCameraBuffer, InvPV) == 336,
+		&& offsetof(STPPackedCameraBuffer, Far) == 384
+		&& offsetof(STPPackedCameraBuffer, Ortho) == 388,
 	"The alignment of camera buffer does not obey std430 packing rule");
 
 public:
@@ -157,8 +157,8 @@ public:
 
 		//setup initial values
 		const STPEnvironment::STPCameraSetting& camSet = this->Camera.cameraStatus();
-		this->MappedBuffer->C = static_cast<float>(camSet.LogarithmicConstant);
 		this->MappedBuffer->Far = static_cast<float>(camSet.Far);
+		this->MappedBuffer->Ortho = this->Camera.ProjectionType == STPCamera::STPProjectionCategory::Orthographic;
 		//update values
 		this->Buffer.flushMappedBufferRange(0, sizeof(STPPackedCameraBuffer));
 
@@ -195,7 +195,7 @@ public:
 			//position has changed
 			if (this->updatePosition) {
 				camBuf->Pos = this->Camera.cameraStatus().Position;
-				this->Buffer.flushMappedBufferRange(0, sizeof(vec3));
+				this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, Pos), sizeof(vec3));
 
 				this->updatePosition = false;
 			}
@@ -206,7 +206,7 @@ public:
 			//view matrix has changed
 			camBuf->V = view;
 			camBuf->VNorm = static_cast<mat3x4>(glm::transpose(glm::inverse(static_cast<dmat3>(view))));
-			this->Buffer.flushMappedBufferRange(16, sizeof(mat4) + sizeof(mat3x4));
+			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, V), sizeof(mat4) + sizeof(mat3x4));
 
 			this->updateView = false;
 		}
@@ -216,7 +216,7 @@ public:
 
 			camBuf->P = proj;
 			camBuf->InvP = glm::inverse(proj);
-			this->Buffer.flushMappedBufferRange(144, sizeof(mat4) * 2);
+			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, P), sizeof(mat4) * 2);
 
 			this->updateProjection = false;
 		}
@@ -228,7 +228,7 @@ public:
 			//update the precomputed values
 			camBuf->PV = proj_view;
 			camBuf->InvPV = glm::inverse(proj_view);
-			this->Buffer.flushMappedBufferRange(272, sizeof(mat4) * 2);
+			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, PV), sizeof(mat4) * 2);
 		}
 	}
 
@@ -673,6 +673,9 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera, STPScenePipelineInit
 	if (!scene_init.ShadowFilter->valid()) {
 		throw STPException::STPBadNumericRange("The shadow filter has invalid settings");
 	}
+
+	//Multi-sampling is unnecessary in deferred shading
+	glDisable(GL_MULTISAMPLE);
 	//set up initial GL context states
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
@@ -784,6 +787,20 @@ void STPScenePipeline::setClearColor(vec4 color) {
 	glClear(GL_COLOR_BUFFER_BIT);
 	//update member variable
 	this->DefaultClearColor = color;
+}
+
+bool STPScenePipeline::setRepresentativeFragmentTest(bool val) {
+	if (!GLAD_GL_NV_representative_fragment_test) {
+		//does not support
+		return false;
+	}
+
+	if (val) {
+		glEnable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
+	} else {
+		glDisable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
+	}
+	return glIsEnabled(GL_REPRESENTATIVE_FRAGMENT_TEST_NV) == GL_TRUE;
 }
 
 void STPScenePipeline::setResolution(uvec2 resolution) {
@@ -929,8 +946,7 @@ void STPScenePipeline::traverse() {
 	glEnable(GL_BLEND);
 	//alpha 1 means there is no object (default alpha), or object is fully extinct
 	//alpha 0 means object is fully visible
-	glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA, GL_ONE, GL_ONE);
-
+	glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA, GL_ZERO, GL_ONE);
 	for (const auto& rendering_env : env_obj) {
 		rendering_env->render();
 	}

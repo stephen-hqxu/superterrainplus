@@ -15,7 +15,7 @@ using namespace SuperTerrainPlus::STPRealism;
 
 STPOrthographicCamera::STPOrthographicCamera
 	(const STPEnvironment::STPOrthographicCameraSetting& projection_props, const STPEnvironment::STPCameraSetting& camera_props) : 
-	STPCamera(camera_props), Frustum(projection_props), OrthographicProjection(glm::identity<dmat4>()), ProjectionOutdated(true) {
+	STPCamera(camera_props, STPProjectionCategory::Orthographic), Frustum(projection_props), OrthographicProjection(glm::identity<dmat4>()), ProjectionOutdated(true) {
 	if (!this->Frustum.validate()) {
 		throw STPException::STPInvalidEnvironment("Orthographic projection setting not validated");
 	}

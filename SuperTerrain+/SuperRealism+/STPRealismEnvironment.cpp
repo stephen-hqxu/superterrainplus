@@ -59,7 +59,7 @@ STPCameraSetting::STPCameraSetting() :
 	Yaw(radians(-90.0)), Pitch(0.0),
 	MovementSpeed(2.5), RotationSensitivity(0.1),
 	Position(vec3(0.0)), WorldUp(0.0, 1.0, 0.0), 
-	Near(0.1), Far(1.0), LogarithmicConstant(1.0) {
+	Near(0.1), Far(1.0) {
 
 }
 
@@ -69,14 +69,13 @@ bool STPCameraSetting::validate() const {
 	};
 	static constexpr double PI = glm::pi<double>(), PI_BY_2 = PI * 0.5;
 
-	return range(this->Yaw, -PI, PI) 
-		&& range(this->Pitch, -PI_BY_2, PI_BY_2) 
-		&& this->MovementSpeed > 0.0 
+	return range(this->Yaw, -PI, PI)
+		&& range(this->Pitch, -PI_BY_2, PI_BY_2)
+		&& this->MovementSpeed > 0.0
 		&& this->RotationSensitivity > 0.0
 		&& this->Near > 0.0
 		&& this->Far > 0.0
-		&& this->Near < this->Far
-		&& this->LogarithmicConstant > 0.0;
+		&& this->Near < this->Far;
 }
 
 //STPLightSetting.h

@@ -304,28 +304,40 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 			UVScaleDxDy[level].zw = dFdy(level_uv);
 		}
 
+		//default to use tertiary scale
+		uvec2 scaleIdx = uvec2(2u, 0u);
+		float blendFactor = 0.0f;
 		//determine uv for the current region
+		//the current implementation only allows a two different scale blended together
 		if(texelDistance < ScaleSetting.Prim){
 			//use the primary scale only
-			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].x, region, regionWeight, UVScaleDxDy[0]);
+			scaleIdx[0] = 0u;
 		}
 		else if(texelDistance < ScaleSetting.Seco){
 			//blend between primary and secondary
-			const float blendFactor = smoothstep(ScaleSetting.Prim, ScaleSetting.Seco, texelDistance);
-
-			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].x, region, regionWeight * (1.0f - blendFactor), UVScaleDxDy[0]);
-			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].y, region, regionWeight * blendFactor, UVScaleDxDy[1]);
+			blendFactor = smoothstep(ScaleSetting.Prim, ScaleSetting.Seco, texelDistance);
+			scaleIdx[0] = 0u;
+			scaleIdx[1] = 1u;
 		}
 		else if(texelDistance < ScaleSetting.Tert){
 			//blend between secondary and tertiary
-			const float blendFactor = smoothstep(ScaleSetting.Seco, ScaleSetting.Tert, texelDistance);
-
-			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].y, region, regionWeight * (1.0f - blendFactor), UVScaleDxDy[1]);
-			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].z, region, regionWeight * blendFactor, UVScaleDxDy[2]);
+			blendFactor = smoothstep(ScaleSetting.Seco, ScaleSetting.Tert, texelDistance);
+			scaleIdx[0] = 1u;
+			scaleIdx[1] = 2u;
 		}
-		else{
-			//use tertiary only
-			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region].z, region, regionWeight, UVScaleDxDy[2]);
+		//otherwise use tertiary only
+
+		//sample texture using the scaling information
+		for(int scaleLayer = 0; scaleLayer < 2; scaleLayer++){
+			const uint index = scaleIdx[scaleLayer];
+			sampleTerrainTexture(TerrainTexture, world_uv * RegionScaleRegistry[region][index], region, regionWeight * (1.0f - blendFactor), UVScaleDxDy[index]);
+
+			//check if there is another scale layer needs to be blended
+			if(blendFactor == 0.0f){
+				break;
+			}
+			//update the blending factor for the next scale layer to make sure the sum weight is 1.0
+			blendFactor = 1.0f - blendFactor;
 		}
 	}
 

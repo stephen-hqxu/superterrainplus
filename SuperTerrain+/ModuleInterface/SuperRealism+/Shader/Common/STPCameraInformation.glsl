@@ -6,25 +6,19 @@ layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 	layout(offset = 16) mat4 View;
 	layout(offset = 80) mat3 ViewNormal;//normal matrix that encapsulated view matrix only
 
-	//Depth buffer tweaking
-	layout(offset = 128) float LogConstant;
-	layout(offset = 132) float Far;
+	layout(offset = 128) mat4 Projection;
+	layout(offset = 192) mat4 InvProjection;
 
-	layout(offset = 144) mat4 Projection;
-	layout(offset = 208) mat4 InvProjection;
+	layout(offset = 256) mat4 ProjectionView;
+	layout(offset = 320) mat4 InvProjectionView;
 
-	layout(offset = 272) mat4 ProjectionView;
-	layout(offset = 336) mat4 InvProjectionView;
+	//Camera properties
+	layout(offset = 384) float Far;
+	//Of course we can check type of projection by examining the projection matrix, 
+	//for example projection is orthographic if and only if Projection[3][3] == 1.0f.
+	//It is faster to compute the result on host than computing every frame.
+	layout(offset = 388) bool useOrtho;
 } Camera;
-
-/* -------------------------------------------------------------------- */
-#ifdef EMIT_LOG_DEPTH_IMPL
-//Convert the clip space position from linear to logarithm depth scale
-vec4 linearToLogarithmDepth(vec4 clip) {
-	clip.z = log2(Camera.LogConstant * clip.z + 1.0f) / log2(Camera.LogConstant * Camera.Far + 1.0f) * clip.w;
-	return clip;
-}
-#endif//EMIT_LOG_DEPTH_IMPL
 
 /* --------------------------------------------------------------------- */
 //Define this macro to use implementation to reconstruct depth to position

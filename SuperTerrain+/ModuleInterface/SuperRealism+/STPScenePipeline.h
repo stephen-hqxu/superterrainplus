@@ -280,6 +280,16 @@ namespace SuperTerrainPlus::STPRealism {
 		void setClearColor(glm::vec4);
 
 		/**
+		 * @brief Specify should the rendering pipeline uses representative fragment testing.
+		 * This feature requires extension GL_NV_representative_fragment_test.
+		 * As of 09/03/2022, survey shows this extension is only available on NVIDIA Turing and Ampere architecture.
+		 * @param val Enable flag. Set to true to enable this feature, false otherwise.
+		 * @return A value reflecting if the feature has been turned on.
+		 * This should usually be equal to `val`, and only be false all the time if the targeting system does not support this feature.
+		*/
+		bool setRepresentativeFragmentTest(bool);
+
+		/**
 		 * @brief Set the rendering resolution.
 		 * This will cause reallocation of all rendering buffer, such as G-buffer used in deferred shading and post-processing buffer.
 		 * It should be considered as a very expensive operation.

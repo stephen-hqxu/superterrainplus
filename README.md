@@ -35,7 +35,7 @@ There is no perfect answer to this question, every application has its own pros 
 - [x] Concurrent heightfield generation
 - [x] Particle-based free-slip hydraulic erosion
 - [x] Programmable static/runtime-compiled pipeline
-- [x] Biome generation with classic *Minecraft* [Grown Biomes](http://cuberite.xoft.cz/docs/Generator.html) algorithm
+- [x] Biome generation
 - [x] Single histogram filter for Multi-biome heightfield generation with smooth transition
 - [x] Rule-based biome-dependent terrain texture splatting with smooth transition
 - [ ] River and lake generation
@@ -61,14 +61,13 @@ There is no perfect answer to this question, every application has its own pros 
   - [x] Filmic tone mapping
   - [x] Gamma correction
   - [ ] Auto-exposure
-  - [ ] Contrast
 - [ ] Shadow mapping
   - [ ] Simple shadow mapping for spotlight
   - [ ] Cubemap shadow mapping for pointlight
   - [x] Cascaded shadow mapping for directional light
-- [ ] Ambient occlusion
+- [x] Ambient occlusion
   - [x] Screen-space ambient occlusion
-  - [ ] Horizon-based ambient occlusion
+  - [x] Horizon-based ambient occlusion
 - [ ] Anti-aliasing
   - [x] ~~Multi-sample anti-aliasing~~
   - [ ] Fast-approximate anti-aliasing
@@ -173,11 +172,14 @@ The application is unit-tested with.
 - [GL_ARB_bindless_texture](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_bindless_texture.txt)
 - [GL_ARB_shading_language_include](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_shading_language_include.txt)
 - [GL_NV_gpu_shader5](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt)
+- [GL_NV_shader_buffer_load](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_load.txt)
+- [GL_NV_shader_buffer_store](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_store.txt)
+
+The following extensions are not required but will be made used by the engine automatically whenever applicable.
+
 - [GL_NV_mesh_shader](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_mesh_shader.txt)
 - [GL_NV_primitive_shading_rate](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_primitive_shading_rate.txt)
 - [GL_NV_representative_fragment_test](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_representative_fragment_test.txt)
-- [GL_NV_shader_buffer_load](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_load.txt)
-- [GL_NV_shader_buffer_store](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_store.txt)
 - [GL_NV_shading_rate_image](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shading_rate_image.txt)
 
 > This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. When you are downloading GLAD please make sure those extensions are included. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview) or [online extension database](https://opengl.gpuinfo.org/).
@@ -269,9 +271,10 @@ Please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com) if yo
 - [A Primer On Efficient Rendering Algorithms & Clustered Shading](http://www.aortiz.me/2018/12/21/CG.html#part-2) by *Ángel Ortiz*
 - [Forward vs Deferred vs Forward+ Rendering with DirectX 11](https://www.3dgep.com/forward-plus/#Experiment_Setup_and_Performance_Results) by *Jeremiah van Oosten*
 - [SSAO](https://learnopengl.com/Advanced-Lighting/SSAO) from *Learn OpenGL*
+- [HBAO](https://github.com/nvpro-samples/gl_ssao) and [HBAO+](https://github.com/NVIDIAGameWorks/HBAOPlus)
 - [PBR theory](https://learnopengl.com/PBR/Theory) from *Learn OpenGL*
 
-**Tone mapping**
+**HDR**
 
 - [Filmic tone mapping functions](https://bruop.github.io/tonemapping/) by *Bruno Opsenica*
 - [HDR Theory and practice](https://www.slideshare.net/nikuque/hdr-theory-and-practicce-jp) by *Hajime Uchimura*

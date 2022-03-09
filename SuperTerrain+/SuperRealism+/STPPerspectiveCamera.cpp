@@ -16,7 +16,7 @@ using namespace SuperTerrainPlus::STPRealism;
 
 STPPerspectiveCamera::STPPerspectiveCamera(const STPEnvironment::STPPerspectiveCameraSetting& projection_props, 
 	const STPEnvironment::STPCameraSetting& camera_pros) :
-	STPCamera(camera_pros), Frustum(projection_props), PerspectiveProjection(glm::identity<dmat4>()), ProjectionOutdated(true) {
+	STPCamera(camera_pros, STPProjectionCategory::Perspective), Frustum(projection_props), PerspectiveProjection(glm::identity<dmat4>()), ProjectionOutdated(true) {
 	if (!this->Frustum.validate()) {
 		throw STPException::STPInvalidEnvironment("Perspective projection setting not validated");
 	}

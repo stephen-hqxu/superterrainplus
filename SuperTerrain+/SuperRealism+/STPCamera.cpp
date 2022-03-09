@@ -21,8 +21,8 @@ using glm::cross;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) : 
-	Camera(props), View(glm::identity<dmat4>()), ViewOutdated(true) {
+STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props, STPProjectionCategory proj_type) : 
+	Camera(props), View(glm::identity<dmat4>()), ViewOutdated(true), ProjectionType(proj_type) {
 	if (!this->Camera.validate()) {
 		throw STPException::STPInvalidEnvironment("Camera setting not validated");
 	}
