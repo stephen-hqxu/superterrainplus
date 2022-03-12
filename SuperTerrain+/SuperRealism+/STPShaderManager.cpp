@@ -8,7 +8,6 @@
 //Error
 #include <SuperTerrain+/Exception/STPGLError.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
-#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -61,34 +60,40 @@ unsigned int STPShaderManager::STPShaderSource::define(const STPMacroValueDictio
 		//do nothing for empty string
 		return 0u;
 	}
-	constexpr static char DefineIdentifier[] = "#define";
-	constexpr static char MacroIdentifier[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
+	constexpr static string_view DefineIdentifier = "#define",
+		WhiteSpace = " \n\r\t\f\v";
+	//remove all leading white space
+	constexpr static auto ltrim = [](const string_view& str) constexpr -> string_view {
+		const size_t start = str.find_first_not_of(WhiteSpace);
+		return start == string_view::npos ? string_view() : str.substr(start);
+	};
 
 	unsigned int macroReplaced = 0u;
 	istringstream original_src(this->Cache);
 	ostringstream output_src;
-	string line, macroName;
+	string line;
 	//read line by line
 	while (std::getline(original_src, line)) {
-		if (line.rfind(DefineIdentifier, 0ull) == 0ull) {
-			//a define directive is found
-			//for accuracy, we only care about #define starting at the first line
-			const size_t macroStart = line.find(' ', sizeof(DefineIdentifier) / sizeof(char) - 1ull) + 1ull;
-			if (macroStart != string::npos) {
-				//get macro name
-				const size_t macroEnd = line.find_first_not_of(MacroIdentifier, macroStart);
-				//substr will clamp the size so no worries about npos
-				macroName = line.substr(macroStart, macroEnd - macroStart);
+		//remove leading white space at the beginning of the define directive
+		if (string_view lineView(ltrim(line));
+			lineView.rfind(DefineIdentifier, 0ull) == 0ull) {
+			//remove #define and all white space between #define and the macro name
+			lineView = ltrim(lineView.substr(DefineIdentifier.length()));
 
-				//get macro value
-				auto dict_it = dictionary.Macro.find(macroName);
-				if (dict_it != dictionary.Macro.cend()) {
-					//found, compose new line
-					output_src << DefineIdentifier << ' ' << macroName << ' ' << dict_it->second << endl;
+			//get macro name
+			const size_t macroEnd = lineView.find_first_of(' ');
+			//substr will clamp the size so no worries about npos
+			//only left with the actual name of macro
+			lineView = ltrim(lineView.substr(0, macroEnd));
 
-					macroReplaced++;
-					continue;
-				}
+			//get macro value
+			if (auto dict_it = dictionary.Macro.find(string(lineView));
+				dict_it != dictionary.Macro.cend()) {
+				//found, compose new line
+				output_src << DefineIdentifier << ' ' << lineView << ' ' << dict_it->second << endl;
+
+				macroReplaced++;
+				continue;
 			}
 		}
 
@@ -120,11 +125,6 @@ inline static bool includeImpl(const char* name, size_t nameLen, const string& s
 }
 
 void STPShaderManager::initialise() {
-	//check if shader include is supported
-	if (!GLAD_GL_ARB_shading_language_include) {
-		throw STPException::STPUnsupportedFunctionality("The current rendering context does not support ARB_shading_language_include");
-	}
-
 	//load source code
 	for (const auto& path : mShaderIncludeRegistry) {
 		using namespace SuperTerrainPlus;

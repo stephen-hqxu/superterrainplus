@@ -3,7 +3,7 @@
 #define _STP_HEIGHTFIELD_PARA_LOADER_H_
 
 //INI loader
-#include "SIMPLE/SIStorage.h"
+#include "SIMPLE/SIStorage.hpp"
 //GLM
 #include "glm/vec2.hpp"
 //Settings

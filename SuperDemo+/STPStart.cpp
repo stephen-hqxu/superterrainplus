@@ -35,7 +35,7 @@
 
 //External
 #include <GLFW/glfw3.h>
-#include <SIMPLE/SIParser.h>
+#include <SIMPLE/Serialisation/SIImporter.h>
 
 //System
 #include <iostream>
@@ -80,7 +80,7 @@ namespace STPStart {
 	class STPMasterRenderer {
 	private:
 
-		const SIMPLE::SIStorage& engineINI, biomeINI;
+		const SIMPLE::SIStorage& engineINI, &biomeINI;
 
 		//Generation Pipeline
 		optional<STPDemo::STPWorldManager> WorldManager;
@@ -118,9 +118,6 @@ namespace STPStart {
 
 	public:
 
-		//The number of sample used next time the resize() function is called.
-		unsigned int MultiSample = 1u;
-
 		/**
 		 * @brief Init STPMasterRenderer.
 		 * @param engine The pointer to engine INI settings.
@@ -129,43 +126,43 @@ namespace STPStart {
 		*/
 		STPMasterRenderer(const SIMPLE::SIStorage& engine, const SIMPLE::SIStorage& biome, SuperTerrainPlus::STPRealism::STPPerspectiveCamera& camera) :
 			engineINI(engine), biomeINI(biome), ViewPosition(camera.cameraStatus().Position), 
-			CurrentSeed(this->biomeINI("seed", "simplex").to<unsigned long long>()) {
+			CurrentSeed(this->biomeINI.at("simplex").at("seed").to<unsigned long long>()) {
 			using namespace SuperTerrainPlus;
 			using namespace STPDemo;
 
 			//loading terrain parameters
 			STPEnvironment::STPConfiguration config;
-			STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI["simplex"]);
+			STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI.at("simplex"));
 			{
-				config.ChunkSetting = STPTerrainParaLoader::getChunkSetting(this->engineINI["Generators"]);
+				config.ChunkSetting = STPTerrainParaLoader::getChunkSetting(this->engineINI.at("Generators"));
 				STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
 
 				const auto& chunk_setting = config.ChunkSetting;
 				config.HeightfieldSetting = std::move(
-					STPTerrainParaLoader::getGeneratorSetting(this->engineINI["2DTerrainINF"], chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
+					STPTerrainParaLoader::getGeneratorSetting(this->engineINI.at("2DTerrainINF"), chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
 
 				if (!config.validate()) {
 					throw STPException::STPInvalidEnvironment("Configurations are not validated");
 				}
 			}
 			//load renderer settings
-			STPEnvironment::STPMeshSetting MeshSetting = STPTerrainParaLoader::getRenderingSetting(this->engineINI["2DTerrainINF"]);
-			const auto sky_setting = STPTerrainParaLoader::getSkySetting(this->engineINI["Sky"]);
+			STPEnvironment::STPMeshSetting MeshSetting = STPTerrainParaLoader::getRenderingSetting(this->engineINI.at("2DTerrainINF"));
+			const auto sky_setting = STPTerrainParaLoader::getSkySetting(this->engineINI.at("Sky"));
 			this->SunSetting = sky_setting.first;
 
 			//setup world manager
 			try {
-				this->WorldManager.emplace(this->biomeINI("texture_path_prefix")(), config, simplex);
+				this->WorldManager.emplace(*this->biomeINI.at("").at("texture_path_prefix"), config, simplex);
 				//the old setting has been moved to the world manager, need to refresh the pointer
 				const auto& chunk_setting = this->WorldManager->getWorldSetting().ChunkSetting;
 
 				this->WorldManager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
 				this->WorldManager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>
-					(this->WorldManager->SharedProgram, chunk_setting.MapSize, this->biomeINI("interpolationRadius").to<unsigned int>());
+					(this->WorldManager->SharedProgram, chunk_setting.MapSize, this->biomeINI.at("").at("interpolationRadius").to<unsigned int>());
 				this->WorldManager->attachTextureFactory<STPDemo::STPSplatmapGenerator>
 					(this->WorldManager->SharedProgram, this->WorldManager->getTextureDatabase(), chunk_setting);
 
-				this->WorldManager->linkProgram(this->engineINI("Anisotropy", "Global").to<float>());
+				this->WorldManager->linkProgram(this->engineINI.at("Global").at("Anisotropy").to<float>());
 				if (!this->WorldManager) {
 					//do not proceed if it fails
 					terminate();
@@ -279,12 +276,12 @@ namespace STPStart {
 			}
 			//-------------------------------------------
 			{
-				const SIMPLE::SISection& ao_section = engine["AmbientOcclusion"];
+				const SIMPLE::SISection& ao_section = engine.at("AmbientOcclusion");
 				//blur
 				STPGaussianFilter blur_filter(
-					ao_section("variance").to<double>(),
-					ao_section("kernel_distance").to<double>(),
-					ao_section("kernel_radius").to<unsigned int>(),
+					ao_section.at("variance").to<double>(),
+					ao_section.at("kernel_distance").to<double>(),
+					ao_section.at("kernel_radius").to<unsigned int>(),
 				screen_renderer_init);
 
 				//ambient occlusion
@@ -293,8 +290,8 @@ namespace STPStart {
 				//For SSAO
 				//ao_kernel.KernelSize = ao_section("kernel_size").to<unsigned int>();
 				//For HBAO
-				ao_kernel.DirectionStep = ao_section("direction_step").to<unsigned int>();
-				ao_kernel.RayStep = ao_section("ray_step").to<unsigned int>();
+				ao_kernel.DirectionStep = ao_section.at("direction_step").to<unsigned int>();
+				ao_kernel.RayStep = ao_section.at("ray_step").to<unsigned int>();
 
 				this->AOEffect = this->RenderPipeline->add<STPAmbientOcclusion>(ao_kernel, std::move(blur_filter), screen_renderer_init);
 			}
@@ -316,7 +313,7 @@ namespace STPStart {
 
 			//scene pipeline setup
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
-			this->RenderPipeline->setExtinctionArea(engine("extinction_band", "Sky").to<float>());
+			this->RenderPipeline->setExtinctionArea(engine.at("Sky").at("extinction_band").to<float>());
 			if (this->RenderPipeline->setRepresentativeFragmentTest(true)) {
 				cout << "GL_NV_representative_fragment_test is available for the current GL renderer and has been enabled." << endl;
 			}
@@ -398,7 +395,8 @@ namespace STPStart {
 	//Camera
 	static optional<SuperTerrainPlus::STPRealism::STPPerspectiveCamera> MainCamera;
 	//Configuration
-	static SIMPLE::SIParser engineINILoader("./Engine.ini"), biomeINILoader("./Biome.ini");
+	using SuperTerrainPlus::STPFile;
+	static SIMPLE::SIImporter engineINILoader(*STPFile("./Engine.ini")), biomeINILoader(*STPFile("./Biome.ini"));
 
 	/* ------------------------------ callback functions ----------------------------------- */
 	constexpr static uvec2 InitialCanvasSize = uvec2(1600u, 900u);
@@ -545,8 +543,8 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 
 int main() {
 	//get INI
-	const SIMPLE::SIStorage& engineINI = STPStart::engineINILoader.get(), 
-		&biomeINI = STPStart::biomeINILoader.get();
+	const SIMPLE::SIStorage& engineINI = *STPStart::engineINILoader, 
+		&biomeINI = *STPStart::biomeINILoader;
 	//engine setup
 	//because GLFW callback uses camera, so we need to setup camera first
 	if (!(STPStart::initGLFW() && STPStart::initSTP())) {
@@ -562,12 +560,14 @@ int main() {
 
 	//setup camera
 	{
+		const SIMPLE::SISection& engineMain = engineINI.at("");
+
 		using namespace SuperTerrainPlus;
 		STPEnvironment::STPCameraSetting cam;
 		cam.Yaw = radians(90.0);
 		cam.Pitch = 0.0;
-		cam.MovementSpeed = engineINI("movementSpeed").to<double>();
-		cam.RotationSensitivity = engineINI("mouseSensitivity").to<double>();
+		cam.MovementSpeed = engineMain.at("movementSpeed").to<double>();
+		cam.RotationSensitivity = engineMain.at("mouseSensitivity").to<double>();
 		cam.Position = dvec3(0.0, 600.0, 0.0);
 		cam.WorldUp = dvec3(0.0, 1.0, 0.0);
 		cam.Near = 1.0;
@@ -576,7 +576,7 @@ int main() {
 		STPEnvironment::STPPerspectiveCameraSetting proj;
 		proj.ViewAngle = radians(60.0);
 		proj.ZoomLimit = radians(dvec2(20.0, 140.0));
-		proj.ZoomSensitivity = engineINI("zoomSensitivity").to<double>();
+		proj.ZoomSensitivity = engineMain.at("zoomSensitivity").to<double>();
 		proj.Aspect = 1.0 * STPStart::InitialCanvasSize.x / (1.0 * STPStart::InitialCanvasSize.y);
 
 		STPStart::MainCamera.emplace(proj, cam);
@@ -588,11 +588,9 @@ int main() {
 	try {
 		STPStart::MasterEngine.emplace(engineINI, biomeINI, *STPStart::MainCamera);
 
-		//basic setup for the master renderer
-		STPStart::MasterEngine->MultiSample = engineINI("MSAA", "Global").to<unsigned int>();
 		//allocate some memory
 		STPStart::MasterEngine->resize(STPStart::InitialCanvasSize);
-		STPStart::MasterEngine->setGamma(engineINI("gamma", "Global").to<float>());
+		STPStart::MasterEngine->setGamma(engineINI.at("Global").at("gamma").to<float>());
 	}
 	catch (const std::exception& e) {
 		cerr << e.what() << endl;
@@ -601,7 +599,7 @@ int main() {
 	}
 
 	//rendering loop
-	double currentTime, lastTime = 0.0, deltaTime, FPS = engineINI("FPS").to<double>();
+	double currentTime, lastTime = 0.0, deltaTime, FPS = engineINI.at("").at("FPS").to<double>();
 	cout << "Start..." << endl;
 	while (!glfwWindowShouldClose(STPStart::GLCanvas)) {
 		//frametime logic

@@ -41,13 +41,14 @@ out VertexTCS{
 uniform TessellationSetting Tess[2];
 uniform unsigned int ActiveTess = 0u;
 
+//Calculate the level-of-detail for the mesh
 float calcLoD(TessellationSetting, float, float);
 
 void main(){
 	//determine which tessellation setting to use
 	const TessellationSetting selected_tess = Tess[ActiveTess];
 
-	//tessllation settings are shared across all local invocations, so only need to set it once
+	//tessellation settings are shared across all local invocations, so only need to set it once
 	if(gl_InvocationID == 0){
 		float vertexDistance[3];
 		//first calculate the distance from camera to each vertex in a patch
@@ -64,7 +65,7 @@ void main(){
 		gl_TessLevelOuter[0] = calcLoD(selected_tess, vertexDistance[1], vertexDistance[2]);
 		gl_TessLevelOuter[1] = calcLoD(selected_tess, vertexDistance[2], vertexDistance[0]);
 		gl_TessLevelOuter[2] = calcLoD(selected_tess, vertexDistance[0], vertexDistance[1]);
-		gl_TessLevelInner[0] = (gl_TessLevelOuter[0] + gl_TessLevelOuter[1] + gl_TessLevelOuter[2]) * 0.33333333f;
+		gl_TessLevelInner[0] = (gl_TessLevelOuter[0] + gl_TessLevelOuter[1] + gl_TessLevelOuter[2]) / 3.0f;
 	}
 	
 	//copy pasting the input to output

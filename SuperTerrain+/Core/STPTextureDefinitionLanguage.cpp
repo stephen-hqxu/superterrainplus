@@ -192,12 +192,12 @@ private:
 	*/
 	STPToken readString() const {
 		const char* start = this->Sequence;
-		this->pop();
 
 		//keep pushing pointer forward until we see something
-		while (isalpha(this->peek())) {
+		do {
 			this->pop();
-		}
+		} while (isalpha(this->peek()));
+
 		return STPToken(STPToken::STPType::String, start, this->Sequence);
 	}
 
@@ -207,15 +207,14 @@ private:
 	*/
 	STPToken readNumber() const {
 		const char* start = this->Sequence;
-		this->pop();
 
 		char identifier;
 		//we need to be able to identify floating point number
 		//we don't need to worry about invalid numeric format right now, for example 1.34.6ff54
-		while (identifier = this->peek(), (isdigit(identifier) || identifier == '.' || identifier == 'f' || identifier == 'u')) {
+		do {
 			this->pop();
-			identifier = this->peek();
-		}
+		} while (identifier = this->peek(), (isdigit(identifier) || identifier == '.' || identifier == 'f' || identifier == 'u'));
+
 		return STPToken(STPToken::STPType::Number, start, this->Sequence);
 	}
 
@@ -398,10 +397,10 @@ void STPTextureDefinitionLanguage::processTexture() {
 void STPTextureDefinitionLanguage::processRule() {
 	static constexpr auto stoSample = [](const string_view& str) -> Sample {
 		//one disadvantage of this method is it will create a string from the string_view
-		return static_cast<Sample>(std::stoul(str.data()));
+		return static_cast<Sample>(std::stoul(string(str)));
 	};
 	static constexpr auto stoFloat = [](const string_view& str) -> float {
-		return std::stof(str.data());
+		return std::stof(string(str));
 	};
 	typedef STPTDLLexer::STPToken::STPType TokenType;
 
@@ -468,7 +467,7 @@ void STPTextureDefinitionLanguage::processRule() {
 
 void STPTextureDefinitionLanguage::processGroup() {
 	static constexpr auto stoUint = [](const string_view& str) -> unsigned int {
-		return static_cast<unsigned int>(std::stoul(str.data()));
+		return static_cast<unsigned int>(std::stoul(string(str)));
 	};
 	typedef STPTDLLexer::STPToken::STPType TokenType;
 

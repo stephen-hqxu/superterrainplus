@@ -6,17 +6,17 @@
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
 template<typename T>
-inline void SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemoryDeleter<T>::operator()(T* ptr) const {
+void SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemoryDeleter<T>::operator()(T* ptr) const {
 	STPcudaCheckErr(cudaFree(ptr));
 }
 
 template<typename T>
-inline SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::STPStreamedDeviceMemoryDeleter(cudaStream_t stream) : Stream(stream) {
+SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::STPStreamedDeviceMemoryDeleter(cudaStream_t stream) : Stream(stream) {
 	
 }
 
 template<typename T>
-inline void SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::operator()(T* ptr) const {
+void SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::operator()(T* ptr) const {
 	if (!this->Stream) {
 		//check if user has assigned a stream
 		throw SuperTerrainPlus::STPException::STPMemoryError("Invoking a deleter with no CUDA stream assigned");
@@ -30,7 +30,7 @@ SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemory<T> SuperTerrainPlus::STP
 	using U = typename NoArray<T>;
 	
 	U* cache;
-	//remember size denotes the number of elelement
+	//remember size denotes the number of element
 	STPcudaCheckErr(cudaMalloc(&cache, sizeof(U) * size));
 	//if any exception is thrown during malloc, it will not proceed
 	//exception thrown at malloc will prevent any memory to be allocated, so we don't need to free it.

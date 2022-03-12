@@ -4,7 +4,7 @@ set(STP_DEMO_PROGRAM "SuperDemo+")
 # minimum GLFW requirement v3.0
 find_package(glfw3 3 REQUIRED CONFIG)
 # and include our home-made libraries ;)
-find_package(SIMPLE 2 REQUIRED CONFIG)
+find_package(SIMPLE 3 REQUIRED CONFIG)
 
 # add all demo program code
 # header and source code will be placed together
