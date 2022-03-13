@@ -5,7 +5,6 @@
 #include <SuperAlgorithm+/STPAlgorithmDefine.h>
 //Container
 #include <queue>
-#include <list>
 #include <array>
 #include <utility>
 //Thread Safety
@@ -62,17 +61,17 @@ namespace SuperTerrainPlus::STPCompute {
 		*/
 		class STPAccumulator;
 
-		//After some experiment, we found out 4 parallel workers is the sweet spot.
-		constexpr static unsigned char Parallelism = 4u;
-		//A multi-thread worker for concurrent per-pixel histogram generation
-		STPThreadPool filter_worker;
-
 		//A workplace is some available memory for a complete histogram generation
 		typedef std::pair<STPDefaultHistogramBuffer, STPAccumulator> STPWorkplace;
 		typedef std::unique_ptr<STPWorkplace[]> STPMemoryBlock;
 		//All available workplaces are expressed as queue of pointers.
-		std::queue<STPMemoryBlock, std::list<STPMemoryBlock>> MemoryBlockCache;
+		std::queue<STPMemoryBlock> MemoryBlockCache;
 		std::mutex CacheLock;
+
+		//After some experiment, we found out 4 parallel workers is the sweet spot.
+		constexpr static unsigned char Parallelism = 4u;
+		//A multi-thread worker for concurrent per-pixel histogram generation
+		STPThreadPool filter_worker;
 
 		/**
 		 * @brief Request an available workplace for workers to generate histogram.

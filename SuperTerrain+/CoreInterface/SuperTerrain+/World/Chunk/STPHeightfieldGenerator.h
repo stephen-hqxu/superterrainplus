@@ -7,7 +7,6 @@
 #include <mutex>
 #include <vector>
 #include <queue>
-#include <list>
 //CUDA
 //CUDA lib are included in the "Engine" section
 #include <curand_kernel.h>
@@ -93,7 +92,7 @@ namespace SuperTerrainPlus::STPCompute {
 		//Temp cache on device for heightmap computation
 		mutable std::mutex StreamPool_lock;
 		mutable cudaMemPool_t MapCacheDevice;
-		mutable std::queue<STPSmartStream, std::list<STPSmartStream>> StreamPool;
+		mutable std::queue<STPSmartStream> StreamPool;
 
 	public:
 

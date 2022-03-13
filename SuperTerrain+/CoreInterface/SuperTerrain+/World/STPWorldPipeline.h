@@ -6,8 +6,6 @@
 #include <SuperTerrain+/STPOpenGL.h>
 //Containers
 #include <vector>
-#include <list>
-#include <queue>
 #include <unordered_map>
 //System
 #include <memory>
@@ -111,8 +109,6 @@ namespace SuperTerrainPlus {
 
 		};
 
-		STPThreadPool PipelineWorker;
-
 		/**
 		 * @brief STPGeneratorManager aims to send instructions to terrain generators when the pipeline requests for chunks and it is not ready in the storage.
 		*/
@@ -134,15 +130,16 @@ namespace SuperTerrainPlus {
 		//A cache that holds the previous rendered chunk memory to update the new rendered chunk
 		STPRenderingBufferCache TerrainMapExchangeCache;
 
-		//async chunk loader
-		std::future<void> MapLoader;
-
 		//for automatic chunk loading
 		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the currentCentralPos is different from this value
 		glm::vec2 lastCenterLocation = glm::vec2(std::numeric_limits<float>::min());//the last world position of the central chunk of the entire visible chunks
 		//determine which chunks to render and whether it's loaded, index of element denotes chunk local ID
 		STPLocalChunkStatus renderingLocal;
 		STPLocalChunkDictionary renderingLocalLookup;
+
+		//async chunk loader
+		STPThreadPool PipelineWorker;
+		std::future<void> MapLoader;
 
 		/**
 		 * @brief Copy from a portion of rendering buffer to another portion of rendering buffer.

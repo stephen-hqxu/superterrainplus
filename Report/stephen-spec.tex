@@ -49,7 +49,7 @@
     
     \section{Problem}
 
-    Procedural terrain generation has been widely implemented in the industry over the last few decades. While the applications can be adpated for different purposes, generally terrain generators are either performance-biased for video games and allow generator to run in real-time with significant realism degradation, or realism-biased for 3D artists, movies and geographical simulations and take a few seconds even minutes on a workstation system to render one frame in order to produce a physically accurate image.
+    Procedural terrain generation has been widely implemented in the industry over the last few decades. While the applications can be adapted for different purposes, generally terrain generators are either performance-biased for video games and allow generator to run in real-time with significant realism degradation, or realism-biased for 3D artists, movies and geographical simulations and take a few seconds even minutes on a workstation system to render one frame in order to produce a physically accurate image.
 
     There are many games that implement terrain generation aiming for performance like Minecraft \cite{mc} and No Man's Sky \cite{no_mans_sky}, they produce an infinite world that allows player to explore endlessly. Terrain in Minecraft is built using voxels which are large cubes whereas in No Man's Sky it is a low-polygon mesh; in general it seems to be not practical to generate and render realistic scenery for such applications.
     
@@ -59,7 +59,7 @@
 
     \begin{figure}[H]
         \includegraphics[width=\textwidth]{mc_2.png}
-        \caption{A screenshot taken by myself in Minecraft. Even with the help of texture pack that augments rendering quality, adding smooth lighting and shadows with water reflection, the terrain is still consist of voxels and gives a strange and unrealisitc feeling in general, not to mention the floating rocks and trees show in the background. The average FPS achieved on a normal domestic computer is 17, being below 24, the minimum framerate that does not create noticeable discontinuity, and well below 60, the ideal framerate accepted by game industry.}
+        \caption{A screenshot taken by myself in Minecraft. Even with the help of texture pack that augments rendering quality, adding smooth lighting and shadows with water reflection, the terrain is still consist of voxels and gives a strange and unrealistic feeling in general, not to mention the floating rocks and trees show in the background. The average FPS achieved on a normal domestic computer is 17, being below 24, the minimum frame-rate that does not create noticeable discontinuity, and well below 60, the ideal frame-rate accepted by game industry.}
     \end{figure}
 
     \subsection{Techniques}
@@ -68,10 +68,10 @@
 
     The most popular way of heightmap synthesis is fractal noise \cite{texturing_modeling}, a technique that combines outputs from one or more noise functions and produces the final output, with increase in noise frequency and decrease in amplitude in each successive iteration, called octave, developer can control the amount of detail on the terrain. Interesting terrain effects like rigid mountains and ravines can also be shaped out by applying certain transformation functions for different octaves.
     
-    The classic algorithm for terrain mesh generation with heightmap-based model is to sample a normalised value from a heightmap, use the value as a weight, offset vertices on the terrain mesh based on the pre-set altitude multiplier. A more advanced algorithm \cite{gems3} uses a volumetric heightmap and samples each pixel as density and place a voxel at the location where the density exceeds a pre-defined limit, and finally shape the terrain with meshing algorithms. Volumetric mesh generation technique was first used by medical imaging \cite{marching_cubes}, when it is used for real-time terrain generation although it can produce more realisitc landscape features like overhangs, the memory requirement and access time can grow significantly as the mesh quality increases; thus, certain trade-off between quality and efficiency needs to be considered.
+    The classic algorithm for terrain mesh generation with heightmap-based model is to sample a normalised value from a heightmap, use the value as a weight, offset vertices on the terrain mesh based on the pre-set altitude multiplier. A more advanced algorithm \cite{gems3} uses a volumetric heightmap and samples each pixel as density and place a voxel at the location where the density exceeds a pre-defined limit, and finally shape the terrain with meshing algorithms. Volumetric mesh generation technique was first used by medical imaging \cite{marching_cubes}, when it is used for real-time terrain generation although it can produce more realistic landscape features like overhangs, the memory requirement and access time can grow significantly as the mesh quality increases; thus, certain trade-off between quality and efficiency needs to be considered.
 
     \section{Objectives}
-    The main objective of this project is to gather, combine, refine and implement exisiting algorithms for both fast and detailed terrain generation, use high performance computing techniques, optimise, and deliver a terrain engine \textbf{SuperTerrain+}, which should be:
+    The main objective of this project is to gather, combine, refine and implement existing algorithms for both fast and detailed terrain generation, use high performance computing techniques, optimise, and deliver a terrain engine \textbf{SuperTerrain+}, which should be:
     \begin{itemize}[label=\(\diamond\)]
         \item Pseudorandom: terrain should be generated using pseudorandom algorithms. Given a different initial state to the generator, the output terrain should have no observable pattern; when the initial state remains unchanged, the generated terrain should always be the same.
         \item Procedural: generation of terrain should be done purely algorithmically instead of using external model editors.
@@ -107,9 +107,9 @@
 
     \section{Methodology}
 
-    Project will be devleoped using agile method, minor update includes improvement and bug fix should be released every week whereas major update contains completed objectives should be expected once or twice per month, project will undergo continuous refactoring in every development iteration to maintain the best software programming practice and for easier integration of new features in the next cycle. Prior to release engine will be tested, basic functionalities of the engine will be unit-tested while other subjective categories like rendering quality will be examined and evaluated by myself. Git will be used for version control and GitHub for remote which serves as a backup. Release will be managed using utilities provided by GitHub such as Releases, Issues and Projects and should be briefly documented.
+    Project will be developed using agile method, minor update includes improvement and bug fix should be released every week whereas major update contains completed objectives should be expected once or twice per month, project will undergo continuous refactoring in every development iteration to maintain the best software programming practice and for easier integration of new features in the next cycle. Prior to release engine will be tested, basic functionalities of the engine will be unit-tested while other subjective categories like rendering quality will be examined and evaluated by myself. Git will be used for version control and GitHub for remote which serves as a backup. Release will be managed using utilities provided by GitHub such as Releases, Issues and Projects and should be briefly documented.
 
-    Project will be writen in C++, a low-level objective-oriented programming language; compared to Java, C++ facilitates optimisation for software involves high-performance computing. After examining different C++ standards, project will be built based on ISO C++ 17 which brings new standard libraries and functional programming features that would greatly simplify development process. While ISO C++ 20 is available, most compilers have yet finialised the support, it will be the best to avoid using unstable features and delaying the development.
+    Project will be written in C++, a low-level objective-oriented programming language; compared to Java, C++ facilitates optimisation for software involves high-performance computing. After examining different C++ standards, project will be built based on ISO C++ 17 which brings new standard libraries and functional programming features that would greatly simplify development process. While ISO C++ 20 is available, most compilers have yet finalised the support, it will be the best to avoid using unstable features and delaying the development.
 
     Project will also involve use of GPU for both rendering and computing. For rendering, OpenGL 4.6 will be used, the latest version of OpenGL provides useful functionalities such as hardware tessellation and error report callbacks. For computing, OpenCL had been considered, yet due to the poor support on Nvidia's GPU up until recently and thus unstable, CUDA will be used for GPU computing.
 
@@ -131,15 +131,15 @@
     The following is the list of all external software that the project will depend on:
     \begin{description}
         \item[GLM \cite{glm}] \hfill \\
-            A header-only library that brings GLSL syntax and built-in functions to C++ and CUDA, greatly simplified mathmatical operations.
+            A header-only library that brings GLSL syntax and built-in functions to C++ and CUDA, greatly simplified mathematical operations.
         \item[GLFW \cite{glfw}] \hfill \\
             A cross-platform graphical application development API for creating window, context, handling IO and event.
         \item[GLAD \cite{glad}] \hfill \\
             An OpenGL API loader that registers OpenGL API functions and load them into context.
         \item[stb \cite{stb}] \hfill \\
-            A collection of useful utilites, the most notable functionality is the \textit{stb\_image.h}, a simple image loader and decoder.
+            A collection of useful utilities, the most notable functionality is the \textit{stb\_image.h}, a simple image loader and decoder.
         \item[Catch2 v3 \cite{catch2}] \hfill \\
-            One of the most popular C++ unit-test frameworks with useful additional utilites for product pre-release evaluation.
+            One of the most popular C++ unit-test frameworks with useful additional utilities for product pre-release evaluation.
     \end{description}
 
     \subsubsection{Hardware resources}
@@ -171,7 +171,7 @@
             GitHub will be used as the remote which serves as a backup system. Additionally backups of source code and report should be made manually and regularly on an external hard drive as well as on DCS machine. Although Windows 10 will be the main OS for the development, our choice of tools allow the development to be continued on another OS. \\
             \hline
             External software maintainer may abandon their projects, leaving the libraries broken thus not usable. &
-            Generally speaking the chance of happening during this one year of development period is cconsidered to be very low. In case it happens, all external software we are using are mostly compatible with other libraries. For instance in case GLAD and GLFW are abandoned I can switch to similar libraries like GLEW or glut; or Catch2 is abandoned I can switch to BoostTest or GoogleTest, which all have similar syntax when writing unit-tests and minimal changes are required. \\
+            Generally speaking the chance of happening during this one year of development period is considered to be very low. In case it happens, all external software we are using are mostly compatible with other libraries. For instance in case GLAD and GLFW are abandoned I can switch to similar libraries like GLEW or glut; or Catch2 is abandoned I can switch to BoostTest or GoogleTest, which all have similar syntax when writing unit-tests and minimal changes are required. \\
             \hline
             The project development takes place during the COVID-19 pandemic, I, as the only developer, may get infected and thus unable to carry on the development. &
             Stick to safety guidelines and protect myself to avoid getting the project interrupted. \\

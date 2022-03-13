@@ -7,7 +7,6 @@
 #include <mutex>
 #include <memory>
 //Container
-#include <list>
 #include <queue>
 #include <unordered_map>
 
@@ -53,7 +52,7 @@ namespace SuperTerrainPlus {
 
 		typedef std::unique_ptr<void, STPMemoryDeleter> STPMemoryChunk;
 		//A memory block contains memory chunks with the same size.
-		typedef std::queue<STPMemoryChunk, std::list<STPMemoryChunk>> STPMemoryBlock;
+		typedef std::queue<STPMemoryChunk> STPMemoryBlock;
 
 		std::unordered_map<size_t, STPMemoryBlock> BlockPool;
 

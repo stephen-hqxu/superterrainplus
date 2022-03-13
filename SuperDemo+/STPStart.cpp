@@ -42,6 +42,7 @@
 #include <optional>
 
 //GLM
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 #include <glm/vec4.hpp>

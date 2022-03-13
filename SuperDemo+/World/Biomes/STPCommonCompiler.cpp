@@ -55,7 +55,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
 		(CU_JIT_GENERATE_LINE_INFO, (void*)1)
 #else
-		(CU_JIT_OPTIMIZATION_LEVEL, (void*)3u)
+		(CU_JIT_OPTIMIZATION_LEVEL, (void*)4u)
 #endif
 		(CU_JIT_LOG_VERBOSE, (void*)1);
 	

@@ -6,7 +6,6 @@
 //System
 #include <queue>
 #include <mutex>
-#include <list>
 //GLM
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
@@ -25,7 +24,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		//Basically it behaves like a memory pool.
 		//Whenever operator() is called, we search for an empty production line, and use that to generate biome.
 		//If no available production line can be found, ask more production line from the manufacturer.
-		std::queue<STPLayerManager_t, std::list<STPLayerManager_t>> LayerProductionLine;
+		std::queue<STPLayerManager_t> LayerProductionLine;
 		mutable std::mutex ProductionLock;
 
 		/**

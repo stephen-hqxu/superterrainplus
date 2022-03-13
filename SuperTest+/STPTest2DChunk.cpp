@@ -10,6 +10,7 @@
 #include <SuperTerrain+/World/Chunk/STPChunkStorage.h>
 
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 //GLM
 #include <glm/gtc/type_ptr.hpp>
@@ -115,7 +116,7 @@ SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk
 
 	GIVEN("An invalid chunk object with zero in any of the dimension component") {
 
-		THEN("Contruction of such chunk is not allowed") {
+		THEN("Construction of such chunk is not allowed") {
 			REQUIRE_THROWS_AS(STPChunk(uvec2(0u, 128u)), STPException::STPBadNumericRange);
 		}
 
@@ -125,34 +126,59 @@ SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk
 		constexpr auto no_state = STPChunk::STPChunkState::Empty;
 
 		THEN("New chunk should be usable and empty with fixed size") {
-			REQUIRE_FALSE(this->isOccupied());
-			REQUIRE(this->getChunkState() == no_state);
-			REQUIRE(this->size() == ChunkTester::Size);
+			REQUIRE_FALSE(this->occupied());
+			REQUIRE(this->chunkState() == no_state);
+			REQUIRE(this->PixelSize == ChunkTester::Size);
+		}
+
+		WHEN("Try to visit the chunk") {
+			STPChunk::STPSharedMapVisitor SharedVisitor(*this);
+
+			AND_WHEN("No unique visitor is alive") {
+
+				THEN("Visit from shared visitor is allowed") {
+					REQUIRE_NOTHROW(SharedVisitor.heightmap());
+					REQUIRE_FALSE(this->occupied());
+				}
+
+				THEN("Unique visitor can be created without problem") {
+					STPChunk::STPUniqueMapVisitor UniqueVisitor(*this);
+
+					REQUIRE_NOTHROW(UniqueVisitor.biomemap());
+					REQUIRE(this->occupied());
+				}
+
+			}
+			
+			AND_WHEN("Unique visitor is alive") {
+				STPChunk::STPUniqueMapVisitor UniqueVisitor(*this);
+				REQUIRE(this->occupied());
+
+				THEN("Visit from shared visitor is prohibited") {
+					REQUIRE_THROWS_AS(SharedVisitor.heightmapBuffer(), STPException::STPMemoryError);
+				}
+
+				THEN("Multiple alive unique visitor is not allowed") {
+					REQUIRE_THROWS_AS([this]() {
+						STPChunk::STPUniqueMapVisitor UniqueVisitor(*this);
+					}(), STPException::STPMemoryError);
+				}
+
+			}
+
 		}
 
 		WHEN("Changing the chunk status flags") {
 
-			THEN("Chunk can be locked") {
-				//lock the chunk
-				this->markOccupancy(true);
-				CHECK(this->isOccupied());
-
-				AND_THEN("Chunk can be unlocked") {
-					//unlock the chunk
-					this->markOccupancy(false);
-					CHECK_FALSE(this->isOccupied());
-				}
-			}
-
 			THEN("Chunk state can be changed randomly") {
 				const auto target_state = GENERATE(values({
-					STPChunk::STPChunkState::Biomemap_Ready, 
-					STPChunk::STPChunkState::Heightmap_Ready, 
-					STPChunk::STPChunkState::Erosion_Ready
+					STPChunk::STPChunkState::BiomemapReady, 
+					STPChunk::STPChunkState::HeightmapReady, 
+					STPChunk::STPChunkState::Complete
 				}));
 				//change chunk status
 				this->markChunkState(target_state);
-				REQUIRE(this->getChunkState() == target_state);
+				REQUIRE(this->chunkState() == target_state);
 			}
 
 		}
@@ -163,14 +189,16 @@ SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk
 			constexpr unsigned short buffer_value = 123u;
 
 			WHEN("Trying to write some data into the texture") {
-				ChunkTester::fillValue(this->getHeightmap(), float_value);
-				ChunkTester::fillValue(this->getBiomemap(), biome_value);
-				ChunkTester::fillValue(this->getRenderingBuffer(), buffer_value);
+				STPChunk::STPUniqueMapVisitor Visitor(*this);
+
+				ChunkTester::fillValue(Visitor.heightmap(), float_value);
+				ChunkTester::fillValue(Visitor.biomemap(), biome_value);
+				ChunkTester::fillValue(Visitor.heightmapBuffer(), buffer_value);
 
 				THEN("Value can be retrieved without being corrupted") {
-					ChunkTester::testMapValue(this->getHeightmap(), float_value);
-					ChunkTester::testMapValue(this->getBiomemap(), biome_value);
-					ChunkTester::testMapValue(this->getRenderingBuffer(), buffer_value);
+					ChunkTester::testMapValue(Visitor.heightmap(), float_value);
+					ChunkTester::testMapValue(Visitor.biomemap(), biome_value);
+					ChunkTester::testMapValue(Visitor.heightmapBuffer(), buffer_value);
 				}
 			}
 		}
@@ -190,9 +218,9 @@ SCENARIO_METHOD(STPChunkStorage, "STPChunkStorage stores chunks and we can retri
 			REQUIRE(this->size() == 0ull);
 		}
 
-		WHEN("Try to use a non-exisiting chunk on the chunk storage") {
+		WHEN("Try to use a non-existing chunk on the chunk storage") {
 
-			THEN("Retrival of such chunk returns a null pointer") {
+			THEN("Retrieval of such chunk returns a null pointer") {
 				REQUIRE((*this)[InsertLocation] == nullptr);
 			}
 

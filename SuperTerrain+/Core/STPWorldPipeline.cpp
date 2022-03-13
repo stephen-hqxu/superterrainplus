@@ -10,6 +10,13 @@
 //CUDA
 #include <cuda_gl_interop.h>
 
+#include <glm/common.hpp>
+
+//Container
+#include <list>
+#include <queue>
+#include <optional>
+
 #include <algorithm>
 #include <sstream>
 #include <type_traits>
@@ -21,17 +28,22 @@ using glm::vec2;
 using glm::ivec3;
 using glm::vec3;
 
-using std::vector;
 using std::list;
+using std::vector;
 using std::queue;
+using std::optional;
+using std::future;
+using std::mutex;
 using std::shared_mutex;
 using std::shared_lock;
 using std::unique_lock;
 using std::exception_ptr;
-using std::make_pair;
 
 using std::for_each;
 using std::make_unique;
+using std::make_pair;
+using std::make_optional;
+using std::nullopt;
 
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
@@ -56,8 +68,6 @@ catch (...) { \
 class STPWorldPipeline::STPGeneratorManager {
 private:
 
-	STPThreadPool GeneratorWorker;
-
 	STPChunkStorage ChunkCache;
 
 	//all terrain map generators
@@ -70,14 +80,25 @@ public:
 
 private:
 
-	STPWorldPipeline* const Pipeline;
+	STPWorldPipeline& Pipeline;
 
 	//Store exception thrown from async execution
 	queue<exception_ptr> ExceptionStorage;
 	shared_mutex ExceptionStorageLock;
 
 	//Contains pointers of chunk.
-	typedef list<STPChunk*> STPChunkRecord;
+	typedef vector<STPChunk*> STPChunkRecord;
+	//Contains visitors of chunk which guarantees unique access.
+	typedef vector<STPChunk::STPUniqueMapVisitor> STPUniqueChunkRecord;
+
+	typedef list<STPUniqueChunkRecord> STPUniqueChunkCache_t;
+	//A temporary storage of unique chunk map visitor to be passed to other threads.
+	//For data safety, remove the iterator from the container while accessing the underlying value;
+	STPUniqueChunkCache_t UniqueChunkCache;
+	mutex UniqueChunkCacheLock;
+	typedef STPUniqueChunkCache_t::iterator STPUniqueChunkCacheEntry;
+
+	STPThreadPool GeneratorWorker;
 
 	/**
 	 * @brief Calculate the chunk offset such that the transition of each chunk is seamless
@@ -100,21 +121,60 @@ private:
 	}
 
 	/**
-	 * @brief Dispatch compute for heightmap, the heightmap result will be writen back to the storage
+	 * @brief Convert a list of chunks into unique visitors.
+	 * Unique visitors are cached into an internal memory.
+	 * @param chunk An array of pointers to chunk.
+	 * @return An array of unique visitor cache entry.
+	 * To obtain the raw unique visitor:
+	 * @see ownUniqueChunk()
+	*/
+	inline STPUniqueChunkCacheEntry cacheUniqueChunk(const STPChunkRecord& chunk) {
+		unique_lock<mutex> cache_lock(this->UniqueChunkCacheLock);
+
+		STPUniqueChunkRecord& visitor_entry = this->UniqueChunkCache.emplace_back();
+		visitor_entry.reserve(chunk.size());
+		
+		std::transform(chunk.cbegin(), chunk.cend(), std::back_inserter(visitor_entry), [](auto* chk) {
+			//create a unique visitor and insert into cache
+			return STPChunk::STPUniqueMapVisitor(*chk);
+		});
+
+		return --this->UniqueChunkCache.end();
+	}
+
+	/**
+	 * @brief Convert a unique chunk visitor to an owning state.
+	 * @param entry The iterators to lookup the visitor in the cache entry.
+	 * It will remove this visitor from the internal cache such that the iterator will become invalid after return of this function.
+	 * @return The unique map visitor.
+	*/
+	inline STPUniqueChunkRecord ownUniqueChunk(STPUniqueChunkCacheEntry entry) {
+		unique_lock<mutex> cache_lock(this->UniqueChunkCacheLock);
+
+		//own the visitor
+		STPUniqueChunkRecord rec = std::move(*entry);
+		//remove the iterator from the container
+		this->UniqueChunkCache.erase(entry);
+
+		return rec;
+	}
+
+	/**
+	 * @brief Dispatch compute for heightmap, the heightmap result will be written back to the storage
 	 * @param current_chunk The maps for the chunk
 	 * @param neighbour_chunk The maps of the chunks that require to be used for biome-edge interpolation during heightmap generation,
 	 * require the central chunk and neighbour chunks arranged in row-major flavour. The central chunk should also be included.
 	 * @param chunkPos The world position of the chunk
 	*/
-	void computeHeightmap(STPChunk* current_chunk, STPChunkRecord& neighbour_chunk, vec2 chunkPos) {
+	void computeHeightmap(STPChunk::STPUniqueMapVisitor& current_chunk, STPUniqueChunkRecord& neighbour_chunk, vec2 chunkPos) {
 		//generate heightmap
 		STPHeightfieldGenerator::STPMapStorage maps;
 		maps.Biomemap.reserve(neighbour_chunk.size());
 		maps.Heightmap32F.reserve(1ull);
-		for (STPChunk* chk : neighbour_chunk) {
-			maps.Biomemap.push_back(chk->getBiomemap());
+		for (auto& chk : neighbour_chunk) {
+			maps.Biomemap.push_back(chk.biomemap());
 		}
-		maps.Heightmap32F.push_back(current_chunk->getHeightmap());
+		maps.Heightmap32F.push_back(current_chunk.heightmap());
 		maps.HeightmapOffset = this->calcOffset(chunkPos);
 		const STPHeightfieldGenerator::STPGeneratorOperation op = 
 			STPHeightfieldGenerator::HeightmapGeneration;
@@ -128,13 +188,13 @@ private:
 	 * @param neighbour_chunk The maps of the chunks that require to be eroded with a free-slip manner, require the central chunk and neighbour chunks
 	 * arranged in row-major flavour. The central chunk should also be included.
 	*/
-	void computeErosion(STPChunkRecord& neighbour_chunk) {
+	void computeErosion(STPUniqueChunkRecord& neighbour_chunk) {
 		STPHeightfieldGenerator::STPMapStorage maps;
 		maps.Heightmap32F.reserve(neighbour_chunk.size());
 		maps.Heightfield16UI.reserve(neighbour_chunk.size());
-		for (STPChunk* chk : neighbour_chunk) {
-			maps.Heightmap32F.push_back(chk->getHeightmap());
-			maps.Heightfield16UI.push_back(chk->getRenderingBuffer());
+		for (auto& chk : neighbour_chunk) {
+			maps.Heightmap32F.push_back(chk.heightmap());
+			maps.Heightfield16UI.push_back(chk.heightmapBuffer());
 		}
 		const STPHeightfieldGenerator::STPGeneratorOperation op =
 			STPHeightfieldGenerator::Erosion |
@@ -153,16 +213,17 @@ private:
 	 * @return If all neighbours are ready to be used, true is returned.
 	 * If any neighbour is not ready (being used by other threads or neighbour is not ready and compute is launched), return false
 	*/
-	const STPChunk* recNeighbourChecking(vec2 chunkPos, unsigned char rec_depth = 2u) {
+	const optional<STPChunk::STPSharedMapVisitor> recNeighbourChecking(vec2 chunkPos, unsigned char rec_depth = 2u) {
 		//recursive case:
 		//define what rec_depth means...
 		constexpr static unsigned char BIOMEMAP_PASS = 1u,
 			HEIGHTMAP_PASS = 2u;
 
+		using std::move;
 		{
 			STPChunk::STPChunkState expected_state = STPChunk::STPChunkState::Empty;
 			switch (rec_depth) {
-			case BIOMEMAP_PASS: expected_state = STPChunk::STPChunkState::Heightmap_Ready;
+			case BIOMEMAP_PASS: expected_state = STPChunk::STPChunkState::HeightmapReady;
 				break;
 			case HEIGHTMAP_PASS: expected_state = STPChunk::STPChunkState::Complete;
 				break;
@@ -170,34 +231,47 @@ private:
 				break;
 			}
 			if (STPChunk* center = this->ChunkCache[chunkPos];
-				center != nullptr && center->getChunkState() >= expected_state) {
-				//no need to continue if center chunk is available
-				//since the center chunk might be used as a neighbour chunk later, we only return bool instead of a pointer
+				center != nullptr && center->chunkState() >= expected_state) {
+				if (center->occupied()) {
+					//central chunk is in-used, do not proceed.
+					return nullopt;
+				}
+				//no need to continue if centre chunk is available
+				//since the centre chunk might be used as a neighbour chunk later, we only return bool instead of a pointer
 				//after checkChunk() is performed for every chunks, we can grab all pointers and check for occupancy in other functions.
-				return center;
+				return make_optional<STPChunk::STPSharedMapVisitor>(*center);
 			}
 		}
-		auto biomemap_computer = [this](STPChunk* chunk, vec2 offset) -> void {
+		auto biomemap_computer = [this](STPUniqueChunkCacheEntry chunk_entry, vec2 offset) -> void {
+			//own the unique chunk visitor
+			STPChunk::STPUniqueMapVisitor chunk = move(this->ownUniqueChunk({ chunk_entry }).front());
+
 			//since biomemap is discrete, we need to round the pixel
 			ivec2 rounded_offset = static_cast<ivec2>(glm::round(offset));
-			STORE_EXCEPTION(this->generateBiomemap(chunk->getBiomemap(), ivec3(rounded_offset.x, 0, rounded_offset.y)))
-				//computation was successful
-				chunk->markChunkState(STPChunk::STPChunkState::Biomemap_Ready);
-			chunk->markOccupancy(false);
+			STORE_EXCEPTION(this->generateBiomemap(chunk.biomemap(), ivec3(rounded_offset.x, 0, rounded_offset.y)))
+			
+			//computation was successful
+			chunk->markChunkState(STPChunk::STPChunkState::BiomemapReady);
+			//chunk will be unlocked automatically by unique visitor
 		};
-		auto heightmap_computer = [this](STPChunk* chunk, STPChunkRecord neighbours, vec2 position) -> void {
-			STORE_EXCEPTION(this->computeHeightmap(chunk, neighbours, position))
-				//computation was successful
-				chunk->markChunkState(STPChunk::STPChunkState::Heightmap_Ready);
-			//unlock all neighbours
-			for_each(neighbours.begin(), neighbours.end(), [](auto c) -> void { c->markOccupancy(false); });
+		auto heightmap_computer = [this](STPUniqueChunkCacheEntry neighbours_entry, vec2 position) -> void {
+			STPUniqueChunkRecord neighbours = this->ownUniqueChunk(neighbours_entry);
+			//the centre chunk is always at the middle of all neighbours
+			STPChunk::STPUniqueMapVisitor& centre = neighbours[neighbours.size() / 2u];
+
+			STORE_EXCEPTION(this->computeHeightmap(centre, neighbours, position))
+				
+			//computation was successful
+			centre->markChunkState(STPChunk::STPChunkState::HeightmapReady);
 		};
-		auto erosion_computer = [this](STPChunk* centre, STPChunkRecord neighbours) -> void {
+		auto erosion_computer = [this](STPUniqueChunkCacheEntry neighbours_entry) -> void {
+			STPUniqueChunkRecord neighbours = this->ownUniqueChunk(neighbours_entry);
+
 			STORE_EXCEPTION(this->computeErosion(neighbours))
-				//erosion was successful
-				//mark center chunk complete
-				centre->markChunkState(STPChunk::STPChunkState::Complete);
-			for_each(neighbours.begin(), neighbours.end(), [](auto c) -> void { c->markOccupancy(false); });
+				
+			//erosion was successful
+			//mark centre chunk complete
+			neighbours[neighbours.size() / 2u]->markChunkState(STPChunk::STPChunkState::Complete);
 		};
 
 		//reminder: central chunk is included in neighbours
@@ -207,12 +281,12 @@ private:
 		bool canContinue = true;
 		//The first pass: check if all neighbours are ready for some operations
 		STPChunkRecord neighbour;
-		for (vec2 neighbourPos : neighbour_position) {
+		for (const auto& neighbourPos : neighbour_position) {
 			//get current neighbour chunk
 			STPChunkStorage::STPChunkConstructed res = this->ChunkCache.construct(neighbourPos, chk_config.MapSize);
 			STPChunk* curr_neighbour = res.second;
 
-			if (curr_neighbour->isOccupied()) {
+			if (curr_neighbour->occupied()) {
 				//occupied means it's currently in used (probably another thread has already started to compute it)
 				canContinue = false;
 				continue;
@@ -220,10 +294,9 @@ private:
 			switch (rec_depth) {
 			case BIOMEMAP_PASS:
 				//container will guaranteed to exists since heightmap pass has already created it
-				if (curr_neighbour->getChunkState() == STPChunk::STPChunkState::Empty) {
-					curr_neighbour->markOccupancy(true);
+				if (curr_neighbour->chunkState() == STPChunk::STPChunkState::Empty) {
 					//compute biomemap
-					this->GeneratorWorker.enqueue_void(biomemap_computer, curr_neighbour, this->calcOffset(neighbourPos));
+					this->GeneratorWorker.enqueue_void(biomemap_computer, this->cacheUniqueChunk({ curr_neighbour }), this->calcOffset(neighbourPos));
 					//try to compute all biomemap, and when biomemap is computing, we don't need to wait
 					canContinue = false;
 				}
@@ -239,35 +312,30 @@ private:
 				break;
 			}
 
-			neighbour.push_back(curr_neighbour);
+			neighbour.emplace_back(curr_neighbour);
 			//if chunk is found, we can guarantee it's in-used empty or at least biomemap/heightmap complete
 		}
 		if (!canContinue) {
 			//if biomemap/heightmap is computing, we don't need to check for heightmap generation/erosion because some chunks are in use
-			return nullptr;
+			return nullopt;
 		}
 
-		//The second pass: launch compute on the center with all neighbours
-		if (std::any_of(neighbour.begin(), neighbour.end(), [](auto c) -> bool { return c->isOccupied(); })) {
-			//if any of the chunk is occupied, we cannot continue
-			return nullptr;
-		}
-		//all chunks are available, lock all neighbours
-		for_each(neighbour.begin(), neighbour.end(), [](auto c) -> void { c->markOccupancy(true); });
+		//The second pass: launch compute on the centre with all neighbours
+		//all chunks are available, obtain unique visitors
+		const STPUniqueChunkCacheEntry visitor_entry = this->cacheUniqueChunk(neighbour);
 		//send the list of neighbour chunks to GPU to perform some operations
 		switch (rec_depth) {
 		case BIOMEMAP_PASS:
 			//generate heightmap
-			this->GeneratorWorker.enqueue_void(heightmap_computer, this->ChunkCache[chunkPos], neighbour, chunkPos);
+			this->GeneratorWorker.enqueue_void(heightmap_computer, visitor_entry, chunkPos);
 			break;
 		case HEIGHTMAP_PASS:
 			//perform erosion on heightmap
-			this->GeneratorWorker.enqueue_void(erosion_computer, this->ChunkCache[chunkPos], neighbour);
+			this->GeneratorWorker.enqueue_void(erosion_computer, visitor_entry);
 			{
 				//trigger a chunk reload as some chunks have been added to render buffer already after neighbours are updated
-				for (vec2 position : this->getNeighbour(chunkPos)) {
-					this->Pipeline->reload(position);
-				}
+				for_each(neighbour_position.cbegin(), neighbour_position.cend(), 
+					[&pipeline = this->Pipeline](const auto& position) -> void { pipeline.reload(position); });
 			}
 			break;
 		default:
@@ -276,7 +344,7 @@ private:
 		}
 
 		//compute has been launched
-		return nullptr;
+		return nullopt;
 	}
 
 public:
@@ -284,11 +352,11 @@ public:
 	const STPEnvironment::STPChunkSetting& ChunkSetting;
 
 	/**
-	 * @brief Intialise generator manager with pipeline stages filled with generators.
+	 * @brief Initialise generator manager with pipeline stages filled with generators.
 	 * @param setup The pointer to all pipeline stages.
 	 * @param pipeline The pointer to the world pipeline registered with the generator manager.
 	*/
-	STPGeneratorManager(STPWorldPipeline::STPPipelineSetup& setup, STPWorldPipeline* pipeline) : 
+	STPGeneratorManager(STPWorldPipeline::STPPipelineSetup& setup, STPWorldPipeline& pipeline) : 
 		generateBiomemap(*setup.BiomemapGenerator), generateHeightfield(*setup.HeightfieldGenerator), generateSplatmap(*setup.SplatmapGenerator), 
 		ChunkSetting(*setup.ChunkSetting), Pipeline(pipeline), GeneratorWorker(5u) {
 
@@ -345,7 +413,7 @@ public:
 
 		//before deallocation happens make sure everything has finished.
 		STPcudaCheckErr(cudaStreamSynchronize(stream));
-		//finish up, we have to delete it everytime because resource array may change every time we re-map it
+		//finish up, we have to delete it every time because resource array may change every time we re-map it
 		STPcudaCheckErr(cudaDestroyTextureObject(biomemap));
 		STPcudaCheckErr(cudaDestroyTextureObject(heightfield));
 		STPcudaCheckErr(cudaDestroySurfaceObject(splatmap));
@@ -354,11 +422,11 @@ public:
 	/**
 	 * @brief Request a pointer to the chunk given a world coordinate.
 	 * @param world_coord The world position where the chunk is requesting.
-	 * @return The pointer to the requsted chunk.
+	 * @return The shared visitor to the requested chunk.
 	 * The function returns a valid point only when the chunk is fully ready for rendering.
 	 * In case chunk is not ready, such as being used by other chunks, or map generation is in progress, nullptr is returned.
 	*/
-	const STPChunk* getChunk(vec2 world_coord) {
+	auto getChunk(vec2 world_coord) {
 		//check if there's any exception thrown from previous async compute launch
 		bool hasException;
 		{
@@ -391,7 +459,7 @@ public:
 
 };
 
-STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : PipelineWorker(1u), Generator(make_unique<STPGeneratorManager>(setup, this)), 
+STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : PipelineWorker(1u), Generator(make_unique<STPGeneratorManager>(setup, *this)), 
 	BufferStream(cudaStreamNonBlocking), ChunkSetting(*setup.ChunkSetting) {
 	const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
 	const uvec2 buffer_size(setting.RenderedChunk * setting.MapSize);
@@ -406,7 +474,7 @@ STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : PipelineWorker(1u)
 		glTextureStorage2D(texture, levels, internalFormat, buffer_size.x, buffer_size.y);
 	};
 	auto regTex = [](GLuint texture, cudaGraphicsResource_t* res, unsigned int reg_flag = cudaGraphicsRegisterFlagsNone) -> void {
-		//register cuda texture
+		//register CUDA texture
 		STPcudaCheckErr(cudaGraphicsGLRegisterImage(res, texture, GL_TEXTURE_2D, reg_flag));
 		STPcudaCheckErr(cudaGraphicsResourceSetMapFlags(*res, cudaGraphicsMapFlagsNone));
 	};
@@ -451,7 +519,7 @@ STPWorldPipeline::~STPWorldPipeline() {
 	//wait for the stream to finish
 	STPcudaCheckErr(cudaStreamSynchronize(*this->BufferStream));
 
-	//unregister resource
+	//unregistered resource
 	for (int i = 0; i < 3; i++) {
 		STPcudaCheckErr(cudaGraphicsUnregisterResource(this->TerrainMapRes[i]));
 	}
@@ -509,8 +577,8 @@ void STPWorldPipeline::clearBuffer(const STPRenderingBufferMemory& destination, 
 
 bool STPWorldPipeline::mapSubData(const STPRenderingBufferMemory& buffer, vec2 chunkPos, unsigned int chunkID) {
 	//ask provider if we can get the chunk
-	const STPChunk* chunk = this->Generator->getChunk(chunkPos);
-	if (chunk == nullptr) {
+	const optional<STPChunk::STPSharedMapVisitor> chunk = this->Generator->getChunk(chunkPos);
+	if (!chunk) {
 		//not ready yet
 		return false;
 	}
@@ -526,9 +594,9 @@ bool STPWorldPipeline::mapSubData(const STPRenderingBufferMemory& buffer, vec2 c
 	unsigned int index;
 	//copy buffer to GL texture
 	index = BUFFER_INDEX(STPWorldPipeline::STPRenderingBufferType::BIOME);
-	copy_buffer(buffer.Map[index], chunk->getBiomemap(), STPRenderingBufferMemory::Format[index]);
+	copy_buffer(buffer.Map[index], chunk->biomemap(), STPRenderingBufferMemory::Format[index]);
 	index = BUFFER_INDEX(STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD);
-	copy_buffer(buffer.Map[index], chunk->getRenderingBuffer(), STPRenderingBufferMemory::Format[index]);
+	copy_buffer(buffer.Map[index], chunk->heightmapBuffer(), STPRenderingBufferMemory::Format[index]);
 
 	return true;
 }
@@ -548,7 +616,7 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 	this->wait();
 	//make sure there isn't any worker accessing the loading_chunks, otherwise undefined behaviour warning
 
-	//Whenever camera changes location, all previous rendering buffers are dumpped
+	//Whenever camera changes location, all previous rendering buffers are dumped
 	bool centreChanged = false, 
 		shouldClearBuffer = false;
 	//check if the central position has changed or not
@@ -600,6 +668,7 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 		unsigned int num_chunkLoaded = 0u;
 		//keep a record of which chunk's rendering buffer has been updated
 		STPDiversity::STPTextureFactory::STPRequestingChunkInfo updated_chunk;
+		//check all workers and release chunks once they have finished.
 		for (unsigned int i = 0u; i < this->renderingLocal.size(); i++) {
 			auto& [chunkPos, chunkLoaded] = this->renderingLocal[i];
 
@@ -634,7 +703,7 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 	};
 
 	//texture storage
-	//map the texture, all opengl related work must be done on the main contexted thread
+	//map the texture, all OpenGL related work must be done on the main contexted thread
 	//CUDA will make sure all previous graphics API calls are finished before stream begins
 	STPcudaCheckErr(cudaGraphicsMapResources(3, this->TerrainMapRes, *this->BufferStream));
 	STPRenderingBufferMemory buffer_ptr;
@@ -657,7 +726,7 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 
 				const auto [cache_chunkID, cache_status] = pos_it->second;
 				if (cache_status) {
-					//if the previous cahce is complete, copy to new buffer
+					//if the previous cache is complete, copy to new buffer
 					this->copySubBufferFromSubCache(buffer_ptr, buffer_chunkID, cache_chunkID);
 					//mark this chunk as loaded
 					loaded = true;
@@ -666,7 +735,7 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 				}
 
 			}
-			//the current new chunk has no usesable buffer, we need to load it from chunk storage later
+			//the current new chunk has no usable buffer, we need to load it from chunk storage later
 			//clear this chunk
 			this->clearBuffer(buffer_ptr, buffer_chunkID);
 
