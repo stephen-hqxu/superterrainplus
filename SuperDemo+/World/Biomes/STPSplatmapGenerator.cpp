@@ -57,8 +57,9 @@ void STPSplatmapGenerator::splat
 	const uvec3 Dimgridsize = uvec3((this->MapDimension + Dimblocksize - 1u) / Dimblocksize, info.LocalCount);
 
 	//launch kernel
-	size_t buffer_size = 40ull;
-	unsigned char buffer[40];
+	constexpr static size_t BufferSize = sizeof(biomemap_tex) + sizeof(heightmap_tex) + sizeof(splatmap_surf) + sizeof(STPTI::STPSplatGeneratorInformation);
+	size_t buffer_size = BufferSize;
+	unsigned char buffer[BufferSize];
 	unsigned char* current_buffer = buffer;
 
 	memcpy(current_buffer, &biomemap_tex, sizeof(biomemap_tex));

@@ -4,6 +4,7 @@
 
 #include <SuperTerrain+/STPCoreDefine.h>
 //ADT
+#include <list>
 #include <queue>
 //Multi-threading
 #include <future>

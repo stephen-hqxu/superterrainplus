@@ -3,6 +3,8 @@
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
+#include <cstring>
+
 using namespace SuperTerrainPlus::STPDiversity;
 
 using std::make_unique;

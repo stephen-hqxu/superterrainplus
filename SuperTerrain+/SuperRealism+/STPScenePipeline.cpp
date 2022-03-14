@@ -83,16 +83,16 @@ private:
 	//by using separate flags instead of just flushing the buffer,
 	//we can avoid flushing frequently if camera is updated multiple times before next frame.
 
-	void STPCameraInformationMemory::onMove(const STPCamera&) override {
+	void onMove(const STPCamera&) override {
 		this->updatePosition = true;
 		this->updateView = true;
 	}
 
-	void STPCameraInformationMemory::onRotate(const STPCamera&) override {
+	void onRotate(const STPCamera&) override {
 		this->updateView = true;
 	}
 
-	void STPCameraInformationMemory::onReshape(const STPCamera&) override {
+	void onReshape(const STPCamera&) override {
 		this->updateProjection = true;
 	}
 
@@ -259,7 +259,7 @@ private:
 	 * @brief Query the viewport information in the current context.
 	 * @return The X, Y coordinate and the width, height of the viewport.
 	*/
-	static inline ivec4 STPShadowPipeline::getViewport() {
+	static inline ivec4 getViewport() {
 		ivec4 viewport;
 		glGetIntegerv(GL_VIEWPORT, value_ptr(viewport));
 
@@ -705,7 +705,7 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera, STPScenePipelineInit
 
 STPScenePipeline::~STPScenePipeline() = default;
 
-inline const STPShaderManager* STPScenePipeline::getDepthShader() const {
+const STPShaderManager* STPScenePipeline::getDepthShader() const {
 	//if depth shader is not applicable, return nullptr
 	return this->GeometryShadowPass->DepthPassShader.has_value() ? &this->GeometryShadowPass->DepthPassShader.value() : nullptr;
 }

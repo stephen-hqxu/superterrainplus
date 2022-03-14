@@ -166,7 +166,7 @@ namespace STPStart {
 				this->WorldManager->linkProgram(this->engineINI.at("Global").at("Anisotropy").to<float>());
 				if (!this->WorldManager) {
 					//do not proceed if it fails
-					terminate();
+					std::terminate();
 				}
 			}
 			catch (const STPException::STPInvalidSyntax& se) {

@@ -27,7 +27,7 @@ void SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::
 template<typename T>
 SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeDevice(size_t size) {
 	//type sanitise
-	using U = typename NoArray<T>;
+	using U = NoArray<T>;
 	
 	U* cache;
 	//remember size denotes the number of element
@@ -40,7 +40,7 @@ SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemory<T> SuperTerrainPlus::STP
 template<typename T>
 SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeStreamedDevice(cudaMemPool_t memPool, cudaStream_t stream, size_t size) {
 	//type sanitise
-	using U = typename NoArray<T>;
+	using U = NoArray<T>;
 	
 	U* cache;
 	//allocate using the pool

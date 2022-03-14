@@ -234,8 +234,8 @@ void STPWorldManager::linkProgram(float anisotropy) {
 		chunk_settings,
 		this->WorldSetting.HeightfieldSetting,
 		*this->DiversityGenerator,
-		//TODO: fix the occupancy calculator
-		1u);
+		//TODO: correctly calculate the thread occupancy
+		5u);
 	//create the world pipeline
 	STPWorldPipeline::STPPipelineSetup pipeStage;
 	pipeStage.BiomemapGenerator = this->BiomeFactory.get();

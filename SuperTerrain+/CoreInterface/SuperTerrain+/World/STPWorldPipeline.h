@@ -12,7 +12,7 @@
 
 #include "../Environment/STPChunkSetting.h"
 //Chunk
-#include "./Chunk/STPChunkStorage.h"
+#include "./Chunk/STPChunk.h"
 //World Generator
 #include "./Diversity/STPBiomeFactory.h"
 #include "./Chunk/STPHeightfieldGenerator.h"
@@ -64,6 +64,16 @@ namespace SuperTerrainPlus {
 
 	private:
 
+		/**
+		 * @brief The hash function for the glm::vec2
+		*/
+		struct STPHashvec2 {
+		public:
+
+			size_t operator()(const glm::vec2&) const;
+
+		};
+
 		//The total number of rendering buffer we have currently.
 		//Biomemap, heightfield and splatmap
 		static constexpr size_t BufferCount = 3ull;
@@ -71,8 +81,8 @@ namespace SuperTerrainPlus {
 		//Vector that stored rendered chunk world position and loading status (True is loaded, false otherwise)
 		typedef std::vector<std::pair<glm::vec2, bool>> STPLocalChunkStatus;
 		//Use chunk world coordinate to lookup chunk ID
-		typedef std::unordered_map<glm::vec2, unsigned int, STPChunkStorage::STPHashvec2> STPLocalChunkDictionary;
-		typedef std::unordered_map<glm::vec2, std::pair<unsigned int, bool>, STPChunkStorage::STPHashvec2> STPLocalChunkCache;
+		typedef std::unordered_map<glm::vec2, unsigned int, STPHashvec2> STPLocalChunkDictionary;
+		typedef std::unordered_map<glm::vec2, std::pair<unsigned int, bool>, STPHashvec2> STPLocalChunkCache;
 
 		/**
 		 * @brief STPRenderingBufferMemory contains data to mapped GL texture data.
@@ -115,7 +125,7 @@ namespace SuperTerrainPlus {
 		class STPGeneratorManager;
 		std::unique_ptr<STPGeneratorManager> Generator;
 
-		//cuda stream
+		//CUDA stream
 		STPSmartStream BufferStream;
 
 		//index 0: R16UI biome map
@@ -124,7 +134,7 @@ namespace SuperTerrainPlus {
 		STPOpenGL::STPuint TerrainMap[STPWorldPipeline::BufferCount];
 		//registered buffer and texture
 		cudaGraphicsResource_t TerrainMapRes[STPWorldPipeline::BufferCount];
-		//empty buffer (using cuda pinned memory) that is used to clear a chunk data
+		//empty buffer (using CUDA pinned memory) that is used to clear a chunk data
 		void* TerrainMapClearBuffer;
 		size_t TerrainMapClearBufferPitch;
 		//A cache that holds the previous rendered chunk memory to update the new rendered chunk
@@ -157,7 +167,7 @@ namespace SuperTerrainPlus {
 
 		/**
 		 * @brief Clear up the rendering buffer of the chunk map.
-		 * @param destination The loaction to store all loaded maps, and it will be erased.
+		 * @param destination The location to store all loaded maps, and it will be erased.
 		 * @param dest_idx The local chunk index to the destination rendering sub-buffer to be cleared.
 		*/
 		void clearBuffer(const STPRenderingBufferMemory&, unsigned int);
@@ -215,7 +225,7 @@ namespace SuperTerrainPlus {
 		 * @brief Change the rendering chunk status to force reload that will trigger a chunk texture reload onto rendering buffer.
 		 * Only when chunk position is being rendered, if chunk position is not in the rendering range, command is ignored.
 		 * It will insert current chunk into reloading queue and chunk will not be reloaded until the next rendering loop.
-		 * When the rendering chunks are changed, all un-processed queries are discarded as all new rendering chunks are reloaded regardlessly.
+		 * When the rendering chunks are changed, all un-processed queries are discarded as all new rendering chunks are reloaded regardless.
 		 * @param chunkPos The world position of the chunk required for reloading
 		 * @return True if query has been submitted successfully, false if chunk is not in the rendering range or the same query has been submitted before.
 		*/

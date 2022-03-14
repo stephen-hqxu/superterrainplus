@@ -15,6 +15,7 @@
 
 #include <array>
 #include <limits>
+#include <algorithm>
 
 using std::numeric_limits;
 using std::array;
@@ -26,7 +27,7 @@ using std::make_pair;
 using namespace SuperTerrainPlus::STPCompute;
 
 //The initial table contains numbers from 0 to max of unsigned char in order,
-//this table will be shuffled into a random permutable in runtime.
+//this table will be shuffled into a random permutation in runtime.
 constexpr static auto InitialTable = []() constexpr {
 	array<unsigned char, numeric_limits<unsigned char>::max() + 1ull> Table = { };
 

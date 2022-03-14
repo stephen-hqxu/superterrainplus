@@ -5,6 +5,9 @@
 #include <SuperTerrain+/Exception/STPAsyncGenerationError.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
+//Hasher
+#include <SuperTerrain+/Utility/STPHashCombine.h>
+
 //GL
 #include <glad/glad.h>
 //CUDA
@@ -31,6 +34,7 @@ using glm::vec3;
 using std::list;
 using std::vector;
 using std::queue;
+using std::unordered_map;
 using std::optional;
 using std::future;
 using std::mutex;
@@ -65,10 +69,15 @@ catch (...) { \
 	FUN; \
 }
 
+inline size_t STPWorldPipeline::STPHashvec2::operator()(const vec2& position) const {
+	//combine hash
+	return STPHashCombine::combine(0ull, position.x, position.y);;
+}
+
 class STPWorldPipeline::STPGeneratorManager {
 private:
 
-	STPChunkStorage ChunkCache;
+	unordered_map<vec2, STPChunk, STPHashvec2> ChunkCache;
 
 	//all terrain map generators
 	STPBiomeFactory& generateBiomemap;
@@ -230,16 +239,16 @@ private:
 			default:
 				break;
 			}
-			if (STPChunk* center = this->ChunkCache[chunkPos];
-				center != nullptr && center->chunkState() >= expected_state) {
-				if (center->occupied()) {
+			if (auto center = this->ChunkCache.find(chunkPos);
+				center != this->ChunkCache.end() && center->second.chunkState() >= expected_state) {
+				if (center->second.occupied()) {
 					//central chunk is in-used, do not proceed.
 					return nullopt;
 				}
 				//no need to continue if centre chunk is available
 				//since the centre chunk might be used as a neighbour chunk later, we only return bool instead of a pointer
 				//after checkChunk() is performed for every chunks, we can grab all pointers and check for occupancy in other functions.
-				return make_optional<STPChunk::STPSharedMapVisitor>(*center);
+				return make_optional<STPChunk::STPSharedMapVisitor>(center->second);
 			}
 		}
 		auto biomemap_computer = [this](STPUniqueChunkCacheEntry chunk_entry, vec2 offset) -> void {
@@ -283,10 +292,10 @@ private:
 		STPChunkRecord neighbour;
 		for (const auto& neighbourPos : neighbour_position) {
 			//get current neighbour chunk
-			STPChunkStorage::STPChunkConstructed res = this->ChunkCache.construct(neighbourPos, chk_config.MapSize);
-			STPChunk* curr_neighbour = res.second;
+			const auto [chunk_it, chunk_added] = this->ChunkCache.try_emplace(neighbourPos, chk_config.MapSize);
+			STPChunk& curr_neighbour = chunk_it->second;
 
-			if (curr_neighbour->occupied()) {
+			if (curr_neighbour.occupied()) {
 				//occupied means it's currently in used (probably another thread has already started to compute it)
 				canContinue = false;
 				continue;
@@ -294,9 +303,9 @@ private:
 			switch (rec_depth) {
 			case BIOMEMAP_PASS:
 				//container will guaranteed to exists since heightmap pass has already created it
-				if (curr_neighbour->chunkState() == STPChunk::STPChunkState::Empty) {
+				if (curr_neighbour.chunkState() == STPChunk::STPChunkState::Empty) {
 					//compute biomemap
-					this->GeneratorWorker.enqueue_void(biomemap_computer, this->cacheUniqueChunk({ curr_neighbour }), this->calcOffset(neighbourPos));
+					this->GeneratorWorker.enqueue_void(biomemap_computer, this->cacheUniqueChunk({ &curr_neighbour }), this->calcOffset(neighbourPos));
 					//try to compute all biomemap, and when biomemap is computing, we don't need to wait
 					canContinue = false;
 				}
@@ -312,7 +321,7 @@ private:
 				break;
 			}
 
-			neighbour.emplace_back(curr_neighbour);
+			neighbour.emplace_back(&curr_neighbour);
 			//if chunk is found, we can guarantee it's in-used empty or at least biomemap/heightmap complete
 		}
 		if (!canContinue) {

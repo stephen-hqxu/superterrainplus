@@ -65,14 +65,14 @@ class STPArrayList {
 public:
 
 	//The iterator for the array list
-	using STPArrayList_it = typename T*;
-	//The const interator for the array list
-	using STPArrayList_cit = typename const T*;
+	using STPArrayList_it = T*;
+	//The const iterator for the array list
+	using STPArrayList_cit = const T*;
 
 private:
 
 	static_assert(std::is_trivial_v<T>, "type must be a trivial type");
-	static_assert(std::is_trivially_destructible_v<T>, "type must be trivially destructable");
+	static_assert(std::is_trivially_destructible_v<T>, "type must be trivially destructible");
 
 	using RebindAlloc = typename allocator_traits<A>::template rebind_alloc<T>;
 	using AllocTr = allocator_traits<RebindAlloc>;
@@ -80,7 +80,7 @@ private:
 	RebindAlloc arrayAllocator;
 
 	//Smart pointer that uses allocator to destroy
-	using unique_ptr_alloc = typename unique_ptr<T[], std::function<void(T*)>>;
+	using unique_ptr_alloc = unique_ptr<T[], std::function<void(T*)>>;
 
 	//The data held by the array list, also denotes the beginning of the array
 	unique_ptr_alloc Begin;
@@ -156,7 +156,7 @@ public:
 	~STPArrayList() = default;
 
 	/**
-	 * @brief Construct element in-place and put the newly constucted element at the end of the array list
+	 * @brief Construct element in-place and put the newly constructed element at the end of the array list
 	 * @tparam ...Arg Argument list
 	 * @param ...arg All arguments to be used to construct the element
 	 * @return The reference to the new element
@@ -165,13 +165,13 @@ public:
 	T& emplace_back(Arg&&... arg) {
 		//check if we have free capacity
 		if (this->End == this->Last) {
-			//no more free room, expand, capacity is clampped in the function
+			//no more free room, expand, capacity is clamped in the function
 			this->expand(this->capacity() * 2ull);
 		}
 
 		T& item = *this->end();
 		//this is actually pretty dangerous.
-		//if the type has non-trivial destructor and it will be called on the garbage data at the end iteraor, which results in undefined behaviour.
+		//if the type has non-trivial destructor and it will be called on the garbage data at the end iterator, which results in undefined behaviour.
 		//but it's fine since we are dealing with trivial type only
 		item = T(std::forward<Arg>(arg)...);
 		
@@ -204,7 +204,7 @@ public:
 	 * @return The iterator to the item following the iterator provided
 	*/
 	STPArrayList_it erase(STPArrayList_it it) {
-		//we don't need to call the destructor since T is always trivially destructable
+		//we don't need to call the destructor since T is always trivially destructible
 
 		if (it < this->cend() - 1ull) {
 			//it's not the last element, we need to move the memory forward
@@ -257,7 +257,7 @@ public:
 	 * Clear takes constant time as the array list only deals with trivial type
 	*/
 	inline void clear() {
-		//since the array list only holds trivially destructable type, we can simply move the pointer
+		//since the array list only holds trivially destructible type, we can simply move the pointer
 		this->End = this->begin();
 	}
 
@@ -361,7 +361,7 @@ public:
 
 	/**
 	 * @brief Clear containers in histogram buffer.
-	 * It doesn't gaurantee to free up memory allocated inside, acting as memory pool which can be reused.
+	 * It doesn't guarantee to free up memory allocated inside, acting as memory pool which can be reused.
 	*/
 	inline void clear() noexcept {
 		this->Bin.clear();
@@ -721,7 +721,7 @@ void STPSingleHistogramFilter::filter
 		}
 
 		//copy thread buffer to output
-		//we don't need to clear the output, but rather we can resize it (items will get overwriten anyway)
+		//we don't need to clear the output, but rather we can resize it (items will get overwritten anyway)
 		histogram_output->Bin.resize(bin_total);
 		histogram_output->HistogramStartOffset.resize(offset_total);
 		uvec2 base(0u);
@@ -774,7 +774,7 @@ void STPSingleHistogramFilter::filter
 	}
 	//perform horizontal filter
 	{
-		//unlike vertical pass, we start from the firts pixel of output from previous stage, and the output contains the halo histogram.
+		//unlike vertical pass, we start from the first pixel of output from previous stage, and the output contains the halo histogram.
 		//height start from 0, output buffer has the same height as each texture, and 2 * radius addition to the horizontal width as halos
 		const unsigned int height_step = dimension.y / STPSingleHistogramFilter::Parallelism;
 		uvec2 h_range(0u, height_step);

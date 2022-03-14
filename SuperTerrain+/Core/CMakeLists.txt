@@ -1,7 +1,6 @@
 add_library(${STP_MAIN_ENGINE} SHARED
 STPBiomeFactory.cpp
 STPChunk.cpp
-STPChunkStorage.cpp
 STPDeviceErrorHandler.cpp
 STPEngineInitialiser.cpp
 STPEnvironment.cpp

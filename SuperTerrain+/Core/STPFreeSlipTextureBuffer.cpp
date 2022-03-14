@@ -43,7 +43,7 @@ void STPFreeSlipTextureBuffer<T>::STPHostCallbackDeleter::operator()(T* ptr) con
 }
 
 template<typename T>
-STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(typename STPFreeSlipTexture& texture, STPFreeSlipTextureData data, const STPFreeSlipTextureAttribute& attr) : 
+STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(STPFreeSlipTexture& texture, STPFreeSlipTextureData data, const STPFreeSlipTextureAttribute& attr) : 
 	Buffer(texture), Data(data), Attr(attr) {
 	if (this->Buffer.empty()) {
 		throw STPException::STPInvalidArgument("Provided free-slip texture is empty");

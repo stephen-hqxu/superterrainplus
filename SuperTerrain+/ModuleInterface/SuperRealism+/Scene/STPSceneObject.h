@@ -155,7 +155,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * All pointers returned is guaranteed to be valid until the end of life of the depth render group instance.
 			 * Exception is thrown if another group with such key exists.
 			*/
-			typename STPGroupMember& addGroup(size_t);
+			STPGroupMember& addGroup(size_t);
 
 			/**
 			 * @see The constant version of this function

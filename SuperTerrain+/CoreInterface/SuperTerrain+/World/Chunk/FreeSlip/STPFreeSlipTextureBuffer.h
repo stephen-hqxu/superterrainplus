@@ -137,7 +137,7 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @param data The pointer to texture buffer data
 		 * @param attr Texture buffer attribute that will be used to make copy and sharing free-slip texture with other program
 		*/
-		STPFreeSlipTextureBuffer(typename STPFreeSlipTexture&, STPFreeSlipTextureData, const STPFreeSlipTextureAttribute&);
+		STPFreeSlipTextureBuffer(STPFreeSlipTexture&, STPFreeSlipTextureData, const STPFreeSlipTextureAttribute&);
 
 		STPFreeSlipTextureBuffer(const STPFreeSlipTextureBuffer&) = delete;
 

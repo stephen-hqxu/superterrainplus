@@ -115,7 +115,7 @@ STPScreen::STPScreenVertexBuffer::STPScreenVertexBuffer() {
 	this->ScreenArray.enable(0u, 2u);
 }
 
-inline void STPScreen::STPScreenVertexBuffer::bind() const {
+void STPScreen::STPScreenVertexBuffer::bind() const {
 	//bind vertex buffer
 	this->ScreenArray.bind();
 	this->ScreenRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);

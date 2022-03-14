@@ -7,7 +7,6 @@
 
 //SuperTerrain+/World/Chunk
 #include <SuperTerrain+/World/Chunk/STPChunk.h>
-#include <SuperTerrain+/World/Chunk/STPChunkStorage.h>
 
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
@@ -204,62 +203,4 @@ SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk
 		}
 		
 	}
-}
-
-SCENARIO_METHOD(STPChunkStorage, "STPChunkStorage stores chunks and we can retrieve chunks when needed", "[Chunk][STPChunkStorage]") {
-
-	GIVEN("A chunk storage object and some chunks") {
-		constexpr static uvec2 MapSize = uvec2(2u);
-		//round to 1 d.p.
-		const auto Location = GENERATE(take(3, chunk(2, map<float>([](auto f) { return roundf(f * 10.0f) / 10.0f; }, random(-6666.666f, 6666.666f)))));
-		const vec2 InsertLocation = glm::make_vec2(Location.data());
-
-		THEN("A newly created chunk storage is empty") {
-			REQUIRE(this->size() == 0ull);
-		}
-
-		WHEN("Try to use a non-existing chunk on the chunk storage") {
-
-			THEN("Retrieval of such chunk returns a null pointer") {
-				REQUIRE((*this)[InsertLocation] == nullptr);
-			}
-
-			THEN("Removal of such chunk returns failure") {
-				REQUIRE_FALSE(this->remove(InsertLocation));
-			}
-
-		}
-
-		WHEN("Emplace some new chunks into the chunk storage") {
-
-			THEN("New chunks should have been inserted") {
-				const auto [inserted, chunk] = this->construct(InsertLocation, MapSize);
-				REQUIRE(inserted);
-
-				AND_WHEN("Insert another chunk with the same world coordinate") {
-
-					THEN("Insertion fails, and the chunk with the coordinate returns") {
-						const auto [insertedAgain, chunkAgain] = this->construct(InsertLocation, MapSize);
-						REQUIRE_FALSE(insertedAgain);
-						//the same pointer as the previous one should be returned
-						REQUIRE(chunkAgain == chunk);
-					}
-
-				}
-
-				AND_THEN("The inserted chunk can be retrieved") {
-					auto* RetrievedChunk = (*this)[InsertLocation];
-					REQUIRE(RetrievedChunk == chunk);
-				}
-
-				AND_THEN("Chunk storage can be cleared") {
-					REQUIRE_NOTHROW(this->clear());
-				}
-
-			}
-
-		}
-
-	}
-
 }

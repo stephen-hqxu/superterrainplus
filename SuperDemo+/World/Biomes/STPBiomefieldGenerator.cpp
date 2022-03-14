@@ -120,9 +120,10 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	}
 
 	//launch kernel
-	float2 gpu_offset = make_float2(offset.x, offset.y);
-	size_t bufferSize = 32ull;
-	unsigned char buffer[32];
+	const float2 gpu_offset = make_float2(offset.x, offset.y);
+	constexpr static size_t BufferSize = sizeof(heightmap) + sizeof(histogram_d) + sizeof(gpu_offset);
+	size_t buffer_size = BufferSize;
+	unsigned char buffer[BufferSize];
 
 	unsigned char* current_buffer = buffer;
 	memcpy(current_buffer, &heightmap, sizeof(heightmap));
@@ -133,7 +134,7 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 
 	void* config[] = {
 		CU_LAUNCH_PARAM_BUFFER_POINTER, buffer,
-		CU_LAUNCH_PARAM_BUFFER_SIZE, &bufferSize,
+		CU_LAUNCH_PARAM_BUFFER_SIZE, &buffer_size,
 		CU_LAUNCH_PARAM_END
 	};
 	STPcudaCheckErr(cuLaunchKernel(this->GeneratorEntry,

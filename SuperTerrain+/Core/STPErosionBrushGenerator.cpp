@@ -9,6 +9,9 @@
 //Definition for smart memory
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
+//GLM
+#include <glm/exponential.hpp>
+
 #include <algorithm>
 
 STPRainDropSetting::STPErosionBrushGenerator::STPErosionBrushGenerator(STPRainDropSetting& raindrop_setting) : Storage(raindrop_setting) {
@@ -17,7 +20,7 @@ STPRainDropSetting::STPErosionBrushGenerator::STPErosionBrushGenerator(STPRainDr
 
 void STPRainDropSetting::STPErosionBrushGenerator::makeDeviceAvailable() {
 	//allocate device memory
-	//because we are using smart pointer, exisiting memory will be freed automatically
+	//because we are using smart pointer, existing memory will be freed automatically
 	this->ErosionBrushIndicesDevice = STPSmartDeviceMemory::makeDevice<int[]>(this->ErosionBrushIndicesCache.size());
 	this->ErosionBrushWeightsDevice = STPSmartDeviceMemory::makeDevice<float[]>(this->ErosionBrushWeightsCache.size());
 
@@ -51,7 +54,7 @@ void STPRainDropSetting::STPErosionBrushGenerator::operator()(uvec2 slipRange, u
 				sqrDst < radius * radius) {
 				//The brush lies within the erosion range
 				this->ErosionBrushIndicesCache.emplace_back(brushY * static_cast<int>(slipRange.x) + brushX);
-				currentbrushWeight = 1 - sqrt(sqrDst) / radius;
+				currentbrushWeight = 1 - glm::sqrt(sqrDst) / radius;
 				weightSum += currentbrushWeight;
 				this->ErosionBrushWeightsCache.emplace_back(static_cast<float>(currentbrushWeight));
 			}

@@ -71,7 +71,7 @@ namespace SuperTerrainPlus {
 		 * @param memory The pointer to the memory block, must contatins header in before the given pointer.
 		 * @return content The header of the content.
 		*/
-		static typename STPHeader decodeHeader(unsigned char*);
+		static STPHeader decodeHeader(unsigned char*);
 
 	public:
 
