@@ -28,8 +28,9 @@
 using glm::ivec2;
 using glm::uvec2;
 using glm::vec2;
+using glm::dvec2;
 using glm::ivec3;
-using glm::vec3;
+using glm::dvec3;
 
 using std::list;
 using std::vector;
@@ -69,15 +70,15 @@ catch (...) { \
 	FUN; \
 }
 
-inline size_t STPWorldPipeline::STPHashvec2::operator()(const vec2& position) const {
+inline size_t STPWorldPipeline::STPHashivec2::operator()(const ivec2& position) const {
 	//combine hash
-	return STPHashCombine::combine(0ull, position.x, position.y);;
+	return STPHashCombine::combine(0ull, position.x, position.y);
 }
 
 class STPWorldPipeline::STPGeneratorManager {
 private:
 
-	unordered_map<vec2, STPChunk, STPHashvec2> ChunkCache;
+	unordered_map<ivec2, STPChunk, STPHashivec2> ChunkCache;
 
 	//all terrain map generators
 	STPBiomeFactory& generateBiomemap;
@@ -111,22 +112,22 @@ private:
 
 	/**
 	 * @brief Calculate the chunk offset such that the transition of each chunk is seamless
-	 * @param chunkPos The world position of the chunk
+	 * @param chunkCoord The world coordinate of the chunk
 	 * @return The chunk offset in world coordinate.
 	*/
-	inline vec2 calcOffset(vec2 chunkPos) const {
+	inline dvec2 calcOffset(const ivec2& chunkCoord) const {
 		const STPEnvironment::STPChunkSetting& chk_config = this->ChunkSetting;
-		return STPChunk::calcChunkMapOffset(chunkPos, chk_config.ChunkSize, chk_config.MapSize, chk_config.MapOffset, chk_config.ChunkScaling);
+		return STPChunk::calcChunkMapOffset(chunkCoord, chk_config.ChunkSize, chk_config.MapSize, chk_config.MapOffset);
 	}
 
 	/**
 	 * @brief Get all neighbour for this chunk position
-	 * @param chunkPos The central chunk world position
+	 * @param chunkCoord The central chunk world coordinate
 	 * @return A list of all neighbour chunk position
 	*/
-	inline STPChunk::STPChunkPositionCache getNeighbour(vec2 chunkPos) const {
+	inline STPChunk::STPChunkCoordinateCache getNeighbour(const ivec2& chunkCoord) const {
 		const STPEnvironment::STPChunkSetting& chk_config = this->ChunkSetting;
-		return STPChunk::getRegion(chunkPos, chk_config.ChunkSize, chk_config.FreeSlipChunk, chk_config.ChunkScaling);
+		return STPChunk::calcChunkNeighbour(chunkCoord, chk_config.ChunkSize, chk_config.FreeSlipChunk);
 	}
 
 	/**
@@ -173,9 +174,9 @@ private:
 	 * @param current_chunk The maps for the chunk
 	 * @param neighbour_chunk The maps of the chunks that require to be used for biome-edge interpolation during heightmap generation,
 	 * require the central chunk and neighbour chunks arranged in row-major flavour. The central chunk should also be included.
-	 * @param chunkPos The world position of the chunk
+	 * @param chunkCoord The world coordinate of the chunk
 	*/
-	void computeHeightmap(STPChunk::STPUniqueMapVisitor& current_chunk, STPUniqueChunkRecord& neighbour_chunk, vec2 chunkPos) {
+	void computeHeightmap(STPChunk::STPUniqueMapVisitor& current_chunk, STPUniqueChunkRecord& neighbour_chunk, const ivec2& chunkCoord) {
 		//generate heightmap
 		STPHeightfieldGenerator::STPMapStorage maps;
 		maps.Biomemap.reserve(neighbour_chunk.size());
@@ -184,7 +185,7 @@ private:
 			maps.Biomemap.push_back(chk.biomemap());
 		}
 		maps.Heightmap32F.push_back(current_chunk.heightmap());
-		maps.HeightmapOffset = this->calcOffset(chunkPos);
+		maps.HeightmapOffset = static_cast<vec2>(this->calcOffset(chunkCoord));
 		const STPHeightfieldGenerator::STPGeneratorOperation op = 
 			STPHeightfieldGenerator::HeightmapGeneration;
 
@@ -217,12 +218,12 @@ private:
 	 * @brief Recursively prepare neighbour chunks for the central chunk.
 	 * The first recursion will prepare neighbour biomemaps for heightmap generation.
 	 * The second recursion will prepare neighbour heightmaps for erosion.
-	 * @param chunkPos The position to the chunk which should be prepared.
+	 * @param chunkCoord The coordinate to the chunk which should be prepared.
 	 * @param rec_depth Please leave this empty, this is the recursion depth and will be managed properly
 	 * @return If all neighbours are ready to be used, true is returned.
 	 * If any neighbour is not ready (being used by other threads or neighbour is not ready and compute is launched), return false
 	*/
-	const optional<STPChunk::STPSharedMapVisitor> recNeighbourChecking(vec2 chunkPos, unsigned char rec_depth = 2u) {
+	const optional<STPChunk::STPSharedMapVisitor> recNeighbourChecking(const ivec2& chunkCoord, unsigned char rec_depth = 2u) {
 		//recursive case:
 		//define what rec_depth means...
 		constexpr static unsigned char BIOMEMAP_PASS = 1u,
@@ -239,7 +240,7 @@ private:
 			default:
 				break;
 			}
-			if (auto center = this->ChunkCache.find(chunkPos);
+			if (auto center = this->ChunkCache.find(chunkCoord);
 				center != this->ChunkCache.end() && center->second.chunkState() >= expected_state) {
 				if (center->second.occupied()) {
 					//central chunk is in-used, do not proceed.
@@ -251,7 +252,7 @@ private:
 				return make_optional<STPChunk::STPSharedMapVisitor>(center->second);
 			}
 		}
-		auto biomemap_computer = [this](STPUniqueChunkCacheEntry chunk_entry, vec2 offset) -> void {
+		auto biomemap_computer = [this](STPUniqueChunkCacheEntry chunk_entry, dvec2 offset) -> void {
 			//own the unique chunk visitor
 			STPChunk::STPUniqueMapVisitor chunk = move(this->ownUniqueChunk({ chunk_entry }).front());
 
@@ -263,12 +264,12 @@ private:
 			chunk->markChunkState(STPChunk::STPChunkState::BiomemapReady);
 			//chunk will be unlocked automatically by unique visitor
 		};
-		auto heightmap_computer = [this](STPUniqueChunkCacheEntry neighbours_entry, vec2 position) -> void {
+		auto heightmap_computer = [this](STPUniqueChunkCacheEntry neighbours_entry, ivec2 coordinate) -> void {
 			STPUniqueChunkRecord neighbours = this->ownUniqueChunk(neighbours_entry);
 			//the centre chunk is always at the middle of all neighbours
 			STPChunk::STPUniqueMapVisitor& centre = neighbours[neighbours.size() / 2u];
 
-			STORE_EXCEPTION(this->computeHeightmap(centre, neighbours, position))
+			STORE_EXCEPTION(this->computeHeightmap(centre, neighbours, coordinate))
 				
 			//computation was successful
 			centre->markChunkState(STPChunk::STPChunkState::HeightmapReady);
@@ -285,7 +286,7 @@ private:
 
 		//reminder: central chunk is included in neighbours
 		const STPEnvironment::STPChunkSetting& chk_config = this->ChunkSetting;
-		const STPChunk::STPChunkPositionCache neighbour_position = this->getNeighbour(chunkPos);
+		const STPChunk::STPChunkCoordinateCache neighbour_position = this->getNeighbour(chunkCoord);
 
 		bool canContinue = true;
 		//The first pass: check if all neighbours are ready for some operations
@@ -336,7 +337,7 @@ private:
 		switch (rec_depth) {
 		case BIOMEMAP_PASS:
 			//generate heightmap
-			this->GeneratorWorker.enqueue_void(heightmap_computer, visitor_entry, chunkPos);
+			this->GeneratorWorker.enqueue_void(heightmap_computer, visitor_entry, chunkCoord);
 			break;
 		case HEIGHTMAP_PASS:
 			//perform erosion on heightmap
@@ -430,12 +431,12 @@ public:
 
 	/**
 	 * @brief Request a pointer to the chunk given a world coordinate.
-	 * @param world_coord The world position where the chunk is requesting.
+	 * @param chunk_coord The world coordinate where the chunk is requesting.
 	 * @return The shared visitor to the requested chunk.
 	 * The function returns a valid point only when the chunk is fully ready for rendering.
 	 * In case chunk is not ready, such as being used by other chunks, or map generation is in progress, nullptr is returned.
 	*/
-	auto getChunk(vec2 world_coord) {
+	auto getChunk(const ivec2& chunk_coord) {
 		//check if there's any exception thrown from previous async compute launch
 		bool hasException;
 		{
@@ -463,7 +464,7 @@ public:
 		}
 
 		//recursively preparing neighbours
-		return this->recNeighbourChecking(world_coord);
+		return this->recNeighbourChecking(chunk_coord);
 	}
 
 };
@@ -584,9 +585,9 @@ void STPWorldPipeline::clearBuffer(const STPRenderingBufferMemory& destination, 
 	FOR_EACH_BUFFER(erase_buffer(destination.Map[i], STPRenderingBufferMemory::Format[i]))
 }
 
-bool STPWorldPipeline::mapSubData(const STPRenderingBufferMemory& buffer, vec2 chunkPos, unsigned int chunkID) {
+bool STPWorldPipeline::mapSubData(const STPRenderingBufferMemory& buffer, ivec2 chunkCoord, unsigned int chunkID) {
 	//ask provider if we can get the chunk
-	const optional<STPChunk::STPSharedMapVisitor> chunk = this->Generator->getChunk(chunkPos);
+	const optional<STPChunk::STPSharedMapVisitor> chunk = this->Generator->getChunk(chunkCoord);
 	if (!chunk) {
 		//not ready yet
 		return false;
@@ -619,7 +620,7 @@ uvec2 STPWorldPipeline::calcBufferOffset(unsigned int index) const {
 	return chunk_setting.MapSize * chunkIdx;
 }
 
-bool STPWorldPipeline::load(const vec3& cameraPos) {
+bool STPWorldPipeline::load(const dvec3& cameraPos) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
 	//waiting for the previous worker to finish(if any)
 	this->wait();
@@ -629,7 +630,7 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 	bool centreChanged = false, 
 		shouldClearBuffer = false;
 	//check if the central position has changed or not
-	if (const vec2 thisCentralPos = STPChunk::getChunkPosition(cameraPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScaling);
+	if (const ivec2 thisCentralPos = STPChunk::calcWorldChunkCoordinate(cameraPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScaling);
 		thisCentralPos != this->lastCenterLocation) {
 		//changed
 		centreChanged = true;
@@ -643,14 +644,10 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 		//recalculate loading chunks
 		this->renderingLocal.clear();
 		this->renderingLocalLookup.clear();
-		const auto allChunks = STPChunk::getRegion(
-			STPChunk::getChunkPosition(
-				cameraPos - chunk_setting.ChunkOffset,
-				chunk_setting.ChunkSize,
-				chunk_setting.ChunkScaling),
+		const STPChunk::STPChunkCoordinateCache allChunks = STPChunk::calcChunkNeighbour(
+			thisCentralPos,
 			chunk_setting.ChunkSize,
-			chunk_setting.RenderedChunk,
-			chunk_setting.ChunkScaling);
+			chunk_setting.RenderedChunk);
 
 		//we also need chunkID, which is just the index of the visible chunk from top-left to bottom-right
 		for (auto [it, chunkID] = make_pair(allChunks.begin(), 0u); it != allChunks.end(); it++, chunkID++) {
@@ -693,14 +690,13 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 				//mark updated rendering buffer
 				//we need to use the chunk normalised coordinate to get the splatmap offset, 
 				//splatmap offset needs to be consistent with the heightmap and biomemap
-				const vec2 offset = STPChunk::calcChunkMapOffset(
+				const vec2 offset = static_cast<vec2>(STPChunk::calcChunkMapOffset(
 					chunkPos,
 					chunk_setting.ChunkSize,
 					chunk_setting.MapSize,
-					chunk_setting.MapOffset,
-					chunk_setting.ChunkScaling);
+					chunk_setting.MapOffset));
 				//local chunk coordinate
-				const uvec2 local_coord = STPChunk::getLocalChunkCoordinate(i, chunk_setting.RenderedChunk);
+				const uvec2 local_coord = STPChunk::calcLocalChunkCoordinate(i, chunk_setting.RenderedChunk);
 				updated_chunk.emplace_back(STPDiversity::STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation
 					{ local_coord.x, local_coord.y, offset.x, offset.y });
 			}
@@ -756,7 +752,7 @@ bool STPWorldPipeline::load(const vec3& cameraPos) {
 	return centreChanged;
 }
 
-bool STPWorldPipeline::reload(const vec2& chunkPos) {
+bool STPWorldPipeline::reload(const ivec2& chunkPos) {
 	auto it = this->renderingLocalLookup.find(chunkPos);
 	if (it == this->renderingLocalLookup.end()) {
 		//chunk position provided is not required to be rendered, or new rendering area has changed
@@ -778,7 +774,7 @@ void STPWorldPipeline::wait() {
 	}
 }
 
-const vec2& STPWorldPipeline::centre() const {
+const ivec2& STPWorldPipeline::centre() const {
 	return this->lastCenterLocation;
 }
 

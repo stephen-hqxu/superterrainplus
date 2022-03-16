@@ -3,8 +3,9 @@
 using namespace SuperTerrainPlus::STPEnvironment;
 
 using glm::uvec2;
+using glm::dvec2;
 using glm::uvec3;
-using glm::vec3;
+using glm::dvec3;
 
 //STPConfiguration.h
 
@@ -19,9 +20,9 @@ STPChunkSetting::STPChunkSetting() : STPSetting(),
 	ChunkSize(uvec2(0u)), 
 	MapSize(uvec2(0u)), 
 	RenderedChunk(uvec2(0u)), 
-	ChunkOffset(vec3(0.0f)), 
-	ChunkScaling(1.0f), 
-	MapOffset(vec3(0.0f)), 
+	ChunkOffset(dvec3(0.0)), 
+	ChunkScaling(1.0), 
+	MapOffset(dvec2(0.0)), 
 	FreeSlipChunk(uvec2(0u)) {
 
 }
@@ -38,7 +39,7 @@ bool STPChunkSetting::validate() const {
 		&& this->MapSize.y > 0u
 		&& this->RenderedChunk.x > 0u
 		&& this->RenderedChunk.y > 0u
-		&& this->ChunkScaling > 0.0f
+		&& this->ChunkScaling > 0.0
 		&& this->FreeSlipChunk.x > 0u
 		&& this->FreeSlipChunk.y > 0u
 		//number validation

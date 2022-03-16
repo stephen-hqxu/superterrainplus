@@ -23,27 +23,28 @@ using STPDiversity::Sample;
 using glm::ivec2;
 using glm::uvec2;
 using glm::vec2;
-using glm::vec3;
+using glm::dvec2;
+using glm::dvec3;
 
 SCENARIO("STPChunk static functions can compute chunk coordinate correctly", "[Chunk][STPChunk]") {
 
 	GIVEN("A camera position in the world and some chunk parameters") {
-		constexpr vec3 CameraPosition = vec3(-573.74f, 679.5f, 845.982f);
+		constexpr dvec3 CameraPosition = dvec3(-573.74, 679.5, 845.982);
 		constexpr uvec2 ChunkSize = uvec2(10u);
-		constexpr float ChunkScaling = 25.5f;
+		constexpr double ChunkScaling = 25.5;
 
 		THEN("The chunk world position should be correctly calculated") {
-			constexpr vec2 ChunkPosition = vec2(-765.0f, 765.0f);
-			CHECK(STPChunk::getChunkPosition(CameraPosition, ChunkSize, ChunkScaling) == ChunkPosition);
+			constexpr ivec2 ChunkPosition = ivec2(-30, 30);
+			CHECK(STPChunk::calcWorldChunkCoordinate(CameraPosition, ChunkSize, ChunkScaling) == ChunkPosition);
 
 			WHEN("Trying to generate some map for a chunk with this world coordinate") {
 
 				THEN("Chunk should report the correct map offset to ensure seamless generated texture.") {
 					constexpr uvec2 MapSize = uvec2(512u);
-					constexpr vec2 MapOfffset = vec2(25.5f, -57.5f);
+					constexpr dvec2 MapOfffset = dvec2(25.5, -57.5);
 
-					constexpr vec2 ChunkMapOffset = vec2(-1510.5f, 1478.5f);
-					CHECK(STPChunk::calcChunkMapOffset(ChunkPosition, ChunkSize, MapSize, MapOfffset, ChunkScaling) == ChunkMapOffset);
+					constexpr dvec2 ChunkMapOffset = dvec2(-1510.5, 1478.5);
+					CHECK(STPChunk::calcChunkMapOffset(ChunkPosition, ChunkSize, MapSize, MapOfffset) == ChunkMapOffset);
 				}
 
 			}
@@ -53,9 +54,9 @@ SCENARIO("STPChunk static functions can compute chunk coordinate correctly", "[C
 			constexpr ivec2 ChunkOffset = ivec2(3, -2);
 
 			THEN("The offset chunk world position should be correct") {
-				constexpr vec2 OriginalChunkPosition = vec2(1000.5f, -672.5f);
-				constexpr vec2 OffsetChunkPosition = vec2(1765.5f, -1182.5f);
-				CHECK(STPChunk::offsetChunk(OriginalChunkPosition, ChunkSize, ChunkOffset, ChunkScaling) == OffsetChunkPosition);
+				constexpr ivec2 OriginalChunkPosition = ivec2(30, -30);
+				constexpr ivec2 OffsetChunkPosition = ivec2(60, -50);
+				CHECK(STPChunk::offsetChunk(OriginalChunkPosition, ChunkSize, ChunkOffset) == OffsetChunkPosition);
 			}
 		}
 
@@ -63,21 +64,21 @@ SCENARIO("STPChunk static functions can compute chunk coordinate correctly", "[C
 			constexpr uvec2 RegionSize = uvec2(5u, 5u);
 
 			THEN("Chunk index can be converted to local coordinate") {
-				CHECK(STPChunk::getLocalChunkCoordinate(7u, RegionSize) == uvec2(2u, 1u));
-				CHECK(STPChunk::getLocalChunkCoordinate(12u, RegionSize) == uvec2(2u));
-				CHECK(STPChunk::getLocalChunkCoordinate(20u, RegionSize) == uvec2(0u, 4u));
+				CHECK(STPChunk::calcLocalChunkCoordinate(7u, RegionSize) == uvec2(2u, 1u));
+				CHECK(STPChunk::calcLocalChunkCoordinate(12u, RegionSize) == uvec2(2u));
+				CHECK(STPChunk::calcLocalChunkCoordinate(20u, RegionSize) == uvec2(0u, 4u));
 			}
 
 			THEN("All chunk world positions within this region should be correct") {
-				constexpr vec2 ChunkCentre = vec2(-35.5f, 89.5f);
+				constexpr ivec2 ChunkCentre = ivec2(-10, 20);
 
-				const auto ChunkRegionPosition = STPChunk::getRegion(ChunkCentre, ChunkSize, RegionSize, ChunkScaling);
+				const auto ChunkRegionPosition = STPChunk::calcChunkNeighbour(ChunkCentre, ChunkSize, RegionSize);
 				//testing every chunk position is too much, let's pick a few
-				CHECK(ChunkRegionPosition[0] == vec2(-545.5f, -420.5f));
-				CHECK(ChunkRegionPosition[9] == vec2(474.5f, -165.5f));
+				CHECK(ChunkRegionPosition[0] == ivec2(-30, 0));
+				CHECK(ChunkRegionPosition[9] == ivec2(10, 10));
 				CHECK(ChunkRegionPosition[12] == ChunkCentre);
-				CHECK(ChunkRegionPosition[16] == vec2(-290.5f, 344.5f));
-				CHECK(ChunkRegionPosition[24] == vec2(474.5f, 599.5f));
+				CHECK(ChunkRegionPosition[16] == ivec2(-20, 30));
+				CHECK(ChunkRegionPosition[24] == ivec2(10,40));
 			}
 		}
 	}

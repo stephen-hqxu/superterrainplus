@@ -70,10 +70,10 @@ __host__ __device__ unsigned int STPRainDropSetting::getErosionBrushSize() const
 	return this->BrushSize;
 }
 
-__device__ int* STPRainDropSetting::getErosionBrushIndices() const {
+__device__ const int* STPRainDropSetting::getErosionBrushIndices() const {
 	return this->ErosionBrushIndices;
 }
 
-__device__ float* STPRainDropSetting::getErosionBrushWeights() const {
+__device__ const float* STPRainDropSetting::getErosionBrushWeights() const {
 	return this->ErosionBrushWeights;
 }

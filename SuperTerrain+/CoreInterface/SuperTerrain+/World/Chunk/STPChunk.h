@@ -169,17 +169,18 @@ namespace SuperTerrainPlus {
 
 		~STPChunk();
 
-		//A chunk position cache that stores a list of chunk world position
-		typedef std::vector<glm::vec2> STPChunkPositionCache;
+		//Stores an array of chunk world coordinates
+		typedef std::vector<glm::ivec2> STPChunkCoordinateCache;
 
 		/**
-		 * @brief Get the chunk position in world where the camera is located
-		 * @param cameraPos The current camera position
-		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x,z) direction
-		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
-		 * @return Chunk position in world coordinate (x,z)
+		 * @brief Get the chunk coordinate in world space where the viewer is located.
+		 * The chunk coordinate is different from chunk world position where it is represented by the chunk size.
+		 * @param viewPos The current view position.
+		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x, z) directions.
+		 * @param scaling The scaling applying on the (x, z) directions in world position.
+		 * @return The chunk coordinate in the unit of chunk size in world space.
 		*/
-		static glm::vec2 getChunkPosition(glm::vec3, glm::uvec2, float = 1.0f);
+		static glm::ivec2 calcWorldChunkCoordinate(const glm::dvec3&, const glm::uvec2&, double);
 
 		/**
 		 * @brief Convert local chunk index to local chunk coordinate
@@ -188,38 +189,36 @@ namespace SuperTerrainPlus {
 		 * @return The local chunk coordinate, starting from top-left corner as (0,0).
 		 * If chunkID is greater than (chunkRange.x * chunkRange.y - 1u), returned result is undefined.
 		*/
-		static glm::uvec2 getLocalChunkCoordinate(unsigned int, glm::uvec2);
+		static glm::uvec2 calcLocalChunkCoordinate(unsigned int, const glm::uvec2&);
 
 		/**
 		 * @brief Calculate the terrain map offset for a particular chunk, such that each successive map can seamlessly connect to the neighbour chunks.
-		 * @param chunkPos The current chunk position (x,z) in world coordinate.
-		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x,z) direction
-		 * @param mapSize The dimension of terrain map in one chunk.
-		 * @param mapOffset The global offset of the terrain map.
-		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
-		 * @return The terrain map offset of a particular chunk.
+		 * @param chunkCoord The chunk world coordinate.
+		 * The chunk coordinate must be a multiple of chunk size.
+		 * @param chunkSize The size of the chunk.
+		 * @param mapSize The dimension of the terrain map in one chunk.
+		 * @param mapOffset The global offset applied to the map.
+		 * @return The map offset for the current chunk.
 		*/
-		static glm::vec2 calcChunkMapOffset(glm::vec2, glm::uvec2, glm::uvec2, glm::vec2, float = 1.0f);
+		static glm::dvec2 calcChunkMapOffset(const glm::ivec2&, const glm::uvec2&, const glm::uvec2&, const glm::dvec2&);
 
 		/**
-		 * @brief Move the chunk by chunk position
-		 * @param chunkPos The current chunk position (x,z) in world coordinate
-		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x,z) direction
+		 * @brief Move the chunk by chunk unit.
+		 * @param chunkCoord The current chunk coordinate (x,z) in world space.
+		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x,z) direction.
 		 * @param offset The chunk position offset.
-		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
-		 * @return The offset chunk position in world coordinate
+		 * @return The offset chunk position in world coordinate.
 		*/
-		static glm::vec2 offsetChunk(glm::vec2, glm::uvec2, glm::ivec2, float = 1.0f);
+		static glm::ivec2 offsetChunk(const glm::ivec2&, const glm::uvec2&, const glm::ivec2&);
 
 		/**
-		 * @brief Get an area of chunk coordinates, centred at a give chunk position
-		 * @param centerPos The centre chunk position in world coordinate
-		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x,z) direction
-		 * @param regionSize The number of chunk in x and y direction in chunk coordinate
-		 * @param scaling The scaling applying on (x,z) direction, default is 1.0 (no scaling)
-		 * @return Chunk positions in world coordinate (x,z), aligning from top-left to bottom right
+		 * @brief Get an area of chunk coordinates, centred at a give chunk position.
+		 * @param centreCoord The centre chunk world coordinate.
+		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x,z) direction.
+		 * @param regionSize The number of chunk in x and y direction in chunk coordinate.
+		 * @return Chunk positions in world coordinate (x,z), aligning from top-left to bottom right.
 		*/
-		static STPChunkPositionCache getRegion(glm::vec2, glm::uvec2, glm::uvec2, float = 1.0f);
+		static STPChunkCoordinateCache calcChunkNeighbour(const glm::ivec2&, const glm::uvec2&, const glm::uvec2&);
 
 		/**
 		 * @brief Atomically determine if current chunk is used by other threads

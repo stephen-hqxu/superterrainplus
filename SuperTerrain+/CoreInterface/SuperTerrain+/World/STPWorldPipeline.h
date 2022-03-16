@@ -65,12 +65,12 @@ namespace SuperTerrainPlus {
 	private:
 
 		/**
-		 * @brief The hash function for the glm::vec2
+		 * @brief The hash function for the glm::ivec2
 		*/
-		struct STPHashvec2 {
+		struct STPHashivec2 {
 		public:
 
-			size_t operator()(const glm::vec2&) const;
+			size_t operator()(const glm::ivec2&) const;
 
 		};
 
@@ -79,10 +79,10 @@ namespace SuperTerrainPlus {
 		static constexpr size_t BufferCount = 3ull;
 
 		//Vector that stored rendered chunk world position and loading status (True is loaded, false otherwise)
-		typedef std::vector<std::pair<glm::vec2, bool>> STPLocalChunkStatus;
+		typedef std::vector<std::pair<glm::ivec2, bool>> STPLocalChunkStatus;
 		//Use chunk world coordinate to lookup chunk ID
-		typedef std::unordered_map<glm::vec2, unsigned int, STPHashvec2> STPLocalChunkDictionary;
-		typedef std::unordered_map<glm::vec2, std::pair<unsigned int, bool>, STPHashvec2> STPLocalChunkCache;
+		typedef std::unordered_map<glm::ivec2, unsigned int, STPHashivec2> STPLocalChunkDictionary;
+		typedef std::unordered_map<glm::ivec2, std::pair<unsigned int, bool>, STPHashivec2> STPLocalChunkCache;
 
 		/**
 		 * @brief STPRenderingBufferMemory contains data to mapped GL texture data.
@@ -142,7 +142,7 @@ namespace SuperTerrainPlus {
 
 		//for automatic chunk loading
 		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the currentCentralPos is different from this value
-		glm::vec2 lastCenterLocation = glm::vec2(std::numeric_limits<float>::min());//the last world position of the central chunk of the entire visible chunks
+		glm::ivec2 lastCenterLocation = glm::ivec2(std::numeric_limits<int>::min());//the last world position of the central chunk of the entire visible chunks
 		//determine which chunks to render and whether it's loaded, index of element denotes chunk local ID
 		STPLocalChunkStatus renderingLocal;
 		STPLocalChunkDictionary renderingLocalLookup;
@@ -176,11 +176,11 @@ namespace SuperTerrainPlus {
 		 * @brief Transfer rendering buffer on host side to device (OpenGL) rendering buffer by local chunk.
 		 * @param buffer Rendering buffer on device side, a mapped OpenGL pointer.
 		 * Rendering buffer is continuous, function will determine pointer offset and only chunk specified in the "image" argument will be updated.
-		 * @param chunkPos World position of the chunk that will be used to update render buffer
+		 * @param chunkCoord World coordinate of the chunk that will be used to update render buffer
 		 * @param chunkID Local chunk ID that specified which chunk in rendering buffer will be overwritten.
 		 * @return True if request has been submitted, false if given chunk is not available.
 		*/
-		bool mapSubData(const STPRenderingBufferMemory&, glm::vec2, unsigned int);
+		bool mapSubData(const STPRenderingBufferMemory&, glm::ivec2, unsigned int);
 
 		/**
 		 * @brief Get the chunk offset on a rendering buffer given a local chunk index.
@@ -215,21 +215,21 @@ namespace SuperTerrainPlus {
 		 * for the current chunk.
 		 * If previous worker has yet finished, function will be blocked until the previous returned, then it will be proceed.
 		 * Loading must be sync with wait() or it will incur undefined behaviour.
-		 * @param cameraPos The world position of the camera
+		 * @param viewPos The world position of the viewer
 		 * @return The status of change of the central chunk.
 		 * True if the central chunk has been changed, false otherwise.
 		*/
-		bool load(const glm::vec3&);
+		bool load(const glm::dvec3&);
 
 		/**
 		 * @brief Change the rendering chunk status to force reload that will trigger a chunk texture reload onto rendering buffer.
 		 * Only when chunk position is being rendered, if chunk position is not in the rendering range, command is ignored.
 		 * It will insert current chunk into reloading queue and chunk will not be reloaded until the next rendering loop.
 		 * When the rendering chunks are changed, all un-processed queries are discarded as all new rendering chunks are reloaded regardless.
-		 * @param chunkPos The world position of the chunk required for reloading
+		 * @param chunkCoord The world coordinate of the chunk required for reloading
 		 * @return True if query has been submitted successfully, false if chunk is not in the rendering range or the same query has been submitted before.
 		*/
-		bool reload(const glm::vec2&);
+		bool reload(const glm::ivec2&);
 
 		/**
 		 * @brief Sync the map loading operations to make sure the work has finished before this function returns.
@@ -241,7 +241,7 @@ namespace SuperTerrainPlus {
 		 * @brief Get the current world position of the central chunk.
 		 * @return The pointer to the current central chunk.
 		*/
-		const glm::vec2& centre() const;
+		const glm::ivec2& centre() const;
 
 		/**
 		 * @brief Get the current OpenGL rendering buffer.

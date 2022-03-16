@@ -26,10 +26,10 @@ namespace SuperTerrainPlus::STPEnvironment {
 		std::unique_ptr<STPErosionBrushGenerator> ErosionBrushGenerator;
 
 		//Determine the radius of the droplet that can brush out sediment
-		//Specify the radius of the brush. Determines the radius in which sediment is taken from therock layer.
-		//The smaller radius is, the deeperand more distinct the ravines will be.
+		//Specify the radius of the brush. Determines the radius in which sediment is taken from the rock layer.
+		//The smaller radius is, the deeper and more distinct the ravines will be.
 		unsigned int ErosionBrushRadius;
-		//Precompted the number of brush
+		//Precomputed the number of brush
 		unsigned int BrushSize;
 		//Precomputed erosion brush indices, must be made available so it can be used on device.
 		int* ErosionBrushIndices;
@@ -40,7 +40,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 
 		//The number of raindrop presented to perform hydraulic erosion
 		unsigned int RainDropCount;
-		//At zero, water will instanly change direction to flow downhill. At one, water will never change direction. Ranged [0,1]
+		//At zero, water will instantly change direction to flow downhill. At one, water will never change direction. Ranged [0,1]
 		float Inertia;
 		//Multiplier for how much sediment a droplet can carry.
 		float SedimentCapacityFactor;
@@ -48,7 +48,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		float minSedimentCapacity;
 		//The starting volume of the water droplet
 		float initWaterVolume;
-		//Used to check when to end the droplet's life time. If the current volme falls below 
+		//Used to check when to end the droplet's life time. If the current volume falls below 
 		float minWaterVolume;
 		//The greater the friction, the quicker the droplet will slow down. Ranged [0,1]
 		float Friction;
@@ -58,7 +58,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		float ErodeSpeed;
 		//Limit the speed of sediment drop if exceeds the minSedimentCapacity. Ranged [0,1]
 		float DepositSpeed;
-		//Control how fast the water will evaportate in the droplet. Ranged [0,1]
+		//Control how fast the water will evaporate in the droplet. Ranged [0,1]
 		float EvaporateSpeed;
 		//Control how fast water droplet descends.
 		float Gravity;
@@ -86,7 +86,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		 * @param slipRange The area in both direction where raindrop can slip freely. Usually this is the same as the size of the heightmap, or
 		 * under free-slip hydraulic erosion, this is the free-slip range.
 		 * No reference is retained after the function returns.
-		 * @param erodeRadius Specify the radius of the brush. Determines the radius in which sediment is taken from therock layer.
+		 * @param erodeRadius Specify the radius of the brush. Determines the radius in which sediment is taken from the  rock layer.
 		 * The smaller radius is, the deeper and more distinct the ravines will be.
 		 * Raising the erosion radius also increases the computational time needed for each drop drastically.
 		*/
@@ -108,13 +108,13 @@ namespace SuperTerrainPlus::STPEnvironment {
 		 * @brief Get the device pointer to the erosion brush indices
 		 * @return The pointer to the erosion brush indices on device
 		*/
-		__device__ int* getErosionBrushIndices() const;
+		__device__ const int* getErosionBrushIndices() const;
 
 		/**
 		 * @brief Get the device pointer to the erosion brush weights
 		 * @return The pointer to the erosion brush weights on device
 		*/
-		__device__ float* getErosionBrushWeights() const;
+		__device__ const float* getErosionBrushWeights() const;
 
 	};
 

@@ -12,8 +12,10 @@ using std::string;
 using std::pair;
 
 using glm::uvec2;
+using glm::dvec2;
 using glm::vec2;
 using glm::vec3;
+using glm::dvec3;
 
 STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const SIMPLE::SISection& section) {
 	STPEnvironment::STPMeshSetting rendering_options;
@@ -55,20 +57,20 @@ STPEnvironment::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const SIMP
 		section.at("renderedSizeX").to<unsigned int>(),
 		section.at("renderedSizeZ").to<unsigned int>()
 	);
-	chunks_options.ChunkOffset = vec3(
-		section.at("chunkOffsetX").to<float>(),
-		section.at("chunkOffsetY").to<float>(),
-		section.at("chunkOffsetZ").to<float>()
+	chunks_options.ChunkOffset = dvec3(
+		section.at("chunkOffsetX").to<double>(),
+		section.at("chunkOffsetY").to<double>(),
+		section.at("chunkOffsetZ").to<double>()
 	);
-	chunks_options.MapOffset = vec2(
-		section.at("mapOffsetX").to<float>(),
-		section.at("mapOffsetZ").to<float>()
+	chunks_options.MapOffset = dvec2(
+		section.at("mapOffsetX").to<double>(),
+		section.at("mapOffsetZ").to<double>()
 	);
 	chunks_options.FreeSlipChunk = uvec2(
 		section.at("freeSlipX").to<unsigned int>(),
 		section.at("freeSlipZ").to<unsigned int>()
 	);
-	chunks_options.ChunkScaling = section.at("chunkScale").to<float>();
+	chunks_options.ChunkScaling = section.at("chunkScale").to<double>();
 
 	return chunks_options;
 }

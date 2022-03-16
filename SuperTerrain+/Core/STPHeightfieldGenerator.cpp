@@ -33,10 +33,9 @@ using glm::uvec2;
 using glm::vec2;
 using glm::vec3;
 
-
 STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting& chunk_settings, const STPEnvironment::STPHeightfieldSetting& heightfield_settings,
 	const STPDiversityGenerator& diversity_generator, unsigned int hint_level_of_concurrency)
-	: generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings), 
+	: generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings),
 	FreeSlipTable(chunk_settings.FreeSlipChunk, chunk_settings.MapSize) {
 	if (!chunk_settings.validate()) {
 		throw STPException::STPInvalidEnvironment("Values from STPChunkSetting are not validated");
@@ -53,7 +52,7 @@ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkS
 	//heightfield settings
 	this->Heightfield_Setting_d = STPSmartDeviceMemory::makeDevice<STPEnvironment::STPHeightfieldSetting>();
 	STPcudaCheckErr(cudaMemcpy(this->Heightfield_Setting_d.get(), &this->Heightfield_Setting_h, sizeof(STPEnvironment::STPHeightfieldSetting), cudaMemcpyHostToDevice));
-	
+
 	//create memory pool
 	cudaMemPoolProps pool_props = { };
 	pool_props.allocType = cudaMemAllocationTypePinned;
@@ -65,9 +64,6 @@ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkS
 	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short)) * num_freeslip_pixel * hint_level_of_concurrency;
 	STPcudaCheckErr(cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres));
 	this->TextureBufferAttr.DeviceMemPool = this->MapCacheDevice;
-
-	//Initialise random number generator maps
-	this->RNG_Map = STPHeightfieldKernel::curandInit(this->Heightfield_Setting_h.Seed, this->Heightfield_Setting_h.RainDropCount);
 }
 
 STPHeightfieldGenerator::~STPHeightfieldGenerator() {
@@ -76,15 +72,10 @@ STPHeightfieldGenerator::~STPHeightfieldGenerator() {
 }
 
 void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperation operation) const {
-	//check the availiability of the engine
-	if (this->RNG_Map == nullptr) {
-		return;
-	}
 	if (operation == 0u) {
 		//no operation is specified, nothing can be done
 		return;
 	}
-
 	//Retrieve all flags
 	static constexpr auto isFlagged = [](STPGeneratorOperation op, STPGeneratorOperation flag) constexpr -> bool {
 		return (op & flag) != 0u;
@@ -96,10 +87,11 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 	};
 	STPcudaCheckErr(cudaSetDevice(0));
 
-	//creating stream so cpu thread can calculate all chunks altogether
+	//creating stream so CPU thread can calculate all chunks altogether
 	//if exception is thrown during exception, stream will be the last object to be deleted, automatically
 	optional<STPSmartStream> stream_buffer;
 	cudaStream_t stream;
+	optional<STPSmartDeviceMemory::STPDeviceMemory<curandRNG[]>> rng_buffer;
 	//limit the scope for std::optional to control the destructor call
 	{
 		//heightmap
@@ -113,13 +105,12 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 		//setup phase
 		//we want the stream to not be blocked by default stream
 		{
-			unique_lock<mutex> stream_lock(this->StreamPool_lock);
+			unique_lock<mutex> stream_lock(this->StreamPoolLock);
 			if (this->StreamPool.empty()) {
 				//create a new stream
 				stream_buffer.emplace(cudaStreamNonBlocking);
-			}
-			else {
-				//grab an exisiting stream
+			} else {
+				//grab an existing stream
 				stream_buffer.emplace(move(this->StreamPool.front()));
 				this->StreamPool.pop();
 			}
@@ -138,8 +129,7 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 			biomemap_adaptor.emplace(this->FreeSlipTable(*biomemap_buffer));
 
 			this->generateHeightmap(*heightmap_buffer, *biomemap_adaptor, args.HeightmapOffset, stream);
-		}
-		else {
+		} else {
 			//no generation, use existing
 			STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData heightmap_data{ 1u, STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadWrite, stream };
 			heightmap_buffer.emplace(args.Heightmap32F, heightmap_data, this->TextureBufferAttr);
@@ -147,12 +137,22 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 
 		//Flag: Erosion
 		if (flag[1]) {
+			{
+				//request a RNG from the RNG pool
+				unique_lock<mutex> rng_lock(this->RNGPoolLock);
+				if (this->RNGPool.empty()) {
+					rng_buffer.emplace(STPHeightfieldKernel::curandInit(this->Heightfield_Setting_h.Seed, this->Heightfield_Setting_h.RainDropCount, stream));
+				} else {
+					rng_buffer.emplace(move(this->RNGPool.front()));
+					this->RNGPool.pop();
+				}
+			}
 			//prepare free-slip utility for heightmap
 			heightmap_adaptor.emplace(this->FreeSlipTable(*heightmap_buffer));
 			STPFreeSlipFloatManager heightmap_slip = (*heightmap_adaptor)(STPFreeSlipLocation::DeviceMemory);
 
 			STPHeightfieldKernel::hydraulicErosion(heightmap_slip, this->Heightfield_Setting_d.get(),
-				this->Heightfield_Setting_h.getErosionBrushSize(), this->Heightfield_Setting_h.RainDropCount, this->RNG_Map.get(), stream);
+				this->Heightfield_Setting_h.getErosionBrushSize(), this->Heightfield_Setting_h.RainDropCount, rng_buffer->get(), stream);
 		}
 
 		//Flag: RenderingBufferGeneration
@@ -172,10 +172,15 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 		//this operation is stream ordered
 	}
 
-	//waiting for finish before release the stream back to the pool
+	//waiting for finish before release the data back to the pool
 	STPcudaCheckErr(cudaStreamSynchronize(stream));
+	if (rng_buffer.has_value()) {
+		//if we have previously grabbed a RNG from the pool, return it
+		unique_lock<mutex> rng_lock(this->RNGPoolLock);
+		this->RNGPool.emplace(move(*rng_buffer));
+	}
 	{
-		unique_lock<mutex> stream_lock(this->StreamPool_lock);
+		unique_lock<mutex> stream_lock(this->StreamPoolLock);
 		this->StreamPool.emplace(move(*stream_buffer));
 	}
 }

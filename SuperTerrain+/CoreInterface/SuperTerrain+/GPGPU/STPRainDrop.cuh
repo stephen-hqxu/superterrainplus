@@ -60,7 +60,7 @@ namespace SuperTerrainPlus::STPCompute {
 
 		/**
 		 * @brief It starts raining! Let's produce a rain drop!
-		 * @param position - The position of the rain drop. It's recommend to randomly generate a position to simulate natrual randomness
+		 * @param position - The position of the rain drop. It's recommend to randomly generate a position to simulate natural randomness
 		 * @param WaterVolume - The initial water volume
 		 * @param MovementSpeed - The initial speed of the droplet
 		*/
@@ -75,7 +75,8 @@ namespace SuperTerrainPlus::STPCompute {
 		__device__ float getCurrentVolume() const;
 
 		/**
-		 * @brief Performing hydraulic erosion algorithm to descend the raindrop downhill once, water drop will bring sediment but lose water each time this method is called
+		 * @brief Performing hydraulic erosion algorithm to descend the raindrop downhill once, 
+		 * water drop will bring sediment but lose water each time this method is called
 		 * @param map - The floating point heightmap with free slip configurations
 		 * @param settings - The raindrop settings for erosion
 		*/

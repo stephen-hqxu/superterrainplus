@@ -35,9 +35,10 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @brief Init the curand generator for each thread
 		 * @param seed The seed for each generator
 		 * @param count The number of rng to be initialised.
+		 * @param stream The CUDA stream.
 		 * @return A random number generator array on device memory with managed smart pointer. Array is allocated with the number of count specified.
 		*/
-		__host__ STPcurand_arr curandInit(unsigned long long, unsigned int);
+		__host__ STPcurand_arr curandInit(unsigned long long, unsigned int, cudaStream_t);
 
 		typedef STPSmartDeviceMemory::STPDeviceMemory<unsigned int[]> STPIndexTable;
 		/**
@@ -64,10 +65,10 @@ namespace SuperTerrainPlus::STPCompute {
 			unsigned int, unsigned int, STPcurand_t*, cudaStream_t);
 
 		/**
-		 * @brief Texture channel format convertion. FP32 to INT16.
+		 * @brief Texture channel format conversion. FP32 to INT16.
 		 * Perform the following operation: output = normalise(index) * INT16_MAX
 		 * @param input The input FP32 texture. Must be in the range of [0.0f, 1.0f].
-		 * @param output The ouput INT16 texture.
+		 * @param output The output INT16 texture.
 		 * @param dimension The dimension (number of pixel) of the texture.
 		 * @param channel The number of channel per pixel
 		 * @param stream Specify a CUDA stream work will be submitted to

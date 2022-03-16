@@ -33,8 +33,8 @@ using std::make_unique;
 using glm::ivec2;
 using glm::uvec2;
 using glm::vec2;
+using glm::dvec2;
 using glm::uvec3;
-using glm::vec3;
 using glm::dvec3;
 using glm::mat4;
 using glm::dmat4;
@@ -62,7 +62,7 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 	const STPDiversity::STPTextureInformation::STPSplatTextureDatabase splat_texture = splatmap_generator.getSplatTexture();
 
 	/* ---------------------------------------- setup terrain tile buffer ---------------------------------------- */
-	const vec2 chunkHorizontalOffset = vec2(chunk_setting.ChunkOffset.x, chunk_setting.ChunkOffset.z);
+	const dvec2 chunkHorizontalOffset = dvec2(chunk_setting.ChunkOffset.x, chunk_setting.ChunkOffset.z);
 	const uvec2 tileDimension = chunk_setting.ChunkSize * chunk_setting.RenderedChunk;
 
 	//generate terrain mesh
@@ -147,7 +147,7 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 		.uniform(glProgramUniform1i, "Noisemap", 3)
 		//extra terrain info for rendering
 		.uniform(glProgramUniform2uiv, "VisibleChunk", 1, value_ptr(chunk_setting.RenderedChunk))
-		.uniform(glProgramUniform2fv, "ChunkHorizontalOffset", 1, value_ptr(chunkHorizontalOffset));
+		.uniform(glProgramUniform2fv, "ChunkHorizontalOffset", 1, value_ptr(static_cast<vec2>(chunkHorizontalOffset)));
 
 	/* --------------------------------- setup texture splatting ------------------------------------ */
 	//get splatmap dataset
@@ -199,11 +199,13 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 	this->NoiseSample.filter(GL_NEAREST, GL_LINEAR);
 }
 
-vec2 STPHeightfieldTerrain<false>::calcBaseChunkPosition(const vec2& horizontal_offset) {
+dvec2 STPHeightfieldTerrain<false>::calcBaseChunkPosition(dvec2 horizontal_offset) {
 	const STPEnvironment::STPChunkSetting& chunk_settings = this->TerrainGenerator.ChunkSetting;
 	//calculate offset
-	const ivec2 chunk_offset(-glm::floor(vec2(chunk_settings.RenderedChunk) / 2.0f));
-	return STPChunk::offsetChunk(horizontal_offset, chunk_settings.ChunkSize, chunk_offset);
+	const ivec2 chunk_offset = -static_cast<ivec2>(chunk_settings.RenderedChunk / 2u),
+		base_chunk_coord = STPChunk::offsetChunk(ivec2(0), chunk_settings.ChunkSize, chunk_offset);
+
+	return static_cast<dvec2>(base_chunk_coord) + horizontal_offset;
 }
 
 void STPHeightfieldTerrain<false>::setMesh(const STPEnvironment::STPMeshSetting& mesh_setting) {
@@ -255,7 +257,7 @@ void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 
 void STPHeightfieldTerrain<false>::setViewPosition(const dvec3& viewPos) {
 	//prepare heightfield
-	if (!this->TerrainGenerator.load(static_cast<vec3>(viewPos))) {
+	if (!this->TerrainGenerator.load(viewPos)) {
 		//centre chunk has yet changed, nothing to do.
 		return;
 	}
@@ -264,16 +266,16 @@ void STPHeightfieldTerrain<false>::setViewPosition(const dvec3& viewPos) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	dmat4 Model = glm::identity<dmat4>();
 	//move the terrain centre to the camera
-	const vec2& chunkCentre = this->TerrainGenerator.centre();
-	Model = glm::translate(Model, dvec3(
-		chunkCentre.x,
-		chunk_setting.ChunkOffset.y,
-		chunkCentre.y
-	));
+	const ivec2& chunkCentre = this->TerrainGenerator.centre();
 	Model = glm::scale(Model, dvec3(
 		chunk_setting.ChunkScaling,
 		1.0f,
 		chunk_setting.ChunkScaling
+	));
+	Model = glm::translate(Model, dvec3(
+		chunkCentre.x + chunk_setting.ChunkOffset.x,
+		chunk_setting.ChunkOffset.y,
+		chunkCentre.y + chunk_setting.ChunkOffset.z
 	));
 	this->TerrainModeller.uniform(glProgramUniformMatrix4fv, "MeshModel", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(static_cast<mat4>(Model)));
 }

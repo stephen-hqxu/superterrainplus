@@ -21,16 +21,17 @@ __global__ static void hydraulicErosionKERNEL(STPFreeSlipFloatManager, const STP
 
 __global__ static void texture32Fto16KERNEL(float*, unsigned short*, uvec2);
 
-__host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(unsigned long long seed, unsigned int count) {
+__host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(unsigned long long seed, unsigned int count, cudaStream_t stream) {
 	//determine launch parameters
 	int Mingridsize, gridsize, blocksize;
 	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &curandInitKERNEL));
 	gridsize = (count + blocksize - 1) / blocksize;
 
 	//allocating spaces for rng storage array
+	//because RNG storage is persistent, i.e., we will be keep reusing it once allocated, no need to allocate from a memory pool.
 	STPcurand_arr rng = STPSmartDeviceMemory::makeDevice<STPcurand_t[]>(count);
 	//and send to kernel to init rng sequences
-	curandInitKERNEL << <gridsize, blocksize >> > (rng.get(), seed, count);
+	curandInitKERNEL << <gridsize, blocksize, 0, stream >> > (rng.get(), seed, count);
 	STPcudaCheckErr(cudaGetLastError());
 
 	return rng;

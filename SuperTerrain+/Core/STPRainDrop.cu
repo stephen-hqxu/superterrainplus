@@ -59,18 +59,21 @@ __device__ float STPRainDrop::getCurrentVolume() const {
 }
 
 __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* settings, STPFreeSlipFloatManager& map) {
+	const unsigned int brushSize = settings->getErosionBrushSize(),
+		brushRadius = settings->getErosionBrushRadius();
+
 	//Cache erosion brush to shared memory
 	//Erosion brush indices then weights
 	extern __shared__ unsigned char ErosionBrush[];
 	int* brushIndices = reinterpret_cast<int*>(ErosionBrush);
-	float* brushWeights = reinterpret_cast<float*>(ErosionBrush + sizeof(int) * settings->getErosionBrushSize());
+	float* brushWeights = reinterpret_cast<float*>(ErosionBrush + sizeof(int) * brushSize);
 	unsigned int iteration = 0u;
 
 	const int* erosionBrushIdx = settings->getErosionBrushIndices();
 	const float* erosionBrushWeight = settings->getErosionBrushWeights();
-	while (iteration < settings->getErosionBrushSize()) {
+	while (iteration < brushSize) {
 		unsigned int idx = threadIdx.x + iteration;
-		if (idx < settings->getErosionBrushSize()) {
+		if (idx < brushSize) {
 			//check and make sure index is not out of bound
 			//otherwise we can utilise most threads and copy everything in parallel
 			brushIndices[idx] = erosionBrushIdx[idx];
@@ -97,14 +100,16 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 		this->raindrop_dir = glm::mix(-vec2(height_gradients.y, height_gradients.z), this->raindrop_dir, settings->Inertia);
 		//normalise the direction and update the position and direction, (move position 1 unit regardless of speed)
 		//clamp the length to handle division by zero instead of using the glm::normalize directly
-		const float length = fmaxf(0.01f, glm::length(this->raindrop_dir));
-		this->raindrop_dir /= length;
+		const float length = glm::length(this->raindrop_dir);
+		if (length != 0.0f) {
+			this->raindrop_dir /= length;
+		}
 		this->raindrop_pos += this->raindrop_dir;
 
 		//check if the raindrop brushing range falls out of the map
 		if ((this->raindrop_dir.x == 0.0f && this->raindrop_dir.y == 0.0f) 
-			|| this->raindrop_pos.x < (settings->getErosionBrushRadius() * 1.0f) || this->raindrop_pos.x >= 1.0f * map.Data->FreeSlipRange.x - settings->getErosionBrushRadius()
-			|| this->raindrop_pos.y < (settings->getErosionBrushRadius() * 1.0f) || this->raindrop_pos.y >= 1.0f * map.Data->FreeSlipRange.y - settings->getErosionBrushRadius()) {
+			|| this->raindrop_pos.x < (brushRadius * 1.0f) || this->raindrop_pos.x >= 1.0f * map.Data->FreeSlipRange.x - brushRadius
+			|| this->raindrop_pos.y < (brushRadius * 1.0f) || this->raindrop_pos.y >= 1.0f * map.Data->FreeSlipRange.y - brushRadius) {
 			//ending the life of this poor raindrop
 			this->volume = 0.0f;
 			this->sediment = 0.0f;
@@ -119,7 +124,7 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 		
 		//if carrying more sediment than capacity, or it's flowing uphill
 		if (this->sediment > sedimentCapacity || deltaHeight > 0.0f) {
-			//If flowing uphill (deltaheight > 0) try to fill up the current height, otherwise deposit a fraction of the excess sediment
+			//If flowing uphill (delta height > 0) try to fill up the current height, otherwise deposit a fraction of the excess sediment
 			const float depositAmount = (deltaHeight > 0.0f) ? fminf(deltaHeight, this->sediment) : (this->sediment - sedimentCapacity) * settings->DepositSpeed ;
 			this->sediment -= depositAmount;
 
@@ -136,7 +141,7 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 			const float erodeAmout = fminf((sedimentCapacity - this->sediment) * settings->ErodeSpeed, -deltaHeight);
 
 			//use erode brush to erode from all nodes inside the droplet's erode radius
-			for (unsigned int brushPointIndex = 0u; brushPointIndex < settings->getErosionBrushSize(); brushPointIndex++) {
+			for (unsigned int brushPointIndex = 0u; brushPointIndex < brushSize; brushPointIndex++) {
 				const unsigned int erodeIndex = mapIndex + brushIndices[brushPointIndex];
 				const float weightederodeAmout = erodeAmout * brushWeights[brushPointIndex];
 				const float deltaSediment = (map[erodeIndex] < weightederodeAmout) ? map[erodeIndex] : weightederodeAmout;

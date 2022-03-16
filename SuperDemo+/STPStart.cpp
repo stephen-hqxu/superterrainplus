@@ -569,7 +569,7 @@ int main() {
 		cam.Pitch = 0.0;
 		cam.MovementSpeed = engineMain.at("movementSpeed").to<double>();
 		cam.RotationSensitivity = engineMain.at("mouseSensitivity").to<double>();
-		cam.Position = dvec3(0.0, 600.0, 0.0);
+		cam.Position = dvec3(30.5, 600.0, -15.5);
 		cam.WorldUp = dvec3(0.0, 1.0, 0.0);
 		cam.Near = 1.0;
 		cam.Far = 2500.0;

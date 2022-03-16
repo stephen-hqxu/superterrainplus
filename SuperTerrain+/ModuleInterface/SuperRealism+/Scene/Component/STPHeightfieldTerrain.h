@@ -97,7 +97,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param horizontal_offset The chunk offset in xz direction in world coordinate.
 		 * @return The base chunk position.
 		*/
-		glm::vec2 calcBaseChunkPosition(const glm::vec2&);
+		glm::dvec2 calcBaseChunkPosition(glm::dvec2);
 
 	public:
 

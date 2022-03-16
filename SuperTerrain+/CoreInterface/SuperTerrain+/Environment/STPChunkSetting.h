@@ -25,11 +25,11 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//It's highly recommend to use the squared rendering distance, and odd number which makes centering the chunk easier.
 		glm::uvec2 RenderedChunk;
 		//Determine the offset of all the chunks in (x,y,z) direction, usually there is no need to change the value other than (0,0,0)
-		glm::vec3 ChunkOffset;
+		glm::dvec3 ChunkOffset;
 		//Determine the scale of the unit plane, in (x,z) direction
-		float ChunkScaling;
+		double ChunkScaling;
 		//Specify the (x,z) offset of the terrain heightmap, x and y specify the offset on x and y direction of the map
-		glm::vec2 MapOffset;
+		glm::dvec2 MapOffset;
 		//Specify the number of chunk that will be used as free slip chunk and allows data access outside the central chunk
 		//When both values are 1, it will effectively disable the neighbour chunk logic
 		glm::uvec2 FreeSlipChunk;
