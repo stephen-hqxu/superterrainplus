@@ -27,7 +27,6 @@ using glm::vec4;
 
 using std::unique_ptr;
 using std::make_unique;
-using std::reduce;
 using std::transform;
 
 using SuperTerrainPlus::STPFile;
@@ -72,7 +71,7 @@ STPGaussianFilter::STPGaussianFilter(double variance, double sample_distance, un
 	//normalisation
 	float* const kernel_start = GaussianKernel.get(), *const kernel_end = kernel_start + kernel_length;
 	transform(kernel_start, kernel_end, kernel_start, 
-		[kernel_sum = reduce(kernel_start, kernel_end, 0.0f, std::plus<float>())](auto val) { return val / kernel_sum; });
+		[kernel_sum = std::accumulate(kernel_start, kernel_end, 0.0f, std::plus<float>())](auto val) { return val / kernel_sum; });
 
 	/* ------------------------------------------- uniform ------------------------------------------ */
 	this->OffScreenRenderer.uniform(glProgramUniform1i, "ImgInput", 0)

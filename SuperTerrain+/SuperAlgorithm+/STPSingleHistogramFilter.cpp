@@ -6,7 +6,7 @@
 //CUDA
 #include <cuda_runtime.h>
 
-//Util
+//Utility
 #include <limits>
 #include <numeric>
 #include <iterator>
@@ -370,7 +370,7 @@ public:
 
 };
 
-//We don't need explicit instantiation for STPHistogramBuffer since it's a private struct and the main class implements have forced the compiler to instantiate
+//We don't need explicit instantiation for STPHistogramBuffer since it's a private structure and the main class implements have forced the compiler to instantiate
 //We don't need to export instantiations either since the external environment won't call any function in this class (opaque type)
 
 class STPSingleHistogramFilter::STPAccumulator {
@@ -531,7 +531,7 @@ void STPSingleHistogramFilter::copy_to_buffer(STPDefaultHistogramBuffer& target,
 	//copy bin
 	if (normalise) {
 		//sum everything in the accumulator
-		const float sum = static_cast<float>(std::reduce(acc_beg, acc_end, 0u, [](auto init, const STPSingleHistogram::STPBin& bin) { return init + bin.Data.Quantity; }));
+		const float sum = static_cast<float>(std::accumulate(acc_beg, acc_end, 0u, [](auto init, const STPSingleHistogram::STPBin& bin) { return init + bin.Data.Quantity; }));
 		std::transform(
 			acc_beg,
 			acc_end,
@@ -674,7 +674,7 @@ void STPSingleHistogramFilter::filter_horizontal(STPPinnedHistogramBuffer* histo
 				}
 			}
 
-			//copy acc to buffer
+			//copy accumulator to buffer
 			STPSingleHistogramFilter::copy_to_buffer(target, acc, true);
 
 			//advance to the next central pixel

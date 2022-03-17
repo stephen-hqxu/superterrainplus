@@ -150,7 +150,7 @@ dmat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const dmat4&
 	});
 
 	//each corner is normalised, so sum them up to get the coordinate of centre
-	const dvec3 centre = std::reduce(corner.cbegin(), corner.cend(), dvec3(0.0), std::plus<dvec3>()) / (1.0 * corner.size());
+	const dvec3 centre = std::accumulate(corner.cbegin(), corner.cend(), dvec3(0.0), std::plus<dvec3>()) / (1.0 * corner.size());
 	const dmat4 lightView = glm::lookAt(centre + static_cast<dvec3>(this->LightDirection), centre, dvec3(0.0, 1.0, 0.0));
 
 	//align the light frustum tightly around the current view frustum
