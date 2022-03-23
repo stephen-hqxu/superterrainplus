@@ -12,7 +12,7 @@
 //Settings
 #include "../Environment/STPRainDropSetting.cuh"
 //Free slipper
-#include "../World/Chunk/FreeSlip/STPFreeSlipManager.cuh"
+#include "../World/Chunk/STPFreeSlipInformation.hpp"
 //GLM
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
@@ -49,30 +49,27 @@ namespace SuperTerrainPlus::STPCompute {
 		//The amount of sediment it carries
 		float sediment = 0.0f;
 
+		const glm::uvec2 Dimension;
+
 		/**
 		 * @brief Calculate the current height of the water drop and the direction of acceleration
 		 * @param map The floating point heightmap with free slip configurations
 		 * @return Height and Gradients, will be defined in vec3 as (height, gradientX, gradientY);
 		*/
-		__device__ glm::vec3 calcHeightGradients(const STPFreeSlipFloatManager&) const;
+		__device__ glm::vec3 calcHeightGradients(const float*) const;
 
 	public:
 
 		/**
 		 * @brief It starts raining! Let's produce a rain drop!
-		 * @param position - The position of the rain drop. It's recommend to randomly generate a position to simulate natural randomness
-		 * @param WaterVolume - The initial water volume
-		 * @param MovementSpeed - The initial speed of the droplet
+		 * @param position - The position of the rain drop. It's recommend to randomly generate a position to simulate natural randomness.
+		 * @param WaterVolume - The initial water volume.
+		 * @param MovementSpeed - The initial speed of the droplet.
+		 * @param dimension The dimension of the heightmap.
 		*/
-		__device__ STPRainDrop(glm::vec2, float, float);
+		__device__ STPRainDrop(glm::vec2, float, float, glm::uvec2);
 
 		__device__ ~STPRainDrop();
-
-		/**
-		 * @brief Get the current water content in the droplet
-		 * @return The current volume in the water droplet
-		*/
-		__device__ float getCurrentVolume() const;
 
 		/**
 		 * @brief Performing hydraulic erosion algorithm to descend the raindrop downhill once, 
@@ -80,7 +77,7 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @param map - The floating point heightmap with free slip configurations
 		 * @param settings - The raindrop settings for erosion
 		*/
-		__device__ void Erode(const STPEnvironment::STPRainDropSetting*, STPFreeSlipFloatManager&);
+		__device__ void operator()(float*, const STPEnvironment::STPRainDropSetting*);
 
 	};
 

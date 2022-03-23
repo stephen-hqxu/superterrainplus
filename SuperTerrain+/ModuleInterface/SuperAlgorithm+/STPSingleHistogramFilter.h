@@ -10,9 +10,10 @@
 //Thread Safety
 #include <mutex>
 
+#include <SuperTerrain+/World/Diversity/STPBiomeDefine.h>
 //Engine Components
 #include <SuperTerrain+/Utility/STPThreadPool.h>
-#include <SuperTerrain+/World/Chunk/FreeSlip/STPFreeSlipManager.cuh>
+#include <SuperTerrain+/World/Chunk/STPFreeSlipInformation.hpp>
 //GLM
 #include <glm/vec2.hpp>
 //Single Histogram Data Structure
@@ -25,7 +26,7 @@ namespace SuperTerrainPlus::STPCompute {
 	 * It generates histogram for every pixel on the biomemap within a given radius.
 	 * The bin or bucket size of the histogram will always be one, which denotes by the biomemap format "Sample".
 	 * An example use case is biome-edge interpolation, and space-partitioning biomes within a given radius to calculate a "factor" for linear interpolation.
-	 * STPSingleHistogramFilter optimises for performant CPU computation, such that all memory provided to the histogram filter should be available on host side.
+	 * STPSingleHistogramFilter optimises for efficient CPU computation, such that all memory provided to the histogram filter should be available on host side.
 	 * The filter also contains an internal adaptive memory pool that serves as a cache during computation, the first few executions will be slower due to the first-time allocation,
 	 * but once reused for repetitive filter calls little to no memory allocation should happen and performance will go to summit.
 	 * so memory can be reused and no re-allocation is required.
@@ -57,7 +58,7 @@ namespace SuperTerrainPlus::STPCompute {
 		/**
 		 * @brief Accumulator acts as a cache for each row or column iteration.
 		 * The accumulator for the next pixel equals to the accumulator from the previous pixel plus the left/down out-of-range radius pixel and
-		 * minux the right/up in-range radius pixel.
+		 * minus the right/up in-range radius pixel.
 		*/
 		class STPAccumulator;
 
@@ -98,7 +99,9 @@ namespace SuperTerrainPlus::STPCompute {
 
 		/**
 		 * @brief Perform vertical pass histogram filter
-		 * @param sample_map The input sample map, usually it's biomemap
+		 * @param sample_map The input sample map, usually it's biomemap.
+		 * @param freeslip_rangeX The number of row pixel in the free-slip range.
+		 * @param dimensionY The number of column pixel of the samplemap in one chunk.
 		 * @param vertical_start_offset The vertical starting offset on the texture.
 		 * The start offset should make the worker starts at the first y coordinate of the central texture.
 		 * @param w_range Denotes the width start and end that will be computed by the current function call.
@@ -107,7 +110,7 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @param workplace The pointer to the allocated working memory.
 		 * @param radius The radius of the filter.
 		*/
-		void filter_vertical(const STPFreeSlipSampleManager&, unsigned int, glm::uvec2, STPWorkplace&, unsigned int);
+		void filter_vertical(const STPDiversity::Sample*, unsigned int, unsigned int, unsigned int, glm::uvec2, STPWorkplace&, unsigned int);
 
 		/**
 		 * @brief Merge buffers from each thread into a large chunk of output data.
@@ -135,11 +138,12 @@ namespace SuperTerrainPlus::STPCompute {
 		/**
 		 * @brief Performa a complete histogram filter
 		 * @param sample_map The input sample map for filter.
+		 * @param freeslip_info The information about the free-slip logic applies to the samplemap.
 		 * @param histogram_output The histogram buffer that will be used as buffer, and also output the final output
 		 * @param central_chunk_index The local free-slip coordinate points to the central chunk.
 		 * @param radius The radius of the filter
 		*/
-		void filter(const STPFreeSlipSampleManager&, STPPinnedHistogramBuffer*, glm::uvec2, unsigned int);
+		void filter(const STPDiversity::Sample*, const STPFreeSlipInformation&, STPPinnedHistogramBuffer*, glm::uvec2, unsigned int);
 
 	public:
 
@@ -178,8 +182,9 @@ namespace SuperTerrainPlus::STPCompute {
 		/**
 		 * @brief Perform histogram filter on the input texture.
 		 * If there is a histogram returned and no destroyHistogram() is called, execution is thrown and no execution is launched.
-		 * @param samplemap_manager The input free-slip manager with sample_map loaded
-		 * The input texture must be aligned in row-major order, and must be a host manager
+		 * @param samplemap The input free-slip manager with sample_map loaded
+		 * The input texture must be aligned in row-major order, and must be a available on host memory space.
+		 * @param freeslip_info The information about the free-slip logic.
 		 * @param histogram_output The histogram buffer where the final output will be stored
 		 * @param radius The filter radius
 		 * @return The raw pointer resultant histogram of the execution.
@@ -187,7 +192,7 @@ namespace SuperTerrainPlus::STPCompute {
 		 * The same output can be retrieved later by calling function readHistogramBuffer()
 		 * @see readHistogramBuffer()
 		*/
-		STPSingleHistogram operator()(const STPFreeSlipSampleManager&, const STPHistogramBuffer_t&, unsigned int);
+		STPSingleHistogram operator()(const STPDiversity::Sample*, const STPFreeSlipInformation&, const STPHistogramBuffer_t&, unsigned int);
 
 		/**
 		 * @brief Retrieve the underlying contents in the histogram buffer and pass them as pointers in STPSingleHistogram

@@ -18,7 +18,7 @@ using glm::uvec2;
 using std::pair;
 using std::make_pair;
 
-class SampleTexture {
+class HistogramTester : protected STPSingleHistogramFilter {
 private:
 
 	constexpr static uvec2 Dimension = uvec2(4u);
@@ -42,43 +42,18 @@ private:
 		2, 0, 1, 1, 2, 3, 1, 2, 3, 2, 0, 1
 	};
 
-	unsigned int IndexTable[PixelCount];
-
-	STPFreeSlipData Data;
-
-public:
-
-	//manager does no construt-time check and it only retains a pointer, we are free to init the data later
-	STPFreeSlipSampleManager Manager = STPFreeSlipSampleManager(const_cast<Sample*>(Texture), &Data);
-
-	SampleTexture() {
-		//init the index table
-		for (unsigned int i = 0u; i < PixelCount; i++) {
-			this->IndexTable[i] = i;
-		}
-
-		//init the data
-		this->Data = {
-			this->IndexTable,
-			SampleTexture::Dimension,
-			SampleTexture::Unit,
-			SampleTexture::Range
-		};
-	}
-
-};
-
-class HistogramTester : protected STPSingleHistogramFilter {
-private:
-
-	SampleTexture Texture;
+	constexpr static STPFreeSlipInformation Data = {
+		Dimension,
+		Unit,
+		Range
+	};
 
 protected:
 
 	inline const static STPSingleHistogramFilter::STPHistogramBuffer_t Buffer = STPSingleHistogramFilter::createHistogramBuffer();
 
 	inline STPSingleHistogram execute(unsigned int radius = 2u) {
-		return (*this)(this->Texture.Manager, Buffer, radius);
+		return (*this)(HistogramTester::Texture, HistogramTester::Data, Buffer, radius);
 	}
 
 	void verifyHistogram(const STPSingleHistogram& result) {

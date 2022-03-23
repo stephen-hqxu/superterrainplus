@@ -1,4 +1,4 @@
-#include <SuperTerrain+/World/Chunk/FreeSlip/STPFreeSlipTextureBuffer.h>
+#include <SuperTerrain+/World/Chunk/STPFreeSlipTextureBuffer.h>
 
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
@@ -7,7 +7,7 @@
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 #include <SuperTerrain+/Exception/STPCUDAError.h>
 
-//Template Def
+//Template Definition
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
 #include <type_traits>
@@ -19,6 +19,8 @@ using SuperTerrainPlus::STPDiversity::Sample;
 
 using std::make_pair;
 using std::unique_ptr;
+
+using glm::uvec2;
 
 template<typename T>
 STPFreeSlipTextureBuffer<T>::STPHostCallbackDeleter::STPHostCallbackDeleter(cudaStream_t stream, STPPinnedMemoryPool* memPool) : Data(make_pair(stream, memPool)) {
@@ -45,11 +47,12 @@ void STPFreeSlipTextureBuffer<T>::STPHostCallbackDeleter::operator()(T* ptr) con
 template<typename T>
 STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(STPFreeSlipTexture& texture, STPFreeSlipTextureData data, const STPFreeSlipTextureAttribute& attr) : 
 	Buffer(texture), Data(data), Attr(attr) {
-	if (this->Buffer.empty()) {
-		throw STPException::STPInvalidArgument("Provided free-slip texture is empty");
-	}
-	if (this->Attr.TexturePixel == 0ull) {
-		throw STPException::STPBadNumericRange("Number of pixel should be a positive integer");
+	const STPFreeSlipInformation& info = this->Attr.TextureInfo;
+	const unsigned int freeslip_count = info.FreeSlipChunk.x * info.FreeSlipChunk.y;
+
+	if (this->Buffer.size() != 1u && this->Buffer.size() != freeslip_count) {
+		throw STPException::STPInvalidArgument("The number of sparse texture provided for constructing free-slip buffer must either have size of 1, "
+			"or equal to the number of free-slip chunk.");
 	}
 	if (this->Data.Channel == 0u) {
 		throw STPException::STPBadNumericRange("Number of texture channel should be a positive integer");
@@ -70,8 +73,7 @@ STPFreeSlipTextureBuffer<T>::~STPFreeSlipTextureBuffer() {
 template<typename T>
 void STPFreeSlipTextureBuffer<T>::destroyAllocation() {
 	//we can guarantee Integration is available
-	const size_t pixel_per_chunk = this->Attr.TexturePixel * this->Data.Channel;
-	const size_t freeslip_size = sizeof(T) * this->Buffer.size() * pixel_per_chunk;
+	const size_t freeslip_size = sizeof(T) * this->Buffer.size() * this->calcChunkPixel();
 
 	//we don't need to catch exception in destructor since it's dangerous to let the program keep running!!!
 	//just let the program crash
@@ -83,18 +85,56 @@ void STPFreeSlipTextureBuffer<T>::destroyAllocation() {
 		}
 
 		//disintegrate merged buffer
-		{
-			T* host_accumulator = this->HostIntegration.get();
-			for (T* map : this->Buffer) {
-				STPcudaCheckErr(cudaMemcpyAsync(map, host_accumulator, pixel_per_chunk * sizeof(T), cudaMemcpyHostToHost, this->Data.Stream));
-				host_accumulator += pixel_per_chunk;
-			}
-		}
+		this->copyFreeslipBuffer<false>();
 	}
 	//we don't need to copy the texture back to the original buffer if it's read only
 
 	//deallocation
 	//all memory will be freed by a streamed smart pointer
+}
+
+template<typename T>
+inline unsigned int STPFreeSlipTextureBuffer<T>::calcChunkPixel() const {
+	const uvec2& dimension = this->Attr.TextureInfo.Dimension;
+	return dimension.x * dimension.y * this->Data.Channel;
+}
+
+template<typename T>
+template<bool Pack>
+inline void STPFreeSlipTextureBuffer<T>::copyFreeslipBuffer() {
+	std::conditional_t<Pack, T* const, const T* const> host_accumulator = this->HostIntegration.get();
+
+	//make a initial copy from the original buffer if it's not write only
+	//combine texture from each chunk to a large buffer
+	if (this->Buffer.size() == 1u) {
+		const size_t pixel_size = this->calcChunkPixel() * sizeof(T);
+
+		//no free-slip logic, a simple linear memory copy can be used
+		if constexpr (Pack) {
+			STPcudaCheckErr(cudaMemcpyAsync(host_accumulator, this->Buffer.front(), pixel_size, cudaMemcpyHostToHost, this->Data.Stream));
+		} else {
+			STPcudaCheckErr(cudaMemcpyAsync(this->Buffer.front(), host_accumulator, pixel_size, cudaMemcpyHostToHost, this->Data.Stream));
+		}
+		return;
+	}
+
+	const STPFreeSlipInformation& info = this->Attr.TextureInfo;
+	const size_t map_row_size = info.Dimension.x * this->Data.Channel * sizeof(T),
+		freeslip_row_size = map_row_size * info.FreeSlipChunk.x;
+	const unsigned int pixel_per_row_chunk = this->calcChunkPixel() * info.FreeSlipChunk.x;
+	//copy with free-slip logic using 2D copy
+	size_t offset = 0;
+	for (int i = 0; i < this->Buffer.size(); i++) {
+		offset = info.Dimension.x * (i % info.FreeSlipChunk.x) + pixel_per_row_chunk * (i / info.FreeSlipChunk.x);
+
+		if constexpr (Pack) {
+			STPcudaCheckErr(cudaMemcpy2DAsync(host_accumulator + offset, freeslip_row_size, this->Buffer[i],
+				map_row_size, map_row_size, info.Dimension.y, cudaMemcpyHostToHost, this->Data.Stream));
+		} else {
+			STPcudaCheckErr(cudaMemcpy2DAsync(this->Buffer[i], map_row_size, host_accumulator + offset,
+				freeslip_row_size, map_row_size, info.Dimension.y, cudaMemcpyHostToHost, this->Data.Stream));
+		}
+	}
 }
 
 template<typename T>
@@ -118,10 +158,8 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 	}
 
 	T* texture;
-	const size_t pixel_per_chunk = this->Attr.TexturePixel * this->Data.Channel;
-	const size_t freeslip_count = this->Buffer.size() * pixel_per_chunk,
+	const size_t freeslip_count = this->Buffer.size() * this->calcChunkPixel(),
 		freeslip_size = sizeof(T) * freeslip_count;
-
 	//we need host memory anyway
 	//pinned memory will be needed anyway
 	this->HostIntegration = unique_ptr<T[], STPHostCallbackDeleter>(
@@ -129,13 +167,7 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 		STPHostCallbackDeleter(this->Data.Stream, &this->Attr.HostMemPool)
 	);
 	if (this->Data.Mode != STPFreeSlipTextureData::STPMemoryMode::WriteOnly) {
-		//make a initial copy from the original buffer if it's not write only
-		//combine texture from each chunk to a large buffer
-		T* host_accumulator = this->HostIntegration.get();
-		for (const T* map : this->Buffer) {
-			STPcudaCheckErr(cudaMemcpyAsync(host_accumulator, map, pixel_per_chunk * sizeof(T), cudaMemcpyHostToHost, this->Data.Stream));
-			host_accumulator += pixel_per_chunk;
-		}
+		this->copyFreeslipBuffer<true>();
 	}
 
 	switch (location) {
@@ -167,7 +199,7 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 }
 
 template<typename T>
-STPFreeSlipLocation STPFreeSlipTextureBuffer<T>::where() const {
+typename STPFreeSlipTextureBuffer<T>::STPFreeSlipLocation STPFreeSlipTextureBuffer<T>::where() const {
 	if (!this->Integration) {
 		throw STPException::STPMemoryError("no memory location has been specified as no memory has been allocated");
 	}

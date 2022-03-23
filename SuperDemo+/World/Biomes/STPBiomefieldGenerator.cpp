@@ -24,7 +24,7 @@ STPBiomefieldGenerator::STPBiomefieldGenerator(const STPCommonCompiler& program,
 	//our heightfield setting only available in OCEAN biome for now
 	this->initGenerator();
 
-	//create a cuda memory pool
+	//create a CUDA memory pool
 	CUmemPoolProps pool_props = { };
 	pool_props.allocType = CU_MEM_ALLOCATION_TYPE_PINNED;
 	pool_props.handleTypes = CU_MEM_HANDLE_TYPE_NONE;
@@ -67,18 +67,19 @@ void STPBiomefieldGenerator::initGenerator() {
 
 using namespace SuperTerrainPlus::STPCompute;
 	
-void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap_buffer, const STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor& biomemap_adaptor, vec2 offset, cudaStream_t stream) const {
+void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap_buffer, 
+	STPFreeSlipSampleTextureBuffer& biomemap_buffer, const STPFreeSlipInformation& freeslip_info, vec2 offset, cudaStream_t stream) const {
 	int Mingridsize, blocksize;
-	//smart launch config
+	//smart launch configuration
 	STPcudaCheckErr(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->GeneratorEntry, nullptr, 0ull, 0));
 	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
 		//under-sampled heightmap, and super-sample it back with interpolation
 		Dimgridsize = (this->MapSize + Dimblocksize - 1u) / Dimblocksize;
 
 	//retrieve raw texture
-	float* heightmap = heightmap_buffer(STPFreeSlipLocation::DeviceMemory);
+	float* heightmap = heightmap_buffer(STPFreeSlipFloatTextureBuffer::STPFreeSlipLocation::DeviceMemory);
 	//we only need host memory on biome map
-	STPFreeSlipSampleManager biomemap_manager = biomemap_adaptor(STPFreeSlipLocation::HostMemory);
+	const Sample* biomemap = biomemap_buffer(STPFreeSlipSampleTextureBuffer::STPFreeSlipLocation::HostMemory);
 
 	//histogram filter
 	STPSingleHistogramFilter::STPHistogramBuffer_t histogram_buffer;
@@ -86,23 +87,23 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 		unique_lock<mutex> buffer_lock(this->BufferPoolLock);
 		//try to grab a buffer
 		if (this->BufferPool.empty()) {
-			//no more buffer avilable? create a new one
+			//no more buffer available? create a new one
 			histogram_buffer = move(STPSingleHistogramFilter::createHistogramBuffer());
 		}
 		else {
-			//otherwise grab an exisiting one
+			//otherwise grab an existing one
 			histogram_buffer = move(this->BufferPool.front());
 			this->BufferPool.pop();
 		}
 	}
 	//start execution
-	//host to host memory copy is always synchornous, so the host memory should be available now
+	//host to host memory copy is always synchronous, so the host memory should be available now
 	STPSingleHistogram histogram_h;
-	histogram_h = this->biome_histogram(biomemap_manager, histogram_buffer, this->InterpolationRadius);
+	histogram_h = this->biome_histogram(biomemap, freeslip_info, histogram_buffer, this->InterpolationRadius);
 	//copy histogram to device
 	STPSingleHistogram histogram_d;
 	//calculate the size of allocation
-	const uvec2& biome_dimension = biomemap_manager.Data->Dimension;
+	const uvec2& biome_dimension = freeslip_info.Dimension;
 	const unsigned int num_pixel_biomemap = biome_dimension.x * biome_dimension.y;
 	const size_t bin_size = histogram_h.HistogramStartOffset[num_pixel_biomemap] * sizeof(STPSingleHistogram::STPBin),
 		offset_size = (num_pixel_biomemap + 1u) * sizeof(unsigned int);

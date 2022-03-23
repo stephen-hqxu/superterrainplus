@@ -7,14 +7,15 @@
 #include <optional>
 //Data Structure
 #include <vector>
-#include "../../../Utility/Memory/STPMemoryPool.h"
+#include "../../Utility/Memory/STPMemoryPool.h"
 //CUDA
 #include <cuda_runtime.h>
 //Free-Slip Data
-#include "STPFreeSlipLocation.hpp"
-#include "../../Diversity/STPBiomeDefine.h"
+#include "STPFreeSlipInformation.hpp"
 //Memory
-#include "../../../Utility/Memory/STPSmartDeviceMemory.h"
+#include "../../Utility/Memory/STPSmartDeviceMemory.h"
+
+#include "..//Diversity/STPBiomeDefine.h"
 
 namespace SuperTerrainPlus::STPCompute {
 
@@ -25,8 +26,8 @@ namespace SuperTerrainPlus::STPCompute {
 	struct STPFreeSlipTextureAttribute {
 	public:
 
-		//Denotes the number of pixel in one texture of a chunk
-		size_t TexturePixel;
+		//Information about the free-slip texture
+		STPFreeSlipInformation TextureInfo;
 
 		//Memory Pool
 		//Host memory pool is thread safe and can (and should!) be shared with other texture buffer objects
@@ -52,7 +53,7 @@ namespace SuperTerrainPlus::STPCompute {
 		typedef std::vector<T*> STPFreeSlipTexture;
 
 		/**
-		 * @brief STPFreeSlipTextureData contanins essential data for texture buffer
+		 * @brief STPFreeSlipTextureData contains essential data for texture buffer
 		*/
 		struct STPFreeSlipTextureData {
 		public:
@@ -62,7 +63,7 @@ namespace SuperTerrainPlus::STPCompute {
 			*/
 			enum class STPMemoryMode : unsigned char {
 				//Copy the initial buffer to merged texture
-				//When the destructor of the adaptor is called, merged free-slip texture will be freed straighet away
+				//When the destructor of the adaptor is called, merged free-slip texture will be freed straight away
 				ReadOnly = 0x00u,
 				//No copy from the initial buffer, only allocation
 				//When the destructor of the adaptor is called, merged free-slip texture will be disintegrated and copied back to the original array of buffers.
@@ -81,6 +82,15 @@ namespace SuperTerrainPlus::STPCompute {
 			//Provide 0 to use default stream
 			cudaStream_t Stream;
 
+		};
+
+		/**
+		 * @brief STPFreeSlipLocation denotes where the free-slip data will be available.
+		 * Once retrieved, the data retrieved can only be used in designated memory space
+		*/
+		enum class STPFreeSlipLocation : unsigned char {
+			HostMemory = 0x00u,
+			DeviceMemory = 0x01u
 		};
 
 	private:
@@ -114,7 +124,7 @@ namespace SuperTerrainPlus::STPCompute {
 		const STPFreeSlipTextureData Data;
 
 		//The free-slip texture buffer stored separately
-		STPFreeSlipTexture& Buffer;
+		const STPFreeSlipTexture& Buffer;
 		//The previously integrated texture location
 		std::optional<STPFreeSlipLocation> Integration;
 		//Pointer to merged free-slip texture in device memory.
@@ -128,14 +138,32 @@ namespace SuperTerrainPlus::STPCompute {
 		*/
 		void destroyAllocation();
 
+		/**
+		 * @brief Calculate the number of pixel per chunk.
+		 * @return The number of pixel per chunk.
+		*/
+		unsigned int calcChunkPixel() const;
+
+		/**
+		 * @brief Copy the buffer between free-slip buffer and each individual chunk.
+		 * @tparam Pack Specifies the copy operation.
+		 * True to use pack operation, for which individual chunk buffer is packed into a large free-slip buffer;
+		 * False to use unpack operation, copy from the large free-slip buffer to each individual chunk buffer.
+		*/
+		template<bool Pack>
+		void copyFreeslipBuffer();
+
 	public:
 
 		/**
 		 * @brief Init STPFreeSlipTextureBuffer with texture buffer.
 		 * All reference will be retained and caller should guarantee their life-time.
-		 * @param texture The pointer to the pointers of ranged of free-slip texture per chunk which will be used to indexed in a free-slip manner.
-		 * @param data The pointer to texture buffer data
-		 * @param attr Texture buffer attribute that will be used to make copy and sharing free-slip texture with other program
+		 * @param texture An array of pointers of ranged of free-slip texture per chunk which will be used to indexed in a free-slip manner.
+		 * The number of texture provided must either be 1, meaning no free-slip logic will be used on this texture,
+		 * or equal to the number of total free-slip chunk count.
+		 * Any other number will cause exception to be thrown.
+		 * @param data The pointer to texture buffer data.
+		 * @param attr Texture buffer attribute that will be used to make copy and sharing free-slip texture with other program.
 		*/
 		STPFreeSlipTextureBuffer(STPFreeSlipTexture&, STPFreeSlipTextureData, const STPFreeSlipTextureAttribute&);
 
@@ -155,20 +183,20 @@ namespace SuperTerrainPlus::STPCompute {
 		 * Function can be called multiple times to retrieve the internal buffer
 		 * @param location The memory space where the free-slip texture will be used.
 		 * Only host memory will be available if memory location is host.
-		 * Device memory location impiles host memory, so if both memory are needed, choose device memory.
+		 * Device memory location implies host memory, so if both memory are needed, choose device memory.
 		 * @return The free-slip texture, will be available at the memory specified by location.
 		 * Host memory will be available right after the function returned while device memory is stream-ordered.
 		 * The underlying merged texture pointer is managed by the current texture buffer and will be freed (and optionally copied back) when the object got destroyed.
 		 * If function is called repetitively, depends on the previous memory location, function will return:
 		 * If the allocated location was host, host pointer is returned, the argument is ignored.
 		 * If the allocated location was device, device pointer is returned if argument asks for device pointer, or host pointer otherwise.
-		 * When texture is dintegrated back to the buffer, device memory will be used, such that the host memory will be read only in device mode.
+		 * When texture is disintegrated back to the buffer, device memory will be used, such that the host memory will be read only in device mode.
 		*/
 		T* operator()(STPFreeSlipLocation);
 
 		/**
 		 * @brief Get the location of memory that the buffer has been allocated.
-		 * If no allocation has happned, exception is thrown.
+		 * If no allocation has happened, exception is thrown.
 		 * @return The location of memory has been allocated
 		*/
 		STPFreeSlipLocation where() const;

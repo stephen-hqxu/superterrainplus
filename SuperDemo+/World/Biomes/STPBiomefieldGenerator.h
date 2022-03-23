@@ -71,7 +71,9 @@ namespace STPDemo {
 
 		~STPBiomefieldGenerator();
 
-		void operator()(SuperTerrainPlus::STPCompute::STPFreeSlipFloatTextureBuffer&, const SuperTerrainPlus::STPCompute::STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor&, glm::vec2, cudaStream_t) const override;
+		void operator()(SuperTerrainPlus::STPCompute::STPFreeSlipFloatTextureBuffer&, 
+			SuperTerrainPlus::STPCompute::STPFreeSlipSampleTextureBuffer&, 
+			const SuperTerrainPlus::STPCompute::STPFreeSlipInformation&, glm::vec2, cudaStream_t) const override;
 
 	};
 
