@@ -117,8 +117,14 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 		if (flag[0]) {
 			//generate a new heightmap using diversity generator and store it to the output later
 			//copy biome map to device, and allocate heightmap
-			STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData heightmap_data{ 1u, STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::WriteOnly, stream };
-			STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData biomemap_data{ 1u, STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadOnly, stream };
+			STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData heightmap_data{
+				STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::WriteOnly,
+				stream
+			};
+			STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData biomemap_data{
+				STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadOnly,
+				stream
+			};
 
 			heightmap_buffer.emplace(args.Heightmap32F, heightmap_data, this->TextureBufferAttr);
 			biomemap_buffer.emplace(args.Biomemap, biomemap_data, this->TextureBufferAttr);
@@ -126,7 +132,10 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 			this->generateHeightmap(*heightmap_buffer, *biomemap_buffer, this->TextureBufferAttr.TextureInfo, args.HeightmapOffset, stream);
 		} else {
 			//no generation, use existing
-			STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData heightmap_data{ 1u, STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadWrite, stream };
+			STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData heightmap_data{
+				STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadWrite,
+				stream
+			};
 			heightmap_buffer.emplace(args.Heightmap32F, heightmap_data, this->TextureBufferAttr);
 		}
 
@@ -151,7 +160,10 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 		//Flag: RenderingBufferGeneration
 		if (flag[2]) {
 			//allocate formation memory
-			STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData heightfield_rendering{ 1u, STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::WriteOnly, stream };
+			STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData heightfield_rendering{
+				STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::WriteOnly,
+				stream
+			};
 			heightfield_buffer.emplace(args.Heightfield16UI, heightfield_rendering, this->TextureBufferAttr);
 
 			STPHeightfieldKernel::texture32Fto16(

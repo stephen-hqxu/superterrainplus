@@ -73,11 +73,8 @@ namespace SuperTerrainPlus::STPCompute {
 				ReadWrite = 0x02u
 			};
 
-			//The number of channel per pixel
-			unsigned char Channel;
 			//Set the memory behaviour of the free-slip texture buffer
 			STPMemoryMode Mode;
-
 			//CUDA stream for device memory allocation and copy.
 			//Provide 0 to use default stream
 			cudaStream_t Stream;

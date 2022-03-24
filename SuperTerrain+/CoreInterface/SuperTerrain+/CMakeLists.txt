@@ -56,7 +56,6 @@ World/Diversity/STPLayer.inl
 World/Diversity/STPLayerCache.h
 World/Diversity/STPLayerManager.h
 World/Diversity/STPLayerManager.inl
-World/Diversity/STPSeedMixer.h
 # /World/Diversity/Texture
 World/Diversity/Texture/STPTextureDatabase.h
 World/Diversity/Texture/STPTextureDefinitionLanguage.h

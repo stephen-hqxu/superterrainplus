@@ -15,7 +15,6 @@ STPLayerManager.cpp
 STPMemoryPool.cpp
 STPNullablePrimitive.cpp
 STPRuntimeCompilable.cpp
-STPSeedMixer.cpp
 STPSmartStream.cpp
 STPTextureDatabase.cpp
 STPTextureDefinitionLanguage.cpp

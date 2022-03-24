@@ -3,9 +3,7 @@
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Exception/STPInvalidArgument.h>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
-#include <SuperTerrain+/Exception/STPCUDAError.h>
 
 //Template Definition
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
@@ -54,9 +52,6 @@ STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(STPFreeSlipTexture& textur
 		throw STPException::STPInvalidArgument("The number of sparse texture provided for constructing free-slip buffer must either have size of 1, "
 			"or equal to the number of free-slip chunk.");
 	}
-	if (this->Data.Channel == 0u) {
-		throw STPException::STPBadNumericRange("Number of texture channel should be a positive integer");
-	}
 }
 
 template<typename T>
@@ -96,7 +91,7 @@ void STPFreeSlipTextureBuffer<T>::destroyAllocation() {
 template<typename T>
 inline unsigned int STPFreeSlipTextureBuffer<T>::calcChunkPixel() const {
 	const uvec2& dimension = this->Attr.TextureInfo.Dimension;
-	return dimension.x * dimension.y * this->Data.Channel;
+	return dimension.x * dimension.y;
 }
 
 template<typename T>
@@ -117,15 +112,15 @@ inline void STPFreeSlipTextureBuffer<T>::copyFreeslipBuffer() {
 		}
 		return;
 	}
-
 	const STPFreeSlipInformation& info = this->Attr.TextureInfo;
-	const size_t map_row_size = info.Dimension.x * this->Data.Channel * sizeof(T),
-		freeslip_row_size = map_row_size * info.FreeSlipChunk.x;
-	const unsigned int pixel_per_row_chunk = this->calcChunkPixel() * info.FreeSlipChunk.x;
+	const unsigned int freeslip_chunk_row = info.FreeSlipChunk.x;
+
+	const size_t map_row_size = info.Dimension.x * sizeof(T),
+		freeslip_row_size = map_row_size * freeslip_chunk_row;
+	const unsigned int pixel_per_row_chunk = info.FreeSlipRange.x * info.Dimension.y;
 	//copy with free-slip logic using 2D copy
-	size_t offset = 0;
 	for (int i = 0; i < this->Buffer.size(); i++) {
-		offset = info.Dimension.x * (i % info.FreeSlipChunk.x) + pixel_per_row_chunk * (i / info.FreeSlipChunk.x);
+		const unsigned int offset = info.Dimension.x * (i % freeslip_chunk_row) + pixel_per_row_chunk * (i / freeslip_chunk_row);
 
 		if constexpr (Pack) {
 			STPcudaCheckErr(cudaMemcpy2DAsync(host_accumulator + offset, freeslip_row_size, this->Buffer[i],

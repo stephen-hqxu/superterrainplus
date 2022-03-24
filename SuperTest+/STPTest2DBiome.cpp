@@ -6,7 +6,6 @@
 #include <catch2/generators/catch_generators_random.hpp>
 
 //SuperTerrain+/SuperTerrain+/World/Diversity
-#include <SuperTerrain+/World/Diversity/STPSeedMixer.h>
 #include <SuperTerrain+/World/Diversity/STPLayerCache.h>
 #include <SuperTerrain+/World/Diversity/STPLayerManager.h>
 #include <SuperTerrain+/World/Diversity/STPBiomeFactory.h>
@@ -25,35 +24,6 @@ using glm::ivec2;
 using glm::uvec2;
 using glm::ivec3;
 using glm::uvec3;
-
-SCENARIO("STPSeedMixer can be used to mix some seeds", "[Diversity][STPSeedMixer][!mayfail]") {
-
-	GIVEN("A random seed") {
-		const auto SeedSalt = GENERATE(take(3, chunk(2, random(-123456789876, 66666666666))));
-		const Seed OldSeed = static_cast<unsigned long long>(SeedSalt[0]);
-
-		WHEN("Another seed needs to be generated from the original seed") {
-
-			THEN("The two seeds are distinct") {
-				//two seeds might be the same (very unlikely)
-				const Seed NewSeed = STPSeedMixer::mixSeed(OldSeed, SeedSalt[1]);
-				const bool SeedEqual = NewSeed == OldSeed;
-
-				CHECK_FALSE(SeedEqual);
-				CHECKED_IF(SeedEqual) {
-					WARN("Seeds are equal, possibly due to hash collision, run again to confirm.");
-				}
-
-				AND_THEN("The same input seed should produce the same output seed") {
-					CHECK(STPSeedMixer::mixSeed(OldSeed, SeedSalt[1]) == NewSeed);
-				}
-			}
-
-		}
-
-	}
-
-}
 
 class LayerCacheTester : protected STPLayerCache {
 protected:
@@ -192,13 +162,38 @@ public:
 
 SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG", "[Diversity][STPLayer][!mayfail]") {
 
+	GIVEN("A random seed to be mixed with another seed") {
+		const auto SeedSalt = GENERATE(take(3, chunk(2, random(-123456789876, 66666666666))));
+		const Seed OldSeed = static_cast<unsigned long long>(SeedSalt[0]);
+
+		WHEN("Another seed needs to be generated from the original seed") {
+
+			THEN("The two seeds are distinct") {
+				//two seeds might be the same (very unlikely)
+				const Seed NewSeed = RandomLayer::mixSeed(OldSeed, SeedSalt[1]);
+				const bool SeedEqual = NewSeed == OldSeed;
+
+				CHECK_FALSE(SeedEqual);
+				CHECKED_IF(SeedEqual) {
+					WARN("Seeds are equal, possibly due to hash collision, run again to confirm.");
+				}
+
+				AND_THEN("The same input seed should produce the same output seed") {
+					CHECK(RandomLayer::mixSeed(OldSeed, SeedSalt[1]) == NewSeed);
+				}
+			}
+
+		}
+
+	}
+
 	GIVEN("An implementation of STPLayer") {
 		const ivec2 Coord = this->getRandomCoord(-666666, 666666);
 
 		WHEN("Local seed is retrieved from the layer") {
 			const Sample Value1 = this->getValue(Coord);
 
-			THEN("Seed should be determinisitic when the input is the same") {
+			THEN("Seed should be deterministic when the input is the same") {
 				const Sample Value2 = this->getValue(Coord);
 				CHECK(Value2 == Value1);
 			}
@@ -243,7 +238,7 @@ SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG",
 
 #define FAST_SAMPLE(LAYER, COOR) LAYER->retrieve(COOR[0], COOR[1], COOR[2])
 
-SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for biome genereation", "[Diversity][STPLayerManager][!mayfail]") {
+SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for biome generation", "[Diversity][STPLayerManager][!mayfail]") {
 
 	GIVEN("A new layer manager") {
 
@@ -259,7 +254,7 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 
 			WHEN("Insert one layer with the unsupported cache size") {
 
-				THEN("Layer manager does not allow such layer to bu inserted") {
+				THEN("Layer manager does not allow such layer to be inserted") {
 					REQUIRE_THROWS_AS((this->insert<RootLayer, 3ull>(RandomSeed, Salt)), STPException::STPBadNumericRange);
 				}
 
@@ -289,7 +284,7 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 					AND_THEN("The sample should be deterministically random") {
 						//same input always produces the same output
 						REQUIRE(FAST_SAMPLE(FirstLayer, Coordinate) == LayerSample);
-						//different input should produce different ouput (hash collision may fail it)
+						//different input should produce different output (hash collision may fail it)
 						CHECK_FALSE(FAST_SAMPLE(FirstLayer, -Coordinate) == LayerSample);
 					}
 

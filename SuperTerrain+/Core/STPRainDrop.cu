@@ -126,10 +126,22 @@ __device__ void STPRainDrop::operator()(float* map, const STPEnvironment::STPRai
 
 			//add the sediment to the four nodes of the current cell using bilinear interpolation
 			//deposition is not distributed over a radius (like erosion) so that it can fill small pits :)
+#ifdef _DEBUG
+			//The current erosion algorithm is imperfect, race condition occurs when multiple raindrop collides into each other at the same time.
+			//Although the chance might be small when the heightmap is large, but we still need to prevent it somehow.
+			//This can be prevented by using atomic operation, however it is exceptionally slow in debug build.
+			//So we essentially trade data safety with performance on debug build.
 			map[mapIndex] += depositAmount * (1.0f - offset_cell.x) * (1.0f - offset_cell.y);
 			map[mapIndex + 1] += depositAmount * offset_cell.x * (1.0f - offset_cell.y);
 			map[mapIndex + this->Dimension.x] += depositAmount * (1.0f - offset_cell.x) * offset_cell.y;
 			map[mapIndex + this->Dimension.x + 1] += depositAmount * offset_cell.x *  offset_cell.y;
+#else
+			//On release build, it is marginally faster to use atomic instruction, so we enable it.
+			atomicAdd(map + mapIndex, depositAmount * (1.0f - offset_cell.x) * (1.0f - offset_cell.y));
+			atomicAdd(map + mapIndex + 1, depositAmount * offset_cell.x * (1.0f - offset_cell.y));
+			atomicAdd(map + mapIndex + this->Dimension.x, depositAmount * (1.0f - offset_cell.x) * offset_cell.y);
+			atomicAdd(map + mapIndex + this->Dimension.x + 1, depositAmount * offset_cell.x * offset_cell.y);
+#endif
 		}
 		else {
 			//erode a fraction of the droplet's current carry capacity
@@ -142,7 +154,11 @@ __device__ void STPRainDrop::operator()(float* map, const STPEnvironment::STPRai
 				const float weightederodeAmout = erodeAmout * brushWeights[brushPointIndex];
 				const float deltaSediment = (map[erodeIndex] < weightederodeAmout) ? map[erodeIndex] : weightederodeAmout;
 				//erode the map
+#ifdef _DEBUG
 				map[erodeIndex] -= deltaSediment;
+#else
+				atomicAdd(map + erodeIndex, -deltaSediment);
+#endif
 				this->sediment += deltaSediment;
 			}
 		}

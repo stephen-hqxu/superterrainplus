@@ -19,8 +19,6 @@ namespace STPDemo {
 		const Seed voronoi_seed;
 
 		static double sqrtDist(Seed seed, int x, int y, int z, double xFrac, double yFrac, double zFrac) {
-			namespace STPSeedMixer = SuperTerrainPlus::STPDiversity::STPSeedMixer;
-
 			static constexpr auto distribute = [](Seed seed) constexpr -> double {
 				const double d = static_cast<double>(static_cast<unsigned int>((seed >> 24ull) % 1024ull)) / 1024.0;
 				return (d - 0.5) * 0.9;
@@ -30,17 +28,17 @@ namespace STPDemo {
 				return n * n;
 			};
 
-			Seed mixed = STPSeedMixer::mixSeed(seed, x);
-			mixed = STPSeedMixer::mixSeed(mixed, y);
-			mixed = STPSeedMixer::mixSeed(mixed, z);
-			mixed = STPSeedMixer::mixSeed(mixed, x);
-			mixed = STPSeedMixer::mixSeed(mixed, y);
-			mixed = STPSeedMixer::mixSeed(mixed, z);
+			Seed mixed = STPLayer::mixSeed(seed, x);
+			mixed = STPLayer::mixSeed(mixed, y);
+			mixed = STPLayer::mixSeed(mixed, z);
+			mixed = STPLayer::mixSeed(mixed, x);
+			mixed = STPLayer::mixSeed(mixed, y);
+			mixed = STPLayer::mixSeed(mixed, z);
 
 			const double d = distribute(mixed);
-			mixed = STPSeedMixer::mixSeed(mixed, seed);
+			mixed = STPLayer::mixSeed(mixed, seed);
 			const double e = distribute(mixed);
-			mixed = STPSeedMixer::mixSeed(mixed, seed);
+			mixed = STPLayer::mixSeed(mixed, seed);
 			const double f = distribute(mixed);
 
 			return sqr(zFrac + f) + sqr(yFrac + e) + sqr(xFrac + d);

@@ -10,7 +10,6 @@
 #include <SuperTerrain+/World/Chunk/STPFreeSlipTextureBuffer.h>
 
 #include <SuperTerrain+/Exception/STPInvalidArgument.h>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
@@ -158,12 +157,7 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 
 	WHEN("Some wrong numbers are provided to the texture buffer") {
 		STPFreeSlipTextureAttribute ZeroPixel = { CurrentTester::SmallInfo, STPPinnedMemoryPool(), 0 };
-		TestData DefaultData = { 1u, TestMemoryMode::ReadOnly, 0 };
-
-		THEN("Creation of texture buffer should be prevented") {
-			//no channel
-			REQUIRE_THROWS_AS(CurrentFreeSlipBuffer(this->TextureBuffer, { }, CurrentTester::SmallAttribute), STPException::STPBadNumericRange);
-		}
+		TestData DefaultData = { TestMemoryMode::ReadOnly, 0 };
 
 		AND_WHEN("The number of free-slip texture does not logically match the free-slip setting") {
 			vector<TestType*> EmptyBuffer;
@@ -189,7 +183,7 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 		optional<CurrentFreeSlipBuffer> TestBuffer;
 
 		REQUIRE_NOTHROW([&TestBuffer, Mode, this]() {
-			TestData Data = { 1u, Mode, 0 };
+			TestData Data = { Mode, 0 };
 			TestBuffer.emplace(this->TextureBuffer, Data, CurrentTester::SmallAttribute);
 		}());
 

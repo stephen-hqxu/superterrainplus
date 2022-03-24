@@ -97,7 +97,7 @@ private:
 		using std::bind;
 		using namespace std::placeholders;
 		//clamp the capacity, because a newly created array list might have zero capacity.
-		new_capacity = std::max(1ull, new_capacity);
+		new_capacity = std::max(static_cast<size_t>(1u), new_capacity);
 		//the current size of the user array
 		const size_t current_size = this->size();
 
