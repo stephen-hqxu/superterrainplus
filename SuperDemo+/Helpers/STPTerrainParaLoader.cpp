@@ -19,7 +19,7 @@ using glm::dvec3;
 
 STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const SIMPLE::SISection& section) {
 	STPEnvironment::STPMeshSetting rendering_options;
-	STPEnvironment::STPMeshSetting::STPTessellationSetting& tess_options = rendering_options.TessSetting;
+	STPEnvironment::STPTessellationSetting& tess_options = rendering_options.TessSetting;
 	STPEnvironment::STPMeshSetting::STPTextureRegionSmoothSetting& smooth_options = rendering_options.RegionSmoothSetting;
 	STPEnvironment::STPMeshSetting::STPTextureScaleDistanceSetting& scale_options = rendering_options.RegionScaleSetting;
 

@@ -270,7 +270,7 @@ float STPSun::spectrumCoordinate() const {
 	return (this->SunDirectionCache.y - elev_start) / (elev_end - elev_start);
 }
 
-void STPSun::render() {
+void STPSun::render() const {
 	//setup context
 	this->SkyRenderer.use();
 	this->RayDirectionArray.bind();

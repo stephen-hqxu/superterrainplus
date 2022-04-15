@@ -5,6 +5,7 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //Base Setting
 #include <SuperTerrain+/Environment/STPSetting.hpp>
+#include "STPTessellationSetting.h"
 
 namespace SuperTerrainPlus::STPEnvironment {
 
@@ -15,46 +16,8 @@ namespace SuperTerrainPlus::STPEnvironment {
 	public:
 
 		/**
-		 * @brief STPTessellationSettings controls the range of the tessellation levels, as well as the min and max distance
-		 * where tessellation will become min and max
-		*/
-		struct STP_REALISM_API STPTessellationSetting : public STPSetting {
-		public:
-
-			/**
-			 * @brief Determine the maximum tessellation level when the distance falls beyond FurthestTessDistance
-			*/
-			float MaxTessLevel;
-
-			/**
-			 * @brief Determine the minumum tessellation level when the distance falls below NearestTessDistance
-			*/
-			float MinTessLevel;
-
-			/**
-			 * @brief Determine the maximum tessellation distance where tess level beyong will be clamped to MaxTessLevel
-			*/
-			float FurthestTessDistance;
-
-			/**
-			 * @brief Determine the minimum tessellation distance where tess level below will be clamped to MinTessLevel
-			*/
-			float NearestTessDistance;
-
-			/**
-			 * @brief Init STPTessellationSettings with defaults
-			*/
-			STPTessellationSetting();
-
-			~STPTessellationSetting() = default;
-
-			bool validate() const override;
-
-		};
-
-		/**
 		 * @brief STPTextureRegionSmoothSetting controls parameters for terrain texture splatting region smoothing algorithms.
-		 * The algorithm blends colors from different regions.
+		 * The algorithm blends colours from different regions.
 		*/
 		struct STP_REALISM_API STPTextureRegionSmoothSetting : public STPSetting {
 		public:

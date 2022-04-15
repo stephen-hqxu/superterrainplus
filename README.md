@@ -49,7 +49,8 @@ There is no perfect answer to this question, every application has its own pros 
 - [ ] Rule-based geometry placement
 - [ ] Procedural animated grassland generation
 - [ ] Procedural parameter-based tree generation
-- [ ] Volumetric cloud generation
+- [ ] Procedural rock generation
+- [ ] Volumetric cloud
 
 ### Real-time photorealistic rendering
 
@@ -78,14 +79,20 @@ There is no perfect answer to this question, every application has its own pros 
   - [x] Directional light
   - [ ] Point light
   - [ ] Spotlight
+- [ ] Water rendering
+  - [ ] Procedural water animation
+  - [ ] Screen-space reflection
+  - [ ] Screen-space refraction
+  - [ ] Fresnel effect
+  - [ ] Caustics
+  - [ ] Underwater crepuscular rays
 - [ ] Night rendering
 - [ ] Procedural weather effect
-- [ ] Water rendering
-- [ ] ~~Real-time~~ raster-ray tracing hybrid rendering
+- [ ] Global illumination
 
 ### Optimisation technique
 
-- [x] Frustum culling
+- [ ] Frustum culling
 - [ ] Variable rate shading
 - [ ] Mesh shading
 - [ ] Deferred clustered lighting
@@ -171,6 +178,7 @@ The application is unit-tested with.
 - OpenGL 4.6 core profile
 - [GL_ARB_bindless_texture](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_bindless_texture.txt)
 - [GL_ARB_shading_language_include](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_shading_language_include.txt)
+- [GL_NV_draw_texture](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_draw_texture.txt)
 - [GL_NV_gpu_shader5](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt)
 - [GL_NV_shader_buffer_load](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_load.txt)
 - [GL_NV_shader_buffer_store](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_store.txt)
@@ -217,15 +225,20 @@ cmake ../
 
 5. Configure *CMakeCache.txt* if preferred. Leave it as default otherwise.
 
-6. Build the program
+6. Build the program. Please choose the command based on your OS.
 
 ```sh
 
+# Windows; you can either compile via Visual Studio GUI using the generated VS solution,
+# or alternatively the command line like this
 cmake --build ./ --config Release --target ALL_BUILD
+
+# Unix
+make all
 
 ```
 
-You may obtain the following executables:
+Compilation of the engine may take up to 5 minutes. You may obtain the following executables after that:
 
 - `SuperDemo+` if demo build is enabled
 - `SuperTest+` if test build is enabled

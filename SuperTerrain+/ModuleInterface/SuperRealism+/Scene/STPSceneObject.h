@@ -20,6 +20,26 @@ namespace SuperTerrainPlus::STPRealism {
 	namespace STPSceneObject {
 
 		/**
+		 * @brief STPRenderable is a base class for all objects that can be rendered.
+		*/
+		class STPRenderable {
+		public:
+
+			/**
+			 * @brief Initialise the renderable object.
+			*/
+			STPRenderable() = default;
+
+			virtual ~STPRenderable() = default;
+
+			/**
+			 * @brief Render the object.
+			*/
+			virtual void render() const = 0;
+
+		};
+
+		/**
 		 * @brief STPOpaqueObject is the base of all opaque objects.
 		 * This type of object does not allow light to pass through and can optionally cast shadow.
 		 * @tparam SM True to denote this opaque object should cast a shadow,
@@ -30,7 +50,7 @@ namespace SuperTerrainPlus::STPRealism {
 		class STPOpaqueObject;
 
 		template<>
-		class STPOpaqueObject<false> {
+		class STPOpaqueObject<false> : public STPRenderable {
 		public:
 
 			/**
@@ -39,11 +59,6 @@ namespace SuperTerrainPlus::STPRealism {
 			STPOpaqueObject() = default;
 
 			virtual ~STPOpaqueObject() = default;
-
-			/**
-			 * @brief Render the opaque object.
-			*/
-			virtual void render() const = 0;
 
 		};
 
@@ -79,10 +94,26 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 
 		/**
+		 * @brief STPTransparentObject is a type of object that allows light to partially or completely pass through.
+		 * It supports rendering of reflective and refractive materials. Transparent object currently does not support shadow casting.
+		*/
+		class STPTransparentObject : public STPRenderable {
+		public:
+
+			/**
+			 * @brief Initialise a new transparent object.
+			*/
+			STPTransparentObject() = default;
+
+			virtual ~STPTransparentObject() = default;
+
+		};
+
+		/**
 		 * @brief STPEnvironmentObject is a special type of object that contributes to the environmental effects.
 		 * It does not have a solid body and does not interact with other objects in the scene.
 		*/
-		class STPEnvironmentObject {
+		class STPEnvironmentObject : public STPRenderable {
 		public:
 
 			/**
@@ -91,11 +122,6 @@ namespace SuperTerrainPlus::STPRealism {
 			STPEnvironmentObject() = default;
 
 			virtual ~STPEnvironmentObject() = default;
-
-			/**
-			 * @brief Render the environment.
-			*/
-			virtual void render() = 0;
 
 		};
 

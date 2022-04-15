@@ -20,6 +20,7 @@
 
 //GLM
 #include <glm/vec3.hpp>
+#include <glm/mat4x4.hpp>
 
 //System
 #include <queue>
@@ -37,6 +38,8 @@ namespace SuperTerrainPlus::STPRealism {
 	template<>
 	class STP_REALISM_API STPHeightfieldTerrain<false> : public STPSceneObject::STPOpaqueObject<false> {
 	public:
+
+		friend class STPWater;
 
 		/**
 		 * @brief STPNormalBlendingAlgorithm selects normalmap blending algorithm in the shader
@@ -92,6 +95,9 @@ namespace SuperTerrainPlus::STPRealism {
 		std::optional<STPBindlessBuffer> SplatRegionAddress;
 		std::vector<STPBindlessTexture> SplatTextureHandle;
 
+		//The model matrix for terrain mesh.
+		glm::mat4 TerrainMeshModel;
+
 		/**
 		 * @brief Calculate the base chunk position (the coordinate of top-left corner) for the most top-left corner chunk.
 		 * @param horizontal_offset The chunk offset in xz direction in world coordinate.
@@ -142,6 +148,13 @@ namespace SuperTerrainPlus::STPRealism {
 		void setViewPosition(const glm::dvec3&);
 
 		/**
+		 * @brief Get the model matrix for the heightfield mesh.
+		 * @return The pointer to the current heightfield mesh model matrix.
+		 * Note that the model matrix might be changed when the view position has changed.
+		*/
+		const glm::mat4& getModelMatrix() const;
+
+		/**
 		 * @brief Render a regular procedural heightfield terrain.
 		 * Terrain texture must be prepared prior to this call, and this function sync with the generator automatically.
 		*/
@@ -174,7 +187,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param tess The pointer to the tessellation setting.
 		 * It is recommended to use a (much) lower quality than the actual rendering.
 		*/
-		void setDepthMeshQuality(const STPEnvironment::STPMeshSetting::STPTessellationSetting&);
+		void setDepthMeshQuality(const STPEnvironment::STPTessellationSetting&);
 
 		bool addDepthConfiguration(size_t, const STPShaderManager*) override;
 

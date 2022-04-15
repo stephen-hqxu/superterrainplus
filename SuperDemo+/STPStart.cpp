@@ -266,7 +266,7 @@ namespace STPStart {
 					uvec3(128u, 128u, 6u),
 					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform
 				};
-				STPEnvironment::STPMeshSetting::STPTessellationSetting DepthTessSetting = MeshSetting.TessSetting;
+				STPEnvironment::STPTessellationSetting DepthTessSetting = MeshSetting.TessSetting;
 				DepthTessSetting.MaxTessLevel *= 0.5f;
 
 				this->TerrainRenderer = this->RenderPipeline->add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_opt);

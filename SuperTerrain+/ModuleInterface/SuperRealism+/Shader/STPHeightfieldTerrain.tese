@@ -1,57 +1,73 @@
 #version 460 core
+#extension GL_ARB_shading_language_include : require
+
+#define SHADER_PREDEFINE_TESE
+#include </Common/STPSeparableShaderPredefine.glsl>
+#include </Common/STPCameraInformation.glsl>
 
 //patches input
 layout (triangles, fractional_odd_spacing, ccw) in;
 
+//Define to true to disable `out` to the next shader stage.
+//This is useful for terrain shadow rendering.
+#define HEIGHTFIELD_TESE_NO_OUTPUT 0
+#define STP_WATER 0
+
 //Input
-in gl_PerVertex
-{
-	vec4 gl_Position;
-	float gl_PointSize;
-	float gl_ClipDistance[];
-} gl_in[gl_MaxPatchVertices];
 in VertexTCS{
 	vec2 texCoord;
-	vec3 normal;
 } tes_in[];
+
 //Output
-out gl_PerVertex {
-	vec4 gl_Position;
-	float gl_PointSize;
-	float gl_ClipDistance[];
-};
+#if !HEIGHTFIELD_TESE_NO_OUTPUT
 out VertexTES{
+	vec3 position_world;
 	vec2 texCoord;
 } tes_out;
+#endif
 
-//Uniforms
+#if STP_WATER
+#include </Common/STPAnimatedWave.glsl>
+
+uniform WaveFunction WaterWave;
+uniform unsigned int WaveGeometryIteration;
+uniform float WaveTime;
+#else
+layout (binding = 0) uniform sampler2D Heightfield;
+
 uniform float Altitude;
-
-layout (binding = 1) uniform sampler2D Heightfield;
+#endif//STP_WATER
 
 //Functions
 vec2 toCartesian2D(vec2, vec2, vec2);
-vec3 toCartesian3D(vec3, vec3, vec3);
 vec4 toCartesian4D(vec4, vec4, vec4);
 
 void main(){
-	//interpolate barycentric to cartesian
-	vec4 terrain_vertices = toCartesian4D(gl_in[0].gl_Position, gl_in[1].gl_Position, gl_in[2].gl_Position);
-	tes_out.texCoord = toCartesian2D(tes_in[0].texCoord, tes_in[1].texCoord, tes_in[2].texCoord);
+	//interpolate Barycentric to Cartesian
+	gl_Position = toCartesian4D(gl_in[0].gl_Position, gl_in[1].gl_Position, gl_in[2].gl_Position);
+	const vec2 uvCoord = toCartesian2D(tes_in[0].texCoord, tes_in[1].texCoord, tes_in[2].texCoord);
 
-	const vec3 terrain_normal = toCartesian3D(tes_in[0].normal, tes_in[1].normal, tes_in[2].normal);
+#if STP_WATER
+	//procedural water animation
+	//For wave position we can either use xz world coordinate or texture coordinate.
+	//I think texture coordinate is better because the range of it is fixed regardless of the size of the chunk.
+	gl_Position.y += waveHeight(uvCoord, WaterWave, WaveGeometryIteration, WaveTime);
+#else
+	//our plane is always pointing upwards
 	//displace the terrain, moving the vertices upward
-	terrain_vertices.xyz += normalize(terrain_normal) * textureLod(Heightfield, tes_out.texCoord, 0).r * Altitude;
-	gl_Position = terrain_vertices;
+	gl_Position.y += textureLod(Heightfield, uvCoord, 0).r * Altitude;
+#endif
+	
+	//space conversion
+#if !HEIGHTFIELD_TESE_NO_OUTPUT
+	tes_out.position_world = gl_Position.xyz;
+	tes_out.texCoord = uvCoord;
+#endif
+	gl_Position = Camera.ProjectionView * gl_Position;
 }
-
 
 vec2 toCartesian2D(vec2 v1, vec2 v2, vec2 v3){
 	return vec2(gl_TessCoord.x) * v1 + vec2(gl_TessCoord.y) * v2 + vec2(gl_TessCoord.z) * v3;
-}
-
-vec3 toCartesian3D(vec3 v1, vec3 v2, vec3 v3){
-	return vec3(gl_TessCoord.x) * v1 + vec3(gl_TessCoord.y) * v2 + vec3(gl_TessCoord.z) * v3;
 }
 
 vec4 toCartesian4D(vec4 v1, vec4 v2, vec4 v3){

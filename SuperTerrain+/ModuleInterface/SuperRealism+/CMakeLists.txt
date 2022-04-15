@@ -12,6 +12,8 @@ Environment/STPOcclusionKernelSetting.h
 Environment/STPOrthographicCameraSetting.h
 Environment/STPPerspectiveCameraSetting.h
 Environment/STPSunSetting.h
+Environment/STPTessellationSetting.h
+Environment/STPWaterSetting.h
 # /Geometry
 Geometry/STPPlaneGeometry.h
 # /Object
@@ -37,6 +39,7 @@ Scene/Component/STPHeightfieldTerrain.h
 Scene/Component/STPPostProcess.h
 Scene/Component/STPScreen.h
 Scene/Component/STPSun.h
+Scene/Component/STPWater.h
 # /Scene/Light
 Scene/Light/STPAmbientLight.h
 Scene/Light/STPCascadedShadowMap.h

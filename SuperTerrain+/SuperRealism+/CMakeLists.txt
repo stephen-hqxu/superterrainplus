@@ -31,6 +31,7 @@ STPShaderManager.cpp
 STPSun.cpp
 STPTexture.cpp
 STPVertexArray.cpp
+STPWater.cpp
 
 STPRandomTextureGenerator.cu
 )

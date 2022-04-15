@@ -130,7 +130,7 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		float spectrumCoordinate() const;
 
-		void render() override;
+		void render() const override;
 
 	};
 

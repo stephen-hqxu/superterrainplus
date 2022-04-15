@@ -79,17 +79,16 @@ uniform TextureRegionScaleSetting ScaleSetting;
 #include </Common/STPNullPointer.glsl>
 
 //Input
-in VertexGS{
+in VertexTES{
 	vec3 position_world;
 	vec2 texCoord;
 } fs_in;
 //Output
 #include </Common/STPGeometryBufferWriter.glsl>
 
-layout (binding = 0) uniform usampler2D Biomemap;
-layout (binding = 1) uniform sampler2D Heightmap;
-layout (binding = 2) uniform usampler2D Splatmap;
-layout (binding = 3) uniform sampler3D Noisemap;
+layout (binding = 0) uniform sampler2D Heightmap;
+layout (binding = 1) uniform usampler2D Splatmap;
+layout (binding = 2) uniform sampler3D Noisemap;
 
 //The number of visible chunk in x,z direction
 uniform uvec2 VisibleChunk;
