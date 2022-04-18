@@ -7,15 +7,11 @@ layout(
 	local_size_y = 32
 ) in;
 
-struct TileStride{
-	float X, Y, Z;
-	float U, V;
-};
 struct TileGeometry{
-	TileStride TS[4];
+	vec2 Pos, TexCoord;
 };
 struct TileElement{
-	unsigned int TE[6];
+	unsigned int Idx[3];
 };
 
 //Output
@@ -26,74 +22,77 @@ uniform writeonly TileElement* restrict TileIndex;
 uniform uvec2 TotalTile;
 uniform dvec2 BaseTilePosition;//The coordinate of the most top-left tile in world position, contains x and z
 
-//Unit-tile template data
-const dvec2 PlaneVertex[4] = {
-	//For position, it only includes x and z coordinate;
-	//For texture coordinate, it is interpreted as u and v.
-	{0.0, 0.0},
-	{0.0, 1.0},
-	{1.0, 1.0},
-	{1.0, 0.0}
+//2D Index offset of a tile starts from the top-left corner of a tile
+const uvec2 PlaneIndexOffset[2][3] = {
+	{
+		{ 0u, 0u },
+		{ 0u, 1u },
+		{ 1u, 0u }
+	},
+	{
+		{ 0u, 1u },
+		{ 1u, 1u },
+		{ 1u, 0u }
+	}
 };
-const uvec3 PlaneIndex[2] = {
-	//Each tile has two faces
-	{0, 1, 2}, 
-	{0, 2, 3}
-};
+
+//Select to generate a different set of plane geometry data.
+subroutine void PlaneGeometryGenerator(uvec2);
+layout(location = 0) subroutine uniform PlaneGeometryGenerator generatePlane;
 
 void main(){
 	//We need to instancing the unit plane and build up chunks
 	//Each chunk is again build by multiple unit planes
-	//So the number of instance will be chunk_size*number_of_chunk
+	//So the number of instance will be chunk_size * number_of_chunk
 	//Chunks will be built up from top-left to bottom-right corner
 	//Unit planes in each chunk will be again built from top-left to bottom-right
 
-	//All calculations are performed in FP64 and casted to FP32 before writing to output.
+	//All calculations are performed in FP64 and cast to FP32 before writing to output.
 
 	//Calculate the x,y offset of the local unit plane within the chunk we are currently in
-	const uvec2 local_offset = gl_GlobalInvocationID.xy;
-	if(local_offset.x >= TotalTile.x || local_offset.y >= TotalTile.y){
+	generatePlane(gl_GlobalInvocationID.xy);
+}
+
+layout(index = 0) subroutine(PlaneGeometryGenerator) void generateVertex(uvec2 local_offset){
+	//during vertex data generation, each thread is responsible for one vertex.
+	//N tiles => N + 1 vertices
+	const uvec2 TotalVertex = TotalTile + 1u;
+	if(local_offset.x >= TotalVertex.x || local_offset.y >= TotalVertex.y){
 		return;
 	}
-	//Locate the output buffer
-	const uint output_index = local_offset.x + local_offset.y * TotalTile.x;
-
-	/* ------------------------------ process vertex data ------------------------------ */
-	const dvec2 uv_increment = 1.0 / dvec2(TotalTile);
+	const unsigned int output_index = local_offset.x + local_offset.y * TotalVertex.x;
 	TileGeometry* restrict const OutputBuffer = TileBuffer + output_index;
 
-	for(int i = 0; i < PlaneVertex.length; i++){
-		dvec2 local_plane_position = PlaneVertex[i] + BaseTilePosition,
-			local_plane_uv = PlaneVertex[i];
+	const dvec2 d_local_offset = dvec2(local_offset),
+		local_plane_position = d_local_offset + BaseTilePosition,
+		//for uv, we basically normalise the local offset
+		local_plane_uv = d_local_offset / dvec2(TotalTile);
 
-		//Preparation done, starting moving instanced unit planes
-		//offset the local unit plane
-		local_plane_position += local_offset;
-		//remap the uv
-		local_plane_uv *= uv_increment;
-		local_plane_uv += uv_increment * local_offset;
+	//output to vertex buffer
+	//tiles are always at zero altitude, and we can ignore it to save memory
+	OutputBuffer->Pos = vec2(local_plane_position);
+	OutputBuffer->TexCoord = vec2(local_plane_uv);
+}
 
-		//output to vertex buffer
-		OutputBuffer->TS[i].X = float(local_plane_position.x);
-		//tiles are always at zero altitude
-		OutputBuffer->TS[i].Y = 0.0f;
-		OutputBuffer->TS[i].Z = float(local_plane_position.y);
-		OutputBuffer->TS[i].U = float(local_plane_uv.s);
-		OutputBuffer->TS[i].V = float(local_plane_uv.t);
+layout(index = 1) subroutine(PlaneGeometryGenerator) void generateIndex(uvec2 local_offset){
+	//during index data generation, each thread is responsible for one face, each tile has 2 faces, so 4 vertices
+	//N tiles => 2N faces, by default we count faces in the horizontal direction, so multiply x by 2, and remain y unchanged.
+	if(local_offset.x >= TotalTile.x * 2u || local_offset.y >= TotalTile.y){
+		return;
 	}
-
-	/* ------------------------------- process index data ------------------------------ */
-	//each tile has that many indices, we stride it to get an offset.
-	//each tile has 4 vertices
-	const uint face_offset = PlaneVertex.length * output_index;
+	const unsigned int output_index = local_offset.x + local_offset.y * (TotalTile.x * 2u);
 	TileElement* restrict const OutputIndex = TileIndex + output_index;
 
-	for(int i = 0; i < PlaneIndex.length; i++){
-		const uvec3 local_face = PlaneIndex[i] + face_offset;
+	//we need to determine which face within a tile the current thread is responsible for
+	//basically we can do an odd-even test.
+	const unsigned int tile_face_index = output_index % 2u,
+		row_vertex_count = TotalTile.x + 1u;
+	const uvec2 local_face_offset[3] = PlaneIndexOffset[tile_face_index];
 
-		//output to index buffer
-		for(int j = 0; j < 3; j++){
-			OutputIndex->TE[i * 3 + j] = local_face[j];
-		}
+	//output to index buffer
+	for(int i = 0; i < 3; i++){
+		//compute 2D global index offset
+		const uvec2 face_index = local_face_offset[i] + uvec2(local_offset.x / 2u, local_offset.y);
+		OutputIndex->Idx[i] = face_index.x + face_index.y * row_vertex_count;
 	}
 }

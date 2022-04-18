@@ -4,19 +4,21 @@
 //Input
 in VertexTES{
 	vec3 position_world;
-	vec2 texCoord;
 } fs_in;
 
 //Output
 #include </Common/STPGeometryBufferWriter.glsl>
 
-/* -------------------------- Water Wave Generator ---------------------- */
+/* -------------------------- Water Normal Mapping ---------------------- */
 #include </Common/STPAnimatedWave.glsl>
 
+uniform float WaveHeight;
 uniform WaveFunction WaterWave;
 //note that this is different from the iteration used in evaluation shader.
 uniform unsigned int WaveNormalIteration;
 uniform float WaveTime;
+//controls the distance between each sample
+uniform float Epsilon;
 /* ---------------------------------------------------------------------- */
 
 #include </Common/STPCameraInformation.glsl>
@@ -24,8 +26,28 @@ uniform float WaveTime;
 uniform vec3 Tint;
 
 //compute the surface normal of the water at the current fragment
-vec3 calcWaterNormal();
+vec3 calcWaterNormal(vec2);
 
 void main(){
+	const float waveDistance = distance(fs_in.position_world, Camera.Position);
+	const vec3 waveNormal = calcWaterNormal(fs_in.position_world.xz);
+}
 
+vec3 getSamplePosition(vec2 coord){
+	return vec3(coord.x, getWaveHeight(coord, WaterWave, WaveNormalIteration, WaveTime) * WaveHeight, coord.y);
+}
+
+vec3 calcWaterNormal(vec2 position){
+	const vec2 eps = vec2(Epsilon, 0.0f);
+	//get sample positions
+	const vec3 centreHeight = getSamplePosition(position),
+		NWHeight = getSamplePosition(position - eps.xy),
+		SEHeight = getSamplePosition(position + eps.yx);
+
+	//We use a simple cross product to compute an approximated the surface normal 
+	//instead of a gradient filter like what has been done in the terrain shader
+	//due to consideration of performance.
+	const vec3 NWDelta = normalize(centreHeight - NWHeight),
+		SEDelta = normalize(centreHeight - SEHeight);
+	return normalize(cross(NWDelta, SEDelta));
 }

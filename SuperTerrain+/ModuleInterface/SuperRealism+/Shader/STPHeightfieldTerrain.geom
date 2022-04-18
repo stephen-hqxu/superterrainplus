@@ -13,6 +13,12 @@
 layout (triangles, invocations = HEIGHTFIELD_SHADOW_PASS_INVOCATION) in;
 layout (triangle_strip, max_vertices = 3) out;
 
+//Input, which is useless. Keep it here just for interface matching
+in VertexTES{
+	vec3 position_world;
+	vec2 texCoord;
+} gs_in[];
+
 void main(){
 	for(int i = 0; i < gl_in.length; i++){
 		//output light information

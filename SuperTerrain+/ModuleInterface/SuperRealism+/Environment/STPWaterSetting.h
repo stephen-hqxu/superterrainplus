@@ -51,11 +51,17 @@ namespace SuperTerrainPlus::STPEnvironment {
 		unsigned int CullTestSample;
 		//Specifies the sample distances from the testing geometry.
 		float CullTestRadius;
+		//Specifies the height multiplier for the water plane.
+		//It is recommended that water altitude should be no more than the terrain altitude.
+		float Altitude;
 
 		//Controls the tessellation behaviour of the water plane mesh.
 		STPTessellationSetting WaterMeshTess;
 		//Controls the animation of water wave.
 		STPWaterWaveSetting WaterWave;
+
+		//The height multiplier to the water wave.
+		float WaveHeight;
 
 		//Controls the number of iteration when procedurally generating water wave.
 		//It is preferred to have fewer iterations for geometry pass and more for normal pass.
@@ -72,6 +78,9 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Set a small amount of constant colour added to the water mesh.
 		//This constant colour approximates how water behaves in real life where it reflects certain wavelength of light more than the others.
 		glm::vec3 Tint;
+		//Controls water normalmap generation, this scales the distance of each sampling point.
+		//Large distance gives smoother normalmap while small one gives stronger.
+		float NormalEpsilon;
 
 		/**
 		 * @brief Initialise a new STPWaterSetting instance.

@@ -67,6 +67,8 @@ namespace SuperTerrainPlus::STPRealism {
 		//Record the elevation of sun direction domain of the spectrum.
 		STPBundledData<float> SpectrumDomainElevation;
 
+		STPOpenGL::STPint SunPositionLocation;
+
 		/**
 		 * @brief Send new atmosphere settings as uniforms to the destination program.
 		 * @param program The program where the uniforms will be sent to.

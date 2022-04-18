@@ -10,7 +10,7 @@ struct WaveFunction {
 //X: wave height; Y: wave height derivative
 vec2 waveEquation(vec2, vec2, float, float, float);
 
-float waveHeight(vec2 position, WaveFunction func, uint iteration, float time) {
+float getWaveHeight(vec2 position, WaveFunction func, uint iteration, float time) {
 	float rotation = func.iRot, 
 		frequency = func.iFreq, 
 		amplitude = func.iAmp, 

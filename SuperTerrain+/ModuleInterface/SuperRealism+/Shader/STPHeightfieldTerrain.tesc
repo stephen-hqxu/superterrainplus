@@ -28,9 +28,11 @@ in VertexVS{
 } tcs_in[];
 
 //Output
+#if !STP_WATER
 out VertexTCS{
 	vec2 texCoord;
 } tcs_out[];
+#endif
 
 #if STP_WATER
 //The texture should remain the same as the terrain on which the water is rendered.
@@ -45,12 +47,12 @@ uniform float MinLevel;
 //Water plane culling test
 uniform unsigned int SampleCount;
 uniform float SampleRadiusMul;
-//It is recommended to remain the same as the altitude of the terrain
-uniform float WaterAltitude;
+uniform float Altitude;
 #else
 //There are two terrain tessellation settings, one for regular rendering, the other low quality one is for depth rendering.
 uniform TessellationSetting Tess[2];
-uniform unsigned int ActiveTess = 0u;
+//0: regular rendering; 1: depth pass
+uniform unsigned int TerrainRenderPass;
 #endif//STP_WATER
 
 void tessellatePlane(TessellationSetting);
@@ -102,7 +104,7 @@ void main(){
 		tessellatePlane(WaterTess);
 #else
 		//determine which tessellation setting to use for the terrain shader
-		tessellatePlane(Tess[ActiveTess]);
+		tessellatePlane(Tess[TerrainRenderPass]);
 #endif
 	}
 	
@@ -111,13 +113,13 @@ void main(){
 	//We can displace the water plane to the water level before tessellation because the displacement is constant per biome,
 	//so we can save some memory bandwidth.
 	vec4 position_world = gl_in[gl_InvocationID].gl_Position;
-	position_world.y += waterLevelAt(tcs_in[gl_InvocationID].texCoord) * WaterAltitude;
+	position_world.y += waterLevelAt(tcs_in[gl_InvocationID].texCoord) * Altitude;
 
 	gl_out[gl_InvocationID].gl_Position = position_world;
 #else
 	gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
-#endif
 	tcs_out[gl_InvocationID].texCoord = tcs_in[gl_InvocationID].texCoord;
+#endif
 }
 
 void tessellatePlane(TessellationSetting tess){

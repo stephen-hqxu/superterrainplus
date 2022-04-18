@@ -20,7 +20,6 @@
 
 //GLM
 #include <glm/vec3.hpp>
-#include <glm/mat4x4.hpp>
 
 //System
 #include <queue>
@@ -87,16 +86,15 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//Shader program for terrain rendering
 		//modeller contains vertex, tes control and tes eval, shader contains geom and frag.
-		mutable STPProgramManager TerrainModeller, TerrainShader;
+		mutable STPProgramManager TerrainVertex, TerrainModeller, TerrainShader;
 		STPPipelineManager TerrainRenderer;
+
+		STPOpenGL::STPint MeshModelLocation;
 
 		//data for texture splatting
 		STPBuffer SplatRegion;
 		std::optional<STPBindlessBuffer> SplatRegionAddress;
 		std::vector<STPBindlessTexture> SplatTextureHandle;
-
-		//The model matrix for terrain mesh.
-		glm::mat4 TerrainMeshModel;
 
 		/**
 		 * @brief Calculate the base chunk position (the coordinate of top-left corner) for the most top-left corner chunk.
@@ -146,13 +144,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param viewPos The world position of the viewing coordinate to be prepared.
 		*/
 		void setViewPosition(const glm::dvec3&);
-
-		/**
-		 * @brief Get the model matrix for the heightfield mesh.
-		 * @return The pointer to the current heightfield mesh model matrix.
-		 * Note that the model matrix might be changed when the view position has changed.
-		*/
-		const glm::mat4& getModelMatrix() const;
 
 		/**
 		 * @brief Render a regular procedural heightfield terrain.

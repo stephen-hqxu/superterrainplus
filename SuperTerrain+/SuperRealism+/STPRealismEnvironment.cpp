@@ -261,16 +261,22 @@ STPWaterSetting::STPWaterSetting() :
 	MinimumWaterLevel(0.0f), 
 	CullTestSample(1u), 
 	CullTestRadius(1.0f), 
+	Altitude(1.0f),
+	WaveHeight(1.0f),
 	WaterWaveIteration{ 1u, 1u }, 
-	Tint(vec3(0.0f)) {
+	Tint(vec3(0.0f)), 
+	NormalEpsilon(1.0f) {
 
 }
 
 bool STPWaterSetting::validate() const {
-	return this->MinimumWaterLevel > 0.0f
+	return this->MinimumWaterLevel >= 0.0f
 		&& this->CullTestSample != 0u
 		&& this->CullTestRadius > 0.0f
+		&& this->Altitude > 0.0f
+		&& this->WaveHeight > 0.0f
 		&& this->WaterWaveIteration.Geometry != 0u
 		&& this->WaterWaveIteration.Normal != 0u
-		&& this->WaterMeshTess.validate() && this->WaterWave.validate();
+		&& this->WaterMeshTess.validate() && this->WaterWave.validate()
+		&& this->NormalEpsilon > 0.0f;
 }

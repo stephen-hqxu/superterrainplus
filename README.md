@@ -12,9 +12,7 @@
 
 ## :eyes: Overview
 
-*SuperTerrain+* is a modern procedural terrain generator with physics simulations and aiming for real-time photorealistic rendering. It was started as my computer science dissertation project and inspired by many games, software and movies with procedural generation features. The time allowance as a school project is too limited to explore all the amazing stuff in this topic, therefore I would like to keep going.
-
-Procedural generation is one of the most popular topics in computer graphics and allows us to create data using the power of algorithm and minimise efforts spent on pre-modelling/computing.
+*SuperTerrain+* is a modern procedural terrain generator with physics simulations and aiming for real-time photorealistic rendering. It was started as my computer science dissertation project and inspired by many games, software and movies with procedural generation features. Procedural generation is one of the most popular topics in computer graphics and allows us to create data using the power of algorithm and minimise efforts spent on pre-modelling/computing.
 
 *SuperTerrain+* provides engine-like object-oriented interfaces to allow developers to customise the scenery as they preferred. Rather than considering it as a piece of software, it is also a collection of modern computer graphics techniques; with the help of detailed inline documentations, this is also a great place for learning.
 
