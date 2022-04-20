@@ -14,13 +14,13 @@
 
 *SuperTerrain+* is a modern procedural terrain generator with physics simulations and aiming for real-time photorealistic rendering. It was started as my computer science dissertation project and inspired by many games, software and movies with procedural generation features. Procedural generation is one of the most popular topics in computer graphics and allows us to create data using the power of algorithm and minimise efforts spent on pre-modelling/computing.
 
-*SuperTerrain+* provides engine-like object-oriented interfaces to allow developers to customise the scenery as they preferred. Rather than considering it as a piece of software, it is also a collection of modern computer graphics techniques; with the help of detailed inline documentations, this is also a great place for learning.
+*SuperTerrain+* provides object-oriented interfaces to allow developers to customise the scenery as they preferred. Rather than considering it as a piece of software, it is also a collection of modern computer graphics techniques; with the help of detailed inline documentations, this is also a great place for learning.
 
 *SuperTerrain+* is focusing on the next-generation computer graphics, so I have to spend most of my time on the latest technologies, therefore there is no intention for backward compatibility and the development environment such as programming language standard and hardware requirement, will be evolving over time.
 
 ## :bulb: Main Features
 
-*SuperTerrain+* is definitely not the first application that brings out procedural generation, then why we need yet another one?
+*SuperTerrain+* is definitely not the first terrain generator, then why we need yet another one?
 
 There is no perfect answer to this question, every application has its own pros and cons. Other than being modern, flexible and specialised for terrain generation and real-time photorealistic rendering, and of course for fun, these features are believed to differentiate *SuperTerrain+* from the others.
 
@@ -78,7 +78,7 @@ There is no perfect answer to this question, every application has its own pros 
   - [ ] Point light
   - [ ] Spotlight
 - [ ] Water rendering
-  - [ ] Procedural water animation
+  - [x] Procedural water animation
   - [ ] Screen-space reflection
   - [ ] Screen-space refraction
   - [ ] Fresnel effect
@@ -175,6 +175,7 @@ The application is unit-tested with.
 
 - OpenGL 4.6 core profile
 - [GL_ARB_bindless_texture](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_bindless_texture.txt)
+- [GL_ARB_shader_ballot](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_shader_ballot.txt)
 - [GL_ARB_shading_language_include](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_shading_language_include.txt)
 - [GL_NV_draw_texture](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_draw_texture.txt)
 - [GL_NV_gpu_shader5](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt)
@@ -190,44 +191,30 @@ The following extensions are not required but will be made used by the engine au
 
 > This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. When you are downloading GLAD please make sure those extensions are included. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview) or [online extension database](https://opengl.gpuinfo.org/).
 
-### :gear: How to build
+### :gear: Build Instruction
 
-1. Master branch is considered as a *work-in-progress* branch in this project, so make sure you are using the latest stable source code from [Releases](https://github.com/stephen-hqxu/superterrainplus/releases).
-
-2. Unzip the source code and go to project root.
+*SuperTerrain+* uses CMake to build and it behaves similarly to most CMake projects. You may skip these basic instructions if you are familiar to CMake and instead focusing on setting up dependencies and CMake options.
 
 ```sh
 
 # x.x.x is the version number
-unzip `superterrainplus-x.x.x.zip`
+unzip ./`superterrainplus-x.x.x.zip`
 cd ./superterrainplus-x.x.x
 
-```
-
-3. Create and go to `build` folder.
-
-```sh
-
+# create a build directory
 mkdir build
 cd ./build
 
-```
-
-4. Acquire project build script from CMake.
-
-```sh
-
+# generate build tree
 cmake ../
 
 ```
 
-5. Configure *CMakeCache.txt* if preferred. Leave it as default otherwise.
-
-6. Build the program. Please choose the command based on your OS.
+*SuperTerrain+* build script automatically searches for dependencies; in case of any error, please make sure you have all third-party libraries installed on your computer. You may want configure *CMakeCache.txt* before moving on to the next step to build the application.
 
 ```sh
 
-# Windows; you can either compile via Visual Studio GUI using the generated VS solution,
+# Windows; you can either compile via Visual Studio GUI from the generated VS solution,
 # or alternatively the command line like this
 cmake --build ./ --config Release --target ALL_BUILD
 
@@ -236,7 +223,7 @@ make all
 
 ```
 
-Compilation of the engine may take up to 5 minutes. You may obtain the following executables after that:
+Compilation of the engine may take up to 5 minutes. You may obtain the following executables:
 
 - `SuperDemo+` if demo build is enabled
 - `SuperTest+` if test build is enabled
@@ -284,6 +271,7 @@ Please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com) if yo
 - [SSAO](https://learnopengl.com/Advanced-Lighting/SSAO) from *Learn OpenGL*
 - [HBAO](https://github.com/nvpro-samples/gl_ssao) and [HBAO+](https://github.com/NVIDIAGameWorks/HBAOPlus)
 - [PBR theory](https://learnopengl.com/PBR/Theory) from *Learn OpenGL*
+- [Procedural water animation](https://www.shadertoy.com/view/4dBcRD)
 
 **HDR**
 

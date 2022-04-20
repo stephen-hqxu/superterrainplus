@@ -97,7 +97,6 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 			("ALBEDO", splatmap_generator.convertType(STPTextureType::Albedo))
 			("NORMAL", splatmap_generator.convertType(STPTextureType::Normal))
 			("ROUGHNESS", splatmap_generator.convertType(STPTextureType::Roughness))
-			("SPECULAR", splatmap_generator.convertType(STPTextureType::Specular))
 			("AO", splatmap_generator.convertType(STPTextureType::AmbientOcclusion))
 
 			("TYPE_STRIDE", splatmap_generator.usedType())

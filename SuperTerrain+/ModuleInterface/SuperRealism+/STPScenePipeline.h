@@ -15,7 +15,6 @@
 //Container
 #include <vector>
 #include <memory>
-#include <optional>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -133,20 +132,22 @@ namespace SuperTerrainPlus::STPRealism {
 
 			//Scene graph
 			//Object nodes
-			std::vector<std::unique_ptr<STPSceneObject::STPOpaqueObject<false>>> OpaqueObjectDatabase;
+			std::vector<STPSceneObject::STPOpaqueObject<false>*> OpaqueObjectDatabase;
 			//This is a subset-view of opaque object database, a collection of opaque objects that can cast shadow.
 			std::vector<STPSceneObject::STPOpaqueObject<true>*> ShadowOpaqueObject;
+			//Holding all objects that allow light to pass through.
+			//Rendering these objects is a bit more complicated in a deferred renderer.
+			std::vector<STPSceneObject::STPTransparentObject*> TransparentObjectDatabase;
 			//A special object that contributes to the environment and does not have a solid body.
-			std::vector<std::unique_ptr<STPSceneObject::STPEnvironmentObject>> EnvironmentObjectDatabase;
+			std::vector<STPSceneObject::STPEnvironmentObject*> EnvironmentObjectDatabase;
 
 			//Light nodes
 			std::vector<size_t> UniqueLightSpaceSize;
-			std::vector<std::unique_ptr<STPSceneLight>> LightDatabase;
 			std::vector<STPSceneLight*> ShadowLight;
 
 			//Special effect nodes
-			std::optional<STPAmbientOcclusion> AmbientOcclusionObject;
-			std::optional<STPPostProcess> PostProcessObject;
+			STPAmbientOcclusion* AmbientOcclusionObject = nullptr;
+			STPPostProcess* PostProcessObject = nullptr;
 
 		};
 
@@ -264,14 +265,12 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Add a rendering component to the scene pipeline.
 		 * @tparam Obj The type of the object.
-		 * @tparam ...Arg Arguments for constructing the object.
-		 * @param arg... The argument lists.
-		 * @return The pointer to the newly constructed rendering component.
-		 * This pointer is managed by the current scene pipeline.
-		 * If the object type is not supported, operation is ignored.
+		 * @param object The pointer to the object to be added.
+		 * The pointer is retained by the scene pipeline; unless the pipeline is destroyed or object is removed from it,
+		 * the lifetime of this object should remain.
 		*/
-		template<class Obj, typename... Arg>
-		Obj* add(Arg&&...);
+		template<class Obj>
+		void add(Obj&);
 
 		/**
 		 * @brief Specify clear values for the colour buffers.

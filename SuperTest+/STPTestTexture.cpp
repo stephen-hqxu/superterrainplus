@@ -283,7 +283,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 				STPTextureType::Normal, MapGroup[3], TexSoilNormal
 			));
 			REQUIRE_NOTHROW(this->addMap(Tex[4],
-				STPTextureType::Specular, MapGroup[4], TexSoilSpec
+				STPTextureType::Roughness, MapGroup[4], TexSoilSpec
 			));
 			//-----------------------------------------------------
 			REQUIRE_NOTHROW(this->addMap(Tex[2],
@@ -411,7 +411,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 							const auto TypeRec = BatchVisitor.getValidMapType(3u);
 							CHECK(TypeRec.size() == 3ull);
 							CHECK(TypeRec[1] == STPTextureType::Normal);
-							CHECK(TypeRec[2] == STPTextureType::Specular);
+							CHECK(TypeRec[2] == STPTextureType::Roughness);
 						}
 
 					}

@@ -30,7 +30,13 @@ vec3 calcWaterNormal(vec2);
 
 void main(){
 	const float waveDistance = distance(fs_in.position_world, Camera.Position);
-	const vec3 waveNormal = calcWaterNormal(fs_in.position_world.xz);
+	vec3 waveNormal = calcWaterNormal(fs_in.position_world.xz);
+
+	//gradually flatten the water surface as it gets further away
+	const float glossiness = smoothstep(0.0f, Camera.Far, waveDistance);
+	waveNormal = normalize(mix(waveNormal, vec3(0.0f, 1.0f, 0.0f), glossiness));
+
+	writeGeometryData(Tint, waveNormal, 1.0 - glossiness, 1.0f);
 }
 
 vec3 getSamplePosition(vec2 coord){

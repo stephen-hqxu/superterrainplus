@@ -15,7 +15,7 @@ constexpr static auto AlphaCullingFilename = STPFile::generateFilename(SuperTerr
 STPAlphaCulling::STPAlphaCulling(STPCullOperator op, const STPScreenInitialiser& screen_init) : STPScreen(*screen_init.SharedVertexBuffer) {
 	//setup alpha culling shading program
 	const char* const culling_shader_file = AlphaCullingFilename.data();
-	STPShaderManager::STPShaderSource cull_shader(culling_shader_file, *STPFile(culling_shader_file));
+	STPShaderManager::STPShaderSource cull_source(culling_shader_file, *STPFile(culling_shader_file));
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 	//determine operator string
@@ -44,8 +44,11 @@ STPAlphaCulling::STPAlphaCulling(STPCullOperator op, const STPScreenInitialiser&
 		break;
 	}
 	Macro("ALPHA_TEST_OPERATOR", op_str);
-	cull_shader.define(Macro);
+	cull_source.define(Macro);
+
 	//build the program
+	STPShaderManager cull_shader(GL_FRAGMENT_SHADER);
+	cull_shader(cull_source);
 	this->initScreenRenderer(cull_shader, screen_init);
 
 	//sampler

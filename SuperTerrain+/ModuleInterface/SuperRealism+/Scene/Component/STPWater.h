@@ -14,6 +14,7 @@
 #include "../../Environment/STPWaterSetting.h"
 
 //System
+#include <chrono>
 #include <unordered_map>
 #include <optional>
 
@@ -34,15 +35,19 @@ namespace SuperTerrainPlus::STPRealism {
 		STPTexture WaterLevelTable;
 		std::optional<STPBindlessTexture> WaterLevelTableHandle;
 
-		STPProgramManager WaterAnimator;
+		mutable STPProgramManager WaterAnimator;
 		STPPipelineManager WaterRenderer;
 
 		STPOpenGL::STPint WaveTimeLocation;
 
-		//Wave animation logic
-		double WavePhase;
-		//The period is updated whenever water setting is set.
-		double WavePeriod;
+		//record the wave time at initialisation of water wave.
+		std::chrono::time_point<std::chrono::steady_clock> WaveTimeStart;
+
+		/**
+		 * @brief Update the water wave time.
+		 * @param time The new time to be sent to the shader, in seconds.
+		*/
+		void updateWaveTime(double) const;
 
 	public:
 
@@ -74,18 +79,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param water_setting The pointer to the water setting. Settings are copied.
 		*/
 		void setWater(const STPEnvironment::STPWaterSetting&);
-
-		/**
-		 * @brief Get wave period of the current water setting.
-		 * @return The period of water wave. The returned value is valid only if the water setting has been set.
-		*/
-		double getWavePeriod() const;
-
-		/**
-		 * @brief Set the wave time ahead by a specified number, to animate the water wave.
-		 * @param time The amount of time to advance.
-		*/
-		void advanceWaveTime(double);
 
 		void render() const override;
 

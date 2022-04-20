@@ -415,7 +415,7 @@ private:
 	//G-buffer components
 	//The depth buffer can be used to reconstruct world position.
 	//Not all buffers are present here, some of them are shared with the scene pipeline (and other rendering components to reduce memory usage)
-	STPTexture GAlbedo, GNormal, GSpecular, GAmbient;
+	STPTexture GAlbedo, GNormal, GRoughness, GAmbient;
 	optional<STPGeometryBufferHandle> GHandle;
 	STPFrameBuffer GeometryContainer;
 
@@ -438,13 +438,13 @@ public:
 	*/
 	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadowMapFilterFunction& shadow_filter, 
 		const STPScreenInitialiser& lighting_init) : STPScreen(*lighting_init.SharedVertexBuffer), Pipeline(pipeline),
-		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GSpecular(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D), 
+		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GRoughness(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D),
 		ExtinctionStencilCuller(STPAlphaCulling::STPCullOperator::LessEqual, lighting_init) {
 		const bool cascadeLayerBlend = shadow_filter.CascadeBlendArea > 0.0f;
 
 		//do something to the fragment shader
 		const char* const lighting_source_file = DeferredShaderFilename.data();
-		STPShaderManager::STPShaderSource source(lighting_source_file, *STPFile(lighting_source_file));
+		STPShaderManager::STPShaderSource deferred_source(lighting_source_file, *STPFile(lighting_source_file));
 		STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 		const STPSceneShaderCapacity& memory_cap = this->Pipeline.SceneMemoryLimit;
@@ -454,9 +454,12 @@ public:
 			("LIGHT_SHADOW_FILTER", static_cast<std::underlying_type_t<STPShadowMapFilter>>(shadow_filter.Filter))
 			("SHADOW_CASCADE_BLEND", cascadeLayerBlend ? 1 : 0);
 
-		source.define(Macro);
+		deferred_source.define(Macro);
+
 		//compile shader
-		this->initScreenRenderer(source, lighting_init);
+		STPShaderManager deffered_shader(GL_FRAGMENT_SHADER);
+		deffered_shader(deferred_source);
+		this->initScreenRenderer(deffered_shader, lighting_init);
 
 		/* ------------------------------- setup G-buffer sampler ------------------------------------- */
 		this->GSampler.filter(GL_NEAREST, GL_NEAREST);
@@ -550,12 +553,12 @@ public:
 	*/
 	void setResolution(const STPSharedTexture& texture, const uvec3& dimension) {
 		//create a set of new buffers
-		STPTexture albedo(GL_TEXTURE_2D), normal(GL_TEXTURE_2D), specular(GL_TEXTURE_2D), ao(GL_TEXTURE_2D);
+		STPTexture albedo(GL_TEXTURE_2D), normal(GL_TEXTURE_2D), roughness(GL_TEXTURE_2D), ao(GL_TEXTURE_2D);
 		const auto& [depth_stencil] = texture;
 		//reallocation of memory
 		albedo.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGB8, dimension);
 		normal.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGB16_SNORM, dimension);
-		specular.textureStorage<STPTexture::STPDimension::TWO>(1, GL_R8, dimension);
+		roughness.textureStorage<STPTexture::STPDimension::TWO>(1, GL_R8, dimension);
 		ao.textureStorage<STPTexture::STPDimension::TWO>(1, GL_R8, dimension);
 		//we don't need position buffer but instead of perform depth reconstruction
 		//so make sure the depth buffer is solid enough to construct precise world position
@@ -563,7 +566,7 @@ public:
 		//reattach to framebuffer with multiple render targets
 		this->GeometryContainer.attach(GL_COLOR_ATTACHMENT0, albedo, 0);
 		this->GeometryContainer.attach(GL_COLOR_ATTACHMENT1, normal, 0);
-		this->GeometryContainer.attach(GL_COLOR_ATTACHMENT2, specular, 0);
+		this->GeometryContainer.attach(GL_COLOR_ATTACHMENT2, roughness, 0);
 		this->GeometryContainer.attach(GL_COLOR_ATTACHMENT3, ao, 0);
 		this->GeometryContainer.attach(GL_DEPTH_STENCIL_ATTACHMENT, depth_stencil, 0);
 
@@ -583,7 +586,7 @@ public:
 		this->GHandle = std::move(STPGeometryBufferHandle{
 			STPBindlessTexture(albedo, this->GSampler),
 			STPBindlessTexture(normal, this->GSampler),
-			STPBindlessTexture(specular, this->GSampler),
+			STPBindlessTexture(roughness, this->GSampler),
 			STPBindlessTexture(ao, this->GSampler),
 			STPBindlessTexture(depth_stencil, this->DepthSampler)
 		});
@@ -596,7 +599,7 @@ public:
 		//store the new objects
 		this->GAlbedo = move(albedo);
 		this->GNormal = move(normal);
-		this->GSpecular = move(specular);
+		this->GRoughness = move(roughness);
 		this->GAmbient = move(ao);
 	}
 
@@ -619,7 +622,7 @@ public:
 		//clear geometry buffer because we cannot just clear to the clear colour buffer
 		this->GeometryContainer.clearColor(0, this->Pipeline.DefaultClearColor);//albedo
 		this->GeometryContainer.clearColor(1, ClearNormal);//normal
-		this->GeometryContainer.clearColor(2, ClearOne);//specular
+		this->GeometryContainer.clearColor(2, ClearOne);//roughness
 		this->GeometryContainer.clearColor(3, ClearOne);//ambient occlusion
 	}
 
@@ -823,10 +826,10 @@ void STPScenePipeline::setResolution(uvec2 resolution) {
 	
 	//update scene component (if needed)
 	STPSceneGraph& scene = this->SceneComponent;
-	if (scene.PostProcessObject.has_value()) {
+	if (scene.PostProcessObject) {
 		scene.PostProcessObject->setPostProcessBuffer(&depth_stencil, resolution);
 	}
-	if (scene.AmbientOcclusionObject.has_value()) {
+	if (scene.AmbientOcclusionObject) {
 		scene.AmbientOcclusionObject->setScreenSpace(&depth_stencil, resolution);
 	}
 
@@ -844,10 +847,10 @@ void STPScenePipeline::setExtinctionArea(float factor) const {
 }
 
 void STPScenePipeline::traverse() {
-	const auto& [object, object_shadow, env_obj, unique_light_space_size, light, light_shadow, ao, post_process] = this->SceneComponent;
+	const auto& [object, object_shadow, trans_obj, env_obj, unique_light_space_size, light_shadow, ao, post_process] = this->SceneComponent;
 	//determine the state of these optional stages
-	const bool has_effect_ao = ao.has_value(),
-		has_effect_post_process = post_process.has_value();
+	const bool has_effect_ao = ao,
+		has_effect_post_process = post_process;
 	if (!has_effect_post_process) {
 		throw STPException::STPUnsupportedFunctionality("It is currently not allowed to render to default framebuffer without post processing, "
 			"because there is no stencil information written.");

@@ -4,6 +4,7 @@
 #include <SuperRealism+/Utility/STPIndirectCommand.hpp>
 
 //Error
+#include <SuperTerrain+/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
 
@@ -125,15 +126,14 @@ STPScreen::STPScreen(const STPSharableScreenVertexBuffer& screen_vb) : ScreenVer
 	
 }
 
-void STPScreen::initScreenRenderer(const STPShaderManager::STPShaderSource& screen_fs_source, const STPScreenInitialiser& screen_init) {
-	const auto [vs, vb] = screen_init;
-
-	STPShaderManager screen_fs(GL_FRAGMENT_SHADER);
-	screen_fs(screen_fs_source);
+void STPScreen::initScreenRenderer(const STPShaderManager& screen_fs, const STPScreenInitialiser& screen_init) {
+	if (screen_fs.Type != GL_FRAGMENT_SHADER) {
+		throw STPException::STPInvalidArgument("The shader initialised for off-screen rendering must be a fragment shader");
+	}
 
 	//setup compute program
 	this->OffScreenRenderer
-		.attach(**vs)
+		.attach(**screen_init.VertexShader)
 		.attach(screen_fs)
 		.finalise();
 }

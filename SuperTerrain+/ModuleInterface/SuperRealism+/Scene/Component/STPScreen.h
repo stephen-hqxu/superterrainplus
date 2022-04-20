@@ -71,7 +71,7 @@ namespace SuperTerrainPlus::STPRealism {
 			void clearScreenBuffer(const glm::vec4&);
 
 			/**
-			 * @brief Activating the screen color framebuffer.
+			 * @brief Activating the screen colour framebuffer.
 			 * To deactivate, bind framebuffer target to any other points.
 			*/
 			void capture() const;
@@ -175,10 +175,10 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Initialise the off-screen renderer.
 		 * All old states in the previous screen renderer, if any, is lost and the program is recompiled.
-		 * @param screen_fs_source The pointer to the fragment shader source code to be compiled and used by the pipeline.
+		 * @param screen_fs The pointer to the fragment shader used by the pipeline.
 		 * @param screen_init The pointer to the screen initialiser.
 		*/
-		void initScreenRenderer(const STPShaderManager::STPShaderSource&, const STPScreenInitialiser&);
+		void initScreenRenderer(const STPShaderManager&, const STPScreenInitialiser&);
 
 		/**
 		 * @brief Draw the screen.

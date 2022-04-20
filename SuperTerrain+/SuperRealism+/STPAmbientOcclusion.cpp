@@ -62,7 +62,10 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 	Macro("AO_ALGORITHM", static_cast<std::underlying_type_t<STPOcclusionAlgorithm>>(kernel_instance.Occluder));
 
 	ssao_source.define(Macro);
-	this->initScreenRenderer(ssao_source, kernel_init);
+
+	STPShaderManager ssao_shader(GL_FRAGMENT_SHADER);
+	ssao_shader(ssao_source);
+	this->initScreenRenderer(ssao_shader, kernel_init);
 
 	const auto& kernel_setting = kernel_instance.Kernel;
 	/* --------------------------------- setup random number generators ------------------------------ */

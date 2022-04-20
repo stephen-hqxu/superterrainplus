@@ -43,7 +43,9 @@ vec2 waveEquation(vec2 position, vec2 direction, float speed, float frequency, f
 		//the exp function makes the wave a bit more gentle; wave has range [exp(-2), 1]
 		wave = exp(sin(x) - 1.0f),
 		waveDx = wave * (-cos(x));
-	return vec2(wave, waveDx);
+	//normalise the wave range to [0, 1]
+	//(wave - exp(-2)) / 1 - exp(-2)
+	return vec2((wave - 0.1353352832) / 0.8646647168, waveDx);
 }
 
 #endif//_STP_ANIMATED_WAVE_GLSL_
