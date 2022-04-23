@@ -6,6 +6,7 @@ layout(early_fragment_tests) in;
 
 //depth reconstruction to view space
 #define EMIT_DEPTH_RECON_VIEW_IMPL
+#define EMIT_VIEW_TO_NDC_IMPL
 #include </Common/STPCameraInformation.glsl>
 
 /* ------------------- algorithm control ---------------------- */
@@ -44,30 +45,27 @@ float computeOcclusion(vec3, vec3);
 
 void main(){
 	//get inputs
-	const vec3 fragPos = fragDepthReconstruction(textureLod(GeoDepth, FragTexCoord, 0).r, FragTexCoord),
+	const vec3 position_view = fragDepthReconstruction(textureLod(GeoDepth, FragTexCoord, 0).r, FragTexCoord),
 		//our normal in the G-Buffer is in world space, we need to convert it to view space
-		fragNormal = normalize(Camera.ViewNormal * textureLod(GeoNormal, FragTexCoord, 0).rgb);
+		normal_view = normalize(Camera.ViewNormal * textureLod(GeoNormal, FragTexCoord, 0).rgb);
 
 	//compute occlusion and write to output
-	OcclusionFactorOutput = computeOcclusion(fragPos, fragNormal);
+	OcclusionFactorOutput = computeOcclusion(position_view, normal_view);
 }
 
 //Given a view position, return a view position which is on the geometry.
 //Basically the x, y coordinate is unchanged but the depth will be on the geometry, if the geometry exists.
-vec3 viewSnapToGeometry(vec3 viewPos){
-	//convert from view to clip space first
-	const vec2 clipPos = mat4x2(Camera.Projection) * vec4(viewPos, 1.0f);
-	//from clip space to NDC by perspective division
-	//range convert from [-1, 1] to [0, 1]
-	const vec2 uvPos = (clipPos / (Camera.useOrtho ? 1.0f : -viewPos.z)) * 0.5f + 0.5f;
-
+vec3 viewSnapToGeometry(mat4x2 proj_xy, vec3 viewPos){
+	const vec2 position_ndc = fragViewToNDC(proj_xy, viewPos);
 	//get the geometry depth at this coordinate and return
-	return fragDepthReconstruction(textureLod(GeoDepth, uvPos, 0).r, uvPos);
+	return fragDepthReconstruction(textureLod(GeoDepth, position_ndc, 0).r, position_ndc);
 }
 
 float computeOcclusion(vec3 position_view, vec3 normal_view){
 	//the output occlusion factor
 	float occlusion = 0.0f;
+	//the projection matrix that only deals with x and y component
+	const mat4x2 xyProjection = mat4x2(Camera.Projection);
 
 #if AO_ALGORITHM == 0
 	/* ========================================== Screen-Space Ambient Occlusion ========================================= */
@@ -86,7 +84,7 @@ float computeOcclusion(vec3 position_view, vec3 normal_view){
 		//project sample position to sample texture to get position on screen/texture
 		//compute the screen-space UV coordinate using the view space sampling position
 		//get depth value for kernel sample
-		const float sampleViewDepth = viewSnapToGeometry(samplePos).z;
+		const float sampleViewDepth = viewSnapToGeometry(xyProjection, samplePos).z;
 
 		//range check to avoid occlusion bleeding at geometry edge and accumulate
 		const float rangeCheck = smoothstep(0.0f, 1.0f, KernelRadius / abs(position_view.z - sampleViewDepth));
@@ -107,7 +105,7 @@ float computeOcclusion(vec3 position_view, vec3 normal_view){
 	//the angle accumulated at each step in the hemisphere
 	const float delta = TWO_PI / float(DirectionStep),
 		//add one to the number of ray step to avoid the final sample to be fully attenuated
-		stepSizePixel = KernelRadius / float(RayStep + 1u),
+		stepSize = KernelRadius / float(RayStep + 1u),
 		negInvR2 = -1.0f / (KernelRadius * KernelRadius);
 
 	//scan through the hemisphere above the horizon
@@ -125,15 +123,15 @@ float computeOcclusion(vec3 position_view, vec3 normal_view){
 		const vec2 direction = elevRotation * randomRotation;
 
 		//jitter starting sample within the first step
-		float rayPixel = (randomRayStart * stepSizePixel + 1.0f);
+		float rayLength = randomRayStart * stepSize;
 		//for the current ray direction, ray march to the object
 		for(unsigned int r = 0u; r < RayStep; r++){
 			//proceed to the next sampling point on the ray
 			//We are scanning through the horizon which is parallel to the view plane, such that z-component is zero,
 			//and advances to the next sampling point along the ray direction.
-			const vec3 samplePos = position_view + vec3(rayPixel * direction, 0.0f),
+			const vec3 samplePos = position_view + vec3(rayLength * direction, 0.0f),
 				//get the object depth of the current sampling point
-				sampleGeoPos = viewSnapToGeometry(samplePos);
+				sampleGeoPos = viewSnapToGeometry(xyProjection, samplePos);
 
 			const vec3 V = sampleGeoPos - position_view;
 			const float VdotV = dot(V, V),
@@ -144,7 +142,7 @@ float computeOcclusion(vec3 position_view, vec3 normal_view){
 			occlusion += clamp(NdotV - SampleDepthBias, 0.0f, 1.0f) * clamp(falloff, 0.0f, 1.0f);
 
 			//advance to the next sampling point
-			rayPixel += stepSizePixel;
+			rayLength += stepSize;
 		}
 	}
 

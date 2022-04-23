@@ -293,7 +293,7 @@ namespace STPStart {
 				const STPEnvironment::STPOcclusionKernelSetting ao_setting = STPTerrainParaLoader::getAOSetting(ao_section);
 				STPAmbientOcclusion::STPOcclusionKernel<STPAmbientOcclusion::STPOcclusionAlgorithm::HBAO> ao_kernel(ao_setting);
 				//For SSAO
-				//ao_kernel.KernelSize = ao_section("kernel_size").to<unsigned int>();
+				//ao_kernel.KernelSize = ao_section.at("kernel_size").to<unsigned int>();
 				//For HBAO
 				ao_kernel.DirectionStep = ao_section.at("direction_step").to<unsigned int>();
 				ao_kernel.RayStep = ao_section.at("ray_step").to<unsigned int>();

@@ -14,6 +14,7 @@
 
 //Container
 #include <vector>
+#include <unordered_set>
 #include <memory>
 
 //GLM
@@ -142,7 +143,7 @@ namespace SuperTerrainPlus::STPRealism {
 			std::vector<STPSceneObject::STPEnvironmentObject*> EnvironmentObjectDatabase;
 
 			//Light nodes
-			std::vector<size_t> UniqueLightSpaceSize;
+			std::unordered_set<size_t> UniqueLightSpaceSize;
 			std::vector<STPSceneLight*> ShadowLight;
 
 			//Special effect nodes

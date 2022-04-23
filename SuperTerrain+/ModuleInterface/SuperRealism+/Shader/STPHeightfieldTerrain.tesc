@@ -60,10 +60,6 @@ uniform unsigned int TerrainRenderPass;
 
 //Calculate the level-of-detail for the mesh
 float calcLoD(TessellationSetting, float, float);
-#if STP_WATER
-//get the water level at the current texture coordinate
-float waterLevelAt(vec2);
-#endif
 
 const uvec2 PatchEdgeIdx[3] = {
 	{ 1u, 2u },
@@ -105,9 +101,12 @@ void main(){
 		//draw a circle at the centroid, sample at the circumference
 		const float angleInc = TWO_PI / float(SampleCount);
 		for(uint i = invocStart; i < invocEnd; i++){
-			const float currentAngle = angleInc * i,
-				sampleLevel = waterLevelAt(samplePos);
+			const float currentAngle = angleInc * i;
 			const vec2 samplePos = SampleRadiusMul * vec2(cos(currentAngle), sin(currentAngle)) + triCentriod;
+
+			//get the water level at the current texture coordinate
+			const uint biome = textureLod(Biomemap, samplePos, 0).r;
+			const float sampleLevel = textureLod(WaterLevel, 1.0f * biome / (1.0f * textureSize(WaterLevel, 0)), 0).r;
 
 			//find the max water level among all samples
 			//Here we assume all samples only lie within a single watery biome, or alternatively,
@@ -166,10 +165,3 @@ void main(){
 float calcLoD(TessellationSetting tess, float v1, float v2){
 	return mix(tess.MaxLod, tess.MinLod, (v1 + v2) * 0.5f);
 }
-
-#if STP_WATER
-float waterLevelAt(vec2 uv){
-	const uint biome = textureLod(Biomemap, uv, 0).r;
-	return textureLod(WaterLevel, 1.0f * biome / (1.0f * textureSize(WaterLevel, 0)), 0).r;
-}
-#endif

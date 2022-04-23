@@ -13,11 +13,12 @@ layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 	layout(offset = 320) mat4 InvProjectionView;
 
 	//Camera properties
-	layout(offset = 384) float Far;
+	layout(offset = 384) vec3 LinearDepthFactor;
+	layout(offset = 396) float Far;
 	//Of course we can check type of projection by examining the projection matrix, 
 	//for example projection is orthographic if and only if Projection[3][3] == 1.0f.
 	//It is faster to compute the result on host than computing every frame.
-	layout(offset = 388) bool useOrtho;
+	layout(offset = 400) bool useOrtho;
 } Camera;
 
 /* --------------------------------------------------------------------- */
@@ -42,5 +43,24 @@ vec3 fragDepthReconstruction(float frag_depth, vec2 frag_coord) {
 
 #undef DEPTH_CONVERSION_MAT
 #endif//EMIT_DEPTH_RECON_WORLD_IMPL || EMIT_DEPTH_RECON_VIEW_IMPL
+
+#ifdef EMIT_VIEW_TO_NDC_IMPL
+//convert a view position to 2D normalised device coordinate
+vec2 fragViewToNDC(mat4x2 projection_xy, vec3 position_view) {
+	//convert from view to clip space first
+	const vec2 position_clip = projection_xy * vec4(position_view, 1.0f);
+	//from clip space to NDC by perspective division
+	//range convert from [-1, 1] to [0, 1]
+	return (position_clip / (Camera.useOrtho ? 1.0f : -position_view.z)) * 0.5f + 0.5f;
+}
+#endif//EMIT_VIEW_TO_NDC_IMPL
+
+#ifdef EMIT_LINEARISE_DEPTH_IMPL
+float lineariseDepth(float depth) {
+	//depth needs to be converted to range [-1, 1]
+	//2 * far * near / (far + near - (2 * z - 1) * (far - near))
+	return LinearDepthFactor.x / (LinearDepthFactor.y - (2.0f * depth - 1.0f) * LinearDepthFactor.z);
+}
+#endif//EMIT_LINEARISE_DEPTH_IMPL
 
 #endif//_STP_CAMERA_INFORMATION_GLSL_

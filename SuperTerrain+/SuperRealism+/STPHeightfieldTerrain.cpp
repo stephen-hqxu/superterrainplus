@@ -156,7 +156,6 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 		//some samplers
 		.uniform(glProgramUniform1i, "Heightmap", 0)
 		.uniform(glProgramUniform1i, "Splatmap", 1)
-		.uniform(glProgramUniform1i, "Noisemap", 2)
 		//extra terrain info for rendering
 		.uniform(glProgramUniform2uiv, "VisibleChunk", 1, value_ptr(chunk_setting.RenderedChunk))
 		.uniform(glProgramUniform2fv, "ChunkHorizontalOffset", 1, value_ptr(static_cast<vec2>(chunkHorizontalOffset)));
@@ -254,7 +253,9 @@ void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 	cudaGraphicsResource_t res;
 	cudaArray_t random_buffer;
 
-	//register cuda graphics
+	//CUDA will throw error when mapping on a texture with bindless handle active, so we need to deactivate it first.
+	this->NoiseSampleHandle.reset();
+	//register CUDA graphics
 	STPcudaCheckErr(cudaGraphicsGLRegisterImage(&res, *this->NoiseSample, GL_TEXTURE_3D, cudaGraphicsRegisterFlagsWriteDiscard));
 	//map
 	STPcudaCheckErr(cudaGraphicsMapResources(1, &res));
@@ -267,6 +268,10 @@ void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 	//clear up
 	STPcudaCheckErr(cudaGraphicsUnmapResources(1, &res));
 	STPcudaCheckErr(cudaGraphicsUnregisterResource(res));
+
+	//create bindless handle for noise sampler
+	this->NoiseSampleHandle.emplace(this->NoiseSample);
+	this->TerrainShader.uniform(glProgramUniformHandleui64ARB, "Noisemap", **this->NoiseSampleHandle);
 }
 
 void STPHeightfieldTerrain<false>::setViewPosition(const dvec3& viewPos) {
@@ -304,7 +309,6 @@ void STPHeightfieldTerrain<false>::render() const {
 	//prepare for rendering
 	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
 	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::SPLAT]);
-	this->NoiseSample.bind(2);
 
 	this->TerrainMesh->bindPlaneVertexArray();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);

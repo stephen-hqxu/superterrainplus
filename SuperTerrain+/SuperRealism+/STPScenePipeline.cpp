@@ -37,6 +37,7 @@ using glm::uvec2;
 using glm::vec2;
 using glm::uvec3;
 using glm::vec3;
+using glm::dvec3;
 using glm::ivec4;
 using glm::vec4;
 using glm::mat3;
@@ -110,6 +111,7 @@ private:
 
 		mat4 P, InvP, PV, InvPV;
 
+		vec3 LDFac;
 		float Far;
 		bool Ortho;
 
@@ -126,8 +128,9 @@ private:
 		&& offsetof(STPPackedCameraBuffer, PV) == 256
 		&& offsetof(STPPackedCameraBuffer, InvPV) == 320
 
-		&& offsetof(STPPackedCameraBuffer, Far) == 384
-		&& offsetof(STPPackedCameraBuffer, Ortho) == 388,
+		&& offsetof(STPPackedCameraBuffer, LDFac) == 384
+		&& offsetof(STPPackedCameraBuffer, Far) == 396
+		&& offsetof(STPPackedCameraBuffer, Ortho) == 400,
 	"The alignment of camera buffer does not obey std430 packing rule");
 
 public:
@@ -157,7 +160,14 @@ public:
 
 		//setup initial values
 		const STPEnvironment::STPCameraSetting& camSet = this->Camera.cameraStatus();
-		this->MappedBuffer->Far = static_cast<float>(camSet.Far);
+		const double Cnear = camSet.Near, Cfar = camSet.Far;
+
+		this->MappedBuffer->LDFac = static_cast<vec3>(dvec3(
+			2.0 * Cfar * Cnear,
+			Cfar + Cnear,
+			Cfar - Cnear
+		));
+		this->MappedBuffer->Far = static_cast<float>(Cfar);
 		this->MappedBuffer->Ortho = this->Camera.ProjectionType == STPCamera::STPProjectionCategory::Orthographic;
 		//update values
 		this->Buffer.flushMappedBufferRange(0, sizeof(STPPackedCameraBuffer));
@@ -439,7 +449,9 @@ public:
 	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadowMapFilterFunction& shadow_filter, 
 		const STPScreenInitialiser& lighting_init) : STPScreen(*lighting_init.SharedVertexBuffer), Pipeline(pipeline),
 		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GRoughness(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D),
-		ExtinctionStencilCuller(STPAlphaCulling::STPCullOperator::LessEqual, lighting_init) {
+		//alpha culling, set to discard pixels that are not in the extinction zone
+		//remember 0 means no extinction whereas 1 means fully invisible
+		ExtinctionStencilCuller(STPAlphaCulling::STPCullComparator::LessEqual, 0.0f, lighting_init) {
 		const bool cascadeLayerBlend = shadow_filter.CascadeBlendArea > 0.0f;
 
 		//do something to the fragment shader
@@ -487,9 +499,6 @@ public:
 		//send specialised filter kernel parameters based on type
 		shadow_filter(this->OffScreenRenderer);
 
-		//alpha culling, set to discard pixels that are not in the extinction zone
-		//remember 0 means no extinction whereas 1 means fully invisible
-		this->ExtinctionStencilCuller.setAlphaLimit(0.0f);
 		//no colour will be written to the extinction buffer
 		this->ExtinctionCullingContainer.readBuffer(GL_NONE);
 		this->ExtinctionCullingContainer.drawBuffer(GL_NONE);
@@ -540,7 +549,6 @@ public:
 			//the memory usage will be incremented by 1.
 			.uniform(glProgramUniform1ui, count_name, static_cast<unsigned int>(current_count) + 1u);
 	}
-
 
 	/**
 	 * @brief Set the resolution of all buffers.
@@ -713,10 +721,6 @@ const STPShaderManager* STPScenePipeline::getDepthShader() const {
 	return this->GeometryShadowPass->DepthPassShader.has_value() ? &this->GeometryShadowPass->DepthPassShader.value() : nullptr;
 }
 
-//TODO: later when we have different types of light, 
-//we can introduce a smarter system that helps us to determine the light type based on the range of index.
-//For example when index < 10000 it is an environment light.
-
 void STPScenePipeline::addLight(STPSceneLight& light) {
 	{
 		//test if we still have enough memory to add a light.
@@ -749,12 +753,10 @@ void STPScenePipeline::addLight(STPSceneLight& light) {
 		auto& unique_light_space = scene_graph.UniqueLightSpaceSize;
 		const size_t newLightSpaceCount = light_shadow->lightSpaceDimension();
 
-		const auto it = lower_bound(unique_light_space.begin(), unique_light_space.end(), newLightSpaceCount);
-		if (it == unique_light_space.end() || *it != newLightSpaceCount) {
+		const bool isNewSize = unique_light_space.emplace(newLightSpaceCount).second;
+		if (isNewSize) {
 			//the new light space size is new in that array
-			unique_light_space.insert(it, newLightSpaceCount);
-
-			//also we need to add this new light configuration to all shadow-casting objects
+			//we need to add this new light configuration to all shadow-casting objects
 			const STPShaderManager* const depth_shader = this->getDepthShader();
 			for (auto shadow_obj : scene_graph.ShadowOpaqueObject) {
 				shadow_obj->addDepthConfiguration(newLightSpaceCount, depth_shader);
@@ -913,6 +915,8 @@ void STPScenePipeline::traverse() {
 		//ambient occlusion does not have alpha
 		glBlendFunc(GL_DST_COLOR, GL_ZERO);
 
+		//all buffers used in AO pass are cleared to 1.0 initially, so multiplicative blending has no effect in intermediate stages as 1.0 * x = x,
+		//until writing to the output geometry AO.
 		ao->occlude(this->SceneTexture.DepthStencil, this->GeometryLightPass->getNormal(), this->GeometryLightPass->AmbientOcclusionContainer);
 
 		glDisable(GL_BLEND);

@@ -82,7 +82,9 @@ namespace SuperTerrainPlus::STPRealism {
 		//A buffer representing the terrain plane.
 		std::optional<STPPlaneGeometry> TerrainMesh;
 		STPBuffer TerrainRenderCommand;
+
 		STPTexture NoiseSample;
+		std::optional<STPBindlessTexture> NoiseSampleHandle;
 
 		//Shader program for terrain rendering
 		//modeller contains vertex, tes control and tes eval, shader contains geom and frag.

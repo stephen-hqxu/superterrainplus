@@ -117,13 +117,18 @@ void main(){
 		Ambient = textureLod(G_AO, FragTexCoord, 0).r;
 	vec3 LightColor = vec3(0.0f);
 
+	//TODO: compute shininess from roughness.
+	//For non-PBR rendering equation, a simple linear function can be used.
+	//For PBR rendering equation, well just, implement the equation.
+	const float Shininess = 32.0f;
+
 	//ambient light pass
 	for(int i = 0; i < AmbCount; i++){
 		LightColor += calcAmbientLight(Ambient, AmbientLightList[i]);
 	}
 	//directional light pass
 	for(int i = 0; i < DirCount; i++){
-		LightColor += calcDirectionalLight(position_world, normal_world, Roughness, DirectionalLightList[i]);
+		LightColor += calcDirectionalLight(position_world, normal_world, Shininess, DirectionalLightList[i]);
 	}
 	
 	//extinction calculation, making the transition to camera far clipping plane smooth instead of having a strong cut
@@ -144,7 +149,7 @@ vec3 calcAmbientLight(float ambient_strength, AmbientLight* restrict amb_light){
 	return indirect_color * ambient;
 }
 
-vec3 calcDirectionalLight(vec3 position_world, vec3 normal, float roughness, DirectionalLight* restrict dir_light){
+vec3 calcDirectionalLight(vec3 position_world, vec3 normal, float shininess, DirectionalLight* restrict dir_light){
 	const vec3 direct_color = textureLod(dir_light->DirSpec, dir_light->SpecCoord, 0).rgb;
 
 	//diffuse
@@ -154,8 +159,7 @@ vec3 calcDirectionalLight(vec3 position_world, vec3 normal, float roughness, Dir
 	const vec3 viewDir = normalize(Camera.Position - position_world),
 		reflectDir = reflect(-lightDir, normal),
 		halfwayDir = normalize(lightDir + viewDir);
-	//TODO: read shininess from material G-buffer
-	const float specular = dir_light->Ks * pow(max(dot(normal, halfwayDir), 0.0f), 32.0f);
+	const float specular = dir_light->Ks * pow(max(dot(normal, halfwayDir), 0.0f), shininess);
 	
 	float light_intensity = 1.0f;
 	if(!isNull(dir_light->DirShadow)){

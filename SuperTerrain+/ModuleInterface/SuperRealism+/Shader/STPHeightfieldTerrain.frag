@@ -83,7 +83,7 @@ in VertexTES{
 
 layout (binding = 0) uniform sampler2D Heightmap;
 layout (binding = 1) uniform usampler2D Splatmap;
-layout (binding = 2) uniform sampler3D Noisemap;
+layout (bindless_sampler) uniform sampler3D Noisemap;
 
 //The number of visible chunk in x,z direction
 uniform uvec2 VisibleChunk;
