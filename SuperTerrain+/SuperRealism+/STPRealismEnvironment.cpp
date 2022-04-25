@@ -1,4 +1,5 @@
 #include <SuperRealism+/Environment/STPAtmosphereSetting.h>
+#include <SuperRealism+/Environment/STPBidirectionalScatteringSetting.h>
 #include <SuperRealism+/Environment/STPCameraSetting.h>
 #include <SuperRealism+/Environment/STPLightSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
@@ -53,6 +54,23 @@ bool STPAtmosphereSetting::validate() const {
 		&& this->MieScatteringDirection > 0.0f
 		&& this->PrimaryRayStep > 0u
 		&& this->SecondaryRayStep > 0u;
+}
+
+//STPBidirectionalScatteringSetting.h
+
+STPBidirectionalScatteringSetting::STPBidirectionalScatteringSetting() : 
+	MaxRayDistance(1.0f), 
+	DepthBias(0.0f), 
+	RayResolution(1u), 
+	RayStep(1u) {
+
+}
+
+bool STPBidirectionalScatteringSetting::validate() const {
+	return this->MaxRayDistance > 0.0f
+		&& this->DepthBias > 0.0f
+		&& this->RayResolution != 0u
+		&& this->RayStep != 0u;
 }
 
 //STPCameraSetting.h

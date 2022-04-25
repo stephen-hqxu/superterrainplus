@@ -447,7 +447,7 @@ public:
 	 * @param lighting_init The pointer to the lighting shader initialiser
 	*/
 	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadowMapFilterFunction& shadow_filter, 
-		const STPScreenInitialiser& lighting_init) : STPScreen(*lighting_init.SharedVertexBuffer), Pipeline(pipeline),
+		const STPScreenInitialiser& lighting_init) : Pipeline(pipeline),
 		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GRoughness(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D),
 		//alpha culling, set to discard pixels that are not in the extinction zone
 		//remember 0 means no extinction whereas 1 means fully invisible

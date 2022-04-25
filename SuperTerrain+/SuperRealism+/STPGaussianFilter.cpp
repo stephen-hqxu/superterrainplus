@@ -36,7 +36,7 @@ static constexpr auto FilterShaderFilename =
 	STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPGaussianFilterKernel", ".frag");
 
 STPGaussianFilter::STPGaussianFilter(double variance, double sample_distance, unsigned int radius, const STPScreenInitialiser& filter_init) :
-	STPScreen(*filter_init.SharedVertexBuffer), BorderColor(vec4(vec3(0.0f), 1.0f)) {
+	BorderColor(vec4(vec3(0.0f), 1.0f)) {
 	if (radius == 0u) {
 		throw STPException::STPBadNumericRange("The radius of the filter kernel must be positive");
 	}

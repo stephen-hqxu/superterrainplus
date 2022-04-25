@@ -6,6 +6,8 @@
 //GLM
 #include <glm/gtc/type_ptr.hpp>
 
+using glm::ivec4;
+using glm::uvec4;
 using glm::vec4;
 using glm::value_ptr;
 
@@ -46,6 +48,14 @@ void STPSampler::wrap(STPOpenGL::STPenum str) {
 
 void STPSampler::borderColor(vec4 color) {
 	glSamplerParameterfv(this->Sampler.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
+}
+
+void STPSampler::borderColor(ivec4 color) {
+	glSamplerParameterIiv(this->Sampler.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
+}
+
+void STPSampler::borderColor(uvec4 color) {
+	glSamplerParameterIuiv(this->Sampler.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
 }
 
 void STPSampler::anisotropy(STPOpenGL::STPfloat ani) {

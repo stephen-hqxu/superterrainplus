@@ -18,6 +18,7 @@
 #include <array>
 
 using std::array;
+using std::shared_ptr;
 
 using glm::uvec2;
 using glm::uvec3;
@@ -122,16 +123,14 @@ void STPScreen::STPScreenVertexBuffer::bind() const {
 	this->ScreenRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
 }
 
-STPScreen::STPScreen(const STPSharableScreenVertexBuffer& screen_vb) : ScreenVertex(screen_vb) {
-	
-}
-
 void STPScreen::initScreenRenderer(const STPShaderManager& screen_fs, const STPScreenInitialiser& screen_init) {
 	if (screen_fs.Type != GL_FRAGMENT_SHADER) {
 		throw STPException::STPInvalidArgument("The shader initialised for off-screen rendering must be a fragment shader");
 	}
+	//initialise screen vertex buffer
+	this->ScreenVertex = shared_ptr(screen_init.SharedVertexBuffer);
 
-	//setup compute program
+	//setup screen program
 	this->OffScreenRenderer
 		.attach(**screen_init.VertexShader)
 		.attach(screen_fs)

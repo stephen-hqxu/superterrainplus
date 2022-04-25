@@ -12,7 +12,7 @@ using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto AlphaCullingFilename = STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAlphaCulling", ".frag");
 
-STPAlphaCulling::STPAlphaCulling(STPCullComparator comp, float limit, const STPScreenInitialiser& screen_init) : STPScreen(*screen_init.SharedVertexBuffer) {
+STPAlphaCulling::STPAlphaCulling(STPCullComparator comp, float limit, const STPScreenInitialiser& screen_init) {
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 	
 	Macro("ALPHA_COMPARATOR", STPAlphaCulling::comparatorString(comp));
@@ -23,7 +23,7 @@ STPAlphaCulling::STPAlphaCulling(STPCullComparator comp, float limit, const STPS
 }
 
 STPAlphaCulling::STPAlphaCulling(STPCullComparator comp1, float limit1, 
-	STPCullConnector conn, STPCullComparator comp2, float limit2, const STPScreenInitialiser& screen_init) : STPScreen(*screen_init.SharedVertexBuffer) {
+	STPCullConnector conn, STPCullComparator comp2, float limit2, const STPScreenInitialiser& screen_init) {
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 	Macro("USE_DUAL_EXPRESSIONS", 1)

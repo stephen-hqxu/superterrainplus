@@ -147,7 +147,6 @@ namespace SuperTerrainPlus::STPRealism {
 			void bind() const;
 
 		};
-		typedef std::shared_ptr<const STPScreenVertexBuffer> STPSharableScreenVertexBuffer;
 
 		/**
 		 * @brief Information necessary to create any screen instance.
@@ -162,19 +161,21 @@ namespace SuperTerrainPlus::STPRealism {
 			//The vertex buffer to be shared with different screen instances.
 			//This buffer is managed by all shared instances automatically and the caller
 			//do not have to retain the buffer.
-			const STPSharableScreenVertexBuffer* SharedVertexBuffer;
+			std::weak_ptr<const STPScreenVertexBuffer> SharedVertexBuffer;
 
 		};
 
 	protected:
 
-		const STPSharableScreenVertexBuffer ScreenVertex;
+		std::shared_ptr<const STPScreenVertexBuffer> ScreenVertex;
 
 		STPProgramManager OffScreenRenderer;
 
 		/**
 		 * @brief Initialise the off-screen renderer.
 		 * All old states in the previous screen renderer, if any, is lost and the program is recompiled.
+		 * It is a undefined behaviour if any member variables are used before this function is called for the first time
+		 * since object initialisation.
 		 * @param screen_fs The pointer to the fragment shader used by the pipeline.
 		 * @param screen_init The pointer to the screen initialiser.
 		*/
@@ -190,9 +191,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Initialise a screen renderer helper instance.
-		 * @param screen_vb The pointer to screen vertex buffer to be shared with this screen class.
 		*/
-		STPScreen(const STPSharableScreenVertexBuffer&);
+		STPScreen() = default;
 
 		STPScreen(const STPScreen&) = delete;
 

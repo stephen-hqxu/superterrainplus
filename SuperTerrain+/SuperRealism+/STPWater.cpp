@@ -160,6 +160,10 @@ void STPWater::setWater(const STPEnvironment::STPWaterSetting& water_setting) {
 	//e.g., 48 fractals sine wave, each octave has lacunarity of 1.25, the period is 5^48.
 }
 
+void STPWater::setWaterMaterial(STPMaterialLibrary::STPMaterialID water_material) {
+	this->WaterAnimator.uniform(glProgramUniform1ui, "WaterMaterialID", water_material);
+}
+
 void STPWater::render() const {
 	//update wave timing logic
 	const duration<double> elapsed = steady_clock::now() - this->WaveTimeStart;

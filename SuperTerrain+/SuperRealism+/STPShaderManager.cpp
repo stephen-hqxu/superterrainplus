@@ -30,12 +30,13 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static array<string_view, 7ull> mShaderIncludeRegistry = {
+constexpr static array<string_view, 8ull> mShaderIncludeRegistry = {
 	"/Common/STPAnimatedWave.glsl",
 	"/Common/STPAtmosphericScattering.glsl",
 	"/Common/STPCameraInformation.glsl",
 	"/Common/STPGeometryBufferWriter.glsl",
 	"/Common/STPLightSpaceInformation.glsl",
+	"/Common/STPMaterialRegistry.glsl",
 	"/Common/STPNullPointer.glsl",
 	"/Common/STPSeparableShaderPredefine.glsl"
 };

@@ -24,6 +24,7 @@ uniform float Epsilon;
 #include </Common/STPCameraInformation.glsl>
 
 uniform vec3 Tint;
+uniform unsigned int WaterMaterialID;
 
 //compute the surface normal of the water at the current fragment
 vec3 calcWaterNormal(vec2);
@@ -36,7 +37,7 @@ void main(){
 	const float glossiness = smoothstep(0.0f, Camera.Far, waveDistance);
 	waveNormal = normalize(mix(waveNormal, vec3(0.0f, 1.0f, 0.0f), glossiness));
 
-	writeGeometryData(Tint, waveNormal, 1.0 - glossiness, 1.0f);
+	writeGeometryData(Tint, waveNormal, 1.0 - glossiness, 1.0f, WaterMaterialID);
 }
 
 vec3 getSamplePosition(vec2 coord){

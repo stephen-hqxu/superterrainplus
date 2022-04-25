@@ -7,6 +7,8 @@
 
 using glm::ivec3;
 using glm::uvec3;
+using glm::ivec4;
+using glm::uvec4;
 using glm::vec4;
 using glm::value_ptr;
 
@@ -73,6 +75,14 @@ void STPTexture::wrap(STPOpenGL::STPenum str) {
 
 void STPTexture::borderColor(vec4 color) {
 	glTextureParameterfv(this->Texture.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
+}
+
+void STPTexture::borderColor(ivec4 color) {
+	glTextureParameterIiv(this->Texture.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
+}
+
+void STPTexture::borderColor(uvec4 color) {
+	glTextureParameterIuiv(this->Texture.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
 }
 
 void STPTexture::anisotropy(STPOpenGL::STPfloat ani) {

@@ -11,7 +11,9 @@
 #include "../../Object/STPTexture.h"
 #include "../../Object/STPBindlessTexture.h"
 
+//Water Material
 #include "../../Environment/STPWaterSetting.h"
+#include "../STPMaterialLibrary.h"
 
 //System
 #include <chrono>
@@ -79,6 +81,13 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param water_setting The pointer to the water setting. Settings are copied.
 		*/
 		void setWater(const STPEnvironment::STPWaterSetting&);
+
+		/**
+		 * @brief Set the material used for water rendering.
+		 * @param water_material A material ID to the material library used during rendering to assign material to the water.
+		 * It is a undefined behaviour if the material ID is invalid with respect to the material library linked with the rendering pipeline.
+		*/
+		void setWaterMaterial(STPMaterialLibrary::STPMaterialID);
 
 		void render() const override;
 

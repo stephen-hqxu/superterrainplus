@@ -5,6 +5,7 @@ STPScenePipeline.h
 STPScenePipeline.inl
 # /Environment
 Environment/STPAtmosphereSetting.h
+Environment/STPBidirectionalScatteringSetting.h
 Environment/STPCameraSetting.h
 Environment/STPLightSetting.h
 Environment/STPMeshSetting.h
@@ -34,6 +35,7 @@ Object/STPVertexArray.h
 # /Scene/Component
 Scene/Component/STPAlphaCulling.h
 Scene/Component/STPAmbientOcclusion.h
+Scene/Component/STPBidirectionalScattering.h
 Scene/Component/STPGaussianFilter.h
 Scene/Component/STPHeightfieldTerrain.h
 Scene/Component/STPPostProcess.h
@@ -48,6 +50,7 @@ Scene/Light/STPLightShadow.h
 Scene/Light/STPLightSpectrum.h
 Scene/Light/STPShadowMapFilter.hpp
 # /Scene
+Scene/STPMaterialLibrary.h
 Scene/STPSceneLight.h
 Scene/STPSceneObject.h
 # /Utility/Camera

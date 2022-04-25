@@ -6,6 +6,9 @@
 #define EMIT_VIEW_TO_NDC_IMPL
 #define EMIT_LINEARISE_DEPTH_IMPL
 #include </Common/STPCameraInformation.glsl>
+#include </Common/STPMaterialRegistry.glsl>
+
+layout(early_fragment_tests) in;
 
 //Input
 in vec2 FragTexCoord;
@@ -16,17 +19,14 @@ uniform float MaxDistance;
 uniform float DepthBias;
 uniform unsigned int StepResolution, StepSize;
 
-uniform float ReflectionStrength;
-uniform float Visibility;
-
 //The buffer here should contain the *scene* without the object where BSDF is applied
-layout (bindless_sampler) uniform sampler2D SceneColor;
 layout (bindless_sampler) uniform sampler2D SceneDepth;
+layout (bindless_sampler) uniform sampler2D SceneColor;
 //currently our BSDF only applies to mirror surface so roughness is not needed
 //The buffer here should contain the *object* to be rendered with BSDF
 layout (binding = 0) uniform sampler2D ObjectDepth;
 layout (binding = 1) uniform sampler2D ObjectNormal;
-layout (bindless_sampler) uniform sampler2D ObjectRefractiveIndex;
+layout (binding = 2) uniform usampler2D ObjectMaterial;
 
 //find the closest hit on the geometry, returns the colour value at that point.
 vec3 findClosestHitColor(vec3, vec3, mat4x2);
@@ -34,28 +34,31 @@ vec3 findClosestHitColor(vec3, vec3, mat4x2);
 float getLinearDepthAt(vec2);
 
 void main(){
+	//find the material for the current fragment
+	const unsigned int object_mat_id = textureLod(ObjectMaterial, FragTexCoord, 0).r;
+	const STPMaterialProperty object_mat = Material[object_mat_id];
+	const float object_depth = textureLod(ObjectDepth, FragTexCoord, 0).r;
+	
 	//get the raw inputs
-	const float rior = textureLod(ObjectRefractiveIndex, FragTexCoord, 0).r,
-		object_depth = textureLod(ObjectDepth, FragTexCoord, 0).r;
 	const vec3 position_view = fragDepthReconstruction(object_depth, FragTexCoord),
 		normal_view = normalize(Camera.ViewNormal * textureLod(ObjectNormal, FragTexCoord, 0).rgb),
 		//calculate reflection vector from input
 		incident_direction = normalize(position_view),
 		reflection_direction = normalize(reflect(incident_direction, normal_view)),
-		refraction_direction = normalize(refract(incident_direction, normal_view, rior));
+		refraction_direction = normalize(refract(incident_direction, normal_view, object_mat.RefractiveIndex));
 
 	const mat4x2 xyProjection = mat4x2(Camera.Projection);
 	const vec3 reflection_color = findClosestHitColor(position_view, reflection_direction, xyProjection),
 		refraction_color = findClosestHitColor(position_view, refraction_direction, xyProjection);
 
 	//Fresnel equation
-	const float waterDepth = getLinearDepthAt(FragTexCoord) - lineariseDepth(object_depth),
-		refractiveFactor = pow(dot(incident_direction, normal_view), ReflectionStrength),
+	const float absDepth = getLinearDepthAt(FragTexCoord) - lineariseDepth(object_depth),
+		refractiveFactor = pow(dot(incident_direction, normal_view), object_mat.Reflexivity),
 		//deeper -> more opaque
-		waterOpacity = smoothstep(0.0f, Visibility, waterDepth);
+		displayOpacity = clamp(absDepth * object_mat.Opacity, 0.0f, 1.0f);
 	const vec3 fresnelColor = mix(reflection_color, refraction_color, refractiveFactor);
 
-	FragColor = vec4(fresnelColor, waterOpacity);
+	FragColor = vec4(fresnelColor, displayOpacity);
 }
 
 //compare the current sample depth with the actual depth on the depth buffer

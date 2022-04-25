@@ -190,11 +190,10 @@ namespace STPStart {
 			const STPScreen::STPScreenVertexShader ScreenVertexShader;
 
 			//this buffer is a shared pointer wrapper and we don't need to manage its lifetime
-			const STPScreen::STPSharableScreenVertexBuffer OffScreenVertexBuffer = 
-				std::make_shared<STPScreen::STPScreenVertexBuffer>();
+			const auto OffScreenVertexBuffer = std::make_shared<const STPScreen::STPScreenVertexBuffer>();
 			STPScreen::STPScreenInitialiser screen_renderer_init;
 			screen_renderer_init.VertexShader = &ScreenVertexShader;
-			screen_renderer_init.SharedVertexBuffer = &OffScreenVertexBuffer;
+			screen_renderer_init.SharedVertexBuffer = OffScreenVertexBuffer;
 
 			//setup scene pipeline
 			//-------------------------------------------------------------------------

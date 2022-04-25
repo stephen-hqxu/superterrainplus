@@ -79,9 +79,9 @@ There is no perfect answer to this question, every application has its own pros 
   - [ ] Spotlight
 - [ ] Water rendering
   - [x] Procedural water animation
-  - [ ] Screen-space reflection
-  - [ ] Screen-space refraction
-  - [ ] Fresnel effect
+  - [x] Screen-space reflection
+  - [x] Screen-space refraction
+  - [x] Fresnel effect
   - [ ] Caustics
   - [ ] Underwater crepuscular rays
 - [ ] Night rendering
