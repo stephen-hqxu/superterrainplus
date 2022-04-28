@@ -6,6 +6,7 @@ layout(location = 0) out vec3 gFragAlbedo;
 layout(location = 1) out vec3 gFragNormal;
 layout(location = 2) out float gFragRoughness;
 layout(location = 3) out float gFragAO;
+//The following G-Buffers are optional, and will be omitted by GL automatically if there is no attachment
 layout(location = 4) out unsigned int gFragMaterial;
 //depth is written by fragment shader automatically
 

@@ -39,6 +39,7 @@ using glm::uvec3;
 using glm::vec3;
 using glm::dvec3;
 using glm::ivec4;
+using glm::uvec4;
 using glm::vec4;
 using glm::mat3;
 using glm::dmat3;
@@ -98,7 +99,7 @@ private:
 	}
 
 	/**
-	 * @brief Packed struct for mapped camera buffer following OpenGL std430 alignment rule.
+	 * @brief Packed structure for mapped camera buffer following OpenGL std430 alignment rule.
 	*/
 	struct STPPackedCameraBuffer {
 	public:
@@ -393,7 +394,7 @@ public:
 			glViewport(0, 0, shadow_extent, shadow_extent);
 
 			//for those opaque render components (those can cast shadow), render depth
-			for (auto shadowable_object : shadow_object) {
+			for (const auto shadowable_object : shadow_object) {
 				shadowable_object->renderDepth(static_cast<unsigned int>(current_light_space_dim));
 			}
 
@@ -426,6 +427,8 @@ private:
 	//The depth buffer can be used to reconstruct world position.
 	//Not all buffers are present here, some of them are shared with the scene pipeline (and other rendering components to reduce memory usage)
 	STPTexture GAlbedo, GNormal, GRoughness, GAmbient;
+	//Material G-Buffer is only used by some rendering components, the primary deferred shader does not use it. No bindless handle required
+	optional<STPTexture> GMaterial;
 	optional<STPGeometryBufferHandle> GHandle;
 	STPFrameBuffer GeometryContainer;
 
@@ -451,7 +454,8 @@ public:
 		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GRoughness(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D),
 		//alpha culling, set to discard pixels that are not in the extinction zone
 		//remember 0 means no extinction whereas 1 means fully invisible
-		ExtinctionStencilCuller(STPAlphaCulling::STPCullComparator::LessEqual, 0.0f, lighting_init) {
+		ExtinctionStencilCuller(STPAlphaCulling::STPCullComparator::LessEqual, 0.0f, 
+			STPAlphaCulling::STPCullConnector::Or, STPAlphaCulling::STPCullComparator::Greater, 1.0f, lighting_init) {
 		const bool cascadeLayerBlend = shadow_filter.CascadeBlendArea > 0.0f;
 
 		//do something to the fragment shader
@@ -474,17 +478,18 @@ public:
 		this->initScreenRenderer(deffered_shader, lighting_init);
 
 		/* ------------------------------- setup G-buffer sampler ------------------------------------- */
-		this->GSampler.filter(GL_NEAREST, GL_NEAREST);
-		this->GSampler.wrap(GL_CLAMP_TO_BORDER);
-		this->GSampler.borderColor(vec4(vec3(0.0f), 1.0f));
-
-		this->DepthSampler.filter(GL_NEAREST, GL_NEAREST);
-		this->DepthSampler.wrap(GL_CLAMP_TO_BORDER);
-		this->DepthSampler.borderColor(vec4(1.0f));
+		auto setGBufferSampler = [](STPSampler& sampler, const auto& border) -> void {
+			sampler.filter(GL_NEAREST, GL_NEAREST);
+			sampler.wrap(GL_CLAMP_TO_BORDER);
+			sampler.borderColor(border);
+		};
+		setGBufferSampler(this->GSampler, vec4(vec3(0.0f), 1.0f));
+		setGBufferSampler(this->DepthSampler, vec4(1.0f));
 
 		/* ------------------------------- initial framebuffer setup ---------------------------------- */
 		this->GeometryContainer.drawBuffers({
-			GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3
+			GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,
+			(static_cast<STPOpenGL::STPenum>(this->Pipeline.hasMaterialLibrary ? GL_COLOR_ATTACHMENT4 : GL_NONE))
 		});
 
 		/* --------------------------------- initial buffer setup -------------------------------------- */
@@ -562,6 +567,7 @@ public:
 	void setResolution(const STPSharedTexture& texture, const uvec3& dimension) {
 		//create a set of new buffers
 		STPTexture albedo(GL_TEXTURE_2D), normal(GL_TEXTURE_2D), roughness(GL_TEXTURE_2D), ao(GL_TEXTURE_2D);
+		optional<STPTexture> material;
 		const auto& [depth_stencil] = texture;
 		//reallocation of memory
 		albedo.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGB8, dimension);
@@ -577,6 +583,12 @@ public:
 		this->GeometryContainer.attach(GL_COLOR_ATTACHMENT2, roughness, 0);
 		this->GeometryContainer.attach(GL_COLOR_ATTACHMENT3, ao, 0);
 		this->GeometryContainer.attach(GL_DEPTH_STENCIL_ATTACHMENT, depth_stencil, 0);
+		//setup optional rendering targets
+		if (this->Pipeline.hasMaterialLibrary) {
+			material.emplace(GL_TEXTURE_2D);
+			material->textureStorage<STPTexture::STPDimension::TWO>(1, GL_R8UI, dimension);
+			this->GeometryContainer.attach(GL_COLOR_ATTACHMENT4, *material, 0);
+		}
 
 		//a separate framebuffer with ambient occlusion attachment
 		this->AmbientOcclusionContainer.attach(GL_COLOR_ATTACHMENT0, ao, 0);
@@ -609,6 +621,9 @@ public:
 		this->GNormal = move(normal);
 		this->GRoughness = move(roughness);
 		this->GAmbient = move(ao);
+		if (material.has_value()) {
+			this->GMaterial = move(material);
+		}
 	}
 
 	/**
@@ -617,6 +632,15 @@ public:
 	*/
 	inline const STPTexture& getNormal() const {
 		return this->GNormal;
+	}
+
+	/**
+	 * @brief Get the material geometry buffer.
+	 * @return The pointer to the material geometry buffer.
+	 * Note that it is a undefined behaviour if material is unused for the current rendering pipeline.
+	*/
+	inline const STPTexture& getMaterial() const {
+		return *this->GMaterial;
 	}
 
 	/**
@@ -632,6 +656,9 @@ public:
 		this->GeometryContainer.clearColor(1, ClearNormal);//normal
 		this->GeometryContainer.clearColor(2, ClearOne);//roughness
 		this->GeometryContainer.clearColor(3, ClearOne);//ambient occlusion
+		if (this->Pipeline.hasMaterialLibrary) {
+			this->GeometryContainer.clearColor(4, uvec4(0u));//material
+		}
 	}
 
 	/**
@@ -652,7 +679,7 @@ public:
 
 		this->drawScreen();
 
-		//clearup
+		//clear up
 		STPProgramManager::unuse();
 	}
 
@@ -667,22 +694,28 @@ public:
 	/**
 	 * @brief Set a float uniform.
 	 * @param name The name of the uniform.
-	 * @param val The float value to be set.
+	 * @param value The float value to be set.
 	*/
-	inline void setFloat(const char* name, float val) {
-		this->OffScreenRenderer.uniform(glProgramUniform1f, name, val);
+	inline void setFloat(const char* name, float value) {
+		this->OffScreenRenderer.uniform(glProgramUniform1f, name, value);
 	}
 
 };
 
-STPScenePipeline::STPScenePipeline(const STPCamera& camera, STPScenePipelineInitialiser& scene_init) :
+STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPMaterialLibrary* mat_lib, const STPScenePipelineInitialiser& scene_init) :
 	SceneMemoryCurrent{ }, SceneMemoryLimit(scene_init.ShaderCapacity),
+	hasMaterialLibrary(mat_lib),
 	CameraMemory(make_unique<STPCameraInformationMemory>(camera)), 
 	GeometryShadowPass(make_unique<STPShadowPipeline>(*scene_init.ShadowFilter)),
 	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, *scene_init.ShadowFilter, *scene_init.GeometryBufferInitialiser)), 
 	DefaultClearColor(vec4(vec3(0.0f), 1.0f)) {
 	if (!scene_init.ShadowFilter->valid()) {
 		throw STPException::STPBadNumericRange("The shadow filter has invalid settings");
+	}
+	
+	if (this->hasMaterialLibrary) {
+		//setup material library
+		(**mat_lib).bindBase(GL_SHADER_STORAGE_BUFFER, 2u);
 	}
 
 	//Multi-sampling is unnecessary in deferred shading
@@ -714,7 +747,10 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera, STPScenePipelineInit
 	glPatchParameteri(GL_PATCH_VERTICES, 3);
 }
 
-STPScenePipeline::~STPScenePipeline() = default;
+STPScenePipeline::~STPScenePipeline() {
+	//unbind material buffer
+	STPBuffer::unbindBase(GL_SHADER_STORAGE_BUFFER, 2u);
+}
 
 const STPShaderManager* STPScenePipeline::getDepthShader() const {
 	//if depth shader is not applicable, return nullptr
@@ -834,6 +870,9 @@ void STPScenePipeline::setResolution(uvec2 resolution) {
 	if (scene.AmbientOcclusionObject) {
 		scene.AmbientOcclusionObject->setScreenSpace(&depth_stencil, resolution);
 	}
+	if (scene.BSDFObject) {
+		scene.BSDFObject->setCopyBuffer(resolution);
+	}
 
 	using std::move;
 	//store the new buffer
@@ -848,67 +887,31 @@ void STPScenePipeline::setExtinctionArea(float factor) const {
 	this->GeometryLightPass->setFloat("ExtinctionBand", factor);
 }
 
-void STPScenePipeline::traverse() {
-	const auto& [object, object_shadow, trans_obj, env_obj, unique_light_space_size, light_shadow, ao, post_process] = this->SceneComponent;
-	//determine the state of these optional stages
-	const bool has_effect_ao = ao,
-		has_effect_post_process = post_process;
-	if (!has_effect_post_process) {
-		throw STPException::STPUnsupportedFunctionality("It is currently not allowed to render to default framebuffer without post processing, "
-			"because there is no stencil information written.");
+template<class Env>
+inline void STPScenePipeline::drawEnvironment(const Env& env) const {
+	for (const auto rendering_env : env) {
+		rendering_env->render();
 	}
+}
 
-	//Stencil rule: the first bit denotes a fragment rendered during geometry pass in deferred rendering.
-
-	//before rendering, update scene buffer
-	this->CameraMemory->updateBuffer();
-	//process rendering components.
-
-	/* ------------------------------------------ shadow pass -------------------------------- */
-	//back face culling is useful for double-sided objects
-	//out scene main consists of single-sided objects and light sources may travel between front face and back face
-	//it is the best to disable face culling to avoid having light bleeding
-	glDisable(GL_CULL_FACE);
-	this->GeometryShadowPass->renderToShadow(object_shadow, light_shadow);
-	glEnable(GL_CULL_FACE);
-
-	/* ====================================== geometry rendering ================================== */
-	//deferred shading geometry pass. Old geometry buffer (except depth and stencil) is cleared automatically
-	this->GeometryLightPass->clearColorAttachment();
-	//remember the depth and stencil buffer of geometry framebuffer and output framebuffer is shared.
-	this->GeometryLightPass->capture();
-	//enable stencil buffer for clearing
-	glStencilMask(0x01);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	/* ------------------------------------ opaque object rendering ----------------------------- */
-	//initially the stencil is empty, we want to mark the geometries on the stencil buffer, no testing is needed.
-	glEnable(GL_STENCIL_TEST);
-	glStencilFunc(GL_ALWAYS, 0x01, 0x01);
-	for (const auto& rendering_object : object) {
-		rendering_object->render();
-	}
-
-	/* ==================================== start final scene rendering =================================== */
+template<class Ao, class Pp>
+inline void STPScenePipeline::shadeObject(const Ao* ao, const Pp* post_process, unsigned char mask) const {
 	//from this step we start performing off-screen rendering using the buffer we got from previous steps.
 	//off-screen rendering does not need depth test
 	glDisable(GL_DEPTH_TEST);
-	//preserve the original geometry depth to avoid drawing stuff over the geometries later.
-	glDepthMask(GL_FALSE);
-	//face culling is useless for screen drawing
-	glDisable(GL_CULL_FACE);
 
-	//like the depth mask, we need to preserve geometry stencil
+	//we need to preserve the geometry stencil
 	glStencilMask(0x00);
 	//we want to start rendering light, at the same time capture everything onto the post process buffer
 	//now we only want to shade pixels with geometry data, empty space should be culled
-	glStencilFunc(GL_EQUAL, 0x01, 0x01);
+	glStencilFunc(GL_EQUAL, mask, mask);
 
 	//there is a potential feedback loop inside as the framebuffer has the depth texture attached even though we have only bound to stencil attachment point,
 	//while the shader is reading from the depth texture.
 	//this function makes sure the GPU flushes all texture cache.
 	glTextureBarrier();
 	/* ------------------------------------ screen-space ambient occlusion ------------------------------- */
-	if (has_effect_ao) {
+	if (ao) {
 		//ambient occlusion results will be blended with the AO from geometry buffer
 		glEnable(GL_BLEND);
 		//computed AO will be multiplicative blended to the geometry AO
@@ -928,12 +931,113 @@ void STPScenePipeline::traverse() {
 	glClear(GL_COLOR_BUFFER_BIT);
 	/* ----------------------------------------- light resolve ------------------------------------ */
 	this->GeometryLightPass->resolve();
+}
+
+void STPScenePipeline::traverse() {
+	const auto& [object, object_shadow, trans_obj, env_obj, unique_light_space_size, light_shadow, ao, bsdf, post_process] = this->SceneComponent;
+	if (!post_process) {
+		throw STPException::STPUnsupportedFunctionality("It is currently not allowed to render to default framebuffer without post processing, "
+			"because there is no stencil information written.");
+	}
+
+	/*
+	 * Stencil rule
+	 * 0 denotes the environment.
+	 * The 1st bit denotes an object.
+	 * The 2nd bit denotes if this object is transparent.
+	 * The 3rd bit denotes if this object is affected by aerial perspective.
+	*/
+	constexpr static unsigned char EnvironmentMask = 0u,
+		ObjectMask = 1u << 1u,
+		TransparentMask = 1u << 2u,
+		ExtinctionMask = 1u << 3u;
+
+	//before rendering, update scene buffer
+	this->CameraMemory->updateBuffer();
+	//process rendering components.
+
+	/* ------------------------------------------ shadow pass -------------------------------- */
+	//back face culling is useful for double-sided objects
+	//out scene main consists of single-sided objects and light sources may travel between front face and back face
+	//it is the best to disable face culling to avoid having light bleeding
+	this->GeometryShadowPass->renderToShadow(object_shadow, light_shadow);
+	glEnable(GL_CULL_FACE);
+
+	/* ====================================== geometry rendering ================================== */
+	//deferred shading geometry pass. Old geometry buffer (except depth and stencil) is cleared automatically
+	this->GeometryLightPass->clearColorAttachment();
+	//remember the depth and stencil buffer of geometry framebuffer and output framebuffer is shared.
+	this->GeometryLightPass->capture();
+	//enable stencil buffer for clearing
+	glStencilMask(0xFF);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	/* ------------------------------------ opaque object rendering ----------------------------- */
+	//initially the stencil is empty, we want to mark the geometries on the stencil buffer, no testing is needed.
+	glEnable(GL_STENCIL_TEST);
+	glStencilFunc(GL_ALWAYS, ObjectMask, 0xFF);
+	for (const auto rendering_object : object) {
+		rendering_object->render();
+	}
+
+	/* ======================================== shading opaque objects =================================== */
+	//face culling is useless for screen drawing
+	glDisable(GL_CULL_FACE);
+	this->shadeObject(ao, post_process, ObjectMask);
+
+	/* -------------------------------------- environment rendering -------------------------------- */
+	//draw the environment on everything that is empty
+	glStencilFunc(GL_EQUAL, EnvironmentMask, 0xFF);
+	this->drawEnvironment(env_obj);
+
+	/* ===================================== transparent object rendering ================================= */
+	if (trans_obj.empty()) {
+		//don't waste time on the expensive state changes and draw calls later
+		//I use go-to because it is ugly to enclosed this gigantic thing in a if statement
+		goto skipTransparent;
+	}
+	//rendering of transparent objects behaves exactly the same as opaque objects
+	if (bsdf) {
+		//copy the current scene to be used later, because transparent object will overwrite existing pixels
+		bsdf->copyScene(**post_process, this->SceneTexture.DepthStencil);
+	}
+
+	glEnable(GL_DEPTH_TEST);
+	//all subsequent draws are for transparent objects, therefore update the bit on stencil for these objects
+	glStencilMask(0xFF);
+	glStencilFunc(GL_ALWAYS, TransparentMask | ObjectMask, 0xFF);
+	//transparent objects do not cast shadow so there is no shadow pass
+	//render them to G-Buffer directly
+	this->GeometryLightPass->capture();
+	for (const auto rendering_trans : trans_obj) {
+		rendering_trans->render();
+	}
+
+	/* ----------------------------------- shade transparent objects ----------------------------------- */
+	//only shade newly rendered objects to the post process buffer.
+	this->shadeObject(ao, post_process, TransparentMask);
+
+	if (bsdf) {
+		//render special effects for transparent objects
+		//we want to blend the newly added special effects with the original colour such as lighting.
+		glEnable(GL_BLEND);
+		//preserve the alpha in the current buffer because it contains information about aerial perspective to be used later
+		//source colour has already been pre-blended in the shader
+		glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE);
+		bsdf->scatter(this->SceneTexture.DepthStencil, this->GeometryLightPass->getNormal(), this->GeometryLightPass->getMaterial());
+
+		glDisable(GL_BLEND);
+	}
+
+	skipTransparent:
+	/* =========================================== grand finale ========================================= */
+	//before output, let's do some post-processing
 
 	/* --------------------------------------- extinction culling ---------------------------------- */
 	//update the stencil buffer to include objects in the extinction area such that it can be blended with the environment
-	glStencilMask(0x01);
-	//cull for all geometry data, and replace to the environment stencil
-	glStencilFunc(GL_NOTEQUAL, 0x00, 0x01);
+	glStencilMask(ExtinctionMask);
+	//cull all geometry data in the extinction zone to avoid re-computing aerial perspective for the environment pixel,
+	//then set extinction mask to true
+	glStencilFunc(GL_NOTEQUAL, ExtinctionMask, ObjectMask);
 	//no synchronisation of the colour attachment is needed as the extinction culling is performed on another framebuffer
 	
 	this->GeometryLightPass->ExtinctionCullingContainer.bind(GL_FRAMEBUFFER);
@@ -944,19 +1048,16 @@ void STPScenePipeline::traverse() {
 	//switch back to post process buffer
 	post_process->capture();
 
-	/* ------------------------------------- environment rendering ----------------------------- */
-	//stencil test happens before depth test, no need to worry about depth test
-	//draw the environment on everything that is not solid geometry
-	glStencilFunc(GL_NOTEQUAL, 0x01, 0x01);
+	/* ------------------------------------- aerial perspective ----------------------------- */
+	//render the environment again at extinction pixels
+	glStencilFunc(GL_EQUAL, ExtinctionMask, ExtinctionMask);
 
 	//enable extinction blending
 	glEnable(GL_BLEND);
 	//alpha 1 means there is no object (default alpha), or object is fully extinct
 	//alpha 0 means object is fully visible
 	glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA, GL_ZERO, GL_ONE);
-	for (const auto& rendering_env : env_obj) {
-		rendering_env->render();
-	}
+	this->drawEnvironment(env_obj);
 
 	glDisable(GL_BLEND);
 
@@ -971,7 +1072,6 @@ void STPScenePipeline::traverse() {
 
 	/* --------------------------------- reset states to default -------------------------------- */
 	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
 }
 
 #define SHADOW_FILTER_CLASS(FILT) template struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STPShadowMapFilter::FILT>

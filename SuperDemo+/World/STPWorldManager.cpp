@@ -4,7 +4,6 @@
 #include <SuperTerrain+/Exception/STPInvalidArgument.h>
 
 //System
-#include <exception>
 #include <array>
 #include <algorithm>
 #include <execution>

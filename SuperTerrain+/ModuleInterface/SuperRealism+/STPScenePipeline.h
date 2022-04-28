@@ -8,7 +8,9 @@
 #include "./Scene/STPSceneLight.h"
 #include "./Scene/Component/STPPostProcess.h"
 #include "./Scene/Component/STPAmbientOcclusion.h"
+#include "./Scene/Component/STPBidirectionalScattering.h"
 #include "./Scene/Light/STPShadowMapFilter.hpp"
+#include "./Scene/STPMaterialLibrary.h"
 //Camera
 #include "./Utility/Camera/STPCamera.h"
 
@@ -148,6 +150,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 			//Special effect nodes
 			STPAmbientOcclusion* AmbientOcclusionObject = nullptr;
+			STPBidirectionalScattering* BSDFObject = nullptr;
 			STPPostProcess* PostProcessObject = nullptr;
 
 		};
@@ -179,6 +182,8 @@ namespace SuperTerrainPlus::STPRealism {
 		//Shared buffer between different scene processors.
 		STPSharedTexture SceneTexture;
 		STPSceneGraph SceneComponent;
+
+		const bool hasMaterialLibrary;
 
 		/**
 		 * @brief STPCameraInformationMemory stores memory for camera information.
@@ -215,6 +220,25 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void addLight(STPSceneLight&);
 
+		/**
+		 * @brief Draw the environment.
+		 * @tparam Env An array of environment rendering components.
+		 * @param env The pointer the environment object.
+		*/
+		template<class Env>
+		void drawEnvironment(const Env&) const;
+
+		/**
+		 * @brief Shade the object.
+		 * @tparam Ao The ambient occlusion object.
+		 * @tparam Pp The post-processing object.
+		 * @param ao The pointer to the AO object.
+		 * @param post_process The pointer to the post-processing object.
+		 * @param mask Specifies the mask for which the pixels should be shaded.
+		*/
+		template<class Ao, class Pp>
+		void shadeObject(const Ao*, const Pp*, unsigned char) const;
+
 	public:
 
 		/**
@@ -237,9 +261,14 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Initialise an empty scene pipeline.
 		 * @param camera The pointer to the camera.
 		 * The camera must remain valid as long as the current scene pipeline is valid.
+		 * @param mat_lib The pointer to the material library.
+		 * A null pointer can be provided to indicate no user-defined material library is used for this rendering pipeline.
+		 * No rendering component that uses a material library is allowed to be added later, however.
+		 * Like camera, user is responsible for its lifetime, and the memory must not be reallocated.
+		 * Modification to the data within the material library in runtime is allowed.
 		 * @param scene_init The pointer to scene initialiser.
 		*/
-		STPScenePipeline(const STPCamera&, STPScenePipelineInitialiser&);
+		STPScenePipeline(const STPCamera&, const STPMaterialLibrary*, const STPScenePipelineInitialiser&);
 
 		STPScenePipeline(const STPScenePipeline&) = delete;
 

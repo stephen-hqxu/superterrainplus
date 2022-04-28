@@ -13,6 +13,7 @@
 #include <SuperRealism+/STPRendererInitialiser.h>
 #include <SuperRealism+/Utility/Camera/STPPerspectiveCamera.h>
 #include <SuperRealism+/STPScenePipeline.h>
+#include <SuperRealism+/Scene/STPMaterialLibrary.h>
 #include <SuperRealism+/Scene/Component/STPHeightfieldTerrain.h>
 #include <SuperRealism+/Scene/Component/STPSun.h>
 #include <SuperRealism+/Scene/Component/STPAmbientOcclusion.h>
@@ -97,6 +98,8 @@ namespace STPStart {
 		//Light
 		optional<SuperTerrainPlus::STPRealism::STPAmbientLight> Skylight;
 		optional<SuperTerrainPlus::STPRealism::STPDirectionalLight> Sunlight;
+		//Material
+		SuperTerrainPlus::STPRealism::STPMaterialLibrary SceneMaterial;
 		//Rendering Pipeline
 		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
 
@@ -126,7 +129,8 @@ namespace STPStart {
 		 * @param camera The pointer to the perspective camera for the scene.
 		*/
 		STPMasterRenderer(const SIMPLE::SIStorage& engine, const SIMPLE::SIStorage& biome, SuperTerrainPlus::STPRealism::STPPerspectiveCamera& camera) :
-			engineINI(engine), biomeINI(biome), ViewPosition(camera.cameraStatus().Position), 
+			engineINI(engine), biomeINI(biome), 
+			SceneMaterial(0u), ViewPosition(camera.cameraStatus().Position), 
 			CurrentSeed(this->biomeINI.at("simplex").at("seed").to<unsigned long long>()) {
 			using namespace SuperTerrainPlus;
 			using namespace STPDemo;
@@ -217,7 +221,7 @@ namespace STPStart {
 				//construct rendering pipeline
 				scene_init.GeometryBufferInitialiser = &screen_renderer_init;
 
-				this->RenderPipeline.emplace(camera, scene_init);
+				this->RenderPipeline.emplace(camera, nullptr, scene_init);
 			}
 			//setup environment and light
 			//-------------------------------------------

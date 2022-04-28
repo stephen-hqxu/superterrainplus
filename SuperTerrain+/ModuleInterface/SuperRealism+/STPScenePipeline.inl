@@ -3,6 +3,8 @@
 
 #include <type_traits>
 
+#include <SuperTerrain+/Exception/STPMemoryError.h>
+
 template<class Obj>
 void SuperTerrainPlus::STPRealism::STPScenePipeline::add(Obj& object) {
 	using std::is_base_of_v;
@@ -55,6 +57,15 @@ void SuperTerrainPlus::STPRealism::STPScenePipeline::add(Obj& object) {
 
 	if constexpr (is_same_v<STPAmbientOcclusion, Obj>) {
 		scene_graph.AmbientOcclusionObject = &object;
+		return;
+	}
+
+	if constexpr (is_same_v<STPBidirectionalScattering, Obj>) {
+		if (!this->hasMaterialLibrary) {
+			throw STPException::STPMemoryError("Bidirectional scattering effect requires material data, "
+				"however material library is not available in this scene pipeline instance");
+		}
+		scene_graph.BSDFObject = &object;
 		return;
 	}
 

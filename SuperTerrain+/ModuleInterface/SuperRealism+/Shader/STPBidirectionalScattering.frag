@@ -58,7 +58,8 @@ void main(){
 		displayOpacity = clamp(absDepth * object_mat.Opacity, 0.0f, 1.0f);
 	const vec3 fresnelColor = mix(reflection_color, refraction_color, refractiveFactor);
 
-	FragColor = vec4(fresnelColor, displayOpacity);
+	//make the object more transparent at lower depth
+	FragColor = vec4(mix(refraction_color, fresnelColor, displayOpacity), displayOpacity);
 }
 
 //compare the current sample depth with the actual depth on the depth buffer
@@ -107,6 +108,7 @@ vec3 findClosestHitColor(vec3 ray_origin, vec3 ray_dir, mat4x2 proj_xy){
 	}
 	if(!hit_pass1){
 		//TODO: handle the case when pass 1 does not hit anything
+		return vec3(0.0f);
 	}
 
 	/* =============================================== Pass 2 ================================================= */
@@ -132,6 +134,7 @@ vec3 findClosestHitColor(vec3 ray_origin, vec3 ray_dir, mat4x2 proj_xy){
 	}
 	if(!hit_pass2){
 		//TODO: handle the case when pass 2 does not failed, for some reasons
+		return vec3(0.0f);
 	}
 
 	//read the colour value at this point

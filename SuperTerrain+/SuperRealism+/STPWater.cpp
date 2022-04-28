@@ -104,6 +104,8 @@ STPWater::STPWater(const STPHeightfieldTerrain<false>& terrain, const STPBiomeWa
 		.uniform(glProgramUniformHandleui64ARB, "WaterLevel", **this->WaterLevelTableHandle);
 
 	this->WaveTimeLocation = this->WaterAnimator.uniformLocation("WaveTime");
+	//set default material
+	this->setWaterMaterial(0u);
 }
 
 inline void STPWater::updateWaveTime(double time) const {

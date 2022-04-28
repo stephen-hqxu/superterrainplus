@@ -51,6 +51,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * The material library by default has the first element filled in with default material.
 		 * @param count Specifies the maximum number of material allows to be added to the library.
 		 * The number of material may not exceed the numeric limit allowed by material ID.
+		 * It is allowed to have zero count, to indicate no user-specified material.
 		*/
 		STPMaterialLibrary(STPMaterialCount);
 
@@ -80,6 +81,12 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Exception will be thrown if material ID is invalid, i.e., no such ID is found.
 		*/
 		const STPMaterialProperty& operator[](STPMaterialID) const;
+
+		/**
+		 * @brief Get the underlying buffer for the material library.
+		 * @return The pointer to the buffer containing material data.
+		*/
+		const STPBuffer& operator*() const;
 
 	};
 

@@ -35,7 +35,7 @@ STPBidirectionalScattering::STPBidirectionalScattering(const STPScreenInitialise
 
 	/* -------------------------------------- setup sampler ---------------------------------------------- */
 	auto setSampler = [](STPSampler& sampler, const auto& border) -> void {
-		sampler.wrap(GL_CLAMP_TO_EDGE);
+		sampler.wrap(GL_CLAMP_TO_BORDER);
 		sampler.borderColor(border);
 		sampler.filter(GL_NEAREST, GL_NEAREST);
 	};
