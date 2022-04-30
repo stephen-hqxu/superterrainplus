@@ -35,7 +35,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 	private:
 
-		const STPEnvironment::STPSunSetting& SunSetting;
+		const STPEnvironment::STPSunSetting SunSetting;
 
 		//Those buffers specify the ray direction from the camera
 		STPBuffer RayDirectionBuffer, RayDirectionIndex, SkyRenderCommand;
@@ -80,7 +80,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Init the sun with settings.
-		 * @param sun_setting The sun setting.
+		 * @param sun_setting The sun setting. The setting will be copied to the underlying instance.
 		 * @param spectrum_domain For sun spectrum emulation.
 		 * Specifies The sun direction for the first iteration and the last iteration.
 		 * Sun direction in between will be interpolated.

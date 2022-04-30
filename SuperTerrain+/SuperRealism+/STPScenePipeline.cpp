@@ -894,7 +894,7 @@ inline void STPScenePipeline::drawEnvironment(const Env& env) const {
 	}
 }
 
-template<class Ao, class Pp>
+template<bool Clr, class Ao, class Pp>
 inline void STPScenePipeline::shadeObject(const Ao* ao, const Pp* post_process, unsigned char mask) const {
 	//from this step we start performing off-screen rendering using the buffer we got from previous steps.
 	//off-screen rendering does not need depth test
@@ -927,8 +927,10 @@ inline void STPScenePipeline::shadeObject(const Ao* ao, const Pp* post_process, 
 
 	//render the final scene to an post process buffer memory
 	post_process->capture();
-	//clear old colour data to default clear colour
-	glClear(GL_COLOR_BUFFER_BIT);
+	if constexpr (Clr) {
+		//clear old colour data to default clear colour
+		glClear(GL_COLOR_BUFFER_BIT);
+	}
 	/* ----------------------------------------- light resolve ------------------------------------ */
 	this->GeometryLightPass->resolve();
 }
@@ -982,7 +984,7 @@ void STPScenePipeline::traverse() {
 	/* ======================================== shading opaque objects =================================== */
 	//face culling is useless for screen drawing
 	glDisable(GL_CULL_FACE);
-	this->shadeObject(ao, post_process, ObjectMask);
+	this->shadeObject<true>(ao, post_process, ObjectMask);
 
 	/* -------------------------------------- environment rendering -------------------------------- */
 	//draw the environment on everything that is empty
@@ -1014,7 +1016,7 @@ void STPScenePipeline::traverse() {
 
 	/* ----------------------------------- shade transparent objects ----------------------------------- */
 	//only shade newly rendered objects to the post process buffer.
-	this->shadeObject(ao, post_process, TransparentMask);
+	this->shadeObject<false>(ao, post_process, TransparentMask);
 
 	if (bsdf) {
 		//render special effects for transparent objects

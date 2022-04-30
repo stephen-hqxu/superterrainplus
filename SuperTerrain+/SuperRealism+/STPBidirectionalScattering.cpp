@@ -83,7 +83,7 @@ void STPBidirectionalScattering::setCopyBuffer(uvec2 dimension) {
 	}
 
 	//create new handle
-	STPBindlessTexture copy_color_handle(copy_color), copy_depth_handle(copy_depth);
+	STPBindlessTexture copy_color_handle(copy_color, this->ColorSampler), copy_depth_handle(copy_depth, this->DepthSampler);
 	//send new handle
 	this->OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, "SceneColor", *copy_color_handle)
 		.uniform(glProgramUniformHandleui64ARB, "SceneDepth", *copy_depth_handle);

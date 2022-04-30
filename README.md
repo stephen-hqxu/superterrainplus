@@ -175,7 +175,6 @@ The application is unit-tested with.
 
 - OpenGL 4.6 core profile
 - [GL_ARB_bindless_texture](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_bindless_texture.txt)
-- [GL_ARB_shader_ballot](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_shader_ballot.txt)
 - [GL_ARB_shading_language_include](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_shading_language_include.txt)
 - [GL_NV_draw_texture](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_draw_texture.txt)
 - [GL_NV_gpu_shader5](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt)

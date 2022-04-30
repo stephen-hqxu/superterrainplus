@@ -15,7 +15,7 @@ float getWaveHeight(vec2 position, WaveFunction func, uint iteration, float time
 		frequency = func.iFreq, 
 		amplitude = func.iAmp, 
 		speed = func.iSpd;
-	float waveWeight = 0.0f, weightSum = 0.0f;
+	float waveHeight = 0.0f, heightSum = 0.0f;
 
 	//The wave is generated, essentially by compositing a bunch of trigonometric functions with fractal noise technique.
 	for (uint i = 0u; i < iteration; i++) {
@@ -23,9 +23,9 @@ float getWaveHeight(vec2 position, WaveFunction func, uint iteration, float time
 		const vec2 waveDir = vec2(cos(rotation), sin(rotation)),
 			wave = waveEquation(position, waveDir, speed, frequency, time);
 		//move the octave to the next derivative position
-		position += waveDir * wave.y * waveWeight * func.Drag;
-		waveWeight += wave.x * amplitude;
-		weightSum += waveWeight;
+		position += waveDir * wave.y * amplitude * func.Drag;
+		waveHeight += wave.x * amplitude;
+		heightSum += amplitude;
 
 		//prepare data for the next octave
 		rotation += func.octRot;
@@ -35,7 +35,7 @@ float getWaveHeight(vec2 position, WaveFunction func, uint iteration, float time
 	}
 
 	//normalise noise height
-	return waveHeight / weightSum;
+	return waveHeight / heightSum;
 }
 
 vec2 waveEquation(vec2 position, vec2 direction, float speed, float frequency, float phase) {

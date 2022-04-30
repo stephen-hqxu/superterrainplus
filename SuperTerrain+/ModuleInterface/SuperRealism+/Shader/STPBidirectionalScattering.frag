@@ -45,7 +45,7 @@ void main(){
 		//calculate reflection vector from input
 		incident_direction = normalize(position_view),
 		reflection_direction = normalize(reflect(incident_direction, normal_view)),
-		refraction_direction = normalize(refract(incident_direction, normal_view, object_mat.RefractiveIndex));
+		refraction_direction = normalize(refract(incident_direction, normal_view, 1.0f / object_mat.RefractiveIndex));
 
 	const mat4x2 xyProjection = mat4x2(Camera.Projection);
 	const vec3 reflection_color = findClosestHitColor(position_view, reflection_direction, xyProjection),
@@ -53,10 +53,10 @@ void main(){
 
 	//Fresnel equation
 	const float absDepth = getLinearDepthAt(FragTexCoord) - lineariseDepth(object_depth),
-		refractiveFactor = pow(dot(incident_direction, normal_view), object_mat.Reflexivity),
+		refractiveFactor = pow(abs(dot(incident_direction, normal_view)), object_mat.Reflexivity),
 		//deeper -> more opaque
 		displayOpacity = clamp(absDepth * object_mat.Opacity, 0.0f, 1.0f);
-	const vec3 fresnelColor = mix(reflection_color, refraction_color, refractiveFactor);
+	const vec3 fresnelColor = mix(reflection_color, refraction_color, clamp(refractiveFactor, 0.0f, 1.0f));
 
 	//make the object more transparent at lower depth
 	FragColor = vec4(mix(refraction_color, fresnelColor, displayOpacity), displayOpacity);
@@ -65,7 +65,8 @@ void main(){
 //compare the current sample depth with the actual depth on the depth buffer
 float compareSampleDepth(float init_depth, float final_depth, float factor, vec2 position_ndc){
 	//use linear interpolation to calculate the current ray depth
-	const float sampleDepth_theoretical = mix(init_depth, final_depth, factor),
+	//perspective correction for perspective projection
+	const float sampleDepth_theoretical = (Camera.useOrtho ? 1.0f : init_depth * final_depth) / mix(init_depth, final_depth, factor),
 		//and the actual depth on the scene
 		sampleDepth_actual = getLinearDepthAt(position_ndc);
 
@@ -87,8 +88,8 @@ vec3 findClosestHitColor(vec3 ray_origin, vec3 ray_dir, mat4x2 proj_xy){
 		rayEnd = fragViewToNDC(proj_xy, rayEndView),
 		rayDelta = rayEnd - rayStart,
 		rayDir = normalize(rayDelta);
-	const float rayStartDepth = getLinearDepthAt(rayStart),
-		rayEndDepth = getLinearDepthAt(rayEnd),
+	const float rayStartDepth = ray_origin.z,
+		rayEndDepth = rayEndView.z,
 		rayMaxLength = length(rayDelta),
 		stepInc = rayMaxLength / StepResolution;
 
@@ -108,7 +109,6 @@ vec3 findClosestHitColor(vec3 ray_origin, vec3 ray_dir, mat4x2 proj_xy){
 	}
 	if(!hit_pass1){
 		//TODO: handle the case when pass 1 does not hit anything
-		return vec3(0.0f);
 	}
 
 	/* =============================================== Pass 2 ================================================= */
@@ -120,9 +120,9 @@ vec3 findClosestHitColor(vec3 ray_origin, vec3 ray_dir, mat4x2 proj_xy){
 	//perform binary search
 	for(uint i = 0u; i < StepSize; i++){
 		//find the centre of the segment
-		const float hitPoint = (segEnd - segStart) / 2.0f;
+		const float hitPoint = mix(segStart, segEnd, 0.5f);
 		//the rest is the same as the previous pass
-		closestHit = mix(rayStart, rayEnd, hitPoint);
+		closestHit = rayStart + rayDir * hitPoint;
 		const float delta_depth = compareSampleDepth(rayStartDepth, rayEndDepth, hitPoint / rayMaxLength, closestHit);
 
 		if(isDeltaDepthInside(delta_depth)){
@@ -134,7 +134,6 @@ vec3 findClosestHitColor(vec3 ray_origin, vec3 ray_dir, mat4x2 proj_xy){
 	}
 	if(!hit_pass2){
 		//TODO: handle the case when pass 2 does not failed, for some reasons
-		return vec3(0.0f);
 	}
 
 	//read the colour value at this point

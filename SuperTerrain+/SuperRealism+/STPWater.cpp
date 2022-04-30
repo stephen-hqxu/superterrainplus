@@ -69,7 +69,7 @@ STPWater::STPWater(const STPHeightfieldTerrain<false>& terrain, const STPBiomeWa
 
 	/* --------------------------------- build water level dictionary -------------------------- */
 	//default water level for biome with no given water level
-	constexpr static float DefaultWaterLevel = -1.0f;
+	constexpr static float DefaultWaterLevel = 0.0f;
 	//convert hash table to a sorted array
 	//find the max biome ID in the table
 	const unsigned int biomeCount = std::max_element(water_level.cbegin(), water_level.cend(), 

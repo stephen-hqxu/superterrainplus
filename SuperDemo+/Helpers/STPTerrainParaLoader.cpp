@@ -153,6 +153,55 @@ STPEnvironment::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(con
 	return ao_kernel;
 }
 
+STPEnvironment::STPWaterSetting STPTerrainParaLoader::getWaterSetting(const SIMPLE::SISection& section, float altitude) {
+	STPEnvironment::STPWaterSetting water;
+	STPEnvironment::STPTessellationSetting& water_tess = water.WaterMeshTess;
+	STPEnvironment::STPWaterSetting::STPWaterWaveSetting& water_wave = water.WaterWave;
+
+	water_wave.InitialRotation = section.at("init_rotation").to<float>();
+	water_wave.InitialFrequency = section.at("init_frequency").to<float>();
+	water_wave.InitialAmplitude = section.at("init_amplitude").to<float>();
+	water_wave.InitialSpeed = section.at("init_speed").to<float>();
+	water_wave.OctaveRotation = section.at("octave_rotation").to<float>();
+	water_wave.Lacunarity = section.at("lacunarity").to<float>();
+	water_wave.Persistence = section.at("persistence").to<float>();
+	water_wave.OctaveSpeed = section.at("octave_speed").to<float>();
+	water_wave.WaveDrag = section.at("drag").to<float>();
+
+	water_tess.MaxTessLevel = section.at("max_tess").to<float>();
+	water_tess.MinTessLevel = section.at("min_tess").to<float>();
+	water_tess.FurthestTessDistance = section.at("max_distance").to<float>();
+	water_tess.NearestTessDistance = section.at("min_distance").to<float>();
+
+	water.MinimumWaterLevel = section.at("min_level").to<float>();
+	water.CullTestSample = section.at("cull_test_sample").to<unsigned int>();
+	water.CullTestRadius = section.at("cull_test_radius").to<float>();
+	water.Altitude = altitude;
+	water.WaveHeight = section.at("wave_height").to<float>();
+	
+	water.WaterWaveIteration.Geometry = section.at("geometry_iteration").to<unsigned int>();
+	water.WaterWaveIteration.Normal = section.at("normal_iteration").to<unsigned int>();
+	water.Tint = vec3(
+		section.at("tintR").to<float>(),
+		section.at("tintG").to<float>(),
+		section.at("tintB").to<float>()
+	);
+	water.NormalEpsilon = section.at("epsilon").to<float>();
+
+	return water;
+}
+
+STPEnvironment::STPBidirectionalScatteringSetting STPTerrainParaLoader::getBSDFSetting(const SIMPLE::SISection& section) {
+	STPEnvironment::STPBidirectionalScatteringSetting bsdf;
+
+	bsdf.MaxRayDistance = section.at("max_ray_distance").to<float>();
+	bsdf.DepthBias = section.at("depth_bias").to<float>();
+	bsdf.RayResolution = section.at("ray_resolution").to<unsigned int>();
+	bsdf.RayStep = section.at("ray_step").to<unsigned int>();
+
+	return bsdf;
+}
+
 void STPTerrainParaLoader::loadBiomeParameters(const SIMPLE::SIStorage& biomeini) {
 	using namespace STPDiversity;
 	typedef STPDemo::STPBiomeRegistry BR;

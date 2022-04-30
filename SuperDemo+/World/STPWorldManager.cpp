@@ -203,7 +203,7 @@ public:
 
 };
 
-STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STPConfiguration& settings, 
+STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STPConfiguration&& settings, 
 	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
 	SharedProgram(settings.ChunkSetting, simplex_setting), WorldSetting(std::move(settings)),
 	Texture(make_unique<STPWorldManager::STPWorldSplattingAgent>(tex_filename_prefix)), linkStatus(false) {

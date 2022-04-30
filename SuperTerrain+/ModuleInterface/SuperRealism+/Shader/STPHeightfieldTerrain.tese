@@ -1,5 +1,6 @@
 #version 460 core
 #extension GL_ARB_shading_language_include : require
+#extension GL_NV_gpu_shader5 : require
 
 #define SHADER_PREDEFINE_TESE
 #include </Common/STPSeparableShaderPredefine.glsl>
@@ -11,7 +12,10 @@ layout (triangles, fractional_odd_spacing, ccw) in;
 #define STP_WATER 0
 
 //Input
-#if !STP_WATER
+#if STP_WATER
+//The dummy shared variable from the control shader, declared here just for interface matching
+patch in uint8_t WaterCulled[3];
+#else
 in VertexTCS{
 	vec2 texCoord;
 } tes_in[];
@@ -60,7 +64,10 @@ void main(){
 #endif
 	
 	tes_out.position_world = gl_Position.xyz;
-	if(TerrainRenderPass == 0u){
+#if !STP_WATER
+	if(TerrainRenderPass == 0u)
+#endif
+	{
 		//For regular rendering there is no geometry shader so we apply the final transformation here.
 		//For depth rendering, we need geometry for instanced rendering and transformation will be applied later.
 		gl_Position = Camera.ProjectionView * gl_Position;

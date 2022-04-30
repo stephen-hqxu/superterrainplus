@@ -1,7 +1,6 @@
 #version 460 core
 #extension GL_ARB_shading_language_include : require
 #extension GL_ARB_bindless_texture : require
-#extension GL_ARB_shader_ballot : require
 #extension GL_NV_gpu_shader5 : require
 
 #define SHADER_PREDEFINE_TESC
@@ -30,7 +29,10 @@ in VertexVS{
 } tcs_in[];
 
 //Output
-#if !STP_WATER
+#if STP_WATER
+//A dummy output acting as a shared variable among all invocations
+patch out uint8_t WaterCulled[3];
+#else
 out VertexTCS{
 	vec2 texCoord;
 } tcs_out[];
@@ -97,7 +99,7 @@ void main(){
 			invocEnd = gl_InvocationID == 2u ? SampleCount : (gl_InvocationID + 1u) * invocSampleCount;
 		//find the water level for the current patch
 		float patchLevel = MinLevel;
-		bool cullWater = true;
+		WaterCulled[gl_InvocationID] = uint8_t(0xFFu);
 		//draw a circle at the centroid, sample at the circumference
 		const float angleInc = TWO_PI / float(SampleCount);
 		for(uint i = invocStart; i < invocEnd; i++){
@@ -114,20 +116,30 @@ void main(){
 			//TODO: develop about a better water plane placement algorithm in the future to handle this case.
 			patchLevel = max(patchLevel, sampleLevel);
 			//if we found any sample goes above min level or the terrain, water plane should not be culled
-			cullWater &= sampleLevel < max(MinLevel, textureLod(Heightmap, samplePos, 0).r);
+			WaterCulled[gl_InvocationID] &= uint8_t(sampleLevel < max(MinLevel, textureLod(Heightmap, samplePos, 0).r));
 		}
 
 		//Invocation communication, find out if the water plane should be culled, 
 		//only when all invocations say it should be culled.
-		if(allThreadsNV(cullWater)){
+		barrier();
+		bvec3 cullPatch;
+		for(int i = 0; i < 3; i++){
+			cullPatch[i] = bool(WaterCulled[i]);
+		}
+		if(all(cullPatch)){
 			gl_TessLevelOuter[gl_InvocationID] = -1.0f;
 			return;
 		}
 
+		//Don't use thread ballot function, because invocation does not necessary match up SIMD group.
+		//It is stupid that OpenGL does not provide shared variable in tessellation shader;
+		//exploit to use the patch output as a shared variable, and exchange the water plane height.
+		gl_TessLevelOuter[gl_InvocationID] = patchLevel;
+		barrier();
 		//now grab the water level from all invocations
 		float commonLevel = MinLevel;
 		for(int i = 0; i < 3; i++){
-			commonLevel = max(commonLevel, readInvocationARB(patchLevel, i));
+			commonLevel = max(commonLevel, gl_TessLevelOuter[i]);
 		}
 		//We can displace the water plane to the water level before tessellation because the displacement is constant per biome,
 		//so we can save some memory bandwidth.

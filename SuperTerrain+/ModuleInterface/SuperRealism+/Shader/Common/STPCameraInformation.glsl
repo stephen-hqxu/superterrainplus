@@ -59,7 +59,7 @@ vec2 fragViewToNDC(mat4x2 projection_xy, vec3 position_view) {
 float lineariseDepth(float depth) {
 	//depth needs to be converted to range [-1, 1]
 	//2 * far * near / (far + near - (2 * z - 1) * (far - near))
-	return LinearDepthFactor.x / (LinearDepthFactor.y - (2.0f * depth - 1.0f) * LinearDepthFactor.z);
+	return Camera.LinearDepthFactor.x / (Camera.LinearDepthFactor.y - (2.0f * depth - 1.0f) * Camera.LinearDepthFactor.z);
 }
 #endif//EMIT_LINEARISE_DEPTH_IMPL
 
