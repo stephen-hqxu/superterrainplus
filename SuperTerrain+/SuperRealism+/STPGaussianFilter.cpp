@@ -36,7 +36,7 @@ static constexpr auto FilterShaderFilename =
 	STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPGaussianFilterKernel", ".frag");
 
 STPGaussianFilter::STPGaussianFilter(double variance, double sample_distance, unsigned int radius, const STPScreenInitialiser& filter_init) :
-	STPScreen(*filter_init.SharedVertexBuffer), BorderColor(vec4(vec3(0.0f), 1.0f)) {
+	BorderColor(vec4(vec3(0.0f), 1.0f)) {
 	if (radius == 0u) {
 		throw STPException::STPBadNumericRange("The radius of the filter kernel must be positive");
 	}
@@ -54,7 +54,10 @@ STPGaussianFilter::STPGaussianFilter(double variance, double sample_distance, un
 	Macro("GAUSSIAN_KERNEL_SIZE", kernel_length);
 
 	filter_source.define(Macro);
-	this->initScreenRenderer(filter_source, filter_init);
+
+	STPShaderManager filter_shader(GL_FRAGMENT_SHADER);
+	filter_shader(filter_source);
+	this->initScreenRenderer(filter_shader, filter_init);
 
 	/* -------------------------------------- Gaussian filter kernel generation ---------------------------- */
 	//because we are using a separable filter, only a 1D kernel is needed

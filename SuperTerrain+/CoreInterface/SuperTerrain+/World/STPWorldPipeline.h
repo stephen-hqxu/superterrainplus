@@ -256,7 +256,7 @@ namespace SuperTerrainPlus {
 		 * This can be used by the renderer for rule-based multi-biome terrain texture splatting.
 		 * @return The splatmap generator.
 		*/
-		STPDiversity::STPTextureFactory& splatmapGenerator() const;
+		const STPDiversity::STPTextureFactory& splatmapGenerator() const;
 
 	};
 

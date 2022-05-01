@@ -14,7 +14,7 @@ Sample STPLayer::STPLocalRNG::nextVal(Sample range) const {
 	const Sample val = static_cast<Sample>((this->LocalSeed >> 24ull) % static_cast<Seed>(range));
 
 	//advance to the next sequence
-	this->LocalSeed = STPSeedMixer::mixSeed(this->LocalSeed, this->LayerSeed);
+	this->LocalSeed = STPLayer::mixSeed(this->LocalSeed, this->LayerSeed);
 	return val;
 }
 
@@ -32,20 +32,20 @@ Sample STPLayer::STPLocalRNG::choose(Sample var1, Sample var2, Sample var3, Samp
 }
 
 Seed STPLayer::genLayerSeed(Seed global_seed, Seed salt) {
-	Seed midSalt = STPSeedMixer::mixSeed(salt, salt);
-	midSalt = STPSeedMixer::mixSeed(midSalt, midSalt);
-	midSalt = STPSeedMixer::mixSeed(midSalt, midSalt);
-	Seed layer_seed = STPSeedMixer::mixSeed(global_seed, midSalt);
-	layer_seed = STPSeedMixer::mixSeed(layer_seed, midSalt);
-	layer_seed = STPSeedMixer::mixSeed(layer_seed, midSalt);
+	Seed midSalt = STPLayer::mixSeed(salt, salt);
+	midSalt = STPLayer::mixSeed(midSalt, midSalt);
+	midSalt = STPLayer::mixSeed(midSalt, midSalt);
+	Seed layer_seed = STPLayer::mixSeed(global_seed, midSalt);
+	layer_seed = STPLayer::mixSeed(layer_seed, midSalt);
+	layer_seed = STPLayer::mixSeed(layer_seed, midSalt);
 	return layer_seed;
 }
 
 Seed STPLayer::genLocalSeed(int x, int z) const {
-	Seed local_seed = STPSeedMixer::mixSeed(this->LayerSeed, x);
-	local_seed = STPSeedMixer::mixSeed(local_seed, z);
-	local_seed = STPSeedMixer::mixSeed(local_seed, x);
-	local_seed = STPSeedMixer::mixSeed(local_seed, z);
+	Seed local_seed = STPLayer::mixSeed(this->LayerSeed, x);
+	local_seed = STPLayer::mixSeed(local_seed, z);
+	local_seed = STPLayer::mixSeed(local_seed, x);
+	local_seed = STPLayer::mixSeed(local_seed, z);
 	return local_seed;
 }
 
@@ -56,6 +56,13 @@ size_t STPLayer::cacheSize() const {
 
 STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) const {
 	return STPLayer::STPLocalRNG(this->LayerSeed, local_seed);
+}
+
+Seed STPLayer::mixSeed(Seed s, long long fac) {
+	//TODO: Mix seed based on any algorithm you like, feel free to change the implementation
+	s *= s * 6364136223846793005ull + 1442695040888963407ull;
+	s += fac;
+	return s;
 }
 
 Sample STPLayer::retrieve(int x, int y, int z) {

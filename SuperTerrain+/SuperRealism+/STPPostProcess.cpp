@@ -32,20 +32,21 @@ STPPostProcess::STPToneMappingCurve::STPToneMappingCurve(STPToneMappingFunction 
 
 }
 
-STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const STPScreenInitialiser& post_process_init) : 
-	STPScreen(*post_process_init.SharedVertexBuffer) {
+STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const STPScreenInitialiser& post_process_init) {
 	//setup post process shader
 	const char* const source_file = PostProcessShaderFilename.data();
-	STPShaderManager::STPShaderSource shader_source(source_file, *STPFile(source_file));
+	STPShaderManager::STPShaderSource post_source(source_file, *STPFile(source_file));
 
 	//fragment shader
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 	//define post process macros
 	Macro("TONE_MAPPING", static_cast<underlying_type_t<STPToneMappingFunction>>(tone_mapping.Function));
 	//update macros in the source code
-	shader_source.define(Macro);
+	post_source.define(Macro);
 	
-	this->initScreenRenderer(shader_source, post_process_init);
+	STPShaderManager post_shader(GL_FRAGMENT_SHADER);
+	post_shader(post_source);
+	this->initScreenRenderer(post_shader, post_process_init);
 
 	/* -------------------------------- setup sampler ---------------------------------- */
 	this->ImageSampler.filter(GL_NEAREST, GL_NEAREST);

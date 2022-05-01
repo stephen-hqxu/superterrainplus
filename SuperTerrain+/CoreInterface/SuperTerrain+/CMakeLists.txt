@@ -42,16 +42,11 @@ Utility/STPHashCombine.inl
 Utility/STPNullablePrimitive.h
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl
-# /World/Chunk/FreeSlip
-World/Chunk/FreeSlip/STPFreeSlipData.hpp
-World/Chunk/FreeSlip/STPFreeSlipGenerator.h
-World/Chunk/FreeSlip/STPFreeSlipLocation.hpp
-World/Chunk/FreeSlip/STPFreeSlipManager.cuh
-World/Chunk/FreeSlip/STPFreeSlipManager.inl
-World/Chunk/FreeSlip/STPFreeSlipTextureBuffer.h
 # /World/Chunk
 World/Chunk/STPChunk.h
 World/Chunk/STPDiversityGenerator.hpp
+World/Chunk/STPFreeSlipInformation.hpp
+World/Chunk/STPFreeSlipTextureBuffer.h
 World/Chunk/STPHeightfieldGenerator.h
 # /World/Diversity
 World/Diversity/STPBiomeDefine.h
@@ -61,7 +56,6 @@ World/Diversity/STPLayer.inl
 World/Diversity/STPLayerCache.h
 World/Diversity/STPLayerManager.h
 World/Diversity/STPLayerManager.inl
-World/Diversity/STPSeedMixer.h
 # /World/Diversity/Texture
 World/Diversity/Texture/STPTextureDatabase.h
 World/Diversity/Texture/STPTextureDefinitionLanguage.h

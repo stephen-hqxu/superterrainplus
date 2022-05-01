@@ -22,8 +22,8 @@
 
 //GLM
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/mat4x4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/mat4x4.hpp>
 
 using std::array;
 using std::numeric_limits;
@@ -44,7 +44,9 @@ using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto HeightfieldTerrainShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPHeightfieldTerrain", 
-	".vert", ".tesc", ".tese", ".geom", ".frag");
+	".vert", ".tesc", ".tese", ".frag");
+//geometry shader is only used in shadow pass
+constexpr static auto HeightfieldTerrainShadowShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPHeightfieldTerrain", ".geom");
 
 constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 	//Need to set the number of terrain tile during initialisation
@@ -74,13 +76,13 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 
 	/* ------------------------------------------ setup terrain shader ---------------------------------------------- */
 	STPShaderManager terrain_shader[HeightfieldTerrainShaderFilename.size()] = {
-		GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER, GL_GEOMETRY_SHADER, GL_FRAGMENT_SHADER
+		GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER, GL_FRAGMENT_SHADER
 	};
 	for (unsigned int i = 0u; i < HeightfieldTerrainShaderFilename.size(); i++) {
 		const char* const source_file = HeightfieldTerrainShaderFilename[i].data();
 		STPShaderManager::STPShaderSource shader_source(source_file, *STPFile(source_file));
 
-		if (i == 4u) {
+		if (i == 3u) {
 			//fragment shader
 			STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 			//prepare identifiers for texture splatting
@@ -95,7 +97,6 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 			("ALBEDO", splatmap_generator.convertType(STPTextureType::Albedo))
 			("NORMAL", splatmap_generator.convertType(STPTextureType::Normal))
 			("ROUGHNESS", splatmap_generator.convertType(STPTextureType::Roughness))
-			("SPECULAR", splatmap_generator.convertType(STPTextureType::Specular))
 			("AO", splatmap_generator.convertType(STPTextureType::AmbientOcclusion))
 
 			("TYPE_STRIDE", splatmap_generator.usedType())
@@ -110,41 +111,51 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 		terrain_shader[i](shader_source);
 
 		//attach the complete terrain program
-		if (i < 3u) {
-			//anything before geometry shader
-			this->TerrainModeller.attach(terrain_shader[i]);
-		}
-		else {
-			//anything after (and include) geometry shader
+		switch (i) {
+		case 0u:
+			//vertex shader
+			this->TerrainVertex.attach(terrain_shader[i]);
+			break;
+		case 3u:
+			//fragment shader
 			this->TerrainShader.attach(terrain_shader[i]);
+			break;
+		default:
+			//anything else
+			this->TerrainModeller.attach(terrain_shader[i]);
+			break;
 		}
 	}
+	this->TerrainVertex.separable(true);
 	this->TerrainModeller.separable(true);
 	this->TerrainShader.separable(true);
 
 	//link
+	this->TerrainVertex.finalise();
 	this->TerrainModeller.finalise();
 	this->TerrainShader.finalise();
 
 	//build pipeline
 	this->TerrainRenderer
-		.stage(GL_VERTEX_SHADER_BIT | GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
-		.stage(GL_GEOMETRY_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, this->TerrainShader)
+		.stage(GL_VERTEX_SHADER_BIT, this->TerrainVertex)
+		.stage(GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
+		.stage(GL_FRAGMENT_SHADER_BIT, this->TerrainShader)
 		.finalise();
 
 	/* ------------------------------- setup initial immutable uniforms ---------------------------------- */
+	//setup mesh model uniform location
+	this->MeshModelLocation = this->TerrainVertex.uniformLocation("MeshModel");
+
 	//setup program for meshing the terrain
 	this->TerrainModeller
 		//heightfield for displacement mapping
-		.uniform(glProgramUniform1i, "Heightfield", 1);
+		.uniform(glProgramUniform1i, "Heightfield", 0);
 
 	//setup program that shades terrain with colour
 	this->TerrainShader
 		//some samplers
-		.uniform(glProgramUniform1i, "Biomemap", 0)
-		.uniform(glProgramUniform1i, "Heightmap", 1)
-		.uniform(glProgramUniform1i, "Splatmap", 2)
-		.uniform(glProgramUniform1i, "Noisemap", 3)
+		.uniform(glProgramUniform1i, "Heightmap", 0)
+		.uniform(glProgramUniform1i, "Splatmap", 1)
 		//extra terrain info for rendering
 		.uniform(glProgramUniform2uiv, "VisibleChunk", 1, value_ptr(chunk_setting.RenderedChunk))
 		.uniform(glProgramUniform2fv, "ChunkHorizontalOffset", 1, value_ptr(static_cast<vec2>(chunkHorizontalOffset)));
@@ -221,6 +232,8 @@ void STPHeightfieldTerrain<false>::setMesh(const STPEnvironment::STPMeshSetting&
 		.uniform(glProgramUniform1f, "Tess[0].MinLod", tess_setting.MinTessLevel)
 		.uniform(glProgramUniform1f, "Tess[0].MaxDis", tess_setting.FurthestTessDistance)
 		.uniform(glProgramUniform1f, "Tess[0].MinDis", tess_setting.NearestTessDistance)
+		//set default terrain rendering pass to regular rendering
+		.uniform(glProgramUniform1ui, "TerrainRenderPass", 0u)
 		//update other mesh-related parameters
 		.uniform(glProgramUniform1f, "Altitude", mesh_setting.Altitude);
 
@@ -240,7 +253,9 @@ void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 	cudaGraphicsResource_t res;
 	cudaArray_t random_buffer;
 
-	//register cuda graphics
+	//CUDA will throw error when mapping on a texture with bindless handle active, so we need to deactivate it first.
+	this->NoiseSampleHandle.reset();
+	//register CUDA graphics
 	STPcudaCheckErr(cudaGraphicsGLRegisterImage(&res, *this->NoiseSample, GL_TEXTURE_3D, cudaGraphicsRegisterFlagsWriteDiscard));
 	//map
 	STPcudaCheckErr(cudaGraphicsMapResources(1, &res));
@@ -253,6 +268,10 @@ void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 	//clear up
 	STPcudaCheckErr(cudaGraphicsUnmapResources(1, &res));
 	STPcudaCheckErr(cudaGraphicsUnregisterResource(res));
+
+	//create bindless handle for noise sampler
+	this->NoiseSampleHandle.emplace(this->NoiseSample);
+	this->TerrainShader.uniform(glProgramUniformHandleui64ARB, "Noisemap", **this->NoiseSampleHandle);
 }
 
 void STPHeightfieldTerrain<false>::setViewPosition(const dvec3& viewPos) {
@@ -277,7 +296,10 @@ void STPHeightfieldTerrain<false>::setViewPosition(const dvec3& viewPos) {
 		chunk_setting.ChunkOffset.y,
 		chunkCentre.y + chunk_setting.ChunkOffset.z
 	));
-	this->TerrainModeller.uniform(glProgramUniformMatrix4fv, "MeshModel", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(static_cast<mat4>(Model)));
+
+	//update the current model matrix
+	//use double precision for intermediate calculation to avoid rounding errors, and cast to single precision.
+	this->TerrainVertex.uniform(glProgramUniformMatrix4fv, this->MeshModelLocation, 1, static_cast<GLboolean>(GL_FALSE), value_ptr(static_cast<mat4>(Model)));
 }
 
 void STPHeightfieldTerrain<false>::render() const {
@@ -285,10 +307,8 @@ void STPHeightfieldTerrain<false>::render() const {
 	this->TerrainGenerator.wait();
 
 	//prepare for rendering
-	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::BIOME]);
-	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
-	glBindTextureUnit(2, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::SPLAT]);
-	this->NoiseSample.bind(3);
+	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
+	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::SPLAT]);
 
 	this->TerrainMesh->bindPlaneVertexArray();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
@@ -302,11 +322,11 @@ void STPHeightfieldTerrain<false>::render() const {
 }
 
 STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, const STPTerrainShaderOption& option) :
-	STPHeightfieldTerrain<false>(generator_pipeline, option), MeshQualityLocation(this->TerrainModeller.uniformLocation("ActiveTess")) {
+	STPHeightfieldTerrain<false>(generator_pipeline, option), MeshQualityLocation(this->TerrainModeller.uniformLocation("TerrainRenderPass")) {
 
 }
 
-void STPHeightfieldTerrain<true>::setDepthMeshQuality(const STPEnvironment::STPMeshSetting::STPTessellationSetting& tess) {
+void STPHeightfieldTerrain<true>::setDepthMeshQuality(const STPEnvironment::STPTessellationSetting& tess) {
 	this->TerrainModeller.uniform(glProgramUniform1f, "Tess[1].MaxLod", tess.MaxTessLevel)
 		.uniform(glProgramUniform1f, "Tess[1].MinLod", tess.MinTessLevel)
 		.uniform(glProgramUniform1f, "Tess[1].MaxDis", tess.FurthestTessDistance)
@@ -327,12 +347,12 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count
 
 	//geometry shader for depth writing
 	//make a copy of the original source because we need to modify it
-	const char* const shadow_source_file = HeightfieldTerrainShaderFilename[3].data();
+	const char* const shadow_source_file = HeightfieldTerrainShadowShaderFilename.data();
 	STPShaderManager::STPShaderSource shadow_shader_source(shadow_source_file, *STPFile(shadow_source_file));
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
-	Macro("HEIGHTFIELD_SHADOW_PASS", 1)
-		("HEIGHTFIELD_SHADOW_PASS_INVOCATION", light_space_count);
+	//disable eval shader output because shadow pass does need those data
+	Macro("HEIGHTFIELD_SHADOW_PASS_INVOCATION", light_space_count);
 
 	shadow_shader_source.define(Macro);
 	terrain_shadow_shader(shadow_shader_source);
@@ -349,7 +369,8 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count
 
 	//build shadow pipeline
 	depth_renderer
-		.stage(GL_VERTEX_SHADER_BIT | GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
+		.stage(GL_VERTEX_SHADER_BIT, this->TerrainVertex)
+		.stage(GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
 		.stage(GL_GEOMETRY_SHADER_BIT | (depth_shader ? GL_FRAGMENT_SHADER_BIT : 0), depth_writer)
 		.finalise();
 
@@ -360,7 +381,7 @@ void STPHeightfieldTerrain<true>::renderDepth(size_t light_space_count) const {
 	this->TerrainGenerator.wait();
 
 	//in this case we only need heightfield for tessellation
-	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
+	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
 
 	this->TerrainMesh->bindPlaneVertexArray();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);

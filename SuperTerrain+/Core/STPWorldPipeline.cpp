@@ -782,6 +782,6 @@ STPOpenGL::STPuint STPWorldPipeline::operator[](STPRenderingBufferType type) con
 	return this->TerrainMap[static_cast<std::underlying_type_t<STPRenderingBufferType>>(type)];
 }
 
-STPDiversity::STPTextureFactory& STPWorldPipeline::splatmapGenerator() const {
+const STPDiversity::STPTextureFactory& STPWorldPipeline::splatmapGenerator() const {
 	return this->Generator->generateSplatmap;
 }

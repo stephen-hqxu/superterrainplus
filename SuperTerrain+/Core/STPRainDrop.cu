@@ -1,4 +1,3 @@
-#pragma warning(disable:26495)//Alarm for un-init variables
 #include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
 
 //CUDA Device Parameters
@@ -16,8 +15,8 @@ using glm::vec2;
 using glm::vec3;
 using glm::vec4;
 
-__device__ STPRainDrop::STPRainDrop(vec2 position, float WaterVolume, float MovementSpeed) : 
-	raindrop_pos(position), raindrop_dir(0.0f), volume(WaterVolume), speed(MovementSpeed) {
+__device__ STPRainDrop::STPRainDrop(vec2 position, float WaterVolume, float MovementSpeed, uvec2 dimension) : 
+	raindrop_pos(position), raindrop_dir(0.0f), volume(WaterVolume), speed(MovementSpeed), Dimension(dimension) {
 
 }
 
@@ -25,7 +24,8 @@ __device__ STPRainDrop::~STPRainDrop() {
 
 }
 
-__device__ vec3 STPRainDrop::calcHeightGradients(const STPFreeSlipFloatManager& map) const {
+__device__ vec3 STPRainDrop::calcHeightGradients(const float* map) const {
+	const unsigned int rowCount = this->Dimension.x;
 	//result
 	vec3 height_gradients;
 
@@ -33,12 +33,12 @@ __device__ vec3 STPRainDrop::calcHeightGradients(const STPFreeSlipFloatManager& 
 	//calculate drop's offset inside the cell (0,0) and (1,1)
 	const vec2 cell_corner = this->raindrop_pos - static_cast<vec2>(rounded_pos);
 	//calculate the heights of the 4 nodes of the droplet's cell
-	const unsigned int nodebaseIndex = rounded_pos.y * map.Data->FreeSlipRange.x + rounded_pos.x;//The position on the map of the local (0,0) cell
+	const unsigned int nodebaseIndex = rounded_pos.y * rowCount + rounded_pos.x;//The position on the map of the local (0,0) cell
 	const vec4 heights(
 		map[nodebaseIndex], // (0,0)
 		map[nodebaseIndex + 1], // (1,0)
-		map[nodebaseIndex + map.Data->FreeSlipRange.x], // (1,0)
-		map[nodebaseIndex + map.Data->FreeSlipRange.x + 1] // (1,1)
+		map[nodebaseIndex + rowCount], // (1,0)
+		map[nodebaseIndex + rowCount + 1] // (1,1)
 	);
 
 	//calculate height with bilinear interpolation of the heights of the nodes of the cell
@@ -54,11 +54,7 @@ __device__ vec3 STPRainDrop::calcHeightGradients(const STPFreeSlipFloatManager& 
 	return height_gradients;
 }
 
-__device__ float STPRainDrop::getCurrentVolume() const {
-	return this->volume;
-}
-
-__device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* settings, STPFreeSlipFloatManager& map) {
+__device__ void STPRainDrop::operator()(float* map, const STPEnvironment::STPRainDropSetting* settings) {
 	const unsigned int brushSize = settings->getErosionBrushSize(),
 		brushRadius = settings->getErosionBrushRadius();
 
@@ -88,7 +84,7 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 	//Rain drop is still alive, continue descending...
 	while (this->volume >= settings->minWaterVolume) {
 		//The position of droplet on the map index
-		const unsigned int mapIndex = static_cast<unsigned int>(this->raindrop_pos.y) * map.Data->FreeSlipRange.x + static_cast<unsigned int>(this->raindrop_pos.x);
+		const unsigned int mapIndex = static_cast<unsigned int>(this->raindrop_pos.y) * this->Dimension.x + static_cast<unsigned int>(this->raindrop_pos.x);
 		//calculate the offset of the droplet inside cell (0,0) and cell (1,1)
 		const vec2 offset_cell = this->raindrop_pos - static_cast<vec2>(static_cast<ivec2>(this->raindrop_pos));
 		//check if the particle is not accelerating and is it surrounded by a lot of other particles
@@ -108,8 +104,8 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 
 		//check if the raindrop brushing range falls out of the map
 		if ((this->raindrop_dir.x == 0.0f && this->raindrop_dir.y == 0.0f) 
-			|| this->raindrop_pos.x < (brushRadius * 1.0f) || this->raindrop_pos.x >= 1.0f * map.Data->FreeSlipRange.x - brushRadius
-			|| this->raindrop_pos.y < (brushRadius * 1.0f) || this->raindrop_pos.y >= 1.0f * map.Data->FreeSlipRange.y - brushRadius) {
+			|| this->raindrop_pos.x < (brushRadius * 1.0f) || this->raindrop_pos.x >= 1.0f * this->Dimension.x - brushRadius
+			|| this->raindrop_pos.y < (brushRadius * 1.0f) || this->raindrop_pos.y >= 1.0f * this->Dimension.y - brushRadius) {
 			//ending the life of this poor raindrop
 			this->volume = 0.0f;
 			this->sediment = 0.0f;
@@ -130,10 +126,22 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 
 			//add the sediment to the four nodes of the current cell using bilinear interpolation
 			//deposition is not distributed over a radius (like erosion) so that it can fill small pits :)
+#ifdef _DEBUG
+			//The current erosion algorithm is imperfect, race condition occurs when multiple raindrop collides into each other at the same time.
+			//Although the chance might be small when the heightmap is large, but we still need to prevent it somehow.
+			//This can be prevented by using atomic operation, however it is exceptionally slow in debug build.
+			//So we essentially trade data safety with performance on debug build.
 			map[mapIndex] += depositAmount * (1.0f - offset_cell.x) * (1.0f - offset_cell.y);
 			map[mapIndex + 1] += depositAmount * offset_cell.x * (1.0f - offset_cell.y);
-			map[mapIndex + map.Data->FreeSlipRange.x] += depositAmount * (1.0f - offset_cell.x) * offset_cell.y;
-			map[mapIndex + map.Data->FreeSlipRange.x + 1] += depositAmount * offset_cell.x *  offset_cell.y;
+			map[mapIndex + this->Dimension.x] += depositAmount * (1.0f - offset_cell.x) * offset_cell.y;
+			map[mapIndex + this->Dimension.x + 1] += depositAmount * offset_cell.x *  offset_cell.y;
+#else
+			//On release build, it is marginally faster to use atomic instruction, so we enable it.
+			atomicAdd(map + mapIndex, depositAmount * (1.0f - offset_cell.x) * (1.0f - offset_cell.y));
+			atomicAdd(map + mapIndex + 1, depositAmount * offset_cell.x * (1.0f - offset_cell.y));
+			atomicAdd(map + mapIndex + this->Dimension.x, depositAmount * (1.0f - offset_cell.x) * offset_cell.y);
+			atomicAdd(map + mapIndex + this->Dimension.x + 1, depositAmount * offset_cell.x * offset_cell.y);
+#endif
 		}
 		else {
 			//erode a fraction of the droplet's current carry capacity
@@ -146,7 +154,11 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 				const float weightederodeAmout = erodeAmout * brushWeights[brushPointIndex];
 				const float deltaSediment = (map[erodeIndex] < weightederodeAmout) ? map[erodeIndex] : weightederodeAmout;
 				//erode the map
+#ifdef _DEBUG
 				map[erodeIndex] -= deltaSediment;
+#else
+				atomicAdd(map + erodeIndex, -deltaSediment);
+#endif
 				this->sediment += deltaSediment;
 			}
 		}
@@ -157,4 +169,3 @@ __device__ void STPRainDrop::Erode(const STPEnvironment::STPRainDropSetting* set
 
 	}
 }
-#pragma warning(default:26495)

@@ -39,13 +39,25 @@ namespace SuperTerrainPlus::STPRealism {
 		//A shader program
 		STPSmartProgram Program;
 
+		//Indicate if the current program is used as a compute shader.
+		bool isComputeProgram;
+
 		//Use shader type as key, find the shader reference number
-		std::unordered_map<STPOpenGL::STPenum, STPOpenGL::STPuint> AttachedShader;
+		typedef std::unordered_map<STPOpenGL::STPenum, STPOpenGL::STPuint> STPShaderDatabase;
+		STPShaderDatabase AttachedShader;
+
+		/**
+		 * @brief Detach a shader by the shader database iterator.
+		 * @param it The iterator to the detaching shader.
+		 * The iterator will be erased from the shader database after the function has returned.
+		 * @return The iterator to the following element.
+		*/
+		STPShaderDatabase::iterator detachByIterator(STPShaderDatabase::iterator);
 
 	public:
 
 		/**
-		 * @brief Intialise a STPProgramManager.
+		 * @brief Initialise a STPProgramManager.
 		*/
 		STPProgramManager();
 
@@ -68,7 +80,7 @@ namespace SuperTerrainPlus::STPRealism {
 		STPProgramManager& attach(const STPShaderManager&);
 
 		/**
-		 * @brief Detatch a shader from the current program.
+		 * @brief Detach a shader from the current program.
 		 * @param type The type of the shader to be detached.
 		 * @return True if it has been detached. False if no type of this shader is found.
 		*/
@@ -121,7 +133,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param uniform_function A uniform function to be executed. Must be a valid glProgramUniform... function.
 		 * @param location The location of the uniform. No operation will be performed if the uniform location is indicated as not found.
 		 * @param ...args The arguments for the function.
-		 * @return The pointer to the current instace for chaining.
+		 * @return The pointer to the current instance for chaining.
 		*/
 		template<typename Uni, typename... Arg>
 		STPProgramManager& uniform(Uni&&, STPOpenGL::STPint, Arg&&...);
@@ -129,7 +141,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Query the local work group size of the compute program as specified by its input layout qualifier(s).
 		 * If the program is not a compute program, exception is thrown.
-		 * @return A vector of 3 intergers containing the local workgroup size
+		 * @return A vector of 3 integers containing the local work-group size
 		*/
 		glm::ivec3 workgroupSize() const;
 

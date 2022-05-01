@@ -12,7 +12,7 @@
 #include <curand_kernel.h>
 //Engine
 #include "STPDiversityGenerator.hpp"
-#include "./FreeSlip/STPFreeSlipGenerator.h"
+#include "STPFreeSlipTextureBuffer.h"
 #include "../../Utility/Memory/STPSmartStream.h"
 #include "../../Utility/Memory/STPSmartDeviceMemory.h"
 //Settings
@@ -83,7 +83,6 @@ namespace SuperTerrainPlus::STPCompute {
 		STPSmartDeviceMemory::STPDeviceMemory<STPEnvironment::STPHeightfieldSetting> Heightfield_Setting_d;
 
 		//free-slip index table generator
-		STPFreeSlipGenerator FreeSlipTable;
 		STPFreeSlipTextureAttribute TextureBufferAttr;
 
 		//Temp cache on device for heightmap computation

@@ -38,6 +38,8 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPHeightfieldTerrain<false> : public STPSceneObject::STPOpaqueObject<false> {
 	public:
 
+		friend class STPWater;
+
 		/**
 		 * @brief STPNormalBlendingAlgorithm selects normalmap blending algorithm in the shader
 		*/
@@ -80,12 +82,16 @@ namespace SuperTerrainPlus::STPRealism {
 		//A buffer representing the terrain plane.
 		std::optional<STPPlaneGeometry> TerrainMesh;
 		STPBuffer TerrainRenderCommand;
+
 		STPTexture NoiseSample;
+		std::optional<STPBindlessTexture> NoiseSampleHandle;
 
 		//Shader program for terrain rendering
 		//modeller contains vertex, tes control and tes eval, shader contains geom and frag.
-		mutable STPProgramManager TerrainModeller, TerrainShader;
+		mutable STPProgramManager TerrainVertex, TerrainModeller, TerrainShader;
 		STPPipelineManager TerrainRenderer;
+
+		STPOpenGL::STPint MeshModelLocation;
 
 		//data for texture splatting
 		STPBuffer SplatRegion;
@@ -174,7 +180,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param tess The pointer to the tessellation setting.
 		 * It is recommended to use a (much) lower quality than the actual rendering.
 		*/
-		void setDepthMeshQuality(const STPEnvironment::STPMeshSetting::STPTessellationSetting&);
+		void setDepthMeshQuality(const STPEnvironment::STPTessellationSetting&);
 
 		bool addDepthConfiguration(size_t, const STPShaderManager*) override;
 

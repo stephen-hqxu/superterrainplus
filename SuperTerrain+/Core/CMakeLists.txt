@@ -7,7 +7,6 @@ STPEnvironment.cpp
 STPErosionBrushGenerator.cpp
 STPException.cpp
 STPFile.cpp
-STPFreeSlipGenerator.cpp
 STPFreeSlipTextureBuffer.cpp
 STPHeightfieldGenerator.cpp
 STPLayer.cpp
@@ -16,7 +15,6 @@ STPLayerManager.cpp
 STPMemoryPool.cpp
 STPNullablePrimitive.cpp
 STPRuntimeCompilable.cpp
-STPSeedMixer.cpp
 STPSmartStream.cpp
 STPTextureDatabase.cpp
 STPTextureDefinitionLanguage.cpp

@@ -4,7 +4,6 @@
 #include <SuperTerrain+/Exception/STPInvalidArgument.h>
 
 //System
-#include <exception>
 #include <array>
 #include <algorithm>
 #include <execution>
@@ -47,7 +46,7 @@ private:
 	//All loaded texture data
 	STPTextureStorage LoadedData[STPWorldSplattingAgent::TextureCount];
 	//List of all texture name
-	constexpr static char* Filename[] = {
+	constexpr static const char* Filename[] = {
 		"darkrock_color.jpg",
 		"darkrock_normal.jpg",
 		"darkrock_ao.jpg",
@@ -204,7 +203,7 @@ public:
 
 };
 
-STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STPConfiguration& settings, 
+STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STPConfiguration&& settings, 
 	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
 	SharedProgram(settings.ChunkSetting, simplex_setting), WorldSetting(std::move(settings)),
 	Texture(make_unique<STPWorldManager::STPWorldSplattingAgent>(tex_filename_prefix)), linkStatus(false) {

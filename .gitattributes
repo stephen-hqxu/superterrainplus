@@ -1,0 +1,6 @@
+#configuration to GitHub Linguist detection
+#include compute shader for which Linguist does not support yet
+*.comp linguist-language=GLSL
+
+#treat them as documentation
+Report/** linguist-documentation

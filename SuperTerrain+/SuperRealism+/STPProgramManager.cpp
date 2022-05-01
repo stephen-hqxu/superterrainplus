@@ -29,8 +29,15 @@ void STPProgramManager::STPProgramDeleter::operator()(STPOpenGL::STPuint program
 	glDeleteProgram(program);
 }
 
-STPProgramManager::STPProgramManager() : Program(glCreateProgram()) {
+STPProgramManager::STPProgramManager() : Program(glCreateProgram()), isComputeProgram(false) {
 
+}
+
+inline STPProgramManager::STPShaderDatabase::iterator STPProgramManager::detachByIterator(STPShaderDatabase::iterator it) {
+	//shader found
+	glDetachShader(this->Program.get(), it->second);
+	//remove from registry
+	return this->AttachedShader.erase(it);
 }
 
 STPProgramManager& STPProgramManager::attach(const STPShaderManager& shader) {
@@ -70,10 +77,7 @@ bool STPProgramManager::detach(STPOpenGL::STPenum type) {
 		return false;
 	}
 
-	//shader found
-	glDetachShader(this->Program.get(), detaching->second);
-	//remove from registry
-	this->AttachedShader.erase(detaching);
+	this->detachByIterator(detaching);
 	return true;
 }
 
@@ -122,6 +126,14 @@ void STPProgramManager::finalise() {
 	handle_error(GL_VALIDATE_STATUS);
 
 	STPLogHandler::ActiveLogHandler->handle(std::move(log));
+
+	//check the status of the program
+	this->isComputeProgram = this->AttachedShader.count(GL_COMPUTE_SHADER) > 0u;
+
+	//detach all shaders after a successful linking so shader can be deleted
+	for (auto it = this->AttachedShader.begin(); it != this->AttachedShader.end(); it = this->detachByIterator(it)) {
+		//I am empty
+	}
 }
 
 SuperTerrainPlus::STPOpenGL::STPint STPProgramManager::uniformLocation(const char* uni) const {
@@ -129,7 +141,7 @@ SuperTerrainPlus::STPOpenGL::STPint STPProgramManager::uniformLocation(const cha
 }
 
 ivec3 STPProgramManager::workgroupSize() const {
-	if (this->AttachedShader.find(GL_COMPUTE_SHADER) == this->AttachedShader.cend()) {
+	if (!this->isComputeProgram) {
 		throw STPException::STPUnsupportedFunctionality("The target program is not a compute shader program");
 	}
 

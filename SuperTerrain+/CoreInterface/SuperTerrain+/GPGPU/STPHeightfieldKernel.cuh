@@ -16,8 +16,8 @@
 //GLM
 #include <glm/vec2.hpp>
 
-//FreeSlip
-#include "../World/Chunk/FreeSlip/STPFreeSlipManager.cuh"
+//Free-Slip
+#include "../World/Chunk/STPFreeSlipInformation.hpp"
 //Settings
 #include "../Environment/STPHeightfieldSetting.h"
 
@@ -40,28 +40,18 @@ namespace SuperTerrainPlus::STPCompute {
 		*/
 		__host__ STPcurand_arr curandInit(unsigned long long, unsigned int, cudaStream_t);
 
-		typedef STPSmartDeviceMemory::STPDeviceMemory<unsigned int[]> STPIndexTable;
-		/**
-		 * @brief Generate a new global to local index table
-		 * @param chunkRange The number of chunk (or locals)
-		 * @param tableSize The x,y dimension of the table
-		 * @param mapSize The dimension of the map
-		 * @return The generated table. Allocated and managed by smart pointer with
-		 * size sizeof(unsigned int) * chunkRange.x * mapSize.x * chunkRange.y * mapSize.y.
-		*/
-		__host__ STPIndexTable initGlobalLocalIndex(glm::uvec2, glm::uvec2, glm::uvec2);
-
 		/**
 		 * @brief Performing hydraulic erosion for the given heightmap terrain
 		 * @param height_storage The floating point heightmap with global-local free-slip management.
 		 * Heightmap must be available in device memory.
 		 * @param heightfield_settings The settings to use to generate heightmap, must be in device memory space
+		 * @param freeslip_info The information about the free-slip erosion
 		 * @param brush_size The number of erosion brush. The brush weight must have the same size as the brush indices
 		 * @param raindrop_count The number of raindrop to spawn and erode the terrain
 		 * @param rng The random number generator map sequence, independent for each rain drop
 		 * @param stream Specify a CUDA stream work will be submitted to
 		*/
-		__host__ void hydraulicErosion(STPFreeSlipFloatManager, const STPEnvironment::STPHeightfieldSetting*, 
+		__host__ void hydraulicErosion(float*, const STPEnvironment::STPHeightfieldSetting*, const STPFreeSlipInformation&,
 			unsigned int, unsigned int, STPcurand_t*, cudaStream_t);
 
 		/**

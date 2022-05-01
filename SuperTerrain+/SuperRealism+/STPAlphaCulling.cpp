@@ -12,48 +12,64 @@ using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto AlphaCullingFilename = STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAlphaCulling", ".frag");
 
-STPAlphaCulling::STPAlphaCulling(STPCullOperator op, const STPScreenInitialiser& screen_init) : STPScreen(*screen_init.SharedVertexBuffer) {
-	//setup alpha culling shading program
-	const char* const culling_shader_file = AlphaCullingFilename.data();
-	STPShaderManager::STPShaderSource cull_shader(culling_shader_file, *STPFile(culling_shader_file));
+STPAlphaCulling::STPAlphaCulling(STPCullComparator comp, float limit, const STPScreenInitialiser& screen_init) {
+	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
+	
+	Macro("ALPHA_COMPARATOR", STPAlphaCulling::comparatorString(comp));
+	
+	this->prepareAlphaShader(Macro, screen_init);
+
+	this->OffScreenRenderer.uniform(glProgramUniform1f, "Lim", limit);
+}
+
+STPAlphaCulling::STPAlphaCulling(STPCullComparator comp1, float limit1, 
+	STPCullConnector conn, STPCullComparator comp2, float limit2, const STPScreenInitialiser& screen_init) {
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
-	//determine operator string
-	const char* op_str;
-	switch (op) {
-	case STPCullOperator::Equal:
-		op_str = "=";
-		break;
-	case STPCullOperator::NotEqual:
-		op_str = "!=";
-		break;
-	case STPCullOperator::Greater:
-		op_str = ">";
-		break;
-	case STPCullOperator::GreaterEqual:
-		op_str = ">=";
-		break;
-	case STPCullOperator::Less:
-		op_str = "<";
-		break;
-	case STPCullOperator::LessEqual:
-		op_str = "<=";
-		break;
-	default:
-		//impossible
-		break;
+	Macro("USE_DUAL_EXPRESSIONS", 1)
+		("ALPHA_COMPARATOR_A", STPAlphaCulling::comparatorString(comp1))
+		("ALPHA_CONNECTOR", STPAlphaCulling::connectorString(conn))
+		("ALPHA_COMPARATOR_B", STPAlphaCulling::comparatorString(comp2));
+
+	this->prepareAlphaShader(Macro, screen_init);
+
+	this->OffScreenRenderer.uniform(glProgramUniform1f, "LimA", limit1)
+		.uniform(glProgramUniform1f, "LimB", limit2);
+}
+
+inline const char* STPAlphaCulling::comparatorString(STPCullComparator comp) {
+	switch (comp) {
+	case STPCullComparator::Equal: return "=";
+	case STPCullComparator::NotEqual: return "!=";
+	case STPCullComparator::Greater: return ">";
+	case STPCullComparator::GreaterEqual: return ">=";
+	case STPCullComparator::Less: return "<";
+	case STPCullComparator::LessEqual: return "<=";
+	default: return "impossible";
 	}
-	Macro("ALPHA_TEST_OPERATOR", op_str);
-	cull_shader.define(Macro);
+}
+
+inline const char* STPAlphaCulling::connectorString(STPCullConnector conn) {
+	switch (conn) {
+	case STPCullConnector::And: return "&&";
+	case STPCullConnector::Or: return "||";
+	default: return "impossible";
+	}
+}
+
+inline void STPAlphaCulling::prepareAlphaShader(const STPShaderManager::STPShaderSource::STPMacroValueDictionary& macro, const STPScreenInitialiser& screen_init) {
+	//setup alpha culling shading program
+	const char* const culling_shader_file = AlphaCullingFilename.data();
+	STPShaderManager::STPShaderSource cull_source(culling_shader_file, *STPFile(culling_shader_file));
+	cull_source.define(macro);
+
 	//build the program
+	STPShaderManager cull_shader(GL_FRAGMENT_SHADER);
+	cull_shader(cull_source);
 	this->initScreenRenderer(cull_shader, screen_init);
 
 	//sampler
 	this->OffScreenRenderer.uniform(glProgramUniform1i, "ColorInput", 0);
-}
-
-void STPAlphaCulling::setAlphaLimit(float limit) {
-	this->OffScreenRenderer.uniform(glProgramUniform1f, "AlphaThreshold", limit);
 }
 
 void STPAlphaCulling::cull(const STPTexture& input) const {

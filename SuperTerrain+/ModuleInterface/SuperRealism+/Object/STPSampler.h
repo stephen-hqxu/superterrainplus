@@ -60,6 +60,10 @@ namespace SuperTerrainPlus::STPRealism {
 
 		void borderColor(glm::vec4) override;
 
+		void borderColor(glm::ivec4) override;
+
+		void borderColor(glm::uvec4) override;
+
 		void anisotropy(STPOpenGL::STPfloat) override;
 
 		void compareFunction(STPOpenGL::STPint) override;

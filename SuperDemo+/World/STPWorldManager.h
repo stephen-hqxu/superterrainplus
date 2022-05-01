@@ -67,7 +67,7 @@ namespace STPDemo {
 		 * @param settings All world settings, it will be moved under the object.
 		 * @parm simplex_setting Setting for simplex noise generator.
 		*/
-		STPWorldManager(std::string, SuperTerrainPlus::STPEnvironment::STPConfiguration&, const SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&);
+		STPWorldManager(std::string, SuperTerrainPlus::STPEnvironment::STPConfiguration&&, const SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&);
 
 		~STPWorldManager();
 

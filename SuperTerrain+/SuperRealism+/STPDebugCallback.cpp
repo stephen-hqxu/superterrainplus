@@ -9,8 +9,8 @@ using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
 static void defaultDebugOutput(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei, const GLchar* message, const void* userParam) {
-	//string convertion
-	static constexpr auto getSourceStr = [](GLenum source) constexpr -> char* {
+	//string conversion
+	static constexpr auto getSourceStr = [](GLenum source) constexpr -> const char* {
 		switch (source) {
 		case GL_DEBUG_SOURCE_API: return "API";
 		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
@@ -21,7 +21,7 @@ static void defaultDebugOutput(GLenum source, GLenum type, GLuint id, GLenum sev
 		default: return "NULL";
 		}
 	};
-	static constexpr auto getTypeStr = [](GLenum type) constexpr -> char* {
+	static constexpr auto getTypeStr = [](GLenum type) constexpr -> const char* {
 		switch (type) {
 		case GL_DEBUG_TYPE_ERROR: return "ERROR";
 		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
@@ -33,7 +33,7 @@ static void defaultDebugOutput(GLenum source, GLenum type, GLuint id, GLenum sev
 		default: return "NULL";
 		}
 	};
-	static constexpr auto getSeverityStr = [](GLenum severity) constexpr -> char* {
+	static constexpr auto getSeverityStr = [](GLenum severity) constexpr -> const char* {
 		switch (severity) {
 		case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION";
 		case GL_DEBUG_SEVERITY_LOW: return "LOW";
@@ -46,7 +46,7 @@ static void defaultDebugOutput(GLenum source, GLenum type, GLuint id, GLenum sev
 	using std::endl;
 	//user parameter has a stream
 	ostream& stream = *const_cast<ostream*>(reinterpret_cast<const ostream*>(userParam));
-	stream << getSourceStr(source) << '(' << getTypeStr(type) << "::" << getSeverityStr(severity) << "):" << id << ':' << endl;;
+	stream << getSourceStr(source) << '(' << getTypeStr(type) << "::" << getSeverityStr(severity) << "):" << id << ':' << endl;
 	stream << message << endl;
 }
 

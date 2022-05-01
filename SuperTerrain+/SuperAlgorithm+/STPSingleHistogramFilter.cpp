@@ -97,7 +97,7 @@ private:
 		using std::bind;
 		using namespace std::placeholders;
 		//clamp the capacity, because a newly created array list might have zero capacity.
-		new_capacity = std::max(1ull, new_capacity);
+		new_capacity = std::max(static_cast<size_t>(1u), new_capacity);
 		//the current size of the user array
 		const size_t current_size = this->size();
 
@@ -549,7 +549,8 @@ void STPSingleHistogramFilter::copy_to_buffer(STPDefaultHistogramBuffer& target,
 	}
 }
 
-void STPSingleHistogramFilter::filter_vertical(const STPFreeSlipSampleManager& sample_map, unsigned int vertical_start_offset, uvec2 w_range, 
+void STPSingleHistogramFilter::filter_vertical(const Sample* sample_map, unsigned int freeslip_rangeX, unsigned int dimensionY, 
+	unsigned int vertical_start_offset, uvec2 w_range,
 	STPWorkplace& workplace, unsigned int radius) {
 	auto& [target, acc] = workplace;
 	//clear both
@@ -560,20 +561,20 @@ void STPSingleHistogramFilter::filter_vertical(const STPFreeSlipSampleManager& s
 	//we are traversing the a row-major sample_map column by column
 	for (unsigned int i = w_range.x; i < w_range.y; i++) {
 		//the target (current) pixel index
-		const unsigned int ti = i + vertical_start_offset * sample_map.Data->FreeSlipRange.x;
+		const unsigned int ti = i + vertical_start_offset * freeslip_rangeX;
 		//the pixel index of up-most radius (inclusive of the current radius)
-		unsigned int ui = ti - radius * sample_map.Data->FreeSlipRange.x,
+		unsigned int ui = ti - radius * freeslip_rangeX,
 			//the pixel index of down-most radius (exclusive of the current radius)
-			di = ti + (radius + 1u) * sample_map.Data->FreeSlipRange.x;
+			di = ti + (radius + 1u) * freeslip_rangeX;
 
 		//load the radius into accumulator
 		for (int j = -static_cast<int>(radius); j <= static_cast<int>(radius); j++) {
-			acc.inc(sample_map[ti + j * sample_map.Data->FreeSlipRange.x], 1u);
+			acc.inc(sample_map[ti + j * freeslip_rangeX], 1u);
 		}
 		//copy the first pixel to buffer
 		STPSingleHistogramFilter::copy_to_buffer(target, acc, false);
 		//generate histogram
-		for (unsigned int j = 1u; j < sample_map.Data->Dimension.y; j++) {
+		for (unsigned int j = 1u; j < dimensionY; j++) {
 			//load one pixel to the bottom while unloading one pixel from the top
 			acc.inc(sample_map[di], 1u);
 			acc.dec(sample_map[ui], 1u);
@@ -582,8 +583,8 @@ void STPSingleHistogramFilter::filter_vertical(const STPFreeSlipSampleManager& s
 			STPSingleHistogramFilter::copy_to_buffer(target, acc, false);
 
 			//advance to the next central pixel
-			di += sample_map.Data->FreeSlipRange.x;
-			ui += sample_map.Data->FreeSlipRange.x;
+			di += freeslip_rangeX;
+			ui += freeslip_rangeX;
 		}
 
 		//clear the accumulator
@@ -688,19 +689,19 @@ void STPSingleHistogramFilter::filter_horizontal(STPPinnedHistogramBuffer* histo
 }
 
 void STPSingleHistogramFilter::filter
-	(const STPFreeSlipSampleManager& sample_map, STPPinnedHistogramBuffer* histogram_output, uvec2 central_chunk_index, unsigned int radius) {
+	(const Sample* sample_map, const STPFreeSlipInformation& freeslip_info, STPPinnedHistogramBuffer* histogram_output, uvec2 central_chunk_index, unsigned int radius) {
 	using namespace std::placeholders;
 	using std::bind;
 	using std::future;
 	using std::cref;
 	using std::ref;
 
-	auto vertical = bind(&STPSingleHistogramFilter::filter_vertical, this, _1, _2, _3, _4, _5);
+	auto vertical = bind(&STPSingleHistogramFilter::filter_vertical, this, _1, _2, _3, _4, _5, _6, _7);
 	auto copy_output = bind(&STPSingleHistogramFilter::copy_to_output, this, _1, _2, _3, _4);
 	auto horizontal = bind(&STPSingleHistogramFilter::filter_horizontal, this, _1, _2, _3, _4, _5);
 	future<void> workgroup[STPSingleHistogramFilter::Parallelism];
 	//calculate central texture starting index
-	const uvec2& dimension = sample_map.Data->Dimension,
+	const uvec2& dimension = freeslip_info.Dimension,
 		central_starting_coordinate = dimension * central_chunk_index;
 
 	//request a working memory
@@ -758,7 +759,8 @@ void STPSingleHistogramFilter::filter
 			width_step = total_width / STPSingleHistogramFilter::Parallelism;
 		uvec2 w_range(width_start, width_start + width_step);
 		for (unsigned char w = 0u; w < STPSingleHistogramFilter::Parallelism; w++) {
-			workgroup[w] = this->filter_worker.enqueue_future(vertical, cref(sample_map), central_starting_coordinate.y, w_range, ref(memoryBlock[w]), radius);
+			workgroup[w] = this->filter_worker.enqueue_future(vertical, cref(sample_map), freeslip_info.FreeSlipRange.x, freeslip_info.Dimension.y, 
+				central_starting_coordinate.y, w_range, ref(memoryBlock[w]), radius);
 			//increment
 			w_range.x = w_range.y;
 			if (w == STPSingleHistogramFilter::Parallelism - 2u) {
@@ -802,21 +804,22 @@ STPSingleHistogramFilter::STPHistogramBuffer_t STPSingleHistogramFilter::createH
 	return STPHistogramBuffer_t(new STPPinnedHistogramBuffer());
 }
 
-STPSingleHistogram STPSingleHistogramFilter::operator()(const STPFreeSlipSampleManager& samplemap_manager, const STPHistogramBuffer_t& histogram_output, unsigned int radius) {
+STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample* samplemap, const STPFreeSlipInformation& freeslip_info, 
+	const STPHistogramBuffer_t& histogram_output, unsigned int radius) {
 	//do some simple runtime check
 	//first make sure radius is an even number
 	if (radius == 0u || (radius & 0x01u) != 0x00u) {
 		throw STPException::STPBadNumericRange("radius should be an positive even number");
 	}
 	//second make sure radius is not larger than the free-slip range
-	const uvec2 central_chunk_index = samplemap_manager.Data->FreeSlipChunk / 2u;
-	if (const uvec2 halo_size = central_chunk_index * samplemap_manager.Data->Dimension;
+	const uvec2 central_chunk_index = freeslip_info.FreeSlipChunk / 2u;
+	if (const uvec2 halo_size = central_chunk_index * freeslip_info.Dimension;
 		halo_size.x < radius || halo_size.y < radius) {
 		throw STPException::STPBadNumericRange("radius is too large and will overflow free-slip boundary");
 	}
 
 	//looks safe now, start the filter
-	this->filter(samplemap_manager, histogram_output.get(), central_chunk_index, radius);
+	this->filter(samplemap, freeslip_info, histogram_output.get(), central_chunk_index, radius);
 
 	return STPSingleHistogramFilter::readHistogramBuffer(histogram_output);
 }

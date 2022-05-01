@@ -13,9 +13,12 @@
 #include <SuperRealism+/STPRendererInitialiser.h>
 #include <SuperRealism+/Utility/Camera/STPPerspectiveCamera.h>
 #include <SuperRealism+/STPScenePipeline.h>
+#include <SuperRealism+/Scene/STPMaterialLibrary.h>
 #include <SuperRealism+/Scene/Component/STPHeightfieldTerrain.h>
 #include <SuperRealism+/Scene/Component/STPSun.h>
+#include <SuperRealism+/Scene/Component/STPWater.h>
 #include <SuperRealism+/Scene/Component/STPAmbientOcclusion.h>
+#include <SuperRealism+/Scene/Component/STPBidirectionalScattering.h>
 #include <SuperRealism+/Scene/Component/STPPostProcess.h>
 #include <SuperRealism+/Scene/Light/STPAmbientLight.h>
 #include <SuperRealism+/Scene/Light/STPDirectionalLight.h>
@@ -86,19 +89,20 @@ namespace STPStart {
 		//Generation Pipeline
 		optional<STPDemo::STPWorldManager> WorldManager;
 
-		//Setting
-		SuperTerrainPlus::STPEnvironment::STPSunSetting SunSetting;
-
+		//Object
+		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>> TerrainRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPWater> WaterRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPAmbientOcclusion> AOEffect;
+		optional<SuperTerrainPlus::STPRealism::STPBidirectionalScattering> BSDFEffect;
+		optional<SuperTerrainPlus::STPRealism::STPPostProcess> FinalProcess;
+		//Light
+		optional<SuperTerrainPlus::STPRealism::STPAmbientLight> Skylight;
+		optional<SuperTerrainPlus::STPRealism::STPDirectionalLight> Sunlight;
+		//Material
+		SuperTerrainPlus::STPRealism::STPMaterialLibrary SceneMaterial;
 		//Rendering Pipeline
 		optional<SuperTerrainPlus::STPRealism::STPScenePipeline> RenderPipeline;
-		//Object
-		SuperTerrainPlus::STPRealism::STPSun* SunRenderer;
-		SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>* TerrainRenderer;
-		SuperTerrainPlus::STPRealism::STPAmbientOcclusion* AOEffect;
-		SuperTerrainPlus::STPRealism::STPPostProcess* FinalProcess;
-		//Light
-		SuperTerrainPlus::STPRealism::STPAmbientLight* Skylight;
-		SuperTerrainPlus::STPRealism::STPDirectionalLight* Sunlight;
 
 		const dvec3& ViewPosition;
 
@@ -126,14 +130,15 @@ namespace STPStart {
 		 * @param camera The pointer to the perspective camera for the scene.
 		*/
 		STPMasterRenderer(const SIMPLE::SIStorage& engine, const SIMPLE::SIStorage& biome, SuperTerrainPlus::STPRealism::STPPerspectiveCamera& camera) :
-			engineINI(engine), biomeINI(biome), ViewPosition(camera.cameraStatus().Position), 
+			engineINI(engine), biomeINI(biome), 
+			SceneMaterial(1u), ViewPosition(camera.cameraStatus().Position), 
 			CurrentSeed(this->biomeINI.at("simplex").at("seed").to<unsigned long long>()) {
 			using namespace SuperTerrainPlus;
 			using namespace STPDemo;
 
 			//loading terrain parameters
 			STPEnvironment::STPConfiguration config;
-			STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI.at("simplex"));
+			const STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI.at("simplex"));
 			{
 				config.ChunkSetting = STPTerrainParaLoader::getChunkSetting(this->engineINI.at("Generators"));
 				STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
@@ -146,14 +151,10 @@ namespace STPStart {
 					throw STPException::STPInvalidEnvironment("Configurations are not validated");
 				}
 			}
-			//load renderer settings
-			STPEnvironment::STPMeshSetting MeshSetting = STPTerrainParaLoader::getRenderingSetting(this->engineINI.at("2DTerrainINF"));
-			const auto sky_setting = STPTerrainParaLoader::getSkySetting(this->engineINI.at("Sky"));
-			this->SunSetting = sky_setting.first;
 
 			//setup world manager
 			try {
-				this->WorldManager.emplace(*this->biomeINI.at("").at("texture_path_prefix"), config, simplex);
+				this->WorldManager.emplace(*this->biomeINI.at("").at("texture_path_prefix"), std::move(config), simplex);
 				//the old setting has been moved to the world manager, need to refresh the pointer
 				const auto& chunk_setting = this->WorldManager->getWorldSetting().ChunkSetting;
 
@@ -190,12 +191,12 @@ namespace STPStart {
 			const STPScreen::STPScreenVertexShader ScreenVertexShader;
 
 			//this buffer is a shared pointer wrapper and we don't need to manage its lifetime
-			const STPScreen::STPSharableScreenVertexBuffer OffScreenVertexBuffer = 
-				std::make_shared<STPScreen::STPScreenVertexBuffer>();
+			const auto OffScreenVertexBuffer = std::make_shared<const STPScreen::STPScreenVertexBuffer>();
 			STPScreen::STPScreenInitialiser screen_renderer_init;
 			screen_renderer_init.VertexShader = &ScreenVertexShader;
-			screen_renderer_init.SharedVertexBuffer = &OffScreenVertexBuffer;
+			screen_renderer_init.SharedVertexBuffer = OffScreenVertexBuffer;
 
+			STPMaterialLibrary::STPMaterialID waterMaterialID;
 			//setup scene pipeline
 			//-------------------------------------------------------------------------
 			{
@@ -215,10 +216,17 @@ namespace STPStart {
 				scene_cap.AmbientLight = 1ull;
 				scene_cap.DirectionalLight = 1ull;
 
+				//setup material library
+				auto waterMaterial = STPMaterialLibrary::DefaultMaterial;
+				waterMaterial.Opacity = 1.0f;
+				waterMaterial.Reflexivity = 2.5f;
+				waterMaterial.RefractiveIndex = 1.333f;
+				waterMaterialID = this->SceneMaterial.add(waterMaterial);
+
 				//construct rendering pipeline
 				scene_init.GeometryBufferInitialiser = &screen_renderer_init;
 
-				this->RenderPipeline.emplace(camera, scene_init);
+				this->RenderPipeline.emplace(camera, &this->SceneMaterial, scene_init);
 			}
 			//setup environment and light
 			//-------------------------------------------
@@ -237,13 +245,15 @@ namespace STPStart {
 				};
 
 				//sun
-				this->SunRenderer = this->RenderPipeline->add<STPSun>(this->SunSetting, 
+				const auto [sun_setting, atmo_setting] = STPTerrainParaLoader::getSkySetting(this->engineINI.at("Sky"));
+				this->SunRenderer.emplace(sun_setting, 
 					make_pair(
 						normalize(vec3(1.0f, -0.1f, 0.0f)),
 						normalize(vec3(0.0f, 1.0f, 0.0f))
 					));
+				this->RenderPipeline->add(*this->SunRenderer);
 				//setup atmosphere
-				const STPEnvironment::STPAtmosphereSetting& atm_setting = sky_setting.second;
+				const STPEnvironment::STPAtmosphereSetting& atm_setting = atmo_setting;
 				this->SunRenderer->setAtmoshpere(atm_setting);
 				//-------------------------------------------
 				//setup the spectrum
@@ -254,27 +264,49 @@ namespace STPStart {
 
 				using std::move;
 				//setup light
-				this->Skylight = this->RenderPipeline->add<STPAmbientLight>(move(sky_spec));
-				this->Sunlight = this->RenderPipeline->add<STPDirectionalLight>(make_unique<STPCascadedShadowMap>(2048u, shadow_frustum), move(sun_spec));
+				this->Skylight.emplace(move(sky_spec));
+				this->Sunlight.emplace(make_unique<STPCascadedShadowMap>(2048u, shadow_frustum), move(sun_spec));
+				this->RenderPipeline->add(*this->Skylight);
+				this->RenderPipeline->add(*this->Sunlight);
 			}
 
 			//setup solid object
 			//-------------------------------------------
+			float TerrainAltitude = 0.0f;
 			{
 				//terrain
+				const STPEnvironment::STPMeshSetting mesh_setting = STPTerrainParaLoader::getRenderingSetting(this->engineINI.at("2DTerrainINF"));
+				TerrainAltitude = mesh_setting.Altitude;
+
 				const STPHeightfieldTerrain<true>::STPTerrainShaderOption terrain_opt = {
 					uvec3(128u, 128u, 6u),
 					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform
 				};
-				STPEnvironment::STPMeshSetting::STPTessellationSetting DepthTessSetting = MeshSetting.TessSetting;
+				STPEnvironment::STPTessellationSetting DepthTessSetting = mesh_setting.TessSetting;
 				DepthTessSetting.MaxTessLevel *= 0.5f;
 
-				this->TerrainRenderer = this->RenderPipeline->add<STPHeightfieldTerrain<true>>(this->WorldManager->getPipeline(), terrain_opt);
+				this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_opt);
+				this->RenderPipeline->add(*this->TerrainRenderer);
 				//initial setup
-				this->TerrainRenderer->setMesh(MeshSetting);
+				this->TerrainRenderer->setMesh(mesh_setting);
 				this->TerrainRenderer->setDepthMeshQuality(DepthTessSetting);
 				this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
 			}
+			{
+				//water
+				const STPEnvironment::STPWaterSetting water_setting = STPTerrainParaLoader::getWaterSetting(this->engineINI.at("Water"), TerrainAltitude);
+
+				//define water level for watery biome
+				STPWater::STPBiomeWaterLevel water_level;
+				water_level[0u] = 0.5f;
+
+				this->WaterRenderer.emplace(this->TerrainRenderer.value(), water_level);
+				this->RenderPipeline->add(*this->WaterRenderer);
+				//setup
+				this->WaterRenderer->setWater(water_setting);
+				this->WaterRenderer->setWaterMaterial(waterMaterialID);
+			}
+			//setup effects
 			//-------------------------------------------
 			{
 				const SIMPLE::SISection& ao_section = engine.at("AmbientOcclusion");
@@ -289,18 +321,29 @@ namespace STPStart {
 				const STPEnvironment::STPOcclusionKernelSetting ao_setting = STPTerrainParaLoader::getAOSetting(ao_section);
 				STPAmbientOcclusion::STPOcclusionKernel<STPAmbientOcclusion::STPOcclusionAlgorithm::HBAO> ao_kernel(ao_setting);
 				//For SSAO
-				//ao_kernel.KernelSize = ao_section("kernel_size").to<unsigned int>();
+				//ao_kernel.KernelSize = ao_section.at("kernel_size").to<unsigned int>();
 				//For HBAO
 				ao_kernel.DirectionStep = ao_section.at("direction_step").to<unsigned int>();
 				ao_kernel.RayStep = ao_section.at("ray_step").to<unsigned int>();
 
-				this->AOEffect = this->RenderPipeline->add<STPAmbientOcclusion>(ao_kernel, std::move(blur_filter), screen_renderer_init);
+				this->AOEffect.emplace(ao_kernel, std::move(blur_filter), screen_renderer_init);
+				this->RenderPipeline->add(*this->AOEffect);
+			}
+			{
+				//BSDF
+				const STPEnvironment::STPBidirectionalScatteringSetting bsdf_setting = STPTerrainParaLoader::getBSDFSetting(this->engineINI.at("Water"));
+
+				this->BSDFEffect.emplace(screen_renderer_init);
+				this->BSDFEffect->setScattering(bsdf_setting);
+
+				this->RenderPipeline->add(*this->BSDFEffect);
 			}
 			{
 				//post process
 				STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::Lottes> postprocess_def;
 
-				this->FinalProcess = this->RenderPipeline->add<STPPostProcess>(postprocess_def, screen_renderer_init);
+				this->FinalProcess.emplace(postprocess_def, screen_renderer_init);
+				this->RenderPipeline->add(*this->FinalProcess);
 			}
 
 			//light property setup

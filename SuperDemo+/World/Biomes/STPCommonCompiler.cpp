@@ -9,6 +9,8 @@
 #include <iostream>
 #include <SuperTerrain+/Utility/STPFile.h>
 
+#include <array>
+
 #include <glm/gtc/type_ptr.hpp>
 
 using namespace SuperTerrainPlus;
@@ -16,6 +18,8 @@ using namespace SuperTerrainPlus::STPCompute;
 using namespace STPDemo;
 
 using std::string;
+using std::string_view;
+using std::array;
 
 using std::cout;
 using std::cerr;
@@ -25,9 +29,32 @@ using glm::vec2;
 using glm::uvec2;
 using glm::value_ptr;
 
+/**
+ * @brief Generate include directory compiler option.
+ * @return The include directory feeds into the compiler.
+*/
+template<const string_view& Str>
+constexpr static auto generateInclude() {
+	constexpr string_view includePrefix = "-I ";
+	constexpr size_t optionLength = Str.length() + includePrefix.length();
+
+	array<char, optionLength + 1u> includeOption = { };
+	auto appendStr = [i = 0, &includeOption](const string_view& str) mutable {
+		for (const char c : str) {
+			includeOption[i++] = c;
+		}
+	};
+	appendStr(includePrefix);
+	appendStr(Str);
+	//null termination
+	includeOption[optionLength] = 0;
+
+	return includeOption;
+}
+
 //Include dir of the engines
-const static string device_include = "-I " + string(SuperTerrainPlus::SuperAlgorithmPlus_DeviceInclude),
-core_include = "-I " + string(SuperTerrainPlus::SuperTerrainPlus_CoreInclude);
+constexpr static auto CoreInclude = generateInclude<SuperTerrainPlus_CoreInclude>();
+constexpr static auto DeviceInclude = generateInclude<SuperAlgorithmPlus_DeviceInclude>();
 
 STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk, 
 	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : 
@@ -44,8 +71,8 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 #endif
 		["-maxrregcount=80"]
 		//set include paths
-		[core_include.c_str()]
-		[device_include.c_str()];
+		[CoreInclude.data()]
+		[DeviceInclude.data()];
 
 	//setup linker options
 	this->LinkInfo.LinkerOption
@@ -66,7 +93,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 #endif
 
 	//attach device algorithm library
-	this->attachArchive("SuperAlgorithm+Device", SuperTerrainPlus::SuperAlgorithmPlus_DeviceLibrary);
+	this->attachArchive("SuperAlgorithm+Device", string(SuperTerrainPlus::SuperAlgorithmPlus_DeviceLibrary));
 
 	this->setupCommonGenerator();
 	//compile individual source codes

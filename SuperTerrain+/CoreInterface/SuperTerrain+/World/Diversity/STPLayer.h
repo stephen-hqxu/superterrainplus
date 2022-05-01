@@ -7,8 +7,6 @@
 #include <vector>
 #include <memory>
 #include <type_traits>
-//RNG
-#include "STPSeedMixer.h"
 //Biome define
 #include "STPLayerCache.h"
 
@@ -144,6 +142,15 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @return The generator with the specified local seed. The same local seed will always give the same sequence of random number
 		*/
 		STPLocalRNG getRNG(Seed) const;
+
+		/**
+		 * @brief Mix seed with a factor to achieve a degree of randomness to form a new seed. This function guaratees that if two same values are the same,
+		 * the returning seed will always be the same
+		 * @param s The seed
+		 * @param fac The factor that is used to mix
+		 * @return The mixed seed
+		*/
+		static Seed mixSeed(Seed, long long);
 
 	public:
 

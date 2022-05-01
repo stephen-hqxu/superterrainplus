@@ -123,6 +123,9 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 	//link
 	this->SkyRenderer.finalise();
 
+	//uniform setup
+	this->SunPositionLocation = this->SkyRenderer.uniformLocation("SunPosition");
+
 	/* ---------------------------------------- sun spectrum emulator ----------------------------------- */
 	//setup spectrum emulator
 	STPShaderManager spectrum_shader(GL_COMPUTE_SHADER);
@@ -218,7 +221,7 @@ void STPSun::advanceTick(unsigned long long tick) {
 	)));
 
 	//update sun position in the shader
-	this->SkyRenderer.uniform(glProgramUniform3fv, "SunPosition", 1, value_ptr(this->SunDirectionCache));
+	this->SkyRenderer.uniform(glProgramUniform3fv, this->SunPositionLocation, 1, value_ptr(this->SunDirectionCache));
 }
 
 void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
@@ -270,7 +273,7 @@ float STPSun::spectrumCoordinate() const {
 	return (this->SunDirectionCache.y - elev_start) / (elev_end - elev_start);
 }
 
-void STPSun::render() {
+void STPSun::render() const {
 	//setup context
 	this->SkyRenderer.use();
 	this->RayDirectionArray.bind();

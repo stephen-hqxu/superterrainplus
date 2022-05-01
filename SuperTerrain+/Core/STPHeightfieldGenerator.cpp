@@ -1,7 +1,6 @@
 #include <SuperTerrain+/World/Chunk/STPHeightfieldGenerator.h>
 
 //Simulator
-#include <SuperTerrain+/World/Chunk/FreeSlip/STPFreeSlipManager.cuh>
 #include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
@@ -35,18 +34,17 @@ using glm::vec3;
 
 STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting& chunk_settings, const STPEnvironment::STPHeightfieldSetting& heightfield_settings,
 	const STPDiversityGenerator& diversity_generator, unsigned int hint_level_of_concurrency)
-	: generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings),
-	FreeSlipTable(chunk_settings.FreeSlipChunk, chunk_settings.MapSize) {
+	: generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings) {
 	if (!chunk_settings.validate()) {
 		throw STPException::STPInvalidEnvironment("Values from STPChunkSetting are not validated");
 	}
 	if (!heightfield_settings.validate()) {
 		throw STPException::STPInvalidEnvironment("Values from STPHeightfieldSetting are not validated");
 	}
-
-	const unsigned int num_pixel = this->FreeSlipTable.getDimension().x * this->FreeSlipTable.getDimension().y,
-		num_freeslip_pixel = this->FreeSlipTable.getFreeSlipRange().x * this->FreeSlipTable.getFreeSlipRange().y;
-	this->TextureBufferAttr.TexturePixel = num_pixel;
+	STPFreeSlipInformation& info = this->TextureBufferAttr.TextureInfo;
+	info.Dimension = chunk_settings.MapSize;
+	info.FreeSlipChunk = chunk_settings.FreeSlipChunk;
+	info.FreeSlipRange = info.Dimension * info.FreeSlipChunk;
 
 	//allocating space
 	//heightfield settings
@@ -61,7 +59,7 @@ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkS
 	pool_props.handleTypes = cudaMemHandleTypeNone;
 	STPcudaCheckErr(cudaMemPoolCreate(&this->MapCacheDevice, &pool_props));
 	//TODO: smartly determine the average memory pool size
-	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short)) * num_freeslip_pixel * hint_level_of_concurrency;
+	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short)) * info.FreeSlipRange.x * info.FreeSlipRange.y * hint_level_of_concurrency;
 	STPcudaCheckErr(cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres));
 	this->TextureBufferAttr.DeviceMemPool = this->MapCacheDevice;
 }
@@ -97,10 +95,8 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 		//heightmap
 		optional<STPFreeSlipFloatTextureBuffer> heightmap_buffer;
 		optional<STPFreeSlipRenderTextureBuffer> heightfield_buffer;
-		optional<STPFreeSlipGenerator::STPFreeSlipFloatManagerAdaptor> heightmap_adaptor;
 		//biomemap
 		optional<STPFreeSlipSampleTextureBuffer> biomemap_buffer;
-		optional<STPFreeSlipGenerator::STPFreeSlipSampleManagerAdaptor> biomemap_adaptor;
 
 		//setup phase
 		//we want the stream to not be blocked by default stream
@@ -121,17 +117,25 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 		if (flag[0]) {
 			//generate a new heightmap using diversity generator and store it to the output later
 			//copy biome map to device, and allocate heightmap
-			STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData heightmap_data{ 1u, STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::WriteOnly, stream };
-			STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData biomemap_data{ 1u, STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadOnly, stream };
+			STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData heightmap_data{
+				STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::WriteOnly,
+				stream
+			};
+			STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData biomemap_data{
+				STPFreeSlipSampleTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadOnly,
+				stream
+			};
 
 			heightmap_buffer.emplace(args.Heightmap32F, heightmap_data, this->TextureBufferAttr);
 			biomemap_buffer.emplace(args.Biomemap, biomemap_data, this->TextureBufferAttr);
-			biomemap_adaptor.emplace(this->FreeSlipTable(*biomemap_buffer));
 
-			this->generateHeightmap(*heightmap_buffer, *biomemap_adaptor, args.HeightmapOffset, stream);
+			this->generateHeightmap(*heightmap_buffer, *biomemap_buffer, this->TextureBufferAttr.TextureInfo, args.HeightmapOffset, stream);
 		} else {
 			//no generation, use existing
-			STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData heightmap_data{ 1u, STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadWrite, stream };
+			STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData heightmap_data{
+				STPFreeSlipFloatTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::ReadWrite,
+				stream
+			};
 			heightmap_buffer.emplace(args.Heightmap32F, heightmap_data, this->TextureBufferAttr);
 		}
 
@@ -147,23 +151,25 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 					this->RNGPool.pop();
 				}
 			}
-			//prepare free-slip utility for heightmap
-			heightmap_adaptor.emplace(this->FreeSlipTable(*heightmap_buffer));
-			STPFreeSlipFloatManager heightmap_slip = (*heightmap_adaptor)(STPFreeSlipLocation::DeviceMemory);
-
-			STPHeightfieldKernel::hydraulicErosion(heightmap_slip, this->Heightfield_Setting_d.get(),
+			STPHeightfieldKernel::hydraulicErosion(
+				(*heightmap_buffer)(STPFreeSlipFloatTextureBuffer::STPFreeSlipLocation::DeviceMemory), this->Heightfield_Setting_d.get(),
+				this->TextureBufferAttr.TextureInfo,
 				this->Heightfield_Setting_h.getErosionBrushSize(), this->Heightfield_Setting_h.RainDropCount, rng_buffer->get(), stream);
 		}
 
 		//Flag: RenderingBufferGeneration
 		if (flag[2]) {
 			//allocate formation memory
-			STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData heightfield_rendering{ 1u, STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::WriteOnly, stream };
+			STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData heightfield_rendering{
+				STPFreeSlipRenderTextureBuffer::STPFreeSlipTextureData::STPMemoryMode::WriteOnly,
+				stream
+			};
 			heightfield_buffer.emplace(args.Heightfield16UI, heightfield_rendering, this->TextureBufferAttr);
 
 			STPHeightfieldKernel::texture32Fto16(
-				(*heightmap_buffer)(STPFreeSlipLocation::DeviceMemory), (*heightfield_buffer)(STPFreeSlipLocation::DeviceMemory),
-				this->FreeSlipTable.getFreeSlipRange(), 1u, stream);
+				(*heightmap_buffer)(STPFreeSlipFloatTextureBuffer::STPFreeSlipLocation::DeviceMemory), 
+				(*heightfield_buffer)(STPFreeSlipRenderTextureBuffer::STPFreeSlipLocation::DeviceMemory),
+				this->TextureBufferAttr.TextureInfo.FreeSlipRange, 1u, stream);
 		}
 
 		//Store the result accordingly

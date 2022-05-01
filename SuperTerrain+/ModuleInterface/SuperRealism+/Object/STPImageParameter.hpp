@@ -45,10 +45,14 @@ namespace SuperTerrainPlus::STPRealism {
 		virtual void wrap(STPOpenGL::STPenum) = 0;
 
 		/**
-		 * @brief Set the border color when texture is wrapped using border mode.
-		 * @param color The border color.
+		 * @brief Set the border colour when texture is wrapped using border mode.
+		 * @param colour The border colour.
 		*/
 		virtual void borderColor(glm::vec4) = 0;
+		//Border colour using integer format.
+		virtual void borderColor(glm::ivec4) = 0;
+		//Border colour using unsigned integer format.
+		virtual void borderColor(glm::uvec4) = 0;
 
 		/**
 		 * @brief Set the anisotropy filtering mode for the texture.

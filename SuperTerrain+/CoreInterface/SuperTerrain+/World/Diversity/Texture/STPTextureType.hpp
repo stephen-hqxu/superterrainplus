@@ -9,19 +9,17 @@ namespace SuperTerrainPlus::STPDiversity {
 	 * Each enum item represents a texture type that is ordered continuously and can be used as indices.
 	*/
 	enum class STPTextureType : unsigned char {
-		//A texture that defines the base color of the mesh being textured
+		//A texture that defines the base colour of the mesh being textured
 		Albedo = 0x00u,
 		//A texture that defines the normal vector which is then used to calculate light reflection and refraction on the surface of the mesh
 		Normal = 0x01u,
 		//A texture that defines how spread out a specular highlight is from the projection centre.
 		Roughness = 0x02u,
-		//A texture that defines the amount of specular highlight at a pixel
-		Specular = 0x03u,
 		//A texture that defines how a texture reacts to light during rendering
-		AmbientOcclusion = 0x4u,
+		AmbientOcclusion = 0x3u,
 
 		//The total number of type listed in the enum
-		TypeCount = 0x05u
+		TypeCount = 0x04u
 	};
 
 }

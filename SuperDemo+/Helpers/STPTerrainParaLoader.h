@@ -5,7 +5,7 @@
 //INI loader
 #include "SIMPLE/SIStorage.hpp"
 //GLM
-#include "glm/vec2.hpp"
+#include <glm/vec2.hpp>
 //Settings
 #include <SuperTerrain+/Environment/STPConfiguration.h>
 #include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
@@ -13,6 +13,8 @@
 #include <SuperRealism+/Environment/STPSunSetting.h>
 #include <SuperRealism+/Environment/STPAtmosphereSetting.h>
 #include <SuperRealism+/Environment/STPOcclusionKernelSetting.h>
+#include <SuperRealism+/Environment/STPWaterSetting.h>
+#include <SuperRealism+/Environment/STPBidirectionalScatteringSetting.h>
 
 #include <utility>
 
@@ -67,6 +69,21 @@ namespace STPDemo {
 		 * @return The AO setting.
 		*/
 		SuperTerrainPlus::STPEnvironment::STPOcclusionKernelSetting getAOSetting(const SIMPLE::SISection&);
+
+		/**
+		 * @brief Load the settings for water rendering.
+		 * @param section The INI section contains water setting.
+		 * @param altitude The altitude of the terrain.
+		 * @return The water setting.
+		*/
+		SuperTerrainPlus::STPEnvironment::STPWaterSetting getWaterSetting(const SIMPLE::SISection&, float);
+
+		/**
+		 * @brief Load the settings for BSDF rendering.
+		 * @param section The INI section contains BSDF settings.
+		 * @return The BSDF setting.
+		*/
+		SuperTerrainPlus::STPEnvironment::STPBidirectionalScatteringSetting getBSDFSetting(const SIMPLE::SISection&);
 
 		/**
 		 * @brief Load all biome parameters into STPBiomeRegistry

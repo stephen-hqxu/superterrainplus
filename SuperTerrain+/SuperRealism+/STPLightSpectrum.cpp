@@ -43,10 +43,6 @@ SuperTerrainPlus::STPOpenGL::STPuint64 STPLightSpectrum::spectrumHandle() const 
 	return *this->SpectrumHandle.value();
 }
 
-void STPLightSpectrum::setData(vec3 color) {
-	this->Spectrum.textureSubImage<STPTexture::STPDimension::ONE>(0, ivec3(0), uvec3(1u), GL_RGB, GL_FLOAT, value_ptr(color));
-}
-
 void STPLightSpectrum::setData(const STPColorArray& color) {
 	if (color.size() > this->SpectrumLength) {
 		throw STPException::STPMemoryError("There is insufficient amount of memory to hold all colours specified in the array");

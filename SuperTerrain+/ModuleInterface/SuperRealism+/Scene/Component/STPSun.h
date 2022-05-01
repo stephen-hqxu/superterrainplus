@@ -35,7 +35,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 	private:
 
-		const STPEnvironment::STPSunSetting& SunSetting;
+		const STPEnvironment::STPSunSetting SunSetting;
 
 		//Those buffers specify the ray direction from the camera
 		STPBuffer RayDirectionBuffer, RayDirectionIndex, SkyRenderCommand;
@@ -67,6 +67,8 @@ namespace SuperTerrainPlus::STPRealism {
 		//Record the elevation of sun direction domain of the spectrum.
 		STPBundledData<float> SpectrumDomainElevation;
 
+		STPOpenGL::STPint SunPositionLocation;
+
 		/**
 		 * @brief Send new atmosphere settings as uniforms to the destination program.
 		 * @param program The program where the uniforms will be sent to.
@@ -78,7 +80,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Init the sun with settings.
-		 * @param sun_setting The sun setting.
+		 * @param sun_setting The sun setting. The setting will be copied to the underlying instance.
 		 * @param spectrum_domain For sun spectrum emulation.
 		 * Specifies The sun direction for the first iteration and the last iteration.
 		 * Sun direction in between will be interpolated.
@@ -130,7 +132,7 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		float spectrumCoordinate() const;
 
-		void render() override;
+		void render() const override;
 
 	};
 

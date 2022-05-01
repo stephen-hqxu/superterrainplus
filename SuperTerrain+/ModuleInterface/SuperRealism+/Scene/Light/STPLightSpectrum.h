@@ -63,12 +63,6 @@ namespace SuperTerrainPlus::STPRealism {
 		STPOpenGL::STPuint64 spectrumHandle() const;
 
 		/**
-		 * @brief Set the colour of the static light spectrum.
-		 * @param colour The colour for the spectrum.
-		*/
-		void setData(glm::vec3);
-
-		/**
 		 * @brief Set the light spectrum with new array of colours.
 		 * @param colour The array of colour to be filled into the spectrum.
 		*/

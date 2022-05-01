@@ -33,7 +33,7 @@ STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption& STPRuntimeCompilab
 	return *this;
 }
 
-STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption& STPRuntimeCompilable::STPLinkerInformation::getDataOption(string source_name) {
+STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption& STPRuntimeCompilable::STPLinkerInformation::getDataOption(const string& source_name) {
 	//it will insert a new entry automatically if source_name is not found
 	return this->DataOption[source_name];
 }
@@ -54,24 +54,24 @@ void STPRuntimeCompilable::deleteLink(CUlinkState link) {
 	STPcudaCheckErr(cuLinkDestroy(link));
 }
 
-bool STPRuntimeCompilable::attachHeader(string header_name, const string& header_code) {
+bool STPRuntimeCompilable::attachHeader(const string& header_name, const string& header_code) {
 	//simply add the header
 	return this->ExternalHeader.emplace(header_name, header_code).second;
 }
 
-bool STPRuntimeCompilable::detachHeader(string header_name) {
+bool STPRuntimeCompilable::detachHeader(const string& header_name) {
 	return this->ExternalHeader.erase(header_name) == 1ull;
 }
 
-bool STPRuntimeCompilable::attachArchive(string archive_name, string archive_filename) {
+bool STPRuntimeCompilable::attachArchive(const string& archive_name, const string& archive_filename) {
 	return this->ExternalArchive.emplace(archive_name, archive_filename).second;
 }
 
-bool STPRuntimeCompilable::detachArchive(string archive_name) {
+bool STPRuntimeCompilable::detachArchive(const string& archive_name) {
 	return this->ExternalArchive.erase(archive_name) == 1ull;
 }
 
-string STPRuntimeCompilable::compileSource(string source_name, const string& source_code, const STPSourceInformation& source_info) {
+string STPRuntimeCompilable::compileSource(const string& source_name, const string& source_code, const STPSourceInformation& source_info) {
 	//make sure the source name is unique
 	if (this->CompilationDatabase.find(source_name) != this->CompilationDatabase.end()) {
 		throw STPException::STPMemoryError(
@@ -141,7 +141,7 @@ string STPRuntimeCompilable::compileSource(string source_name, const string& sou
 	return log;
 }
 
-bool STPRuntimeCompilable::discardSource(string source_name) {
+bool STPRuntimeCompilable::discardSource(const string& source_name) {
 	if (auto source = this->CompilationDatabase.find(source_name);
 		source != this->CompilationDatabase.end()) {
 		//make sure the source exists
@@ -231,7 +231,7 @@ void STPRuntimeCompilable::linkProgram(STPLinkerInformation& linker_info, CUjitI
 	//link will be destroy automatically
 }
 
-const STPRuntimeCompilable::STPLoweredName& STPRuntimeCompilable::retrieveSourceLoweredName(string source_name) const {
+const STPRuntimeCompilable::STPLoweredName& STPRuntimeCompilable::retrieveSourceLoweredName(const string& source_name) const {
 	auto name_expression = this->CompilationNameDatabase.find(source_name);
 	if (name_expression == this->CompilationNameDatabase.end()) {
 		throw STPException::STPMemoryError((string(__FILE__) + "::" + string(__FUNCTION__) + "\nSource name cannot be found in source database.").c_str());

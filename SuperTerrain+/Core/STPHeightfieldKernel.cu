@@ -15,9 +15,7 @@ using glm::uvec2;
 
 __global__ static void curandInitKERNEL(STPHeightfieldKernel::STPcurand_t*, unsigned long long, unsigned int);
 
-__global__ static void initGlobalLocalIndexKERNEL(unsigned int*, uvec2, uvec2, uvec2);
-
-__global__ static void hydraulicErosionKERNEL(STPFreeSlipFloatManager, const STPEnvironment::STPHeightfieldSetting*, STPHeightfieldKernel::STPcurand_t*);
+__global__ static void hydraulicErosionKERNEL(float*, const STPEnvironment::STPHeightfieldSetting*, STPFreeSlipInformation, STPHeightfieldKernel::STPcurand_t*);
 
 __global__ static void texture32Fto16KERNEL(float*, unsigned short*, uvec2);
 
@@ -37,36 +35,18 @@ __host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(un
 	return rng;
 }
 
-__host__ STPHeightfieldKernel::STPIndexTable STPHeightfieldKernel::initGlobalLocalIndex(uvec2 chunkRange, uvec2 tableSize, uvec2 mapSize) {
-	const size_t index_count = tableSize.x * tableSize.y;
-	//launch parameters
-	int Mingridsize, blocksize;
-	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &initGlobalLocalIndexKERNEL));
-	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
-		Dimgridsize = (tableSize + Dimblocksize - 1u) / Dimblocksize;
-
-	//allocation
-	STPIndexTable indexTable = STPSmartDeviceMemory::makeDevice<unsigned int[]>(index_count);
-	//compute
-	initGlobalLocalIndexKERNEL << <dim3(Dimgridsize.x, Dimgridsize.y), dim3(Dimblocksize.x, Dimblocksize.y) >> > (
-		indexTable.get(), chunkRange, tableSize, mapSize);
-	STPcudaCheckErr(cudaGetLastError());
-
-	return indexTable;
-}
-
 __host__ void STPHeightfieldKernel::hydraulicErosion
-	(STPFreeSlipFloatManager heightmap_storage, const STPEnvironment::STPHeightfieldSetting* heightfield_settings, 
+	(float* heightmap_storage, const STPEnvironment::STPHeightfieldSetting* heightfield_settings, const STPFreeSlipInformation& freeslip_info,
 		unsigned int brush_size, unsigned int raindrop_count, STPcurand_t* rng, cudaStream_t stream) {
 	//brush contains two components: weights (float) and indices (int)
 	const unsigned int erosionBrushCache_size = brush_size * (sizeof(int) + sizeof(float));
-	//launc para
+	//launch para
 	int Mingridsize, gridsize, blocksize;
 	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &hydraulicErosionKERNEL, erosionBrushCache_size));
 	gridsize = (raindrop_count + blocksize - 1) / blocksize;
 
 	//erode the heightmap
-	hydraulicErosionKERNEL << <gridsize, blocksize, erosionBrushCache_size, stream >> > (heightmap_storage, heightfield_settings, rng);
+	hydraulicErosionKERNEL << <gridsize, blocksize, erosionBrushCache_size, stream >> > (heightmap_storage, heightfield_settings, freeslip_info, rng);
 	STPcudaCheckErr(cudaGetLastError());
 }
 
@@ -100,29 +80,11 @@ __global__ void curandInitKERNEL(STPHeightfieldKernel::STPcurand_t* rng, unsigne
 	curand_init(seed, static_cast<unsigned long long>(index), 0, &rng[index]);
 }
 
-__global__ void initGlobalLocalIndexKERNEL(unsigned int* output, uvec2 chunkRange, uvec2 tableSize, uvec2 mapSize) {
-	//current pixel
-	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
-		y = (blockIdx.y * blockDim.y) + threadIdx.y,
-		rowCount = tableSize.x,
-		globalidx = x + y * rowCount;
-	if (x >= tableSize.x || y >= tableSize.y) {
-		return;
-	}
-
-	//simple maths
-	const uvec2 globalPos = uvec2(globalidx - y * rowCount, y);
-	const uvec2 chunkPos = globalPos / mapSize;//non-negative integer division is a floor
-	const uvec2 localPos = globalPos - chunkPos * mapSize;
-
-	output[globalidx] = (chunkPos.x + chunkRange.x * chunkPos.y) * mapSize.x * mapSize.y + (localPos.x + mapSize.x * localPos.y);
-}
-
 //It's raining
 #include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
 
 __global__ void hydraulicErosionKERNEL
-	(STPFreeSlipFloatManager heightmap_storage, const STPEnvironment::STPHeightfieldSetting* heightfield_settings, STPHeightfieldKernel::STPcurand_t* rng) {
+	(float* heightmap_storage, const STPEnvironment::STPHeightfieldSetting* heightfield_settings, STPFreeSlipInformation freeslip_info, STPHeightfieldKernel::STPcurand_t* rng) {
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
 	if (index >= heightfield_settings->RainDropCount) {
@@ -135,10 +97,8 @@ __global__ void hydraulicErosionKERNEL
 	__shared__ uvec2 base;
 	__shared__ uvec2 range;
 	if (threadIdx.x == 0u) {
-		const uvec2& dimension = heightmap_storage.Data->Dimension;
-
-		base = dimension - 1u,
-			range = (heightmap_storage.Data->FreeSlipChunk / 2u) * dimension;
+		base = freeslip_info.Dimension - 1u,
+			range = (freeslip_info.FreeSlipChunk / 2u) * freeslip_info.Dimension;
 	}
 	__syncthreads();
 
@@ -150,8 +110,8 @@ __global__ void hydraulicErosionKERNEL
 	initPos += range;
 
 	//spawn the raindrop
-	STPRainDrop droplet(initPos, heightfield_settings->initWaterVolume, heightfield_settings->initSpeed);
-	droplet.Erode(static_cast<const STPEnvironment::STPRainDropSetting*>(heightfield_settings), heightmap_storage);
+	STPRainDrop droplet(initPos, heightfield_settings->initWaterVolume, heightfield_settings->initSpeed, freeslip_info.FreeSlipRange);
+	droplet(heightmap_storage, static_cast<const STPEnvironment::STPRainDropSetting*>(heightfield_settings));
 }
 
 #include <limits>

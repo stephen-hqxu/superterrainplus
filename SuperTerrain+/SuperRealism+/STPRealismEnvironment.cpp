@@ -1,4 +1,5 @@
 #include <SuperRealism+/Environment/STPAtmosphereSetting.h>
+#include <SuperRealism+/Environment/STPBidirectionalScatteringSetting.h>
 #include <SuperRealism+/Environment/STPCameraSetting.h>
 #include <SuperRealism+/Environment/STPLightSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
@@ -6,6 +7,8 @@
 #include <SuperRealism+/Environment/STPOrthographicCameraSetting.h>
 #include <SuperRealism+/Environment/STPPerspectiveCameraSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>
+#include <SuperRealism+/Environment/STPTessellationSetting.h>
+#include <SuperRealism+/Environment/STPWaterSetting.h>
 
 #include <glm/trigonometric.hpp>
 #include <glm/ext/scalar_constants.hpp>
@@ -51,6 +54,23 @@ bool STPAtmosphereSetting::validate() const {
 		&& this->MieScatteringDirection > 0.0f
 		&& this->PrimaryRayStep > 0u
 		&& this->SecondaryRayStep > 0u;
+}
+
+//STPBidirectionalScatteringSetting.h
+
+STPBidirectionalScatteringSetting::STPBidirectionalScatteringSetting() : 
+	MaxRayDistance(1.0f), 
+	DepthBias(0.0f), 
+	RayResolution(1u), 
+	RayStep(1u) {
+
+}
+
+bool STPBidirectionalScatteringSetting::validate() const {
+	return this->MaxRayDistance > 0.0f
+		&& this->DepthBias > 0.0f
+		&& this->RayResolution != 0u
+		&& this->RayStep != 0u;
 }
 
 //STPCameraSetting.h
@@ -99,24 +119,6 @@ bool STPLightSetting::STPDirectionalLightSetting::validate() const {
 }
 
 //STPMeshSetting.h
-
-STPMeshSetting::STPTessellationSetting::STPTessellationSetting() :
-	MaxTessLevel(0.0f),
-	MinTessLevel(0.0f),
-	FurthestTessDistance(0.0f),
-	NearestTessDistance(0.0f) {
-
-}
-
-bool STPMeshSetting::STPTessellationSetting::validate() const {
-	return this->MaxTessLevel >= 0.0f
-		&& this->MinTessLevel >= 0.0f
-		&& this->FurthestTessDistance >= 0.0f
-		&& this->NearestTessDistance >= 0.0f
-		//range check
-		&& this->MaxTessLevel >= this->MinTessLevel
-		&& this->FurthestTessDistance >= this->NearestTessDistance;
-}
 
 STPMeshSetting::STPTextureRegionSmoothSetting::STPTextureRegionSmoothSetting() :
 	KernelRadius(1u), 
@@ -232,4 +234,67 @@ bool STPSunSetting::validate() const {
 		&& this->YearLength > 0u
 		&& range_check(this->Obliquity, 0.0, PI_BY_2)
 		&& range_check(this->Latitude, -PI_BY_2, PI_BY_2);
+}
+
+//STPTessellationSetting.h
+
+STPTessellationSetting::STPTessellationSetting() :
+	MaxTessLevel(0.0f),
+	MinTessLevel(0.0f),
+	FurthestTessDistance(0.0f),
+	NearestTessDistance(0.0f) {
+
+}
+
+bool STPTessellationSetting::validate() const {
+	return this->MaxTessLevel >= 0.0f
+		&& this->MinTessLevel >= 0.0f
+		&& this->FurthestTessDistance >= 0.0f
+		&& this->NearestTessDistance >= 0.0f
+		//range check
+		&& this->MaxTessLevel >= this->MinTessLevel
+		&& this->FurthestTessDistance >= this->NearestTessDistance;
+}
+
+//STPWaterSetting.h
+
+STPWaterSetting::STPWaterWaveSetting::STPWaterWaveSetting() : 
+	InitialRotation(0.0f), 
+	InitialFrequency(1.0f), 
+	InitialAmplitude(1.0f), 
+	InitialSpeed(1.0f), 
+	OctaveRotation(0.0f), 
+	Lacunarity(1.0f), 
+	Persistence(1.0f), 
+	OctaveSpeed(1.0f), 
+	WaveDrag(1.0f) {
+
+}
+
+bool STPWaterSetting::STPWaterWaveSetting::validate() const {
+	return true;
+}
+
+STPWaterSetting::STPWaterSetting() : 
+	MinimumWaterLevel(0.0f), 
+	CullTestSample(1u), 
+	CullTestRadius(1.0f), 
+	Altitude(1.0f),
+	WaveHeight(1.0f),
+	WaterWaveIteration{ 1u, 1u }, 
+	Tint(vec3(0.0f)), 
+	NormalEpsilon(1.0f) {
+
+}
+
+bool STPWaterSetting::validate() const {
+	return this->MinimumWaterLevel >= 0.0f
+		&& this->CullTestSample != 0u
+		&& this->CullTestRadius > 0.0f
+		&& this->Altitude > 0.0f
+		&& this->WaveHeight > 0.0f
+		&& this->WaterWaveIteration.Geometry != 0u
+		&& this->WaterWaveIteration.Normal != 0u
+		&& this->WaterMeshTess.validate() && this->WaterWave.validate()
+		&& this->NormalEpsilon > 0.0f;
 }

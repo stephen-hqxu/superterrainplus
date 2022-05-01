@@ -10,7 +10,7 @@ layout(location = 0) out vec2 FragMoment;
 void main(){
 #if WRITE_MOMENT
 	const float depth = gl_FragCoord.z,
-		//moment biasing, this can avoid the shadow acen
+		//moment biasing, this can avoid the shadow acne
 		dx = dFdx(depth), dy = dFdy(depth);
 
 	FragMoment = vec2(depth, depth * depth + 0.25f * (dx * dx + dy * dy));

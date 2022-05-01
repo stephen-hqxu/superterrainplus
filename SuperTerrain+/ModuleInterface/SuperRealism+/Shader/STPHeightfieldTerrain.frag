@@ -17,14 +17,12 @@
 #define ALBEDO 1
 #define NORMAL 1
 #define ROUGHNESS 1
-#define SPECULAR 1
 #define AO 1
 
 //default texture values if a specific type is not used
 #define DEFAULT_ALBEDO vec3(0.5f)
 #define DEFAULT_NORMAL vec3(vec2(0.5f), 1.0f)
 #define DEFAULT_ROUGHNESS 0.0f
-#define DEFAULT_SPECULAR 1.0f
 #define DEFAULT_AO 1.0f
 
 #define TYPE_STRIDE 6
@@ -49,9 +47,6 @@ struct TerrainTextureData{
 #endif
 #if ROUGHNESS != UNREGISTERED_TYPE
 	float TerrainRoughness;
-#endif
-#if SPECULAR != UNREGISTERED_TYPE
-	float TerrainSpecular;
 #endif
 #if AO != UNREGISTERED_TYPE
 	float TerrainAmbientOcclusion;
@@ -79,17 +74,16 @@ uniform TextureRegionScaleSetting ScaleSetting;
 #include </Common/STPNullPointer.glsl>
 
 //Input
-in VertexGS{
+in VertexTES{
 	vec3 position_world;
 	vec2 texCoord;
 } fs_in;
 //Output
 #include </Common/STPGeometryBufferWriter.glsl>
 
-layout (binding = 0) uniform usampler2D Biomemap;
-layout (binding = 1) uniform sampler2D Heightmap;
-layout (binding = 2) uniform usampler2D Splatmap;
-layout (binding = 3) uniform sampler3D Noisemap;
+layout (binding = 0) uniform sampler2D Heightmap;
+layout (binding = 1) uniform usampler2D Splatmap;
+layout (bindless_sampler) uniform sampler3D Noisemap;
 
 //The number of visible chunk in x,z direction
 uniform uvec2 VisibleChunk;
@@ -165,13 +159,6 @@ void main(){
 	const float RenderingRoughness = 0.0f;
 #endif
 
-	//specularmap processing
-#if SPECULAR != UNREGISTERED_TYPE
-	const float RenderingSpecular = TerrainTexture.TerrainSpecular;
-#else
-	const float RenderingSpecular = 1.0f;
-#endif
-
 	//ambient-occlusionmap processing
 #if AO != UNREGISTERED_TYPE
 	const float RenderingAO = TerrainTexture.TerrainAmbientOcclusion;
@@ -180,7 +167,7 @@ void main(){
 #endif
 
 	//finally
-	writeGeometryData(RenderingColor, RenderingNormal, RenderingSpecular, RenderingAO);
+	writeGeometryData(RenderingColor, RenderingNormal, RenderingRoughness, RenderingAO);
 }
 
 //dx_dy is the derivative used for sampling texture, the first two components store dx while the last two store dy.
@@ -211,9 +198,6 @@ void sampleTerrainTexture(in out TerrainTextureData data, vec2 sampling_uv, unsi
 #endif
 #if ROUGHNESS != UNREGISTERED_TYPE
 	data.TerrainRoughness += getRegionTexture(sampling_uv, vec3(DEFAULT_ROUGHNESS), region, ROUGHNESS, dx_dy).r * weight;
-#endif
-#if SPECULAR != UNREGISTERED_TYPE
-	data.TerrainSpecular += getRegionTexture(sampling_uv, vec3(DEFAULT_SPECULAR), region, SPECULAR, dx_dy).r * weight;
 #endif
 #if AO != UNREGISTERED_TYPE
 	data.TerrainAmbientOcclusion += getRegionTexture(sampling_uv, vec3(DEFAULT_AO), region, AO, dx_dy).r * weight;
@@ -276,9 +260,6 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 #endif
 #if ROUGHNESS != UNREGISTERED_TYPE
 	TerrainTexture.TerrainRoughness = 0.0f;
-#endif
-#if SPECULAR != UNREGISTERED_TYPE
-	TerrainTexture.TerrainSpecular = 0.0f;
 #endif
 #if AO != UNREGISTERED_TYPE
 	TerrainTexture.TerrainAmbientOcclusion = 0.0f;
@@ -356,9 +337,6 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 #endif
 #if ROUGHNESS != UNREGISTERED_TYPE
 		TerrainTexture.TerrainRoughness = DEFAULT_ROUGHNESS * weight;
-#endif
-#if SPECULAR != UNREGISTERED_TYPE
-		TerrainTexture.TerrainSpecular = DEFAULT_SPECULAR * weight;
 #endif
 #if AO != UNREGISTERED_TYPE
 		TerrainTexture.TerrainAmbientOcclusion = DEFAULT_AO * weight;

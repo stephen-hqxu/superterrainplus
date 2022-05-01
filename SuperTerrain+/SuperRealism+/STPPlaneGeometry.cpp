@@ -32,11 +32,14 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 	auto& [buffer, index, vertex_array] = this->PlaneData;
 
 	//allocate memory for plane buffer
-	const unsigned int tileCount = tile_dimension.x * tile_dimension.y;
+	//see documentation in the shader to understand how memory usage is calculated
+	const uvec2 vertex_dimension = tile_dimension + 1u;
+	const unsigned int vertexCount = vertex_dimension.x * vertex_dimension.y,
+		tileCount = tile_dimension.x * tile_dimension.y;
 	//each tile has two triangle faces, each triangle has 3 vertices
 	this->IndexCount = 6ull * tileCount;
-	//each tile has 4 strides, each stride has a 3-component float as position and 2-component float as texture coordinate
-	buffer.bufferStorage(20ull * sizeof(float) * tileCount, GL_NONE);
+	//each vertex has a 2-component float as position and 2-component float as texture coordinate
+	buffer.bufferStorage(4ull * sizeof(float) * vertexCount, GL_NONE);
 	index.bufferStorage(sizeof(unsigned int) * this->IndexCount, GL_NONE);
 	STPBindlessBuffer buffer_addr(buffer, GL_WRITE_ONLY), 
 		index_addr(index, GL_WRITE_ONLY);
@@ -62,21 +65,31 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 
 	//vertex array attributing
 	STPVertexArray::STPVertexAttributeBuilder attr = vertex_array.attribute();
-	attr.format(3, GL_FLOAT, GL_FALSE, sizeof(float))
+	attr.format(2, GL_FLOAT, GL_FALSE, sizeof(float))
 		.format(2, GL_FLOAT, GL_FALSE, sizeof(float))
 		.vertexBuffer(buffer, 0)
 		.elementBuffer(index)
 		.binding();
 	vertex_array.enable(0u, 2u);
 
-	/* ------------------------------------ prepare for generation ------------------------------------- */
-	//calculate generation size
-	const uvec2 dimBlockSize = static_cast<uvec2>(plane_generator.workgroupSize()),
-		dimGridSize = (tile_dimension + dimBlockSize - 1u) / dimBlockSize;
-
-	//dispatch
+	//prepare for plane geometry generation
+	auto launchKernel = [dimBlockSize = static_cast<uvec2>(plane_generator.workgroupSize())](uvec2 count) -> void {
+		const uvec2 dimGridSize = (count + dimBlockSize - 1u) / dimBlockSize;
+		glDispatchCompute(dimGridSize.x, dimGridSize.y, 1u);
+	};
 	plane_generator.use();
-	glDispatchCompute(dimGridSize.x, dimGridSize.y, 1u);
+	GLuint generation_pass;
+	/* ---------------------------- plane vertex generation ------------------------ */
+	generation_pass = 0u;
+	glUniformSubroutinesuiv(GL_COMPUTE_SHADER, 1u, &generation_pass);
+
+	launchKernel(vertex_dimension);
+	/* ---------------------------- plane index generation ------------------------- */
+	generation_pass = 1u;
+	glUniformSubroutinesuiv(GL_COMPUTE_SHADER, 1u, &generation_pass);
+
+	launchKernel(uvec2(tile_dimension.x * 2u, tile_dimension.y));
+
 	//make sure all buffer written are visible for rests of the rendering commands
 	glMemoryBarrier(GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV);
 

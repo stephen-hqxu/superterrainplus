@@ -2,6 +2,7 @@
 add_library(${STP_REALISM_ENGINE} SHARED
 STPAlphaCulling.cpp
 STPAmbientOcclusion.cpp
+STPBidirectionalScattering.cpp
 STPBindlessBuffer.cpp
 STPBindlessTexture.cpp
 STPBuffer.cpp
@@ -13,6 +14,7 @@ STPGaussianFilter.cpp
 STPHeightfieldTerrain.cpp
 STPLightShadow.cpp
 STPLightSpectrum.cpp
+STPMaterialLibrary.cpp
 STPOrthographicCamera.cpp
 STPPerspectiveCamera.cpp
 STPPipelineManager.cpp
@@ -31,6 +33,7 @@ STPShaderManager.cpp
 STPSun.cpp
 STPTexture.cpp
 STPVertexArray.cpp
+STPWater.cpp
 
 STPRandomTextureGenerator.cu
 )
