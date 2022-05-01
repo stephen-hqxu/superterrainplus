@@ -46,7 +46,7 @@ private:
 	//All loaded texture data
 	STPTextureStorage LoadedData[STPWorldSplattingAgent::TextureCount];
 	//List of all texture name
-	constexpr static char* Filename[] = {
+	constexpr static const char* Filename[] = {
 		"darkrock_color.jpg",
 		"darkrock_normal.jpg",
 		"darkrock_ao.jpg",

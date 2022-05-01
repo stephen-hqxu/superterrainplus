@@ -2,20 +2,22 @@
 #ifndef _STP_ALGORITHM_DEVICE_INFO_H_
 #define _STP_ALGORITHM_DEVICE_INFO_H_
 
+#include <string_view>
+
 namespace SuperTerrainPlus {
 	
 	/**
 	 * @brief Denotes the SuperTerrain+ include path
 	*/
-	constexpr static char SuperTerrainPlus_CoreInclude[] = "@SuperTerrain+CoreInclude@";
+	constexpr static std::string_view SuperTerrainPlus_CoreInclude = "@SuperTerrain+CoreInclude@";
 	/**
 	 * @brief Denotes the SuperAlgorithm+ static library output path
 	*/
-	constexpr static char SuperAlgorithmPlus_DeviceLibrary[] = "$<TARGET_FILE:@STP_ALGORITHM_DEVICE_ENGINE@>";
+	constexpr static std::string_view SuperAlgorithmPlus_DeviceLibrary = "$<TARGET_FILE:@STP_ALGORITHM_DEVICE_ENGINE@>";
 	/**
 	 * @brief Denotes the SuperAlgorithm+ include path
 	*/
-	constexpr static char SuperAlgorithmPlus_DeviceInclude[] = "@SuperAlgorithm+DeviceInclude@";
+	constexpr static std::string_view SuperAlgorithmPlus_DeviceInclude = "@SuperAlgorithm+DeviceInclude@";
 
 }
 #endif//_STP_ALGORITHM_DEVICE_INFO_H_

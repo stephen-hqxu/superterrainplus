@@ -16,7 +16,7 @@
 namespace SuperTerrainPlus::STPCompute {
 
 	/**
-	 * @brief STPRuntimeCompilable provides a device-side runtime-programmable interface and toolsets with NVRTC.
+	 * @brief STPRuntimeCompilable provides a device-side runtime-programmable interface and tool-sets with NVRTC.
 	*/
 	class STP_API STPRuntimeCompilable {
 	protected:
@@ -68,7 +68,7 @@ namespace SuperTerrainPlus::STPCompute {
 			//- Due to the auto-mangling nature of CUDA, any global scope __device__ variable and __global__ function name
 			//will be mangled after complication.If one wishes to obtain the address of such pointers, mangled named must be used.
 			//- By providing name expressions, generator can guarantee to retrieve the mangled name after complication provided name expression has been provided here.
-			//- Providew empty vector if no name expression is needed
+			//- Provide empty vector if no name expression is needed
 			STPSourceArgument NameExpression;
 			//Include name of any included external header in this source code.
 			//Content of the header will be imported from the database, provided it has been attached by attachHeader().
@@ -130,7 +130,7 @@ namespace SuperTerrainPlus::STPCompute {
 			 * If this source has yet had any options added, a new entry will be inserted.
 			 * @return The data option for this source file
 			*/
-			STPDataJitOption& getDataOption(std::string);
+			STPDataJitOption& getDataOption(const std::string&);
 
 			//The generator program module flag and value
 			STPDataJitOption ModuleOption;
@@ -171,7 +171,7 @@ namespace SuperTerrainPlus::STPCompute {
 		//This can be useful for in-place code, i.e., code is a hard-coded string in the executable
 		//Key: header include name, Value: header code
 		STPIncluded ExternalHeader;
-		//All precompiled static library that will be linked with the main generator program
+		//All pre-compiled static library that will be linked with the main generator program
 		//Key: archive name, Value: the filename of the archive
 		STPIncluded ExternalArchive;
 		//All source files compiled in PTX format.
@@ -205,14 +205,14 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @return True if header is attached.
 		 * False if a duplicate header name is found.
 		*/
-		bool attachHeader(std::string, const std::string&);
+		bool attachHeader(const std::string&, const std::string&);
 
 		/**
 		 * @brief Detach an external header that has been previously attached to this generator database
 		 * @param header_name The name of the header to be detached.
 		 * @return Only return false if header is not found.
 		*/
-		bool detachHeader(std::string);
+		bool detachHeader(const std::string&);
 
 		/**
 		 * @brief Attach an external archive into the linker database.
@@ -221,14 +221,14 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @param archive_filename The path to the archive
 		 * @return Only return false if archive name is duplicate
 		*/
-		bool attachArchive(std::string, std::string);
+		bool attachArchive(const std::string&, const std::string&);
 
 		/**
 		 * @brief Detach an external archive that has been previously attached to this linker database
 		 * @param archive_name The name of the archive
 		 * @return Only return false if archive is not found
 		*/
-		bool detachArchive(std::string);
+		bool detachArchive(const std::string&);
 
 		/**
 		 * @brief Given a piece of source code, compile it and attach the compiled result to generator's database.
@@ -241,7 +241,7 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @return log The log output from the compiler.
 		 * If exception is thrown before complication, no log will be generated
 		*/
-		std::string compileSource(std::string, const std::string&, const STPSourceInformation&);
+		std::string compileSource(const std::string&, const std::string&, const STPSourceInformation&);
 
 		/**
 		 * @brief Discard previously compiled source file.
@@ -249,11 +249,11 @@ namespace SuperTerrainPlus::STPCompute {
 		 * @return If name doesn't exist in generator database, false is returned.
 		 * Otherwise it will always return true.
 		*/
-		bool discardSource(std::string);
+		bool discardSource(const std::string&);
 
 		/**
 		 * @brief Link all previously compiled source file into a complete program.
-		 * If there has been a program currently associated with this generator, it will be destroied and the new one will be loaded.
+		 * If there has been a program currently associated with this generator, it will be destroyed and the new one will be loaded.
 		 * If linking error occurs, the existing module will not be modified
 		 * @param linker_info The information for the linker
 		 * @param input_type The input type to be used. Currently only CU_JIT_INPUT_PTX, CU_JIT_INPUT_CUBIN is supported
@@ -267,10 +267,10 @@ namespace SuperTerrainPlus::STPCompute {
 		 * Only name expression that has been added prior to complication can be retrieved, otherwise exception is thrown
 		 * @param source_name The name of the source that was used compiled and added to the database.
 		 * If source_name cannot be found, exception is thrown.
-		 * @return Given each key as the original name, value will be overwriten as the lowered name.
-		 * Retrieved lowered name pointer is valid as long as the generator is not destroied and source is not discarded.
+		 * @return Given each key as the original name, value will be overwritten as the lowered name.
+		 * Retrieved lowered name pointer is valid as long as the generator is not destroyed and source is not discarded.
 		*/
-		const STPLoweredName& retrieveSourceLoweredName(std::string) const;
+		const STPLoweredName& retrieveSourceLoweredName(const std::string&) const;
 
 		/**
 		 * @brief Get the complete generator program module.
