@@ -1,6 +1,16 @@
-MIT License
+----------------------------------------------------------------------------------
+Applies to class:
+STPAllLayers, STPBaseBiomeLayer, STPClimateLayer, STPContinentLayer,
+STPCrossLayer, STPDeepOceanLayer, STPEaseEdgeLayer, STPEdgeBiomeLayer,
+STPHillsLayer, STPIslandLayer, STPLandLayer, STPNoiseLayer, STPNoiseToRiverLayer,
+STPOceanTemperatureLayer, STPRiverErodeLayer, STPRiverMixLayer, STPScaleLayer,
+STPSmoothScaleLayer, STPVoronoiLayer, STPXCrossLayer
 
-Copyright (c) 2022 Stephen Haoqian Xu
+STPLayer, STPLayerCache
+----------------------------------------------------------------------------------
+The MIT License (MIT)
+
+Copyright (c) 2020 KaptainWutax, Neil
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -1,4 +1,4 @@
-# SuperTerrain+
+# SuperTerrain+ Documentation
 
 Welcome to *SuperTerrain+*, a procedural terrain engine.
 

@@ -1,16 +1,23 @@
 <h1 align="center"> Super Terrain + </h1>
-<p align="center"> A modern procedural terrain engine aiming for real-time and photorealism </p>
+
+[![GitHub Releases](https://img.shields.io/github/v/release/stephen-hqxu/superterrainplus?include_prereleases&label=Release)](https://github.com/stephen-hqxu/superterrainplus/releases)
+[![GitHub License](https://img.shields.io/github/license/stephen-hqxu/superterrainplus?label=License)](https://github.com/stephen-hqxu/superterrainplus/blob/master/LICENSE)
+[![3rd-Party License](https://img.shields.io/badge/License-3rd--party-green)](https://github.com/stephen-hqxu/superterrainplus/blob/master/3rd-Party)
+![Maintenance](https://img.shields.io/maintenance/yes/2022?label=Maintained)
+[![Project Roadmap](https://img.shields.io/badge/Project-Roadmap-cd853f)](https://github.com/stephen-hqxu/superterrainplus/projects)
+[![Documentation](https://img.shields.io/badge/-Documentation-fa8072)](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/README.md)
+[![Dissertation](https://img.shields.io/badge/-Dissertation-7b68ee)](https://github.com/stephen-hqxu/superterrainplus/tree/master/Report)
+
+<p align="center"> A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering </p>
+
+## :eyes: Overview
 
 <p align="center">
 	<img src="https://img.shields.io/badge/C%2B%2B_17-00599C?style=flat&logo=c%2B%2B&logoColor=white" />
 	<img src="https://img.shields.io/badge/NVIDIA-CUDA_11.3-76B900?style=flat&logo=nvidia&logoColor=white" />
 	<img src="https://img.shields.io/badge/OpenGL_4.6-FFFFFF?style=flat&logo=opengl" />
-	</br>
-	<img src="https://img.shields.io/badge/SQLite_3-07405E?style=flat&logo=sqlite&logoColor=white" />
 	<img src="https://img.shields.io/badge/CMake_3.18-064F8C?style=flat&logo=cmake&logoColor=white" />
 </p>
-
-## :eyes: Overview
 
 *SuperTerrain+* is a modern procedural terrain generator with physics simulations and aiming for real-time photorealistic rendering. It was started as my computer science dissertation project and inspired by many games, software and movies with procedural generation features. Procedural generation is one of the most popular topics in computer graphics and allows us to create data using the power of algorithm and minimise efforts spent on pre-modelling/computing.
 
@@ -152,24 +159,21 @@ The application is unit-tested with.
 #### Hardware requirement
 
 - CPU
-<p align="left">
-	<img src="https://img.shields.io/badge/Intel-Core_i5_8400-0071C5?style=flat&logo=intel&logoColor=white" />
-	<img src="https://img.shields.io/badge/AMD-Ryzen_5_2400G-ED1C24?style=flat&logo=amd&logoColor=white" />
-</p>
+
+![Intel CPU Requirement](https://img.shields.io/badge/Intel-Core_i5_8400-0071C5?style=flat&logo=intel&logoColor=white)
+![AMD CPU Requirement](https://img.shields.io/badge/AMD-Ryzen_5_2400G-ED1C24?style=flat&logo=amd&logoColor=white)
 
 - GPU
-<p align="left">
-	<img src="https://img.shields.io/badge/NVIDIA-GTX_1660-76B900?style=flat&logo=nvidia&logoColor=white" />
-</p>
+
+![Nvidia GPU Requirement](https://img.shields.io/badge/NVIDIA-GTX_1660-76B900?style=flat&logo=nvidia&logoColor=white)
 
 > *SuperTerrain+* currently relies heavily on CUDA and GL extensions exclusive to Nvidia GPUs. The GPU requirement stated here is a trivial assumption, runtime performance depends highly on configuration and level of re-programming to the engine.
 
 - RAM: 4GB
 - OS
-<p align="left">
-	<img src="https://img.shields.io/badge/Linux-FCC624?style=flat&logo=linux&logoColor=black" />
-	<img src="https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white" />
-</p>
+
+![OS Linux](https://img.shields.io/badge/Linux-FCC624?style=flat&logo=linux&logoColor=black)
+![OS Windows](https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white)
 
 #### OpenGL extension requirement
 
@@ -227,23 +231,13 @@ Compilation of the engine may take up to 5 minutes. You may obtain the following
 - `SuperDemo+` if demo build is enabled
 - `SuperTest+` if test build is enabled
 
-## :world_map: Project Management
-
-[Project Roadmap](https://github.com/stephen-hqxu/superterrainplus/projects)
-
-[Release Note](https://github.com/stephen-hqxu/superterrainplus/releases)
-
-[Dissertation](https://github.com/stephen-hqxu/superterrainplus/tree/master/Report)
-
-[Documentation](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/index.md)
-
 ## :books: Credits
 
-This section contains source code and libraries that are not dependencies of this project but they are where ideas and inspirations are taken from.
+This section contains source code and libraries that are not dependencies of this project but they are where ideas and inspirations are taken from. I will try my best to give attributions and copyright notices for all publications used; in case something is missing, please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com).
 
-For academic style *BibTex* references, check out the project dissertation as linked above.
+For redistributed open source project, see *3rd-Party* directory to find the licenses. For academic style *BibTex* references, check out the *Dissertation* directory.
 
-Please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com) if you find your publication is being used but not listed below.
+- [README Template](https://github.com/othneildrew/Best-README-Template)
 
 ### Terrain generation
 

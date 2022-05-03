@@ -1,0 +1,1542 @@
+\documentclass[oneside, a4paper]{report}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{fancyhdr}
+\usepackage[compact]{titlesec}
+\usepackage[font=large,labelfont=bf]{caption}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{etoolbox}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{enumitem}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage[boxed, algoruled, linesnumbered]{algorithm2e}
+\usepackage{multirow}
+\usepackage[title]{appendix}
+\usepackage{listings, lstautogobble}
+
+\SetKw{Continue}{continue}
+\SetKw{Break}{break}
+
+\setlength{\parskip}{0.4cm}
+\renewcommand{\baselinestretch}{1.4}
+
+\titleformat{\chapter}[display]{\normalfont\bfseries}{}{0pt}{\Huge}
+
+\graphicspath{{./img/}}
+
+% Fancyhdr
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Stephen Xu}
+\chead{\thepage}
+\rhead{CS310 Final Report}
+% Let the chapter page has fancyhdr as well
+\patchcmd{\chapter}{\thispagestyle{plain}}{\thispagestyle{fancy}}{}{}
+
+\hypersetup{
+    colorlinks = true,
+    linkcolor = blue,
+    citecolor = red
+}
+
+\begin{document}
+    \begin{titlepage}
+        \begin{center}
+            \huge
+            \vspace*{0.5cm}
+            \textbf{CS310 Project Final Report}
+
+            \vspace*{0.75cm}
+            \hrule width \hsize \kern 1mm \hrule width \hsize height 2pt
+            \textbf{SuperTerrain+:} \\
+            A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering.
+            \newline
+            \hrule width \hsize height 2pt \kern 1mm \hrule width \hsize
+
+            \Large
+            \vspace*{1.0cm}
+            \begin{tabular}{rl}
+                \textbf{Student}: & Stephen Xu \\
+                \textbf{Project Supervisor}: & Dr. Andrew Hague \\
+                \textbf{Year of Study}: & 3
+            \end{tabular}
+
+            \vspace*{4.0cm}
+            \begin{figure}[H]
+                \center
+                \includegraphics[scale=0.12]{warwick.png}
+            \end{figure}
+            
+            Department of Computer Science \\
+            The University of Warwick
+
+            \vspace*{0.5cm}
+            3 May 2022
+        \end{center}
+    \end{titlepage}
+    \newpage
+
+    \vspace*{0.5cm}
+    \Large
+    \begin{center}
+        \textbf{Abstract}
+    \end{center}
+    
+    \large
+    \flushleft
+    Procedural generation is a technique that allows data to be generated algorithmically, and procedural terrain generation focuses on generation of terrain model. However modern procedural generators are either built for performance or realism, but not both, due to the constraint of processing power of hardware. Such that generators are usually written in an application-specific manner, with reduced flexibility and adaptability.
+
+    This project aims to develop a procedural generator, \textit{SuperTerrain+}, with the addition of modern techniques to achieve certain level of photorealistic rendering, that provides user with a fast, asynchronous and flexible terrain generation and rendering pipeline, allowing terrain to be generated and rendered based on user-specific application.
+
+    \vspace*{1cm}
+    \textbf{Key words}: computer graphics, procedural terrain generation, real-time, realistic, rendering, simulation, optimisation
+    \rule{\textwidth}{1pt}
+    \newpage
+
+    \tableofcontents
+
+    \chapter{Introduction}
+    
+    \section{Overview}
+
+    Modelling and rendering are two essential aspects for creation of visually realistic world in computer graphics. Techniques which involved use of pre-processed data are still very common nowadays, such as modelling with designing software and rendering from pre-computed dataset.
+    
+    While rendering from pre-processed data is fast, it comes with a major limitation. Data is considered to be static, meaning it cannot respond to dynamic changes in runtime, unless designers and developers have accommodated this by also considering all possible changes when processing data, which is usually not possible to fully cover all scenarios because permutation of changes can grow exponentially and eventually exhausts storage space.
+
+    Therefore, procedural generation starts to be integrated with the traditional methods, and allows data to be generated using algorithms which usually involve use of random number generators, thus creating a vastly diverse dataset in runtime.
+
+    Procedural generation is a wide topic, this project only focuses on two subsets in this field, being procedural terrain generation and rendering. These two techniques focus on generation of terrain model and rendering with no pre-processed input.
+    
+    Procedural terrain generators can either be simple or complex depends on application. Despite the advantages stated above, procedural generation can be expensive. While these engines can be adapted for different purposes, they are divided into two categories, being performance and realism focused, and marginal number of application lay in the union of both, due to the limited processing power of current hardware.
+
+    \subsection{Existing Solutions}
+
+    \textit{Minecraft}, one of the most obvious examples, which generates the whole game map procedurally, and allows player to explore endlessly. Terrain generated by \textit{Minecraft} is rendered using voxels which are cubes and it does not seem to be sufficient for realistic scenery.
+
+    \textit{Terragen} is a editor dedicated for terrain modelling and rendering. While it does come with certain procedural generation interfaces, it is mainly served as a modeller and offline renderer, and aims to produce photorealistic images and video demos rather than a world where user can explore freely.
+
+    \section{Background}
+
+    There are various ways to synthesise a terrain model. Heightmap-based approach is yet the state-of-the-art approach of procedural terrain generation \cite{kang_sim_han_2018} due to its simplicity. The heightmap approach uses a texture called heightmap, where each pixel on the heightmap is a height value. During terrain model generation, vertices on a flat plane can be displaced in the vertical direction by the amount looked up from the heightmap, multiplied by a constant height scaling factor.
+
+    Heightmap-based terrain does come with one major drawback of single-direction vertices displacement therefore certain landscape features such as caves and overhangs are hard to be generated. Volumetric terrain \cite{gems3_voxel_terrain} is an emerging technique dedicated for improving the realism of the terrain. Going into 3-dimension, features like caves can be generated properly using volumetric meshing algorithm \cite{marching_cubes} from a density map, which is essentially a 3D heightmap.
+
+    Due to the limited development time, this project will be scoped and focused on the heightmap-based approach as going into a higher dimension increases development complexity.
+
+    \subsection{Heightmap}
+
+    For heightmap-based terrain, the heightmap determines the appearance of the terrain. Generation of heightmap involves use of noise.
+
+    There exists a large variety of noise; for terrain generation, gradient noise is one of the most widely used solution. Gradient noise divides the texture into grids, and randomly drag the grid vertices around to create random gradient and linearly interpolate the values between each pixel. Gradient noise gives visually appealing terrain patterns.
+
+    Perlin noise \cite{perlin_noise} is one of the most widely used solutions for terrain generation. Yet, it has been argued that Perlin noise is prone to visual artefacts and slow \cite{improved_perlin}, therefore Simplex noise \cite{simplex_noise} is supposed to be used as a replacement of Perlin noise.
+
+    Most of the time, using a single noise texture is not sufficient as the overall terrain is too smooth. To add more details onto the surface, fractal can be used. Fractal noise combines multiple noise functions together, with incrementing noise frequency and decrementing noise amplitude. Each individual noise function in a fractal is referred as octave.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{fractal_wave.png}
+        \caption{Shows an example of simple fractal using sine waves. The red curve shows 1 octave and the blue curve shows 4 octaves. Graph plotted with \textit{Desmos}.}
+    \end{figure}
+
+    Putting heightmap and vertices displacement together, a heightmap-based terrain can be generated as follows.
+
+    \begin{figure}[H]
+        \center
+        \begin{minipage}{0.48\textwidth}
+            \includegraphics[width=\textwidth]{terrain-one-octave.jpg}
+        \end{minipage}
+        \begin{minipage}{0.48\textwidth}
+            \includegraphics[width=\textwidth]{terrain-six-octaves.jpg}
+        \end{minipage}
+        \caption{Illustrates a simple procedural terrain. Left: a terrain generated with 1 gradient noise octave. Right: the same terrain but with 6 octaves.}
+        \label{classic_terrain}
+    \end{figure}
+
+    Arguably, even with the help of multi-fractal terrain showed in \ref{classic_terrain}, a large amount of bumpy surface starts to form and become too erratic and lack of diversity for a natural terrain.
+
+    \subsection{Chunk-based Terrain}
+
+    Computers come with limited amount of memory, therefore it is not possible to create a true infinite terrain. What can be done is by dividing terrain into discrete units, called chunks; each chunk is a rectangle with 4 vertices. By putting chunks together a large patch of rectangular rendered area can be formed.
+
+    Each chunk only contains 4 vertices, which is not sufficient to create a high quality terrain. To solve this problem, the chunk needs to be subdivided into smaller shapes. A common solution is by using a spatial data structure called mesh quad-tree \cite{quadtree} by recursively subdividing a chunk into 4 equal-sized smaller squares. The depth of the tree at each branch can be variable based on the amount of detail expected on the terrain \cite{clod_terrain}.
+
+    While the cost of constructing a quad-tree is \(O(n log n)\), converting the quad-tree into vertices and indices representing a mesh is typically done on CPU and requires rebuilding the mesh data on GPU whenever the tree structure changes. OpenGL 4 introduced tessellation shader which allows geometry primitives to be subdivided on GPU \cite{opengl4_spec}. Therefore, level-of-detail (LoD) switching of chunks can be implemented purely on GPU using tessellation shader instead of a CPU implementation of mesh quad-tree.
+
+    The traditional quad-tree approach may also introduce continuous LoD problem where seams may occur if two adjacent chunks have different LoD. If two chunks have an overlapping edge, and the subdivision of the two edges are not that same such that the number of vertex on each of them are non-equal, and the edges are not able to be aligned properly.
+
+    The continuous LoD can be solved easily with the help of tessellation by computing the distance from the edge of an triangle to the viewer, and scale the LoD based on this distance. It guarantees that it two triangles have shared vertices, the LoD assignment is the same, as the distance to the shared edge will be the same.
+
+    \section{Project Objectives}
+
+    In this project, a procedural generator and photorealistic renderer, \textit{SuperTerrain+}, is developed. There is no best solution to achieve the utmost photorealism in computer graphics as each technique has its advantages and drawbacks, therefore rather than outlining a list of concrete goals, features are integrated flexibly as the development progresses. In general, the engine should be targetting on the following big directions:
+
+    \begin{itemize}[label=\(\diamond\)]
+        \item Generate and render an infinite high-polygon terrain relying on no preprocessed data.
+        \item Provide users with programmable interfaces for customisation of generation.
+        \item Utilises the power of parallel computing widely available to modern hardware.
+    \end{itemize}
+
+    \subsection{Development Environment}
+
+    The engine is mainly programmed in C++, a low-level objective-oriented language, specifically it is built based on ISO C++ 17 standard.
+    
+    The engine also involves use of GPU for both rendering and computing. For rendering, OpenGL 4.6 is used along with certain GL extensions to simplify software development. CUDA 11 is used for GPU-side computing.
+
+    This paper will also outline a number of testing and benchmark results. Unless otherwise specified, the application will be executed on the following hardware:
+
+    \begin{center}
+        \begin{tabular}{rl}
+            \textbf{CPU} & Intel Core i9-9900K \\
+            \textbf{GPU} & Nvidia GeForce RTX 2080 \\
+            \textbf{Graphics Driver} & Nvidia Game Ready Driver 496.76 \\
+            \textbf{OS} & Windows 10 20H2 \\
+            \textbf{Compiler} & Microsoft Visual Compiler MSVC 16.11
+        \end{tabular}
+    \end{center}
+
+    \section{Report Structure}
+
+    The report will be in general follows the structure of \textit{Research-Design-Implementation-Evaluation}.
+    Due to the fact that there are a large quantity of topics being covered in this paper, each of them is rather independent, discussion of each topic can be considered as a self-contained sub-report with the structure specified.
+
+    The report is begun with a brief background of modern procedural terrain generation techniques, followed by the main body where in-depth discussions of each topic are contained, and will be concluded by project management discussions and future works.
+
+    \chapter{Procedural Terrain Generation}
+
+    \section{Hydraulic Erosion}
+
+    As being outlined in the figures showed in \ref{classic_terrain}, terrain generated with fractals suffers from the problem of being too erratic. In real life, terrain undergoes natural deformation due to force. Erosion is one of the most commonly used terrain simulation techniques to refine the terrain model, while hydraulic erosion is one of them.
+
+    \subsection{Evaluation on Erosion Models}
+
+    There exists two types of hydraulic erosion models, being cell-based (also known as hydrostatic pipe-model) \cite{cell_based_erosion} and particle-based \cite{particle_based_erosion}.
+
+    Cell-based erosion defines a cell, each cell is a collection of a number of volume on the terrain. Water migration is simulated using virtual pipe model. The virtual pipe can also act as a cache to water content before transferring to the neighbour cells, such that it is very suitable for parallel execution \cite{cell_based_gpu} and avoid read-after-write hazard.
+
+    This model is mainly used for erosion of water path, and requires a pre-defined permanent body of water. Although the definition of water source can be achieved using noise, as water source is permanent, the erosion procedure is progressive, such that water will keep flowing until the path is blocked or stopped manually. For procedural terrain, this behaviour is unpredictable and water may be flowing for a very long distance before stopping and requires a large number of chunks to be generated.
+    
+    In addition, cell-based erosion only erodes the part of the terrain affected by water flow. For the current requirement, the whole terrain model should be refined. Cell-based erosion might be a good candidate as a future extension such as adding volcanos to the terrain and simulate lava flow and thermal erosion \cite{thermal_erosion}.
+
+    Particle-based erosion provides a more robust solution for procedural terrain. It simulates erosion with water droplets, and droplets move towards the lower altitude on the terrain due to gravity. As the water droplet moves, it erodes the terrain, dissolving sediment into water solution, and evaporates gradually. When the droplet is fully evaporated, all previously dissolved sediment are deposited to fill up the terrain.
+
+    It has been proposed that particle-based erosion can be parallelised by assigning one thread to each water droplet \cite{parameter_particle_based}. This proposal is implemented and extended in this project.
+
+    \begin{figure}[H]
+        \includegraphics[trim={0 0 0 6cm},clip,width=\textwidth]{erosion-legacy.jpg}
+        \caption{Shows an eroded terrain using vanilla particle-based hydraulic erosion model.}
+        \label{vanilla_particle_erosion}
+    \end{figure}
+
+    \subsection{Free-slip Particle-based Hydraulic Erosion}
+
+    Erosion features can be observed in \ref{vanilla_particle_erosion} such as erosion marks where water has flown through. Meanwhile, certain artefacts can also be noticed at the middle of the figure, where the border of the chunk is located.
+
+    For an infinite terrain, water particles can only move within the chunk. When the droplet approaches the edge of the chunk, it will be terminated, leaving the chunk border discontinuous.
+
+    Based on the idea of ghost cells \cite{cell_based_erosion}, it can be further extended to ghost chunks, by making a copy of the neighbour chunks around the centre chunk within a user-specified range, so called free-slip range, which allows water droplet to freely move within, acting as if there is no chunk border. All heightmap of chunks within the free-slip range are merged into a large texture before erosion, and un-merged back to each chunk afterwards. To ensure the centre chunk is always at the centre of free-slip range, it is required that free-slip range is an odd positive integer.
+
+    \begin{figure}[H]
+        \includegraphics[trim={0 0 0 5cm},clip,width=\textwidth]{erosion-freeslip.jpg}
+        \caption{Shows the same terrain as \ref{vanilla_particle_erosion} but with free-slip erosion system. Notice artefacts around the chunk border has been eliminated.}
+        \label{freeslip_particle_erosion}
+    \end{figure}
+
+    It is important to ensure the same chunk is not copied and used by multiple erosion working threads, as it will encourage data racing. To mitigate, each chunk is assigned with an occupancy flag. When the chunk is being processed on GPU, the flag will be set to true, preventing all other erosion requests from copying the chunk; the flag should be set to false once the erosion has been finished and chunk data is copied back. Erosion request will be terminated if any of the chunk in the free-slip range has the flag set to true.
+
+    \begin{algorithm}[H]
+        \caption{Free-slip Erosion Requesting Algorithm}
+        \KwIn{Array of chunks in free-slip range, \(FC_{in}\)}
+        \KwOut{Array of chunks to be eroded, \(FC_{out}\)}
+        
+        Initialise \(FC_{out}\)\;
+        \For{\(chunk\) in \(FC_{in}\)}{
+            \If{\(chunk\) is occupied}{
+                \Return{\(\emptyset\)}
+            }
+            \(FC_{out} \leftarrow chunk\)
+        }
+
+        \For{\(chunk\) in \(FC_{out}\)}{
+            mark \(chunk\) as occupied\;
+        }
+
+        \Return{\(FC_{out}\)}
+    \end{algorithm}
+
+    After the range of chunks \(FC_{out}\) have been requested, and it is non-empty, all chunks will be merged and the merged texture buffer will be eroded. The operation will be reversed afterwards, by un-merging the texture buffer back to each chunk and unlock.
+
+    \subsection{Limitation}
+
+    Even though the result shown in \ref{freeslip_particle_erosion} demonstrated that particle-based hydraulic erosion can be easily parallelised, it can be argued that two or more water droplets may collide into each other at the same time during erosion, causing race condition. There is currently no robust algorithm for concurrent execution of particle-based hydraulic erosion, other than relying on hardware features such as atomic operations, which is suboptimal and usually incurs performance penalties.
+
+    Developing an optimal solution for GPU particle-based hydraulic erosion is beyond the scope of this project and can be left as a future work. Instead of relying on atomic operations, this project uses heuristics to minimise the hazard brought by race condition. To reduce the chance of having multiple droplets colliding into each other:
+
+    \begin{itemize}[label=\(\diamond\)]
+        \item Reduce the water particle density by either increasing the heightmap resolution or free-slip range, or decreasing the number of water droplet.
+        \item Run the erosion multiple times on the same chunks, each time with smaller droplet count.
+    \end{itemize}
+
+    The chance of collision at each time step can be formulated as the ratio between the number of water droplet in each run, and the number of pixel on the heightmap.
+
+    \section{Multi-biome Terrain}
+
+    Hydraulic erosion demonstrates the ability of refining a classic gradient noise generated terrain, yet the terrain still suffers from the problem of being plain. Biomes can be used to simulate some variations and diversity on the terrain.
+
+    The term \textit{biome} in biogeography is referred as an ecosystem with a collection of living organisms. For procedural terrain, biomes can be emulated by having different landscape shapes, texture and weather effects. For example, terrain on a mountain biome should be generated with high amplitude and frequency and a desert biome should be majorly textured with sand. These effects can be achieved by storing different generator parameters, such as noise parameters, for each biome, and select them based on the current biome.
+
+    \subsection{Biomemap}
+
+    Similar to heightmap, which acts as a lookup table of amount of displacement for each vertex on the chunk, biomemap can be used to lookup generator parameters for a biome. Each pixel on the biomemap is an integer ID representing an unique biome.
+
+    Likewise, biomemap can also be generated using procedural noise. During heightmap generation, the generator simply picks parameters based on biome ID looked up at each pixel.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{multibiome-nosmooth.jpg}
+        \caption{A terrain generated with two biomes with distinguishable altitude difference.}
+        \label{multibiome_simple}
+    \end{figure}
+
+    Figure \ref{multibiome_simple} shows a 2-biome terrain where the lower part is an ocean biome and the upper part is a mountain using mentioned method. Significantly, sharp cliff can be observed at the border of biomes.
+
+    The sharp cliff is caused by the discontinuity between biomes, each heightmap generator lookups biome ID from the current pixel without knowing the biome around it, such that they are working independently.
+
+    \subsection{Evaluation on Image Filters}
+
+    As heightmap is basically an image, an image filter can be used to post-process the heightmap to smooth out sharp edges.
+
+    Gaussian filter is a low-pass filter to reduce high frequency noise. In \ref{multibiome_simple}, the rapid transition between two biomes can be regarded as a high frequency noise. To avoid blurring out unnecessary areas, such as erosion details we have just created, Gaussian filter can be combined with a high-pass filter such as Sobel filter \cite{sobel_filter}, to select high frequency area and mask out other parts on the terrain, to only blur out the biome edge areas.
+
+    Selectively applying filter may bring another set of discontinuities to the terrain between the filtered and unfiltered area. In addition, high-pass filters are commonly used for edge detection and might be falsely triggered. The screenshot \ref{multibiome_simple} shows a terrain textured with normalmap generated using a 3 x 3 Sobel filter, and it allows us to depict the terrain topology; yet, all the terrain details shown are identified as edges and will be smoothed if this approach is taken.
+
+    Another way of smoothing an image is by performing downsampling followed by upsampling. This is basically done by reducing the resolution of heightmap and then scale it back to its originally size. During downsampling, information of most pixels are lost, therefore missing pixels can be recovered with interpolation when upsampling.
+
+    Nyquist-Shannon Information Theory \cite{shannon_theorem} states that this approach performs the best when the sampling frequency is at least double the bandwidth of the signal, and allows recovering the original signal losslessly. This poses a challenge of determining the bandwidth of the heightmap, and can be done by using Fourier Transform.
+
+    The plot \ref{downsample_cos} demonstrates a simple cosine wave with downsampling points. The signal can be fully reconstructed from the set of downsamples. Considering removal of all samples below zero, it is no longer possible to recreate the original curve as all samples above zero has the same amplitude.
+
+    Choosing a suitable interpolation function during upsampling is also important, in \ref{downsample_cos} a cosine function can be used for perfect reconstruction. In contrast a linear function may create sharp spikes at maxima and minima, as indicated by dark lines; a more gentle function like polynomial may create staircase-like plateau.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{down-sampling.jpg}
+        \caption{Illustrates a downsampled cosine signal. Graph is plotted with \textit{Desmos}.}
+        \label{downsample_cos}
+    \end{figure}
+
+    Regarding the heightmap, determining the best sampling frequency and interpolation method is challenging. A high sampling frequency allows recovering the original terrain better but the cliff artefacts may still present; a low frequency may produce plateau or spike artefacts due to the reasons listed above. Doing complex digital signal processing to avoid artefacts is beyond the scope of this project.
+
+    \subsection{Single Histogram Filter}
+
+    The analysis in the previous section indicates all the challenges to perform post-processing on the heightmap. Instead, a new method is presented in this project, the biomemap can be pre-processed and this information can be available during heightmap generation.
+
+    Percentage-closer filter \cite{pcf} (PCF) is a widely used technique in modern computer graphics for rendering antialiased shadow. Shadow is typically rendered using shadow mapping; it is a texture where each pixel records the distance from the light to rendering scene. If the distance of any object from viewer's perspective, to the light is greater than the value on shadow map, it means there is another object closer to the light, and the current object is in shadow. This operation is referred as depth comparison. After that, it ends up with a shadow texture.
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[width=0.5\textwidth]{shadow-map.jpg}
+        \caption{An example of shadow texture after performing depth comparison on the shadow map. The dark area indicates pixel in shadow.}
+        \label{shadow_texture}
+    \end{figure}
+
+    Example in \ref{shadow_texture} shows a clear border between shadow and non-shadow area, which suffers from the same problem as the biomemap for having sharp edges. Regular image filters mentioned previously would not work on shadow map as interpolating shadow map will yield nonsense data, as the shadow map records geometric distances. Meanwhile, filter a biomemap would yield invalid biome ID.
+
+    Hence, PCF can be used on the output shadow texture instead of the shadow map. As an example 5-by-5 filter kernel highlighted with thick border shown in \ref{shadow_texture}, we can find the ratio of shadow pixel over the total number of pixel within this kernel, this ratio can then be used as a shadow intensity multiplier.
+
+    \begin{align*}
+        Count_{shadow} &= 13 \\
+        I_{shadow} &= \frac{13}{5 * 5} = 0.52
+    \end{align*}
+
+    Hence, the light intensity can be obtained by reversing the value.
+
+    \begin{equation*}
+        I_{light} = 1 - I_{shadow} = 0.48
+    \end{equation*}
+
+    Unlike Gaussian filter which blurs out everything, one benefit of PCF is if all pixels within the kernels are not in shadow, \(I_{shadow} = 0.0\) and light intensity is not affected; and vice versa if all pixels are in shadow.
+
+    PCF works on binary data on the texture after depth comparison, to extend this principle so that it works on more than binary values, multiple variables can be used to store the count of each different pixel.
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[width=0.5\textwidth]{biome-map.jpg}
+        \caption{An example of biomemap extended from example \ref{shadow_texture}, each pixel represents an unique biome.}
+        \label{biome_map}
+    \end{figure}
+
+    For a 5-by-5 kernel shown in \ref{biome_map}, the number of times each biome presented within the kernel can be counted.
+
+    \begin{align*}
+        Count_{0} &= 7 \\
+        Count_{1} &= 12 \\
+        Count_{2} &= 6
+    \end{align*}
+
+    And similar to shadow map, calculate the intensity of each pixel by normalising the count.
+
+    \begin{align*}
+        I_{0} &= \frac{7}{25} = 0.28 \\
+        I_{1} &= \frac{12}{25} = 0.48 \\
+        I_{2} &= \frac{6}{25} = 0.24
+    \end{align*}
+
+    This intensity can then be used as a weight of contribution each biome should output to the final height at this pixel. This intensity value always adds up to one. Likewise, if there is only a single biome presented, the intensity of this biome is one.
+
+    This filter operates similar to a histogram, each biome ID can be assigned with a bin, sized one, and all bins are normalised at the end. This filter is named \textit{Single-Sized Bin Histogram Filter}, or shorter, \textit{Single Histogram Filter}, or in short SHF.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{system-comparison.jpg}
+        \caption{Side-by-side comparison of the multi-biome terrain with and without free-slip hydraulic erosion and biome edge smoothing with single histogram filter.}
+    \end{figure}
+
+    \subsubsection{Filter Optimisation}
+
+    Similar to vanilla 2D image filters, naïve SHF has time complexity of \(\Theta(Nr^{2})\) where $N$ is the number of pixel on the image and $r$ is the radius of the filter kernel.
+
+    A separable filter allows a 2D filter to be broken down into two 1D filters, effectively reduces the time complexity from quadratic to linear with respect to the radius of kernel, i.e., from \(\Theta(Nr^{2})\) to \(\Theta(Nr)\). Linear filters such as Gaussian and box filters are both separable filters and the separable property is often exploited to improve performance for large filter kernel.
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[width=0.6\textwidth]{separable-filter.jpg}
+        \caption{Shows a simple sum filter using separable property. The results from horizontal pass is cached and reused by multiple kernels during vertical pass.}
+    \end{figure}
+
+    PCF is a linear filter and is separable, so does SHF. This can be done by counting the pixels in the horizontal kernel, and then accumulate counting results from each pixel in the vertical kernel.
+
+    Another useful optimisation is by using accumulation \cite{fast_blur}. It is most commonly used in box filter, essentially a moving average filter, where all components in the kernel matrix is the same, meaning a uniform filter function can be applied to all pixels.
+
+    Instead of discarding the old kernel and recompute the next kernel, the new kernel \(K_{h}[y, x + 1]\) can be modified from the old kernel \(K_{h}[y, x]\) by removing the left-most pixel in the old kernel position, \(x - r\), and adding the right-most pixel in the new kernel position, \(x + r + 1\).
+
+    \begin{equation}
+        K_{h}[y, x + 1] = K_{h}[y, x] - f[y, x - r] + f[y, x + r + 1]
+    \end{equation}
+
+    Where \(f\) is the filter function applied to the pixel, here in box filter this is a function reads the weighted pixel value. The same principle can be applied when performing vertical filter pass.
+
+    Extending the idea to PCF so SHF, the filter function \(f\) can be replaced to a counting function. This effectively reduces the time complexity from linear to constant, with respect to the radius of the kernel; i.e., from \(\Theta(Nr)\) to \(\Theta(N)\).
+
+    \subsubsection{Single Histogram Data Structure}
+
+    For regular 2D array, the dimension can be represented as \(row * column\) and flatten into a linear array to avoid allocating memory for multi-dimensional array. To get the pixel index in the flattened array using 2D coordinate \(x, y\):
+
+    \begin{equation}
+        \label{linear_indexing}
+        Idx = x + y * row \text{ (row-major)}
+    \end{equation}
+
+    A 2D jagged array is a 2-dimension array where the number of element in every dimension is not equal. Unlike an aligned array, the number of element for each row is non-constant such that a separate array is needed to record the row lengths.
+
+    After applying SHF for the biomemap, a histogram is generated for each pixel. The number of bin for each pixel is not equal, and they are organised into a histogram texture, a sparse flattened jagged array. The data structure contains two arrays, an array of bins which encapsulates the biome ID and normalised weight, and an array of histogram start offsets to index the starting location of the histogram for each pixel. This sparse array abandons all bins with zero weight to save memory.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{single-histogram.jpg}
+        \caption{An example of single histogram data structure, showing biome ID of \(0, 1 \text{ and } 2\) and their respective weight.}
+        \label{histogram_data_structure}
+    \end{figure}
+
+    The single histogram data structure is illustrated in example \ref{histogram_data_structure}. To obtains bins for a histogram at the specific pixel, the flattened pixel index calculated from formula \ref{linear_indexing} is first used to locate the histogram, which is the same as the index to the offset array. The starting location of the first bin in the histogram is then looked up from the offset array. The number of bin within a histogram can be calculated as, where \(i\) is the index to the offset array:
+
+    \begin{equation}
+        Count = Offset[i + 1] - Offset[i]
+    \end{equation}
+
+    For this purpose, an additional offset is inserted at the back of the offset array to indicate the length of the bin array so the array access \(i + 1\) at the last pixel is valid.
+
+    \subsubsection{Implementation}
+
+    As a brief recap of aforementioned filter optimisation techniques, the SHF is implemented with each technique added progressively and benchmarked. All timings are shown in $ms$ with full compiler optimisation turned on favouring speed.
+
+    \begin{center}
+        \begin{tabular}{|c||c|c|c|}
+            \hline
+            Platform & Brute Force & Separable Kernel & \shortstack{Separable Kernel \\ and \\ Accumulation} \\
+            \hline \hline
+            Time Complexity & \(O(Nr^{2})\) & \(O(Nr)\) & \(O(N + r)\) \\
+            \hline
+            Single CPU & 1420 & --- & --- \\
+            \hline
+            \shortstack{4-Thread CPU \\ (MSVC 16.11)} & 780 & 250 & 60 \\
+            \hline
+            \shortstack{GPU \\ (CUDA 11.3)} & 510 & 270 & --- \\
+            \hline
+        \end{tabular}
+    \end{center}
+
+    The benchmarks are run with the following settings.
+
+    \begin{tabular}{rl}
+        \textbf{Biomemap Resolution} & 512 x 512 \\
+        \textbf{Free-slip Chunk} & 3 x 3 \\
+        \textbf{Kernel Radius} & 32 \(\Rightarrow (32 + 1)^{2}\) = 1089 pixels per kernel \\
+        \textbf{Biome ID Range} & [0, 15) \\
+        \textbf{Biome Generation} & Uniform Random Distribution
+    \end{tabular}
+
+    The algorithmic time complexity is non-deterministic, as it depends on the distribution of biomes presented in the kernel, and for each biome some memory operations is required to update the histogram. The implementation removes empty bins and keep the array linear and contiguous, and uses a simple hash table to quickly locate the bin in the histogram given a biome ID.
+    
+    Theoretically SHF performs better and requires less bin insertion and removal for biomes that are clustered together on the biomemap. The benchmark uses URD to generate biomemap to simulate a worst case scenario and destroys cache locality. In practice, biomes are clustered in regions like \ref{biome_map} and nearly always performs better than benchmark shown.
+
+    The idea of free-slip system introduced during hydraulic erosion is also considered in this implementation to tackle with the pixels at the edge of biomemap. At the beginning of each row and column, pixels outside of the centre biomemap need to be loaded from the free-slip neighbour chunks. As a result, the actual runtime is \(O(N + r)\); in practice, the radius is a very small number compared to the number of pixel, hence the overhead introduced is usually negligible.
+
+    The filter is also parallelised by assigning one thread to each row and column pixels, each thread has its own memory before merging into a complete histogram texture to avoid data racing. It is also interesting that GPU is unexpectedly underwhelming for SHF. This is due to the large amount of memory operation and it can consume GPU memory bandwidth quickly; and for a 512 x 512 texture, only 512 threads are used thus does not fully utilise GPU resource. Hence, it is not necessary to implement SHF on GPU further.
+
+    For further reference, the C++ source code is compiled on different compilers, with the result:
+
+    \begin{center}
+        \begin{tabular}{|c||c|c|}
+            \hline
+            \multirow{2}{*}{Compiler} & 
+            \multicolumn{2}{c|}{Runtime} \\
+            & -O0 & -O3 \\
+            \hline
+            \hline
+            MSVC 16 & 2500 & 60 \\
+            \hline
+            GCC 10 & 200 & 30 \\
+            \hline
+        \end{tabular}
+    \end{center}
+
+    It can be observed program compiled by MSVC performs at least twice as worse as compiled by GCC. Further testing shows the slowness comes from the standard library data structure, \textit{std::vector}, a dynamically sized array. The underlying reason is unknown as the internal implementation in MSVC is not known.
+
+    To avoid this problem, a custom container, \textit{SuperTerrain+::STPCompute::STPArrayList}, similar to C++ vector, is implemented, with some optimisation such as memory pooling to reduce memory allocation time.
+    
+    \begin{center}
+        \begin{tabular}{|c||c|c|}
+            \hline
+            \multirow{2}{*}{Compiler} & 
+            \multicolumn{2}{c|}{Runtime} \\
+            & -O0 & -O3 \\
+            \hline
+            \hline
+            (Both) & 140 & 25 \\
+            \hline
+        \end{tabular}
+    \end{center}
+
+    \section{Texture Splatting}
+
+    So far the terrain engine demonstrates the ability to generate refined and diverse landscape with free-slip hydraulic erosion and multi-biome heightmap. The next step is to texture the terrain with actual colour as all previous terrain screenshots are shown with the surface normal mapping.
+
+    Texture splatting \cite{texture_splatting} is a technique to combine multiple texture together with user-specified pattern. Splatting is typically controlled by a splatmap; a splatmap has multiple colour channels, and each channel is a mask to one texture. The pixel value indicates the intensity each texture should contribute to the final output, and usually the sum of intensity of a pixel over all channels is one. For procedural application, splatmap can be easily generated like heightmap and biomemap using noise.
+
+    \begin{figure}[H]
+        \center
+        \begin{subfigure}{0.3\textwidth}
+            \includegraphics[width=\textwidth]{splatting.jpg}
+            \caption{The final image blended with 3 channels.}
+        \end{subfigure}
+        \begin{subfigure}{0.3\textwidth}
+            \includegraphics[width=\textwidth]{splat-channel1.jpg}
+            \caption{Channel 1 to control soil texture}
+        \end{subfigure}
+        \begin{subfigure}{0.3\textwidth}
+            \includegraphics[width=\textwidth]{splat-channel2.jpg}
+            \caption{Channel 2 to control sand texture}
+        \end{subfigure}
+        \caption{An example of texture splatting using multi-channel splatmap. Created with \textit{Photoshop}.}
+    \end{figure}
+
+    \subsection{Rule-based Biome Dependent Texture Splatting}
+
+    A common way to generate splatmap procedurally is by using rules \cite{rule_splatting}. In \textit{SuperTerrain+} there are currently these rules implemented:
+
+    \begin{itemize}[label=\(\diamond\)]
+        \item Biome rule. The texture is enabled when the pixel is in the biome defined.
+        \item Altitude rule. The texture is enabled when the height of the current pixel is above a defined upper bound.
+        \item Gradient rule. The texture is enabled when the gradient of the current pixel is bounded by a slope range.
+    \end{itemize}
+
+    \subsubsection{Texture Database}
+    \label{sec:texture_db}
+
+    Managing different sets of rules can become a burden for developers when the number texture increases. To make things easier, texture rules are stored in a SQLite database and can be looked up with SQL queries.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{texture-db.png}
+        \caption{The architecture of the texture database. Diagram sketched with \textit{dbdiagram.io}}
+        \label{texture_db}
+    \end{figure}
+
+    A texture is defined as a collection of map with different types, for example a grass texture may contain grass albedo-map and grass normalmap. Maps with the same property, namely description which contains information such as dimension and number of channel of the map, are organised together in a map group; this helps to put map data into a 2D array texture when sending data to GPU memory.
+
+    Altitude and gradient rules are organised into two separate tables, and linked with texture by texture ID. Biome rule is merged into altitude and gradient rules for simplicity, and the biome ID in the table is denoted by \textit{Sample}.
+
+    A view group contains textures with the same texture view property such as UV scaling, this will be covered in more details later in the rendering chapter.
+
+    \subsubsection{Texture Definition Language}
+
+    Next, it is important to consider how to fill in the texture database efficiently. Typing all splat rules in the source code can be difficult for maintenance as slight tweaking to any value requires re-compilation of the program, which can take a long time during debugging.
+
+    Thus, rules can be defined in an external text file and serialised into the application in runtime. Common solutions like comma separated values work but due to the complexity of texture database architecture a more human-readable format is required.
+
+    Therefore, \textit{Texture Definition Language}, or TDL, is developed in this project as a custom scripting language to define all rules and data structures to be imported to the texture database. TDL is written against its specification provided in appendix \ref{project_resource}.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{tdl.png}
+        \caption{An example of a fully functioning TDL script.}
+        \label{tdl_script}
+    \end{figure}
+
+    A directive is a controlling command, and always begins with a hash tag. A texture directive declare texture names. A rule directive defines altitude and gradient splatting rules for biomes and has the following syntax:
+
+    \begin{center}
+        \textit{BiomeID} := (\textit{Rule Arguments} \(\rightarrow\) \textit{Texture Name}, ...), ...
+    \end{center}
+
+    It is allowed to have multiple entries defined within the same rule directive block, and each biome may have multiple rules to be defined. The \textit{Rule Arguments} part should be filled in with rule values in order as specified in the rule data structure in \ref{texture_db}.
+
+    Texture names declared here have no meaning but symbolic identifiers without any value. Users are still required to load texture map data manually based on texture names into the memory after TDL has been imported to a texture database in runtime.
+
+    \subsection{Single Channel Splatmap}
+
+    Although the classic splatting allows each texture to be controlled independently and blended together smoothly, the drawback of using multi-channel splatmap is obvious. A large-scale terrain involves use of a plenty of texture, each texture requires a channel on the splatmap, and the memory requirement for storing splatmap grows dramatically.
+
+    To reduce the memory usage, splatmap used in this project is modified slightly so it operates similar to biomemap, each pixel has a value of texture ID which maps uniquely to a texture; then, texture shader can pick texture based on ID looked up from the splatmap.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{sharp-texture.jpg}
+        \caption{Illustrates a textured terrain after applying texture rules in \ref{tdl_script}.}
+        \label{splatting_simple}
+    \end{figure}
+
+    Figure \ref{splatting_simple} demonstrates a textured terrain using the single channel splatmap. A similar issue encountered in \ref{multibiome_simple} can be observed as well for having sharp transition between texture regions.
+    
+    The single channel splatmap shows two major drawbacks even though it cuts down memory usage. Firstly, a single colour channel only allows having one texture region per pixel, unlike classic multi-channel splatmap. Also, inherited from biomemap, each pixel holds a discrete value, therefore smooth transition cannot be achieved simply.
+    
+    For the application in this project, use of multiple texture per pixel is not required therefore this drawback can be accepted. For smooth transition, PCF discussed earlier can be used for smoothing texture region.
+
+    \begin{algorithm}[H]
+        \caption{Texture Region Smoothing Algorithm (PCF)}
+        \KwIn{2D pixel coordinate, \(p_{xy}\), \\
+        filter kernel radius, \(r\)}
+        \KwOut{The output texture colour for the current pixel, \(colour\)}
+        \KwData{Texture splatmap and texture splatting database}
+
+        \SetKwFunction{texture}{readValueFromTexture}
+
+        Initialise a 3-component vector \(colour\) for storing RGB value\;
+        \(colour \leftarrow (0.0, 0.0, 0.0)\)\;
+        \For{\(y\) in \([-r, r]\)}{
+            \For{\(x\) in \([-r, r]\)}{
+                \(current\_pixel \leftarrow p_{xy} + (x, y)\)\;
+                \(textureID \leftarrow\) \texture{\(splatmap\), \(current\_pixel\)}\;
+                Find the texture, \(tex\), with texture ID of \(textureID\)\;
+                \(colour \leftarrow colour +\) \texture{\(tex\), \(p_{xy}\)}\;
+            }
+        }
+        \(colour \leftarrow \dfrac{colour}{(2r + 1)^{2}}\)\;
+
+        \Return{\(colour\)}
+    \end{algorithm}
+
+    Where the function \textbf{readValueFromTexture} can be regarded as a texture lookup function which reads the pixel value of a given texture at a given pixel coordinate.
+    
+    Alternatively, SHF developed earlier can also be applied to this scenario.
+
+    \begin{algorithm}[H]
+        \caption{Texture Region Smoothing Algorithm (SHF)}
+        \KwData{All preconditions remain the same as the PCF version}
+
+        Initialise a zero-filled array \(histogram\) with \(n\) elements where \(n\) is the total number of texture\;
+        \For{\(y\) in \([-r, r]\)}{
+            \For{\(x\) in \([-r, r]\)}{
+                \(current\_pixel \leftarrow p_{xy} + (x, y)\)\;
+                \(textureID \leftarrow\) \texture{\(splatmap\), \(current\_pixel\)}\;
+                \(histogram[textureID] \leftarrow histogram[textureID] + 1\)\;
+            }
+        }
+        
+        \(totalPixel \leftarrow (2r + 1)^{2}\)\;
+        \For{\(textureID\) in \(histogram\)}{
+            \(count \leftarrow histogram[textureID]\)\;
+            \If{\(count\) is \(0\)}{
+                \Continue
+            }
+
+            Find the texture, \(tex\), with texture ID of \(textureID\)\;
+            \(colour \leftarrow colour + \dfrac{count}{totalPixel} \times\) \texture{\(tex\), \(p_{xy}\)}\;
+        }
+
+        \Return{\(colour\)}
+    \end{algorithm}
+
+    For texture region smoothing, a relatively small filter radius is sufficient and filtering is fast enough to be done in GPU shader during rendering without using filter optimisations. Although both PCF and SHF produces the same result, a simple benchmark for a 5-by-5 ($r = 2$) filter kernel between two filters shows that SHF can be at most 8 times faster than PCF. The total number of texture region used is 6.
+
+    \begin{center}
+        \begin{tabular}{|c||c|c|}
+            \hline
+            {} & PCF & SHF \\
+            \hline
+            \hline
+            min & 3.3 & 0.4 \\
+            \hline
+            max & 5.5 & 0.7 \\
+            \hline
+        \end{tabular}
+    \end{center}
+    \textit{Timings are measured in ms and includes time taken to finish the whole fragment shading process.}
+
+    The slowness of PCF is mainly caused by the texture lookup overhead. In the PCF version texture lookup function is called twice in every iteration, and in total it is called for \(2(2r + 1)^{2}\) times. In contrast the SHF implementation first builds the single histogram and calls the texture lookup function on the splatmap for \((2r + 1)^{2}\) times, and reads the texture for $N$ times where $N$ is the number of non-zero count histogram bin in the current filter kernel and it is strictly less than the total number of texture region. Hence, if $N$ is less than \((2r + 1)^{2}\), SHF should be faster than PCF. In most cases, $N$ is a small number as a majority of texture regions are clustered together.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{smooth-texture-band.jpg}
+        \caption{Shows a rule-based textured terrain after region smoothing is applied.}
+        \label{smooth_texture_band}
+    \end{figure}
+
+    \ref{smooth_texture_band} demonstrates that both PCF and SHF can be used to smooth the texture region. Though unnoticeable when observing from distance, if the viewer approaches the terrain, colour banding effect can be observed.
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[trim=0 0 0 1cm,clip,width=0.5\textwidth]{smooth-texture-band-close.jpg}
+        \caption{Shows a closed up view of \ref{smooth_texture_band}.}
+    \end{figure}
+
+    This is due to the fact that pixel values on a single channel splatmap is discrete, and when the filter kernel radius is small, the gradient of colour has a very limited range. For a 5-by-5 filter, there are only 25 pixels in the kernel, each transition can only be incremented by \(\dfrac{1}{25}\).
+
+    Rather than increasing the filter radius as it will be too expensive for real-time application, noise can be used to trick human eyes to reduce quantisation pattern for image with limited display range \cite{dithering}. This can be achieved by applying Monte Carlo sampling \cite{pcf}, for example by performing jittered sampling, also known as stratified sampling \cite{gems2_stratified_sampling}.
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[width=0.8\textwidth]{stratified-sampling.jpg}
+        \caption{A simple demonstration of uniform sampling (top) versus stratified sampling (bottom) as the kernel moves up pixel by pixel. The numbers indicate the number of sample passed.}
+    \end{figure}
+
+    A filter kernel is divided into n-by-n grids, each grid is consist of a number of pixels. Instead of taking samples at the middle of each grid in the kernel, sampling points can be slightly displaced from its original position using noise, but they are still within their original grid boundary to avoid sample clustering.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{smooth-texture.jpg}
+        \caption{A textured terrain similar to \ref{smooth_texture_band} but with stratified sampling.}
+    \end{figure}
+
+    Noise is generated and stored into a 3D noise texture, and mapped to the terrain repeatedly. The $x$ and $y$ component of the noise is looked up using terrain texture coordinate while the $z$ component is determined by the sample ID within the kernel to ensure randomness. Sample ID in the kernel has range \([0, n^{2})\) where $n$ denotes an n-by-n kernel.
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[trim=0 0 0 1cm,clip,width=0.5\textwidth]{smooth-texture-close.jpg}
+        \caption{Shows a closed up view of the stratified-sampled terrain. Notice colour banding effects have been distorted with noise.}
+    \end{figure}
+
+    \section{Terrain Generation Pipeline}
+
+    To put all terrain generation components together so a complete terrain can be generated and passed on to the renderer, biomemap is first generated before heightmap generation as heightmap generator needs to pick biome parameters and perform biome smoothing using the biomemap. When heightmap is available hydraulic erosion will be performed, followed by splatmap generation before a chunk is eligible for rendering.
+
+    \begin{equation*}
+        \text{Empty Chunk } \rightarrow \text{ Biomemap } \rightarrow \text{ Heightmap } \rightarrow \text{ Erosion } \rightarrow \text{ Splatmap}
+    \end{equation*}
+
+    These data dependencies paradigm make a pipeline architecture a nearly perfect solution. However, it can be difficult to parallelise a streamlined procedure as later pipeline stages are not able to start before the previous one has finished and made the data available.
+    
+    In addition, the pipeline architecture forces any given chunk to finish the entire procedure even when some of the data are not needed right now. Hydraulic erosion requires neighbour free-slip chunks loaded with heightmap so water droplets can move freely, however it is not required that heightmap in the neighbour chunks are eroded. Free-slip logic also applies to biome smoothing, neighbour chunks are required to be loaded with biomemap to generate a single histogram so that a smoothed multi-biome heightmap can then be generated for the centre chunk, and the only requirement for the neighbour chunks is they have biomemap available. On the other hand, if a chunk has already have the biomemap generated, it should skip biomemap generation rather than running the generation pipeline from the beginning.
+
+    Therefore, it is better to break down the streamlined process into separate sub-pipelines, and have each of sub-pipeline working independently. This allows the controller to select sub-pipeline to execute based on the data requirement, and potentially allowing concurrent sub-pipeline execution.
+
+    \subsection{Controller and Sub-pipeline Architecture}
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{generation-pipeline.jpg}
+        \caption{A complete overview of the asynchronous programmable terrain generation pipeline. For generation components typical runtime measured in \textit{ms} and place of generation is also shown.}
+        \label{generation_pipeline}
+    \end{figure}
+
+    The proposed architecture used in this project is illustrated in \ref{generation_pipeline}. There exists a master pipeline controller which receives chunk request from the external. It will attempt to search for this chunk in the chunk cache, or issues generation instructions if not found. Finally, rather than letting the user wait for the result, data ready will be placed into a result receiver where the user should retrieve their data later.
+
+    The main terrain generation pipeline is broken down into 4 sub-pipelines, each sub-pipeline are capable of receiving multiple generation instructions, and process data asynchronously before returns to the master controller. To allow greater flexibility, all sub-pipelines are designed as interfaces so user can customise the generation algorithm. CUDA runtime compiler (NVRTC) provides Just-in-Time compilation and is integrated into heightmap and splatmap generator so the source code can be compiled and linked in runtime without modifying the executable, allowing more efficient parameter tweaking during development.
+
+    \subsection{Chunk Data Structure}
+
+    Since the controller needs to know which sub-pipeline to invoke, a chunk needs to inform the controller about its current status. The chunk data structure is therefore organised as follows:
+
+    \begin{center}
+        \begin{tabular}{rl}
+            \textbf{MapSize}: & 2 * UInt32 \\
+            \textbf{Heightmap}: & Float32 \\
+            \textbf{Biomemap}: & UInt16 \\
+            \textbf{RenderingBuffer}: & UInt16 \\
+            \textbf{Occupied}: & Atomic Bool \\
+            \textbf{State}: & Atomic UInt8
+        \end{tabular}
+    \end{center}
+
+    The map size indicates the number of pixel each 2-dimension map has within the chunk. Rendering buffer stores the same content as heightmap does but is formatted from 32-bit floating point to 16-bit fixed point represented by 16-bit integer, this helps to relief stress on memory bandwidth when copying heightmap data frequently from CPU to GPU memory while 16-bit format still produces good quality. The original 32-bit floating point heightmap is also kept for free-slip erosion.
+
+    Two flags are stored in a chunk to indicate its status. The occupancy flag has been introduced previously in free-slip particle-based hydraulic erosion, for ensuring a chunk is not used as neighbour chunks by multiple erosion workers. Another flag is setup to record the state of the chunk. A chunk may have 4 different states, being \textit{Empty}, \textit{Biomemap Ready}, \textit{Heightmap Ready} and \textit{Complete}, to indicate which sub-pipeline the chunk has gone through already.
+
+    Spaltmap is not stored as a part of the chunk data structure, as the computational complexity of generating a splatmap is low and hence it can be done right before chunk is returned to the user to save memory, and discarded whenever the user has requested new chunks.
+
+    \subsection{Recursive Neighbour Checking Function}
+
+    Chunk provider receives chunk request from the chunk manager and interacts with the chunk cache and all generation sub-pipelines, while ensuring data safety when handling asynchronous generation.
+
+    The recursive neighbour checking (RNC) function takes a chunk coordinate and finds the chunk data structure with this from the chunk cache. If the chunk is found and has state greater than the \textit{expected state} at this recursive depth, RNC returns the chunk immediately. However, if the chunk is currently being occupied, null is returned. Otherwise, RNC function proceeds.
+
+    RNC function is called by the chunk manager for every chunk in the rendered area. If RNC returns a valid chunk data structure, chunk maps will be copied to GPU.
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[width=0.65\textwidth]{chunk-provider-impl.jpg}
+        \caption{A diagram demonstrates the recursive neighbour checking strategy.}
+    \end{figure}
+
+    The RNC function has two recursive passes, the first pass is called the \textit{Heightmap Pass} which makes sure chunk has the heightmap eroded and ready for rendering. The second pass is called the \textit{Biomemap Pass} which ensures chunk has biomemap and heightmap generated. For each pass, the term \textit{expected state} is defined as:
+
+    \begin{align*}
+        \text{\textit{Heightmap Pass} } &\rightarrow \text{ \textit{Complete}} \\
+        \text{\textit{Biomemap Pass} } &\rightarrow \text{ \textit{Heightmap Ready}}
+    \end{align*}
+
+    The RNC function comes with two procedures. The first procedure retrieve all neighbour chunks for the given chunk and check each of their status for free-slip generation later. Chunk being occupied will be skipped. For \textit{Heightmap Pass}, the RNC function will be invoked again to enter the next pass. For \textit{Biomemap Pass}, biomemap will be generated for the current neighbour chunk if it is empty. If the RNC function called during \textit{Heightmap Pass} returns a null, or biomemap generation is dispatched in \textit{Biomemap Pass}, RNC function will be flagged to not enter the second procedure.
+
+    Otherwise, it enters the second procedure, we can be sure that all chunks in the neighbour have data ready for free-slip generation. For \textit{Biomemap Pass}, free-slip logic is used for smoothing the multi-biome heightmap while for \textit{Heightmap Pass} it is used for hydraulic erosion. After invoking generation instructions, the RNC function finally returns a null.
+
+    To ensure data safety, all chunks are marked as occupied whenever a compute is dispatched for given chunk(s), and unoccupied by generators when returned. Chunk state is updated with the similar manner. Whenever any generation is dispatched, or the chunk is detected to be occupied, null is returned from the function to indicate that this chunk is currently being generated or used, and will be checked next time (typically next frame) RNC is called; this ensures that the pipeline is non-blocking and the master controller does not need to wait for the generation to finish. RNC function only returns the chunk data structure whenever the chunk is ready for the current pass and not occupied.
+
+    And finally when all chunks in the rendered area are copied to GPU, texture factory is invoked to generate splatmap for texture splatting. All chunk data are packed and placed to result receiver and the user is able to retrieve.
+
+    \chapter{Photorealistic Rendering}
+
+    \section{Atmospheric Scattering}
+
+    So far a lot of attempts have been made to refine the terrain mesh model, having some good rendering models is also important for presenting the terrain in a realistic manner.
+
+    The first aspect should be worked on is the sky model. The engine currently renders the sky using a static skybox model. It is done by enclosing the whole scene inside a box, and texture the interior of the box with a 6-face seamless environment maps; in other words, the sky is a static texture.
+
+    Rendering sky from environment maps is still a common practice in modern computer graphics because it is very cheap, and can be easily extended to implement image-based lighting model. Yet, use of pre-computed dataset violates the main objective in this project; and it can be argued that static texture does not allow the scene to react to dynamic changes such as time and season. One way to tackle this is by having multiple sets of environment map, but it also increases the storage demand. As the processing power of modern GPU has improved significantly, it should be possible that sky can be generated procedurally from physics models in runtime.
+
+    In real life, the colour and sun and sky is modelled using atmospheric scattering equations. It can be observed that the sky on the Earth is blue at noontime when the sun elevation is nearly vertical to the ground and gradually fades to orange-yellow at sunrise or sunset when the sunlight angle of incident is nearly parallel to the ground. This is because the light energy is dissipated away due to the interaction between particles in the air before it is intercepted by us \cite{atmo_scattering}.
+
+    \subsubsection{Scattering Model}
+
+    There are two physically based scattering models. The colour of the sky is modelled with Rayleigh scattering equation which focuses on the interaction between air molecules whereas sunlight is modelled with Mie scattering equation and it specifies the interaction between bigger aerosol particles existing in the air \cite{atmo_scattering}.
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[width=0.85\textwidth]{scattering-model.jpg}
+        \caption{A diagram showing Rayleigh and Mie scattering model from left to right.}
+    \end{figure}
+
+    Air molecules are small and have nearly the same size as the wavelength of light. Light with short wavelength such as blue and violet scatters away more than that with long wavelength like green and red; such that at noontime blue colour is scattered into our eyes and makes the entire sky looking blue while other colours hits directly to the ground. At sunrise or sunset it becomes the opposite. The Rayleigh scattering intensity \(I_{r}\) is inversely proportional to the quartic of wavelength of the light \(\lambda\).
+
+    \begin{equation}
+        I_{r}(\lambda) \propto \frac{1}{\lambda^{4}}
+    \end{equation}
+
+    Aerosol particles are much bigger in contrast, and light are scattered away with nearly equal weights in all directions. The sunlight needs to travel a longer distance before reaching the viewer at sunrise/sunset than at noontime, which allows the light to be scattered away more, and looking as if the sun is bigger and dimmer.
+
+    The intensity of both Rayleigh and Mie scattering, \(I_{r}\) and \(I_{m}\) respectively, scales with the altitude of the viewer \(h\). Observing at a higher altitude means closer to the upper bound of the atmosphere and hence light rays have less chance to scatter. And the intensities are both proportional to the viewing height.
+
+    \begin{equation}
+        I_{r}, I_{m} \propto e^{\dfrac{-h}{H_{0}}}
+    \end{equation}
+
+    where \(H_{0}\) is the altitude of upper bound of atmosphere.
+
+    \subsubsection{Implementation}
+
+    Denoting the distance to travel as \(D\) and scattering intensity at location \(s\) as \(I(s)\), the total intensity can be modelled as:
+
+    \begin{equation}
+        I = \int_{0}^{D} I_{r}(s) ds + \int_{0}^{D} I_{m}(s) ds
+    \end{equation}
+
+    Simulation of both scattering models in a physically accurate manner can be exceptionally expensive because particles are small and scattering happens at every step light ray travels as soon as the ray enters the atmosphere before reaching the viewer.
+
+    A common practice of solving integral equation is by replacing an integral with a sum of an infinite series \cite{rendering_equation}. As an approximation, we can sum the series with a finite number of terms, and as the number of term increases the result gradually converges. 
+    
+    In this project, ray marching is implemented for simulating how light ray travels and accumulating results from the finite series. It is done by starting the light ray at the viewer's position and marching towards the boundary of atmosphere. The entire ray is divided into equal segments, and scattering equations can be applied at each ray step. To further reduce the cost of rendering for real-time application, each ray is limited to so it can only scatter once at each sampling point.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{sun-sky.png}
+        \caption{Procedurally rendered atmosphere allow the environment to be changed based on sun position and simulate aforementioned sky and sun effects.}
+        \label{sun_sky}
+    \end{figure}
+
+    \subsection{HDR Tone Mapping}
+
+    Computer display only has a limited range of display called dynamic range. 8-bit standard dynamic range (SDR) only allows displaying RGB value in range of \([0, 255]\), or in normalised floating point number, \([0.0, 1.0]\). Colour values going beyond this range will simply be clamped.
+
+    Sharp edge can be observed around the border to sky and sun in \ref{sun_sky}. For a physically based rendering model, the intensity of sun can easily go beyond SDR, and so the middle of the sun where it is brighter will have colour values clamped.
+
+    A way of tackle this is by going into the high dynamic range (HDR) to extend the display range to beyond SDR. A tone mapping function is a mathematical function that maps any value in range \([0.0, +\infty]\) back to SDR smoothly instead of being a linear clamp function.
+
+    Theoretically any function satisfying this requirement works and there is no fixed standard which tone mapping function is the best as it highly depends on application. One of the most widely used solution is the Reinhard tone mapping operator \cite{reinhard} which can be simplified as:
+
+    \begin{equation}
+        L_{d}(x, y) = \frac{L(x, y)(1 + \dfrac{L(x, y)}{w^{2}})}{1 + L(x, y)}
+    \end{equation}
+
+    where \(L(x, y)\) is the luminance of the pixel at $x$ and $y$ on the image and $w$ is a user-specified white point value that adjusts the maximum luminance of the image.
+
+    Modern graphics application tends to use more complex functions called filmic tone mapping as Reinhard function can desaturate dark zone on the image severely. A simple demonstration in \ref{tmo} shows that Reinhard function is generally much lower than the others, meaning it does not fully utilises the SDR efficiently.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{tone-mapping.png}
+        \caption{A sketch of different tone mapping operators. Sketch is provided by Bruno Opsenica on \textit{Shadertoy} \cite{shadertoy_tmo}.}
+        \label{tmo}
+    \end{figure}
+
+    Gamma correction is also required to accurately display the image as the dynamic range on modern computer monitors is in fact non-linear in the SDR. Gamma correction can be easily done by applying:
+
+    \begin{equation}
+        L_{d}(\gamma) = L^{\dfrac{1}{\gamma}}
+    \end{equation}
+
+    where $\gamma$ is the gamma value which depends on how the monitor is calibrated in the factory. \(\gamma = 2.2\) is widely used as a generalisation.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{sun-sky-hdr.png}
+        \caption{The same atmosphere as \ref{sun_sky}, with \textit{AMD ACES} tone mapping shown in \ref{tmo} and gamma correction applied.}
+    \end{figure}
+
+    \subsection{Planet Orbiting Model}
+
+    The motion of the sun can be modelled more realistically instead of a simple sine function taking time as input.
+
+    Local solar time (LST) is the time based on the position of the sun. The LST model on the Earth is overly complicated \cite{daylight_model} to correct time zone, and is simplified to assume that LST equals to local time in this project. Then, solar declination $\delta$ can be calculated, with simplification to allow customisation by the user:
+
+    \begin{equation}
+        \delta = -AT\cos{\left( 2\pi\dfrac{J}{YL} \right)}
+    \end{equation}
+
+    where $AT$ is the axial tilt, also known as obliquity, of the planet. For the Earth, $AT$ is \(23.45^{\circ} = 0.4093 rad\). $J$ is the day of the year in range \([0, YL)\) and $YL$ is the length of the year in day.
+
+    Solar position is represented by solar zenith \(\theta\) and azimuth \(\phi\) angle \cite{daylight_model}. The hour angle \(h\) is how much the planet has rotated based on LST. Zenith angle starts from the vertical, to make it more intuitive, elevation angle \(\alpha\) which starts from the horizontal is used.
+
+    \begin{align}
+        h &= \frac{2\pi}{DL} (LST - \frac{DL}{2}) = \frac{2LST \pi}{DL} - \pi \\
+        \theta &= \frac{\pi}{2} - \alpha \\
+        \alpha &= \arcsin{( \sin{l}\sin{\delta} - \cos{l}\cos{\delta}\cos{h} )} \\
+        \phi &= \arccos{\left( \dfrac{\cos{l}\sin{\delta} - \sin{l}\cos{\delta}\cos{h}}{\cos{\alpha}} \right)}
+    \end{align}
+
+    where $l$ is the latitude, $DL$ is the length of a day and $LST$ has range \([0, DL)\).
+
+    It should be careful that azimuth angle starts from the north at radian of 0, which is represented by the direction of \((0, 0, -1)\) in OpenGL coordinate system. Therefore, the sign of azimuth angle needs to flipped if the time is currently in the afternoon.
+
+    The normalised sun direction \(SD\) can then be converted from Euler angles:
+
+    \begin{align}
+        SD_{x} &= \cos{\alpha}\cos{\phi} \\
+        SD_{y} &= \sin{\alpha} \\
+        SD_{z} &= \cos{\alpha}\sin{\phi}
+    \end{align}
+
+    As a brief summary, the simplified solar model used in this project allows user to adjust various properties so it is not limited to the Earth and the Sun system only. The geographically-based solar model allows us to observe seasonal effects like change in daylight length at different time in a year even polar day and night.
+
+    \subsection{Aerial Perspective}
+
+    The terrain model and procedurally generated sky can be put together to create a complete scenery. However, simply putting everything together results in artefacts, because there is a maximum rendering distance and anything beyond which will be clipped.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{no-aerial-perspective.jpg}
+        \caption{Render the terrain along with the sky, notice terrain outside maximum visible range is clipped, leaving a sharp cut-off.}
+        \label{no_aerial_perspective}
+    \end{figure}
+
+    Aerial perspective is the effect of object extinction due to atmospheric scattering in the distance. It can be modelled similarly like how the atmosphere is rendered, and march the ray from the viewer to the closest object in the scene instead of boundary of atmosphere \cite{daylight_model}. Aerial perspective effect allows the terrain to be blended with the atmosphere background smoothly rather than having a sharp cut-off when the terrain leaves the maximum visible distance.
+
+    Another important aspect to be considered is the extinction factor which determines the ratio between atmosphere and terrain colour \cite{daylight_model}. As an approximation, the extinction factor can be linearly interpolated between 0 and 1 based on the distance to the scene.
+
+    The original method for achieving aerial perspective starts the ray at the viewer and ends at the terrain. This method works better when the draw distance is very far as if the terrain is extended to the horizon. For short draw distance like shown in \ref{no_aerial_perspective}, the aerial perspective effect may not be noticeable as the amount of scattering scales with the distance. To allow hiding the cut-off artefact, terrain can be gradually blended with the sky colour as the distance increases. This can be trivially achieved by alpha blending with the sky colour.
+
+    \begin{equation}
+        C_{out} = (1 - \epsilon) C_{terrain} + \epsilon C_{sky}
+    \end{equation}
+
+    where $\epsilon$ is the extinction factor, and the terrain is fully extinct when \(\epsilon = 1\); $C$ is the colour.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{aerial-perspective.jpg}
+        \caption{The same terrain as \ref{no_aerial_perspective} but with aerial perspective applied. Edge artefact is no longer visible as the terrain gradually fades away.}
+    \end{figure}
+
+    \section{Terrain Shading}
+
+    \subsection{Lighting}
+
+    Light effect can now be added to the terrain after the sun and sky is generated. Due to time constrain, physically-based shading model is not considered. Despite it is not accurate, Blinn-Phong reflection model \cite{bp_shading} is an old but still popular solution and works well in most applications.
+
+    A Blinn-Phong model comes with 3 light components. Ambient light approximates indirect light falls uniformly onto the surface from all directions. Diffuse light affects the surface when directly lit by the light source. Specular light simulates reflection. The output colour of the scene is therefore the sum of all 3 components.
+
+    In this project, ambient lighting is approximated with a constant colour taken from the skylight. Diffuse and specular lighting is taken from the sunlight. To enable dynamic lighting colour as time advances in the world, the light spectrum of skylight and sunlight are computed as a light colour lookup table. Strictly speaking, both colours are determined by the elevation of the sun which is controlled by the time, such that the light colours can be looked up using sun elevation.
+
+    \begin{figure}[H]
+        \begin{subfigure}{0.48\textwidth}
+            \includegraphics[width=\textwidth]{lighting-morning.jpg}
+            \caption{Morning}
+        \end{subfigure}
+        \begin{subfigure}{0.48\textwidth}
+            \includegraphics[width=\textwidth]{lighting-noon.jpg}
+            \caption{Noon}
+        \end{subfigure}
+        \caption{A lit terrain. Surface details such as erosion marks can be depicted from the reflection. The capability of dynamically responding to the time in a day can be observed.}
+    \end{figure}
+
+    \subsection{Light Occlusion}
+
+    \subsubsection{Shadow Mapping}
+
+    Shadow is another vital component in lighting for improving visual quality. As being discussed in the previous chapter, shadow mapping is the modern approach for rendering shadows. Shadow map is obtained by taking a depth texture from light's perspective, essentially by placing a camera with the same position and facing as the light does, to record the distance from light to the scene.
+
+    Obtaining the shadow map is a challenge posed in this scenario. Sun is emulated as if it is infinitely far away therefore it is a directional light source, represented by a normalised directional vector, and the position of light source is unknown. Typically it can be achieved by placing the light camera along the line parallel to the direction, and the original of the line is set to the viewer.
+
+    The distance from light and the scene can drastically affect the shadow quality. Placing it far away allows capturing a wider range of the scene, but the resolution is decreased; while placing it closer gives the opposite result.
+    
+    Cascaded shadow mapping (CSM) is an adaptive solution by taking multiple shadow maps from different distances to the scene \cite{csm}. When rendering shadows for a pixel, we can first select the shadow map taken closest to the scene, and if the pixel is outside the range, take the second one; this operation is performed repeatedly until the suitable map is found. Such that the resolution of the shadow is higher near the user while keeping a reasonable shadow range.
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[width=0.6\textwidth]{csm.png}
+        \caption{A simple demonstration on how CSM adaptively switches shadow map based on distance. As the level increases, resolution of the shadow decreases, more aliases can be seen.}
+    \end{figure}
+
+    After performing shadow testing, region in shadows is considered to be occluded, thus diffuse and specular light has intensities set to zero, leaving only ambient light in effect. Additionally, techniques such as PCF mentioned earlier can be used to render antialiased shadow \cite{pcf}. The light intensity output from the PCF function can be used instead of setting diffuse and specular light to zero.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{shadow.jpg}
+        \caption{An early morning terrain rendered with shadows. Shadow here shows an un-filtered hard shadow.}
+    \end{figure}
+
+    \subsubsection{Ambient Occlusion}
+
+    Shadow mapping is the technique for occluding direct lighting but does not modify the intensities of ambient light. Ambient occlusion can be used in conjunction for this purpose.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{terrain-no-ao.jpg}
+        \caption{A terrain in shadow. No terrain details can be observed as ambient light does not reflect.}
+        \label{no_ao}
+    \end{figure}
+
+    Screen-space ambient occlusion (SSAO) was first developed by \textit{Crytek} \cite{ssao}. A spherical sampling kernel is constructed, centred at the point where the light ray hits the surface of a geometry. Monte Carlo sampling is performed within the sampling kernel, and the algorithm returns a number in range of \([0, s]\) indicating how many sample falls outside the geometry where $s$ is the total number of random samples. The number will finally be normalised to an occlusion factor.
+
+    The sample-counting method in SSAO is discrete therefore aliasing might be observed in the output if the number of sample taken is small. Horizon-based ambient occlusion (HBAO) \cite{hbao} brings the algorithm to the continuous domain. The horizon is defined as the tangent to the surface where the light ray hits, and construct a sampling kernel similarly. Incident ray is scattered around uniformly into a number of rays and the distance to the closest hit to the geometry surface is tested, or if there is no hit scattered rays will be terminated at the circumference of the sampling kernel. The distance obtained is inversely proportional to the strength of occlusion, and results from all scattered rays are accumulated for the final output.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{ao-illustration.jpg}
+        \caption{A comparison between two popular ambient occlusion algorithms.}
+    \end{figure}
+
+    The occlusion factor can be used in a similar fashion as the shadow factor but only applies to ambient light. Occlusion factors are stored in an ambient occlusion texture. The texture can be optionally blurred to create soft occlusion, and reduce noise pattern in the case of SSAO.
+
+    Both methods give different visual styles. SSAO tends to over-occluding the scene, making the terrain darker while HBAO gives better quality but at the same time occlusion can be unnoticeable. For the consideration of engine flexibility, both algorithms are implemented in the engine and the user is allowed to select.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{terrain-ssao.jpg}
+        \caption{A terrain similar to \ref{no_ao} but rendered with ambient occlusion. Notice AO allows us to see the terrain details even when it is in shadow.}
+    \end{figure}
+
+    \subsection{Adaptive Texture Scaling}
+
+    The terrain is currently being texture based on the splatmap generated as discussed in the previous chapter. Another important aspect to consider when mapping texture onto a geometry is UV scaling.
+
+    UV coordinate, also known as texture coordinate, is a 2D coordinate system that specifies how each pixel on a texture should be mapped onto the geometry. UV coordinate for a texture is typically normalised to the range \([0, 1]\), but it can also go beyond the normalised range. In this case user needs to specify how the texture outside the range should be treated.
+
+    Repeat mapping tells the graphics API that texture should be repeatedly tiled for any UV beyond the normalised range. This allows the texture to be extended indefinitely and increase the pixel density.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{uv-scale.jpg}
+        \caption{Left: A regular texture coordinate system. Right: A double-scaled UV which causes the same texture to be repeatedly mapped 4 times.}
+    \end{figure}
+
+    Picking a suitable texture scale can be a difficult task for a large scene like procedure terrain. Using a small UV scale is generally not preferable as it will makes the texture figure gigantic and blurry, especially at close-range.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{texture-small-scale.jpg}
+        \caption{A terrain uses 1 time texture scale.}
+    \end{figure}
+
+    So instead, a big UV scale allows to tile the texture to increase texture pixel density. However, it will start giving artefacts called texture tiling repetition for which the repeated pattern can be easily observed. In addition, texture details generally are too small to be seen clearly in the distance.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{texture-big-scale.jpg}
+        \caption{A terrain uses 64 times texture scale.}
+    \end{figure}
+
+    As a summary, small scale gives better look in the distance and big scale is beneficial for close range. Instead of using a constant texture scaling factor, the renderer should adaptively pick it based on the distance. It is also important that different texture may require different scales depends on application. For example grass and sand are small figures and a large scale should be used in general while rocks are large figures and a small scale is sufficient.
+
+    \subsubsection{Triple Scales Blending}
+
+    Extending from the current texturing system and the discussion skipped previously in section \ref{sec:texture_db}, texture view group has been added to group texture with the same scaling properties together as illustrated in the database schema \ref{texture_db}. The specification of TDL is also updated to allow specifying texture scales in the script as illustrated by the \textit{group view} directive in \ref{tdl_script}. Similar to \textit{rule} directive, multiple texture names can be specified in a view group.
+
+    A texture scale group defines 3 parameters: primary, secondary and tertiary scale, respectively. User is also required to specify 3 levels of scaling distance to the renderer: primary, secondary and tertiary distance, respectively. The primary distance is the closest distance to the viewer, when the primary scale should be made active.
+
+    To make transition between different texture scales smoothly, multiple adjacent texture scales can be selected to read each texture, and blend their colours before writing to the output.
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[width=0.7\textwidth]{triple-scale-blending.jpg}
+        \caption{Shows the algorithmic structure of triple texture scaling with blending. \textit{Far} and \textit{Near} are the furthest and nearest visible distance by the viewer.}
+        \label{triple_blending}
+    \end{figure}
+
+    A \textit{blendable region} is a scaling region with the naming pattern of \textit{i-j Region}, as the middle two regions shown in \ref{triple_blending}. The blending factor can be calculated as the interpolation between the viewing distance and the upper-lower scaling distance bound for the current region.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{triple-scaling-demo.jpg}
+        \caption{The terrain textured using the new triple scale blending approach.}
+        \label{triple_scale_demo}
+    \end{figure}
+
+    In \ref{triple_scale_demo}, it can be seen that part of the mountain shown at the bottom right corner has a large scaling factor to offer more detailed visuals, while other distant areas have small scales to allow depicting large figures such as rocks on the texture, and reduce the repetition artefacts.
+
+    \section{Scene Rendering Pipeline}
+
+    Unlike terrain generation which can be done in parallel, rendering is a streamlined process, plus OpenGL is designed to be a single-threaded API. The CPU needs to instruct GPU about each rendering component to be processed one by one.
+
+    OpenGL is a rasterisation rendering API. Rasterisation is done by converting geometry shapes into pixels. A typical rasterisation pipeline built into OpenGL consists of vertex processor, rasteriser and fragment processor, of which vertex and fragment processors in modern OpenGL are both programmable whereas rasteriser is hidden from users.
+
+    The rasterisation rendering pipeline takes a geometry buffer as an input, and the buffer contains vertex information such as positions and normals. During vertex processing stages, vertices undergo linear transformation before feeding into the rasteriser. The output will then be fed into the fragment processor where the programmer can obtained vertex information and perform light calculation for every pixel after rasterisation. Before writing the fragment data to output, there is an additional fragment testing stage which decide should the fragment be written.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{rasterisation.jpg}
+        \caption{An illustration of the rasterisation rendering pipeline.}
+    \end{figure}
+    
+    After rasterisation all 3D geometries are projected onto the 2D screen, and the other dimension, the z-axis, is lost. This z-axis value, called geometry depth, is stored separately onto a buffer called depth buffer. Normally we want to render the geometry closest to the viewer because everything behind should be blocked. The depth buffer will be used to compare the old depth value with the newly rendered one, and only write the fragment to output if passes the comparison. This is called the depth test.
+
+    Modern OpenGL provides a feature called early fragment testing and this test can be done before fragment shading, and early terminate pixels that are not going to be written to the output to avoid redundant computations.
+
+    \subsection{Evaluation on Forward Shading}
+
+    The whole rendering approach described above is called forward shading, where geometry is shaded immediately after rasterisation. To put every scene components together, terrain is first rendered followed by the sky, and finally the output will be post-processed such as doing HDR tone mapping. To implement lighting for terrain fragment shading, light information like sun directions and shadow parameters, are required to be passed onto the terrain rasterisation pipeline.
+
+    Although currently terrain is the only geometry needs to have lighting processed, if more geometries such as clouds, trees or water need to be added as future works, this entire rendering procedure needs to be repeated for each of them by passing the same piece of light information and lighting implementations among all of them. From the software design point of view it is the best to refactor the common part into a separate class so the scene objects can share them easily.
+
+    In addition, fragment calculation in photorealistic rendering takes the most amount of processing time. Objects being rendered later may be drawn in front of the current object and overwrite the pixels, in this case fragment calculation is done for both objects but only one of them is finally displayed.
+
+    Moreover, more advanced lighting calculations such as ambient occlusion rely on geometry data like vertex position which are no longer available after the forward shading.
+
+    \subsection{Deferred Shading}
+
+    Rather than processing fragment right after rasterisation, we can store all information necessary for light calculation into separate buffers, and defer the expensive lighting at the end \cite{deferred}. This approach is called deferred shading.
+
+    The most important aspect in deferred shading is the buffers for storing information, and is usually referred as geometry buffer, also known as G-Buffer. The ingredients of G-Buffer vary based on application, in this project the G-Buffer is organised as follows:
+
+    \begin{center}
+        \begin{tabular}{|c|c|}
+            \hline
+            Name & Format \\
+            \hline
+            \hline
+            Albedo & RGB8 \\
+            \hline
+            Normal & RGB16\_SNORM \\
+            \hline
+            Roughness & R8 \\
+            \hline
+            Ambient Occlusion & R8 \\
+            \hline
+            Material & R8UI \\
+            \hline
+            Depth & R32F \\
+            \hline
+            Stencil & R8UI \\
+            \hline
+        \end{tabular}
+    \end{center}
+
+    The format of G-Buffer follows the OpenGL texture format according to its specification \cite{opengl4_spec}. \textit{R, G, B} refers as the active colour channel for red, green and blur respectively. The digit at the end refers to the size of the channel in bit. \textit{SNORM} indicates the data stored should be normalised to \([-1, 1]\). An additional suffix of \textit{F} or \textit{UI} indicates the data type, by default OpenGL uses fixed point in range \([0, 2^{b})\) where $b$ is the number of bit per channel, if none is provided, while \textit{F} uses floating point and \textit{UI} is for unsigned integer data.
+
+    Albedo, normal, roughness and ambient occlusion G-Buffer all store the material properties loaded from texture. Depth buffer stores geometry depth. Stencil buffer is used for stencil test apart from depth test; it is essentially a mask texture to tell the drawing API which pixel can be shaded or discarded as specified by the user.
+
+    To render one frame, terrain geometry is first processed; texture splatting is then done and geometry data are written to the G-Buffer during fragment processing. Then ambient occlusion can be performed using depth and normal G-Buffer; the output is written into the ambient occlusion G-Buffer, blended with the original data. Lighting can then be performed as usual. Finally sky and post-processing can be done. Stencil test is useful for selecting which part on a frame should be rendered. For example, lighting is done on the pixels occupied by the terrain only rather than the entire frame, while sky is generated on the rest of the pixels.
+    
+    Putting everything together, rendering one frame of image takes 7.7 ms, of which lighting takes the most amount of time.
+
+    \begin{center}
+        \begin{tabular}{|c|c|}
+            \hline
+            Component & Time (ms) \\
+            \hline
+            \hline
+            Write terrain G-Buffer & 1.0 \\
+            \hline
+            Write terrain shadow map & 0.5 \\
+            \hline
+            Ambient occlusion & 1.2 \\
+            \hline
+            Lighting in deferred shader & 3.5 \\
+            \hline
+            Sky & 1.5 \\
+            \hline
+            Tone mapping & (Negligible) \\
+            \hline
+            Total & 7.7 \\
+            \hline
+        \end{tabular}
+    \end{center}
+
+    The benchmark is being run with the following settings:
+
+    \begin{tabular}{rl}
+        \textbf{Shadow Map Resolution} & 2048 x 2048 x 4 \\
+        \textbf{PCF Kernel Radius} & 5 x 5 \\
+        \textbf{Rendering Heightmap Resolution} & 3584 x 3584 \\
+        \textbf{Scattering Iteration} & 32 x 16 \\
+        \textbf{Ambient Occlusion Iteration} & 64 \\
+        \textbf{Display Resolution} & 1920 x 1080
+    \end{tabular}
+
+    \subsubsection{Evaluation on Deferred Shading}
+
+    Deferred shading is easily extendable for future development as more objects are added to the scene and does not require significant modification to the existing pipeline. As there is no expensive computation done during fragment processing of each object, fragment test such as depth test can cheaply overwrite pixels. Deferred renderer only calculates whatever information is provided on the G-Buffer, and only do so once.
+
+    The major drawback of deferred shading is the additional storage requirement and memory bandwidth overhead for writing to and reading from the G-Buffer. For 1920x1080 rendering resolution, G-Buffer takes 31.64 MB of GPU memory; targetting for 60 frame-per-second, the memory bandwidth will hence be 3.708 GB/s. For 4K resolution, the number will grow to 126.56 MB and 14.832 GB/s respectively.
+
+    Consumer-level GPUs nowadays are equipped with a relatively large amount of memory for at least 3 GB to a maximum of 24 GB, with \textit{GDDR5} even \textit{GDDR6} memory chip and comes with wide bus width. The resultant memory bandwidth can be around 90 GB/s for low-end graphics card (GTX 1050) to over 900 GB/s for the top-end (RTX 3090 Ti) in year 2022. For the hardware used for developing this project, the memory bandwidth is 448 GB/s. Benefits brought by deferred shading is evaluated to outweigh the drawbacks.
+
+    \chapter{Implementation Strategy}
+
+    \section{External Dependencies}
+
+    \subsection{Build System}
+
+    A build system enables building a software from a list of source code files with a build script using a simple build command instead of compiling each of them one by one manually. A build system greatly simplifies the build process and provides a scalable and maintainable solution to allow modification of the build tree easily. Visual Studio (VS) is widely used for C++ development on Windows where this project is developed. VS is an integrated development environment comes with a build system.
+
+    The whole terrain engine in this project is modularised for better organisation; each module is built separately into a shared library; the demo program is an executable using shared libraries from all modules.
+
+    \begin{center}
+        \begin{tabular}{rl}
+            \textbf{SuperTerrain+} & The main terrain generator \\
+            \textbf{SuperAlgorithm+} & Algorithms for terrain generation \\
+            \textbf{SuperRealism+} & The main rendering engine \\
+            \textbf{SuperDemo+} & The demo application \\
+            \textbf{SuperTest+} & The test application
+        \end{tabular}
+    \end{center}
+    
+    VS is not as intuitive for managing sub-build trees, and requires user to adjust build properties such as include directory for each of them. Although VS does provide functionalities such as property sheet to refactor common build properties from multiple sub-projects, this still requires the user to refactor settings manually, and can be inconvenient for large project as well. For use of external libraries, users are required to locate them from the file system and resolve dependencies and versioning manually; this operation needs to be repeated if working on different computers.
+
+    Moreover, VS is only available on Windows, and it does not allow porting the project to other platforms such as Linux; it is useful to test the software on different platforms with different compilers to ensure its usability.
+
+    Hence, a higher level build system than VS is demanded for this project. CMake is a build system generator and can generate VS build script automatically, or other build scripts such as Makefile on Linux. CMake also provides functionalities for automated import of external packages making it more convenient when working on different computers without changing the build script, with the addition of version management to avoid dependency issues.
+
+    \subsection{Third-party Libraries}
+
+    The purpose of this project is to develop a procedural terrain generator and renderer from scratch, therefore no pre-existing framework or rendering engine is used. However to program everything from the beginning is not plausible within the limited development time, hence a number of helper libraries are used for shortening the project time.
+
+    Most libraries are imported as dependencies and users are required to install the libraries on their computer. A small number of libraries are not available in C++ or CUDA, and are ported and integrated into the project with license agreement and acknowledgment, so no installation is required. The following table provides a list of external dependencies.
+
+    \begin{center}
+        \begin{tabular}{r|p{11cm}}
+            \textbf{GLM} & Linear algebra library for computer graphics with similar OpenGL syntax \\
+            \textbf{GLAD} & OpenGL API loader \\
+            \textbf{GLFW} & OpenGL context creator and IO (keyboard, mouse, etc.) library \\
+            \textbf{SQLite3} & SQL-based relational database in C \\
+            \textbf{stb\_image.h} & A single-header image reader \\
+            \textbf{SIMPLE} & An INI configuration parser \\
+            \textbf{Catch2 v3} & Unit test library
+        \end{tabular}
+    \end{center}
+
+    \section{Memory Management}
+
+    \subsection{Automated Memory Release}
+
+    The application involves use of a significant amount of memory for storing various texture on main and GPU memory. They are allocated dynamically from heap memory and therefore are required to be freed back to the OS afterwards, or it will end up being a memory leak.
+
+    In C++ memory allocation and deallocation is done by calling \textbf{new} and \textbf{delete} while in CUDA the simplest way is by \textbf{cudaMalloc} and \textbf{cudaFree}. It is highly possible that the memory free function is not called, such as a generated exception before the free function, or simply forgotten by the programmer. A large amount of memory leak is catastrophic.
+
+    Since C++ 11, a standard library object called \textit{std::unique\_ptr} provides a safe way of deleting the memory. The smart pointer allocates memory at construction of the object and automatically frees it at destruction. As long as the smart pointer object is stored on stack memory with automatic storage duration, memory leak will not occur. The user is no longer required to call the free function.
+
+    \textit{std::unique\_ptr} is used on main memory, and can be wrapped around GPU memory and OpenGL object memory by providing a suitable deleter function. All dynamic memory in the engine are therefore smartly managed.
+
+    \subsection{Memory Pool}
+
+    Texture memory are repeatedly allocated from the OS and deallocated later. Large allocation of memory can degrades the performance. As the size of allocation is fixed in most cases, instead of returning the texture back to the system, the large chunk of unused memory can be pooled and easily reused later.
+
+    For main memory, a simple hash table can be used, with memory size as key and a smart pointer to the memory as value. Looking up pointers from hash table takes constant time with respect to the number of entry. For GPU memory, CUDA provides memory pooling mechanism since CUDA 11.3, and no additional implementation is required.
+
+    \section{Stateless OpenGL}
+
+    OpenGL is designed as a finite state machine, all operations like sending data to a GPU buffer require first ``binding'' a buffer to an active global state; a global state can be referred as a static variable in object-oriented programming and makes designing a non-global state application very difficult.
+
+    OpenGL 4.5 provides a functionality called direct state access (DSA) which allows to modify object without ``binding'' it to a global state. This is beneficial to both design and performance as the additional state changing operation can incur overhead.
+
+    However, DSA only partially solves the problem as ``binding'' is still required in a number of other operations, like setting an active program pipeline and texture object for rendering. Modern OpenGL provides vendor-specific extensions to achieve unofficial features.
+
+    \textit{ARB\_bindless\_texture} eliminates the needs to bind a texture to an active state for it to be used in the shader, instead a texture handle can be sent to the GPU so the shader can read texture using such handle. This also makes sharing texture among different renderers and exploiting OOP design easier by passing the texture handle. Similarly, \textit{NV\_shader\_buffer\_load} and \textit{NV\_shader\_buffer\_store} can be used on buffer instead of texture, and buffers can be accessed using a C-style memory pointer, and pointer-like operations such as pointer arithmetic and null-pointer can therefore be used.
+
+    Using pointers in OpenGL shader simplifies the design, as previously to lookup data like texture region from splatmap or light parameters with light ID requires use of an additional array acting as a dictionary to locate the index to the desired data. A pointer or an array of pointers can simply be passed onto the GPU.
+
+    Worth mentioning that bindless texture inherits the drawback from normal texture for only being able to accessed uniformly, i.e., all GPU threads must read from the same texture handle each time, or undefined behaviour will occur. \textit{NV\_gpu\_shader5} breaks this limit so texture access can be random. Additionally \textit{ARB\_shading\_language\_include} is used to allow including source code in shader similar to C-style include for reusing shader code.
+
+    \chapter{Project Management}
+
+    \section{Methodology}
+
+    The project is developed using agile approach with incremental delivery. Each development cycle produces a major release, subsequently followed by minor releases for quality-of-life improvement, optimisation and bug fix. As the time this report is written, the software has undergone 13 development cycles, and the summary of each cycle has been summarised as follows:
+
+    \begin{center}
+        \begin{tabular}{r|p{12cm}}
+            v0.1 & The initial release contains project framework and development environment setup \\
+            v0.2 & Terrain chunk generation, noise implementation on GPU \\
+            v0.3 & Hydraulic erosion and free-slip system \\
+            v0.4 & Biome generator \\
+            v0.5 & Project migration from Visual Studio to CMake \\
+            v0.6 & Implementation of SHF for biome smoothing \\
+            v0.7 & Add unit test \\
+            v0.8 & Terrain texture splatting and smoothing \\
+            v0.9 & Setup rendering engine \\
+            v0.10 & Atmospheric scattering and HDR \\
+            v0.11 & Transfer the rendering pipeline to deferred shading, implementation of shadow and ambient occlusion \\
+            v0.12 & Multi-scale texturing system \\
+            v0.13 & Photorealistic water rendering (work-in-progress)
+        \end{tabular}
+    \end{center}
+
+    This project covers a large variety of topics, a streamlined development methodology of \textit{Research-Design-Implementation-Test-Evaluation} for the entire application would not work. Instead, the project is broken down into small manageable units, each development cycle can be considered as a sub-project. Features are integrated into the application progressively, each sub-project only focuses on one feature.
+
+    \subsection{Test Strategy}
+
+    The application undergoes testing prior to the release of each deliverable. Testing is done by behaviour-driven development by reasoning about what the application should do given an objective to be achieved. It uses the following test structure:
+
+    \begin{lstlisting}[breaklines=true, autogobble=true, frame=tb]
+        Scenario(`Chunk function can compute chunk position'){
+            Given(`A view position and some chunk parameters'){
+                When(`User needs to load some chunks'){
+                    Then(`Chunk positions should be computed correctly'){
+                        Require(Expected == Computed);
+                    }
+                }
+            }
+        }
+    \end{lstlisting}
+
+    At the time this report is written, the application has passed 764 assertions with test coverage of 71 percent. A majority part of the rendering engine are not testable by automation and can only be inspected by developer to ensure the terrain is rendered as expected.
+
+    \section{Progress}
+
+    The goals achieved in this project has more or less been consistent with the original timeline attached in appendix \ref{original_timeline} planned in project specification. For a majority part in this project, development is driven by inspirations, such that a certain number of adjustments have been made.
+
+    The original plan listed in the project specification only acts a reference for the big development direction rather than a hard requirement. Water rendering was written in, but has been replaced with sky and HDR rendering due to certain technical difficulties. Other implemented features such as deferred shading and ambient occlusion were not originally planned but is considered to be useful for improving quality of deliverable and therefore added to the project. In general, more features have been achieved than expected.
+
+    \subsection{Logging}
+
+    All major and minor releases are accompanied with release notes, indicating what have been achieved or fixed and what issues have been discovered that need to be addressed in the future. For issues identified, they are back-logged in details separately following the regular bug report approach.
+    
+    \textit{Kanban} board used because it is useful for tracking process and making sure goals are achieved as planned. The board shows in appendix \ref{project_kanban} is divided into 5 columns, being \textit{To do} for noting down tasks to be done, \textit{In progress} for identifying tasks being worked on, \textit{Feature done} for features completed in major releases, \textit{Misc done} for features completed in minor releases and finally \textit{Issue done} for addressed issues, respectively.
+
+    All development logging tools are provided by \textit{GitHub} where the project repository is held at \url{https://github.com/stephen-hqxu/superterrainplus}. Release notes are kept on \textit{GitHub Releases}; issue back-logs are stored in \textit{GitHub Issues}; project board is provided by \textit{GitHub Projects}.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{commit-graph.png}
+        \caption{The commit graph shows the commit activity made to the repository on \textit{GitHub}.}
+    \end{figure}
+
+    \section{Risk Management}
+
+    \textbf{Risk:} Break-down of personal computer may interrupt project development. \\
+    \textbf{Mitigation:} Source code is primarily stored remotely on \textit{GitHub} repository. For robustness, source code are also copied to external hard drive and \textit{Microsoft OneDrive} regularly as well as the campus computer. The project was migrated to CMake since the 5th development cycle and has been tested to function on both Windows and Linux, therefore development can be carried on as usual using computers available on campus.
+
+    \textbf{Risk:} Personal illness as the project takes place during COVID pandemic. \\
+    \textbf{Mitigation:} Follows safety advice to protect myself. This risk was not manifested during the course of development.
+
+    \textbf{Risk:} Abandonment of external libraries. \\
+    \textbf{Mitigation:} The chance of happening is considered to be very low and therefore can be accepted. In very rare cases, no major framework is used and all software tools used in this project have similar alternatives, for example GLFW and GLAD can be easily replaced by GLEW.
+
+    \textbf{Risk:} Bugs due to graphics driver slow the development down. \\
+    \textbf{Mitigation:} This risk was not considered in the project specification but has manifested during the project. Detecting errors caused by graphics driver has proven to be extremely difficult until driver vendor published a defect report. It can be avoided by preventing frequent driver update, or if update is necessary perform full test before and after the update.
+
+    \section{Legal, Social, Ethical and Professional Issues}
+
+    The project is publicly open-sourced, distributed under MIT license. All programming language and APIs are legal to be used for individual open-sourced project. All external libraries are distributed under permissive license with acknowledgment. 
+    
+    The project involves no survey, interview or external testing so would not interact with other people. The software does
+    not connect to, or send any information over the internet so no privacy issue is related.
+
+    \chapter{Conclusion}
+
+    The works presented in this project explore a few areas in procedural terrain generation and photorealistic rendering, and demonstrate that terrain can be generated by exploiting the power of GPU and multi-threaded CPU.
+
+    Terrain model is constructed from a heightmap which is generated by procedural noise, followed by tessellation of terrain chunks and vertices displacement in the vertical direction. Particle-based hydraulic erosion can then be used to refine a heightmap. Techniques like biomemap can be used to add diversity to the heightmap.
+    
+    Single histogram filter presented in this project provides an alternative way for fast, qualitative and robust biome smoothing. Free-slip system is a viable solution for extending particle-based hydraulic erosion to an seamlessly generated infinite chunk-based terrain, and can be modified easily for different purposes such as biome smoothing. A database system with custom script parser allows convenient use of rule-based texture splatting techniques; single channel splatmap can be used to map texture onto the terrain model with reduced memory overhead, and single histogram filter demonstrates yet another ability of smoothing texture. Terrain generation components are finally put together into an asynchronous, non-blocking pipeline.
+
+    For photorealistic rendering, several modern techniques are gathered and improved in this project such as atmospheric scattering for sky, cascaded shadow mapping and ambient occlusion. Renderer utilises deferred shading to facilitate design and eliminate redundant rendering of pixels.
+
+    \section{Future Works}
+
+    Putting all techniques developed in this project together, there are still a substantial amount of work to be done before claiming the generated scenery to be photorealistic. As the project is focusing on mostly real-time application, the engine trades off realism for performance and cutting down development time.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{showcase.png}
+        \caption{The procedural terrain rendered in \textit{SuperTerrain+} with all techniques combined.}
+    \end{figure}
+
+    \subsection{Known Issue}
+
+    At the time this report is written, there is one unresolved bug presented in the engine. Following the project management methodology used in this project, a defect report with a description of bug and potential solution, is provided in appendix \ref{issue_log}. This defect report is stored in \textit{GitHub Issues} where the project repository is held.
+
+    \subsection{Water}
+
+    Although water was originally planned as a mandatory feature, more research showed that water rendering is challenging therefore being deferred as the final task in the project. Due to the limited development time this feature is still under development.
+
+    There are two essential components in water rendering, procedural water animation and visual effect. Water can be animated using the same technique as terrain generation by fractal of noise functions. As a simplification, water wave function can be implemented from trigonometric functions to improve performance. This yet simple approach provides reasonable quality to water animation.
+
+    Water geometry, similar to the terrain, is a flat plane. This is placed according to the biomemap and a user-defined water height dictionary, which uses biome ID as index, and returns water height. For biomes where water is not needed or not visible such as under the terrain, water geometry is pruned to avoid redundant computation for water animation. To avoid over-pruning which may cause water leakage, a triangle on the geometry is pruned only when it is far away from water biome.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{water-culling.jpg}
+        \caption{Demonstration of water pruning. Water outside the ocean biome under the terrain are discarded as intended. Notice water geometry is extended slightly beyond the boundary due to the over-pruning prevention mechanism.}
+    \end{figure}
+
+    There are numerous techniques for creating visual effects for water. Rendered from pre-computed reflection map is not feasible for procedural generation. Planar reflection is a technique that renders the scene by reflecting the camera below the water; as being planar, it assumes the surface is perfectly flat and requires re-render the entire scene twice, and can be expensive to do so. Screen-space reflection is an alternative approach by testing the point where the reflected light ray hits the geometry on the screen domain; although it is cheaper, reflection is limited what is available on the screen.
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{imperfect-water.jpg}
+        \caption{The terrain with water added to the scene. The water rendering is still imperfect and suffers from certain artefacts due to use of screen-space reflection.}
+        \label{water-ssr}
+    \end{figure}
+
+    Screenshot \ref{water-ssr} shows water reflection and refraction, combined with Fresnel effect for which the surface is more reflective when the viewing angle is almost parallel to the water surface. Notice there is no reflection nor refraction around the bottom of the screen because light ray travels beyond the screen boundary, which create visual artefacts.
+
+    In the future, a more sophisticated technique should be developed and more visual effects can be added for water such as caustics and underwater scattering.
+
+    \subsection{Procedural Volumetric Terrain}
+
+    As discussed in the introduction section, the terrain in this project is generated from a 2D heightmap. By going to a higher dimension, features like overhangs and caves can be properly generated. Optimisations are required for volumetric terrain to reduce memory usage and performance cost to convert 3D texture to mesh model. Algorithms proposed in this project like free-slip particle-based hydraulic erosion and biome smoothing can be extended to a volumetric terrain. Going further, a procedural planet can be generated on a sphere with the volumetric terrain system.
+
+    \subsection{Procedural Entity Generation}
+
+    This project only focuses on generation and rendering of a procedural terrain. More geometries such as vegetations and clouds can be populated onto the terrain to further improve the realism.
+
+    There are a number of methods for generation of vegetations like trees and grass. L-system is one of the oldest methods for procedural vegetation generation utilising context-free grammar. A set of rules is defined and parsed, the generated parse tree can be used as a basic tree geometry \cite{l_system}.
+
+    Clouds can be rendered with a similar manner as the atmosphere using ray marching on the scattering equation. In contrast to scattering, clouds are mostly consist of large particles like water droplets, therefore only \textit{Mie} scattering needs to be considered. The geometry of clouds can be generated with a 3D noise function, and perform ray marching on the generated 3D texture \cite{render_cloud}.
+
+    \subsection{Global Illumination}
+
+    It has been realised that the traditional local illumination model is limited for providing a photorealistic view due to neglect of indirect lighting. Certain effects like reflection are difficult to be achieved in high quality. Although scree-space techniques can be used to emulate such effects but are still limited to what are visible by the camera.
+
+    Global illumination (GI) approximates light bounces from different sources including areas not visible by the camera, providing significant improvement to realism. However, this approach is certainly more expensive, application in modern computer graphics is mostly limited to static image rendering for movies and architectural previews.
+
+    Recently, attention for GI has been drawn to real-time application such as gaming, aided by hardware-accelerated rendering APIs. As an emerging technology, modern games in general tend to implement pre-computed GI for static scene and only perform GI calculation in runtime for a small number of dynamic object; or alternatively by doing screen-space GI \cite{realtime_rt}. This new technology opens up an opportunity for future research and extension of this project to efficiently render the scene with fully procedural and dynamic GI.
+
+    As an example, GI can be used for rendering water visual effect as discussed previously to allow light ray to travel beyond the screen boundary and render visually appealing image.
+
+    \chapter{Acknowledgment}
+
+    I would like to thank my project supervisor Dr. Andrew Hague for his continuous support throughout the project, and spending his time on weekly project meetings for listening to my ideas, reviewing documents and providing valuable feedbacks and insights.
+
+    In addition, I would also like to express my appreciation for the people who provided the resources for helping me understanding various topics in this project or providing a basic source code to work on. It is impossible to achieve all goals in this project within a limited amount of time without their materials. All online links pointed below are accessed on 8th Apr. 2022.
+
+    \begin{itemize}[label=\(\diamond\)]
+        \item GitHub user and YouTuber \textit{SebLague} with his repository \textit{Hydraulic-Erosion} (MIT License) for providing a base implementation on particle-based hydraulic erosion so I can improve it in this project.
+        \item GitHub user \textit{KaptainWutax} with his repository \textit{BiomeUtils} (MIT License) for providing a base framework of a biome generator.
+        \item \textit{Stefan Gustavson} and his paper enables me to understand simplex noise quickly and provides a base implementation \cite{simplex_demystified}.
+        \item Blogger \textit{Bruno Opsenica} and his article \textit{Tone Mapping} at \url{https://bruop.github.io/tonemapping/} for pointing out various helpful resources on different HDR tone mapping techniques.
+        \item Website \textit{Scratchapixel 2.0} and published article \textit{Simulating the Colors of the Sky} at \url{https://www.scratchapixel.com/lessons/procedural-generation-virtual-worlds/simulating-sky} for the detailed explanations on atmospheric scattering and provided papers to help me understanding how scattering works in real life, as well as the CPU implementation on scattering for my reference.
+        \item Although I have more than 7 years of experience on OpenGL, \textit{OpenGL SuperBible} \cite{opengl_superbible} is still a great reference book for introducing new features brought by the latest version of OpenGL.
+        \item \textit{Learn OpenGL} \cite{learn_opengl} is a great book for in-depth introduction on modern computer graphics techniques.
+    \end{itemize}
+
+    \rule{\textwidth}{1pt}
+
+    \clearpage
+    \bibliographystyle{acm}
+    \bibliography{../report-reference}
+    \addcontentsline{toc}{chapter}{Bibliography}
+
+    \titleformat{\chapter}[display]{\bfseries\huge}{\appendixname{} \thechapter}{20pt}{\bfseries\LARGE}
+    \appendix
+
+    \chapter{Project Resource}
+    \label{project_resource}
+
+    Project demo recording used in the project presentation can be found in the following link. Video is uploaded to \textit{Microsoft Stream}. This video is publicly available to staffs and students in the University of Warwick.
+    
+    \begin{center}
+        \fbox{
+            \begin{minipage}{0.7\textwidth}
+                \begin{center}
+                    \url{https://web.microsoftstream.com/video/62c4b0e1-9b55-49ba-837b-31152eccd77f}
+                \end{center}
+            \end{minipage}
+        }
+    \end{center}
+
+    The specification of \textit{Texture Definition Language} developed in this project is available. Due to the excessive length of that document the link is provided as follows, hosted in the project repository.
+
+    \begin{center}
+        \fbox{
+            \begin{minipage}{0.7\textwidth}
+                \begin{center}
+                    \url{https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/tdl-specification.md}
+                \end{center}
+            \end{minipage}
+        }
+    \end{center}
+
+    \chapter{Original Development Timeline}
+    \label{original_timeline}
+
+    \begin{figure}[H]
+        \includegraphics[angle=270, trim={0 0 30cm 0}, clip, width=\textwidth]{timetable.png}
+    \end{figure}
+
+    \begin{figure}[H]
+        \includegraphics[angle=270, trim={23cm 0 0 0}, clip, width=\textwidth]{timetable.png}
+    \end{figure}
+
+    \chapter{Project \textit{Kanban} Board}
+    \label{project_kanban}
+
+    \section{Procedural Heightmap Infinite Terrain}
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[angle=270, trim={0 0 41cm 0}, clip, width=0.85\textwidth]{terrain_kanban.png}
+    \end{figure}
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[angle=270, trim={25cm 0 0 0}, clip, width=0.85\textwidth]{terrain_kanban.png}
+    \end{figure}
+
+    \section{Photorealistic Rendering Engine}
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[angle=270, trim={0 0 28cm 0}, clip, width=0.85\textwidth]{renderer_kanban.png}
+    \end{figure}
+
+    \begin{figure}[H]
+        \center
+        \includegraphics[angle=270, trim={37cm 0 0 0}, clip, width=0.85\textwidth]{renderer_kanban.png}
+    \end{figure}
+
+    \chapter{Issue Log}
+    \label{issue_log}
+
+    \textit{Note}: The defect report is written in non-academic spoken language, spelling and grammar mistakes might be encountered occasionally.
+
+    Defect Report \#37: \textbf{Splatmap border seams} on 24/02/2022
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{known-bug-1.png}
+    \end{figure}
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{known-bug-2.png}
+    \end{figure}
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{known-bug-3.png}
+    \end{figure}
+    
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{known-bug-4.png}
+    \end{figure}
+
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{known-bug-5.png}
+    \end{figure}
+
+\end{document}
