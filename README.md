@@ -235,7 +235,7 @@ Compilation of the engine may take up to 5 minutes. You may obtain the following
 
 This section contains source code and libraries that are not dependencies of this project but they are where ideas and inspirations are taken from. I will try my best to give attributions and copyright notices for all publications used; in case something is missing, please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com).
 
-For redistributed open source project, see *3rd-Party* directory to find the licenses. For academic style *BibTex* references, check out the *Dissertation* directory.
+For redistributed open source project, see *3rd-Party* directory to find the licenses. For academic style *BibTex* references, check out the *Report* directory.
 
 - [README Template](https://github.com/othneildrew/Best-README-Template)
 

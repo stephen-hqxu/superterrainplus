@@ -1,6 +1,7 @@
 ------------------------------------------------------------------------
 Applies to source file:
-STPAmbientOcclusion.frag, STPDeferredShading.frag
+STPAmbientOcclusion.frag (section starting from `Screen-Space Ambient Occlusion`),
+STPDeferredShading.frag
 
 Applies to class
 STPCamera, STPPerspectiveCamera, STPOrthographicCamera,

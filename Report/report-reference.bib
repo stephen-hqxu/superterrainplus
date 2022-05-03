@@ -84,14 +84,6 @@
     note = "Accessed 05/10/2021"
 }
 
-@book{gems3,
-    author = "Contributors: https://developer.nvidia.com/gpugems/gpugems3/contributors",
-    title = "GPU Gems 3",
-    publisher = "NVIDIA Corporation",
-    year = "2007",
-    note = "Online: https://developer.nvidia.com/gpugems/gpugems3/contributors, accessed 12/10/2021"
-}
-
 @misc{cuda1102_defect,
     author = "NVIDIA Corporation",
     title = "NVIDIA CUDA Toolkit Release Notes",
@@ -112,7 +104,30 @@
     note = "Accessed 14/11/2021"
 }
 
+@misc{shadertoy_tmo,
+    title = "Tonemap operators incl. reinhard",
+    author = "Bruno Opsenica",
+    howpublished = "\url{https://www.shadertoy.com/view/WdjSW3}",
+    note = "Accessed 01/04/2022"
+}
+
 # ---------------------------------------------------------- academic resource ------------------------------------------------------------ #
+
+@inbook{gems3_voxel_terrain,
+    author = "Ryan Geiss",
+    title = "GPU Gems 3, Generating Complex Procedural Terrains Using the GPU",
+    chapter = "1",
+    publisher = "NVIDIA Corporation",
+    year = "2007"
+}
+
+@inbook{gems2_stratified_sampling,
+    author = "Yury Uralsky",
+    title = "GPU Gems 2, Efficient Soft-Edged Shadows Using Pixel Shader Branching",
+    chapter = "17",
+    publisher = "NVIDIA Corporation",
+    year = "2005"
+}
 
 @MastersThesis{kang_sim_han_2018,
     author = "HyeongYeop Kang and Yeram Sim and JungHyun Han",
@@ -191,6 +206,16 @@
     organization = "Czech Technical University in Prague and Purdue University",
 }
 
+@inproceedings{cell_based_gpu,
+    author = "Mei, Xing and Decaudin, Philippe and Hu, Bao-Gang",
+    title = "Fast Hydraulic Erosion Simulation and Visualization on GPU",
+    booktitle = "Pacific Graphics",
+    year = "2007",
+    month = "October",
+    pages = "47-56",
+    note = "ISBN: 978-0-7695-3009-3, DOI: 0.1109/PG.2007.15",
+}
+
 @article{particle_based_erosion,
     author = "n. chiba and k. muraoka and k. fujita",
     title = "An Erosion Model Based on Velocity Fields for the Visual Simulation of Mountain Scenery",
@@ -200,10 +225,255 @@
     volume = "9"
 }
 
+@inproceedings{thermal_erosion,
+    title = "Parallel implementation of terrain erosion applied to the surface of Mars",
+    author = "Bedˇrich Beneš and Rafael Forsbach",
+    booktitle = "AFRIGRAPH '01: Proceedings of the 1st international conference on Computer graphics, virtual reality and visualisation",
+    year = "2001",
+    month = "November",
+    pages = "53-57"
+}
+
 @techreport{parameter_particle_based,
     author = "Hans Theobald Beyer",
     title = "Implementation of a method for hydraulic erosion",
     institution = "DEPARTMENT OF INFORMATICS, TECHNISCHE UNIVERSITÄT MÜNCHEN",
     year = "2015",
     type = "Bachelor's Thesis"
+}
+
+@article{quadtree,
+    author = "Finkel, Raphael and Bentley, Jon",
+    year = "1974",
+    month = "03",
+    pages = "1-9",
+    title = "Quad Trees: A Data Structure for Retrieval on Composite Keys.",
+    volume = "4",
+    journal = "Acta Inf.",
+    note = "10.1007/BF00288933"
+}
+
+@inproceedings{clod_terrain,
+    author = "Peter Lindstrom and Larry F. Hodges and David Koller and Nick Faust and William Ribarsky and Gregory A. Turner",
+    title = "Real-Time, Continuous Level of Detail Rendering of Height Fields",
+    booktitle = "SIGGRAPH '96: Proceedings of the 23rd annual conference on Computer graphics and interactive techniques",
+    year = "1996",
+    month = "August",
+    pages = "109-118",
+    organization = "Georgia Institute of Technology",
+}
+
+@manual{opengl4_spec,
+    title = "The OpenGL Graphics System: A Specification, Version 4.6 (Core Profile)",
+    author = "Mark Segal and Kurt Akeley",
+    organization = "The Khronos Group Inc.",
+    month = "October",
+    year = "2019"
+}
+
+@article{sobel_filter,
+    author = "Irwin Sobel",
+    year = "2014",
+    month = "02",
+    title = "An Isotropic 3x3 Image Gradient Operator",
+    journal = "Presentation at Stanford A.I. Project 1968"
+}
+
+@inproceedings{shannon_theorem,
+    author = "CLAUDE E. SHANNON",
+    title = "Communication in the Presence of Noise",
+    booktitle = "Proceedings of the Institute of Radio Engineers",
+    year = "1998",
+    month = "Feb",
+    pages = "10-21",
+    volume = "86",
+    number = "2"
+}
+
+@inproceedings{pcf,
+    author = "William T. Reeves and David H. Salesin and Robert L. Cook",
+    title = "Rendering antialiased shadows with depth maps",
+    booktitle = "SIGGRAPH '87: Proceedings of the 14th annual conference on Computer graphics and interactive techniques",
+    address = "Pixar, San Rafael, CA",
+    year = "1987",
+    month = "August",
+    pages = "283-291",
+    volume = "21",
+    number = "4"
+}
+
+@inproceedings{fast_blur,
+    author = "Ryu, Jegoon and Nishimura, Toshi Hiro",
+    title = "Fast image blurring using Lookup Table for real time feature extraction",
+    booktitle = "2009 IEEE International Symposium on Industrial Electronics",
+    year  = "2009",
+    pages = "1864-1869",
+    note = "10.1109/ISIE.2009.5213780"
+}
+
+@inproceedings{texture_splatting,
+    author = "Roger A. Crawfis and Nelson Max",
+    title = "Texture Splats for 3D Scalar and Vector Field Visualization",
+    booktitle = "Proceedings Visualization '93', IEEE CS Press",
+    organization = "Lawrence Livermore National Laboratory",
+    year = "1995",
+    month = "March",
+    pages = "261-266",
+    address = "P.O. Box 808 / L-301, Livermore, CA 94551"
+}
+
+@inproceedings{rule_splatting,
+    author = "Jonathan Ferraris and Christos Gatzidis",
+    title = "A Rule-based Approach to 3D Terrain Generation via Texture Splatting",
+    booktitle = "ACE '09: Proceedings of the International Conference on Advances in Computer Enterntainment Technology",
+    organization = "Bournemouth University, School Of Design, Engineering \& Computing",
+    year = "2009",
+    month = "October",
+    pages = "407-408"
+}
+
+@article{dithering,  
+    author = "Roberts, L.",
+    journal = "IRE Transactions on Information Theory",
+    title = "Picture coding using pseudo-random noise",
+    year = "1962",
+    volume = "8",
+    number = "2",
+    pages = "145-154",
+    note = "DOI: 10.1109/TIT.1962.1057702"
+}
+
+@inproceedings{daylight_model,
+    author = "A. J. Preetham and Peter Shirley and Brian Smits",
+    title = "A Practical Analytic Model for Daylight",
+    booktitle = "SIGGRAPH '99: Proceedings of the 26th annual conference on Computer graphics and interactive techniques",
+    organization = "University of Utah",
+    year = "1999",
+    month = "July",
+    pages = "91-100"
+}
+
+@inproceedings{atmo_scattering,
+    author = "Tomoyuki Nishita and Takao Sirai and Katsumi Tadamura and Eihachiro Nakamae",
+    title = "Display of the earth taking into account atmospheric scattering",
+    booktitle = "SIGGRAPH '93: Proceedings of the 20th annual conference on Computer graphics and interactive techniques",
+    organization = "Fukuyama University and Hiroshima Prefectural University",
+    year = "1993",
+    month = "September",
+    pages = "175-182"
+}
+
+@inproceedings{rendering_equation,
+    author = "James T. Kajiya",
+    title = "The rendering equation",
+    booktitle = "SIGGRAPH '86: Proceedings of the 13th annual conference on Computer graphics and interactive techniques",
+    organization = "California Institute of Technology",
+    year = "1986",
+    month = "August",
+    pages = "143-150",
+    volume = "20"
+}
+
+@article{reinhard,
+    author = "Reinhard, Erik and Stark, Michael and Shirley, Peter and Ferwerda, James",
+    title = "Photographic Tone Reproduction for Digital Images",
+    journal = "ACM Transactions on Graphics",
+    year = "2002",
+    month = "July",
+    volume = "21",
+    number = "3"
+}
+
+@inproceedings{bp_shading,
+    author = "James F. Blinn",
+    title = "Models of light reflection for computer synthesized pictures",
+    booktitle = "SIGGRAPH '77: Proceedings of the 4th annual conference on Computer graphics and interactive techniques",
+    organization = "University of Utah",
+    year = "1977",
+    month = "July",
+    pages = "192-198"
+}
+
+@inbook{csm,
+    author = "Joey de Vries and Márton Árbócz",
+    title = "Learn OpenGL: Learn modern OpenGL graphics programming in a step-by-step fashion",
+    chapter = "CSM",
+    publisher = "Kendall \& Welling",
+    year = "2020",
+    month = "June"
+}
+
+@article{hbao,
+    author = "Louis Bavoil and Miguel Sainz and Rouslan Dimitrov",
+    title = "Image-space horizon-based ambient occlusion",
+    journal = "SIGGRAPH '08: ACM SIGGRAPH 2008 talks",
+    organization = "NVIDIA Corporation",
+    year = "2008",
+    month = "August",
+    pages = "1",
+    number = "22"
+}
+
+@inbook{ssao,
+    author = "Joey de Vries",
+    title = "Learn OpenGL: Learn modern OpenGL graphics programming in a step-by-step fashion",
+    chapter = "SSAO",
+    publisher = "Kendall \& Welling",
+    year = "2020",
+    month = "June"
+}
+
+@inbook{deferred,
+    author = "Joey de Vries",
+    title = "Learn OpenGL: Learn modern OpenGL graphics programming in a step-by-step fashion",
+    chapter = "Deferred Shading",
+    publisher = "Kendall \& Welling",
+    year = "2020",
+    month = "June"
+}
+
+@book{opengl_superbible,
+    author = "Graham Sellers and Richard S. Wright, Jr. and Nicholas Haemel",
+    title = "OpenGL SuperBible Seventh Edition, Comprehensive Tutorial and References",
+    publisher = "Addison-Wesley",
+    year = "2016",
+    month = "August",
+    edition = "7",
+    note = "ISBN-13: 978-0672337475"
+}
+
+@book{learn_opengl,
+    author = "Joey de Vries",
+    title = "Learn OpenGL: Learn modern OpenGL graphics programming in a step-by-step fashion",
+    publisher = "Kendall \& Welling",
+    year = "2020",
+    month = "June"
+}
+
+@inbook{realtime_rt,
+    author = "Adam Marrs and Peter Shirley and Ingo Wald",
+    title = "Ray Tracing Gems II, Next Generation Real-Time Rendering with DXR, Vulkan, and OptiX",
+    chapter = "46-50",
+    publisher = "Apress",
+    year = "2021",
+    edition = "2",
+    note = "ISBN: 978-1-4842-7187-2"
+}
+
+@mastersthesis{render_cloud,
+    author = "Fredrik Haggström",
+    title = "Real-time rendering of volumetric clouds",
+    school = "UMEÅ University",
+    year = "2018"
+}
+
+@article{l_system,
+    author = "ARISTID LINDENMAYE",
+    title = "Mathematical models for cellular interactions in development II. Simple and branching filaments with two-sided inputs",
+    journal = "Journal of Theoretical Biology",
+    year = "1968",
+    month = "March",
+    volume = "18",
+    number = "3",
+    pages = "300-315"
 }
