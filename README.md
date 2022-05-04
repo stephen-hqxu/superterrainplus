@@ -196,6 +196,26 @@ The following extensions are not required but will be made used by the engine au
 
 ### :gear: Build Instruction
 
+#### External Resources
+
+To reduce the size of repository and keep everything clean, all external materials are required to be downloaded separately.
+
+**Assets**
+
+The demo program uses some assets, which can be downloaded from [Here](https://drive.google.com/drive/folders/1Q5R-ZPmbOobDtrnanZ37GvoLZWHlSVzY?usp=sharing).
+
+Download and place the *Resource* folder under `$(ProjectRoot)/SuperDemo+`. You might notice the *Resource* folder is already created, it should be able to merge without triggering duplicate files warning.
+
+**stb_image.h**
+
+This single-header image reader library is not included either. Download this file from their repository linked above, and place it to the *External* directory in the project root. Directory *External* is non-existence and you need to create it.
+
+**GLAD**
+
+Similarly, GLAD library is not included either. You can use their web service to generate the files, or alternatively download the pre-generated from [Here](https://drive.google.com/drive/folders/1C6AYwB6ZsF_CwWTMwrIoFq_Ts3rH36jb?usp=sharing). Place both *include* and *src* directories into `$(ProjectRoot)/GLAD`.
+
+#### Build
+
 *SuperTerrain+* uses CMake to build and it behaves similarly to most CMake projects. You may skip these basic instructions if you are familiar to CMake and instead focusing on setting up dependencies and CMake options.
 
 ```sh
