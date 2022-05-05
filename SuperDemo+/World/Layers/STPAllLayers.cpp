@@ -36,10 +36,10 @@
 #include "STPScaleLayer.h"
 #include "STPSmoothScaleLayer.h"
 
+using glm::uvec2;
+
 using namespace STPDemo;
 using namespace SuperTerrainPlus::STPDiversity;
-
-using glm::uvec2;
 
 //The size of individual cache
 static constexpr size_t Cachesize = 2048ull;

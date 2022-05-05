@@ -3,11 +3,11 @@
 [![GitHub Releases](https://img.shields.io/github/v/release/stephen-hqxu/superterrainplus?include_prereleases&label=Release)](https://github.com/stephen-hqxu/superterrainplus/releases)
 [![GitHub License](https://img.shields.io/github/license/stephen-hqxu/superterrainplus?label=License)](https://github.com/stephen-hqxu/superterrainplus/blob/master/LICENSE)
 [![3rd-Party License](https://img.shields.io/badge/License-3rd--party-green)](https://github.com/stephen-hqxu/superterrainplus/blob/master/3rd-Party)
-![Maintenance](https://img.shields.io/maintenance/yes/2022?label=Maintained)
 [![Project Roadmap](https://img.shields.io/badge/Project-Roadmap-cd853f)](https://github.com/stephen-hqxu/superterrainplus/projects)
-[![Documentation](https://img.shields.io/badge/-Documentation-fa8072)](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/README.md)
-[![Dissertation](https://img.shields.io/badge/-Dissertation-7b68ee)](https://github.com/stephen-hqxu/superterrainplus/tree/master/Report)
+[![Documentation](https://img.shields.io/badge/Documentation-fa8072)](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/README.md)
+[![Dissertation](https://img.shields.io/badge/Dissertation-7b68ee)](https://github.com/stephen-hqxu/superterrainplus/tree/master/Report)
 
+<p align="center"> Year 3 Computer Science Dissertation Project </p>
 <p align="center"> A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering </p>
 
 ## :eyes: Overview
@@ -19,11 +19,11 @@
 	<img src="https://img.shields.io/badge/CMake_3.18-064F8C?style=flat&logo=cmake&logoColor=white" />
 </p>
 
-*SuperTerrain+* is a modern procedural terrain generator with physics simulations and aiming for real-time photorealistic rendering. It was started as my computer science dissertation project and inspired by many games, software and movies with procedural generation features. Procedural generation is one of the most popular topics in computer graphics and allows us to create data using the power of algorithm and minimise efforts spent on pre-modelling/computing.
+*SuperTerrain+* is a modern procedural terrain generator with physics simulations and aiming for real-time photorealistic rendering under the inspirations of games and movies with procedural generation features. Procedural generation is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
 
 *SuperTerrain+* provides object-oriented interfaces to allow developers to customise the scenery as they preferred. Rather than considering it as a piece of software, it is also a collection of modern computer graphics techniques; with the help of detailed inline documentations, this is also a great place for learning.
 
-*SuperTerrain+* is focusing on the next-generation computer graphics, so I have to spend most of my time on the latest technologies, therefore there is no intention for backward compatibility and the development environment such as programming language standard and hardware requirement, will be evolving over time.
+*SuperTerrain+* is focusing on the next-generation computer graphics and latest technologies, therefore there is no intention for backward compatibility and the development environment will be evolving over time.
 
 ## :bulb: Main Features
 
@@ -35,7 +35,7 @@ There is no perfect answer to this question, every application has its own pros 
 
 - [x] Tile-based infinite terrain
 - [x] Improved simplex noise
-- [x] Hardware instancing and tessellation
+- [x] Hardware ~~instancing and~~ tessellation
 - [x] Continuous level-of-detail
 - [x] Concurrent heightfield generation
 - [x] Particle-based free-slip hydraulic erosion
@@ -187,12 +187,12 @@ The application is unit-tested with.
 
 The following extensions are not required but will be made used by the engine automatically whenever applicable.
 
-- [GL_NV_mesh_shader](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_mesh_shader.txt)
-- [GL_NV_primitive_shading_rate](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_primitive_shading_rate.txt)
+- ~~[GL_NV_mesh_shader](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_mesh_shader.txt)~~
+- ~~[GL_NV_primitive_shading_rate](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_primitive_shading_rate.txt)~~
 - [GL_NV_representative_fragment_test](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_representative_fragment_test.txt)
-- [GL_NV_shading_rate_image](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shading_rate_image.txt)
+- ~~[GL_NV_shading_rate_image](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shading_rate_image.txt)~~
 
-> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. When you are downloading GLAD please make sure those extensions are included. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview) or [online extension database](https://opengl.gpuinfo.org/).
+> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview) or [online extension database](https://opengl.gpuinfo.org/). When you download GLAD please make sure mandatory extensions are included.
 
 ### :gear: Build Instruction
 
@@ -220,15 +220,16 @@ Similarly, GLAD library is not included either. You can use their web service to
 
 ```sh
 
-# x.x.x is the version number
-unzip ./`superterrainplus-x.x.x.zip`
-cd ./superterrainplus-x.x.x
+# use shallow clone to speed up if you only wish to run the demo
+# for development purposes please do a blob-less clone by replacing `--depth 1` with `--filter=blob:none`
+# avoid full clone due to large assets in the commit history
+git clone -b master --depth 1 https://github.com/stephen-hqxu/superterrainplus.git
 
-# create a build directory
+cd ./superterrainplus
+
 mkdir build
 cd ./build
 
-# generate build tree
 cmake ../
 
 ```
@@ -253,7 +254,7 @@ Compilation of the engine may take up to 5 minutes. You may obtain the following
 
 ## :books: Credits
 
-This section contains source code and libraries that are not dependencies of this project but they are where ideas and inspirations are taken from. I will try my best to give attributions and copyright notices for all publications used; in case something is missing, please contact the project maintainer *Stephen Xu*(stephen.hqxu@gmail.com).
+This section contains source code and libraries that are not dependencies of this project but they are where ideas and inspirations are taken from. I will try my best to give attributions and copyright notices for all publications used; in case something is missing, please open an issue.
 
 For redistributed open source project, see *3rd-Party* directory to find the licenses. For academic style *BibTex* references, check out the *Report* directory.
 

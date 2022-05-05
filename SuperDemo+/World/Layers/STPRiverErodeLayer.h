@@ -19,12 +19,11 @@ namespace STPDemo {
 		}
 
 		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
-			//center is river, return a river if any of the sample is a river
-			//de morgan's law
+			//centre is river, return a river if any of the sample is a river
 			if (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
-				return val != STPBiomeRegistry::RIVER.getID();
+				return val != STPBiomeRegistry::River.ID;
 				}, north, east, south, west)) {
-				return STPBiomeRegistry::RIVER.getID();
+				return STPBiomeRegistry::River.ID;
 			}
 			
 			//otherwise don't touch

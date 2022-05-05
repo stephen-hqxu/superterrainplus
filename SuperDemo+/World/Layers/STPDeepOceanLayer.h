@@ -19,7 +19,7 @@ namespace STPDemo {
 		}
 
 		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
-			//if the center is not shallow or it's not even ocean, we can't change anything
+			//if the centre is not shallow or it's not even ocean, we can't change anything
 			if (!STPBiomeRegistry::isShallowOcean(center)) {
 				return center;
 			}
@@ -41,20 +41,20 @@ namespace STPDemo {
 			
 			//if we are surrounded, generate their relative deep ocean
 			if (i > 3) {
-				if (center == STPBiomeRegistry::OCEAN.getID()) {
-					return STPBiomeRegistry::DEEP_OCEAN.getID();
+				if (center == STPBiomeRegistry::Ocean.ID) {
+					return STPBiomeRegistry::DeepOcean.ID;
 				}
-				if (center == STPBiomeRegistry::WARM_OCEAN.getID()) {
-					return STPBiomeRegistry::DEEP_WARM_OCEAN.getID();
+				if (center == STPBiomeRegistry::WarmOcean.ID) {
+					return STPBiomeRegistry::DeepWarmOcean.ID;
 				}
-				if (center == STPBiomeRegistry::LUKEWARM_OCEAN.getID()) {
-					return STPBiomeRegistry::DEEP_LUKEWARM_OCEAN.getID();
+				if (center == STPBiomeRegistry::LukewarmOcean.ID) {
+					return STPBiomeRegistry::DeepLukewarmOcean.ID;
 				}
-				if (center == STPBiomeRegistry::COLD_OCEAN.getID()) {
-					return STPBiomeRegistry::DEEP_COLD_OCEAN.getID();
+				if (center == STPBiomeRegistry::ColdOcean.ID) {
+					return STPBiomeRegistry::DeepColdOcean.ID;
 				}
-				if (center == STPBiomeRegistry::FROZEN_OCEAN.getID()) {
-					return STPBiomeRegistry::DEEP_FROZEN_OCEAN.getID();
+				if (center == STPBiomeRegistry::FrozenOcean.ID) {
+					return STPBiomeRegistry::DeepFrozenOcean.ID;
 				}
 
 			}

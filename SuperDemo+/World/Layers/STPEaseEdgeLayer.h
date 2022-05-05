@@ -20,7 +20,7 @@ namespace STPDemo {
 		inline static bool anyMatch(const STPBiome& biome, S... id) {
 			static_assert(std::conjunction<std::is_same<S, Sample>...>::value, "Only biome IDs can be matched");
 
-			return ((biome.getID() == id) || ...);
+			return ((biome.ID == id) || ...);
 		}
 
 	public:
@@ -31,14 +31,14 @@ namespace STPDemo {
 
 		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
 			//replace the edge by something else if it has conflict
-			if (center == STPBiomeRegistry::DESERT.getID() && STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::SNOWY_TUNDRA, north, east, south, west)) {
-				return STPBiomeRegistry::WOODED_MOUNTAIN.getID();
+			if (center == STPBiomeRegistry::Desert.ID && STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::SnowyTundra, north, east, south, west)) {
+				return STPBiomeRegistry::WoodedMountain.ID;
 			}
-			if (center == STPBiomeRegistry::SWAMP.getID()
-				&& (STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::DESERT, north, east, south, west)
-				|| STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::SNOWY_TUNDRA, north, east, south, west)
-				|| STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::SNOWY_TAIGA, north, east, south, west))) {
-				return STPBiomeRegistry::PLAINS.getID();
+			if (center == STPBiomeRegistry::Swamp.ID
+				&& (STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::Desert, north, east, south, west)
+				|| STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::SnowyTundra, north, east, south, west)
+				|| STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::SnowyTaiga, north, east, south, west))) {
+				return STPBiomeRegistry::Plains.ID;
 			}
 
 			//otherwise do nothing

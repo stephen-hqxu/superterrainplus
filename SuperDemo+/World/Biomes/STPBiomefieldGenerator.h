@@ -8,7 +8,7 @@
 //Multi-biome Heightfield Generator
 #include <SuperTerrain+/World/Chunk/STPDiversityGenerator.hpp>
 #include "STPCommonCompiler.h"
-#include "STPBiomeSettings.hpp"
+#include "STPBiome.hpp"
 //Biome Interpolation
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 #include <glm/vec2.hpp>

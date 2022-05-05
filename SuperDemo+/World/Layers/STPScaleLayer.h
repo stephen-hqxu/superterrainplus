@@ -8,7 +8,7 @@ namespace STPDemo {
 	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
-	 * @brief STPScaleLayer scales the current layer and randomly choose the neighboring cell to fill the new cells
+	 * @brief STPScaleLayer scales the current layer and randomly choose the neighbouring cell to fill the new cells
 	*/
 	class STPScaleLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
@@ -40,7 +40,7 @@ namespace STPDemo {
 			if (e == s && e == se) {
 				return e;
 			}
-			//if the neighbor cells are the same, return the same sample
+			//if the neighbour cells are the same, return the same sample
 			if (center == e && (center == se || s != se)) {
 				return center;
 			}
@@ -71,12 +71,12 @@ namespace STPDemo {
 		}
 
 		Sample sample(int x, int y, int z) override {
-			//get the sample of the neighbor cell
+			//get the sample of the neighbour cell
 			const Sample i = this->getAscendant()->retrieve(x >> 1, y, z >> 1);
 			const int xb = x & 1, zb = z & 1;
 			//reset local seed
 			const Seed local_seed = this->genLocalSeed(x & -2, z & -2);
-			//get local rng
+			//get local RNG
 			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 
 			if (xb == 0 && zb == 0) {
@@ -84,7 +84,7 @@ namespace STPDemo {
 				return i;
 			}
 
-			//otherwise, we need to randomly choose between neighboring values
+			//otherwise, we need to randomly choose between neighbouring values
 			const Sample l = this->getAscendant()->retrieve(x >> 1, y, (z + 1) >> 1);
 			const Sample m = rng.choose(i, l);
 

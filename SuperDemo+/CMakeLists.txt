@@ -10,7 +10,6 @@ find_package(SIMPLE 3 REQUIRED CONFIG)
 # header and source code will be placed together
 add_executable(${STP_DEMO_PROGRAM}
 World/Layers/STPAllLayers.cpp
-World/Biomes/STPBiome.cpp
 World/Biomes/STPBiomefieldGenerator.cpp
 World/Biomes/STPCommonCompiler.cpp
 World/Biomes/STPSplatmapGenerator.cpp

@@ -55,10 +55,9 @@ void STPBiomefieldGenerator::initGenerator() {
 	//currently we have two biomes
 	STPBiomeProperty* biomeTable_buffer;
 	STPcudaCheckErr(cuMemAllocHost(reinterpret_cast<void**>(&biomeTable_buffer), biome_propSize));
-	constexpr size_t one_biomeprop_size = sizeof(STPBiomeProperty);
 	//copy to host buffer
-	memcpy(biomeTable_buffer, dynamic_cast<const STPBiomeProperty*>(&STPBiomeRegistry::OCEAN.getProperties()), one_biomeprop_size);
-	memcpy(biomeTable_buffer + 1, dynamic_cast<const STPBiomeProperty*>(&STPBiomeRegistry::PLAINS.getProperties()), one_biomeprop_size);
+	biomeTable_buffer[0] = static_cast<STPBiomeProperty>(STPBiomeRegistry::Ocean);
+	biomeTable_buffer[1] = static_cast<STPBiomeProperty>(STPBiomeRegistry::Plains);
 	//copy everything to device
 	STPcudaCheckErr(cuMemcpyHtoD(biome_prop, biomeTable_buffer, biome_propSize));
 

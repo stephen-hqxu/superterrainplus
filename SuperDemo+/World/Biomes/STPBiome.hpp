@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_BIOME_SETTINGS_HPP_
-#define _STP_BIOME_SETTINGS_HPP_
+#ifndef _STP_BIOME_HPP_
+#define _STP_BIOME_HPP_
 
 #include "STPBiomeProperty.hpp"
 #include <SuperTerrain+/Environment/STPSetting.hpp>
@@ -12,9 +12,9 @@ namespace STPDemo {
 	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
-	 * @brief STPBiomeSettings stores all biome settings, including information about the biome and generation parameters
+	 * @brief STPBiome provides an abstract base class for each biome definition
 	*/
-	struct STPBiomeSettings : public STPBiomeProperty, public SuperTerrainPlus::STPEnvironment::STPSetting {
+	struct STPBiome : public STPBiomeProperty, public SuperTerrainPlus::STPEnvironment::STPSetting {
 	public:
 
 		//Identification and texture control
@@ -30,7 +30,7 @@ namespace STPDemo {
 		/**
 			* @brief Init STPBiomeSettings with default values
 		*/
-		STPBiomeSettings() : STPSetting() {
+		STPBiome() : STPSetting() {
 			this->ID = 0;
 			this->Name = "";
 			this->Temperature = 0.0f;
@@ -39,9 +39,9 @@ namespace STPDemo {
 			this->Variation = 0.0f;
 		}
 
-		~STPBiomeSettings() = default;
+		~STPBiome() = default;
 
-		bool validate() const override {
+		inline bool validate() const override {
 			return this->Temperature >= 0.0f
 				&& this->Precipitation >= 0.0f
 				&& this->Depth >= 0.0f
@@ -50,4 +50,4 @@ namespace STPDemo {
 
 	};
 }
-#endif//_STP_BIOME_SETTINGS_HPP_
+#endif//_STP_BIOME_HPP_

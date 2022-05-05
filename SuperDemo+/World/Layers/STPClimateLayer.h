@@ -42,7 +42,7 @@ namespace STPDemo {
 				const Sample val = this->getAscendant()->retrieve(x, y, z);
 				//set the local seed
 				const Seed local_seed = this->genLocalSeed(x, z);
-				//get the local rng
+				//get the local RNG
 				const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 
 				if (STPBiomeRegistry::isShallowOcean(val)) {
@@ -54,12 +54,12 @@ namespace STPDemo {
 				//1/6 chance of getting a forest or mountain
 				const Sample i = rng.nextVal(6);
 				switch (i) {
-				case 0u: return STPBiomeRegistry::FOREST.getID();
+				case 0u: return STPBiomeRegistry::Forest.ID;
 					break;
-				case 1u: return STPBiomeRegistry::MOUNTAIN.getID();
+				case 1u: return STPBiomeRegistry::Mountain.ID;
 					break;
 				//otherwise it's still a plains
-				default: return STPBiomeRegistry::PLAINS.getID();
+				default: return STPBiomeRegistry::Plains.ID;
 					break;
 				}
 
@@ -78,15 +78,15 @@ namespace STPDemo {
 			}
 
 			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
-				//escape the one that is extreme on the center
+				//escape the one that is extreme on the centre
 				//and either temperate on one of the other side
 				//and replace it with a more temperate biome
-				if (center == STPBiomeRegistry::PLAINS.getID()
+				if (center == STPBiomeRegistry::Plains.ID
 					&& (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return !(val == STPBiomeRegistry::MOUNTAIN.getID() || val == STPBiomeRegistry::FOREST.getID());
+						return !(val == STPBiomeRegistry::Mountain.ID || val == STPBiomeRegistry::Forest.ID);
 						}, north, east, south, west))) {
 					//land
-					return STPBiomeRegistry::DESERT.getID();
+					return STPBiomeRegistry::Desert.ID;
 				}
 
 				return center;
@@ -105,18 +105,18 @@ namespace STPDemo {
 			}
 
 			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
-				//escape the one that is cold on the center
+				//escape the one that is cold on the centre
 				//and either hot or warm on one of the other side
 				//extreme climate cannot be placed together
-				if (center != STPBiomeRegistry::FOREST.getID()
+				if (center != STPBiomeRegistry::Forest.ID
 					|| STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return val != STPBiomeRegistry::PLAINS.getID() && val != STPBiomeRegistry::DESERT.getID();
+						return val != STPBiomeRegistry::Plains.ID && val != STPBiomeRegistry::Desert.ID;
 						}, north, east, south, west)) {
 					//land
 					return center;
 				}
 
-				return STPBiomeRegistry::MOUNTAIN.getID();
+				return STPBiomeRegistry::Mountain.ID;
 			}
 
 		};

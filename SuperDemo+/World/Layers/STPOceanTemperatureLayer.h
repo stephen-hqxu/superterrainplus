@@ -15,7 +15,7 @@ namespace STPDemo {
 	public:
 
 		/**
-		 * @brief STPOceanNoise setups warm and frozen ocean first with RNG
+		 * @brief STPOceanNoise setup warm and frozen ocean first with RNG
 		*/
 		class STPOceanNoise : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
@@ -27,18 +27,18 @@ namespace STPDemo {
 			Sample sample(int x, int, int z) override {
 				//set local seed
 				const Seed local_seed = this->genLocalSeed(x, z);
-				//get local rng
+				//get local RNG
 				const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 
-				//the rng will overwrite land portion and mix them later in transition layer
+				//the RNG will overwrite land portion and mix them later in transition layer
 				//given 1/3 chance for each temp
 				const Sample i = rng.nextVal(3);
 				switch (i) {
-				case 0u: return STPBiomeRegistry::FROZEN_OCEAN.getID();
+				case 0u: return STPBiomeRegistry::FrozenOcean.ID;
 					break;
-				case 1u: return STPBiomeRegistry::WARM_OCEAN.getID();
+				case 1u: return STPBiomeRegistry::WarmOcean.ID;
 					break;
-				default: return STPBiomeRegistry::OCEAN.getID();
+				default: return STPBiomeRegistry::Ocean.ID;
 					break;
 				}
 			}
@@ -56,23 +56,23 @@ namespace STPDemo {
 			}
 
 			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
-				if (center != STPBiomeRegistry::LUKEWARM_OCEAN.getID()
+				if (center != STPBiomeRegistry::LukewarmOcean.ID
 					|| STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return val != STPBiomeRegistry::COLD_OCEAN.getID();
+						return val != STPBiomeRegistry::ColdOcean.ID;
 						}, north, east, south, west)) {
 					return center;
 				}
 
 				//or cold
-				if (center != STPBiomeRegistry::COLD_OCEAN.getID()
+				if (center != STPBiomeRegistry::ColdOcean.ID
 					|| STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return val != STPBiomeRegistry::LUKEWARM_OCEAN.getID();
+						return val != STPBiomeRegistry::LukewarmOcean.ID;
 						}, north, east, south, west)) {
 					return center;
 				}
 
 				//lukewarm meets cold in either order = ocean
-				return STPBiomeRegistry::OCEAN.getID();
+				return STPBiomeRegistry::Ocean.ID;
 			}
 
 		};
@@ -88,21 +88,21 @@ namespace STPDemo {
 			}
 
 			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
-				if (center == STPBiomeRegistry::WARM_OCEAN.getID()
+				if (center == STPBiomeRegistry::WarmOcean.ID
 					&& (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return val != STPBiomeRegistry::FROZEN_OCEAN.getID();
+						return val != STPBiomeRegistry::FrozenOcean.ID;
 						}, north, east, south, west))) {
 					//warm meets frozen = lukewarm
-					return STPBiomeRegistry::LUKEWARM_OCEAN.getID();
+					return STPBiomeRegistry::LukewarmOcean.ID;
 				}
 
 				//or frozen, it can only be either of both, then vice versa
-				if (center == STPBiomeRegistry::FROZEN_OCEAN.getID()
+				if (center == STPBiomeRegistry::FrozenOcean.ID
 					&& (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return val != STPBiomeRegistry::WARM_OCEAN.getID();
+						return val != STPBiomeRegistry::WarmOcean.ID;
 						}, north, east, south, west))) {
 					//frozen meets warm = cold
-					return STPBiomeRegistry::COLD_OCEAN.getID();
+					return STPBiomeRegistry::ColdOcean.ID;
 				}
 
 				//otherwise do nothing
@@ -128,20 +128,20 @@ namespace STPDemo {
 					return val;
 				}
 
-				//testing for neighbors and check for lands
+				//testing for neighbours and check for lands
 				for (int rx = -8; rx <= 8; rx += 4) {
 					for (int rz = -8; rz <= 8; rz += 4) {
 						const Sample shift_xz = this->getAscendant()->retrieve(x + rx, y, z + rz);
 						if (STPBiomeRegistry::isOcean(shift_xz)) {
-							//we need to find neighbor who is land
+							//we need to find neighbour who is land
 							continue;
 						}
 
-						if (val == STPBiomeRegistry::WARM_OCEAN.getID()) {
-							return STPBiomeRegistry::LUKEWARM_OCEAN.getID();
+						if (val == STPBiomeRegistry::WarmOcean.ID) {
+							return STPBiomeRegistry::LukewarmOcean.ID;
 						}
-						if (val == STPBiomeRegistry::FROZEN_OCEAN.getID()) {
-							return STPBiomeRegistry::COLD_OCEAN.getID();
+						if (val == STPBiomeRegistry::FrozenOcean.ID) {
+							return STPBiomeRegistry::ColdOcean.ID;
 						}
 					}
 				}

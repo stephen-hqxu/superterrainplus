@@ -13,7 +13,7 @@ namespace STPDemo {
 		//Generation control
 		//Determine the zooming of the noise map
 		float Scale;
-		//Control how many heightmap will be conbined
+		//Control how many heightmap will be combined
 		unsigned int Octave;
 		//Control how the amplitude will be changed in each octave. Range (0,1)
 		float Persistence;

@@ -18,14 +18,14 @@ namespace STPDemo {
 		}
 
 		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) {
-			//set local rng
+			//set local RNG
 			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 
 			const bool xMatch = west == east;
 			const bool zMatch = north == south;
 			if (xMatch == zMatch) {
 				//if both of them are the same, pick randomly
-				//if not, do not touch the center value
+				//if not, do not touch the centre value
 				return xMatch ? rng.choose(west, north) : center;
 			}
 			//otherwise we pick the side that is the same

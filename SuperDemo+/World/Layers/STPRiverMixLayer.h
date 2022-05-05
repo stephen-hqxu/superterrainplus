@@ -30,10 +30,10 @@ namespace STPDemo {
 				return land_val;
 			}
 
-			if (river_val == STPBiomeRegistry::RIVER.getID() && STPBiomeRegistry::getPrecipitationType(land_val) == STPBiomeRegistry::STPPrecipitationType::SNOW) {
+			if (river_val == STPBiomeRegistry::River.ID && STPBiomeRegistry::getPrecipitationType(land_val) == STPBiomeRegistry::STPPrecipitationType::SNOW) {
 				//if this area snows, we should see the river frozen
-				return STPBiomeRegistry::FROZEN_RIVER.getID();
-				//vanilla minecraft has mushroom biome, but this is not realistic in real world, so we ignore
+				return STPBiomeRegistry::FrozenRiver.ID;
+				//vanilla Minecraft has mushroom biome, but this is not realistic in real world, so we ignore
 			}
 
 			//if this area doesn't contain river

@@ -19,31 +19,31 @@ namespace STPDemo {
 		}
 
 		Sample sample(Sample center, Sample ne, Sample se, Sample sw, Sample nw, Seed local_seed) override {
-			//get the local rng
+			//get the local RNG
 			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 
-			//if the center is not ocean or all surroundings are ocean
+			//if the centre is not ocean or all surroundings are ocean
 			if (!STPBiomeRegistry::isShallowOcean(center) || STPBiomeRegistry::applyAll(STPBiomeRegistry::isShallowOcean, sw, se, ne, nw)) {
-				//opposite, if the center is ocean or all surroundings are not
+				//opposite, if the centre is ocean or all surroundings are not
 				if (STPBiomeRegistry::isShallowOcean(center) || STPBiomeRegistry::applyAll([](Sample val) -> bool {
 					return !STPBiomeRegistry::isShallowOcean(val); 
 					}, sw, se, ne, nw) || rng.nextVal(5) != 0u) {
-					//then we have 1/5 chance to return the biome pointing to center
+					//then we have 1/5 chance to return the biome pointing to centre
 					return center;
 				}
 				
 				//expand the land section if it's next to other lands
 				if (STPBiomeRegistry::isShallowOcean(nw)) {
-					return STPBiomeRegistry::CAS(center, STPBiomeRegistry::FOREST.getID(), nw);
+					return STPBiomeRegistry::CAS(center, STPBiomeRegistry::Forest.ID, nw);
 				}
 				if (STPBiomeRegistry::isShallowOcean(sw)) {
-					return STPBiomeRegistry::CAS(center, STPBiomeRegistry::FOREST.getID(), sw);
+					return STPBiomeRegistry::CAS(center, STPBiomeRegistry::Forest.ID, sw);
 				}
 				if (STPBiomeRegistry::isShallowOcean(ne)) {
-					return STPBiomeRegistry::CAS(center, STPBiomeRegistry::FOREST.getID(), ne);
+					return STPBiomeRegistry::CAS(center, STPBiomeRegistry::Forest.ID, ne);
 				}
 				if (STPBiomeRegistry::isShallowOcean(se)) {
-					return STPBiomeRegistry::CAS(center, STPBiomeRegistry::FOREST.getID(), se);
+					return STPBiomeRegistry::CAS(center, STPBiomeRegistry::Forest.ID, se);
 				}
 
 				return center;
@@ -68,7 +68,7 @@ namespace STPDemo {
 				return j;
 			}
 
-			return j == STPBiomeRegistry::FOREST.getID() ? STPBiomeRegistry::FOREST.getID() : center;
+			return j == STPBiomeRegistry::Forest.ID ? STPBiomeRegistry::Forest.ID : center;
 		}
 
 	};

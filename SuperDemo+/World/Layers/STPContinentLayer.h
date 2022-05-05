@@ -21,11 +21,11 @@ namespace STPDemo {
 		Sample sample(int x, int, int z) override {
 			//set local seed
 			const Seed local_seed = this->genLocalSeed(x, z);
-			//get the rng for this coordinate
+			//get the RNG for this coordinate
 			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 
 			//we give 1/10 chance for land
-			return rng.nextVal(10u) == 0 ? STPBiomeRegistry::PLAINS.getID() : STPBiomeRegistry::OCEAN.getID();
+			return rng.nextVal(10u) == 0 ? STPBiomeRegistry::Plains.ID : STPBiomeRegistry::Ocean.ID;
 		}
 	};
 }

@@ -25,21 +25,21 @@ namespace STPDemo {
 			}
 
 			const bool snowy_area = STPBiomeRegistry::getPrecipitationType(center) == STPBiomeRegistry::STPPrecipitationType::SNOW;
-			//if the center is land and the surrounding has ocean, turn it into one of the edge biomes
+			//if the centre is land and the surrounding has ocean, turn it into one of the edge biomes
 			if (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
 				return !STPBiomeRegistry::isOcean(val);
 			}, north, east, south, west)) {
 				//if one of the surrounding is ocean...
 				if (snowy_area) {
 					//if it's cold...
-					return STPBiomeRegistry::SNOWY_BEACH.getID();
+					return STPBiomeRegistry::SnowyBeach.ID;
 				}
-				if (center == STPBiomeRegistry::MOUNTAIN.getID()) {
+				if (center == STPBiomeRegistry::Mountain.ID) {
 					//near the mountain?
-					return STPBiomeRegistry::STONE_SHORE.getID();
+					return STPBiomeRegistry::StoneShore.ID;
 				}
 
-				return STPBiomeRegistry::BEACH.getID();
+				return STPBiomeRegistry::Beach.ID;
 			}
 
 			//otherwise everything is untouched

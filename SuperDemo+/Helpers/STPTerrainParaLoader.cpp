@@ -204,32 +204,28 @@ STPEnvironment::STPBidirectionalScatteringSetting STPTerrainParaLoader::getBSDFS
 
 void STPTerrainParaLoader::loadBiomeParameters(const SIMPLE::SIStorage& biomeini) {
 	using namespace STPDiversity;
-	typedef STPDemo::STPBiomeRegistry BR;
+	namespace BR = STPDemo::STPBiomeRegistry;
 	auto load = [&biomeini](STPDemo::STPBiome& biome, string name) -> void {
-		STPDemo::STPBiomeSettings props;
 		const SIMPLE::SISection& curr_biome = biomeini.at(name);
 
 		//assigning props
-		props.Name = *curr_biome.at("name");
-		props.ID = curr_biome.at("id").to<Sample>();
-		props.Temperature = curr_biome.at("temperature").to<float>();
-		props.Precipitation = curr_biome.at("precipitation").to<float>();
-		props.Scale = curr_biome.at("scale").to<float>();
-		props.Octave = curr_biome.at("octave").to<unsigned int>();
-		props.Persistence = curr_biome.at("persistence").to<float>();
-		props.Lacunarity = curr_biome.at("lacunarity").to<float>();
-		props.Depth = curr_biome.at("depth").to<float>();
-		props.Variation = curr_biome.at("variation").to<float>();
-
-		//modify biome settings
-		biome.updateProperties(props);
+		biome.Name = *curr_biome.at("name");
+		biome.ID = curr_biome.at("id").to<Sample>();
+		biome.Temperature = curr_biome.at("temperature").to<float>();
+		biome.Precipitation = curr_biome.at("precipitation").to<float>();
+		biome.Scale = curr_biome.at("scale").to<float>();
+		biome.Octave = curr_biome.at("octave").to<unsigned int>();
+		biome.Persistence = curr_biome.at("persistence").to<float>();
+		biome.Lacunarity = curr_biome.at("lacunarity").to<float>();
+		biome.Depth = curr_biome.at("depth").to<float>();
+		biome.Variation = curr_biome.at("variation").to<float>();
 	};
 
 	//start loading
-	load(BR::OCEAN, "ocean");
-	load(BR::PLAINS, "plains");
-	load(BR::DESERT, "desert");
-	load(BR::FOREST, "forest");
+	load(BR::Ocean, "ocean");
+	load(BR::Plains, "plains");
+	load(BR::Desert, "desert");
+	load(BR::Forest, "forest");
 
 	//finally register all biomes
 	BR::registerBiomes();

@@ -39,7 +39,7 @@ namespace STPDemo {
 
 		/**
 		 * @brief Sample the layer in a X cross manner, return the sample point
-		 * @param center The center coordinate of the X cross
+		 * @param centre The centre coordinate of the X cross
 		 * @param ne The north east coordinate of the X cross
 		 * @param se The south east coordinate of the X cross
 		 * @param sw The south west coordinate of the X cross
@@ -47,7 +47,7 @@ namespace STPDemo {
 		 * @param local_seed The seed for this local generation
 		 * @return Sample id or value, depended on the actual implementation.
 		*/
-		virtual Sample sample(Sample center, Sample ne, Sample se, Sample sw, Sample nw, Seed local_seed) = 0;
+		virtual Sample sample(Sample, Sample, Sample, Sample, Sample, Seed) = 0;
 
 	};
 }

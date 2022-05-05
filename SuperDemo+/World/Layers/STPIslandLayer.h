@@ -9,7 +9,7 @@ namespace STPDemo {
 	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
-	 * @brief STPIslandLayer adds more lands if the near-neighbors are all ocean, a.k.a., remove too much ocean
+	 * @brief STPIslandLayer adds more lands if the near-neighbour are all ocean, a.k.a., remove too much ocean
 	*/
 	class STPIslandLayer : public STPCrossLayer {
 	public:
@@ -19,12 +19,12 @@ namespace STPDemo {
 		}
 
 		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
-			//get the local rng
+			//get the local RNG
 			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 
 			//if we are surrounded by ocean, we have 1/2 of chance to generate a plain
 			return STPBiomeRegistry::applyAll(STPBiomeRegistry::isShallowOcean, center, north, east, south, west)
-				&& rng.nextVal(2) == 0 ? STPBiomeRegistry::PLAINS.getID() : center;
+				&& rng.nextVal(2) == 0 ? STPBiomeRegistry::Plains.ID : center;
 		}
 	};
 }

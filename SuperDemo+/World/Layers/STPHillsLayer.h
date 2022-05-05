@@ -27,7 +27,7 @@ namespace STPDemo {
 		Sample sample(int x, int y, int z) override {
 			//generate local seed 
 			const Seed local_seed = this->genLocalSeed(x, z);
-			//get the local rng
+			//get the local RNG
 			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 			//get the parent samples
 			const Sample land_val = this->getAscendant(0)->retrieve(x, y, z);
@@ -40,61 +40,61 @@ namespace STPDemo {
 			if (rng.nextVal(3) == 0 || is_hill == 0) {
 				Sample l = land_val;
 				//convert biomes to their respective hill biome
-				if (land_val == STPBiomeRegistry::DESERT.getID()) {
-					l = STPBiomeRegistry::DESERT_HILLS.getID();
+				if (land_val == STPBiomeRegistry::Desert.ID) {
+					l = STPBiomeRegistry::DesertHills.ID;
 				}
-				else if (land_val == STPBiomeRegistry::TAIGA.getID()) {
-					l = STPBiomeRegistry::TAIGA_HILLS.getID();
+				else if (land_val == STPBiomeRegistry::Taiga.ID) {
+					l = STPBiomeRegistry::TaigaHills.ID;
 				}
-				else if (land_val == STPBiomeRegistry::MOUNTAIN.getID()) {
-					l = STPBiomeRegistry::WOODED_MOUNTAIN.getID();
+				else if (land_val == STPBiomeRegistry::Mountain.ID) {
+					l = STPBiomeRegistry::WoodedMountain.ID;
 				}
-				else if (land_val == STPBiomeRegistry::SNOWY_TUNDRA.getID() || land_val == STPBiomeRegistry::SNOWY_TAIGA.getID()) {
-					l = STPBiomeRegistry::SNOWY_MOUNTAIN.getID();
+				else if (land_val == STPBiomeRegistry::SnowyTundra.ID || land_val == STPBiomeRegistry::SnowyTaiga.ID) {
+					l = STPBiomeRegistry::SnowyMountain.ID;
 				}
-				else if (land_val == STPBiomeRegistry::PLAINS.getID()) {
-					l = rng.nextVal(3) == 0 ? STPBiomeRegistry::FOREST_HILLS.getID() : STPBiomeRegistry::FOREST.getID();
+				else if (land_val == STPBiomeRegistry::Plains.ID) {
+					l = rng.nextVal(3) == 0 ? STPBiomeRegistry::ForestHills.ID : STPBiomeRegistry::Forest.ID;
 				}
-				else if (land_val == STPBiomeRegistry::FOREST.getID()) {
-					l = STPBiomeRegistry::FOREST_HILLS.getID();
+				else if (land_val == STPBiomeRegistry::Forest.ID) {
+					l = STPBiomeRegistry::ForestHills.ID;
 				}
-				else if (land_val == STPBiomeRegistry::JUNGLE.getID()) {
-					l = STPBiomeRegistry::JUNGLE_HILLS.getID();
+				else if (land_val == STPBiomeRegistry::Jungle.ID) {
+					l = STPBiomeRegistry::JungleHills.ID;
 				}
-				else if (land_val == STPBiomeRegistry::SAVANA.getID()) {
-					l = STPBiomeRegistry::SAVANA_PLATEAU.getID();
+				else if (land_val == STPBiomeRegistry::Savannah.ID) {
+					l = STPBiomeRegistry::SavannahPlateau.ID;
 				}
-				else if (land_val == STPBiomeRegistry::SWAMP.getID()) {
-					l = STPBiomeRegistry::SWAMP_HILLS.getID();
+				else if (land_val == STPBiomeRegistry::Swamp.ID) {
+					l = STPBiomeRegistry::SwampHills.ID;
 				}
-				else if (land_val == STPBiomeRegistry::BADLANDS.getID()) {
-					l = STPBiomeRegistry::BADLANDS_PLATEAU.getID();
+				else if (land_val == STPBiomeRegistry::Badlands.ID) {
+					l = STPBiomeRegistry::BadlandsPlateau.ID;
 				}
 				//randomly generate some deep ocean as hills
-				else if (land_val == STPBiomeRegistry::OCEAN.getID()) {
-					l = STPBiomeRegistry::DEEP_OCEAN.getID();
+				else if (land_val == STPBiomeRegistry::Ocean.ID) {
+					l = STPBiomeRegistry::DeepOcean.ID;
 				}
-				else if (land_val == STPBiomeRegistry::WARM_OCEAN.getID()) {
-					l = STPBiomeRegistry::DEEP_WARM_OCEAN.getID();
+				else if (land_val == STPBiomeRegistry::WarmOcean.ID) {
+					l = STPBiomeRegistry::DeepWarmOcean.ID;
 				}
-				else if (land_val == STPBiomeRegistry::LUKEWARM_OCEAN.getID()) {
-					l = STPBiomeRegistry::DEEP_LUKEWARM_OCEAN.getID();
+				else if (land_val == STPBiomeRegistry::LukewarmOcean.ID) {
+					l = STPBiomeRegistry::DeepLukewarmOcean.ID;
 				}
-				else if (land_val == STPBiomeRegistry::COLD_OCEAN.getID()) {
-					l = STPBiomeRegistry::DEEP_COLD_OCEAN.getID();
+				else if (land_val == STPBiomeRegistry::ColdOcean.ID) {
+					l = STPBiomeRegistry::DeepColdOcean.ID;
 				}
-				else if (land_val == STPBiomeRegistry::FROZEN_OCEAN.getID()) {
-					l = STPBiomeRegistry::DEEP_FROZEN_OCEAN.getID();
+				else if (land_val == STPBiomeRegistry::FrozenOcean.ID) {
+					l = STPBiomeRegistry::DeepFrozenOcean.ID;
 				}
 
-				//now let's add some island at the center of some ocean, given 1/3 chance of spawning
+				//now let's add some island at the centre of some ocean, given 1/3 chance of spawning
 				if (STPBiomeRegistry::isOcean(land_val) && !STPBiomeRegistry::isShallowOcean(land_val) && rng.nextVal(3) == 0) {
 					//filter out deep ocean
 					//giving 1/2 chance of each biome, feel free to add some more...
-					l = rng.nextVal(2) == 0 ? STPBiomeRegistry::PLAINS.getID() : STPBiomeRegistry::FOREST.getID();
+					l = rng.nextVal(2) == 0 ? STPBiomeRegistry::Plains.ID : STPBiomeRegistry::Forest.ID;
 				}
 
-				//make sure the hill is strictly at the center of the biome, not on the edge
+				//make sure the hill is strictly at the centre of the biome, not on the edge
 				if (l != land_val) {
 					unsigned char m = 0x00u;
 					if (land_val ==	this->getAscendant(0)->retrieve(x, y, z - 1)) {

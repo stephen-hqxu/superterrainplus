@@ -26,11 +26,11 @@ namespace STPDemo {
 
 		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
 			//filter the river
-			//bascially it's an edge detector
+			//basically it's an edge detector
 			const Sample i = STPNoiseToRiverLayer::filterRiver(center);
 			return i == STPNoiseToRiverLayer::filterRiver(north) && i == STPNoiseToRiverLayer::filterRiver(east)
 				&& i == STPNoiseToRiverLayer::filterRiver(south) && i == STPNoiseToRiverLayer::filterRiver(west)
-				? 0xFFFFu : STPBiomeRegistry::RIVER.getID();
+				? 0xFFFFu : STPBiomeRegistry::River.ID;
 		}
 
 	};

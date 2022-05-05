@@ -9,7 +9,7 @@ namespace STPDemo {
 	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
-	 * @brief STPVoronoiLayer performs voronoi scaling (4:1 -> 1:1)
+	 * @brief STPVoronoiLayer performs Voronoi scaling (4:1 -> 1:1)
 	*/
 	class STPVoronoiLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	private:
@@ -56,7 +56,6 @@ namespace STPDemo {
 		}
 
 		Sample sample(int x, int y, int z) override {
-			//please don't ask me how this algorithm works, because I don't know
 			const int ijk[3] = {
 				x - 2, 
 				y - 2, 

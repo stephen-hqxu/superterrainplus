@@ -4,50 +4,51 @@
 #include <SuperTerrain+/World/Diversity/STPLayer.h>
 #include "../Biomes/STPBiomeRegistry.h"
 
-#include <vector>
+#include <array>
 
 namespace STPDemo {
 	using SuperTerrainPlus::STPDiversity::Seed;
 	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
-	 * @brief STPBaseBiomeLayer starts to add biomes based on the climate, and interprete temperature and precipitation to the actual biome
+	 * @brief STPBaseBiomeLayer starts to add biomes based on the climate, and interpret temperature and precipitation to the actual biome
 	*/
 	class STPBaseBiomeLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	private:
 
-		typedef const std::vector<Sample> BiomeList;
+		template<size_t S>
+		using STPBiomeList = std::array<Sample, S>;
 
 		//A table of interpretation
 		//If we want higher chance of spawning for specific biomes, just repeat that one
 		//Since biome ids are loaded after runtime, so we can't make it static
 
-		BiomeList DRY_BIOMES = {
-			STPBiomeRegistry::DESERT.getID(),
-			STPBiomeRegistry::SAVANA.getID(),
-			STPBiomeRegistry::PLAINS.getID(),
-			STPBiomeRegistry::BADLANDS.getID()
+		const STPBiomeList<4u> DryBiomes = {
+			STPBiomeRegistry::Desert.ID,
+			STPBiomeRegistry::Savannah.ID,
+			STPBiomeRegistry::Plains.ID,
+			STPBiomeRegistry::Badlands.ID
 		};
 
-		BiomeList TEMPERATE_BIOMES = {
-			STPBiomeRegistry::JUNGLE.getID(),
-			STPBiomeRegistry::FOREST.getID(),
-			STPBiomeRegistry::MOUNTAIN.getID(),
-			STPBiomeRegistry::PLAINS.getID(),
-			STPBiomeRegistry::SWAMP.getID()
+		const STPBiomeList<5u> TemperateBiomes = {
+			STPBiomeRegistry::Jungle.ID,
+			STPBiomeRegistry::Forest.ID,
+			STPBiomeRegistry::Mountain.ID,
+			STPBiomeRegistry::Plains.ID,
+			STPBiomeRegistry::Swamp.ID
 		};
 
-		BiomeList COOL_BIOMES = {
-			STPBiomeRegistry::PLAINS.getID(),
-			STPBiomeRegistry::MOUNTAIN.getID(),
-			STPBiomeRegistry::FOREST.getID(),
-			STPBiomeRegistry::TAIGA.getID()
+		const STPBiomeList<4u> CoolBiomes = {
+			STPBiomeRegistry::Plains.ID,
+			STPBiomeRegistry::Mountain.ID,
+			STPBiomeRegistry::Forest.ID,
+			STPBiomeRegistry::Taiga.ID
 		};
 
-		BiomeList SNOWY_BIOMES = {
-			STPBiomeRegistry::SNOWY_TAIGA.getID(),
-			STPBiomeRegistry::SNOWY_TUNDRA.getID(),
-			STPBiomeRegistry::SNOWY_MOUNTAIN.getID()
+		const STPBiomeList<3u> SnowyBiomes = {
+			STPBiomeRegistry::SnowyTaiga.ID,
+			STPBiomeRegistry::SnowyTundra.ID,
+			STPBiomeRegistry::SnowyMountain.ID
 		};
 
 	public:
@@ -59,7 +60,7 @@ namespace STPDemo {
 		Sample sample(int x, int y, int z) override {
 			//set the local seed
 			const Seed local_seed = this->genLocalSeed(x, z);
-			//get the local rng
+			//get the local RNG
 			STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
 			//get the climate for this local coordinate
 			const Sample climate = this->getAscendant()->retrieve(x, y, z);
@@ -69,22 +70,22 @@ namespace STPDemo {
 				return climate;
 			}
 			
-			//interpretation, compared to vanilla minecraft, special climate has been removed, every biomes have the equal chance of spawning
-			if (climate == STPBiomeRegistry::PLAINS.getID()) {
+			//interpretation, compared to vanilla Minecraft, special climate has been removed, every biomes have the equal chance of spawning
+			if (climate == STPBiomeRegistry::Plains.ID) {
 				//dry and hot biome
-				return this->DRY_BIOMES[rng.nextVal(static_cast<Sample>(this->DRY_BIOMES.size()))];
+				return this->DryBiomes[rng.nextVal(static_cast<Sample>(this->DryBiomes.size()))];
 			}
-			if (climate == STPBiomeRegistry::DESERT.getID()) {
+			if (climate == STPBiomeRegistry::Desert.ID) {
 				//temperate biome
-				return this->TEMPERATE_BIOMES[rng.nextVal(static_cast<Sample>(this->TEMPERATE_BIOMES.size()))];
+				return this->TemperateBiomes[rng.nextVal(static_cast<Sample>(this->TemperateBiomes.size()))];
 			}
-			if (climate == STPBiomeRegistry::MOUNTAIN.getID()) {
+			if (climate == STPBiomeRegistry::Mountain.ID) {
 				//cool biome
-				return this->COOL_BIOMES[rng.nextVal(static_cast<Sample>(this->COOL_BIOMES.size()))];
+				return this->CoolBiomes[rng.nextVal(static_cast<Sample>(this->CoolBiomes.size()))];
 			}
-			if (climate == STPBiomeRegistry::FOREST.getID()) {
+			if (climate == STPBiomeRegistry::Forest.ID) {
 				//snowy and cold biome
-				return this->SNOWY_BIOMES[rng.nextVal(static_cast<Sample>(this->SNOWY_BIOMES.size()))];
+				return this->SnowyBiomes[rng.nextVal(static_cast<Sample>(this->SnowyBiomes.size()))];
 			}
 
 			//this usually won't happen, but just in case

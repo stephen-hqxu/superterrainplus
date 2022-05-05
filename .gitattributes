@@ -1,6 +1,8 @@
 #configuration to GitHub Linguist detection
 #include compute shader for which Linguist does not support yet
 *.comp linguist-language=GLSL
+#all `h` headers are C++
+*.h linguist-language=C++
 
 #treat them as documentation
 Report/** linguist-documentation
