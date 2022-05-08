@@ -1,8 +1,10 @@
 #include <SuperRealism+/Scene/Light/STPCascadedShadowMap.h>
-
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
+//Algebra
+#include <SuperTerrain+/Utility/Algebra/STPVector4d.h>
+#include <SuperTerrain+/Utility/Algebra/STPMatrix4x4d.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -115,24 +117,27 @@ STPCascadedShadowMap::~STPCascadedShadowMap() {
 	this->ShadowData.unmapBuffer();
 }
 
-dmat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const dmat4& view) const {
+template<class Mat>
+dmat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const Mat& view) const {
 	//min and max of float
 	static constexpr double minD = numeric_limits<double>::min(),
 		maxD = numeric_limits<double>::max();
 	//unit frustum corner, as a lookup table to avoid re-computation.
-	static constexpr STPFrustumCornerDouble4 unitCorner = []() constexpr -> STPFrustumCornerDouble4 {
-		STPFrustumCornerDouble4 frustumCorner = { };
+	const static STPFrustumCorner<STPVector4d> unitCorner = []() -> auto {
+		STPFrustumCorner<STPVector4d> frustumCorner = { };
 
 		unsigned int index = 0u;
 		for (unsigned int x = 0u; x < 2u; x++) {
 			for (unsigned int y = 0u; y < 2u; y++) {
 				for (unsigned int z = 0u; z < 2u; z++) {
-					frustumCorner[index++] = {
-						2.0 * x - 1.0,
-						2.0 * y - 1.0,
-						2.0 * z - 1.0,
-						1.0
-					};
+					frustumCorner[index++] = STPVector4d(
+						dvec4(
+							2.0 * x - 1.0,
+							2.0 * y - 1.0,
+							2.0 * z - 1.0,
+							1.0
+						)
+					);
 				}
 			}
 		}
@@ -141,17 +146,20 @@ dmat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const dmat4&
 	}();
 
 	//calculate the projection matrix for this view frustum
-	const dmat4 projection = this->LightFrustum.Focus->projection(near, far);
-	STPFrustumCornerDVec4 corner;
-	std::transform(unitCorner.cbegin(), unitCorner.cend(), corner.begin(), [inv = glm::inverse(projection * view)](const auto& v) {
+	alignas(Mat) const dmat4 projection_data = this->LightFrustum.Focus->projection(near, far);
+	const Mat projection = Mat(projection_data);
+	STPFrustumCorner<STPVector4d> corner;
+	std::transform(unitCorner.cbegin(), unitCorner.cend(), corner.begin(), [inv = (projection * view).inverse()](const auto& v) {
 		//convert from normalised device coordinate to clip space
-		const dvec4 pt = inv * make_vec4(v.data());
-		return pt / pt.w;
+		const STPVector4d pt = inv * v;
+		return pt / pt.broadcast<STPVector4d::STPElement::W>();
 	});
 
 	//each corner is normalised, so sum them up to get the coordinate of centre
-	const dvec3 centre = std::accumulate(corner.cbegin(), corner.cend(), dvec3(0.0), std::plus<dvec3>()) / (1.0 * corner.size());
-	const dmat4 lightView = glm::lookAt(centre + static_cast<dvec3>(this->LightDirection), centre, dvec3(0.0, 1.0, 0.0));
+	const dvec3 centre = 
+		static_cast<dvec4>(std::accumulate(corner.cbegin(), corner.cend(), STPVector4d(), std::plus<STPVector4d>())) / (1.0 * corner.size());
+	alignas(Mat) const dmat4 lightView_data = glm::lookAt(centre + static_cast<dvec3>(this->LightDirection), centre, dvec3(0.0, 1.0, 0.0));
+	const Mat lightView = Mat(lightView_data);
 
 	//align the light frustum tightly around the current view frustum
 	//we need to find the eight corners of the light frustum.
@@ -159,7 +167,7 @@ dmat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const dmat4&
 		maxExt = dvec3(minD);
 	for (const auto& v : corner) {
 		//convert the camera view frustum from world space to light view space
-		const dvec3 trf = static_cast<dvec3>(lightView * v);
+		const dvec3 trf = static_cast<dvec3>(static_cast<dvec4>(lightView * v));
 
 		minExt = glm::min(minExt, trf);
 		maxExt = glm::max(maxExt, trf);
@@ -184,9 +192,10 @@ dmat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const dmat4&
 	}
 
 	//finally, we are dealing with a directional light so shadow is parallel
-	const dmat4 lightProjection = glm::ortho(minExt.x, maxExt.x, minExt.y, maxExt.y, minZ, maxZ);
+	alignas(Mat) const dmat4 lightProjection_data = glm::ortho(minExt.x, maxExt.x, minExt.y, maxExt.y, minZ, maxZ);
+	const Mat lightProjection = Mat(lightProjection_data);
 
-	return lightProjection * lightView;
+	return static_cast<dmat4>(lightProjection * lightView);
 }
 
 void STPCascadedShadowMap::calcAllLightSpace(mat4* light_space) const {
@@ -196,7 +205,7 @@ void STPCascadedShadowMap::calcAllLightSpace(mat4* light_space) const {
 	const double level_offset = this->LightFrustum.CascadeBandRadius;
 
 	//The camera class has smart cache to the view matrix.
-	const dmat4& camView = viewer.view();
+	const STPMatrix4x4d camView = STPMatrix4x4d(viewer.view());
 	const STPEnvironment::STPCameraSetting& camSetting = viewer.cameraStatus();
 	const double near = camSetting.Near, far = camSetting.Far;
 

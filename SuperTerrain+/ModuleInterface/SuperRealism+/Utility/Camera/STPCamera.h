@@ -80,7 +80,7 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		//The view matrix to transform from world space to view space.
-		mutable glm::dmat4 View;
+		alignas(32) mutable glm::dmat4 View;
 		//Flag to indicate if the camera has changed its state since last time the view matrix was computed.
 		//The flag will be reset until view matrix is recomputed.
 		mutable bool ViewOutdated;
@@ -147,12 +147,14 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Update and get the camera view matrix that transform from world space to view space.
 		 * @return The pointer to the view matrix cached by the camera.
 		 * Note that this pointer will not be updated by the camera automatically unless this function is called.
+		 * The pointer of the returned view matrix is aligned to 32-bit boundary.
 		*/
 		const glm::dmat4& view() const;
 
 		/**
 		 * @brief Get the camera projection matrix that transform from view to clip space.
 		 * @return The pointer to the projection matrix.
+		 * The pointer of the returned projection matrix is aligned to 32-bit boundary.
 		*/
 		virtual const glm::dmat4& projection() const = 0;
 

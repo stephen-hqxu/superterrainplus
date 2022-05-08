@@ -20,9 +20,9 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPOrthographicCamera : public STPCamera {
 	private:
 
-		STPEnvironment::STPOrthographicCameraSetting Frustum;
 		//The projection matrix
-		mutable glm::dmat4 OrthographicProjection;
+		alignas(32) mutable glm::dmat4 OrthographicProjection;
+		STPEnvironment::STPOrthographicCameraSetting Frustum;
 		//A flag
 		mutable bool ProjectionOutdated;
 

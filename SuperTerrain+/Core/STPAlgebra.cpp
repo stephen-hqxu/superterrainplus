@@ -13,7 +13,7 @@ using namespace SuperTerrainPlus;
 #define STP_MM_BIT8(D, C, B, A) _MM_SHUFFLE(A, B, C, D)
 
 //The default alignment of the AVX instruction set
-constexpr static uintptr_t AVXAlignment = 32u;
+constexpr static uintptr_t AVXAlignment = alignof(__m256d);
 /**
  * @brief Check if the address is properly aligned such that it satisfies the alignment requirement of AVX instruction set.
  * @param addr The address to be checked.
@@ -83,9 +83,7 @@ STPVector4d STPMatrix4x4d::operator*(const STPVector4d& rhs) const noexcept {
 	const __m256d t0 = _mm256_fmadd_pd(this->get(0), s0, _mm256_mul_pd(this->get(1), s1)),
 		t1 = _mm256_fmadd_pd(this->get(2), s2, _mm256_mul_pd(this->get(3), s3));
 
-	STPVector4d res;
-	res.Vec = _mm256_add_pd(t0, t1);
-	return res;
+	return _mm256_add_pd(t0, t1);
 }
 
 STPMatrix4x4d STPMatrix4x4d::transpose() const noexcept {
@@ -209,6 +207,24 @@ STPMatrix4x4d STPMatrix4x4d::inverse() const noexcept {
 	return m;
 }
 
+STPMatrix4x4d::STPMatrix3x3d STPMatrix4x4d::asMatrix3x3d() const noexcept {
+	const static __m256d Factor = _mm256_set_pd(0.0, 1.0, 1.0, 1.0),
+		Preserver = _mm256_set_pd(1.0, 0.0, 0.0, 0.0);
+	//Basically we want something like this:
+	/*
+	[ a b c 0 ]
+	[ d e f 0 ]
+	[ g h i 0 ]
+	[ 0 0 0 1 ]
+	*/
+	STPMatrix3x3d m;
+	for (int i = 0; i < 3; i++) {
+		m.get(i) = _mm256_blend_pd(this->get(i), Factor, STP_MM_BIT4(0, 0, 0, 1));
+	}
+	m.get(3) = Preserver;
+	return m;
+}
+
 #undef FOREACH_COL_BEG
 #undef FOREACH_COL_END
 
@@ -221,7 +237,11 @@ inline __m256d STPVector4d::dotVector4dRaw(const __m256d& lhs, const __m256d& rh
 	return _mm256_hadd_pd(h, h);
 }
 
-STPVector4d::STPVector4d() noexcept : Vec(_mm256_setzero_pd()) {
+inline STPVector4d::STPVector4d(const __m256d& vec) noexcept : Vec(vec) {
+
+}
+
+STPVector4d::STPVector4d() noexcept : STPVector4d(_mm256_setzero_pd()) {
 
 }
 
@@ -241,8 +261,29 @@ STPVector4d::operator dvec4() const noexcept {
 	return res;
 }
 
+STPVector4d STPVector4d::operator+(const STPVector4d& rhs) const noexcept {
+	return _mm256_add_pd(this->Vec, rhs.Vec);
+}
+
+STPVector4d STPVector4d::operator/(const STPVector4d& rhs) const noexcept {
+	return _mm256_div_pd(this->Vec, rhs.Vec);
+}
+
+template<STPVector4d::STPElement E>
+STPVector4d STPVector4d::broadcast() const noexcept {
+	constexpr static auto i = static_cast<std::underlying_type_t<STPElement>>(E);
+	return _mm256_permute4x64_pd(this->Vec, STP_MM_BIT8(i, i, i, i));
+}
+
 double STPVector4d::dot(const STPVector4d& rhs) const noexcept {
 	const __m256d vec_dot = STPVector4d::dotVector4dRaw(this->Vec, rhs.Vec);
 	//all components have the same value, extract any one of them
 	return _mm256_cvtsd_f64(vec_dot);
 }
+
+//Explicit Instantiation
+#define BROADCAST(ELEM) template STP_API STPVector4d STPVector4d::broadcast<STPVector4d::STPElement::ELEM>() const noexcept
+BROADCAST(X);
+BROADCAST(Y);
+BROADCAST(Z);
+BROADCAST(W);

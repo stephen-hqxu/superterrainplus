@@ -30,6 +30,9 @@ namespace SuperTerrainPlus {
 
 	public:
 
+		//A 3-by-3 double matrix, which is represented by the 4-by-4 double matrix.
+		using STPMatrix3x3d = STPMatrix4x4d;
+
 		/**
 		 * @brief Initialise a new STPMatrix4x4d instance with zero value.
 		*/
@@ -79,6 +82,12 @@ namespace SuperTerrainPlus {
 		 * @return The inverse of the matrix.
 		*/
 		STPMatrix4x4d inverse() const noexcept;
+
+		/**
+		 * @brief Emulate a 3-by-3 double matrix by only preserving the top-left 3-by-3 components.
+		 * @return The 4-by-4 matrix emulating a 3-by-3 matrix.
+		*/
+		STPMatrix3x3d asMatrix3x3d() const noexcept;
 
 	};
 

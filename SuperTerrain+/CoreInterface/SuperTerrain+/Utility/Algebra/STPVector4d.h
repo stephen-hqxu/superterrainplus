@@ -16,11 +16,29 @@ namespace SuperTerrainPlus {
 	 * It utilises SIMD instructions to improve performance.
 	*/
 	class STP_API STPVector4d {
+	public:
+
+		/**
+		 * @brief STPElement can be used to locate the component under the vector.
+		*/
+		enum class STPElement : unsigned char {
+			X = 0x00u,
+			Y = 0x01u,
+			Z = 0x02u,
+			W = 0x03u
+		};
+
 	private:
 
 		friend class STPMatrix4x4d;
 
 		__m256d Vec;
+
+		/**
+		 * @brief Initialise by the raw AVX vector.
+		 * @param vec The value of the AVX vector.
+		*/
+		STPVector4d(const __m256d&) noexcept;
 
 		/**
 		 * @brief Perform dot product on the raw AVX vectors.
@@ -48,6 +66,28 @@ namespace SuperTerrainPlus {
 		~STPVector4d() = default;
 
 		explicit operator glm::dvec4() const noexcept;
+
+		/**
+		 * @brief Perform addition on the target vector.
+		 * @param rhs The vector value.
+		 * @return The result of `this` + `rhs`.
+		*/
+		STPVector4d operator+(const STPVector4d&) const noexcept;
+
+		/**
+		 * @brief Perform division on the target vector.
+		 * @param rhs The vector value.
+		 * @return The result of `this` / `rhs`.
+		*/
+		STPVector4d operator/(const STPVector4d&) const noexcept;
+
+		/**
+		 * @brief Broadcast one element in the vector to the entire vector.
+		 * @tparam E Specify the component of the element to be broadcast.
+		 * @return The vector where each element is the broadcast of one element in the original vector.
+		*/
+		template<STPElement E>
+		STPVector4d broadcast() const noexcept;
 
 		/**
 		 * @brief Perform vector dot product operation.

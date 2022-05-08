@@ -19,9 +19,9 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPPerspectiveCamera : public STPCamera {
 	private:
 
-		STPEnvironment::STPPerspectiveCameraSetting Frustum;
 		//The projection matrix
-		mutable glm::dmat4 PerspectiveProjection;
+		alignas(32) mutable glm::dmat4 PerspectiveProjection;
+		STPEnvironment::STPPerspectiveCameraSetting Frustum;
 		//Denotes if the projection matrix is no longer correct with the current setting.
 		mutable bool ProjectionOutdated;
 

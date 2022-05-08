@@ -16,6 +16,7 @@
 
 using namespace SuperTerrainPlus;
 
+using glm::dmat3;
 using glm::dvec4;
 using glm::dmat4;
 using glm::inverse;
@@ -124,6 +125,18 @@ SCENARIO("STPMatrix4x4d can be used to perform matrix operation", "[Algebra][STP
 
 		}
 
+		WHEN("Matrix is cast to a 3-by-3 matrix") {
+			const auto Mat3 = Mat.asMatrix3x3d();
+
+			THEN("The new matrix is a 4-by-4 matrix correctly representing the 3-by-3 matrix") {
+				const dmat4 Mat3Data = static_cast<dmat4>(Mat3),
+					ActualMat3 = dmat4(dmat3(Data));
+
+				compareMatrix(Mat3Data, ActualMat3);
+			}
+
+		}
+
 	}
 
 }
@@ -157,6 +170,21 @@ SCENARIO("STPVector4d can be used to perform vector operation", "[Algebra][STPVe
 
 		}
 
+		WHEN("Vector arithmetic is performed") {
+			const STPVector4d RHSVec(AnotherData);
+
+			THEN("All arithmetic operations are performed correctly") {
+				const auto Plus = Vec + RHSVec,
+					Div = Vec / RHSVec;
+				const dvec4 PlusData = static_cast<dvec4>(Plus),
+					DivData = static_cast<dvec4>(Div);
+
+				compareVector(PlusData, Data + AnotherData);
+				compareVector(DivData, Data / AnotherData);
+			}
+
+		}
+
 		WHEN("Vector dot product is performed") {
 			const STPVector4d AnotherVec(AnotherData);
 			const double VecDot = Vec.dot(AnotherVec);
@@ -165,6 +193,18 @@ SCENARIO("STPVector4d can be used to perform vector operation", "[Algebra][STPVe
 				const double ActualVecDot = dot(Data, AnotherData);
 
 				REQUIRE_THAT(VecDot, COMP_DOUBLE(ActualVecDot));
+			}
+
+		}
+
+		WHEN("Vector broadcast is performed") {
+			const auto BroadcastVec = Vec.broadcast<STPVector4d::STPElement::Y>();
+
+			THEN("The broadcast vector should contain the element of the original vector") {
+				const dvec4 BroadcastData = static_cast<dvec4>(BroadcastVec);
+				constexpr static dvec4 ActualBroadcast = dvec4(Data.y);
+
+				compareVector(BroadcastData, ActualBroadcast);
 			}
 
 		}

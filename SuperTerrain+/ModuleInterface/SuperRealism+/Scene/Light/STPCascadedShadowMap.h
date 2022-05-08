@@ -58,10 +58,6 @@ namespace SuperTerrainPlus::STPRealism {
 		//Eight vertices define the corners of a view frustum.
 		template<class T>
 		using STPFrustumCorner = std::array<T, 8ull>;
-		//Frustum corner defined using vec4
-		typedef STPFrustumCorner<glm::dvec4> STPFrustumCornerDVec4;
-		//Frustum corner defined using 4 floats
-		typedef STPFrustumCorner<std::array<double, 4ull>> STPFrustumCornerDouble4;
 
 		//CSM handles directional light rather than positional.
 		glm::vec3 LightDirection;
@@ -75,12 +71,14 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Calculate the light space matrix for a particular view frustum.
+		 * @tparam Mat The type of the matrix.
 		 * @param near The near plane.
 		 * @param far The far plane.
 		 * @param view The view matrix of the camera.
 		 * @return The light space view matrix.
 		*/
-		glm::dmat4 calcLightSpace(double, double, const glm::dmat4&) const;
+		template<class Mat>
+		glm::dmat4 calcLightSpace(double, double, const Mat&) const;
 
 		/**
 		 * @brief Calculate the light space view matrices for all divisions of view frustum and store them into mapped light buffer.

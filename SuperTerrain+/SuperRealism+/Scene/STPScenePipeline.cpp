@@ -7,6 +7,9 @@
 #include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
+//Algebra
+#include <SuperTerrain+/Utility/Algebra/STPMatrix4x4d.h>
+
 //Base Off-screen Rendering
 #include <SuperRealism+/Scene/Component/STPScreen.h>
 #include <SuperRealism+/Scene/Component/STPAlphaCulling.h>
@@ -199,6 +202,12 @@ public:
 	void updateBuffer() {
 		STPPackedCameraBuffer* const camBuf = this->MappedBuffer;
 		const bool PV_changed = this->updateView || this->updateProjection;
+		//load up camera matrices
+		optional<STPMatrix4x4d> cameraView, cameraProjection;
+		if (PV_changed) {
+			cameraView.emplace(this->Camera.view());
+			cameraProjection.emplace(this->Camera.projection());
+		}
 
 		//camera matrix is cached to avoid repetitive calculation so it is cheap to call these functions multiple times
 		//only update buffer when necessary
@@ -212,21 +221,17 @@ public:
 			}
 
 			//if position changes, view must also change
-			const dmat4& view = this->Camera.view();
-
 			//view matrix has changed
-			camBuf->V = view;
-			camBuf->VNorm = static_cast<mat3x4>(glm::transpose(glm::inverse(static_cast<dmat3>(view))));
+			camBuf->V = this->Camera.view();
+			camBuf->VNorm = static_cast<mat3x4>(static_cast<dmat4>(cameraView->asMatrix3x3d().inverse().transpose()));
 			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, V), sizeof(mat4) + sizeof(mat3x4));
 
 			this->updateView = false;
 		}
 		if (this->updateProjection) {
 			//projection matrix has changed
-			const dmat4& proj = this->Camera.projection();
-
-			camBuf->P = proj;
-			camBuf->InvP = glm::inverse(proj);
+			camBuf->P = this->Camera.projection();
+			camBuf->InvP = static_cast<dmat4>(cameraProjection->inverse());
 			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, P), sizeof(mat4) * 2);
 
 			this->updateProjection = false;
@@ -234,11 +239,11 @@ public:
 
 		//update compound matrices
 		if (PV_changed) {
-			const dmat4 proj_view = this->Camera.projection() * this->Camera.view();
+			const STPMatrix4x4d proj_view = cameraProjection.value() * cameraView.value();
 
 			//update the precomputed values
-			camBuf->PV = proj_view;
-			camBuf->InvPV = glm::inverse(proj_view);
+			camBuf->PV = static_cast<dmat4>(proj_view);
+			camBuf->InvPV = static_cast<dmat4>(proj_view.inverse());
 			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, PV), sizeof(mat4) * 2);
 		}
 	}
