@@ -13,6 +13,7 @@ STPTestMain.cpp
 # Main test code
 STPTest2DBiome.cpp
 STPTest2DChunk.cpp
+STPTestAlgebra.cpp
 STPTestEnvironment.cpp
 STPTestFreeSlip.cpp
 STPTestRTC.cpp

@@ -28,6 +28,9 @@ Exception/STPUnsupportedFunctionality.h
 GPGPU/STPHeightfieldKernel.cuh
 GPGPU/STPRainDrop.cuh
 GPGPU/STPRuntimeCompilable.h
+# /Utility/Algebra
+Utility/Algebra/STPMatrix4x4d.h
+Utility/Algebra/STPVector4d.h
 # /Utility/Memory
 Utility/Memory/STPMemoryPool.h
 Utility/Memory/STPSmartDeviceMemory.h

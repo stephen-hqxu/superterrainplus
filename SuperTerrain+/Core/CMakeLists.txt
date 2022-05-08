@@ -1,4 +1,5 @@
 add_library(${STP_MAIN_ENGINE} SHARED
+STPAlgebra.cpp
 STPBiomeFactory.cpp
 STPChunk.cpp
 STPDeviceErrorHandler.cpp

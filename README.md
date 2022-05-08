@@ -4,8 +4,8 @@
 [![GitHub License](https://img.shields.io/github/license/stephen-hqxu/superterrainplus?label=License)](https://github.com/stephen-hqxu/superterrainplus/blob/master/LICENSE)
 [![3rd-Party License](https://img.shields.io/badge/License-3rd--party-green)](https://github.com/stephen-hqxu/superterrainplus/blob/master/3rd-Party)
 [![Project Roadmap](https://img.shields.io/badge/Project-Roadmap-cd853f)](https://github.com/stephen-hqxu/superterrainplus/projects)
-[![Documentation](https://img.shields.io/badge/Documentation-fa8072)](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/README.md)
-[![Dissertation](https://img.shields.io/badge/Dissertation-7b68ee)](https://github.com/stephen-hqxu/superterrainplus/tree/master/Report)
+[![Documentation](https://img.shields.io/badge/-Documentation-fa8072)](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/README.md)
+[![Dissertation](https://img.shields.io/badge/-Dissertation-7b68ee)](https://github.com/stephen-hqxu/superterrainplus/tree/master/Report)
 
 <p align="center"> Year 3 Computer Science Dissertation Project </p>
 <p align="center"> A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering </p>
@@ -295,3 +295,8 @@ For redistributed open source project, see *3rd-Party* directory to find the lic
 - [Uncharted2: HDR Lighting](http://slideshare.net/ozlael/hable-john-uncharted2-hdr-lighting) by *John Hable*
 - [Tone mapping curve sketch](https://www.shadertoy.com/view/WdjSW3)
 - [Tone mapping rendering comparison](https://www.shadertoy.com/view/lslGzl)
+
+### Assets
+
+- [AmbientCG](https://ambientcg.com/)
+- [Flaticon](https://www.flaticon.com/)
