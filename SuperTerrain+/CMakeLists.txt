@@ -15,15 +15,15 @@ function(setupConfigTemplate BuildTarget TemplateInput TemplateOutput ConfigFile
 	)
 endfunction()
 
-# add SuperTerrain+ source codes to target
-add_subdirectory(Core)
+# add SuperTerrain+, add headers first because it passes header variables out
 add_subdirectory(${STP_CORE_INCLUDE}/${STP_MAIN_ENGINE})
-# Add SuperAlgorithm+
+add_subdirectory(Core)
+# Add SuperAlgorithm+, add target first because headers are added via target_source
 add_subdirectory(${STP_ALGORITHM_ENGINE})
 add_subdirectory(${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})
-# Add SuperRealism+ (basically it is our rendering engine)
-add_subdirectory(${STP_REALISM_ENGINE})
+# Add SuperRealism+
 add_subdirectory(${STP_MODULE_INCLUDE}/${STP_REALISM_ENGINE})
+add_subdirectory(${STP_REALISM_ENGINE})
 
 # setup the template target
 add_library(${STP_TEMPLATE_INCLUDE} INTERFACE)

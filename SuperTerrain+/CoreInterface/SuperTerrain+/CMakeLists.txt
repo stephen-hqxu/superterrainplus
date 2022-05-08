@@ -1,4 +1,4 @@
-target_sources(${STP_MAIN_ENGINE} PRIVATE
+set(STP_MAIN_ENGINE_INTERFACE
 STPCoreDefine.h
 STPEngineInitialiser.h
 STPOpenGL.h
@@ -68,3 +68,7 @@ World/Diversity/Texture/STPTextureType.hpp
 # /World
 World/STPWorldPipeline.h
 )
+
+# prefix main engine header path
+list(TRANSFORM STP_MAIN_ENGINE_INTERFACE PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
+set(STP_MAIN_ENGINE_INTERFACE ${STP_MAIN_ENGINE_INTERFACE} PARENT_SCOPE)

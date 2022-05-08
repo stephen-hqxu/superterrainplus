@@ -1,4 +1,4 @@
-target_sources(${STP_REALISM_ENGINE} PRIVATE
+set(STP_REALISM_ENGINE_INTERFACE
 STPRealismDefine.h
 STPRendererInitialiser.h
 STPScenePipeline.h
@@ -63,6 +63,9 @@ Utility/STPIndirectCommand.hpp
 Utility/STPLogHandler.hpp
 Utility/STPRandomTextureGenerator.cuh
 )
+
+list(TRANSFORM STP_REALISM_ENGINE_INTERFACE PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
+set(STP_REALISM_ENGINE_INTERFACE ${STP_REALISM_ENGINE_INTERFACE} PARENT_SCOPE)
 
 # config file for the realism rendering engine
 # output the path to the GLSL shader code
