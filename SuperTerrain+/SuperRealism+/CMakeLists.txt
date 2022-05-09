@@ -1,4 +1,14 @@
-set(STP_REALISM_OBJECT
+set(STP_REALISM_ENGINE_SOURCE
+STPCamera.cpp
+STPDebugCallback.cpp
+STPOrthographicCamera.cpp
+STPPerspectiveCamera.cpp
+STPPlaneGeometry.cpp
+STPRealismEnvironment.cpp
+STPRendererInitialiser.cpp
+STPScenePipeline.cpp
+
+STPRandomTextureGenerator.cu
 # /Object
 Object/STPBindlessBuffer.cpp
 Object/STPBindlessTexture.cpp
@@ -11,52 +21,35 @@ Object/STPSampler.cpp
 Object/STPShaderManager.cpp
 Object/STPTexture.cpp
 Object/STPVertexArray.cpp
-)
-set(STP_REALISM_SCENE
+# /Scene/Component
+Scene/Component/STPAlphaCulling.cpp
+Scene/Component/STPAmbientOcclusion.cpp
+Scene/Component/STPBidirectionalScattering.cpp
+Scene/Component/STPGaussianFilter.cpp
+Scene/Component/STPHeightfieldTerrain.cpp
+Scene/Component/STPPostProcess.cpp
+Scene/Component/STPScreen.cpp
+Scene/Component/STPSun.cpp
+Scene/Component/STPWater.cpp
 # /Scene
-Scene/STPAlphaCulling.cpp
-Scene/STPAmbientOcclusion.cpp
-Scene/STPBidirectionalScattering.cpp
-Scene/STPGaussianFilter.cpp
-Scene/STPHeightfieldTerrain.cpp
-Scene/STPPlaneGeometry.cpp
-Scene/STPPostProcess.cpp
-Scene/STPScenePipeline.cpp
-Scene/STPScreen.cpp
-Scene/STPSun.cpp
-Scene/STPWater.cpp
-)
-set(STP_REALISM_SOURCE
-STPCamera.cpp
-STPCascadedShadowMap.cpp
-STPDebugCallback.cpp
-STPLightShadow.cpp
-STPLightSpectrum.cpp
-STPMaterialLibrary.cpp
-STPOrthographicCamera.cpp
-STPPerspectiveCamera.cpp
-STPRealismEnvironment.cpp
-STPRendererInitialiser.cpp
-STPSceneLight.cpp
-STPSceneObject.cpp
-
-STPRandomTextureGenerator.cu
+Scene/STPCascadedShadowMap.cpp
+Scene/STPLightShadow.cpp
+Scene/STPLightSpectrum.cpp
+Scene/STPMaterialLibrary.cpp
+Scene/STPSceneLight.cpp
+Scene/STPSceneObject.cpp
 )
 
 #shading and rendering library
 add_library(${STP_REALISM_ENGINE} SHARED
-${STP_REALISM_OBJECT}
-${STP_REALISM_SCENE}
-${STP_REALISM_SOURCE}
-
+${STP_REALISM_ENGINE_SOURCE}
 ${STP_REALISM_ENGINE_INTERFACE}
 )
-
 # add source file filters
 source_group(
 TREE ${CMAKE_CURRENT_SOURCE_DIR}
 PREFIX Source
-FILES ${STP_REALISM_OBJECT} ${STP_REALISM_SCENE} ${STP_REALISM_SOURCE}
+FILES ${STP_REALISM_ENGINE_SOURCE}
 )
 # add header file filters
 source_group(

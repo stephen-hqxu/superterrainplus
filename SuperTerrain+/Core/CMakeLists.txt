@@ -1,47 +1,45 @@
-set(STP_MAIN_TERRAIN
-# /Terrain
-Terrain/STPBiomeFactory.cpp
-Terrain/STPChunk.cpp
-Terrain/STPFreeSlipTextureBuffer.cpp
-Terrain/STPHeightfieldGenerator.cpp
-Terrain/STPLayer.cpp
-Terrain/STPLayerCache.cpp
-Terrain/STPLayerManager.cpp
-Terrain/STPTextureDatabase.cpp
-Terrain/STPTextureDefinitionLanguage.cpp
-Terrain/STPTextureFactory.cpp
-Terrain/STPWorldPipeline.cpp
-)
-set(STP_MAIN_SOURCE
-STPAlgebra.cpp
-STPDeviceErrorHandler.cpp
+set(STP_MAIN_ENGINE_SOURCE
 STPEngineInitialiser.cpp
 STPEnvironment.cpp
 STPErosionBrushGenerator.cpp
 STPException.cpp
-STPFile.cpp
-STPMemoryPool.cpp
-STPNullablePrimitive.cpp
 STPRuntimeCompilable.cpp
-STPSmartStream.cpp
-STPThreadPool.cpp
 
 STPHeightfieldKernel.cu
 STPRainDrop.cu
 STPRainDropSetting.cu
+# /Utility
+Utility/STPAlgebra.cpp
+Utility/STPDeviceErrorHandler.cpp
+Utility/STPFile.cpp
+Utility/STPMemoryPool.cpp
+Utility/STPNullablePrimitive.cpp
+Utility/STPSmartStream.cpp
+Utility/STPThreadPool.cpp
+# /World/Diversity
+World/Diversity/STPBiomeFactory.cpp
+World/Diversity/STPLayer.cpp
+World/Diversity/STPLayerCache.cpp
+World/Diversity/STPLayerManager.cpp
+World/Diversity/STPTextureDatabase.cpp
+World/Diversity/STPTextureDefinitionLanguage.cpp
+World/Diversity/STPTextureFactory.cpp
+# /World
+World/STPChunk.cpp
+World/STPFreeSlipTextureBuffer.cpp
+World/STPHeightfieldGenerator.cpp
+World/STPWorldPipeline.cpp
 )
 
 add_library(${STP_MAIN_ENGINE} SHARED
-${STP_MAIN_TERRAIN}
-${STP_MAIN_SOURCE}
-
+${STP_MAIN_ENGINE_SOURCE}
 ${STP_MAIN_ENGINE_INTERFACE}
 )
 # add source file filter
 source_group(
 TREE ${CMAKE_CURRENT_SOURCE_DIR}
 PREFIX Source
-FILES ${STP_MAIN_TERRAIN} ${STP_MAIN_SOURCE}
+FILES ${STP_MAIN_ENGINE_SOURCE}
 )
 # add header file filter
 source_group(
