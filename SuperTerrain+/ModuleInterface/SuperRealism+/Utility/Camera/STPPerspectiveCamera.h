@@ -9,7 +9,6 @@
 
 //GLM
 #include <glm/vec2.hpp>
-#include <glm/mat4x4.hpp>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -20,7 +19,7 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		//The projection matrix
-		alignas(32) mutable glm::dmat4 PerspectiveProjection;
+		mutable STPMatrix4x4d PerspectiveProjection;
 		STPEnvironment::STPPerspectiveCameraSetting Frustum;
 		//Denotes if the projection matrix is no longer correct with the current setting.
 		mutable bool ProjectionOutdated;
@@ -61,11 +60,11 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The pointer to the current perspective matrix which is cached by the current camera.
 		 * Like the base camera class, this pointer will not be updated by the instance automatically.
 		*/
-		const glm::dmat4& perspective() const;
+		const STPMatrix4x4d& perspective() const;
 
-		const glm::dmat4& projection() const override;
+		const STPMatrix4x4d& projection() const override;
 
-		glm::dmat4 projection(double, double) const override;
+		STPMatrix4x4d projection(double, double) const override;
 
 		/**
 		 * @brief Zoom the view frustum to change the perspective field-of-view.

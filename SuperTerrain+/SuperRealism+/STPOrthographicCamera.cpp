@@ -11,6 +11,7 @@ using glm::dvec2;
 using glm::dvec4;
 using glm::dmat4;
 
+using SuperTerrainPlus::STPMatrix4x4d;
 using namespace SuperTerrainPlus::STPRealism;
 
 STPOrthographicCamera::STPOrthographicCamera
@@ -21,9 +22,9 @@ STPOrthographicCamera::STPOrthographicCamera
 	}
 }
 
-inline const dmat4& STPOrthographicCamera::ortho() const {
+const STPMatrix4x4d& STPOrthographicCamera::ortho() const {
 	if (this->ProjectionOutdated) {
-		this->OrthographicProjection = glm::ortho(
+		alignas(STPMatrix4x4d) const dmat4 projection_data = glm::ortho(
 			this->Frustum.Left, 
 			this->Frustum.Right, 
 			this->Frustum.Bottom, 
@@ -31,19 +32,19 @@ inline const dmat4& STPOrthographicCamera::ortho() const {
 			this->Camera.Near,
 			this->Camera.Far
 		);
+		this->OrthographicProjection = STPMatrix4x4d(projection_data);
 		this->ProjectionOutdated = false;
-
 	}
 	//return the matrix
 	return this->OrthographicProjection;
 }
 
-const dmat4& STPOrthographicCamera::projection() const {
+const STPMatrix4x4d& STPOrthographicCamera::projection() const {
 	return this->ortho();
 }
 
-dmat4 STPOrthographicCamera::projection(double near, double far) const {
-	return glm::ortho(
+STPMatrix4x4d STPOrthographicCamera::projection(double near, double far) const {
+	alignas(STPMatrix4x4d) const dmat4 projection_data = glm::ortho(
 		this->Frustum.Left,
 		this->Frustum.Right,
 		this->Frustum.Bottom,
@@ -51,6 +52,7 @@ dmat4 STPOrthographicCamera::projection(double near, double far) const {
 		near,
 		far
 	);
+	return STPMatrix4x4d(projection_data);
 }
 
 void STPOrthographicCamera::reshape(dvec4 side, dvec2 depth) {

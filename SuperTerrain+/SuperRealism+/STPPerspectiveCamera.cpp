@@ -12,6 +12,7 @@ using glm::radians;
 using glm::dvec2;
 using glm::dmat4;
 
+using SuperTerrainPlus::STPMatrix4x4d;
 using namespace SuperTerrainPlus::STPRealism;
 
 STPPerspectiveCamera::STPPerspectiveCamera(const STPEnvironment::STPPerspectiveCameraSetting& projection_props, 
@@ -35,33 +36,34 @@ const SuperTerrainPlus::STPEnvironment::STPPerspectiveCameraSetting& STPPerspect
 	return this->Frustum;
 }
 
-inline const dmat4& STPPerspectiveCamera::perspective() const {
+const STPMatrix4x4d& STPPerspectiveCamera::perspective() const {
 	if (this->ProjectionOutdated) {
 		//update the projection matrix
-		this->PerspectiveProjection = glm::perspective(
+		alignas(STPMatrix4x4d) const dmat4 projection_data = glm::perspective(
 			this->Frustum.ViewAngle,
 			this->Frustum.Aspect,
 			this->Camera.Near,
 			this->Camera.Far
 		);
+		this->PerspectiveProjection = STPMatrix4x4d(projection_data);
 		this->ProjectionOutdated = false;
-
 	}
 	//return the projection
 	return this->PerspectiveProjection;
 }
 
-const dmat4& STPPerspectiveCamera::projection() const {
+const STPMatrix4x4d& STPPerspectiveCamera::projection() const {
 	return this->perspective();
 }
 
-dmat4 STPPerspectiveCamera::projection(double near, double far) const {
-	return glm::perspective(
+STPMatrix4x4d STPPerspectiveCamera::projection(double near, double far) const {
+	alignas(STPMatrix4x4d) const dmat4 projection_data = glm::perspective(
 		this->Frustum.ViewAngle,
 		this->Frustum.Aspect,
 		near,
 		far
 	);
+	return STPMatrix4x4d(projection_data);
 }
 
 void STPPerspectiveCamera::zoom(double delta) {

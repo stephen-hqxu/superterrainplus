@@ -203,10 +203,10 @@ public:
 		STPPackedCameraBuffer* const camBuf = this->MappedBuffer;
 		const bool PV_changed = this->updateView || this->updateProjection;
 		//load up camera matrices
-		optional<STPMatrix4x4d> cameraView, cameraProjection;
+		const STPMatrix4x4d* cameraView = nullptr, *cameraProjection = nullptr;
 		if (PV_changed) {
-			cameraView.emplace(this->Camera.view());
-			cameraProjection.emplace(this->Camera.projection());
+			cameraView = &this->Camera.view();
+			cameraProjection = &this->Camera.projection();
 		}
 
 		//camera matrix is cached to avoid repetitive calculation so it is cheap to call these functions multiple times
@@ -222,16 +222,16 @@ public:
 
 			//if position changes, view must also change
 			//view matrix has changed
-			camBuf->V = this->Camera.view();
-			camBuf->VNorm = static_cast<mat3x4>(static_cast<dmat4>(cameraView->asMatrix3x3d().inverse().transpose()));
+			camBuf->V = static_cast<mat4>(*cameraView);
+			camBuf->VNorm = static_cast<mat3x4>(static_cast<mat4>(cameraView->asMatrix3x3d().inverse().transpose()));
 			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, V), sizeof(mat4) + sizeof(mat3x4));
 
 			this->updateView = false;
 		}
 		if (this->updateProjection) {
 			//projection matrix has changed
-			camBuf->P = this->Camera.projection();
-			camBuf->InvP = static_cast<dmat4>(cameraProjection->inverse());
+			camBuf->P = static_cast<mat4>(*cameraProjection);
+			camBuf->InvP = static_cast<mat4>(cameraProjection->inverse());
 			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, P), sizeof(mat4) * 2);
 
 			this->updateProjection = false;
@@ -239,11 +239,11 @@ public:
 
 		//update compound matrices
 		if (PV_changed) {
-			const STPMatrix4x4d proj_view = cameraProjection.value() * cameraView.value();
+			const STPMatrix4x4d proj_view = *cameraProjection * *cameraView;
 
 			//update the precomputed values
-			camBuf->PV = static_cast<dmat4>(proj_view);
-			camBuf->InvPV = static_cast<dmat4>(proj_view.inverse());
+			camBuf->PV = static_cast<mat4>(proj_view);
+			camBuf->InvPV = static_cast<mat4>(proj_view.inverse());
 			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, PV), sizeof(mat4) * 2);
 		}
 	}

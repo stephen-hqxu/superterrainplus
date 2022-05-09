@@ -41,12 +41,19 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief Load a new STPMatrix4x4d from a dmat4.
 		 * @param mat The matrix to be loaded.
+		 * For the best performance, it is recommended that the address is aligned to 32-bit.
 		*/
 		explicit STPMatrix4x4d(const glm::dmat4&) noexcept;
+
+		STPMatrix4x4d(const STPMatrix4x4d&) = default;
+
+		STPMatrix4x4d& operator=(const STPMatrix4x4d&) = default;
 
 		~STPMatrix4x4d() = default;
 
 		explicit operator glm::dmat4() const noexcept;
+
+		explicit operator glm::mat4() const noexcept;
 
 		/**
 		 * @brief Get the row within the matrix.

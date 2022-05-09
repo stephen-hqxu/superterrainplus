@@ -63,9 +63,15 @@ namespace SuperTerrainPlus {
 		*/
 		explicit STPVector4d(const glm::dvec4&) noexcept;
 
+		STPVector4d(const STPVector4d&) = default;
+
+		STPVector4d& operator=(const STPVector4d&) = default;
+
 		~STPVector4d() = default;
 
 		explicit operator glm::dvec4() const noexcept;
+
+		explicit operator glm::vec4() const noexcept;
 
 		/**
 		 * @brief Perform addition on the target vector.

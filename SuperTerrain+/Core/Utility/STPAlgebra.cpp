@@ -3,7 +3,9 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+using glm::vec4;
 using glm::dvec4;
+using glm::mat4;
 using glm::dmat4;
 using glm::value_ptr;
 
@@ -12,8 +14,9 @@ using namespace SuperTerrainPlus;
 #define STP_MM_BIT4(D, C, B, A) (A << 3 | B << 2 | C << 1 | D)
 #define STP_MM_BIT8(D, C, B, A) _MM_SHUFFLE(A, B, C, D)
 
-//The default alignment of the AVX instruction set
-constexpr static uintptr_t AVXAlignment = alignof(__m256d);
+//The default alignment of the SSE and AVX instruction set
+constexpr static uintptr_t SSEAlignment = alignof(__m128), 
+	AVXAlignment = alignof(__m256d);
 /**
  * @brief Check if the address is properly aligned such that it satisfies the alignment requirement of AVX instruction set.
  * @param addr The address to be checked.
@@ -23,9 +26,31 @@ inline static bool isAVXAligned(const void* addr) noexcept {
 	return !(reinterpret_cast<uintptr_t>(addr) & (AVXAlignment - 1ull));
 }
 
+static_assert(alignof(STPVector4d) == AVXAlignment 
+	&& alignof(STPMatrix4x4d) == AVXAlignment,
+	"Some SIMD linear algebra libraries are not aligned to 32-bit");
+
+/* 
+ * Note:
+ * The implementation of all SIMD algebras reference the implementation by GLM.
+ * GLM SIMD library does not support double type, I adapted their solution for double precision data type.
+ * Documentations are mostly taken from their code.
+ * 
+ * It is much harder to implement SIMD for double due to lane size (128-bit) and cross-lane operations.
+ * I have tried my best to use the fewest instructions with the minimal instruction latency and CPI to achieve the same functionality.
+*/
+
 //========================================= STPMatrix4x4d ============================================
 
-//GLM uses column-major
+//In documentation, matrix is assumed to have this layout.
+//GLM uses column-major, so this is in column major as well, although I prefer row major...
+/*
+[ 0 4  8 12 ]
+[ 1 5  9 13 ]
+[ 2 6 10 14 ]
+[ 3 7 11 15 ]
+*/
+
 #define FOREACH_COL_BEG() for (int i = 0; i < 4; i++) {
 #define FOREACH_COL_END() }
 
@@ -49,6 +74,14 @@ STPMatrix4x4d::operator dmat4() const noexcept {
 		res[i] = static_cast<dvec4>(this->Mat[i]);
 	FOREACH_COL_END()
 	
+	return res;
+}
+
+STPMatrix4x4d::operator mat4() const noexcept {
+	mat4 res;
+	FOREACH_COL_BEG()
+		res[i] = static_cast<vec4>(this->Mat[i]);
+	FOREACH_COL_END()
 	return res;
 }
 
@@ -143,22 +176,51 @@ STPMatrix4x4d STPMatrix4x4d::inverse() const noexcept {
 		r12 = _mm256_permute4x64_pd(t10, STP_MM_BIT8(0, 0, 1, 1)),
 		//9 9 5 5
 		r13 = _mm256_permute4x64_pd(t11, STP_MM_BIT8(0, 0, 1, 1)),
-		//4 0 0 0
+		//Vec0: 4 0 0 0
 		v0 = _mm256_permute4x64_pd(t20, STP_MM_BIT8(0, 1, 1, 1)),
-		//5 1 1 1
+		//Vec1: 5 1 1 1
 		v1 = _mm256_permute4x64_pd(t21, STP_MM_BIT8(0, 1, 1, 1)),
-		//6 2 2 2
+		//Vec2: 6 2 2 2
 		v2 = _mm256_permute4x64_pd(t20, STP_MM_BIT8(2, 3, 3, 3)),
-		//7 3 3 3
+		//Vec3: 7 3 3 3
 		v3 = _mm256_permute4x64_pd(t21, STP_MM_BIT8(2, 3, 3, 3));
 		
+		//factor00 = m[2][2] * m[3][3] - m[3][2] * m[2][3];
+		//factor00 = m[2][2] * m[3][3] - m[3][2] * m[2][3];
+		//factor06 = m[1][2] * m[3][3] - m[3][2] * m[1][3];
+		//factor13 = m[1][2] * m[2][3] - m[2][2] * m[1][3];
 	const __m256d fac0 = _mm256_fmsub_pd(r10, r01, _mm256_mul_pd(r00, r11)),
+		//factor01 = m[2][1] * m[3][3] - m[3][1] * m[2][3];
+		//factor01 = m[2][1] * m[3][3] - m[3][1] * m[2][3];
+		//factor07 = m[1][1] * m[3][3] - m[3][1] * m[1][3];
+		//factor14 = m[1][1] * m[2][3] - m[2][1] * m[1][3];
 		fac1 = _mm256_fmsub_pd(r13, r01, _mm256_mul_pd(r03, r11)),
+		//factor02 = m[2][1] * m[3][2] - m[3][1] * m[2][2];
+		//factor02 = m[2][1] * m[3][2] - m[3][1] * m[2][2];
+		//factor08 = m[1][1] * m[3][2] - m[3][1] * m[1][2];
+		//factor15 = m[1][1] * m[2][2] - m[2][1] * m[1][2];
 		fac2 = _mm256_fmsub_pd(r13, r00, _mm256_mul_pd(r03, r10)),
+		//factor03 = m[2][0] * m[3][3] - m[3][0] * m[2][3];
+		//factor03 = m[2][0] * m[3][3] - m[3][0] * m[2][3];
+		//factor09 = m[1][0] * m[3][3] - m[3][0] * m[1][3];
+		//factor16 = m[1][0] * m[2][3] - m[2][0] * m[1][3];
 		fac3 = _mm256_fmsub_pd(r12, r01, _mm256_mul_pd(r02, r11)),
+		//factor04 = m[2][0] * m[3][2] - m[3][0] * m[2][2];
+		//factor04 = m[2][0] * m[3][2] - m[3][0] * m[2][2];
+		//factor10 = m[1][0] * m[3][2] - m[3][0] * m[1][2];
+		//factor17 = m[1][0] * m[2][2] - m[2][0] * m[1][2];
 		fac4 = _mm256_fmsub_pd(r12, r00, _mm256_mul_pd(r02, r10)),
+		//factor05 = m[2][0] * m[3][1] - m[3][0] * m[2][1];
+		//factor05 = m[2][0] * m[3][1] - m[3][0] * m[2][1];
+		//factor12 = m[1][0] * m[3][1] - m[3][0] * m[1][1];
+		//factor18 = m[1][0] * m[2][1] - m[2][0] * m[1][1];
 		fac5 = _mm256_fmsub_pd(r12, r03, _mm256_mul_pd(r02, r13));
 
+		//col0
+		//+ (Vec1[0] * Fac0[0] - Vec2[0] * Fac1[0] + Vec3[0] * Fac2[0]),
+		//- (Vec1[1] * Fac0[1] - Vec2[1] * Fac1[1] + Vec3[1] * Fac2[1]),
+		//+ (Vec1[2] * Fac0[2] - Vec2[2] * Fac1[2] + Vec3[2] * Fac2[2]),
+		//- (Vec1[3] * Fac0[3] - Vec2[3] * Fac1[3] + Vec3[3] * Fac2[3]),
 	const __m256d inv0 = _mm256_mul_pd(
 		SignB,
 		_mm256_fmadd_pd(v3, fac2,
@@ -166,6 +228,11 @@ STPMatrix4x4d STPMatrix4x4d::inverse() const noexcept {
 				_mm256_mul_pd(v2, fac1)
 			)
 		)
+		//col1
+		//- (Vec0[0] * Fac0[0] - Vec2[0] * Fac3[0] + Vec3[0] * Fac4[0]),
+		//+ (Vec0[0] * Fac0[1] - Vec2[1] * Fac3[1] + Vec3[1] * Fac4[1]),
+		//- (Vec0[0] * Fac0[2] - Vec2[2] * Fac3[2] + Vec3[2] * Fac4[2]),
+		//+ (Vec0[0] * Fac0[3] - Vec2[3] * Fac3[3] + Vec3[3] * Fac4[3]),
 	), inv1 = _mm256_mul_pd(
 		SignA,
 		_mm256_fmadd_pd(v3, fac4,
@@ -173,6 +240,11 @@ STPMatrix4x4d STPMatrix4x4d::inverse() const noexcept {
 				_mm256_mul_pd(v2, fac3)
 			)
 		)
+		//col2
+		//+ (Vec0[0] * Fac1[0] - Vec1[0] * Fac3[0] + Vec3[0] * Fac5[0]),
+		//- (Vec0[0] * Fac1[1] - Vec1[1] * Fac3[1] + Vec3[1] * Fac5[1]),
+		//+ (Vec0[0] * Fac1[2] - Vec1[2] * Fac3[2] + Vec3[2] * Fac5[2]),
+		//- (Vec0[0] * Fac1[3] - Vec1[3] * Fac3[3] + Vec3[3] * Fac5[3]),
 	), inv2 = _mm256_mul_pd(
 		SignB,
 		_mm256_fmadd_pd(v3, fac5,
@@ -180,6 +252,11 @@ STPMatrix4x4d STPMatrix4x4d::inverse() const noexcept {
 				_mm256_mul_pd(v1, fac3)
 			)
 		)
+		//col3
+		//- (Vec1[0] * Fac2[0] - Vec1[0] * Fac4[0] + Vec2[0] * Fac5[0]),
+		//+ (Vec1[0] * Fac2[1] - Vec1[1] * Fac4[1] + Vec2[1] * Fac5[1]),
+		//- (Vec1[0] * Fac2[2] - Vec1[2] * Fac4[2] + Vec2[2] * Fac5[2]),
+		//+ (Vec1[0] * Fac2[3] - Vec1[3] * Fac4[3] + Vec2[3] * Fac5[3]));
 	), inv3 = _mm256_mul_pd(
 		SignA,
 		_mm256_fmadd_pd(v2, fac5,
@@ -196,6 +273,10 @@ STPMatrix4x4d STPMatrix4x4d::inverse() const noexcept {
 		//0 4 8 12
 	const __m256d col = _mm256_permute2f128_pd(s0, s1, STP_MM_BIT8(0, 0, 2, 0));
 
+		//Determinant = m[0][0] * Inverse[0][0]
+		//				+ m[0][1] * Inverse[1][0]
+		//				+ m[0][2] * Inverse[2][0]
+		//				+ m[0][3] * Inverse[3][0];
 	const __m256d det = STPVector4d::dotVector4dRaw(this->get(0), col),
 		det_rcp = _mm256_div_pd(One, det);
 
@@ -258,6 +339,12 @@ STPVector4d::STPVector4d(const dvec4& vec) noexcept {
 STPVector4d::operator dvec4() const noexcept {
 	alignas(AVXAlignment) dvec4 res;
 	_mm256_store_pd(value_ptr(res), this->Vec);
+	return res;
+}
+
+STPVector4d::operator vec4() const noexcept {
+	alignas(SSEAlignment) vec4 res;
+	_mm_store_ps(value_ptr(res), _mm256_cvtpd_ps(this->Vec));
 	return res;
 }
 

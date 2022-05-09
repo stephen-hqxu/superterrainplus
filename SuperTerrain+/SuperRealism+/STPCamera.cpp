@@ -19,6 +19,7 @@ using glm::normalize;
 using glm::radians;
 using glm::cross;
 
+using SuperTerrainPlus::STPMatrix4x4d;
 using namespace SuperTerrainPlus::STPRealism;
 
 STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props, STPProjectionCategory proj_type) : 
@@ -72,14 +73,15 @@ void STPCamera::removeListener(STPStatusChangeCallback* listener) const {
 	this->CallbackRegistry.erase(it);
 }
 
-const dmat4& STPCamera::view() const {
+const STPMatrix4x4d& STPCamera::view() const {
 	if (this->ViewOutdated) {
 		//update view matrix
-		this->View = glm::lookAt(
+		alignas(STPMatrix4x4d) const dmat4 view_data = glm::lookAt(
 			this->Camera.Position,
 			this->Camera.Position + this->Front,
 			this->Up
 		);
+		this->View = STPMatrix4x4d(view_data);
 		this->ViewOutdated = false;
 	}
 

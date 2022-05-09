@@ -13,26 +13,37 @@
 #include <glm/gtc/matrix_inverse.hpp>
 
 #include <limits>
+#include <type_traits>
 
 using namespace SuperTerrainPlus;
 
 using glm::dmat3;
+using glm::vec4;
 using glm::dvec4;
+using glm::mat4;
 using glm::dmat4;
 using glm::inverse;
 using glm::transpose;
 using glm::dot;
 
-#define COMP_DOUBLE(X) Catch::Matchers::WithinRel(X, std::numeric_limits<double>::epsilon() * 50.0)
+#define COMP_FLOATING_POINT(X, TYPE) Catch::Matchers::WithinRel(X, std::numeric_limits<TYPE>::epsilon() * static_cast<TYPE>(10.0))
+#define COMP_FLOAT(X) COMP_FLOATING_POINT(X, float)
+#define COMP_DOUBLE(X) COMP_FLOATING_POINT(X, double)
 
 //This compare function consider tolerance of floating point comparison
-static void compareVector(const dvec4& val, const dvec4& expected) {
+template<class T>
+static void compareVector(const T& val, const T& expected) {
 	for (int row = 0; row < 4; row++) {
-		REQUIRE_THAT(val[row], COMP_DOUBLE(expected[row]));
+		if constexpr (std::is_same_v<T, dvec4>) {
+			REQUIRE_THAT(val[row], COMP_DOUBLE(expected[row]));
+		} else {
+			REQUIRE_THAT(val[row], COMP_FLOAT(expected[row]));
+		}
 	}
 }
 
-static void compareMatrix(const dmat4& val, const dmat4& expected) {
+template<class T>
+static void compareMatrix(const T& val, const T& expected) {
 	for (int col = 0; col < 4; col++) {
 		compareVector(val[col], expected[col]);
 	}
@@ -65,9 +76,11 @@ SCENARIO("STPMatrix4x4d can be used to perform matrix operation", "[Algebra][STP
 		THEN("Matrix can be loaded") {
 
 			AND_THEN("Data can be unloaded and read back") {
-				const dmat4 MatData = static_cast<dmat4>(Mat);
+				const mat4 MatfData = static_cast<mat4>(Mat);
+				const dmat4 MatdData = static_cast<dmat4>(Mat);
 
-				compareMatrix(MatData, Data);
+				compareMatrix(MatfData, static_cast<mat4>(Data));
+				compareMatrix(MatdData, Data);
 			}
 
 		}
@@ -163,9 +176,11 @@ SCENARIO("STPVector4d can be used to perform vector operation", "[Algebra][STPVe
 		THEN("Data can be loaded into the vector") {
 
 			AND_THEN("Data can be unloaded and read back") {
-				const dvec4 VecData = static_cast<dvec4>(Vec);
+				const vec4 VecfData = static_cast<vec4>(Vec);
+				const dvec4 VecdData = static_cast<dvec4>(Vec);
 
-				compareVector(VecData, Data);
+				compareVector(VecfData, static_cast<vec4>(Data));
+				compareVector(VecdData, Data);
 			}
 
 		}

@@ -8,7 +8,6 @@
 #include "../../Environment/STPOrthographicCameraSetting.h"
 
 //GLM
-#include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
@@ -21,7 +20,7 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		//The projection matrix
-		alignas(32) mutable glm::dmat4 OrthographicProjection;
+		mutable STPMatrix4x4d OrthographicProjection;
 		STPEnvironment::STPOrthographicCameraSetting Frustum;
 		//A flag
 		mutable bool ProjectionOutdated;
@@ -51,11 +50,11 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The pointer to the current orthographic matrix which is cached by the current camera.
 		 * Like the base camera class, this pointer will not be updated by the instance automatically.
 		*/
-		const glm::dmat4& ortho() const;
+		const STPMatrix4x4d& ortho() const;
 
-		const glm::dmat4& projection() const override;
+		const STPMatrix4x4d& projection() const override;
 
-		glm::dmat4 projection(double, double) const override;
+		STPMatrix4x4d projection(double, double) const override;
 
 		/**
 		 * @brief Reshape the view frustum. Change the bouding box vertices.

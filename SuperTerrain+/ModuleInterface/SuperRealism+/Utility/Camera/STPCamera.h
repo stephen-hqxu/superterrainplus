@@ -5,11 +5,12 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //Setting
 #include "../../Environment/STPCameraSetting.h"
+//Algebra
+#include <SuperTerrain+/Utility/Algebra/STPMatrix4x4d.h>
 
 //GLM
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
-#include <glm/mat4x4.hpp>
 
 //System
 #include <vector>
@@ -80,7 +81,7 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		//The view matrix to transform from world space to view space.
-		alignas(32) mutable glm::dmat4 View;
+		mutable STPMatrix4x4d View;
 		//Flag to indicate if the camera has changed its state since last time the view matrix was computed.
 		//The flag will be reset until view matrix is recomputed.
 		mutable bool ViewOutdated;
@@ -149,14 +150,14 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Note that this pointer will not be updated by the camera automatically unless this function is called.
 		 * The pointer of the returned view matrix is aligned to 32-bit boundary.
 		*/
-		const glm::dmat4& view() const;
+		const STPMatrix4x4d& view() const;
 
 		/**
 		 * @brief Get the camera projection matrix that transform from view to clip space.
 		 * @return The pointer to the projection matrix.
 		 * The pointer of the returned projection matrix is aligned to 32-bit boundary.
 		*/
-		virtual const glm::dmat4& projection() const = 0;
+		virtual const STPMatrix4x4d& projection() const = 0;
 
 		/**
 		 * @brief Get the camera projection matrix that overrides the camera near and far plane settings.
@@ -164,7 +165,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param far The far plane of the projection frustum.
 		 * @return The projection matrix.
 		*/
-		virtual glm::dmat4 projection(double, double) const = 0;
+		virtual STPMatrix4x4d projection(double, double) const = 0;
 
 		/**
 		 * @brief Get the current camera status.

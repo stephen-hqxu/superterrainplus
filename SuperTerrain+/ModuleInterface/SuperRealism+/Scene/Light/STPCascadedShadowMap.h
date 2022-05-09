@@ -71,14 +71,12 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Calculate the light space matrix for a particular view frustum.
-		 * @tparam Mat The type of the matrix.
 		 * @param near The near plane.
 		 * @param far The far plane.
 		 * @param view The view matrix of the camera.
 		 * @return The light space view matrix.
 		*/
-		template<class Mat>
-		glm::dmat4 calcLightSpace(double, double, const Mat&) const;
+		glm::mat4 calcLightSpace(double, double, const STPMatrix4x4d&) const;
 
 		/**
 		 * @brief Calculate the light space view matrices for all divisions of view frustum and store them into mapped light buffer.

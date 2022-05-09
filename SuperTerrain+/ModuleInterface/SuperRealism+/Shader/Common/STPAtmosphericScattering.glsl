@@ -15,7 +15,7 @@ struct AtmosphereComposition {
 };
 
 //ray-sphere intersection that assumes
-//the sphere is centered at the origin.
+//the sphere is centred at the origin.
 //No intersection when result.x > result.y
 vec2 raySphereIntersection(vec3, vec3, float);
 
@@ -26,7 +26,7 @@ AtmosphereComposition atmosphere(AtmosphereSetting atmo, vec3 sun_pos, vec3 ray_
 	//calculate step size of the primary ray
 	vec2 p = raySphereIntersection(ray_origin, ray_dir, atmo.rAtmos);
 	if (p.x > p.y) {
-		//no intersection, default black color
+		//no intersection, default black colour
 		return AtmosphereComposition(
 			vec3(0.0f),
 			vec3(0.0f)
@@ -94,7 +94,7 @@ AtmosphereComposition atmosphere(AtmosphereSetting atmo, vec3 sun_pos, vec3 ray_
 		//Calculate attenuation
 		const vec3 attn = exp(-(atmo.kMie * (priOdMie + secOdMie) + atmo.kRlh * (priOdRlh + secOdRlh)));
 
-		//Accumualte scttering
+		//Accumulate scattering
 		totalRlh += odStepRlh * attn;
 		totalMie += odStepMie * attn;
 
@@ -104,9 +104,9 @@ AtmosphereComposition atmosphere(AtmosphereSetting atmo, vec3 sun_pos, vec3 ray_
 
 	//Return the atmosphere composition
 	return AtmosphereComposition(
-		//Mie scattering emulates sun color
+		//Mie scattering emulates sun colour
 		pMie * atmo.kMie * totalMie,
-		//Whereas Rayleigh scattering emulates sky color
+		//Whereas Rayleigh scattering emulates sky colour
 		pRlh * atmo.kRlh * totalRlh
 	);
 }
