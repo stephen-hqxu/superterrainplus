@@ -1,6 +1,5 @@
 #include <SuperTerrain+/GPGPU/STPHeightfieldKernel.cuh>
 
-#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 

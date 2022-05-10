@@ -5,9 +5,6 @@
 #include <SuperTerrain+/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
-//Template Definition
-#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
-
 #include <type_traits>
 
 #include <iostream>

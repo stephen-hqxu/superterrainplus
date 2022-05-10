@@ -13,7 +13,6 @@
 //Utils
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
-#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 #include <SuperTerrain+/Utility/STPFile.h>
 
 #include <SuperTerrain+/Exception/STPCompilationError.h>
@@ -268,7 +267,7 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 
 		}
 
-		WHEN("Retrive source lowered name from a non-existing source code") {
+		WHEN("Retrieve source lowered name from a non-existing source code") {
 
 			THEN("No lowered name is returned with an error thrown") {
 				REQUIRE_THROWS_AS(this->retrieveSourceLoweredName(Nonsense), STPException::STPMemoryError);
@@ -276,7 +275,7 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 
 		}
 
-		WHEN("A piece of working souce code is added to the program") {
+		WHEN("A piece of working source code is added to the program") {
 
 			THEN("Program can be compiled without errors") {
 				this->testCompilation(true, false);
@@ -287,7 +286,7 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 					//round the number to 1 d.p. to avoid float rounding issue during assertion
 					//compilation is a slow process, so we only test it once
 					const auto Data = GENERATE(take(1, chunk(18, map<float>([](auto f) { return roundf(f * 10.0f) / 10.0f; }, random(-6666.0f, 6666.0f)))));
-					//kernel exeuction for matrix addition
+					//kernel execution for matrix addition
 					const mat4 matA = glm::make_mat4(Data.data()), 
 						matB = glm::identity<mat4>() * Data[16];
 					const float scale = Data[17];
@@ -330,7 +329,7 @@ SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA script
 
 				WHEN("Header is attached to the program database") {
 
-					THEN("Header is recongised by the compiler and can be used alongside with the source file") {
+					THEN("Header is recognised by the compiler and can be used alongside with the source file") {
 						this->testCompilation(true, true);
 
 						AND_WHEN("The same header is attached to the program") {

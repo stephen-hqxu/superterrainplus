@@ -9,7 +9,6 @@ STPHeightfieldKernel.cu
 STPRainDrop.cu
 STPRainDropSetting.cu
 # /Utility
-Utility/STPAlgebra.cpp
 Utility/STPDeviceErrorHandler.cpp
 Utility/STPFile.cpp
 Utility/STPMemoryPool.cpp

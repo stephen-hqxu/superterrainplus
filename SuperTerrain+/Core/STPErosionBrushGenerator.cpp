@@ -6,9 +6,6 @@
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
-//Definition for smart memory
-#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
-
 //GLM
 #include <glm/exponential.hpp>
 

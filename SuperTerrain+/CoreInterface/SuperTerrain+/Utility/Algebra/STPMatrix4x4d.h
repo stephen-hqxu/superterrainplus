@@ -2,7 +2,6 @@
 #ifndef _STP_MATRIX_4X4D_H_
 #define _STP_MATRIX_4X4D_H_
 
-#include <SuperTerrain+/STPCoreDefine.h>
 #include "STPVector4d.h"
 
 //GLM
@@ -14,7 +13,7 @@ namespace SuperTerrainPlus {
 	 * @brief STPMatrix4x4d is a 4-by-4 matrix where each component is a double.
 	 * It utilises SIMD to improve performance.
 	*/
-	class STP_API STPMatrix4x4d {
+	class STPMatrix4x4d {
 	private:
 
 		STPVector4d Mat[4];
@@ -99,4 +98,5 @@ namespace SuperTerrainPlus {
 	};
 
 }
+#include "STPMatrix4x4d.inl"
 #endif//_STP_MATRIX_4X4D_H_

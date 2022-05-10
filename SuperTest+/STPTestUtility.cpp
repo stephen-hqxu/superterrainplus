@@ -13,7 +13,6 @@
 #include <SuperTerrain+/Utility/Memory/STPSmartStream.h>
 #include <SuperTerrain+/Utility/Memory/STPMemoryPool.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
-#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 //SuperTerrain+/SuperTerrain+/Exception
 #include <SuperTerrain+/Exception/STPCUDAError.h>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
@@ -116,7 +115,7 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded worklo
 
 		}
 
-		WHEN("Insert more works to a thread pool that has been signaled to be killed") {
+		WHEN("Insert more works to a thread pool that has been signalled to be killed") {
 			using std::bind;
 			//send a busy worker
 			this->Pool->enqueue_void(bind(&ThreadPoolTester::waitUntilSignaled, this));

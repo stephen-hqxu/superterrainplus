@@ -2,9 +2,7 @@
 #ifndef _STP_VECTOR_4D_H_
 #define _STP_VECTOR_4D_H_
 
-#include <SuperTerrain+/STPCoreDefine.h>
-
-#include <immintrin.h>
+#include "STPAlgebraCommon.h"
 
 //GLM
 #include <glm/vec4.hpp>
@@ -15,7 +13,7 @@ namespace SuperTerrainPlus {
 	 * @brief STPVector4d is a 4-component vector class where each component is a double.
 	 * It utilises SIMD instructions to improve performance.
 	*/
-	class STP_API STPVector4d {
+	class STPVector4d {
 	public:
 
 		/**
@@ -105,4 +103,5 @@ namespace SuperTerrainPlus {
 	};
 
 }
+#include "STPVector4d.inl"
 #endif//_STP_VECTOR_4D_H_

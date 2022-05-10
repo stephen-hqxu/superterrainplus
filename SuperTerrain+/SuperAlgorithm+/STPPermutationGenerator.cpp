@@ -5,9 +5,6 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
-//Import definition
-#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
-
 //CUDA Runtime
 #include <cuda_runtime.h>
 

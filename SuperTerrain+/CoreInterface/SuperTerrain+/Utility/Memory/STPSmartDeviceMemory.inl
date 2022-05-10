@@ -1,22 +1,21 @@
 //TEMPLATE DEFINITION FOR SMART DEVICE MEMORY
 #ifdef _STP_SMART_DEVICE_MEMORY_H_
 
-//Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
 template<typename T>
-void SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemoryDeleter<T>::operator()(T* ptr) const {
+inline void SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemoryDeleter<T>::operator()(T* ptr) const {
 	STPcudaCheckErr(cudaFree(ptr));
 }
 
 template<typename T>
-SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::STPStreamedDeviceMemoryDeleter(cudaStream_t stream) : Stream(stream) {
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::STPStreamedDeviceMemoryDeleter(cudaStream_t stream) : Stream(stream) {
 	
 }
 
 template<typename T>
-void SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::operator()(T* ptr) const {
+inline void SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::operator()(T* ptr) const {
 	if (!this->Stream) {
 		//check if user has assigned a stream
 		throw SuperTerrainPlus::STPException::STPMemoryError("Invoking a deleter with no CUDA stream assigned");
@@ -25,7 +24,7 @@ void SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::
 }
 
 template<typename T>
-SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeDevice(size_t size) {
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeDevice(size_t size) {
 	//type sanitise
 	using U = NoArray<T>;
 	
@@ -38,7 +37,8 @@ SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemory<T> SuperTerrainPlus::STP
 }
 
 template<typename T>
-SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeStreamedDevice(cudaMemPool_t memPool, cudaStream_t stream, size_t size) {
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeStreamedDevice
+	(cudaMemPool_t memPool, cudaStream_t stream, size_t size) {
 	//type sanitise
 	using U = NoArray<T>;
 	

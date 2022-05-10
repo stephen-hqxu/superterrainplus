@@ -11,9 +11,6 @@
 //CUDA Kernel
 #include <SuperTerrain+/GPGPU/STPHeightfieldKernel.cuh>
 
-//Template definition for the smart device memory
-#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
-
 using namespace SuperTerrainPlus::STPCompute;
 
 using std::vector;

@@ -97,5 +97,5 @@ namespace SuperTerrainPlus {
 	};
 
 }
-//Template definition should be included by user in the source code to avoid header contamination
+#include "STPSmartDeviceMemory.inl"
 #endif//_STP_SMART_DEVICE_MEMORY_H_

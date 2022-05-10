@@ -2,8 +2,6 @@
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
-//Import implementation
-#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.tpp>
 
 //GLAD
 #include <glad/glad.h>

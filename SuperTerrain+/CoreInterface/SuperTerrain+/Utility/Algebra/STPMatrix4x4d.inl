@@ -1,46 +1,4 @@
-#include <SuperTerrain+/Utility/Algebra/STPMatrix4x4d.h>
-#include <SuperTerrain+/Utility/Algebra/STPVector4d.h>
-
-#include <glm/gtc/type_ptr.hpp>
-
-using glm::vec4;
-using glm::dvec4;
-using glm::mat4;
-using glm::dmat4;
-using glm::value_ptr;
-
-using namespace SuperTerrainPlus;
-
-#define STP_MM_BIT4(D, C, B, A) (A << 3 | B << 2 | C << 1 | D)
-#define STP_MM_BIT8(D, C, B, A) _MM_SHUFFLE(A, B, C, D)
-
-//The default alignment of the SSE and AVX instruction set
-constexpr static uintptr_t SSEAlignment = alignof(__m128), 
-	AVXAlignment = alignof(__m256d);
-/**
- * @brief Check if the address is properly aligned such that it satisfies the alignment requirement of AVX instruction set.
- * @param addr The address to be checked.
- * @return True if the address is properly aligned, false otherwise.
-*/
-inline static bool isAVXAligned(const void* addr) noexcept {
-	return !(reinterpret_cast<uintptr_t>(addr) & (AVXAlignment - 1ull));
-}
-
-static_assert(alignof(STPVector4d) == AVXAlignment 
-	&& alignof(STPMatrix4x4d) == AVXAlignment,
-	"Some SIMD linear algebra libraries are not aligned to 32-bit");
-
-/* 
- * Note:
- * The implementation of all SIMD algebras reference the implementation by GLM.
- * GLM SIMD library does not support double type, I adapted their solution for double precision data type.
- * Documentations are mostly taken from their code.
- * 
- * It is much harder to implement SIMD for double due to lane size (128-bit) and cross-lane operations.
- * I have tried my best to use the fewest instructions with the minimal instruction latency and CPI to achieve the same functionality.
-*/
-
-//========================================= STPMatrix4x4d ============================================
+#ifdef _STP_MATRIX_4X4D_H_
 
 //In documentation, matrix is assumed to have this layout.
 //GLM uses column-major, so this is in column major as well, although I prefer row major...
@@ -54,55 +12,53 @@ static_assert(alignof(STPVector4d) == AVXAlignment
 #define FOREACH_COL_BEG() for (int i = 0; i < 4; i++) {
 #define FOREACH_COL_END() }
 
-STPMatrix4x4d::STPMatrix4x4d(const dmat4& mat) noexcept {
+inline SuperTerrainPlus::STPMatrix4x4d::STPMatrix4x4d(const glm::dmat4 & mat) noexcept {
 	FOREACH_COL_BEG()
 		this->Mat[i] = STPVector4d(mat[i]);
 	FOREACH_COL_END()
 }
 
-inline const __m256d& STPMatrix4x4d::get(size_t idx) const noexcept {
+inline const __m256d& SuperTerrainPlus::STPMatrix4x4d::get(size_t idx) const noexcept {
 	return this->Mat[idx].Vec;
 }
 
-inline __m256d& STPMatrix4x4d::get(size_t idx) noexcept {
+inline __m256d& SuperTerrainPlus::STPMatrix4x4d::get(size_t idx) noexcept {
 	return const_cast<__m256d&>(const_cast<const STPMatrix4x4d*>(this)->get(idx));
 }
 
-STPMatrix4x4d::operator dmat4() const noexcept {
-	dmat4 res;
+inline SuperTerrainPlus::STPMatrix4x4d::operator glm::dmat4() const noexcept {
+	glm::dmat4 res;
 	FOREACH_COL_BEG()
-		res[i] = static_cast<dvec4>(this->Mat[i]);
-	FOREACH_COL_END()
-	
-	return res;
-}
-
-STPMatrix4x4d::operator mat4() const noexcept {
-	mat4 res;
-	FOREACH_COL_BEG()
-		res[i] = static_cast<vec4>(this->Mat[i]);
+		res[i] = static_cast<glm::dvec4>(this->Mat[i]);
 	FOREACH_COL_END()
 	return res;
 }
 
-const STPVector4d& STPMatrix4x4d::operator[](size_t idx) const noexcept {
+inline SuperTerrainPlus::STPMatrix4x4d::operator glm::mat4() const noexcept {
+	glm::mat4 res;
+	FOREACH_COL_BEG()
+		res[i] = static_cast<glm::vec4>(this->Mat[i]);
+	FOREACH_COL_END()
+	return res;
+}
+
+inline const SuperTerrainPlus::STPVector4d& SuperTerrainPlus::STPMatrix4x4d::operator[](size_t idx) const noexcept {
 	return this->Mat[idx];
 }
 
-STPVector4d& STPMatrix4x4d::operator[](size_t idx) noexcept {
+inline SuperTerrainPlus::STPVector4d& SuperTerrainPlus::STPMatrix4x4d::operator[](size_t idx) noexcept {
 	return const_cast<STPVector4d&>(const_cast<const STPMatrix4x4d*>(this)->operator[](idx));
 }
 
-STPMatrix4x4d STPMatrix4x4d::operator*(const STPMatrix4x4d& rhs) const noexcept {
+inline SuperTerrainPlus::STPMatrix4x4d SuperTerrainPlus::STPMatrix4x4d::operator*(const STPMatrix4x4d& rhs) const noexcept {
 	STPMatrix4x4d m;
 	FOREACH_COL_BEG()
 		m[i] = (*this) * rhs[i];
 	FOREACH_COL_END()
-
 	return m;
 }
 
-STPVector4d STPMatrix4x4d::operator*(const STPVector4d& rhs) const noexcept {
+inline SuperTerrainPlus::STPVector4d SuperTerrainPlus::STPMatrix4x4d::operator*(const STPVector4d& rhs) const noexcept {
 	const __m256d& v = rhs.Vec;
 		//0 0 0 0
 	const __m256d s0 = _mm256_permute4x64_pd(v, STP_MM_BIT8(0, 0, 0, 0)),
@@ -119,7 +75,7 @@ STPVector4d STPMatrix4x4d::operator*(const STPVector4d& rhs) const noexcept {
 	return _mm256_add_pd(t0, t1);
 }
 
-STPMatrix4x4d STPMatrix4x4d::transpose() const noexcept {
+inline SuperTerrainPlus::STPMatrix4x4d SuperTerrainPlus::STPMatrix4x4d::transpose() const noexcept {
 		//0 4 2 6
 	const __m256d s0 = _mm256_shuffle_pd(this->get(0), this->get(1), STP_MM_BIT4(0, 0, 0, 0)),
 		//1 5 3 7
@@ -142,7 +98,7 @@ STPMatrix4x4d STPMatrix4x4d::transpose() const noexcept {
 	return m;
 }
 
-STPMatrix4x4d STPMatrix4x4d::inverse() const noexcept {
+inline SuperTerrainPlus::STPMatrix4x4d SuperTerrainPlus::STPMatrix4x4d::inverse() const noexcept {
 	const static __m256d SignA = _mm256_set_pd(1.0, -1.0, 1.0, -1.0),
 		SignB = _mm256_set_pd(-1.0, 1.0, -1.0, 1.0),
 		One = _mm256_set1_pd(1.0);
@@ -288,7 +244,7 @@ STPMatrix4x4d STPMatrix4x4d::inverse() const noexcept {
 	return m;
 }
 
-STPMatrix4x4d::STPMatrix3x3d STPMatrix4x4d::asMatrix3x3d() const noexcept {
+inline SuperTerrainPlus::STPMatrix4x4d::STPMatrix3x3d SuperTerrainPlus::STPMatrix4x4d::asMatrix3x3d() const noexcept {
 	const static __m256d Factor = _mm256_set_pd(0.0, 1.0, 1.0, 1.0),
 		Preserver = _mm256_set_pd(1.0, 0.0, 0.0, 0.0);
 	//Basically we want something like this:
@@ -309,68 +265,4 @@ STPMatrix4x4d::STPMatrix3x3d STPMatrix4x4d::asMatrix3x3d() const noexcept {
 #undef FOREACH_COL_BEG
 #undef FOREACH_COL_END
 
-//========================================= STPVector4d ==============================================
-
-inline __m256d STPVector4d::dotVector4dRaw(const __m256d& lhs, const __m256d& rhs) noexcept {
-	const __m256d mul = _mm256_mul_pd(lhs, rhs),
-		//double horizontal add does not cross the lane, need to shuffle it
-		h = _mm256_permute4x64_pd(_mm256_hadd_pd(mul, mul), STP_MM_BIT8(0, 2, 1, 3));
-	return _mm256_hadd_pd(h, h);
-}
-
-inline STPVector4d::STPVector4d(const __m256d& vec) noexcept : Vec(vec) {
-
-}
-
-STPVector4d::STPVector4d() noexcept : STPVector4d(_mm256_setzero_pd()) {
-
-}
-
-STPVector4d::STPVector4d(const dvec4& vec) noexcept {
-	const double* const vec_addr = value_ptr(vec);
-	if (isAVXAligned(vec_addr)) {
-		//if aligned, use the faster load instruction
-		this->Vec = _mm256_load_pd(vec_addr);
-		return;
-	}
-	this->Vec = _mm256_loadu_pd(vec_addr);
-}
-
-STPVector4d::operator dvec4() const noexcept {
-	alignas(AVXAlignment) dvec4 res;
-	_mm256_store_pd(value_ptr(res), this->Vec);
-	return res;
-}
-
-STPVector4d::operator vec4() const noexcept {
-	alignas(SSEAlignment) vec4 res;
-	_mm_store_ps(value_ptr(res), _mm256_cvtpd_ps(this->Vec));
-	return res;
-}
-
-STPVector4d STPVector4d::operator+(const STPVector4d& rhs) const noexcept {
-	return _mm256_add_pd(this->Vec, rhs.Vec);
-}
-
-STPVector4d STPVector4d::operator/(const STPVector4d& rhs) const noexcept {
-	return _mm256_div_pd(this->Vec, rhs.Vec);
-}
-
-template<STPVector4d::STPElement E>
-STPVector4d STPVector4d::broadcast() const noexcept {
-	constexpr static auto i = static_cast<std::underlying_type_t<STPElement>>(E);
-	return _mm256_permute4x64_pd(this->Vec, STP_MM_BIT8(i, i, i, i));
-}
-
-double STPVector4d::dot(const STPVector4d& rhs) const noexcept {
-	const __m256d vec_dot = STPVector4d::dotVector4dRaw(this->Vec, rhs.Vec);
-	//all components have the same value, extract any one of them
-	return _mm256_cvtsd_f64(vec_dot);
-}
-
-//Explicit Instantiation
-#define BROADCAST(ELEM) template STP_API STPVector4d STPVector4d::broadcast<STPVector4d::STPElement::ELEM>() const noexcept
-BROADCAST(X);
-BROADCAST(Y);
-BROADCAST(Z);
-BROADCAST(W);
+#endif//_STP_MATRIX_4X4D_H_

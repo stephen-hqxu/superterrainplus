@@ -29,12 +29,16 @@ GPGPU/STPHeightfieldKernel.cuh
 GPGPU/STPRainDrop.cuh
 GPGPU/STPRuntimeCompilable.h
 # /Utility/Algebra
+Utility/Algebra/STPAlgebraCommon.h
+Utility/Algebra/STPAlgebraCommon.inl
 Utility/Algebra/STPMatrix4x4d.h
+Utility/Algebra/STPMatrix4x4d.inl
 Utility/Algebra/STPVector4d.h
+Utility/Algebra/STPVector4d.inl
 # /Utility/Memory
 Utility/Memory/STPMemoryPool.h
 Utility/Memory/STPSmartDeviceMemory.h
-Utility/Memory/STPSmartDeviceMemory.tpp
+Utility/Memory/STPSmartDeviceMemory.inl
 Utility/Memory/STPSmartStream.h
 # /Utility
 Utility/STPDeviceErrorHandler.h
