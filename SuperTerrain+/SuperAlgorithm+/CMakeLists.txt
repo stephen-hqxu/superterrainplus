@@ -1,7 +1,7 @@
 # host-side shared library
 add_library(${STP_ALGORITHM_HOST_ENGINE} SHARED
+STPAlgorithmEnvironment.cpp
 STPPermutationGenerator.cpp
-STPSimplexNoiseSetting.cpp
 STPSingleHistogramFilter.cpp
 )
 set_target_properties(${STP_ALGORITHM_HOST_ENGINE} PROPERTIES DEFINE_SYMBOL SUPERALGORITHMPLUS_HOST_EXPORTS)

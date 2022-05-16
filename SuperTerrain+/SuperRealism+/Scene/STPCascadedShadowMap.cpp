@@ -12,7 +12,6 @@
 //GLM
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 //System
 #include <numeric>
@@ -27,11 +26,6 @@ using glm::dmat4;
 using glm::vec4;
 using glm::dvec4;
 
-using glm::radians;
-using glm::make_vec4;
-
-using std::unique_ptr;
-using std::make_unique;
 using std::numeric_limits;
 
 using SuperTerrainPlus::STPMatrix4x4d;

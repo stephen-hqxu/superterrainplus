@@ -7,7 +7,6 @@
 [![Documentation](https://img.shields.io/badge/-Documentation-fa8072)](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/README.md)
 [![Dissertation](https://img.shields.io/badge/-Dissertation-7b68ee)](https://github.com/stephen-hqxu/superterrainplus/tree/master/Report)
 
-<p align="center"> Year 3 Computer Science Dissertation Project </p>
 <p align="center"> A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering </p>
 
 ## :eyes: Overview
@@ -19,9 +18,9 @@
 	<img src="https://img.shields.io/badge/CMake_3.18-064F8C?style=flat&logo=cmake&logoColor=white" />
 </p>
 
-*SuperTerrain+* is a modern procedural terrain generator with physics simulations and aiming for real-time photorealistic rendering under the inspirations of games and movies with procedural generation features. Procedural generation is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
+*SuperTerrain+* is a procedural terrain engine and real-time renderer started as my personal project in July, 2020 and later become my undergraduate dissertation; now I mainly use it as a playground for exploring modern rendering techniques and improving my programming proficiency. Procedural generation is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
 
-*SuperTerrain+* provides object-oriented interfaces to allow developers to customise the scenery as they preferred. Rather than considering it as a piece of software, it is also a collection of modern computer graphics techniques; with the help of detailed inline documentations, this is also a great place for learning.
+*SuperTerrain+* provides object-oriented interfaces to allow developers to customise the scenery as they preferred. Rather than considering it as a piece of software, it is also a collection of modern computer graphics techniques; with the help of detailed in-source documentations, this is also a great place for learning.
 
 *SuperTerrain+* is focusing on the next-generation computer graphics and latest technologies, therefore there is no intention for backward compatibility and the development environment will be evolving over time.
 
@@ -29,7 +28,7 @@
 
 *SuperTerrain+* is definitely not the first terrain generator, then why we need yet another one?
 
-There is no perfect answer to this question, every application has its own pros and cons. Other than being modern, flexible and specialised for terrain generation and real-time photorealistic rendering, and of course for fun, these features are believed to differentiate *SuperTerrain+* from the others.
+There is no perfect answer to this question, every application has its own pros and cons. It focuses on modern techniques and programming practice, flexibility of engine design and specialisation of terrain generation and real-time photorealistic rendering. In addition, these features are believed to differentiate *SuperTerrain+* from the others.
 
 ### Procedural heightfield infinite terrain
 
@@ -85,7 +84,7 @@ There is no perfect answer to this question, every application has its own pros 
   - [ ] Point light
   - [ ] Spotlight
 - [ ] Water rendering
-  - [x] Procedural water animation
+  - [x] Procedural water wave animation
   - [x] Screen-space reflection
   - [x] Screen-space refraction
   - [x] Fresnel effect
@@ -144,13 +143,17 @@ The application is unit-tested with.
 
 ### :ballot_box_with_check: CMake options
 
-| Option | Explanation | Default |
+| Option | Note | Default |
 | ------ | ------------ | ------- |
-| STP_CUDA_RUNTIME_LIBRARY | Set the global `nvcc` compiler flag `-cudart=` to the value set | "Static" |
-| STP_CUDA_VERBOSE_PTX | Append to the global `nvcc` compiler flag with `--ptxas-options=-v` | OFF |
+| STP_CUDA_RUNTIME_LIBRARY | Set the global `nvcc` compiler flag `-cudart=` to the value set | "Shared" |
 | STP_USE_AVX2 | Use AVX2 instruction sets on all vector operations | ON |
 | STP_BUILD_DEMO | Enable SuperDemo+ program build | ON |
-| STP_BUILD_TEST | Enable SuperTest+ program build | OFF |
+| STP_DEVELOPMENT_BUILD | Enable development mode | OFF |
+| STP_DEVELOPMENT_BUILD::STP_CUDA_VERBOSE_PTX | Append to the global `nvcc` compiler flag with `--ptxas-options=-v` | ON::ON |
+| STP_DEVELOPMENT_BUILD::STP_BUILD_TEST | Enable SuperTest+ program build | ON::ON |
+| STP_DEVELOPMENT_BUILD::STP_ENABLE_WARNING | Enable all compiler warnings | ON::ON |
+
+Note that `::` denotes a CMake dependent option. Pattern *A::B* default to *<value A>::<value B>* means option *B* is depended on option *A*, and *B* is exposed in CMake cache set to *<value B>* by default if and only if *A* is set to *<value A>*; otherwise *B* is hidden from the user and set to *NOT <value B>*.
 
 ## :bookmark_tabs: Getting Started
 
@@ -167,9 +170,8 @@ The application is unit-tested with.
 
 ![Nvidia GPU Requirement](https://img.shields.io/badge/NVIDIA-GTX_1660-76B900?style=flat&logo=nvidia&logoColor=white)
 
-> *SuperTerrain+* currently relies heavily on CUDA and GL extensions exclusive to Nvidia GPUs. The GPU requirement stated here is a trivial assumption, runtime performance depends highly on configuration and level of re-programming to the engine.
+> *SuperTerrain+* currently relies heavily on CUDA and GL extensions exclusive to Nvidia GPUs.
 
-- RAM: 4GB
 - OS
 
 ![OS Linux](https://img.shields.io/badge/Linux-FCC624?style=flat&logo=linux&logoColor=black)
@@ -241,6 +243,12 @@ cmake ../
 # Windows; you can either compile via Visual Studio GUI from the generated VS solution,
 # or alternatively the command line like this
 cmake --build ./ --config Release --target ALL_BUILD
+
+```
+
+Or:
+
+```
 
 # Unix
 make all

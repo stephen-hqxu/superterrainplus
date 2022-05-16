@@ -6,7 +6,10 @@
 
 //Matching
 #include <ctype.h>
+#include <charconv>
+#include <regex>
 
+#include <optional>
 #include <algorithm>
 
 //Stream
@@ -25,6 +28,8 @@ using std::make_pair;
 using std::make_optional;
 using std::unique_ptr;
 using std::make_unique;
+using std::regex;
+using std::regex_match;
 
 using std::distance;
 
@@ -37,7 +42,7 @@ public:
 	/**
 	 * @brief STPToken specifies a lexer token from an input.
 	*/
-	class STPToken {
+	struct STPToken {
 	public:
 
 		/**
@@ -101,14 +106,10 @@ public:
 			return os;
 		}
 
-	private:
-
 		//The type of this token
-		STPType Type;
+		const STPType Type;
 		//The lexeme of this token
-		string_view Lexeme;
-
-	public:
+		const string_view Lexeme;
 
 		/**
 		 * @brief Create a new token.
@@ -116,7 +117,7 @@ public:
 		 * @param beg The beginning iterator of this token.
 		 * @param count The number of character this token contains.
 		*/
-		constexpr STPToken(STPType type, const char* beg, size_t count = 1ull) : Type(type), Lexeme(beg, count) {
+		STPToken(STPType type, const char* beg, size_t count = 1ull) : Type(type), Lexeme(beg, count) {
 
 		}
 
@@ -126,27 +127,11 @@ public:
 		 * @param beg The beginning iterator of this token.
 		 * @param end The end iterator of this token.
 		*/
-		constexpr STPToken(STPType type, const char* beg, const char* end) : Type(type), Lexeme(beg, distance(beg, end)) {
+		STPToken(STPType type, const char* beg, const char* end) : Type(type), Lexeme(beg, distance(beg, end)) {
 
 		}
 
 		~STPToken() = default;
-
-		/**
-		 * @brief Get the token type.
-		 * @return The type of this token
-		*/
-		inline STPType getType() const {
-			return this->Type;
-		}
-
-		/**
-		 * @brief Get the token lexeme.
-		 * @return The lexeme of this token.
-		*/
-		inline const string_view& getLexeme() const {
-			return this->Lexeme;
-		}
 
 	};
 
@@ -154,22 +139,22 @@ private:
 
 	const string Source;
 	//The input parsing string sequence in a string stream
-	mutable const char* Sequence;
-	mutable size_t Line = 1ull;
-	mutable size_t Ch = 1ull;
+	const char* Sequence;
+	size_t Line = 1ull;
+	size_t Ch = 1ull;
 
 	/**
 	 * @brief Peek at the first character in the string sequence.
 	 * @return The first character in the string sequence.
 	*/
-	constexpr char peek() const {
+	inline char peek() {
 		return *this->Sequence;
 	}
 
 	/**
 	 * @brief Remove the first character from the string sequence.
 	*/
-	constexpr void pop() const {
+	inline void pop() {
 		this->Ch++;
 		this->Sequence++;
 	}
@@ -179,7 +164,7 @@ private:
 	 * @param type The type of the token
 	 * @return A single character token
 	*/
-	constexpr STPToken atom(STPToken::STPType type) const {
+	inline STPToken atom(STPToken::STPType type) {
 		const char* character = this->Sequence;
 		//we can safely move the pointer forward because the pointer in the character is not owned by the view
 		this->pop();
@@ -190,7 +175,7 @@ private:
 	 * @brief Read the whole string until a non-alphabet character is encountered.
 	 * @return A complete string token
 	*/
-	STPToken readString() const {
+	STPToken readString() {
 		const char* start = this->Sequence;
 
 		//keep pushing pointer forward until we see something
@@ -205,7 +190,7 @@ private:
 	 * @brief Read the whole number.
 	 * @return A complete string token of valid number
 	*/
-	STPToken readNumber() const {
+	STPToken readNumber() {
 		const char* start = this->Sequence;
 
 		char identifier;
@@ -222,7 +207,7 @@ private:
 	 * @brief Get the next token from the input
 	 * @return The next token in the input sequence
 	*/
-	inline STPToken next() const {
+	STPToken next() {
 		{
 			char space;
 			while (space = this->peek(), isspace(space)) {
@@ -294,9 +279,9 @@ public:
 
 	/**
 	 * @brief Compose initial error message about the parsing error, which contains line number and character location.
-	 * @param str The pointer to the input stringstream.
+	 * @param str The pointer to the input string stream.
 	 * @param error_type A string to represent the type of error.
-	 * @return The same stringstream.
+	 * @return The same string stream.
 	*/
 	stringstream& composeInitialErrorInfo(stringstream& str, const char* error_type) const {
 		str << "Texture Definition Language(" << this->Line << ',' << this->Ch << "): " << error_type << endl;
@@ -311,20 +296,71 @@ public:
 	 * If the next token does not have the same type as any of the expected, exception will be thrown.
 	*/
 	template<class... Type>
-	STPToken expect(Type... expected_type) const {
+	STPToken expect(Type... expected_type) {
 		const STPToken nextToken = this->next();
-		if (((nextToken.getType() != expected_type) && ...)) {
+		if (((nextToken.Type != expected_type) && ...)) {
 			//throw errors to indicate unexpected token.
 			stringstream msg;
 			this->composeInitialErrorInfo(msg, "unexpected token") 
 				<< "Was expecting: " << endl;
 			((msg << '\'' << expected_type << "\' "), ...) << endl;
 			msg << "Got: " << endl;
-			msg << '\'' << nextToken.getLexeme() << '\'' << endl;
+			msg << '\'' << nextToken.Lexeme << '\'' << endl;
 
 			throw STPException::STPInvalidSyntax(msg.str().c_str());
 		}
 		return nextToken;
+	}
+
+	/**
+	 * @brief Convert a view of string to a numeric value.
+	 * @tparam T The type of the number.
+	 * @param view The pointer to the view of the string.
+	 * @return The converted string, or exception if the format is invalid.
+	*/
+	template<typename T>
+	T fromStringView(string_view str) const {
+		//remove potential suffix
+		if (const char suffix = str.back();
+			suffix == 'f' || suffix == 'u') {
+			str.remove_suffix(1);
+		}
+		{
+			//numeric format check, since std::from_chars will ignore errors at the end of the string
+			bool valie_number;
+			if constexpr (std::is_integral_v<T>) {
+				//integer
+				const static regex int_matcher("^[0-9]+$");
+				valie_number = regex_match(str.data(), str.data() + str.length(), int_matcher);
+			} else {
+				//floating point
+				const static regex float_matcher("^[0-9]+\\.[0-9]+$");
+				valie_number = regex_match(str.data(), str.data() + str.length(), float_matcher);
+			}
+			if (!valie_number) {
+				stringstream err_msg;
+				this->composeInitialErrorInfo(err_msg, "invalid number")
+					<< "Numeric value \'" << str << "\' is not an identifiable valid number." << endl;
+				throw STPException::STPInvalidSyntax(err_msg.str().c_str());
+			}
+		}
+
+		T result = static_cast<T>(0);
+		const auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
+		//error handling
+		if (ec == std::errc()) {
+			//OK
+			return result;
+		}
+
+		//Error
+		stringstream err_msg;
+		//the only possible error is errc::result_out_of_range.
+		//errc::invalid_argument will never happen because we have checked already
+		this->composeInitialErrorInfo(err_msg, "numeric overflow")
+			<< "The specified number \'" << str << "\' is too large and will overflow." << endl;
+
+		throw STPException::STPInvalidSyntax(err_msg.str().c_str());
 	}
 
 };
@@ -334,11 +370,11 @@ STPTextureDefinitionLanguage::STPTextureDefinitionLanguage(const string& source)
 	//start doing lexical analysis and parsing
 	while (true) {
 		//check while identifier is it
-		if (this->Lexer->expect(TokenType::Hash, TokenType::End).getType() == TokenType::End) {
+		if (this->Lexer->expect(TokenType::Hash, TokenType::End).Type == TokenType::End) {
 			//end of file
 			break;
 		}
-		const string_view operation = this->Lexer->expect(TokenType::String).getLexeme();
+		const string_view operation = this->Lexer->expect(TokenType::String).Lexeme;
 
 		//depends on operations, we process them differently
 		if (operation == "texture") {
@@ -368,7 +404,7 @@ void STPTextureDefinitionLanguage::checkTextureDeclared(const string_view& textu
 		//texture variable not found, throw error
 		stringstream msg;
 		this->Lexer->composeInitialErrorInfo(msg, "unknown texture") 
-			<< "Texture \'" << texture << "\' is not declared before it is being referenced" << endl;
+			<< "Texture \'" << texture << "\' is not declared before it is being referenced." << endl;
 		throw STPException::STPInvalidSyntax(msg.str().c_str());
 	}
 }
@@ -379,12 +415,12 @@ void STPTextureDefinitionLanguage::processTexture() {
 	this->Lexer->expect(TokenType::LeftSquare);
 
 	while (true) {
-		const string_view textureName = this->Lexer->expect(TokenType::String).getLexeme();
+		const string_view textureName = this->Lexer->expect(TokenType::String).Lexeme;
 		//found a texture, store it
 		//initially the texture has no view information
 		this->DeclaredTexture.emplace(textureName, STPTextureDefinitionLanguage::UnreferencedIndex);
 
-		if (this->Lexer->expect(TokenType::Comma, TokenType::RightSquare).getType() == TokenType::RightSquare) {
+		if (this->Lexer->expect(TokenType::Comma, TokenType::RightSquare).Type == TokenType::RightSquare) {
 			//no more texture
 			break;
 		}
@@ -395,22 +431,15 @@ void STPTextureDefinitionLanguage::processTexture() {
 }
 
 void STPTextureDefinitionLanguage::processRule() {
-	static constexpr auto stoSample = [](const string_view& str) -> Sample {
-		//one disadvantage of this method is it will create a string from the string_view
-		return static_cast<Sample>(std::stoul(string(str)));
-	};
-	static constexpr auto stoFloat = [](const string_view& str) -> float {
-		return std::stof(string(str));
-	};
 	typedef STPTDLLexer::STPToken::STPType TokenType;
 
 	//define a rule
-	const string_view rule_type = this->Lexer->expect(TokenType::String).getLexeme();
+	const string_view rule_type = this->Lexer->expect(TokenType::String).Lexeme;
 	this->Lexer->expect(TokenType::LeftCurly);
 
 	while (true) {
 		//we got a sample ID
-		const Sample rule4Sample = stoSample(this->Lexer->expect(TokenType::Number).getLexeme());
+		const Sample rule4Sample = this->Lexer->fromStringView<Sample>(this->Lexer->expect(TokenType::Number).Lexeme);
 		this->Lexer->expect(TokenType::Colon);
 		this->Lexer->expect(TokenType::Equal);
 		this->Lexer->expect(TokenType::LeftBracket);
@@ -420,26 +449,26 @@ void STPTextureDefinitionLanguage::processRule() {
 
 			//check which type of type we are parsing
 			if (rule_type == "altitude") {
-				const float altitude = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
+				const float altitude = this->Lexer->fromStringView<float>(this->Lexer->expect(TokenType::Number).Lexeme);
 				this->Lexer->expect(TokenType::Minus);
 				this->Lexer->expect(TokenType::RightArrow);
-				const string_view map2Texture = this->Lexer->expect(TokenType::String).getLexeme();
+				const string_view map2Texture = this->Lexer->expect(TokenType::String).Lexeme;
 				this->checkTextureDeclared(map2Texture);
 
 				//store an altitude rule
 				this->Altitude.emplace_back(rule4Sample, altitude, map2Texture);
 			}
 			else if (rule_type == "gradient") {
-				const float minG = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
+				const float minG = this->Lexer->fromStringView<float>(this->Lexer->expect(TokenType::Number).Lexeme);
 				this->Lexer->expect(TokenType::Comma);
-				const float maxG = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
+				const float maxG = this->Lexer->fromStringView<float>(this->Lexer->expect(TokenType::Number).Lexeme);
 				this->Lexer->expect(TokenType::Comma);
-				const float LB = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
+				const float LB = this->Lexer->fromStringView<float>(this->Lexer->expect(TokenType::Number).Lexeme);
 				this->Lexer->expect(TokenType::Comma);
-				const float UB = stoFloat(this->Lexer->expect(TokenType::Number).getLexeme());
+				const float UB = this->Lexer->fromStringView<float>(this->Lexer->expect(TokenType::Number).Lexeme);
 				this->Lexer->expect(TokenType::Minus);
 				this->Lexer->expect(TokenType::RightArrow);
-				const string_view map2Texture = this->Lexer->expect(TokenType::String).getLexeme();
+				const string_view map2Texture = this->Lexer->expect(TokenType::String).Lexeme;
 				this->checkTextureDeclared(map2Texture);
 
 				//store a gradient rule
@@ -452,13 +481,13 @@ void STPTextureDefinitionLanguage::processRule() {
 				throw STPException::STPInvalidSyntax(msg.str().c_str());
 			}
 
-			if (this->Lexer->expect(TokenType::Comma, TokenType::RightBracket).getType() == TokenType::RightBracket) {
+			if (this->Lexer->expect(TokenType::Comma, TokenType::RightBracket).Type == TokenType::RightBracket) {
 				//no more rule setting
 				break;
 			}
 		}
 
-		if (this->Lexer->expect(TokenType::Comma, TokenType::RightCurly).getType() == TokenType::RightCurly) {
+		if (this->Lexer->expect(TokenType::Comma, TokenType::RightCurly).Type == TokenType::RightCurly) {
 			//no more rule
 			break;
 		}
@@ -466,13 +495,10 @@ void STPTextureDefinitionLanguage::processRule() {
 }
 
 void STPTextureDefinitionLanguage::processGroup() {
-	static constexpr auto stoUint = [](const string_view& str) -> unsigned int {
-		return static_cast<unsigned int>(std::stoul(string(str)));
-	};
 	typedef STPTDLLexer::STPToken::STPType TokenType;
 
 	//the declared type of this group
-	const string_view group_type = this->Lexer->expect(TokenType::String).getLexeme();
+	const string_view group_type = this->Lexer->expect(TokenType::String).Lexeme;
 	this->Lexer->expect(TokenType::LeftCurly);
 	
 	//record all textures to be added to a new group,
@@ -485,10 +511,10 @@ void STPTextureDefinitionLanguage::processGroup() {
 
 		//for each texture name assigned to this group
 		while (true) {
-			const string_view& assignedTexture = texture_in_group.emplace_back(this->Lexer->expect(TokenType::String).getLexeme());
+			const string_view& assignedTexture = texture_in_group.emplace_back(this->Lexer->expect(TokenType::String).Lexeme);
 			this->checkTextureDeclared(assignedTexture);
 
-			if (this->Lexer->expect(TokenType::Comma, TokenType::Colon).getType() == TokenType::Colon) {
+			if (this->Lexer->expect(TokenType::Comma, TokenType::Colon).Type == TokenType::Colon) {
 				//no more texture to be assigned to this group
 				break;
 			}
@@ -500,11 +526,11 @@ void STPTextureDefinitionLanguage::processGroup() {
 		if (group_type == "view") {
 			STPTextureDatabase::STPViewGroupDescription& view = this->DeclaredViewGroup.emplace_back();
 
-			view.PrimaryScale = stoUint(this->Lexer->expect(TokenType::Number).getLexeme());
+			view.PrimaryScale = this->Lexer->fromStringView<unsigned int>(this->Lexer->expect(TokenType::Number).Lexeme);
 			this->Lexer->expect(TokenType::Comma);
-			view.SecondaryScale = stoUint(this->Lexer->expect(TokenType::Number).getLexeme());
+			view.SecondaryScale = this->Lexer->fromStringView<unsigned int>(this->Lexer->expect(TokenType::Number).Lexeme);
 			this->Lexer->expect(TokenType::Comma);
-			view.TertiaryScale = stoUint(this->Lexer->expect(TokenType::Number).getLexeme());
+			view.TertiaryScale = this->Lexer->fromStringView<unsigned int>(this->Lexer->expect(TokenType::Number).Lexeme);
 		}
 		else {
 			stringstream msg;
@@ -522,7 +548,7 @@ void STPTextureDefinitionLanguage::processGroup() {
 			texture_table[name] = view_group_index;
 		});
 
-		if (this->Lexer->expect(TokenType::Comma, TokenType::RightCurly).getType() == TokenType::RightCurly) {
+		if (this->Lexer->expect(TokenType::Comma, TokenType::RightCurly).Type == TokenType::RightCurly) {
 			//end of group
 			break;
 		}

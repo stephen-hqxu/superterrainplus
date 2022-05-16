@@ -2,6 +2,7 @@
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 //GLAD
 #include <glad/glad.h>

@@ -117,7 +117,8 @@ private:
 
 		vec3 LDFac;
 		float Far;
-		bool Ortho;
+		//use uint because GL uses 32-bit for boolean
+		unsigned int Ortho;
 
 	};
 
@@ -172,7 +173,8 @@ public:
 			Cfar - Cnear
 		));
 		this->MappedBuffer->Far = static_cast<float>(Cfar);
-		this->MappedBuffer->Ortho = this->Camera.ProjectionType == STPCamera::STPProjectionCategory::Orthographic;
+		this->MappedBuffer->Ortho = 
+			this->Camera.ProjectionType == STPCamera::STPProjectionCategory::Orthographic ? std::numeric_limits<unsigned int>::max() : 0u;
 		//update values
 		this->Buffer.flushMappedBufferRange(0, sizeof(STPPackedCameraBuffer));
 
@@ -955,9 +957,9 @@ void STPScenePipeline::traverse() {
 	 * The 3rd bit denotes if this object is affected by aerial perspective.
 	*/
 	constexpr static unsigned char EnvironmentMask = 0u,
-		ObjectMask = 1u << 1u,
-		TransparentMask = 1u << 2u,
-		ExtinctionMask = 1u << 3u;
+		ObjectMask = 1u << 0u,
+		TransparentMask = 1u << 1u,
+		ExtinctionMask = 1u << 2u;
 
 	//before rendering, update scene buffer
 	this->CameraMemory->updateBuffer();

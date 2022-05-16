@@ -1,6 +1,4 @@
 #include <SuperAlgorithm+/STPPermutationGenerator.h>
-#include <memory>
-#include <stdexcept>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
@@ -13,6 +11,7 @@
 #include <array>
 #include <limits>
 #include <algorithm>
+#include <memory>
 
 using std::numeric_limits;
 using std::array;

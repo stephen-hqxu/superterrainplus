@@ -209,7 +209,7 @@ void STPSun::advanceTick(unsigned long long tick) {
 		cos_Elevation
 	),
 		//azimuth correction for the afternoon
-		//Azimuth angle starts from north, which is (0, 0, -1) in OpenGL coordinate system
+		//Azimuth angle starts from north, which is (1, 0, 0) in OpenGL coordinate system
 		sin_Azimuth = glm::sqrt(1.0 - cos_Azimuth * cos_Azimuth) * ((HRA > 0.0) ? -1.0 : 1.0);
 
 	//convert angles to direction vector

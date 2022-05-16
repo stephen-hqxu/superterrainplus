@@ -2,7 +2,6 @@
 #ifdef _STP_SMART_DEVICE_MEMORY_H_
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 template<typename T>
 inline void SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemoryDeleter<T>::operator()(T* ptr) const {
@@ -16,10 +15,6 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>
 
 template<typename T>
 inline void SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::operator()(T* ptr) const {
-	if (!this->Stream) {
-		//check if user has assigned a stream
-		throw SuperTerrainPlus::STPException::STPMemoryError("Invoking a deleter with no CUDA stream assigned");
-	}
 	STPcudaCheckErr(cudaFreeAsync(ptr, *this->Stream));
 }
 

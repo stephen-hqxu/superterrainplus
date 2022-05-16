@@ -2,10 +2,12 @@
 
 using namespace SuperTerrainPlus::STPEnvironment;
 
+//STPSimplexNoiseSetting.h
+
 STPSimplexNoiseSetting::STPSimplexNoiseSetting() : STPSetting(), 
 	Seed(0ull), 
 	Distribution(8u), 
-	Offset(45.0f) {
+	Offset(45.0) {
 
 }
 

@@ -25,6 +25,8 @@ namespace STPDemo {
 	class STPCommonCompiler final : private SuperTerrainPlus::STPCompute::STPRuntimeCompilable {
 	private:
 
+		//compiler option to select compute capability
+		std::string CapabilityOption;
 		//Contains compiler options (only) for source codes, external headers and named expr are not set
 		STPRuntimeCompilable::STPSourceInformation SourceInfo;
 		//Contains linker options

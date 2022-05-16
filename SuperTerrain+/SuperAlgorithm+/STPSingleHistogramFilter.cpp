@@ -14,7 +14,6 @@
 #include <functional>
 #include <type_traits>
 
-#include <stdexcept>
 #include <cstring>
 
 using namespace SuperTerrainPlus::STPCompute;

@@ -94,7 +94,7 @@ SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTexture
 			Parser.emplace(src);
 		};
 
-		WHEN("There is a syntatic error") {
+		WHEN("There is a syntactic error") {
 			constexpr char BrokenTDL1[] = "#texture [x]; #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(0.4f -> x)";
 			constexpr char BrokenTDL2[] = "#texture [x]; #group view{x:=(1u,2u,3u)} \n #rule gradient{0:=(0.1f, 0.2f, 0.3f -> x)}";
 			constexpr char BrokenTDL3[] = "#texture [x] #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(0.4f -> x)}";
@@ -102,8 +102,9 @@ SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTexture
 			constexpr char BrokenTDL5[] = "#texture [x]; #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(0.4f -> x)};";
 			constexpr char BrokenTDL6[] = "#texture [x]; #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(0.4f $ x)}";
 			constexpr char BrokenTDL7[] = "#texture [x]; #group view{x:=(1u,2u,3u} \n #rule altitude{0:=(0.4f -> x)}";
+			constexpr char BrokenTDL8[] = "#texture [x]; #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(0..4f -> x)}";
 
-			THEN("TDL interpreter should report the incorrectness and expected syntax") {
+			THEN("TDL interpreter should report the mistakes and expected syntax") {
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("}"));
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring(","));
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring(";"));
@@ -111,6 +112,7 @@ SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTexture
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL5), ContainsSubstring("#"));
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL6), ContainsSubstring("$"));
 				REQUIRE_THROWS_WITH(tryParse(BrokenTDL7), ContainsSubstring(")"));
+				REQUIRE_THROWS_WITH(tryParse(BrokenTDL8), ContainsSubstring("0..4"));
 			}
 
 		}
