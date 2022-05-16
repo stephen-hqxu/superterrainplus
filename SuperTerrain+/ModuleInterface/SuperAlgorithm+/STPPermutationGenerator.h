@@ -11,7 +11,7 @@
 //Device Memory Management
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus::STPAlgorithm {
 
 	/**
 	 * @brief Generate a random permutaion and gradient table for simplex noise generator

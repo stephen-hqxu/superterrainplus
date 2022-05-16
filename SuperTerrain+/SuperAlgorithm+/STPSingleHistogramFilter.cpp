@@ -16,7 +16,7 @@
 
 #include <cstring>
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPAlgorithm;
 using SuperTerrainPlus::STPDiversity::Sample;
 
 using glm::vec2;

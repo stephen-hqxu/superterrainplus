@@ -52,7 +52,6 @@ using std::nullopt;
 
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
-using namespace SuperTerrainPlus::STPCompute;
 
 //Used by STPGeneratorManager for storing async exceptions
 #define STORE_EXCEPTION(FUN) try { \

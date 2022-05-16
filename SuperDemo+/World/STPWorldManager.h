@@ -41,9 +41,9 @@ namespace STPDemo {
 		//settings
 		SuperTerrainPlus::STPEnvironment::STPConfiguration WorldSetting;
 		//generators
-		std::optional<SuperTerrainPlus::STPCompute::STPHeightfieldGenerator> ChunkGenerator;
+		std::optional<SuperTerrainPlus::STPHeightfieldGenerator> ChunkGenerator;
 		std::unique_ptr<SuperTerrainPlus::STPDiversity::STPBiomeFactory> BiomeFactory;
-		std::unique_ptr<SuperTerrainPlus::STPCompute::STPDiversityGenerator> DiversityGenerator;
+		std::unique_ptr<SuperTerrainPlus::STPDiversityGenerator> DiversityGenerator;
 		std::unique_ptr<SuperTerrainPlus::STPDiversity::STPTextureFactory> TextureFactory;
 		//make sure pipeline is destroyed (it will auto sync) before all generators and storage because it's the multi-threaded commander to call all other generators
 		std::optional<SuperTerrainPlus::STPWorldPipeline> Pipeline;

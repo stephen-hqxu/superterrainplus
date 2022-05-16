@@ -1,6 +1,6 @@
 #include <SuperAlgorithm+/Device/STPKernelMath.cuh>
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPAlgorithm;
 
 __device__ float STPKernelMath::lerp(float p1, float p2, float factor){
 	factor = __saturatef(factor);

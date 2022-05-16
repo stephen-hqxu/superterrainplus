@@ -11,7 +11,7 @@
 //CUDA Kernel
 #include <SuperTerrain+/GPGPU/STPHeightfieldKernel.cuh>
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus;
 
 using std::vector;
 using std::mutex;

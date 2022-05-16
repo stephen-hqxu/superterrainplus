@@ -13,7 +13,7 @@
 //Histogram
 #include "../STPSingleHistogram.hpp"
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus::STPAlgorithm {
 
 	/**
 	 * @brief STPSingleHistogramWrapper is a high-level wrapper class over data structure STPSingleHistogram,

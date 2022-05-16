@@ -6,7 +6,6 @@
 /* --------- Kernel Declaration ----------- */
 
 using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPCompute;
 
 #include <glm/geometric.hpp>
 

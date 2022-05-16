@@ -17,7 +17,7 @@
 
 #include "..//Diversity/STPBiomeDefine.h"
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus {
 
 	/**
 	 * @brief STPFreeSlipTextureAttribute stores invariants for free-slip texture buffer management.

@@ -11,7 +11,7 @@
 //GLM
 #include <glm/vec2.hpp>
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus {
 
 	/**
 	 * @brief STPDiversityGenerator is a base class which provides a programmable interface for customised multi-biome heightmap generation

@@ -12,7 +12,7 @@
 //GLM
 #include <glm/vec3.hpp>
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus::STPRealism {
 
 	/**
 	 * @brief STPRandomTextureGenerator is a simply utility for generating random noise texture on GPU, it supports generating different texture format.

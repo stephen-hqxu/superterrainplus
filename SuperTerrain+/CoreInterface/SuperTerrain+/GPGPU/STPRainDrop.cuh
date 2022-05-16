@@ -17,7 +17,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus {
 
 	/**
 	 * @brief STPRainDrop class spawn a water droplet at a random location on the map and perform hydraulic erosion for 2D heightmap.

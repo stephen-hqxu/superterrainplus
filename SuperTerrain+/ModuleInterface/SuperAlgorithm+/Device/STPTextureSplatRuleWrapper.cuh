@@ -13,7 +13,7 @@
 //Texture Splat Rule
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureInformation.hpp>
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus::STPAlgorithm {
 
 	/**
 	 * @brief STPTextureSplatRuleWrapper is a thin wrapper to STPTextureInformation and accesses data within to generate

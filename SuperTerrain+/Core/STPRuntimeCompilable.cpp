@@ -1,4 +1,3 @@
-#pragma warning(disable:26812)//Enum unsafe, use enum class instead
 #include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
@@ -18,7 +17,7 @@ using std::rethrow_exception;
 using std::current_exception;
 using std::exception_ptr;
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus;
 
 STPRuntimeCompilable::STPSourceInformation::STPSourceArgument& STPRuntimeCompilable::STPSourceInformation::STPSourceArgument::operator[](const char arg[]) {
 	//inserting a string literal will not cause undefined behaviour
@@ -242,5 +241,3 @@ const STPRuntimeCompilable::STPLoweredName& STPRuntimeCompilable::retrieveSource
 CUmodule STPRuntimeCompilable::getGeneratorModule() const {
 	return this->GeneratorProgram.get();
 }
-
-#pragma warning(default:26812)

@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus;
 using SuperTerrainPlus::STPDiversity::Sample;
 
 using std::make_pair;

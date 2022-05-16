@@ -19,7 +19,7 @@
 //Single Histogram Data Structure
 #include "STPSingleHistogram.hpp"
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus::STPAlgorithm {
 
 	/**
 	 * @brief STPSingleHistogramFilter is an analysis tool for biomemap.

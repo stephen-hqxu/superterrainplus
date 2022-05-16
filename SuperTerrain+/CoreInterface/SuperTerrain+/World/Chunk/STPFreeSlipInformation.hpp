@@ -8,7 +8,7 @@
 //GLM
 #include <glm/vec2.hpp>
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus {
 
 	/**
 	 * @brief STPFreeSlipInformation holds information for free-slip data.

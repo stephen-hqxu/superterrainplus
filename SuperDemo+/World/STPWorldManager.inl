@@ -18,7 +18,7 @@ inline void STPDemo::STPWorldManager::attachBiomeFactory(Arg&&... arg) {
 
 template<class Div, typename... Arg>
 inline void STPDemo::STPWorldManager::attachDiversityGenerator(Arg&&... arg) {
-	using namespace SuperTerrainPlus::STPCompute;
+	using namespace SuperTerrainPlus;
 	//create an instance of diversity generator
 	this->DiversityGenerator = this->attach<STPDiversityGenerator, Div>(std::forward<Arg>(arg)...);
 }

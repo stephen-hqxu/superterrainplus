@@ -21,7 +21,7 @@
 //Settings
 #include "../Environment/STPHeightfieldSetting.h"
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus {
 
 	/**
 	 * @brief STPHeightfieldKernel is a wrapper to CUDA kernel for heightfield generation related global functions.

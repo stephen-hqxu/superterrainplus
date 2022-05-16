@@ -5,7 +5,7 @@
 //Engine Component
 #include <SuperTerrain+/World/Diversity/STPBiomeDefine.h>
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus::STPAlgorithm {
 
 	/**
 	 * @brief STPSingleHistogram contains the output of the result from running STPSingleHistogramFilter for the entire texture.

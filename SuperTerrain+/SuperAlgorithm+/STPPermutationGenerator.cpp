@@ -20,7 +20,7 @@ using std::copy;
 using std::shuffle;
 using std::make_pair;
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPAlgorithm;
 
 //The initial table contains numbers from 0 to max of unsigned char in order,
 //this table will be shuffled into a random permutation in runtime.

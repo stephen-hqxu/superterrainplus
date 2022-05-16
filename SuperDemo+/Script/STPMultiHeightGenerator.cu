@@ -6,7 +6,7 @@
 //Biome parameters
 #include <STPBiomeProperty>
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPAlgorithm;
 using SuperTerrainPlus::STPDiversity::Sample;
 
 __constant__ STPDemo::STPBiomeProperty BiomeTable[2];

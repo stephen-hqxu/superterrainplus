@@ -13,7 +13,7 @@
 #include <cuda.h>
 #include <nvrtc.h>
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus {
 
 	/**
 	 * @brief STPRuntimeCompilable provides a device-side runtime-programmable interface and tool-sets with NVRTC.

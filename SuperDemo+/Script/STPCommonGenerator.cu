@@ -1,6 +1,6 @@
 #include "./Script/STPCommonGenerator.cuh"
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPAlgorithm;
 
 //Those variables are defined in this source file, only
 __constant__ uint2 STPCommonGenerator::Dimension[1];

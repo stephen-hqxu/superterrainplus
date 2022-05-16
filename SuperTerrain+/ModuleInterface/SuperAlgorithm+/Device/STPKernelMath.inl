@@ -3,7 +3,7 @@
 #ifdef _STP_KERNEL_MATH_CUH_
 
 template<class It, typename T>
-__device__ const It* SuperTerrainPlus::STPCompute::STPKernelMath::lower_bound(const It* first, const It* last, T value) {
+__device__ const It* SuperTerrainPlus::STPAlgorithm::STPKernelMath::lower_bound(const It* first, const It* last, T value) {
 	static auto less_than = []__device__(const T& current, const T& value) constexpr -> bool {
 		return current < value;
 	};
@@ -11,7 +11,7 @@ __device__ const It* SuperTerrainPlus::STPCompute::STPKernelMath::lower_bound(co
 }
 
 template<class It, typename T, class Comp>
-__device__ const It* SuperTerrainPlus::STPCompute::STPKernelMath::lower_bound(const It* first, const It* last, T value, Comp comparator) {
+__device__ const It* SuperTerrainPlus::STPAlgorithm::STPKernelMath::lower_bound(const It* first, const It* last, T value, Comp comparator) {
 	//std::lower_bound implementation
 	const It* it;
 	//distance

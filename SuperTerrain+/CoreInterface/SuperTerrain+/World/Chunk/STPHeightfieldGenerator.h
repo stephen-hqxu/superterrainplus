@@ -22,7 +22,7 @@
 //GLM
 #include <glm/vec2.hpp>
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus {
 
 	/**
 	 * @brief Generate the terrain height map, the height map will be then used to

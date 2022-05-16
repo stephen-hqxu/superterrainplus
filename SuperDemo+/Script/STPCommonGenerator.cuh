@@ -18,7 +18,7 @@ namespace STPCommonGenerator {
 	//This is the dimension of map in the entire rendered chunk
 	extern __constant__ uint2 RenderedDimension[1];
 
-	extern __constant__ SuperTerrainPlus::STPCompute::STPPermutation Permutation[1];
+	extern __constant__ SuperTerrainPlus::STPAlgorithm::STPPermutation Permutation[1];
 }
 
 #endif//_STP_COMMON_GENERATOR_CUH_

@@ -22,7 +22,7 @@ namespace STPDemo {
 	 * @brief STPCommonCompiler is a even-higher-level wrapper to runtime compilable framework which provides default compiler settings that can be 
 	 * shared across different translation units.
 	*/
-	class STPCommonCompiler final : private SuperTerrainPlus::STPCompute::STPRuntimeCompilable {
+	class STPCommonCompiler final : private SuperTerrainPlus::STPRuntimeCompilable {
 	private:
 
 		//compiler option to select compute capability
@@ -33,7 +33,7 @@ namespace STPDemo {
 		STPRuntimeCompilable::STPLinkerInformation LinkInfo;
 
 		//all parameters for the noise generator, stored on host, passing value to device
-		SuperTerrainPlus::STPCompute::STPPermutationGenerator SimplexPermutation;
+		SuperTerrainPlus::STPAlgorithm::STPPermutationGenerator SimplexPermutation;
 
 		//The chunk setting of each map used by each generator.
 		const glm::uvec2 Dimension, RenderingRange;

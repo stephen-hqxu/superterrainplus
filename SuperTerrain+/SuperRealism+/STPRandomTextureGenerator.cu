@@ -10,14 +10,14 @@
 using glm::uvec2;
 using glm::uvec3;
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPRealism;
 
 /* ------------------------ Kernel declaration ------------------------------- */
 
 /**
  * @brief Call CUDA kernel to generate a random texture.
  * @tpara T The type of the texture.
- * @param surface The output surface object for writting the noise.
+ * @param surface The output surface object for writing the noise.
  * @param dimension The dimension of the texture.
  * @param seed The seed value for the random number generator.
  * @param base The starting number in the random range.
@@ -37,7 +37,7 @@ __host__ void STPRandomTextureGenerator::generate(cudaArray_t output, uvec3 dime
 	int Mingridsize, blocksize;
 	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &generateRandomTextureKERNEL<T>));
 
-	//determine blocksize based on dimension
+	//determine block size based on dimension
 	uvec3 Dimblocksize;
 	if (dimension.y == 1u && dimension.z == 1u) {
 		//a 1D texture

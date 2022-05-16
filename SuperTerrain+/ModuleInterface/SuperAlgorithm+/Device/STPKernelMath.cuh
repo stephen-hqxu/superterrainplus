@@ -10,7 +10,7 @@
 #include <cuda_runtime.h>
 #endif//__CUDACC_RTC__
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus::STPAlgorithm {
 
 	/**
 	 * @brief STPKernelMath is a library contains common math functions. It only serves to kernel

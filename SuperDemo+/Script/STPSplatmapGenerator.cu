@@ -23,7 +23,7 @@ constexpr static float
 //SuperAlgorithm+ Device library
 #include <STPTextureSplatRuleWrapper.cuh>
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPAlgorithm;
 using SuperTerrainPlus::STPDiversity::Sample;
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;

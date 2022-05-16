@@ -262,7 +262,7 @@ void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 	STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&random_buffer, res, 0u, 0u));
 
 	//compute
-	STPCompute::STPRandomTextureGenerator::generate<unsigned char>(random_buffer, this->RandomTextureDimension, seed, 
+	STPRandomTextureGenerator::generate<unsigned char>(random_buffer, this->RandomTextureDimension, seed, 
 		numeric_limits<unsigned char>::min(), numeric_limits<unsigned char>::max());
 
 	//clear up

@@ -43,7 +43,7 @@ namespace SuperTerrainPlus {
 			//Biomemap Generator
 			STPDiversity::STPBiomeFactory* BiomemapGenerator;
 			//Heightfield Generator
-			STPCompute::STPHeightfieldGenerator* HeightfieldGenerator;
+			STPHeightfieldGenerator* HeightfieldGenerator;
 			//Splatmap Generator
 			STPDiversity::STPTextureFactory* SplatmapGenerator;
 

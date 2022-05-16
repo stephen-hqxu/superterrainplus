@@ -30,7 +30,6 @@
 #include <iostream>
 
 using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPCompute;
 
 using glm::uvec2;
 using glm::vec2;

@@ -25,7 +25,6 @@
 #include <random>
 
 using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPCompute;
 
 using STPDiversity::Sample;
 

@@ -23,7 +23,7 @@
 #include <glm/trigonometric.hpp>
 
 using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPAlgorithm;
 using namespace SuperTerrainPlus::STPEnvironment;
 
 using std::unique_ptr;

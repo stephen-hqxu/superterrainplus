@@ -14,7 +14,6 @@
 #include <glm/gtc/type_ptr.hpp>
 
 using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPCompute;
 using namespace STPDemo;
 
 using std::to_string;
@@ -60,7 +59,7 @@ constexpr static auto DeviceInclude = generateInclude<SuperAlgorithmPlus_DeviceI
 STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk, 
 	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : 
 	Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk), SimplexPermutation(simplex_setting) {
-	constexpr static string_view ArchitectureOption = "-arch=compute_";
+	constexpr static string_view ArchitectureOption = "-arch=sm_";
 	//select capability automatically based on the current GPU
 	cudaDeviceProp dev_prop;
 	STPcudaCheckErr(cudaGetDeviceProperties(&dev_prop, 0));
@@ -77,7 +76,6 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		["-rdc=true"]
 #ifdef _DEBUG
 		["-G"]
-		["-lineinfo"]
 #endif
 		["-maxrregcount=80"]
 		//set include paths
@@ -90,7 +88,6 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		//if debug has turned on, optimisation must be 0 or linker will be crying...
 		(CU_JIT_OPTIMIZATION_LEVEL, (void*)0u)
 		(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
-		(CU_JIT_GENERATE_LINE_INFO, (void*)1)
 #else
 		(CU_JIT_OPTIMIZATION_LEVEL, (void*)4u)
 #endif

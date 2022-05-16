@@ -3,7 +3,7 @@
 //Math Utils
 #include <SuperAlgorithm+/Device/STPKernelMath.cuh>
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPAlgorithm;
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
 using SuperTerrainPlus::STPDiversity::Sample;

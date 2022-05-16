@@ -10,7 +10,7 @@
 #include <utility>
 
 using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPAlgorithm;
 
 using SuperTerrainPlus::STPDiversity::Sample;
 

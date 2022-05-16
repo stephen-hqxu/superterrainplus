@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPAlgorithm;
 
 constexpr static float F2 = 0.3660254038;// 0.5 * (sqrt(3.0) - 1.0)
 constexpr static float G2 = 0.2113248654;// (3.0 - sqrt(3.0)) / 6.0

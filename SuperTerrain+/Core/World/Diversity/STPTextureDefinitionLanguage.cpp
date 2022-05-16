@@ -7,7 +7,6 @@
 //Matching
 #include <ctype.h>
 #include <charconv>
-#include <regex>
 
 #include <optional>
 #include <algorithm>
@@ -28,8 +27,6 @@ using std::make_pair;
 using std::make_optional;
 using std::unique_ptr;
 using std::make_unique;
-using std::regex;
-using std::regex_match;
 
 using std::distance;
 
@@ -319,47 +316,32 @@ public:
 	 * @return The converted string, or exception if the format is invalid.
 	*/
 	template<typename T>
-	T fromStringView(string_view str) const {
-		//remove potential suffix
-		if (const char suffix = str.back();
-			suffix == 'f' || suffix == 'u') {
-			str.remove_suffix(1);
-		}
-		{
-			//numeric format check, since std::from_chars will ignore errors at the end of the string
-			bool valie_number;
-			if constexpr (std::is_integral_v<T>) {
-				//integer
-				const static regex int_matcher("^[0-9]+$");
-				valie_number = regex_match(str.data(), str.data() + str.length(), int_matcher);
-			} else {
-				//floating point
-				const static regex float_matcher("^[0-9]+\\.[0-9]+$");
-				valie_number = regex_match(str.data(), str.data() + str.length(), float_matcher);
-			}
-			if (!valie_number) {
-				stringstream err_msg;
-				this->composeInitialErrorInfo(err_msg, "invalid number")
-					<< "Numeric value \'" << str << "\' is not an identifiable valid number." << endl;
-				throw STPException::STPInvalidSyntax(err_msg.str().c_str());
-			}
-		}
-
+	T fromStringView(const string_view& str) const {
+		using std::errc;
 		T result = static_cast<T>(0);
 		const auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
-		//error handling
-		if (ec == std::errc()) {
+
+		if (ec == errc()) {
 			//OK
 			return result;
 		}
 
 		//Error
 		stringstream err_msg;
-		//the only possible error is errc::result_out_of_range.
-		//errc::invalid_argument will never happen because we have checked already
-		this->composeInitialErrorInfo(err_msg, "numeric overflow")
-			<< "The specified number \'" << str << "\' is too large and will overflow." << endl;
-
+		//check error type
+		switch (ec) {
+		case errc::invalid_argument:
+			this->composeInitialErrorInfo(err_msg, "invalid number")
+				<< "Numeric value \'" << str << "\' is not an identifiable valid number." << endl;
+			break;
+		case errc::result_out_of_range:
+			this->composeInitialErrorInfo(err_msg, "numeric overflow")
+				<< "The specified number \'" << str << "\' is too large and will overflow." << endl;
+			break;
+		default:
+			//impossible
+			break;
+		}
 		throw STPException::STPInvalidSyntax(err_msg.str().c_str());
 	}
 

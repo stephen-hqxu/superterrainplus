@@ -1,6 +1,6 @@
 #include <SuperAlgorithm+/Device/STPSingleHistogramWrapper.cuh>
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus::STPAlgorithm;
 
 using SuperTerrainPlus::STPDiversity::Sample;
 

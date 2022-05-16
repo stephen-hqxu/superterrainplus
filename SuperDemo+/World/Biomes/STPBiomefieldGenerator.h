@@ -23,13 +23,13 @@ namespace STPDemo {
 	 * It generates different heightfield based on biome settings.
 	 * Heightfield generator uses NVRTC
 	*/
-	class STPBiomefieldGenerator final : public SuperTerrainPlus::STPCompute::STPDiversityGenerator {
+	class STPBiomefieldGenerator final : public SuperTerrainPlus::STPDiversityGenerator {
 	private:
 
 		//The size of the generated heightmap
 		const glm::uvec2 MapSize;
 		//Generate a histogram to retrieve weights for biomes in a range
-		mutable SuperTerrainPlus::STPCompute::STPSingleHistogramFilter biome_histogram;
+		mutable SuperTerrainPlus::STPAlgorithm::STPSingleHistogramFilter biome_histogram;
 
 		const STPCommonCompiler& KernelProgram;
 		//The entry global function to generate the heightmap
@@ -39,7 +39,7 @@ namespace STPDemo {
 		const unsigned int InterpolationRadius;
 
 		//A queue of histogram buffer
-		typedef std::queue<SuperTerrainPlus::STPCompute::STPSingleHistogramFilter::STPHistogramBuffer_t> STPHistogramBufferPool;
+		typedef std::queue<SuperTerrainPlus::STPAlgorithm::STPSingleHistogramFilter::STPHistogramBuffer_t> STPHistogramBufferPool;
 		mutable STPHistogramBufferPool BufferPool;
 		mutable std::mutex BufferPoolLock;
 
@@ -71,9 +71,9 @@ namespace STPDemo {
 
 		~STPBiomefieldGenerator();
 
-		void operator()(SuperTerrainPlus::STPCompute::STPFreeSlipFloatTextureBuffer&, 
-			SuperTerrainPlus::STPCompute::STPFreeSlipSampleTextureBuffer&, 
-			const SuperTerrainPlus::STPCompute::STPFreeSlipInformation&, glm::vec2, cudaStream_t) const override;
+		void operator()(SuperTerrainPlus::STPFreeSlipFloatTextureBuffer&, 
+			SuperTerrainPlus::STPFreeSlipSampleTextureBuffer&, 
+			const SuperTerrainPlus::STPFreeSlipInformation&, glm::vec2, cudaStream_t) const override;
 
 	};
 

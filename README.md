@@ -153,7 +153,7 @@ The application is unit-tested with.
 | STP_DEVELOPMENT_BUILD::STP_BUILD_TEST | Enable SuperTest+ program build | ON::ON |
 | STP_DEVELOPMENT_BUILD::STP_ENABLE_WARNING | Enable all compiler warnings | ON::ON |
 
-Note that `::` denotes a CMake dependent option. Pattern *A::B* default to *<value A>::<value B>* means option *B* is depended on option *A*, and *B* is exposed in CMake cache set to *<value B>* by default if and only if *A* is set to *<value A>*; otherwise *B* is hidden from the user and set to *NOT <value B>*.
+Note that `::` denotes a CMake dependent option. Pattern *A::B* default to *valueA::valueB* means option *B* is depended on option *A*, and *B* is exposed in CMake cache set to *valueB* by default if and only if *A* is set to *valueA*; otherwise *B* is hidden from the user and set to *NOT valueB*.
 
 ## :bookmark_tabs: Getting Started
 
@@ -248,7 +248,7 @@ cmake --build ./ --config Release --target ALL_BUILD
 
 Or:
 
-```
+```sh
 
 # Unix
 make all

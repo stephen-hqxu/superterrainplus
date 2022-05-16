@@ -13,7 +13,7 @@
 //Permutation
 #include "../STPPermutation.hpp"
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus::STPAlgorithm {
 
 	/**
 	 * @brief Simplex noise is a method for constructing an n-dimensional noise function comparable to

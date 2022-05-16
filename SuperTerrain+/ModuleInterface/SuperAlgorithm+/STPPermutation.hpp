@@ -1,7 +1,7 @@
 #ifndef _STP_PERMUTATION_HPP_
 #define _STP_PERMUTATION_HPP_
 
-namespace SuperTerrainPlus::STPCompute {
+namespace SuperTerrainPlus::STPAlgorithm {
 
 	/**
 	 * @brief STPPermutation is a device lookup table for simplex noise, generated and managed by STPPermutationGenerator

@@ -3,7 +3,7 @@
 //CUDA Device Parameters
 #include <device_launch_parameters.h>
 
-using namespace SuperTerrainPlus::STPCompute;
+using namespace SuperTerrainPlus;
 
 //GLM
 #include <glm/geometric.hpp>
