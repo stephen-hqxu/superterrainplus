@@ -15,7 +15,7 @@
 #include "../Helpers/STPTextureStorage.h"
 //Texture Splatting
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureDatabase.h>
-#include <SuperTerrain+/World/Diversity/Texture/STPTextureDefinitionLanguage.h>
+#include <SuperAlgorithm+/Parser/STPTextureDefinitionLanguage.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -23,6 +23,7 @@
 using namespace STPDemo;
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
+using STPAlgorithm::STPTextureDefinitionLanguage;
 
 using std::invalid_argument;
 using std::make_optional;
@@ -139,7 +140,7 @@ public:
 		tex_desc.InteralFormat = GL_R8;
 		this->x1024_r = this->Database.addMapGroup(tex_desc);
 
-		STPDiversity::STPTextureDefinitionLanguage TDLParser(*STPFile(STPWorldSplattingAgent::TDLFilename));
+		STPTextureDefinitionLanguage TDLParser(*STPFile(STPWorldSplattingAgent::TDLFilename));
 		//build texture splatting rules
 		const STPTextureDefinitionLanguage::STPTextureVariable textureName = TDLParser(this->Database);
 		//build database with texture data
@@ -154,7 +155,7 @@ public:
 			//change group ID conditionally
 			switch (texType) {
 			case STPTextureType::Albedo:
-				//color texture is usually in gamma space, we need to transform it to linear space.
+				//colour texture is usually in gamma space, we need to transform it to linear space.
 				texGroup = this->x1024_srgb;
 				break;
 			case STPTextureType::AmbientOcclusion:

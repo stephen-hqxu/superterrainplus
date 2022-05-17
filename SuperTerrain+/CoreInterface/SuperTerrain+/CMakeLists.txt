@@ -65,7 +65,6 @@ World/Diversity/STPLayerManager.h
 World/Diversity/STPLayerManager.inl
 # /World/Diversity/Texture
 World/Diversity/Texture/STPTextureDatabase.h
-World/Diversity/Texture/STPTextureDefinitionLanguage.h
 World/Diversity/Texture/STPTextureFactory.h
 World/Diversity/Texture/STPTextureInformation.hpp
 World/Diversity/Texture/STPTextureType.hpp

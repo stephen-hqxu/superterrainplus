@@ -4,8 +4,8 @@
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
-//SuperTerrain+/World/Diversity/Texture
-#include <SuperTerrain+/World/Diversity/Texture/STPTextureDefinitionLanguage.h>
+//SuperAlgorithm+
+#include <SuperAlgorithm+/Parser/STPTextureDefinitionLanguage.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPSerialisationError.h>
@@ -18,7 +18,8 @@
 //This is a TDL with correct syntax
 constexpr char TerrainTDL[] = "./TestData/Terrain.tdl";
 
-using namespace SuperTerrainPlus;
+using SuperTerrainPlus::STPFile;
+using namespace SuperTerrainPlus::STPAlgorithm;
 using namespace SuperTerrainPlus::STPDiversity;
 
 using std::optional;

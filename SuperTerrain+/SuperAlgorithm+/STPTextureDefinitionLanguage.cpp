@@ -1,4 +1,4 @@
-#include <SuperTerrain+/World/Diversity/Texture/STPTextureDefinitionLanguage.h>
+#include <SuperAlgorithm+/Parser/STPTextureDefinitionLanguage.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPInvalidSyntax.h>
@@ -16,7 +16,9 @@
 #include <sstream>
 #include <type_traits>
 
-using namespace SuperTerrainPlus::STPDiversity;
+using SuperTerrainPlus::STPDiversity::Sample;
+using SuperTerrainPlus::STPDiversity::STPTextureDatabase;
+using namespace SuperTerrainPlus::STPAlgorithm;
 
 using std::vector;
 using std::string;
@@ -543,8 +545,9 @@ STPTextureDefinitionLanguage::STPTextureVariable STPTextureDefinitionLanguage::o
 	const unsigned int textureCount = static_cast<unsigned int>(this->DeclaredTexture.size());
 	varDic.reserve(textureCount);
 
+	namespace TI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
 	//to convert view group index to corresponded ID in the database
-	unique_ptr<STPTextureInformation::STPViewGroupID[]> ViewGroupIDLookup = make_unique<STPTextureInformation::STPViewGroupID[]>(this->DeclaredViewGroup.size());
+	unique_ptr<TI::STPViewGroupID[]> ViewGroupIDLookup = make_unique<TI::STPViewGroupID[]>(this->DeclaredViewGroup.size());
 	//add texture view group
 	std::transform(this->DeclaredViewGroup.cbegin(), this->DeclaredViewGroup.cend(), ViewGroupIDLookup.get(), [&database](const auto& view_desc) {
 		return database.addViewGroup(view_desc);
@@ -562,7 +565,7 @@ STPTextureDefinitionLanguage::STPTextureVariable STPTextureDefinitionLanguage::o
 			throw STPException::STPMemoryError(msg.str().c_str());
 		}
 
-		const STPTextureInformation::STPViewGroupID view_group_id = ViewGroupIDLookup[view_group_index];
+		const TI::STPViewGroupID view_group_id = ViewGroupIDLookup[view_group_index];
 		varDic.try_emplace(texture_name, database.addTexture(view_group_id, make_optional(texture_name)), view_group_id);
 	}
 

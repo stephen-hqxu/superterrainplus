@@ -21,7 +21,6 @@ World/Diversity/STPLayer.cpp
 World/Diversity/STPLayerCache.cpp
 World/Diversity/STPLayerManager.cpp
 World/Diversity/STPTextureDatabase.cpp
-World/Diversity/STPTextureDefinitionLanguage.cpp
 World/Diversity/STPTextureFactory.cpp
 # /World
 World/STPChunk.cpp

@@ -5,6 +5,15 @@ STPPermutationGenerator.h
 STPSimplexNoiseSetting.h
 STPSingleHistogram.hpp
 STPSingleHistogramFilter.h
+# /Parser/INI
+Parser/INI/STPINIReader.h
+Parser/INI/STPINISection.hpp
+Parser/INI/STPINIStorage.hpp
+Parser/INI/STPINIString.h
+Parser/INI/STPINIString.inl
+Parser/INI/STPINIWriter.h
+# /Parser
+Parser/STPTextureDefinitionLanguage.h
 )
 
 target_sources(${STP_ALGORITHM_DEVICE_ENGINE} PRIVATE
