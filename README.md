@@ -115,12 +115,9 @@ Additional dependencies for the demo application:
 - [GLFW](https://github.com/glfw/glfw)
 - [stb_image.h](https://github.com/nothings/stb/blob/master/stb_image.h)
 
-Testing library:
+Test library:
 
-- [Catch2 v3.0.0-preview5](https://github.com/catchorg/Catch2)
-
-:grey_question:That's it?
-:grey_exclamation:That's it! Dependency kills maintainability. The aim of this project is to write mostly everything from scratch.
+- [Catch2 v3](https://github.com/catchorg/Catch2)
 
 ## :building_construction: Project Structure
 
