@@ -104,21 +104,23 @@ There is no perfect answer to this question, every application has its own pros 
 
 ## :bricks: Middleware
 
-Those are some third-party libraries used by the main engine.
+Main engine:
 
 - [GLM](https://github.com/g-truc/glm)
 - [GLAD](https://github.com/Dav1dde/glad)
 - [SQLite3](https://www.sqlite.org/index.html)
 
-Here is a list of additional dependencies if you are running the demo program.
+Additional dependencies for the demo application:
 
 - [GLFW](https://github.com/glfw/glfw)
 - [stb_image.h](https://github.com/nothings/stb/blob/master/stb_image.h)
-- [SIMPLE](https://github.com/stephen-hqxu/SIMPLE)
 
-The application is unit-tested with.
+Testing library:
 
-- [Catch2 v3.0.0-preview4](https://github.com/catchorg/Catch2)
+- [Catch2 v3.0.0-preview5](https://github.com/catchorg/Catch2)
+
+:grey_question:That's it?
+:grey_exclamation:That's it! Dependency kills maintainability. The aim of this project is to write mostly everything from scratch.
 
 ## :building_construction: Project Structure
 

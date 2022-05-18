@@ -5,7 +5,7 @@
 //Container
 #include <unordered_map>
 
-#include "STPINIString.h"
+#include "STPINIBasicString.h"
 
 namespace SuperTerrainPlus::STPAlgorithm {
 
@@ -25,6 +25,11 @@ namespace SuperTerrainPlus::STPAlgorithm {
 	 * The value can contain any character.
 	*/
 	using STPINISection = std::unordered_map<std::string, STPINIString>;
+	/**
+	 * @brief A non-owning version of STPINISection.
+	 * @see STPINISection
+	*/
+	using STPINISectionView = std::unordered_map<std::string_view, STPINIStringView>;
 
 }
 #endif//_STP_INI_SECTION_HPP_

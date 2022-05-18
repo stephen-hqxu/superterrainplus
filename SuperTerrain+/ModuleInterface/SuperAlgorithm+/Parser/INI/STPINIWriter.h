@@ -6,8 +6,6 @@
 
 #include "STPINIStorage.hpp"
 
-#include <string>
-
 namespace SuperTerrainPlus::STPAlgorithm {
 
 	/**
@@ -37,10 +35,11 @@ namespace SuperTerrainPlus::STPAlgorithm {
 
 		/**
 		 * @brief Initialise the writer and start formatting into INI string.
-		 * @param storage - The storage class where all INI settings are stored.
+		 * @param storage - The storage view class where all INI settings are stored.
+		 * The reference to the storage is not retained by the current instance, all parsed contents have memory managed automatically.
 		 * @param flag - The writer flag to control the behaviour.
 		*/
-		STPINIWriter(const STPINIStorage&, STPWriterFlag = 0u);
+		STPINIWriter(const STPINIStorageView&, STPWriterFlag = 0u);
 
 		STPINIWriter(const STPINIWriter&) = default;
 

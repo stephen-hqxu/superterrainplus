@@ -4,7 +4,7 @@
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
-//SuperAlgorithm+
+//SuperAlgorithm+/Parser
 #include <SuperAlgorithm+/Parser/STPTextureDefinitionLanguage.h>
 
 //Error
@@ -13,6 +13,7 @@
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 
+#include <string>
 #include <optional>
 
 //This is a TDL with correct syntax
@@ -22,9 +23,10 @@ using SuperTerrainPlus::STPFile;
 using namespace SuperTerrainPlus::STPAlgorithm;
 using namespace SuperTerrainPlus::STPDiversity;
 
+using std::string;
 using std::optional;
 
-SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTextureDefinitionLanguage]") {
+SCENARIO("TDL interpreter parses a TDL script", "[AlgorithmHost][Texture][STPTextureDefinitionLanguage]") {
 	optional<const STPTextureDefinitionLanguage> Parser;
 	STPTextureDefinitionLanguage::STPTextureVariable TexVar;
 
@@ -33,7 +35,8 @@ SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTexture
 		WHEN("A texture database needs to be filled with texture splatting rules") {
 
 			THEN("TDL can be parsed from source code") {
-				REQUIRE_NOTHROW([&Parser]() { Parser.emplace(*STPFile(TerrainTDL)); }());
+				const STPFile TestTDLString(TerrainTDL);
+				REQUIRE_NOTHROW([&Parser, &TestTDLString]() { Parser.emplace(*TestTDLString); }());
 
 				AND_THEN("Splat rules can be loaded into texture database correctly") {
 					STPTextureDatabase Database;
@@ -106,14 +109,14 @@ SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTexture
 			constexpr char BrokenTDL8[] = "#texture [x]; #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(888888888888888888888888888888888888888.8f -> x)}";
 
 			THEN("TDL interpreter should report the mistakes and expected syntax") {
-				REQUIRE_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("}"));
-				REQUIRE_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring(","));
-				REQUIRE_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring(";"));
-				REQUIRE_THROWS_WITH(tryParse(BrokenTDL4), ContainsSubstring("-"));
-				REQUIRE_THROWS_WITH(tryParse(BrokenTDL5), ContainsSubstring("#"));
-				REQUIRE_THROWS_WITH(tryParse(BrokenTDL6), ContainsSubstring("$"));
-				REQUIRE_THROWS_WITH(tryParse(BrokenTDL7), ContainsSubstring(")"));
-				REQUIRE_THROWS_WITH(tryParse(BrokenTDL8), ContainsSubstring("8.8f"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("}"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring(","));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring(";"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL4), ContainsSubstring("-"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL5), ContainsSubstring("#"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL6), ContainsSubstring("$"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL7), ContainsSubstring(")"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL8), ContainsSubstring("8.8f"));
 			}
 
 		}
@@ -124,9 +127,9 @@ SCENARIO("TDL interpreter parses a TDL script", "[Diversity][Texture][STPTexture
 			constexpr char BrokenTDL3[] = "#texture [x]; #group hey{x:=(3u,2u,1u)} \n #rule altitude{0:=(0.5f -> x)";
 
 			THEN("TDL interpreter should report the incorrect semantic") {
-				REQUIRE_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("y"));
-				REQUIRE_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring("altitude") && ContainsSubstring("Operation code"));
-				REQUIRE_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring("hey") && ContainsSubstring("Group type"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("y"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring("altitude") && ContainsSubstring("Operation code"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring("hey") && ContainsSubstring("Group type"));
 			}
 
 		}

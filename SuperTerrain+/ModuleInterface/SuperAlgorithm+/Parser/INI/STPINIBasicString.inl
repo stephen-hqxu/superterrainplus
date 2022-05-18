@@ -1,17 +1,19 @@
 //INLINE DEFINITION FOR INI STRING UTILITY, DO NOT INCLUDE MANUALLY
-#ifdef _STP_INI_STRING_H_
+#ifdef _STP_INI_BASIC_STRING_H_
 
 #include <charconv>
 #include <stdexcept>
 
-SuperTerrainPlus::STPAlgorithm::STPINIString::STPINIString(const std::string& str) : std::string(str) {
+template<class Str>
+SuperTerrainPlus::STPAlgorithm::STPINIBasicString<Str>::STPINIBasicString(const Str& str) : Str(str) {
 
 }
 
+template<class Str>
 template<typename T>
-inline T SuperTerrainPlus::STPAlgorithm::STPINIString::to() const {
+inline T SuperTerrainPlus::STPAlgorithm::STPINIBasicString<Str>::to() const {
 	T value = static_cast<T>(0);
-	const auto [ptr, ec] = std::from_chars(this->cbegin(), this->cend(), value);
+	const auto [ptr, ec] = std::from_chars(this->data(), this->data() + this->length(), value);
 
 	//throw exception according to the specification of std::stoi, std::stol, std::stoll
 	using std::errc;
@@ -24,4 +26,4 @@ inline T SuperTerrainPlus::STPAlgorithm::STPINIString::to() const {
 	}
 }
 
-#endif//_STP_INI_STRING_H_
+#endif//_STP_INI_BASIC_STRING_H_

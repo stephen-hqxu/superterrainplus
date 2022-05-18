@@ -13,6 +13,11 @@ namespace SuperTerrainPlus::STPAlgorithm {
 	 * for which they are put to the top of the INI file without a section parent.
 	*/
 	using STPINIStorage = std::unordered_map<std::string, STPINISection>;
+	/**
+	 * @brief A non-owning version of STPINIStorage.
+	 * @see STPINIStorage
+	*/
+	using STPINIStorageView = std::unordered_map<std::string_view, STPINISectionView>;
 
 }
 #endif//_STP_INI_STORAGE_HPP_

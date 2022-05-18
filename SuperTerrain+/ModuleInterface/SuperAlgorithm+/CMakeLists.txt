@@ -6,11 +6,11 @@ STPSimplexNoiseSetting.h
 STPSingleHistogram.hpp
 STPSingleHistogramFilter.h
 # /Parser/INI
+Parser/INI/STPINIBasicString.h
+Parser/INI/STPINIBasicString.inl
 Parser/INI/STPINIReader.h
 Parser/INI/STPINISection.hpp
 Parser/INI/STPINIStorage.hpp
-Parser/INI/STPINIString.h
-Parser/INI/STPINIString.inl
 Parser/INI/STPINIWriter.h
 # /Parser
 Parser/STPTextureDefinitionLanguage.h

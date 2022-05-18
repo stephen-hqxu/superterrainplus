@@ -17,12 +17,13 @@ STPTestAlgebra.cpp
 STPTestEnvironment.cpp
 STPTestFreeSlip.cpp
 STPTestRTC.cpp
-STPTestTDL.cpp
 STPTestTexture.cpp
 STPTestUtility.cpp
 # SuperAlgorithm+ test code
 STPTestHistogram.cpp
+STPTestINI.cpp
 STPTestPermutation.cpp
+STPTestTDL.cpp
 )
 target_sources(${STP_UNIT_TEST} PRIVATE
 STPTestInformation.h
@@ -38,19 +39,14 @@ PRIVATE ${STP_MAIN_ENGINE} ${STP_ALGORITHM_HOST_ENGINE}
 PRIVATE Catch2::Catch2
 )
 
-# compile-time settings for catch2
-target_compile_definitions(${STP_UNIT_TEST}
-PRIVATE CATCH_CONFIG_CONSOLE_WIDTH=120
-)
-
-# catch2 with ctest integration
+# catch2 with CTest integration
 include(Catch)
 catch_discover_tests(${STP_UNIT_TEST}
 REPORTER ${STP_CONSOLE_REPORTER}
 WORKING_DIRECTORY $<TARGET_FILE_DIR:${STP_UNIT_TEST}>
 )
 
-# copy data for testings
+# copy data for test
 add_custom_command(
 TARGET ${STP_UNIT_TEST} POST_BUILD
 COMMAND ${CMAKE_COMMAND} -E copy_directory

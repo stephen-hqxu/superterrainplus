@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <charconv>
 
+#include <memory>
 #include <optional>
 #include <algorithm>
 
@@ -21,10 +22,8 @@ using SuperTerrainPlus::STPDiversity::STPTextureDatabase;
 using namespace SuperTerrainPlus::STPAlgorithm;
 
 using std::vector;
-using std::string;
 using std::string_view;
 using std::stringstream;
-using std::make_unique;
 using std::make_pair;
 using std::make_optional;
 using std::unique_ptr;
@@ -136,7 +135,7 @@ public:
 
 private:
 
-	const string Source;
+	const string_view Source;
 	//The input parsing string sequence in a string stream
 	const char* Sequence;
 	size_t Line = 1ull;
@@ -262,7 +261,7 @@ public:
 	 * @brief Init the TDL lexer with source code
 	 * @param source The source code to TDL
 	*/
-	STPTDLLexer(const string& source) : Source(source), Sequence(this->Source.c_str()) {
+	STPTDLLexer(const string_view& source) : Source(source), Sequence(this->Source.data()) {
 
 	}
 
@@ -349,31 +348,33 @@ public:
 
 };
 
-STPTextureDefinitionLanguage::STPTextureDefinitionLanguage(const string& source) : Lexer(make_unique<STPTDLLexer>(source)) {
+STPTextureDefinitionLanguage::STPTextureDefinitionLanguage(const string_view& source) {
 	typedef STPTDLLexer::STPToken::STPType TokenType;
+	STPTDLLexer lexer(source);
+
 	//start doing lexical analysis and parsing
 	while (true) {
 		//check while identifier is it
-		if (this->Lexer->expect(TokenType::Hash, TokenType::End).Type == TokenType::End) {
+		if (lexer.expect(TokenType::Hash, TokenType::End).Type == TokenType::End) {
 			//end of file
 			break;
 		}
-		const string_view operation = this->Lexer->expect(TokenType::String).Lexeme;
+		const string_view operation = lexer.expect(TokenType::String).Lexeme;
 
 		//depends on operations, we process them differently
 		if (operation == "texture") {
-			this->processTexture();
+			this->processTexture(lexer);
 		}
 		else if (operation == "rule") {
-			this->processRule();
+			this->processRule(lexer);
 		}
 		else if (operation == "group") {
-			this->processGroup();
+			this->processGroup(lexer);
 		}
 		else {
 			//invalid operation
 			stringstream msg;
-			this->Lexer->composeInitialErrorInfo(msg, "unknown operation") 
+			lexer.composeInitialErrorInfo(msg, "unknown operation")
 				<< "Operation code \'" << operation << "\' is undefined by Texture Definition Language." << endl;
 			throw STPException::STPInvalidSyntax(msg.str().c_str());
 		}
@@ -383,107 +384,107 @@ STPTextureDefinitionLanguage::STPTextureDefinitionLanguage(const string& source)
 
 STPTextureDefinitionLanguage::~STPTextureDefinitionLanguage() = default;
 
-void STPTextureDefinitionLanguage::checkTextureDeclared(const string_view& texture) const {
+void STPTextureDefinitionLanguage::checkTextureDeclared(const STPTDLLexer& lexer, const string_view& texture) const {
 	if (this->DeclaredTexture.find(texture) == this->DeclaredTexture.cend()) {
 		//texture variable not found, throw error
 		stringstream msg;
-		this->Lexer->composeInitialErrorInfo(msg, "unknown texture") 
+		lexer.composeInitialErrorInfo(msg, "unknown texture")
 			<< "Texture \'" << texture << "\' is not declared before it is being referenced." << endl;
 		throw STPException::STPInvalidSyntax(msg.str().c_str());
 	}
 }
 
-void STPTextureDefinitionLanguage::processTexture() {
+void STPTextureDefinitionLanguage::processTexture(STPTDLLexer& lexer) {
 	typedef STPTDLLexer::STPToken::STPType TokenType;
 	//declare some texture variables for texture ID
-	this->Lexer->expect(TokenType::LeftSquare);
+	lexer.expect(TokenType::LeftSquare);
 
 	while (true) {
-		const string_view textureName = this->Lexer->expect(TokenType::String).Lexeme;
+		const string_view textureName = lexer.expect(TokenType::String).Lexeme;
 		//found a texture, store it
 		//initially the texture has no view information
 		this->DeclaredTexture.emplace(textureName, STPTextureDefinitionLanguage::UnreferencedIndex);
 
-		if (this->Lexer->expect(TokenType::Comma, TokenType::RightSquare).Type == TokenType::RightSquare) {
+		if (lexer.expect(TokenType::Comma, TokenType::RightSquare).Type == TokenType::RightSquare) {
 			//no more texture
 			break;
 		}
 		//a comma means more texture are coming...
 	}
 
-	this->Lexer->expect(TokenType::Semicolon);
+	lexer.expect(TokenType::Semicolon);
 }
 
-void STPTextureDefinitionLanguage::processRule() {
+void STPTextureDefinitionLanguage::processRule(STPTDLLexer& lexer) {
 	typedef STPTDLLexer::STPToken::STPType TokenType;
 
 	//define a rule
-	const string_view rule_type = this->Lexer->expect(TokenType::String).Lexeme;
-	this->Lexer->expect(TokenType::LeftCurly);
+	const string_view rule_type = lexer.expect(TokenType::String).Lexeme;
+	lexer.expect(TokenType::LeftCurly);
 
 	while (true) {
 		//we got a sample ID
-		const Sample rule4Sample = this->Lexer->fromStringView<Sample>(this->Lexer->expect(TokenType::Number).Lexeme);
-		this->Lexer->expect(TokenType::Colon);
-		this->Lexer->expect(TokenType::Equal);
-		this->Lexer->expect(TokenType::LeftBracket);
+		const Sample rule4Sample = lexer.fromStringView<Sample>(lexer.expect(TokenType::Number).Lexeme);
+		lexer.expect(TokenType::Colon);
+		lexer.expect(TokenType::Equal);
+		lexer.expect(TokenType::LeftBracket);
 
 		//start parsing rule
 		while (true) {
 
 			//check which type of type we are parsing
 			if (rule_type == "altitude") {
-				const float altitude = this->Lexer->fromStringView<float>(this->Lexer->expect(TokenType::Number).Lexeme);
-				this->Lexer->expect(TokenType::Minus);
-				this->Lexer->expect(TokenType::RightArrow);
-				const string_view map2Texture = this->Lexer->expect(TokenType::String).Lexeme;
-				this->checkTextureDeclared(map2Texture);
+				const float altitude = lexer.fromStringView<float>(lexer.expect(TokenType::Number).Lexeme);
+				lexer.expect(TokenType::Minus);
+				lexer.expect(TokenType::RightArrow);
+				const string_view map2Texture = lexer.expect(TokenType::String).Lexeme;
+				this->checkTextureDeclared(lexer, map2Texture);
 
 				//store an altitude rule
 				this->Altitude.emplace_back(rule4Sample, altitude, map2Texture);
 			}
 			else if (rule_type == "gradient") {
-				const float minG = this->Lexer->fromStringView<float>(this->Lexer->expect(TokenType::Number).Lexeme);
-				this->Lexer->expect(TokenType::Comma);
-				const float maxG = this->Lexer->fromStringView<float>(this->Lexer->expect(TokenType::Number).Lexeme);
-				this->Lexer->expect(TokenType::Comma);
-				const float LB = this->Lexer->fromStringView<float>(this->Lexer->expect(TokenType::Number).Lexeme);
-				this->Lexer->expect(TokenType::Comma);
-				const float UB = this->Lexer->fromStringView<float>(this->Lexer->expect(TokenType::Number).Lexeme);
-				this->Lexer->expect(TokenType::Minus);
-				this->Lexer->expect(TokenType::RightArrow);
-				const string_view map2Texture = this->Lexer->expect(TokenType::String).Lexeme;
-				this->checkTextureDeclared(map2Texture);
+				const float minG = lexer.fromStringView<float>(lexer.expect(TokenType::Number).Lexeme);
+				lexer.expect(TokenType::Comma);
+				const float maxG = lexer.fromStringView<float>(lexer.expect(TokenType::Number).Lexeme);
+				lexer.expect(TokenType::Comma);
+				const float LB = lexer.fromStringView<float>(lexer.expect(TokenType::Number).Lexeme);
+				lexer.expect(TokenType::Comma);
+				const float UB = lexer.fromStringView<float>(lexer.expect(TokenType::Number).Lexeme);
+				lexer.expect(TokenType::Minus);
+				lexer.expect(TokenType::RightArrow);
+				const string_view map2Texture = lexer.expect(TokenType::String).Lexeme;
+				this->checkTextureDeclared(lexer, map2Texture);
 
 				//store a gradient rule
 				this->Gradient.emplace_back(rule4Sample, minG, maxG, LB, UB, map2Texture);
 			}
 			else {
 				stringstream msg;
-				this->Lexer->composeInitialErrorInfo(msg, "unrecognised rule type")
+				lexer.composeInitialErrorInfo(msg, "unrecognised rule type")
 					<< "Rule type \'" << rule_type << "\' is not recognised." << endl;
 				throw STPException::STPInvalidSyntax(msg.str().c_str());
 			}
 
-			if (this->Lexer->expect(TokenType::Comma, TokenType::RightBracket).Type == TokenType::RightBracket) {
+			if (lexer.expect(TokenType::Comma, TokenType::RightBracket).Type == TokenType::RightBracket) {
 				//no more rule setting
 				break;
 			}
 		}
 
-		if (this->Lexer->expect(TokenType::Comma, TokenType::RightCurly).Type == TokenType::RightCurly) {
+		if (lexer.expect(TokenType::Comma, TokenType::RightCurly).Type == TokenType::RightCurly) {
 			//no more rule
 			break;
 		}
 	}
 }
 
-void STPTextureDefinitionLanguage::processGroup() {
+void STPTextureDefinitionLanguage::processGroup(STPTDLLexer& lexer) {
 	typedef STPTDLLexer::STPToken::STPType TokenType;
 
 	//the declared type of this group
-	const string_view group_type = this->Lexer->expect(TokenType::String).Lexeme;
-	this->Lexer->expect(TokenType::LeftCurly);
+	const string_view group_type = lexer.expect(TokenType::String).Lexeme;
+	lexer.expect(TokenType::LeftCurly);
 	
 	//record all textures to be added to a new group,
 	//always make sure data being parsed are valid before adding to the parsing memory.
@@ -495,35 +496,35 @@ void STPTextureDefinitionLanguage::processGroup() {
 
 		//for each texture name assigned to this group
 		while (true) {
-			const string_view& assignedTexture = texture_in_group.emplace_back(this->Lexer->expect(TokenType::String).Lexeme);
-			this->checkTextureDeclared(assignedTexture);
+			const string_view& assignedTexture = texture_in_group.emplace_back(lexer.expect(TokenType::String).Lexeme);
+			this->checkTextureDeclared(lexer, assignedTexture);
 
-			if (this->Lexer->expect(TokenType::Comma, TokenType::Colon).Type == TokenType::Colon) {
+			if (lexer.expect(TokenType::Comma, TokenType::Colon).Type == TokenType::Colon) {
 				//no more texture to be assigned to this group
 				break;
 			}
 		}
-		this->Lexer->expect(TokenType::Equal);
+		lexer.expect(TokenType::Equal);
 
 		//beginning of a group definition tuple
-		this->Lexer->expect(TokenType::LeftBracket);
+		lexer.expect(TokenType::LeftBracket);
 		if (group_type == "view") {
 			STPTextureDatabase::STPViewGroupDescription& view = this->DeclaredViewGroup.emplace_back();
 
-			view.PrimaryScale = this->Lexer->fromStringView<unsigned int>(this->Lexer->expect(TokenType::Number).Lexeme);
-			this->Lexer->expect(TokenType::Comma);
-			view.SecondaryScale = this->Lexer->fromStringView<unsigned int>(this->Lexer->expect(TokenType::Number).Lexeme);
-			this->Lexer->expect(TokenType::Comma);
-			view.TertiaryScale = this->Lexer->fromStringView<unsigned int>(this->Lexer->expect(TokenType::Number).Lexeme);
+			view.PrimaryScale = lexer.fromStringView<unsigned int>(lexer.expect(TokenType::Number).Lexeme);
+			lexer.expect(TokenType::Comma);
+			view.SecondaryScale = lexer.fromStringView<unsigned int>(lexer.expect(TokenType::Number).Lexeme);
+			lexer.expect(TokenType::Comma);
+			view.TertiaryScale = lexer.fromStringView<unsigned int>(lexer.expect(TokenType::Number).Lexeme);
 		}
 		else {
 			stringstream msg;
-			this->Lexer->composeInitialErrorInfo(msg, "unrecognised group type")
+			lexer.composeInitialErrorInfo(msg, "unrecognised group type")
 				<< "Group type \'" << group_type << "\' is not recognised." << endl;
 			throw STPException::STPInvalidSyntax(msg.str().c_str());
 		}
 		//end of a group definition tuple
-		this->Lexer->expect(TokenType::RightBracket);
+		lexer.expect(TokenType::RightBracket);
 
 		//assign texture with group index
 		std::for_each(texture_in_group.cbegin(), texture_in_group.cend(), 
@@ -532,7 +533,7 @@ void STPTextureDefinitionLanguage::processGroup() {
 			texture_table[name] = view_group_index;
 		});
 
-		if (this->Lexer->expect(TokenType::Comma, TokenType::RightCurly).Type == TokenType::RightCurly) {
+		if (lexer.expect(TokenType::Comma, TokenType::RightCurly).Type == TokenType::RightCurly) {
 			//end of group
 			break;
 		}

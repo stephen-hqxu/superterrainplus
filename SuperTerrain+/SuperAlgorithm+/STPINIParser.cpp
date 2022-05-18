@@ -5,7 +5,6 @@
 #include <SuperTerrain+/Exception/STPInvalidSyntax.h>
 
 #include <optional>
-#include <string_view>
 #include <sstream>
 
 #include <utility>
@@ -13,7 +12,6 @@
 using std::optional;
 using std::make_optional;
 using std::nullopt;
-using std::string;
 using std::string_view;
 using std::pair;
 using std::make_pair;
@@ -31,11 +29,9 @@ private:
 	//white space sequence identifier
 	constexpr static string_view WhiteSpace = " \n\r\t\f\v";
 
-	const string& Str;
-
+	const string_view Str;
 	//The current parsing line number
 	size_t Line;
-	size_t Ch;
 	//The character sequence referencing the string
 	const char* Sequence;
 
@@ -62,7 +58,7 @@ public:
 	 * @brief Initialise an implementation of INI reader.
 	 * @param str The pointer to the INI string.
 	*/
-	STPINIReaderImpl(const string& str) : Str(str), Line(1ull), Ch(1ull), Sequence(this->Str.c_str()) {
+	STPINIReaderImpl(const string_view& str) : Str(str), Line(0ull), Sequence(this->Str.data()) {
 
 	}
 
@@ -83,25 +79,26 @@ public:
 	*/
 	optional<string_view> getLine() {
 		const char* const start = this->Sequence;
+		if (*start == '\0') {
+			//end of the string, return null
+			return nullopt;
+		}
 
 		while (true) {
-			if (*this->Sequence == '\0') {
-				//end of the string, return null
-				return nullopt;
-			}
-			if (*this->Sequence == '\n') {
-				//new line delimiter, discard this character and advance then return
-				this->Line++;
-				this->Ch = 1ull;
+			switch (*this->Sequence) {
+			case '\n':
+				//for new line delimiter, discard this character and advance then return
 				this->Sequence++;
+				this->Line++;
+			case '\0':
+				//for end of file, do not advance to the next character
 
 				//TODO: C++20 allows creating a view from first and last pointer
-				//do not include the new line character into the result, so minus one
-				return STPINIReaderImpl::doubleTrim(string_view(start, this->Sequence - start - 1ull));
+				return STPINIReaderImpl::doubleTrim(string_view(start, this->Sequence - start));
+			default:
+				//advance
+				this->Sequence++;
 			}
-			//advance
-			this->Ch++;
-			this->Sequence++;
 		}
 	}
 
@@ -144,18 +141,18 @@ public:
 	 * @return The input string stream.
 	*/
 	inline ostringstream& createInitialErrorMessage(ostringstream& ss, const char* error_type) {
-		ss << "SuperTerrain+ INI Reader(" << this->Line << ',' << this->Ch << "):" << error_type << endl;
+		ss << "SuperTerrain+ INI Reader(" << this->Line << "):" << error_type << endl;
 		return ss;
 	}
 
 };
 
-STPINIReader::STPINIReader(const string& ini_str) {
+STPINIReader::STPINIReader(const string_view& ini_str) {
 	STPINIReaderImpl reader(ini_str);
 
 	optional<string_view> line;
 	//start with unnamed section
-	STPINISection* current_sec = &this->addSection("");
+	STPINISectionView* current_sec = &this->addSection("");
 	while (line = reader.getLine()) {
 		if (line->empty()) {
 			//skip empty line
@@ -178,7 +175,7 @@ STPINIReader::STPINIReader(const string& ini_str) {
 			}
 
 			//start a new section
-			current_sec = &this->addSection(string(next_sec));
+			current_sec = &this->addSection(next_sec);
 		}
 			break;
 
@@ -202,24 +199,26 @@ STPINIReader::STPINIReader(const string& ini_str) {
 			const auto& [key, value] = *next_prop;
 
 			//note that if the key is duplicated, a new value will be written in anyway, such that the old value is discarded
-			(*current_sec)[string(key)] = STPINIString(string(value));
+			(*current_sec)[key] = STPINIStringView(value);
 		}
 			break;
 		}
 	}
 }
 
-inline STPINISection& STPINIReader::addSection(const string& sec_name) {
+inline STPINISectionView& STPINIReader::addSection(const string_view& sec_name) {
 	return this->Data.try_emplace(sec_name).first->second;
 }
 
-const STPINIStorage& STPINIReader::operator*() const {
+const STPINIStorageView& STPINIReader::operator*() const {
 	return this->Data;
 }
 
 /* ====================================== STPINIWriter.h ========================================= */
 
-STPINIWriter::STPINIWriter(const STPINIStorage& storage, STPWriterFlag flag) {
+using std::string;
+
+STPINIWriter::STPINIWriter(const STPINIStorageView& storage, STPWriterFlag flag) {
 	//process flags
 	static constexpr auto readFlag = [](STPWriterFlag op, STPWriterFlag against) constexpr -> bool {
 		return (op & against) != 0u;
@@ -235,7 +234,7 @@ STPINIWriter::STPINIWriter(const STPINIStorage& storage, STPWriterFlag flag) {
 
 	//prepare output
 	ostringstream output;
-	auto writeSection = [&output, &equalMark](const STPINISection& section) -> void {
+	auto writeSection = [&output, &equalMark](const STPINISectionView& section) -> void {
 		for (const auto& [key, value] : section) {
 			output << key << equalMark << value << endl;
 		}

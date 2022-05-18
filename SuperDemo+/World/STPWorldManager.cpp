@@ -104,7 +104,7 @@ public:
 	 * @brief Init STPWorldSplattingAgent.
 	 * @param prefix The filename prefix for all texture filenames.
 	*/
-	STPWorldSplattingAgent(string prefix) {
+	STPWorldSplattingAgent(const string& prefix) {
 		array<pair<unsigned int, const char*>, STPWorldSplattingAgent::TextureCount> IndexedFilename;
 		//load up indices
 		unsigned int index = 0u;
@@ -140,7 +140,8 @@ public:
 		tex_desc.InteralFormat = GL_R8;
 		this->x1024_r = this->Database.addMapGroup(tex_desc);
 
-		STPTextureDefinitionLanguage TDLParser(*STPFile(STPWorldSplattingAgent::TDLFilename));
+		const STPFile rawTDL(STPWorldSplattingAgent::TDLFilename);
+		const STPTextureDefinitionLanguage TDLParser(*rawTDL);
 		//build texture splatting rules
 		const STPTextureDefinitionLanguage::STPTextureVariable textureName = TDLParser(this->Database);
 		//build database with texture data
@@ -204,7 +205,7 @@ public:
 
 };
 
-STPWorldManager::STPWorldManager(string tex_filename_prefix, STPEnvironment::STPConfiguration&& settings, 
+STPWorldManager::STPWorldManager(const string& tex_filename_prefix, STPEnvironment::STPConfiguration&& settings,
 	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
 	SharedProgram(settings.ChunkSetting, simplex_setting), WorldSetting(std::move(settings)),
 	Texture(make_unique<STPWorldManager::STPWorldSplattingAgent>(tex_filename_prefix)), linkStatus(false) {

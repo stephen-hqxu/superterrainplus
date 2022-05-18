@@ -18,7 +18,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		class STPINIReaderImpl;
 
 		//Contains parsed INI data
-		STPINIStorage Data;
+		STPINIStorageView Data;
 
 		/**
 		 * @brief Emplace a new section into the storage.
@@ -26,17 +26,18 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		 * @return The pointer to the new section.
 		 * If the section name is duplicate, the section with given name will be returned.
 		*/
-		STPINISection& addSection(const std::string&);
+		STPINISectionView& addSection(const std::string_view&);
 
 	public:
 
 		/**
 		 * @brief Initialise an INI reader and start parsing the INI.
-		 * @param ini_str A string contains all content of an INI.
-		 * No reference is retained after this function returns.
+		 * @param ini_str A non-owning string contains all content of an INI.
+		 * No reference is retained after this function returns, however the memory where the string is stored should be managed by the user,
+		 * until the current instance and returned INI storage view is destroyed.
 		 * Any syntactic error in the INI string will halt the parser and causes exception to be thrown.
 		*/
-		STPINIReader(const std::string&);
+		STPINIReader(const std::string_view&);
 
 		STPINIReader(const STPINIReader&) = default;
 
@@ -49,10 +50,11 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		~STPINIReader() = default;
 
 		/**
-		 * @brief Get INI data parsed.
+		 * @brief Get INI data structure parsed.
 		 * @return A pointer to an INI storage instance.
+		 * The returned storage is only a view to the raw INI string provided by the user at initialisation.
 		*/
-		const STPINIStorage& operator*() const;
+		const STPINIStorageView& operator*() const;
 
 	};
 

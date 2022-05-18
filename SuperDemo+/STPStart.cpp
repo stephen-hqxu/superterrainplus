@@ -26,6 +26,8 @@
 #include <SuperRealism+/Utility/STPLogHandler.hpp>
 //GL helper
 #include <SuperRealism+/Utility/STPDebugCallback.h>
+//INI Utility
+#include <SuperAlgorithm+/Parser/INI/STPINIReader.h>
 
 //SuperDemo+
 #include "./Helpers/STPTerrainParaLoader.h"
@@ -38,7 +40,6 @@
 
 //External
 #include <GLFW/glfw3.h>
-#include <SIMPLE/Serialisation/SIImporter.h>
 
 //System
 #include <iostream>
@@ -76,6 +77,9 @@ using glm::radians;
 using glm::identity;
 using glm::normalize;
 
+using SuperTerrainPlus::STPAlgorithm::STPINIStorageView;
+using SuperTerrainPlus::STPAlgorithm::STPINISectionView;
+
 namespace STPStart {
 
 	/**
@@ -84,7 +88,7 @@ namespace STPStart {
 	class STPMasterRenderer {
 	private:
 
-		const SIMPLE::SIStorage& engineINI, &biomeINI;
+		const STPINIStorageView& engineINI, &biomeINI;
 
 		//Generation Pipeline
 		optional<STPDemo::STPWorldManager> WorldManager;
@@ -129,7 +133,7 @@ namespace STPStart {
 		 * @param biome The pointer to biome INI settings.
 		 * @param camera The pointer to the perspective camera for the scene.
 		*/
-		STPMasterRenderer(const SIMPLE::SIStorage& engine, const SIMPLE::SIStorage& biome, SuperTerrainPlus::STPRealism::STPPerspectiveCamera& camera) :
+		STPMasterRenderer(const STPINIStorageView& engine, const STPINIStorageView& biome, SuperTerrainPlus::STPRealism::STPPerspectiveCamera& camera) :
 			engineINI(engine), biomeINI(biome), 
 			SceneMaterial(1u), ViewPosition(camera.cameraStatus().Position), 
 			CurrentSeed(this->biomeINI.at("simplex").at("seed").to<unsigned long long>()) {
@@ -154,7 +158,7 @@ namespace STPStart {
 
 			//setup world manager
 			try {
-				this->WorldManager.emplace(*this->biomeINI.at("").at("texture_path_prefix"), std::move(config), simplex);
+				this->WorldManager.emplace(string(this->biomeINI.at("").at("texture_path_prefix")), std::move(config), simplex);
 				//the old setting has been moved to the world manager, need to refresh the pointer
 				const auto& chunk_setting = this->WorldManager->getWorldSetting().ChunkSetting;
 
@@ -169,8 +173,7 @@ namespace STPStart {
 					//do not proceed if it fails
 					std::terminate();
 				}
-			}
-			catch (const STPException::STPInvalidSyntax& se) {
+			} catch (const STPException::STPInvalidSyntax& se) {
 				//catch parser error
 				cerr << se.what() << endl;
 				std::terminate();
@@ -309,7 +312,7 @@ namespace STPStart {
 			//setup effects
 			//-------------------------------------------
 			{
-				const SIMPLE::SISection& ao_section = engine.at("AmbientOcclusion");
+				const STPINISectionView& ao_section = engine.at("AmbientOcclusion");
 				//blur
 				STPGaussianFilter blur_filter(
 					ao_section.at("variance").to<double>(),
@@ -438,9 +441,6 @@ namespace STPStart {
 	static STPLogConsolePrinter RendererLogHandler;
 	//Camera
 	static optional<SuperTerrainPlus::STPRealism::STPPerspectiveCamera> MainCamera;
-	//Configuration
-	using SuperTerrainPlus::STPFile;
-	static SIMPLE::SIImporter engineINILoader(*STPFile("./Engine.ini")), biomeINILoader(*STPFile("./Biome.ini"));
 
 	/* ------------------------------ callback functions ----------------------------------- */
 	constexpr static uvec2 InitialCanvasSize = uvec2(1600u, 900u);
@@ -496,7 +496,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 
 	/**
 	 * @brief Initialise GLFW engine.
-	 * @return True if the glfwwindow has been created.
+	 * @return True if the GLFW window has been created.
 	*/
 	static bool initGLFW() {
 		//Initialisation
@@ -505,7 +505,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 			return false;
 		}
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);//we are running at opengl 4.6
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);//we are running at OpenGL 4.6
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_FALSE);//not necessary for forward compatibility
 #ifdef _DEBUG
@@ -551,7 +551,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 	}
 
 	/**
-	 * @brief Create glad context, making the current running thread available to opengl
+	 * @brief Create glad context, making the current running thread available to OpenGL
 	 * @return True if the context is created successfully
 	*/
 	static bool initSTP() {
@@ -561,7 +561,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 			cerr << "Fail to initialise Super Terrain + engine." << endl;
 			return false;
 		}
-		//cuda context init on device 0 (only one GPU)
+		//CUDA context init on device 0 (only one GPU)
 		SuperTerrainPlus::STPEngineInitialiser::init(0);
 		//must init the main engine first because the renderer is depended on that.
 		SuperTerrainPlus::STPRealism::STPRendererInitialiser::init();
@@ -586,9 +586,21 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 }
 
 int main() {
+	using SuperTerrainPlus::STPAlgorithm::STPINIReader;
+	using SuperTerrainPlus::STPFile;
+	//read configuration
+	const static STPFile engineData("./Engine.ini"), biomeData("./Biome.ini");
 	//get INI
-	const SIMPLE::SIStorage& engineINI = *STPStart::engineINILoader, 
-		&biomeINI = *STPStart::biomeINILoader;
+	static optional<const STPINIReader> engineINIReader, biomeINIReader;
+	try {
+		engineINIReader.emplace(*engineData);
+		biomeINIReader.emplace(*biomeData);
+	} catch (const SuperTerrainPlus::STPException::STPInvalidSyntax& se) {
+		cerr << se.what() << endl;
+		return -1;
+	}
+	const STPINIStorageView& engineINI(**engineINIReader), biomeINI(**biomeINIReader);
+
 	//engine setup
 	//because GLFW callback uses camera, so we need to setup camera first
 	if (!(STPStart::initGLFW() && STPStart::initSTP())) {
@@ -604,7 +616,7 @@ int main() {
 
 	//setup camera
 	{
-		const SIMPLE::SISection& engineMain = engineINI.at("");
+		const STPINISectionView& engineMain = engineINI.at("");
 
 		using namespace SuperTerrainPlus;
 		STPEnvironment::STPCameraSetting cam;
@@ -635,8 +647,7 @@ int main() {
 		//allocate some memory
 		STPStart::MasterEngine->resize(STPStart::InitialCanvasSize);
 		STPStart::MasterEngine->setGamma(engineINI.at("Global").at("gamma").to<float>());
-	}
-	catch (const std::exception& e) {
+	} catch (const std::exception& e) {
 		cerr << e.what() << endl;
 		STPStart::clearup();
 		return -1;
@@ -646,7 +657,7 @@ int main() {
 	double currentTime, lastTime = 0.0, deltaTime, FPS = engineINI.at("").at("FPS").to<double>();
 	cout << "Start..." << endl;
 	while (!glfwWindowShouldClose(STPStart::GLCanvas)) {
-		//frametime logic
+		//frame time logic
 		do {
 			//busy-waiting fps limiter
 			currentTime = glfwGetTime();
@@ -658,8 +669,7 @@ int main() {
 		STPStart::process_event(deltaTime);
 		try {
 			STPStart::MasterEngine->render(deltaTime);
-		}
-		catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			cerr << e.what() << endl;
 			STPStart::clearup();
 			return -1;
@@ -667,7 +677,7 @@ int main() {
 
 		//event update
 		glfwPollEvents();
-		//make sure the GPU has finished rendering the backbuffer before swapping
+		//make sure the GPU has finished rendering the back buffer before swapping
 		glFinish();
 		//buffer swapping
 		glfwSwapBuffers(STPStart::GLCanvas);
