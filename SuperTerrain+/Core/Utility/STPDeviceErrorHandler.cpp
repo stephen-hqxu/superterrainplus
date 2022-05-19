@@ -20,7 +20,7 @@ using std::endl;
 
 //always throw an exception
 template<class E>
-inline void printError(stringstream& msg, bool no_msg) noexcept(false) {
+[[noreturn]] inline void printError(stringstream& msg, bool no_msg) noexcept(false) {
 	if (!no_msg) {
 		cerr << msg.str();
 	}

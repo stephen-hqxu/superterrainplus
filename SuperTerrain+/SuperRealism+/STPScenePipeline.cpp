@@ -373,7 +373,7 @@ public:
 		const ivec4 ori_vp = STPShadowPipeline::getViewport();
 
 		size_t current_light_space_start = 0ull;
-		for (int i = 0; i < shadow_light.size(); i++) {
+		for (size_t i = 0ull; i < shadow_light.size(); i++) {
 			auto* const shadowable_light = shadow_light[i];
 			STPLightShadow& shadow_instance = *shadowable_light->getLightShadow();
 
@@ -774,6 +774,7 @@ void STPScenePipeline::addLight(STPSceneLight& light) {
 			if (current_usage.AmbientLight < limit_usage.AmbientLight) {
 				break;
 			}
+			[[fallthrough]];
 		case STPSceneLight::STPLightType::Directional:
 			if (current_usage.DirectionalLight < limit_usage.DirectionalLight) {
 				break;

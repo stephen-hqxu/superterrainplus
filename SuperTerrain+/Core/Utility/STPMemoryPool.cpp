@@ -94,5 +94,5 @@ void STPMemoryPool<T>::release(void* memory) {
 }
 
 //Explicit Instantiations
-template class STP_API STPMemoryPool<STPMemoryPoolType::Regular>;
-template class STP_API STPMemoryPool<STPMemoryPoolType::Pinned>;
+template class STP_API SuperTerrainPlus::STPMemoryPool<STPMemoryPoolType::Regular>;
+template class STP_API SuperTerrainPlus::STPMemoryPool<STPMemoryPoolType::Pinned>;

@@ -33,11 +33,11 @@ namespace SuperTerrainPlus::STPDiversity {
 
 			//Layer seed for a particular layer implementation
 			const Seed LayerSeed;
-			//local seed varies from world coordinate, but the same coord will always yeild the same local seed
+			//local seed varies from world coordinate, but the same coordinate will always yield the same local seed
 			mutable Seed LocalSeed;
 
 			/**
-			 * @brief Init rng for each local coordinate
+			 * @brief Init RNG for each local coordinate
 			 * @param layer_seed Layer seed that is unique to each layer
 			 * @param local_seed Local seed that is unique to each world coordinate for every layer
 			*/
@@ -115,12 +115,12 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		/**
 		 * @brief Create a layer instance
-		 * @tparam Asc A list of ascendants, could be only none, could be only one, could be more... Only STPLayer is accepted
+		 * @tparam Asc A list of ascendant, could be only none, could be only one, could be more... Only STPLayer is accepted
 		 * @param global_seed The global seed is the seed that used to generate the entire world, a.k.a., world seed.
 		 * @param salt The salt is a random number that used to mix the global to generate local and layer seed, such that each layer should use
 		 * different salt value
 		 * @param ascendant The next executed layer. If more than one layer is provided, the layer is merging.
-		 * Each ascendant should be dynamically allocated, memory will be freed when the layers are destroied.
+		 * Each ascendant should be dynamically allocated, memory will be freed when the layers are destroyed.
 		*/
 		template <class... Asc>
 		STPLayer(Seed, Seed, Asc*...);
@@ -144,7 +144,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPLocalRNG getRNG(Seed) const;
 
 		/**
-		 * @brief Mix seed with a factor to achieve a degree of randomness to form a new seed. This function guaratees that if two same values are the same,
+		 * @brief Mix seed with a factor to achieve a degree of randomness to form a new seed. This function guarantees that if two same values are the same,
 		 * the returning seed will always be the same
 		 * @param s The seed
 		 * @param fac The factor that is used to mix
@@ -186,14 +186,14 @@ namespace SuperTerrainPlus::STPDiversity {
 		/**
 		 * @brief Get the parent layer with specified index
 		 * @param index The index of the ascendant to get
-		 * @return The ascendants at that index - the parent layers, who will be executed before this layer.
+		 * @return The ascendant at that index - the parent layers, who will be executed before this layer.
 		 * Return null if index out of bound or no ascendant
 		*/
 		STPLayer* getAscendant(unsigned int) const;
 
 		/**
 		 * @brief Get the first parent layer
-		 * @return The ascendants - the parent layers, who will be executed before this layer.
+		 * @return The ascendant - the parent layers, who will be executed before this layer.
 		 * There might be more than one ascendant in case there is a merge in the execution chain.
 		 * Return null if there is no ascendant
 		*/

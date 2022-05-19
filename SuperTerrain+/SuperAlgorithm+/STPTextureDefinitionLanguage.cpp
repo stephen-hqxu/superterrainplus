@@ -84,22 +84,17 @@ public:
 		};
 
 		friend ostream& operator<<(ostream& os, STPType type) {
-			//Special type names for some of the types, can use enum value as index
-			static constexpr string_view SpecialTypeName[4] = {
-				"Number",
-				"String",
-				"End of File",
-				"Invalid Syntax"
-			};
-			using Type = std::underlying_type_t<STPToken::STPType>;
-			const Type typeValue = static_cast<Type>(type);
-
-			//some of the type contains a char array rather than a char, we want to replace them with more detailed name.
-			if (typeValue < 4) {
-				os << SpecialTypeName[typeValue];
-			}
-			else {
-				os << typeValue;
+			switch (type) {
+			case STPType::Number: os << "Number";
+				break;
+			case STPType::String: os << "String";
+				break;
+			case STPType::End: os << "End of File";
+				break;
+			case STPType::Invalid: os << "Invalid Syntax";
+				break;
+			default:
+				os << static_cast<std::underlying_type_t<STPType>>(type);
 			}
 			return os;
 		}

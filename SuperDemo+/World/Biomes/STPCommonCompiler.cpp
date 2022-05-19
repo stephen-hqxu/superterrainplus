@@ -58,7 +58,7 @@ constexpr static auto DeviceInclude = generateInclude<SuperAlgorithmPlus_DeviceI
 
 STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk, 
 	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : 
-	Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk), SimplexPermutation(simplex_setting) {
+	SimplexPermutation(simplex_setting), Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk) {
 	constexpr static string_view ArchitectureOption = "-arch=sm_";
 	//select capability automatically based on the current GPU
 	cudaDeviceProp dev_prop;

@@ -20,6 +20,11 @@ namespace STPDemo {
 	 * @brief STPWorldManager is a high-level binding that allows user to generate and render any infinite procedural world within minimal efforts.
 	*/
 	class STPWorldManager {
+	private:
+
+		//settings
+		SuperTerrainPlus::STPEnvironment::STPConfiguration WorldSetting;
+
 	public:
 
 		//A compiler contains all runtime scripts
@@ -38,8 +43,6 @@ namespace STPDemo {
 		std::unique_ptr<STPWorldSplattingAgent> Texture;
 
 		//Order of declaration is very important
-		//settings
-		SuperTerrainPlus::STPEnvironment::STPConfiguration WorldSetting;
 		//generators
 		std::optional<SuperTerrainPlus::STPHeightfieldGenerator> ChunkGenerator;
 		std::unique_ptr<SuperTerrainPlus::STPDiversity::STPBiomeFactory> BiomeFactory;
@@ -98,7 +101,7 @@ namespace STPDemo {
 		void attachDiversityGenerator(Arg&&...);
 
 		/**
-		 * @brief Attach the texture factory with this world managaer.
+		 * @brief Attach the texture factory with this world manager.
 		 * @tparam Tex The instance of the texture factory.
 		 * @tparam ...Arg Arguments to create a concrete instance of the texture factory.
 		 * @param arg... Parameter set to create a concrete instance of texture factory.

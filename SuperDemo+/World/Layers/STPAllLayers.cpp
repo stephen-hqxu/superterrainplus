@@ -44,7 +44,7 @@ using namespace SuperTerrainPlus::STPDiversity;
 //The size of individual cache
 static constexpr size_t Cachesize = 2048ull;
 
-STPLayerChainBuilder::STPLayerChainBuilder(uvec2 dimension, Seed global) : GlobalSeed(global), STPBiomeFactory(dimension) {
+STPLayerChainBuilder::STPLayerChainBuilder(uvec2 dimension, Seed global) : STPBiomeFactory(dimension), GlobalSeed(global) {
 
 }
 

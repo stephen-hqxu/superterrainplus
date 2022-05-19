@@ -40,7 +40,7 @@ namespace SuperTerrainPlus {
 		*/
 		STP_API bool hasInit();
 
-	};
+	}
 
 }
 

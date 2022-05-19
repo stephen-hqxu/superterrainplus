@@ -90,6 +90,7 @@ public:
 				//for new line delimiter, discard this character and advance then return
 				this->Sequence++;
 				this->Line++;
+				[[fallthrough]];
 			case '\0':
 				//for end of file, do not advance to the next character
 
@@ -153,7 +154,7 @@ STPINIReader::STPINIReader(const string_view& ini_str) {
 	optional<string_view> line;
 	//start with unnamed section
 	STPINISectionView* current_sec = &this->addSection("");
-	while (line = reader.getLine()) {
+	while ((line = reader.getLine())) {
 		if (line->empty()) {
 			//skip empty line
 			continue;

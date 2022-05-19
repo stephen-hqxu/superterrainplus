@@ -227,7 +227,7 @@ public:
 
 	~STPConsoleReporter() = default;
 
-	constexpr static inline char* getDescription() {
+	static const char* getDescription() {
 		return "The default reporter for project super terrain +, with a nice layout of all test cases and sections";
 	}
 
@@ -273,4 +273,4 @@ public:
 
 };
 
-CATCH_REGISTER_REPORTER("stp_console", STPConsoleReporter);
+CATCH_REGISTER_REPORTER("stp_console", STPConsoleReporter)

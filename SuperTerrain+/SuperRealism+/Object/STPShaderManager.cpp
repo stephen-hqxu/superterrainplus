@@ -193,7 +193,7 @@ void STPShaderManager::operator()(const STPShaderSource& source) {
 			identifier << name << endl;
 
 			//print a horizontal bar
-			for (int i = 0; i < name.length(); i++) {
+			for (size_t i = 0ull; i < name.length(); i++) {
 				identifier << '-';
 			}
 			identifier << endl;

@@ -19,7 +19,7 @@ using std::move;
 using std::mutex;
 
 STPBiomefieldGenerator::STPBiomefieldGenerator(const STPCommonCompiler& program, uvec2 dimension, unsigned int interpolation_radius)
-	: STPDiversityGenerator(), KernelProgram(program), MapSize(dimension), InterpolationRadius(interpolation_radius) {
+	: STPDiversityGenerator(), MapSize(dimension), KernelProgram(program), InterpolationRadius(interpolation_radius) {
 	//init our device generator
 	//our heightfield setting only available in OCEAN biome for now
 	this->initGenerator();

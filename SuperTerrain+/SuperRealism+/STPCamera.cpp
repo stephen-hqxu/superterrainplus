@@ -23,7 +23,7 @@ using SuperTerrainPlus::STPMatrix4x4d;
 using namespace SuperTerrainPlus::STPRealism;
 
 STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props, STPProjectionCategory proj_type) : 
-	Camera(props), View(glm::identity<dmat4>()), ViewOutdated(true), ProjectionType(proj_type) {
+	View(glm::identity<dmat4>()), ViewOutdated(true), Camera(props), ProjectionType(proj_type) {
 	if (!this->Camera.validate()) {
 		throw STPException::STPInvalidEnvironment("Camera setting not validated");
 	}

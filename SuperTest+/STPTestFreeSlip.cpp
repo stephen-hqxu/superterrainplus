@@ -152,11 +152,11 @@ REQUIRE_NOTHROW(TestBuffer.reset())
 
 TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can merge and disintegrate per-chunk texture following the memory mode", 
 	"[GPGPU][FreeSlip][STPFreeSlipTextureBuffer]", float, Sample) {
-	using CurrentTester = FreeSlipBufferTester<TestType>;
+	using CurrentTester = ::FreeSlipBufferTester<TestType>;
 
 	WHEN("Some wrong numbers are provided to the texture buffer") {
 		STPFreeSlipTextureAttribute ZeroPixel = { CurrentTester::SmallInfo, STPPinnedMemoryPool(), 0 };
-		TestData DefaultData = { TestMemoryMode::ReadOnly, 0 };
+		typename CurrentTester::TestData DefaultData = { CurrentTester::TestMemoryMode::ReadOnly, 0 };
 
 		AND_WHEN("The number of free-slip texture does not logically match the free-slip setting") {
 			vector<TestType*> EmptyBuffer;
@@ -164,9 +164,9 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 
 			THEN("Construction of free-slip texture buffer should be also prevented") {
 				//no texture buffer
-				REQUIRE_THROWS_AS(CurrentFreeSlipBuffer(EmptyBuffer, DefaultData, CurrentTester::SmallAttribute), STPException::STPInvalidArgument);
+				REQUIRE_THROWS_AS(typename CurrentTester::CurrentFreeSlipBuffer(EmptyBuffer, DefaultData, CurrentTester::SmallAttribute), STPException::STPInvalidArgument);
 				//more texture buffer are provided for free-slip
-				REQUIRE_THROWS_AS(CurrentFreeSlipBuffer(ALotBuffer, DefaultData, CurrentTester::SmallAttribute), STPException::STPInvalidArgument);
+				REQUIRE_THROWS_AS(typename CurrentTester::CurrentFreeSlipBuffer(ALotBuffer, DefaultData, CurrentTester::SmallAttribute), STPException::STPInvalidArgument);
 			}
 
 		}
@@ -174,30 +174,30 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 	}
 
 	GIVEN("A valid array of texture buffer and appropriate memory operation mode") {
-		const TestMemoryMode Mode = GENERATE(values({
-			TestMemoryMode::ReadOnly,
-			TestMemoryMode::WriteOnly,
-			TestMemoryMode::ReadWrite
+		const typename CurrentTester::TestMemoryMode Mode = GENERATE(values({
+			CurrentTester::TestMemoryMode::ReadOnly,
+			CurrentTester::TestMemoryMode::WriteOnly,
+			CurrentTester::TestMemoryMode::ReadWrite
 		}));
-		optional<CurrentFreeSlipBuffer> TestBuffer;
+		optional<typename CurrentTester::CurrentFreeSlipBuffer> TestBuffer;
 
 		REQUIRE_NOTHROW([&TestBuffer, Mode, this]() {
-			TestData Data = { Mode, 0 };
+			typename CurrentTester::TestData Data = { Mode, 0 };
 			TestBuffer.emplace(this->TextureBuffer, Data, CurrentTester::SmallAttribute);
 		}());
 
 		WHEN("Texture buffer is un-merged") {
 
 			THEN("Merge location is not available") {
-				REQUIRE_THROWS_AS(TestBuffer->where() == MemoryLocation::HostMemory, STPException::STPMemoryError);
+				REQUIRE_THROWS_AS(TestBuffer->where() == CurrentTester::MemoryLocation::HostMemory, STPException::STPMemoryError);
 			}
 
 		}
 
 		WHEN("Merge the texture with said memory mode") {
-			const MemoryLocation ChosenLocation = GENERATE(values({
-				MemoryLocation::HostMemory,
-				MemoryLocation::DeviceMemory
+			const typename CurrentTester::MemoryLocation ChosenLocation = GENERATE(values({
+				CurrentTester::MemoryLocation::HostMemory,
+				CurrentTester::MemoryLocation::DeviceMemory
 			}));
 			//When using device merged buffer, we need to copy it back to host to be able to test it
 
@@ -212,13 +212,13 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 					REQUIRE(TestBuffer->where() == ChosenLocation);
 					REQUIRE((*TestBuffer)(ChosenLocation) == RawMergedBuffer);
 
-					CHECKED_IF(ChosenLocation == MemoryLocation::DeviceMemory) {
+					CHECKED_IF(ChosenLocation == CurrentTester::MemoryLocation::DeviceMemory) {
 
 						AND_WHEN("Memory was allocated on device") {
 
 							THEN("A piece of host read-only cache can also be retrieved") {
 								//host memory buffer can be retrieved as well when we are on device mode, the buffer is read only
-								TestType* HostCache = (*TestBuffer)(MemoryLocation::HostMemory);
+								TestType* HostCache = (*TestBuffer)(CurrentTester::MemoryLocation::HostMemory);
 								this->compareHostDeviceBuffer(HostCache, Mode);
 							}
 
@@ -232,7 +232,7 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 					const TestType RandomData = CurrentTester::getRandomData();
 					TestType* const OperatedMergedBuffer = this->getBuffer();
 
-					CHECKED_IF(Mode == TestMemoryMode::ReadOnly) {
+					CHECKED_IF(Mode == CurrentTester::TestMemoryMode::ReadOnly) {
 						//test if data is available
 						MERGED_AVAILABLE();
 
@@ -242,7 +242,7 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 						//make sure the original data is intact under read only mode
 						REQUIRE(this->Reference[index] == this->Texture[index]);
 					}
-					CHECKED_IF(Mode == TestMemoryMode::WriteOnly) {
+					CHECKED_IF(Mode == CurrentTester::TestMemoryMode::WriteOnly) {
 						//checking if the merged texture contains garbage data
 						//reading garbage data is a undefined behaviour, so good luck
 						const bool result = OperatedMergedBuffer[index] == this->Texture[index];
@@ -256,7 +256,7 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 						//the new data should be written back
 						TEXTURE_WRITTEN();
 					}
-					CHECKED_IF(Mode == TestMemoryMode::ReadWrite) {
+					CHECKED_IF(Mode == CurrentTester::TestMemoryMode::ReadWrite) {
 						MERGED_AVAILABLE();
 
 						WRITE_MERGED();

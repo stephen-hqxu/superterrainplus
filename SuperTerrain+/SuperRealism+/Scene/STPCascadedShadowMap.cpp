@@ -48,7 +48,7 @@ public:
 };
 
 STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLightFrustum& light_frustum) : STPLightShadow(resolution, STPShadowMapFormat::Array), 
-	LightDirection(vec3(0.0f)), LightSpaceOutdated(true), LightFrustum(light_frustum) {
+	LightDirection(vec3(0.0f)), LightFrustum(light_frustum), LightSpaceOutdated(true) {
 	const auto& [div, band_radius, focus_camera, distance_mul] = this->LightFrustum;
 	if (distance_mul < 1.0f) {
 		throw STPException::STPBadNumericRange("A less-than-one shadow distance is not able to cover the view frustum");

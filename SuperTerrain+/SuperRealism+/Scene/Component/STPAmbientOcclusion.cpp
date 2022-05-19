@@ -141,7 +141,7 @@ void STPAmbientOcclusion::occlude(const STPTexture& depth, const STPTexture& nor
 #define AO_KERNEL_CSTR(ALG) AO_KERNEL_NAME(ALG)::STPOcclusionKernel(const STPEnvironment::STPOcclusionKernelSetting& kernel)
 #define AO_KERNEL_VEC(ALG) void AO_KERNEL_NAME(ALG)::rotationVector(STPTexture& texture, const STPKernelRNG& rng) const
 #define AO_KERNEL_OPT(ALG) void AO_KERNEL_NAME(ALG)::compilerOption(STPKernelOption& option) const
-#define AO_KERNEL_UNI(ALG) void AO_KERNEL_NAME(ALG)::uniformKernel(STPProgramManager& program, const STPKernelRNG& rng) const
+#define AO_KERNEL_UNI(ALG) void AO_KERNEL_NAME(ALG)::uniformKernel(STPProgramManager& program, [[maybe_unused]] const STPKernelRNG& rng) const
 
 AO_KERNEL_CSTR(SSAO) : STPOcclusionKernelInstance(kernel, STPOcclusionAlgorithm::SSAO), KernelSize(1u) {
 

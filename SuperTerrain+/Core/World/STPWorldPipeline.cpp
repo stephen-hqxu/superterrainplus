@@ -367,7 +367,7 @@ public:
 	*/
 	STPGeneratorManager(STPWorldPipeline::STPPipelineSetup& setup, STPWorldPipeline& pipeline) : 
 		generateBiomemap(*setup.BiomemapGenerator), generateHeightfield(*setup.HeightfieldGenerator), generateSplatmap(*setup.SplatmapGenerator), 
-		ChunkSetting(*setup.ChunkSetting), Pipeline(pipeline), GeneratorWorker(5u) {
+		Pipeline(pipeline), GeneratorWorker(5u), ChunkSetting(*setup.ChunkSetting) {
 
 	}
 

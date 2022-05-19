@@ -42,7 +42,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 				/**
 				 * @brief Insert a macro-value pair into the macro dictionary.
-				 * @tparam T The type of the value. This type must be convertable to string defined by standard library function to_string().
+				 * @tparam T The type of the value. This type must be convertible to string defined by standard library function to_string().
 				 * @param macro The name of the macro.
 				 * @param value The value of the macro which will be converted to string.
 				 * @return The pointer to the current dictionary for chaining.
@@ -64,7 +64,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 				std::list<std::string> Pathname;
 
-				STPShaderIncludePath() = default;;
+				STPShaderIncludePath() = default;
 
 				~STPShaderIncludePath() = default;
 

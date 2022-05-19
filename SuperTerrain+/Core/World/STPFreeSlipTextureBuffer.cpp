@@ -41,7 +41,7 @@ void STPFreeSlipTextureBuffer<T>::STPHostCallbackDeleter::operator()(T* ptr) con
 
 template<typename T>
 STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(STPFreeSlipTexture& texture, STPFreeSlipTextureData data, const STPFreeSlipTextureAttribute& attr) : 
-	Buffer(texture), Data(data), Attr(attr) {
+	Attr(attr), Data(data), Buffer(texture) {
 	const STPFreeSlipInformation& info = this->Attr.TextureInfo;
 	const unsigned int freeslip_count = info.FreeSlipChunk.x * info.FreeSlipChunk.y;
 
@@ -116,7 +116,7 @@ inline void STPFreeSlipTextureBuffer<T>::copyFreeslipBuffer() {
 		freeslip_row_size = map_row_size * freeslip_chunk_row;
 	const unsigned int pixel_per_row_chunk = info.FreeSlipRange.x * info.Dimension.y;
 	//copy with free-slip logic using 2D copy
-	for (int i = 0; i < this->Buffer.size(); i++) {
+	for (unsigned int i = 0u; i < this->Buffer.size(); i++) {
 		const unsigned int offset = info.Dimension.x * (i % freeslip_chunk_row) + pixel_per_row_chunk * (i / freeslip_chunk_row);
 
 		if constexpr (Pack) {
@@ -199,6 +199,6 @@ typename STPFreeSlipTextureBuffer<T>::STPFreeSlipLocation STPFreeSlipTextureBuff
 }
 
 //Export Explicit Instantiation of Class
-template class STP_API STPFreeSlipTextureBuffer<float>;
-template class STP_API STPFreeSlipTextureBuffer<Sample>;
-template class STP_API STPFreeSlipTextureBuffer<std::enable_if<!std::is_same<unsigned short, Sample>::value, unsigned short>>;
+template class STP_API SuperTerrainPlus::STPFreeSlipTextureBuffer<float>;
+template class STP_API SuperTerrainPlus::STPFreeSlipTextureBuffer<Sample>;
+template class STP_API SuperTerrainPlus::STPFreeSlipTextureBuffer<std::enable_if<!std::is_same<unsigned short, Sample>::value, unsigned short>>;

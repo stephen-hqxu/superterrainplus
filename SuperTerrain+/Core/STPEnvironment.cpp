@@ -55,9 +55,6 @@ STPHeightfieldSetting::STPHeightfieldSetting() : STPRainDropSetting(),
 }
 
 bool STPHeightfieldSetting::validate() const {
-	static constexpr auto checkRange = [](float value, float lower, float upper) constexpr -> bool {
-		return value >= lower && value <= upper;
-	};
 	//check the raindrop parameter plus also heightmap parameter
 	return this->STPRainDropSetting::validate();
 }

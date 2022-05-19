@@ -96,7 +96,7 @@ inline const STPChunk* STPChunk::STPMapVisitor<Unique>::operator->() const {
 	}
 }
 
-STPChunk::STPChunk(uvec2 size) : PixelSize(size), State(STPChunkState::Empty), Occupied(false) {
+STPChunk::STPChunk(uvec2 size) : Occupied(false), State(STPChunkState::Empty), PixelSize(size) {
 	const unsigned int num_pixel = size.x * size.y;
 	if (num_pixel == 0) {
 		throw STPException::STPBadNumericRange("The dimension of texture must not be zero");

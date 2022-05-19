@@ -30,7 +30,7 @@ namespace SuperTerrainPlus::STPDiversity {
 
 			//Control the UV scaling factor of a texture.
 			//The primary scale will be used when the viewer is very closed, 
-			//the the scale is reduced to secondary when the viewer is further, then tertiary.
+			//the scale is reduced to secondary when the viewer is further, then tertiary.
 			unsigned int PrimaryScale, SecondaryScale, TertiaryScale;
 
 		};
@@ -109,7 +109,7 @@ namespace SuperTerrainPlus::STPDiversity {
 
 			//The index to the gradient setup for this sample. If there is no gradient configuration, denoted by size, value will be undefined.
 			unsigned int GradientEntry,
-				//The number of elemenet in the gradient table. Zero is none.
+				//The number of element in the gradient table. Zero is none.
 				GradientSize = 0u;
 
 		};
@@ -180,6 +180,6 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		};
 
-	};
+	}
 }
 #endif//_STP_TEXTURE_INFORMATION_HPP_

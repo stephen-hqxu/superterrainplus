@@ -91,6 +91,6 @@ namespace STPDemo {
 		*/
 		void loadBiomeParameters(const SuperTerrainPlus::STPAlgorithm::STPINIStorageView&);
 
-	};
+	}
 }
 #endif//_STP_HEIGHTFIELD_PARA_LOADER_H_

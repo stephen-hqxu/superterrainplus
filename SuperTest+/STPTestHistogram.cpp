@@ -18,6 +18,8 @@ using glm::uvec2;
 using std::pair;
 using std::make_pair;
 
+#define EXPECT_PAIR(X, Y) make_pair<Sample>(X, Y)
+
 class HistogramTester : protected STPSingleHistogramFilter {
 private:
 
@@ -61,20 +63,20 @@ protected:
 		constexpr static unsigned int TrialOffset[] = { 0u, 8u, 15u };
 		constexpr static pair<Sample, float> Expected[] = {
 			//0-1
-			make_pair(0u, 0.24f),
-			make_pair(3u, 0.24f),
-			make_pair(2u, 0.28f),
-			make_pair(1u, 0.24f),
+			EXPECT_PAIR(0u, 0.24f),
+			EXPECT_PAIR(3u, 0.24f),
+			EXPECT_PAIR(2u, 0.28f),
+			EXPECT_PAIR(1u, 0.24f),
 			//8-9
-			make_pair(0u, 0.36f),
-			make_pair(3u, 0.24f),
-			make_pair(1u, 0.16f),
-			make_pair(2u, 0.24f),
+			EXPECT_PAIR(0u, 0.36f),
+			EXPECT_PAIR(3u, 0.24f),
+			EXPECT_PAIR(1u, 0.16f),
+			EXPECT_PAIR(2u, 0.24f),
 			//14-15
-			make_pair(0u, 0.32f),
-			make_pair(3u, 0.2f),
-			make_pair(1u, 0.12f),
-			make_pair(2u, 0.36f),
+			EXPECT_PAIR(0u, 0.32f),
+			EXPECT_PAIR(3u, 0.2f),
+			EXPECT_PAIR(1u, 0.12f),
+			EXPECT_PAIR(2u, 0.36f),
 
 		};
 		//loop
@@ -118,7 +120,7 @@ SCENARIO_METHOD(HistogramTester, "STPSingleHistogramFilter analyses a sample tex
 		WHEN("Launch it again with the correct argument") {
 
 			THEN("Histogram should be computed without errors") {
-				STPSingleHistogram result;
+				STPSingleHistogram result = { };
 				REQUIRE_NOTHROW([this, &result]() { result = this->execute(); }());
 
 				//all results should be the same

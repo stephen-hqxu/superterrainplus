@@ -317,7 +317,7 @@ namespace STPDemo {
 		inline Sample CAS(Sample comparator, Sample comparable, Sample fallback) noexcept {
 			return comparator == comparable ? comparable : fallback;
 		}
-	};
+	}
 
 }
 #endif//_STP_BIOME_REGISTRY_H_
