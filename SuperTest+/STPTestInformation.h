@@ -12,6 +12,6 @@ namespace STPTestInformation {
 	//CUDA device default memory pool
 	extern cudaMemPool_t TestDeviceMemoryPool;
 
-};
+}
 
 #endif//_STP_TEST_INFORMATION_H_

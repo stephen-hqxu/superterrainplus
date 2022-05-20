@@ -468,8 +468,8 @@ public:
 
 };
 
-STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : PipelineWorker(1u), Generator(make_unique<STPGeneratorManager>(setup, *this)), 
-	BufferStream(cudaStreamNonBlocking), ChunkSetting(*setup.ChunkSetting) {
+STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : Generator(make_unique<STPGeneratorManager>(setup, *this)), 
+	BufferStream(cudaStreamNonBlocking), PipelineWorker(1u), ChunkSetting(*setup.ChunkSetting) {
 	const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
 	const uvec2 buffer_size(setting.RenderedChunk * setting.MapSize);
 	auto setupTex = [buffer_size](GLuint texture, GLint min_filter, GLint mag_filter, GLsizei levels, GLenum internalFormat) -> void {

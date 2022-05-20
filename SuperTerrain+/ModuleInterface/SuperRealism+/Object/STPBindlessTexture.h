@@ -32,6 +32,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Enable bindless handle so it can be used.
+		 * If the bindless handle has been enabled, exception is generated.
 		*/
 		void enableHandle() const;
 

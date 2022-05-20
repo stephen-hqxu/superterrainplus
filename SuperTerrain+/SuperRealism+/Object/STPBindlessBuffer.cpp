@@ -1,5 +1,7 @@
 #include <SuperRealism+/Object/STPBindlessBuffer.h>
 
+#include <SuperTerrain+/Exception/STPGLError.h>
+
 //GLAD
 #include <glad/glad.h>
 
@@ -16,6 +18,9 @@ inline static GLuint64EXT getBufferAddress(GLuint buffer) {
 }
 
 STPBindlessBuffer::STPBindlessBuffer(const STPBuffer& buffer, STPOpenGL::STPenum access) : Buffer(*buffer), Address(getBufferAddress(this->Buffer.get())) {
+	if (glIsNamedBufferResidentNV(this->Buffer.get())) {
+		throw STPException::STPGLError("The requested buffer has already had a buffer address active");
+	}
 	glMakeNamedBufferResidentNV(this->Buffer.get(), access);
 }
 

@@ -28,13 +28,14 @@ namespace SuperTerrainPlus::STPRealism {
 		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPBindlessBufferInvalidater>> STPSmartBindlessBuffer;
 		//Bindless VBO
 		STPSmartBindlessBuffer Buffer;
-		//The address aqured from the buffer.
+		//The address acquired from the buffer.
 		STPOpenGL::STPuint64 Address;
 
 	public:
 
 		/**
 		 * @brief Create a bindless buffer from a buffer object.
+		 * If the buffer has already had an address resident previously, an exception is generated.
 		 * @param buffer The pointer to the buffer object for retrieving address.
 		 * @param access Specifies the memory access method for this buffer address.
 		*/

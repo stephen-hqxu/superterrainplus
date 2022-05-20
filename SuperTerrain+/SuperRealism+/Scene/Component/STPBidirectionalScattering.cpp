@@ -83,18 +83,16 @@ void STPBidirectionalScattering::setCopyBuffer(uvec2 dimension) {
 	}
 
 	//create new handle
-	STPBindlessTexture copy_color_handle(copy_color, this->ColorSampler), copy_depth_handle(copy_depth, this->DepthSampler);
+	this->SceneColorHandle.emplace(copy_color, this->ColorSampler);
+	this->SceneDepthHandle.emplace(copy_depth, this->DepthSampler);
 	//send new handle
-	this->OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, "SceneColor", *copy_color_handle)
-		.uniform(glProgramUniformHandleui64ARB, "SceneDepth", *copy_depth_handle);
+	this->OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, "SceneColor", **this->SceneColorHandle)
+		.uniform(glProgramUniformHandleui64ARB, "SceneDepth", **this->SceneDepthHandle);
 
 	using std::move;
 	//replace member with new memory
 	this->SceneColor = move(copy_color);
 	this->SceneDepth = move(copy_depth);
-
-	this->SceneColorHandle.emplace(move(copy_color_handle));
-	this->SceneDepthHandle.emplace(move(copy_depth_handle));
 }
 
 void STPBidirectionalScattering::copyScene(const STPTexture& color, const STPTexture& depth) {

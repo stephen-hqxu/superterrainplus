@@ -1,5 +1,7 @@
 #include <SuperRealism+/Object/STPBindlessTexture.h>
 
+#include <SuperTerrain+/Exception/STPGLError.h>
+
 //GLAD
 #include <glad/glad.h>
 
@@ -10,6 +12,9 @@ void STPBindlessTexture::STPBindlessTextureInvalidater::operator()(STPOpenGL::ST
 }
 
 inline void STPBindlessTexture::enableHandle() const {
+	if (glIsTextureHandleResidentARB(this->Handle.get())) {
+		throw STPException::STPGLError("The requested texture has already had a bindless handle active");
+	}
 	glMakeTextureHandleResidentARB(this->Handle.get());
 }
 

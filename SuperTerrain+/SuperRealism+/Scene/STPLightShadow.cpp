@@ -96,13 +96,12 @@ void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::S
 	}
 
 	/* --------------------------- setup depth handle -------------------------------- */
-	STPBindlessTexture shadow_map_handle(shadow_map);
-	this->updateShadowMapHandle(*shadow_map_handle);
+	this->ShadowMapHandle.emplace(shadow_map);
+	this->updateShadowMapHandle(*this->ShadowMapHandle.value());
 
 	using std::move;
 	//store the target as member
 	this->ShadowMap.emplace(move(shadow_map));
-	this->ShadowMapHandle.emplace(move(shadow_map_handle));
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPLightShadow::shadowDataAddress() const {

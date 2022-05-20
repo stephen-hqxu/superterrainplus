@@ -144,7 +144,7 @@ Test library:
 
 | Option | Note | Default |
 | ------ | ------------ | ------- |
-| STP_CUDA_RUNTIME_LIBRARY | Set the global `nvcc` compiler flag `-cudart=` to the value set | "Shared" |
+| STP_CUDA_RUNTIME_LIBRARY | Set the global `nvcc` compiler flag `-cudart=` to the value set | Shared |
 | STP_USE_AVX2 | Use AVX2 instruction sets on all vector operations | ON |
 | STP_BUILD_DEMO | Enable SuperDemo+ program build | ON |
 | STP_DEVELOPMENT_BUILD | Enable development mode | OFF |
