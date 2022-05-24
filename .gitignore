@@ -1,8 +1,6 @@
 #Compilation output
 build/
 out/
-#External libraries will be provided separately
-External/
 
 #Research papers
 Research/

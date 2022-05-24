@@ -4,16 +4,26 @@ DESCRIPTION "Multi-Language Vulkan/GL/GLES/EGL/GLX/WGL Loader-Generator based on
 HOMEPAGE_URL "https://github.com/Dav1dde/glad"
 )
 
+# setup GLAD library source files
+include(DownloadResource)
+downloadResource(
+URL "https://github.com/stephen-hqxu/superterrainplus/releases/download/v0.13.7/GLAD.tar.gz"
+FILENAME "GLAD"
+EXTENSION ".tar.gz"
+EXTRACT
+)
+set(STP_GLAD_DIR ${STP_RESOURCE_CACHE_LOCATION}/GLAD)
+
 # pre-compile GLAD so the object can be shared
 add_library(${STP_GLAD} SHARED
-src/glad.c
+${STP_GLAD_DIR}/src/glad.c
 )
 
 target_link_libraries(${STP_GLAD}
 INTERFACE OpenGL::GL
 )
 target_include_directories(${STP_GLAD}
-PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+PUBLIC ${STP_GLAD_DIR}/include
 )
 
 # instruct GLAD to use shared library mode for all linked library

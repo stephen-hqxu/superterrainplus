@@ -1,5 +1,23 @@
-set(STP_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/External)
 set(STP_DEMO_PROGRAM "SuperDemo+")
+
+# download external libraries and assets
+include(DownloadResource)
+# some external libraries
+downloadResource(
+URL "https://github.com/stephen-hqxu/superterrainplus/releases/download/v0.13.7/External.tar.gz"
+FILENAME "External"
+EXTENSION ".tar.gz"
+EXTRACT
+)
+set(STP_EXTERNAL_DIR ${STP_RESOURCE_CACHE_LOCATION}/External)
+# resource
+downloadResource(
+URL "https://github.com/stephen-hqxu/superterrainplus/releases/download/v0.13.7/Resource.tar.gz"
+FILENAME "Resource"
+EXTENSION ".tar.gz"
+EXTRACT
+)
+set(STP_RESOURCE_DIR ${STP_RESOURCE_CACHE_LOCATION}/Resource)
 
 # minimum GLFW requirement v3.0
 find_package(glfw3 3 REQUIRED CONFIG)
@@ -18,11 +36,11 @@ STPStart.cpp
 )
 
 if(MSVC)
-	# set VS debuging directory
+	# set VS debugging directory
 	set_target_properties(${STP_DEMO_PROGRAM} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>)
 endif()
 
-# cuda related static libraries are added by public target
+# CUDA related static libraries are added by public target
 target_include_directories(${STP_DEMO_PROGRAM}
 PRIVATE ${STP_EXTERNAL_DIR}
 )
@@ -52,11 +70,11 @@ $<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>
 add_custom_command(
 TARGET ${STP_DEMO_PROGRAM} POST_BUILD      
 COMMAND ${CMAKE_COMMAND} -E copy_directory
-${CMAKE_CURRENT_SOURCE_DIR}/Resource
+${STP_RESOURCE_DIR}
 $<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>/Resource
 )
 
-# copy ini
+# copy INI
 add_custom_command(
 TARGET ${STP_DEMO_PROGRAM} POST_BUILD      
 COMMAND ${CMAKE_COMMAND} -E copy_if_different
