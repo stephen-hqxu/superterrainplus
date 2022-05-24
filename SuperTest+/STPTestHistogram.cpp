@@ -52,7 +52,7 @@ private:
 
 protected:
 
-	inline const static STPSingleHistogramFilter::STPHistogramBuffer_t Buffer = STPSingleHistogramFilter::createHistogramBuffer();
+	const STPSingleHistogramFilter::STPHistogramBuffer_t Buffer = STPSingleHistogramFilter::createHistogramBuffer();
 
 	inline STPSingleHistogram execute(unsigned int radius = 2u) {
 		return (*this)(HistogramTester::Texture, HistogramTester::Data, Buffer, radius);
@@ -133,13 +133,6 @@ SCENARIO_METHOD(HistogramTester, "STPSingleHistogramFilter analyses a sample tex
 					}
 				}
 
-			}
-
-			THEN("The histogram result can be retrieved even though the generator is dead") {
-				//retrieve the histogram directly from the buffer
-				//the buffer is static in the test class so it won't be reset
-				auto readResult = this->readHistogramBuffer(HistogramTester::Buffer);
-				this->verifyHistogram(readResult);
 			}
 
 		}

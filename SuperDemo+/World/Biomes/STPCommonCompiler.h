@@ -26,7 +26,8 @@ namespace STPDemo {
 	private:
 
 		//compiler option to select compute capability
-		std::string CapabilityOption;
+		//need to store the string because compiler options are passed as character pointer, and we need to use the options later
+		const std::string CapabilityOption;
 		//Contains compiler options (only) for source codes, external headers and named expr are not set
 		STPRuntimeCompilable::STPSourceInformation SourceInfo;
 		//Contains linker options

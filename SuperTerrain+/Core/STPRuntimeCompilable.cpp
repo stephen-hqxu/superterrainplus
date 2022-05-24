@@ -1,5 +1,6 @@
 #include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
 
+//Error Handling
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 #include <SuperTerrain+/Exception/STPCompilationError.h>
 #include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
@@ -240,4 +241,15 @@ const STPRuntimeCompilable::STPLoweredName& STPRuntimeCompilable::retrieveSource
 
 CUmodule STPRuntimeCompilable::getGeneratorModule() const {
 	return this->GeneratorProgram.get();
+}
+
+int STPRuntimeCompilable::getArchitecture(int device) {
+	CUdevice dev;
+	STPcudaCheckErr(cuDeviceGet(&dev, device));
+
+	int major, minor;
+	STPcudaCheckErr(cuDeviceGetAttribute(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, dev));
+	STPcudaCheckErr(cuDeviceGetAttribute(&minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, dev));
+
+	return major * 10 + minor;
 }

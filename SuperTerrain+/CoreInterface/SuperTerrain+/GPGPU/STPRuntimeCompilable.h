@@ -283,6 +283,14 @@ namespace SuperTerrainPlus {
 
 		virtual ~STPRuntimeCompilable() = default;
 
+		/**
+		 * @brief Get the 2-digit GPU architecture representation.
+		 * @param device Specifies the device ID to be retrieved.
+		 * @return The 2-digit GPU architecture.
+		 * For example, compute capability of 7.5 will return 75.
+		*/
+		static int getArchitecture(int);
+
 	};
 }
 #endif//_STP_RUNTIME_COMPILABLE_H_

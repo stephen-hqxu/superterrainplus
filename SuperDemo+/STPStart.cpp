@@ -491,6 +491,8 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 
 		STP_GET_KEY(GLFW_KEY_ESCAPE, glfwSetWindowShouldClose(GLCanvas, GLFW_TRUE))
 	}
+	
+#undef STP_GET_KEY
 
 	/* ------------------------------ framework setup ----------------------------------- */
 
@@ -558,7 +560,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		const auto proc_addr = reinterpret_cast<GLADloadproc>(glfwGetProcAddress);
 		//when we are using shared library build in GLAD, the GLAD context is shared to all libraries that are linked to it.
 		if (!SuperTerrainPlus::STPEngineInitialiser::initGLexplicit(proc_addr)) {
-			cerr << "Fail to initialise Super Terrain + engine." << endl;
+			cerr << "Fail to initialise SuperTerrain+ engine." << endl;
 			return false;
 		}
 		//CUDA context init on device 0 (only one GPU)
@@ -599,7 +601,7 @@ int main() {
 		cerr << se.what() << endl;
 		return -1;
 	}
-	const STPINIStorageView& engineINI(**engineINIReader), biomeINI(**biomeINIReader);
+	const STPINIStorageView& engineINI(**engineINIReader), &biomeINI(**biomeINIReader);
 
 	//engine setup
 	//because GLFW callback uses camera, so we need to setup camera first

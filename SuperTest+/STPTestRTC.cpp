@@ -70,11 +70,13 @@ protected:
 	CUfunction MattransformAdd, MattransformSub, Matscale;
 
 	void testCompilation(bool test_enable, bool attach_header) {
+		using namespace std::string_literals;
+		const string Capability = "-arch=sm_"s + std::to_string(RTCTester::getArchitecture(0));
 		//settings
 		STPSourceInformation src_info;
 		src_info.Option
 			["-std=c++17"]
-			["-arch=compute_75"]
+			[Capability.c_str()]
 			["-fmad=false"];
 		if (test_enable) {
 			//it's a define switch to test if compiler options are taken by the compiler

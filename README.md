@@ -5,7 +5,6 @@
 [![3rd-Party License](https://img.shields.io/badge/License-3rd--party-green)](https://github.com/stephen-hqxu/superterrainplus/blob/master/3rd-Party)
 [![Project Roadmap](https://img.shields.io/badge/Project-Roadmap-cd853f)](https://github.com/stephen-hqxu/superterrainplus/projects)
 [![Documentation](https://img.shields.io/badge/-Documentation-fa8072)](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/README.md)
-[![Dissertation](https://img.shields.io/badge/-Dissertation-7b68ee)](https://github.com/stephen-hqxu/superterrainplus/tree/master/Report)
 
 <p align="center"> A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering </p>
 
@@ -18,30 +17,26 @@
 	<img src="https://img.shields.io/badge/CMake_3.18-064F8C?style=flat&logo=cmake&logoColor=white" />
 </p>
 
-*SuperTerrain+* is a procedural terrain engine and real-time renderer started as my personal project in July, 2020 and later become my undergraduate dissertation; now I mainly use it as a playground for exploring modern rendering techniques and improving my programming proficiency. Procedural generation is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
+Procedural technique is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
 
-*SuperTerrain+* provides object-oriented interfaces to allow developers to customise the scenery as they preferred. Rather than considering it as a piece of software, it is also a collection of modern computer graphics techniques; with the help of detailed in-source documentations, this is also a great place for learning.
+*SuperTerrain+* is a procedural terrain engine and real-time renderer started as my personal project in July, 2020 and later become my undergraduate dissertation project; now I mainly use it as a playground for exploring this area further and improving my programming proficiency; more importantly, for fun.
 
-*SuperTerrain+* is focusing on the next-generation computer graphics and latest technologies, therefore there is no intention for backward compatibility and the development environment will be evolving over time.
+*SuperTerrain+* provides a low-overhead, extendible and flexible interface, demonstrates application of modern programming and rendering techniques; with the help of extensive in-source documentations, this is also a great place for learning.
 
 ## :bulb: Main Features
 
-*SuperTerrain+* is definitely not the first terrain generator, then why we need yet another one?
-
-There is no perfect answer to this question, every application has its own pros and cons. It focuses on modern techniques and programming practice, flexibility of engine design and specialisation of terrain generation and real-time photorealistic rendering. In addition, these features are believed to differentiate *SuperTerrain+* from the others.
-
 ### Procedural heightfield infinite terrain
 
-- [x] Tile-based infinite terrain
 - [x] Improved simplex noise
-- [x] Hardware ~~instancing and~~ tessellation
+- [x] Hardware tessellation
 - [x] Continuous level-of-detail
-- [x] Concurrent heightfield generation
-- [x] Particle-based free-slip hydraulic erosion
+- [x] Multi-threaded heightfield generation
+- [x] Free-slip particle-based hydraulic erosion
 - [x] Programmable static/runtime-compiled pipeline
 - [x] Biome generation
-- [x] Single histogram filter for Multi-biome heightfield generation with smooth transition
-- [x] Rule-based biome-dependent terrain texture splatting with smooth transition
+- [x] Multi-biome heightfield generation with smooth transition
+- [x] Rule-based biome-dependent texture splatting with smooth transition
+- [x] Adaptive distance-based texture scaling
 - [ ] River and lake generation
 
 ### Procedural volumetric infinite terrain
@@ -50,11 +45,11 @@ There is no perfect answer to this question, every application has its own pros 
 
 ### Procedural geometry generation
 
+- [ ] Volumetric cloud
 - [ ] Rule-based geometry placement
 - [ ] Procedural animated grassland generation
 - [ ] Procedural parameter-based tree generation
 - [ ] Procedural rock generation
-- [ ] Volumetric cloud
 
 ### Real-time photorealistic rendering
 
@@ -68,7 +63,7 @@ There is no perfect answer to this question, every application has its own pros 
   - [ ] Auto-exposure
 - [ ] Shadow mapping
   - [ ] Simple shadow mapping for spotlight
-  - [ ] Cubemap shadow mapping for pointlight
+  - [ ] Cubemap shadow mapping for point light
   - [x] Cascaded shadow mapping for directional light
 - [x] Ambient occlusion
   - [x] Screen-space ambient occlusion
@@ -92,7 +87,7 @@ There is no perfect answer to this question, every application has its own pros 
   - [ ] Underwater crepuscular rays
 - [ ] Night rendering
 - [ ] Procedural weather effect
-- [ ] Global illumination
+- [ ] Real-time global illumination
 
 ### Optimisation technique
 
@@ -100,7 +95,7 @@ There is no perfect answer to this question, every application has its own pros 
 - [ ] Variable rate shading
 - [ ] Mesh shading
 - [ ] Deferred clustered lighting
-- [ ] Sparse virtual texture (a.k.a. mega-texture)
+- [ ] Sparse virtual texture
 
 ## :bricks: Middleware
 
@@ -143,7 +138,7 @@ Test library:
 ### :ballot_box_with_check: CMake options
 
 | Option | Note | Default |
-| ------ | ------------ | ------- |
+| ------ | ---- | ------- |
 | STP_CUDA_RUNTIME_LIBRARY | Set the global `nvcc` compiler flag `-cudart=` to the value set | Shared |
 | STP_USE_AVX2 | Use AVX2 instruction sets on all vector operations | ON |
 | STP_BUILD_DEMO | Enable SuperDemo+ program build | ON |
@@ -181,10 +176,12 @@ Note that `::` denotes a CMake dependent option. Pattern *A::B* default to *valu
 - OpenGL 4.6 core profile
 - [GL_ARB_bindless_texture](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_bindless_texture.txt)
 - [GL_ARB_shading_language_include](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_shading_language_include.txt)
+- [GL_NV_bindless_multi_draw_indirect](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_bindless_multi_draw_indirect.txt)
 - [GL_NV_draw_texture](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_draw_texture.txt)
 - [GL_NV_gpu_shader5](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt)
 - [GL_NV_shader_buffer_load](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_load.txt)
 - [GL_NV_shader_buffer_store](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shader_buffer_store.txt)
+- [GL_NV_vertex_buffer_unified_memory](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_vertex_buffer_unified_memory.txt)
 
 The following extensions are not required but will be made used by the engine automatically whenever applicable.
 
@@ -237,10 +234,10 @@ cmake ../
 
 *SuperTerrain+* build script automatically searches for dependencies; in case of any error, please make sure you have all third-party libraries installed on your computer. You may want configure *CMakeCache.txt* before moving on to the next step to build the application.
 
-```sh
+```bat
 
-# Windows; you can either compile via Visual Studio GUI from the generated VS solution,
-# or alternatively the command line like this
+REM Windows; you can either compile via Visual Studio GUI from the generated VS solution,
+REM or alternatively the command line like this
 cmake --build ./ --config Release --target ALL_BUILD
 
 ```

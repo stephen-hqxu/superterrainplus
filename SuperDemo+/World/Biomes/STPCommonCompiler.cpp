@@ -57,17 +57,8 @@ constexpr static auto CoreInclude = generateInclude<SuperTerrainPlus_CoreInclude
 constexpr static auto DeviceInclude = generateInclude<SuperAlgorithmPlus_DeviceInclude>();
 
 STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk, 
-	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : 
+	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : CapabilityOption(string("-arch=sm_") + to_string(STPCommonCompiler::getArchitecture(0))),
 	SimplexPermutation(simplex_setting), Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk) {
-	constexpr static string_view ArchitectureOption = "-arch=sm_";
-	//select capability automatically based on the current GPU
-	cudaDeviceProp dev_prop;
-	STPcudaCheckErr(cudaGetDeviceProperties(&dev_prop, 0));
-	//allocate a bit more memory in case CUDA architecture has more than 2 digits
-	this->CapabilityOption.reserve(ArchitectureOption.length() + 5ull);
-	this->CapabilityOption = string(ArchitectureOption);
-	this->CapabilityOption.append(to_string(dev_prop.major)).append(to_string(dev_prop.minor));
-
 	//setup compiler options
 	this->SourceInfo.Option
 		["-std=c++17"]

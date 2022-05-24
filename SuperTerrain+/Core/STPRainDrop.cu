@@ -65,8 +65,8 @@ __device__ void STPRainDrop::operator()(float* map, const STPEnvironment::STPRai
 	float* brushWeights = reinterpret_cast<float*>(ErosionBrush + sizeof(int) * brushSize);
 	unsigned int iteration = 0u;
 
-	const int* erosionBrushIdx = settings->getErosionBrushIndices();
-	const float* erosionBrushWeight = settings->getErosionBrushWeights();
+	const int* erosionBrushIdx = settings->ErosionBrushIndices;
+	const float* erosionBrushWeight = settings->ErosionBrushWeights;
 	while (iteration < brushSize) {
 		unsigned int idx = threadIdx.x + iteration;
 		if (idx < brushSize) {
