@@ -22,8 +22,7 @@
 #include <glm/vec3.hpp>
 
 //System
-#include <queue>
-#include <list>
+#include <optional>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -84,7 +83,7 @@ namespace SuperTerrainPlus::STPRealism {
 		STPBuffer TerrainRenderCommand;
 
 		STPTexture NoiseSample;
-		std::optional<STPBindlessTexture> NoiseSampleHandle;
+		STPBindlessTexture NoiseSampleHandle;
 
 		//Shader program for terrain rendering
 		//modeller contains vertex, tes control and tes eval, shader contains geom and frag.
@@ -95,7 +94,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//data for texture splatting
 		STPBuffer SplatRegion;
-		std::optional<STPBindlessBuffer> SplatRegionAddress;
+		STPBindlessBuffer SplatRegionAddress;
 		std::vector<STPBindlessTexture> SplatTextureHandle;
 
 		/**

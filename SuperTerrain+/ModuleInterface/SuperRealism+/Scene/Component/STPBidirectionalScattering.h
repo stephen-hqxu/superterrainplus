@@ -13,9 +13,6 @@
 
 #include "../../Environment/STPBidirectionalScatteringSetting.h"
 
-//System
-#include <optional>
-
 #include <glm/vec2.hpp>
 
 namespace SuperTerrainPlus::STPRealism {
@@ -31,7 +28,7 @@ namespace SuperTerrainPlus::STPRealism {
 		STPSampler ColorSampler, DepthSampler, NormalSampler, MaterialSampler;
 		//capture copies of raw data from the scene without the transparent object.
 		STPTexture SceneColor, SceneDepth;
-		std::optional<STPBindlessTexture> SceneColorHandle, SceneDepthHandle;
+		STPBindlessTexture SceneColorHandle, SceneDepthHandle;
 		//This framebuffer is used for copying data from the scene into the internal memory.
 		STPFrameBuffer RawSceneColorCopier, RawSceneDepthCopier;
 

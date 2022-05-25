@@ -10,9 +10,9 @@ downloadResource(
 URL "https://github.com/stephen-hqxu/superterrainplus/releases/download/v0.13.7/GLAD.tar.gz"
 FILENAME "GLAD"
 EXTENSION ".tar.gz"
+LOCATION STP_GLAD_DIR
 EXTRACT
 )
-set(STP_GLAD_DIR ${STP_RESOURCE_CACHE_LOCATION}/GLAD)
 
 # pre-compile GLAD so the object can be shared
 add_library(${STP_GLAD} SHARED

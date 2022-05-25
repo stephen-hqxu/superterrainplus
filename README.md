@@ -198,13 +198,13 @@ The following extensions are not required but will be made used by the engine au
 
 To reduce the size of repository and keep everything clean, all external materials are not included in the commit.
 
-To simplify the setup process for the first-time build, the following resources are managed automatically by CMake upon creating the build tree and no manual setup is required. All the rest of the aforementioned dependencies are required to be installed on your computer.
+To simplify the setup process for the first-time build, the following resources are managed automatically by CMake and no additional setup is required. All the rest of the aforementioned dependencies are required to be installed on your computer.
 
 - Assets for the demo program
 - stb_image.h
 - GLAD
 
-Resources are downloaded to directory `STPResourceCache` located at the root of your binary directory. The build system will not re-download them if they already exist; simply deleting the respective directory within `STPResourceCache` can purge the cache and will force a re-download next time the program is built.
+CMake will download the required files hosted on GitHub Releases, to directory `STPResourceCache` located at the root of your binary directory. The build system will not re-download them if they already exist; they may get updated in the future at one point, if your older version fails to compile or run, simply deleting the respective directory within `STPResourceCache` can purge the cache and will force a re-download next time the program is built.
 
 #### Build
 

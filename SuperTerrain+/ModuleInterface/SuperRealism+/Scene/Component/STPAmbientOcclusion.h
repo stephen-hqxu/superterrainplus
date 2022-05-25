@@ -17,8 +17,6 @@
 //GLM
 #include <glm/vec2.hpp>
 
-#include <optional>
-
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -111,7 +109,7 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		STPTexture RandomRotationVector;
-		std::optional<STPBindlessTexture> RandomRotationVectorHandle;
+		STPBindlessTexture RandomRotationVectorHandle;
 		//Sampler for the external input
 		STPSampler GBufferSampler;
 

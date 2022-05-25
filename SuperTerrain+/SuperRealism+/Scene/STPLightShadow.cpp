@@ -20,7 +20,7 @@ STPLightShadow::STPLightShadow(unsigned int resolution, STPShadowMapFormat forma
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPLightShadow::shadowMapHandle() const {
-	return *this->ShadowMapHandle.value();
+	return *this->ShadowMapHandle;
 }
 
 void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::STPint level, STPOpenGL::STPfloat anisotropy) {
@@ -96,8 +96,8 @@ void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::S
 	}
 
 	/* --------------------------- setup depth handle -------------------------------- */
-	this->ShadowMapHandle.emplace(shadow_map);
-	this->updateShadowMapHandle(*this->ShadowMapHandle.value());
+	this->ShadowMapHandle = STPBindlessTexture(shadow_map);
+	this->updateShadowMapHandle(*this->ShadowMapHandle);
 
 	using std::move;
 	//store the target as member
@@ -105,7 +105,7 @@ void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::S
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPLightShadow::shadowDataAddress() const {
-	return *this->ShadowDataAddress.value();
+	return *this->ShadowDataAddress;
 }
 
 void STPLightShadow::captureDepth() const {

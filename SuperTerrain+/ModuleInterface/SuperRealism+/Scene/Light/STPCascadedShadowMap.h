@@ -105,7 +105,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPCascadedShadowMap(const STPCascadedShadowMap&) = delete;
 
-		STPCascadedShadowMap(STPCascadedShadowMap&&) = delete;
+		STPCascadedShadowMap(STPCascadedShadowMap&&) noexcept;
 
 		STPCascadedShadowMap& operator=(const STPCascadedShadowMap&) = delete;
 

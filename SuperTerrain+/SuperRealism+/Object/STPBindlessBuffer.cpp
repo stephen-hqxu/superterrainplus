@@ -17,6 +17,10 @@ inline static GLuint64EXT getBufferAddress(GLuint buffer) {
 	return address;
 }
 
+STPBindlessBuffer::STPBindlessBuffer() : Address(0ull) {
+
+}
+
 STPBindlessBuffer::STPBindlessBuffer(const STPBuffer& buffer, STPOpenGL::STPenum access) : Buffer(*buffer), Address(getBufferAddress(this->Buffer.get())) {
 	if (glIsNamedBufferResidentNV(this->Buffer.get())) {
 		throw STPException::STPGLError("The requested buffer has already had a buffer address active");
@@ -26,4 +30,8 @@ STPBindlessBuffer::STPBindlessBuffer(const STPBuffer& buffer, STPOpenGL::STPenum
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPBindlessBuffer::operator*() const {
 	return this->Address;
+}
+
+STPBindlessBuffer::operator bool() const {
+	return static_cast<bool>(this->Address);
 }

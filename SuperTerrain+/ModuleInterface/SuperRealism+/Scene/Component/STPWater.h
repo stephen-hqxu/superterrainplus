@@ -18,7 +18,6 @@
 //System
 #include <chrono>
 #include <unordered_map>
-#include <optional>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -35,7 +34,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//A texture to hold all water level data for each biome
 		STPTexture WaterLevelTable;
-		std::optional<STPBindlessTexture> WaterLevelTableHandle;
+		STPBindlessTexture WaterLevelTableHandle;
 
 		mutable STPProgramManager WaterAnimator;
 		STPPipelineManager WaterRenderer;

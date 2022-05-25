@@ -34,6 +34,11 @@ namespace SuperTerrainPlus::STPRealism {
 	public:
 
 		/**
+		 * @brief Default construct a bindless buffer with no underlying address.
+		*/
+		STPBindlessBuffer();
+
+		/**
 		 * @brief Create a bindless buffer from a buffer object.
 		 * If the buffer has already had an address resident previously, an exception is generated.
 		 * @param buffer The pointer to the buffer object for retrieving address.
@@ -56,6 +61,11 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The address to the bindless buffer.
 		*/
 		STPOpenGL::STPuint64 operator*() const;
+
+		/**
+		 * @brief Check if the address is empty.
+		*/
+		explicit operator bool() const;
 
 	};
 

@@ -34,7 +34,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//A buffer stores data of a light.
 		STPBuffer LightData;
 		//An address to the light data buffer to be shared with shaders.
-		std::optional<STPBindlessBuffer> LightDataAddress;
+		STPBindlessBuffer LightDataAddress;
 
 	public:
 
@@ -50,7 +50,15 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		STPSceneLight(STPLightSpectrum&&, STPLightType);
 
-		virtual ~STPSceneLight();
+		STPSceneLight(const STPSceneLight&) = delete;
+
+		STPSceneLight(STPSceneLight&&) noexcept = default;
+
+		STPSceneLight& operator=(const STPSceneLight&) = delete;
+
+		STPSceneLight& operator=(STPSceneLight&&) = delete;
+
+		virtual ~STPSceneLight() = default;
 
 		/**
 		 * @brief Get the pointer to the light shadow instance.

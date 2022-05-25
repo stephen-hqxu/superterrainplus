@@ -39,6 +39,11 @@ namespace SuperTerrainPlus::STPRealism {
 	public:
 
 		/**
+		 * @brief Create a default empty bindless texture with no handle.
+		*/
+		STPBindlessTexture() = default;
+
+		/**
 		 * @brief Create a bindless texture from a managed texture object.
 		 * @param texture The pointer to the managed texture object.
 		*/
@@ -79,6 +84,11 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The bindless texture handle.
 		*/
 		STPOpenGL::STPuint64 operator*() const;
+
+		/**
+		 * @brief Check if the handle is empty.
+		*/
+		explicit operator bool() const;
 
 	};
 

@@ -10,7 +10,6 @@
 #include <glm/vec3.hpp>
 
 //System
-#include <optional>
 #include <vector>
 
 namespace SuperTerrainPlus::STPRealism {
@@ -23,7 +22,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//The generated spectrum, it is a 1D texture of light colour
 		STPTexture Spectrum;
-		std::optional<STPBindlessTexture> SpectrumHandle;
+		STPBindlessTexture SpectrumHandle;
 
 	public:
 

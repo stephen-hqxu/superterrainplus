@@ -10,8 +10,6 @@
 #include "../../Object/STPSampler.h"
 #include "../../Object/STPFrameBuffer.h"
 
-#include <optional>
-
 //GLM
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>

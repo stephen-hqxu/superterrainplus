@@ -56,7 +56,7 @@ void STPBuffer::unbind(STPOpenGL::STPenum target) {
 }
 
 void STPBuffer::bufferStorage(size_t size, STPOpenGL::STPbitfield flag) {
-	this->bufferStorageSubData(NULL, size, flag);
+	this->bufferStorageSubData(nullptr, size, flag);
 }
 
 void STPBuffer::bufferSubData(const void* data, size_t size, STPOpenGL::STPintptr offset) {

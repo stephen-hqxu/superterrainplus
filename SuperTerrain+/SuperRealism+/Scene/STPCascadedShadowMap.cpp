@@ -73,8 +73,8 @@ STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLig
 	this->ShadowData.bufferStorage(shadowBuffer_size, 
 		GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
 	//grab the address of buffer
-	this->ShadowDataAddress.emplace(this->ShadowData, GL_READ_ONLY);
-	const GLuint64EXT shadowData_addr = *this->ShadowDataAddress.value();
+	this->ShadowDataAddress = STPBindlessBuffer(this->ShadowData, GL_READ_ONLY);
+	const GLuint64EXT shadowData_addr = *this->ShadowDataAddress;
 
 	/* ----------------------------------- initial shadow data fill up --------------------------------------- */
 	unsigned char* const shadowData_init = reinterpret_cast<unsigned char*>(this->ShadowData.mapBufferRange(0, shadowBuffer_size, 
@@ -107,9 +107,17 @@ STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLig
 	}
 }
 
+using std::move;
+
+STPCascadedShadowMap::STPCascadedShadowMap(STPCascadedShadowMap&& csm) noexcept : 
+	STPLightShadow(move(csm)), LightDirection(csm.LightDirection), LightFrustum(csm.LightFrustum), 
+	LightSpaceMatrix(csm.LightSpaceMatrix), LightSpaceOutdated(csm.LightSpaceOutdated) {
+	//register the new listener
+	this->LightFrustum.Focus->registerListener(this);
+}
+
 STPCascadedShadowMap::~STPCascadedShadowMap() {
 	this->LightFrustum.Focus->removeListener(this);
-	this->ShadowData.unmapBuffer();
 }
 
 mat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const STPMatrix4x4d& view) const {
@@ -268,7 +276,7 @@ inline size_t STPCascadedShadowMap::lightSpaceDimension() const {
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPCascadedShadowMap::lightSpaceMatrixAddress() const {
-	return *this->ShadowDataAddress.value() + sizeof(STPPackedCSMBufferHeader);
+	return *this->ShadowDataAddress + sizeof(STPPackedCSMBufferHeader);
 }
 
 void STPCascadedShadowMap::forceLightSpaceUpdate() {

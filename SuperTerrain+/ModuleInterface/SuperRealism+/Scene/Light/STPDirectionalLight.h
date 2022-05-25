@@ -10,7 +10,7 @@
 //Directional Light Shadow Solution
 #include "STPCascadedShadowMap.h"
 
-#include <memory>
+#include <optional>
 
 #include <glm/vec3.hpp>
 
@@ -23,7 +23,7 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPDirectionalLight : public STPSceneLight {
 	public:
 
-		typedef std::unique_ptr<STPCascadedShadowMap> STPDirectionalLightShadow;
+		typedef std::optional<STPCascadedShadowMap> STPDirectionalLightShadow;
 
 	private:
 

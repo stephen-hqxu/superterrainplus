@@ -7,17 +7,17 @@ downloadResource(
 URL "https://github.com/stephen-hqxu/superterrainplus/releases/download/v0.13.7/External.tar.gz"
 FILENAME "External"
 EXTENSION ".tar.gz"
+LOCATION STP_EXTERNAL_DIR
 EXTRACT
 )
-set(STP_EXTERNAL_DIR ${STP_RESOURCE_CACHE_LOCATION}/External)
 # resource
 downloadResource(
 URL "https://github.com/stephen-hqxu/superterrainplus/releases/download/v0.13.7/Resource.tar.gz"
 FILENAME "Resource"
 EXTENSION ".tar.gz"
+LOCATION STP_RESOURCE_DIR
 EXTRACT
 )
-set(STP_RESOURCE_DIR ${STP_RESOURCE_CACHE_LOCATION}/Resource)
 
 # minimum GLFW requirement v3.0
 find_package(glfw3 3 REQUIRED CONFIG)

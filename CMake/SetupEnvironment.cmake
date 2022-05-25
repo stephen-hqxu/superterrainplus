@@ -2,23 +2,26 @@
 find_package(glm REQUIRED CONFIG)
 find_package(OpenGL REQUIRED)
 
-# minimum supported CUDA versions
+# minimum supported version for each library
 set(STP_CUDA_MIN_VERSION 11.3)
+set(STP_SQLITE_MIN_VERSION 3.30)
 
 #setup SQLite3
 include(FindSQLite3)
-if(NOT ${SQLite3_FOUND})
+if(NOT SQLite3_FOUND)
 	message(FATAL_ERROR "SQLite3 is not found")
+endif()
+if(SQLite3_VERSION VERSION_LESS STP_SQLITE_MIN_VERSION)
+	message(FATAL_ERROR "SQLite3 version is incompatible")
 endif()
 
 # setup CUDA
 include(FindCUDAToolkit)
-# error handling
-if(NOT ${CUDAToolkit_FOUND})
-	message(FATAL_ERROR "CUDA compiler is not found.")
+if(NOT CUDAToolkit_FOUND)
+	message(FATAL_ERROR "CUDA compiler is not found")
 endif()
-if(${CUDAToolkit_VERSION} VERSION_LESS ${STP_CUDA_MIN_VERSION})
-	message(FATAL_ERROR "CUDA version is incompatible.")
+if(CUDAToolkit_VERSION VERSION_LESS STP_CUDA_MIN_VERSION)
+	message(FATAL_ERROR "CUDA version is incompatible")
 endif()
 
 # setup default compiler options
@@ -30,19 +33,19 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 if(MSVC)
 	set(STP_MSVC_WARNING "/wd4251 /wd4275") # disable warning about using stl in a dll project
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STP_MSVC_WARNING}")
-	if(${STP_ENABLE_WARNING})
+	if(STP_ENABLE_WARNING)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 	endif()
 
-	if(${STP_USE_AVX2})
+	if(STP_USE_AVX2)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
 	endif()
 else()
-	if(${STP_ENABLE_WARNING})
+	if(STP_ENABLE_WARNING)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
 	endif()
 
-	if(${STP_USE_AVX2})
+	if(STP_USE_AVX2)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
 	endif()
 endif()
@@ -50,7 +53,7 @@ endif()
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON) # -rdc=true
 set(CMAKE_CUDA_RUNTIME_LIBRARY ${STP_CUDA_RUNTIME_LIBRARY}) # -cudart=...
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --extended-lambda") # --extended-lambda
-if(${STP_CUDA_VERBOSE_PTX})
+if(STP_CUDA_VERBOSE_PTX)
 	set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --ptxas-options=-v") # --ptxas-options=-v
 endif()
 # turn on device debug information generation on debug mode

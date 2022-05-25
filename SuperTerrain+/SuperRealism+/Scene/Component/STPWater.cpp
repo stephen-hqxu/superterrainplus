@@ -96,12 +96,12 @@ STPWater::STPWater(const STPHeightfieldTerrain<false>& terrain, const STPBiomeWa
 	this->WaterLevelTable.borderColor(vec4(DefaultWaterLevel));
 	
 	//create bindless handle
-	this->WaterLevelTableHandle.emplace(this->WaterLevelTable);
+	this->WaterLevelTableHandle = STPBindlessTexture(this->WaterLevelTable);
 
 	/* ----------------------------------- water uniform setup --------------------------------- */
 	this->WaterAnimator.uniform(glProgramUniform1i, "Biomemap", 0)
 		.uniform(glProgramUniform1i, "Heightmap", 1)
-		.uniform(glProgramUniformHandleui64ARB, "WaterLevel", **this->WaterLevelTableHandle);
+		.uniform(glProgramUniformHandleui64ARB, "WaterLevel", *this->WaterLevelTableHandle);
 
 	this->WaveTimeLocation = this->WaterAnimator.uniformLocation("WaveTime");
 	//set default material

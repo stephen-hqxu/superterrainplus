@@ -193,7 +193,6 @@ public:
 	~STPCameraInformationMemory() {
 		//release the shader storage buffer
 		STPBuffer::unbindBase(GL_SHADER_STORAGE_BUFFER, 0u);
-		this->Buffer.unmapBuffer();
 		//remove camera callback
 		this->Camera.removeListener(this);
 	}
@@ -351,7 +350,6 @@ public:
 
 	~STPShadowPipeline() {
 		STPBuffer::unbindBase(GL_SHADER_STORAGE_BUFFER, 1u);
-		this->LightSpaceBuffer.unmapBuffer();
 	}
 
 	/**

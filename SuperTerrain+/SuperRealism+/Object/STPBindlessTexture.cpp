@@ -37,3 +37,7 @@ STPBindlessTexture::STPBindlessTexture(STPOpenGL::STPuint texture, STPOpenGL::ST
 SuperTerrainPlus::STPOpenGL::STPuint64 STPBindlessTexture::operator*() const {
 	return this->Handle.get();
 }
+
+STPBindlessTexture::operator bool() const {
+	return static_cast<bool>(this->Handle);
+}

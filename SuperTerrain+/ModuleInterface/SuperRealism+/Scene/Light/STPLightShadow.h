@@ -39,7 +39,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//A rendering texture that contains depth information about the scene.
 		std::optional<STPTexture> ShadowMap;
 		//A bindless handle to the shadow map.
-		std::optional<STPBindlessTexture> ShadowMapHandle;
+		STPBindlessTexture ShadowMapHandle;
 
 		STPFrameBuffer ShadowMapContainer;
 
@@ -48,7 +48,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//A buffer stores data of the shadow light.
 		STPBuffer ShadowData;
 		//An address pointing to the shadow data to be shared with shaders.
-		std::optional<STPBindlessBuffer> ShadowDataAddress;
+		STPBindlessBuffer ShadowDataAddress;
 
 		/**
 		 * @brief Trigger a update to the shadow map bindless texture handle.
@@ -81,7 +81,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPLightShadow(const STPLightShadow&) = delete;
 
-		STPLightShadow(STPLightShadow&&) = delete;
+		STPLightShadow(STPLightShadow&&) noexcept = default;
 
 		STPLightShadow& operator=(const STPLightShadow&) = delete;
 

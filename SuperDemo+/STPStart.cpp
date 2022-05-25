@@ -57,6 +57,7 @@ using std::optional;
 using std::string;
 using std::make_pair;
 using std::make_unique;
+using std::make_optional;
 
 using std::cout;
 using std::endl;
@@ -268,7 +269,7 @@ namespace STPStart {
 				using std::move;
 				//setup light
 				this->Skylight.emplace(move(sky_spec));
-				this->Sunlight.emplace(make_unique<STPCascadedShadowMap>(2048u, shadow_frustum), move(sun_spec));
+				this->Sunlight.emplace(make_optional<STPCascadedShadowMap>(2048u, shadow_frustum), move(sun_spec));
 				this->RenderPipeline->add(*this->Skylight);
 				this->RenderPipeline->add(*this->Sunlight);
 			}

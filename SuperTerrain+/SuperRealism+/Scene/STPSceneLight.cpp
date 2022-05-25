@@ -20,22 +20,12 @@ STPSceneLight::STPSceneLight(STPLightSpectrum&& spectrum, STPLightType type) : T
 
 }
 
-STPSceneLight::~STPSceneLight() {
-	//check if buffer is mapped
-	GLint mapped;
-	glGetNamedBufferParameteriv(*this->LightData, GL_BUFFER_MAPPED, &mapped);
-	if (mapped == GL_TRUE) {
-		//mapped? then unmap
-		this->LightData.unmapBuffer();
-	}
-}
-
 STPLightShadow* STPSceneLight::getLightShadow() {
 	return const_cast<STPLightShadow*>(const_cast<const STPSceneLight*>(this)->getLightShadow());
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPSceneLight::lightDataAddress() const {
-	return *this->LightDataAddress.value();
+	return *this->LightDataAddress;
 }
 
 //STPAmbientLight.h
@@ -64,7 +54,7 @@ STPAmbientLight::STPAmbientLight(STPLightSpectrum&& spectrum) : STPSceneLight(mo
 	this->LightData.bufferStorageSubData(&ambBuf, sizeof(STPPackedAmbientLightBuffer), 
 		GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
 	//get the buffer address
-	this->LightDataAddress.emplace(this->LightData, GL_READ_ONLY);
+	this->LightDataAddress = STPBindlessBuffer(this->LightData, GL_READ_ONLY);
 
 	//get the pointer to ambient light spectrum coordinate
 	this->AmbSpecCoord = reinterpret_cast<float*>(this->LightData.mapBufferRange(offsetof(STPPackedAmbientLightBuffer, SpecCoord), sizeof(float), 
@@ -117,7 +107,7 @@ STPDirectionalLight::STPDirectionalLight(STPDirectionalLightShadow&& dir_shadow,
 	};
 	this->LightData.bufferStorageSubData(&dirBuf, sizeof(STPPackedDirectionalLightBuffer), 
 		GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
-	this->LightDataAddress.emplace(this->LightData, GL_READ_ONLY);
+	this->LightDataAddress = STPBindlessBuffer(this->LightData, GL_READ_ONLY);
 
 	unsigned char* const mappedDirBuf = reinterpret_cast<unsigned char*>(this->LightData.mapBufferRange(offsetof(STPPackedDirectionalLightBuffer, Dir),
 		sizeof(vec3) + sizeof(float), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
@@ -127,7 +117,7 @@ STPDirectionalLight::STPDirectionalLight(STPDirectionalLightShadow&& dir_shadow,
 }
 
 const STPLightShadow* STPDirectionalLight::getLightShadow() const {
-	return this->Shadow.get();
+	return &this->Shadow.value();
 }
 
 void STPDirectionalLight::setSpectrumCoordinate(float coord) {
