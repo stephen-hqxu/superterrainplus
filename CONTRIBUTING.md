@@ -1,4 +1,4 @@
-# Contributing to SuperTerrain+
+# :seedling: Contributing to SuperTerrain+
 
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. I am absolutely glad to hear that you want to contribute something to *SuperTerrain+*. As a new project, there are still a significant number of places to be improved and worked on. All contributions made by everyone, from simple ones like fixing a typo in the documentation, to big improvement such as bug fix and new feature, are absolutely welcome and very much appreciated.
 
@@ -16,6 +16,12 @@ If you have a brilliant idea, please fork this repository and create a pull requ
 When you are committing changes, briefly describe what has been achieved in this commit in the commit message. You might notice that I tend to prefix *emoji* before the message, and you don't have to repeat my approach, it just makes myself identifying what has been changed by the same commit easier; although you are absolutely welcome if you wish to.
 
 As always, you are welcome to open an issue if you found something that does not work, or simply have any question.
+
+## Code style
+
+A consistent code style improves readability of codebase and helps future developers getting start with the development quickly. To make formatting code simpler for our contributors, *SuperTerrain+* provides a custom `.clang-format` file located at the project root. Most modern IDEs are integrated with clang formatter to help you maintaining the style as you type.
+
+However, currently clang-format is still imperfect and cannot fully replicate my complex coding style, so please do not use it to format the entire file, and only do so on the newly changed code; this also helps reducing the size of diffs and makes code review easier.
 
 ## What's Next
 

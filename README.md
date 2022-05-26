@@ -204,7 +204,7 @@ To simplify the setup process for the first-time build, the following resources 
 - stb_image.h
 - GLAD
 
-CMake will download the required files hosted on GitHub Releases, to directory `STPResourceCache` located at the root of your binary directory. The build system will not re-download them if they already exist; they may get updated in the future at one point, if your older version fails to compile or run, simply deleting the respective directory within `STPResourceCache` can purge the cache and will force a re-download next time the program is built.
+CMake will download the required files hosted on *GitHub Releases*, to directory `STPResourceCache` located at the root of your binary directory. The build system will not re-download them if they already exist; they may get updated in the future at one point, if your older version fails to compile or run, simply deleting the respective directory within `STPResourceCache` can purge the cache and will force a re-download next time the program is built.
 
 #### Build
 
