@@ -56,6 +56,7 @@ uniform ShadowMapFilter Filter;
 //these macros will be defined before compilation
 #define AMBIENT_LIGHT_CAPACITY 1
 #define DIRECTIONAL_LIGHT_CAPACITY 1
+#define SHADING_MODEL 0
 
 //For each light, there is a light spectrum for light colour information.
 //spectrum lighting requires information to sample from the spectrum
@@ -83,6 +84,16 @@ uniform DirectionalLight* DirectionalLightList[DIRECTIONAL_LIGHT_CAPACITY];
 //Record the actual size available in each light list
 uniform unsigned int AmbCount = 0u, 
 	DirCount = 0u;
+
+//Shading model selection
+struct ShadingDescription{
+#if SHADING_MODEL == 0
+	//Blinn-Phong
+	float minRough, maxRough;
+	float minShin, maxShin;
+#endif
+};
+uniform ShadingDescription ShadingModel;
 
 /* ------------------------------------------------------------------------------------------------ */
 //enable depth reconstruction to world space
@@ -117,10 +128,12 @@ void main(){
 		Ambient = textureLod(G_AO, FragTexCoord, 0).r;
 	vec3 LightColor = vec3(0.0f);
 
-	//TODO: compute shininess from roughness.
 	//For non-PBR rendering equation, a simple linear function can be used.
 	//For PBR rendering equation, well just, implement the equation.
-	const float Shininess = 32.0f;
+#if SHADING_MODEL == 0
+	const float Shininess = mix(ShadingModel.minShin, ShadingModel.maxShin,
+		clamp((Roughness - ShadingModel.minRough) / (ShadingModel.maxRough - ShadingModel.minRough), 0.0f, 1.0f));
+#endif
 
 	//ambient light pass
 	for(int i = 0; i < AmbCount; i++){

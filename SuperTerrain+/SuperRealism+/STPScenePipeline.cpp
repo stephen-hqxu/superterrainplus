@@ -59,6 +59,10 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
+STPScenePipeline::STPShadingEquation::STPShadingEquation(STPShadingModel model) : Model(model) {
+
+}
+
 STPScenePipeline::STPShadowMapFilterFunction::STPShadowMapFilterFunction(STPShadowMapFilter filter) : Filter(filter), 
 	DepthBias(vec2(0.0f)), NormalBias(vec2(0.0f)), BiasFarMultiplier(1.0f), CascadeBlendArea(0.0f) {
 
@@ -452,16 +456,18 @@ public:
 	/**
 	 * @brief Init a new geometry buffer resolution instance.
 	 * @param pipeline The pointer to the dependent scene pipeline.
+	 * @param shading_equa The pointer to the scene shading equation definer.
 	 * @param shadow_filter The pointer to the scene shadow filter.
 	 * @param memory_cap The pointer to the memory capacity that specifies the maximum amount of memory to be allocated in the shader.
 	 * @param lighting_init The pointer to the lighting shader initialiser
 	*/
-	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadowMapFilterFunction& shadow_filter, 
-		const STPScreenInitialiser& lighting_init) : Pipeline(pipeline),
+	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadingEquation& shading_equa,
+		const STPShadowMapFilterFunction& shadow_filter, const STPScreenInitialiser& lighting_init) :
+		Pipeline(pipeline),
 		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GRoughness(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D),
 		//alpha culling, set to discard pixels that are not in the extinction zone
 		//remember 0 means no extinction whereas 1 means fully invisible
-		ExtinctionStencilCuller(STPAlphaCulling::STPCullComparator::LessEqual, 0.0f, 
+		ExtinctionStencilCuller(STPAlphaCulling::STPCullComparator::LessEqual, 0.0f,
 			STPAlphaCulling::STPCullConnector::Or, STPAlphaCulling::STPCullComparator::Greater, 1.0f, lighting_init) {
 		const bool cascadeLayerBlend = shadow_filter.CascadeBlendArea > 0.0f;
 
@@ -475,7 +481,9 @@ public:
 			("DIRECTIONAL_LIGHT_CAPACITY", memory_cap.DirectionalLight)
 
 			("LIGHT_SHADOW_FILTER", static_cast<std::underlying_type_t<STPShadowMapFilter>>(shadow_filter.Filter))
-			("SHADOW_CASCADE_BLEND", cascadeLayerBlend ? 1 : 0);
+			("SHADOW_CASCADE_BLEND", cascadeLayerBlend ? 1 : 0)
+			
+			("SHADING_MODEL", static_cast<std::underlying_type_t<STPShadingModel>>(shading_equa.Model));
 
 		deferred_source.define(Macro);
 
@@ -510,6 +518,7 @@ public:
 		}
 		//send specialised filter kernel parameters based on type
 		shadow_filter(this->OffScreenRenderer);
+		shading_equa(this->OffScreenRenderer);
 
 		//no colour will be written to the extinction buffer
 		this->ExtinctionCullingContainer.readBuffer(GL_NONE);
@@ -717,7 +726,8 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera,
 	hasMaterialLibrary(mat_lib),
 	CameraMemory(make_unique<STPCameraInformationMemory>(camera)), 
 	GeometryShadowPass(make_unique<STPShadowPipeline>(*scene_init.ShadowFilter)),
-	GeometryLightPass(make_unique<STPGeometryBufferResolution>(*this, *scene_init.ShadowFilter, *scene_init.GeometryBufferInitialiser)), 
+	GeometryLightPass(make_unique<STPGeometryBufferResolution>(
+		*this, *scene_init.ShadingModel, *scene_init.ShadowFilter, *scene_init.GeometryBufferInitialiser)), 
 	DefaultClearColor(vec4(vec3(0.0f), 1.0f)) {
 	if (!scene_init.ShadowFilter->valid()) {
 		throw STPException::STPBadNumericRange("The shadow filter has invalid settings");
@@ -1090,8 +1100,8 @@ void STPScenePipeline::traverse() {
 	glEnable(GL_DEPTH_TEST);
 }
 
-#define SHADOW_FILTER_CLASS(FILT) template struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STPShadowMapFilter::FILT>
 #define SHADOW_FILTER_NAME(FILT) STPScenePipeline::STPShadowMapFilterKernel<STPShadowMapFilter::FILT>
+#define SHADOW_FILTER_CLASS(FILT) template struct STP_REALISM_API SHADOW_FILTER_NAME(FILT)
 #define SHADOW_FILTER_DEF(FILT) void SHADOW_FILTER_NAME(FILT)::operator()(STPProgramManager& program) const
 
 //Explicit Instantiation of some shadow filters
@@ -1120,4 +1130,21 @@ SHADOW_FILTER_NAME(VSM)::STPShadowMapFilterKernel() : STPShadowMapFilterFunction
 
 SHADOW_FILTER_DEF(VSM) {
 	program.uniform(glProgramUniform1f, "Filter.minVar", this->minVariance);
+}
+
+#define SHADING_MODEL_NAME(MOD) STPScenePipeline::STPShadingModelDescription<STPScenePipeline::STPShadingModel::MOD>
+#define SHADING_MODEL_DEF(MOD) void SHADING_MODEL_NAME(MOD)::operator()(STPProgramManager& program) const
+
+SHADING_MODEL_NAME(BlinnPhong)::STPShadingModelDescription() :
+	STPShadingEquation(STPShadingModel::BlinnPhong), 
+	RoughnessRange(vec2(0.0f, 1.0f)),
+	ShininessRange(vec2(0.0f, 1.0f)) {
+
+}
+
+SHADING_MODEL_DEF(BlinnPhong) {
+	program.uniform(glProgramUniform1f, "ShadingModel.minRough", this->RoughnessRange.x)
+		.uniform(glProgramUniform1f, "ShadingModel.maxRough", this->RoughnessRange.y)
+		.uniform(glProgramUniform1f, "ShadingModel.minShin", this->ShininessRange.x)
+		.uniform(glProgramUniform1f, "ShadingModel.maxShin", this->ShininessRange.y);
 }

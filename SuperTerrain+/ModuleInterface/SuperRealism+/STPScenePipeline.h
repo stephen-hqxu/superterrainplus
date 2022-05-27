@@ -34,8 +34,65 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPScenePipeline {
 	public:
 
-		//An integer to identify a light added to the scene in the shader.
-		typedef size_t STPLightIdentifier;
+		/* ------------------------------- Shading ------------------------------------ */
+
+		/**
+		 * @brief STPShadingModel specifies the shading equation used for scene lighting.
+		*/
+		enum class STPShadingModel : unsigned char {
+			//One of the oldest but still widely used shading model.
+			//Although it is not physically accurate, but the approximation of lighting gives reasonable image quality
+			//First proposed by Bui Tuong Phong in 1975, and improved by James F. Blinn in 1977.
+			BlinnPhong = 0x00u,
+			//One of the most widely used shading model for physically-based rendering.
+			//With the introduction of micro-facet model, it can simulate roughness and conservation of energy better.
+			//Proposed by R. Cook and K. Torrance in 1981.
+			CookTorrance = 0x01u
+		};
+
+		/**
+		 * @brief STPShadingModelDescription provides specialised settings for different shading model.
+		*/
+		template<STPShadingModel S>
+		struct STPShadingModelDescription;
+
+		/**
+		 * @brief STPShadingEquation is an adaptive shading model selector for the renderer.
+		*/
+		class STP_REALISM_API STPShadingEquation {
+		private:
+
+			friend class STPScenePipeline;
+
+			/**
+			 * @brief Flush the shading model settings to a given program.
+			 * @param program The program.
+			*/
+			virtual void operator()(STPProgramManager&) const = 0;
+
+		public:
+
+			const STPShadingModel Model;
+
+			/**
+			 * @brief Initialise a new shading equation instance.
+			 * @param model Specifies the shading model being used.
+			*/
+			STPShadingEquation(STPShadingModel);
+
+			STPShadingEquation(const STPShadingEquation&) = default;
+
+			STPShadingEquation(STPShadingEquation&&) noexcept = default;
+
+			STPShadingEquation& operator=(const STPShadingEquation&) = delete;
+
+			STPShadingEquation& operator=(STPShadingEquation&&) = delete;
+
+			~STPShadingEquation() = default;
+
+		};
+
+		/* ---------------------------------- Shadow ------------------------------------ */
 
 		/**
 		 * @brief STPShadowMapFilterFunction is an adaptive shadow map filter manager for any shadow map filter.
@@ -209,7 +266,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Get the shader used for performing additional operations during depth rendering.
-		 * @return The pointer to the depth shader. Nullprt is returned if depth shader is unused.
+		 * @return The pointer to the depth shader. Null pointer is returned if depth shader is unused.
 		*/
 		const STPShaderManager* getDepthShader() const;
 		
@@ -251,6 +308,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 			//Defines the maximum memory to be allocated for each array in the shader.
 			STPSceneShaderCapacity ShaderCapacity;
+
+			//Specifies the shading model used during light.
+			const STPShadingEquation* ShadingModel;
 			//Specifies shadow map filter function to be used in the scene.
 			const STPShadowMapFilterFunction* ShadowFilter;
 
@@ -338,14 +398,42 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Traverse the scene graph and render every component in sequential order.
 		 * This function does not modify the state of any rendering component.
 		 * Any update need to be called by the caller prior to rendering.
-		 * Any pending async operations will be sync automatically by this function before rendering.
+		 * Any pending asynchronous operations will be sync automatically by this function before rendering.
 		*/
 		void traverse();
 
 	};
 
+#define SHADING_MODEL_DEF(MOD) \
+template<> struct STP_REALISM_API STPScenePipeline::STPShadingModelDescription<STPScenePipeline::STPShadingModel::MOD> : \
+	public STPScenePipeline::STPShadingEquation
+
+	SHADING_MODEL_DEF(BlinnPhong) {
+	private:
+
+		void operator()(STPProgramManager&) const override;
+
+	public:
+
+		STPShadingModelDescription();
+
+		~STPShadingModelDescription() = default;
+
+		//As Blinn-Phong model does not properly handle roughness material,
+		//such that it is emulated by a linear equation and calculate the specular power as a linear interpolation of the roughness.
+
+		//Specifies the range of input of the interpolation, from minimum to maximum.
+		glm::vec2 RoughnessRange;
+		//Specifies the range of output of the interpolation, same as above.
+		glm::vec2 ShininessRange;
+
+	};
+
+#undef SHADING_MODEL_DEF
+
 #define SHADOW_MAP_FILTER_DEF(FILT) \
-template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STPShadowMapFilter::FILT> : public STPScenePipeline::STPShadowMapFilterFunction
+template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STPShadowMapFilter::FILT> : \
+	public STPScenePipeline::STPShadowMapFilterFunction
 
 	SHADOW_MAP_FILTER_DEF(PCF) {
 	private:

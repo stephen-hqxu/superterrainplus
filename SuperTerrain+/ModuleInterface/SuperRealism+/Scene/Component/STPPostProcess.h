@@ -156,8 +156,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 	};
 
-#define TONE_MAPPING_DEF(FUNC) \
-template<> struct STP_REALISM_API STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::FUNC> : public STPPostProcess::STPToneMappingCurve
+#define TONE_MAPPING_DEF(FUNC) template<> \
+	struct STP_REALISM_API STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::FUNC> \
+		: public STPPostProcess::STPToneMappingCurve
 	
 	TONE_MAPPING_DEF(Disable) {
 	private:
@@ -189,7 +190,7 @@ template<> struct STP_REALISM_API STPPostProcess::STPToneMappingDefinition<STPPo
 		float LinearStart, LinearLength;
 		//The black fall off, higher value makes dark area more even darker.
 		float BlackTightness;
-		//Specifies the initial value, i.e., the value when input color is zero.
+		//Specifies the initial value, i.e., the value when input colour is zero.
 		float Pedestal;
 
 	};
@@ -211,7 +212,7 @@ template<> struct STP_REALISM_API STPPostProcess::STPToneMappingDefinition<STPPo
 		float Shoulder;
 		//Specifies the max possible brightness the HDR input can reach.
 		float HDRMax;
-		//The anchors of the curve, specify a point coordinte with respective to x and y where the gradient of curve starts turning.
+		//The anchors of the curve, specify a point coordinate with respective to x and y where the gradient of curve starts turning.
 		glm::vec2 Middle;
 
 	};

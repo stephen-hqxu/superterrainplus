@@ -78,8 +78,7 @@ string STPRuntimeCompilable::compileSource(const string& source_name, const stri
 	//make sure the source name is unique
 	if (this->CompilationDatabase.find(source_name) != this->CompilationDatabase.end()) {
 		throw STPException::STPMemoryError((string(__FILE__) + "::" + string(__FUNCTION__)
-			+ "\nA duplicate source with name '" + source_name + "' has been compiled before.")
-											   .c_str());
+			+ "\nA duplicate source with name '" + source_name + "' has been compiled before.").c_str());
 	}
 
 	vector<const char*> external_header;

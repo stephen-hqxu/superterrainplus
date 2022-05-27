@@ -207,6 +207,11 @@ namespace STPStart {
 				STPScenePipeline::STPScenePipelineInitialiser scene_init;
 
 				//initialisation
+				STPScenePipeline::STPShadingModelDescription<STPScenePipeline::STPShadingModel::BlinnPhong> scene_shadinig_model;
+				scene_init.ShadingModel = &scene_shadinig_model;
+				scene_shadinig_model.RoughnessRange = vec2(0.0f, 1.0f);
+				scene_shadinig_model.ShininessRange = vec2(32.0f, 128.0f);
+
 				STPScenePipeline::STPShadowMapFilterKernel<STPShadowMapFilter::PCF> scene_shadow_function;
 				scene_init.ShadowFilter = &scene_shadow_function;
 				scene_shadow_function.DepthBias = vec2(0.055f, 0.0055f);
@@ -510,6 +515,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 			cerr << "Unable to Init GLFW." << endl;
 			return false;
 		}
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);//we are running at OpenGL 4.6
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);

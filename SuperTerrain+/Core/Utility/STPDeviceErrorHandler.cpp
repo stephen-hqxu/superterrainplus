@@ -29,9 +29,8 @@ template<class E>
 }
 
 //Helpers to cut down coding efforts
-#define ASSERT_FUNCTION(ERR)                                                                                           \
-	template<>                                                                                                         \
-	STP_API void SuperTerrainPlus::STPEngineAssert<ERR>(ERR err_code, const char* __restrict file,                     \
+#define ASSERT_FUNCTION(ERR) template<> \
+	STP_API void SuperTerrainPlus::STPEngineAssert<ERR>(ERR err_code, const char* __restrict file, \
 		const char* __restrict function, int line, bool no_msg) noexcept(false)
 #define WRITE_ERR_STRING(SS) SS << file << "(" << function << "):" << line
 #define CALL_PROGRAM_DECISION_CUDA(SS) printError<STPException::STPCUDAError>(SS, no_msg)

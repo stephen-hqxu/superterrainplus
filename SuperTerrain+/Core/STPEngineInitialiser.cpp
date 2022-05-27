@@ -30,8 +30,7 @@ static_assert(conjunction_v<
 	is_same<STPOpenGL::STPuint64, GLuint64>,
 	is_same<STPOpenGL::STPfloat, GLfloat>,
 	is_same<STPOpenGL::STPintptr, GLintptr>
->,
-	"OpenGL specification is no longer compatible with SuperTerrain+, please contact the maintainer.");
+>, "OpenGL specification is no longer compatible with SuperTerrain+, please contact the maintainer.");
 
 bool STPEngineInitialiser::initGLcurrent() {
 	if (!gladLoadGL()) {

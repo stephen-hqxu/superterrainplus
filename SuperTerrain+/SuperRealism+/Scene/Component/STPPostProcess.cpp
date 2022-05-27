@@ -63,8 +63,9 @@ const STPTexture& STPPostProcess::operator*() const {
 	return this->PostProcessResultContainer.ScreenColor;
 }
 
-#define SET_EFFECT(EFF, NAME) template<> STP_REALISM_API void STPPostProcess::setEffect<STPPostProcess::STPPostEffect::EFF>(float val) { \
-	this->OffScreenRenderer.uniform(glProgramUniform1f, NAME, val); \
+#define SET_EFFECT(EFF, NAME) template<> \
+	STP_REALISM_API void STPPostProcess::setEffect<STPPostProcess::STPPostEffect::EFF>(float val) { \
+		this->OffScreenRenderer.uniform(glProgramUniform1f, NAME, val); \
 }
 
 SET_EFFECT(Gamma, "Gamma")
@@ -149,7 +150,8 @@ TONE_MAPPING_DEF(Lottes) {
 }
 
 TONE_MAPPING_NAME(Uncharted2)::STPToneMappingDefinition() : STPToneMappingCurve(STPToneMappingFunction::Uncharted2), 
-	ShoulderStrength(0.22f), LinearStrength(0.3f), LinearAngle(0.1f), ToeStrength(0.2f), ToeNumerator(0.01f), ToeDenominator(0.3f), LinearWhite(11.2f) {
+	ShoulderStrength(0.22f), LinearStrength(0.3f), LinearAngle(0.1f),
+	ToeStrength(0.2f), ToeNumerator(0.01f), ToeDenominator(0.3f), LinearWhite(11.2f) {
 
 }
 
@@ -157,7 +159,8 @@ TONE_MAPPING_DEF(Uncharted2) {
 	//compute mapped linear white point value.
 	const float product_a_w2 = this->ShoulderStrength * this->LinearWhite * this->LinearWhite,
 		mW = ((product_a_w2 + this->LinearWhite * this->LinearAngle * this->LinearStrength + this->ToeStrength * this->ToeNumerator) /
-			(product_a_w2 + this->LinearWhite * this->LinearStrength + this->ToeStrength * this->ToeDenominator)) - this->ToeNumerator / this->ToeDenominator;
+			(product_a_w2 + this->LinearWhite * this->LinearStrength + this->ToeStrength * this->ToeDenominator))
+			- this->ToeNumerator / this->ToeDenominator;
 
 	program.uniform(glProgramUniform1f, "Tone.A", this->ShoulderStrength)
 		.uniform(glProgramUniform1f, "Tone.B", this->LinearStrength)

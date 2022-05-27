@@ -78,7 +78,8 @@ public:
 		const string filename = "STPTextureDatabase_" + std::to_string(STPTextureDatabaseImpl::InstanceCounter++);
 		//open database connection
 		STPsqliteCheckErr(sqlite3_open_v2(filename.c_str(), &this->SQL,
-			SQLITE_OPEN_MEMORY | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_NOFOLLOW | SQLITE_OPEN_PRIVATECACHE, nullptr));
+			SQLITE_OPEN_MEMORY | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_NOFOLLOW
+				| SQLITE_OPEN_PRIVATECACHE, nullptr));
 
 		auto configure = [SQL = this->SQL](int opt, int val) -> bool {
 			int report;
@@ -255,7 +256,8 @@ public:
 
 };
 
-STPTextureDatabase::STPTextureSplatBuilder::STPTextureSplatBuilder(STPTextureDatabase::STPTextureDatabaseImpl* database) : Database(database) {
+STPTextureDatabase::STPTextureSplatBuilder::STPTextureSplatBuilder(
+	STPTextureDatabase::STPTextureDatabaseImpl* database) : Database(database) {
 	//setup database schema for splat builder
 	static constexpr string_view TextureSplatSchema =
 		"CREATE TABLE AltitudeStructure("
@@ -291,9 +293,11 @@ STPTextureDatabase::STPTextureSplatBuilder::STPTextureSplatBuilder(STPTextureDat
 
 STPTextureDatabase::STPTextureSplatBuilder::STPTextureSplatBuilder(STPTextureSplatBuilder&&) noexcept = default;
 
-STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::STPTextureSplatBuilder::operator=(STPTextureSplatBuilder&&) noexcept = default;
+STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::STPTextureSplatBuilder::operator=(
+	STPTextureSplatBuilder&&) noexcept = default;
 
-void STPTextureDatabase::STPTextureSplatBuilder::addAltitude(Sample sample, float upperBound, STPTextureInformation::STPTextureID texture_id) {
+void STPTextureDatabase::STPTextureSplatBuilder::addAltitude(
+	Sample sample, float upperBound, STPTextureInformation::STPTextureID texture_id) {
 	static constexpr string_view AddAltitude = 
 		"INSERT INTO AltitudeStructure (ASID, Sample, UpperBound, TID) VALUES(?, ?, ?, ?)";
 	sqlite3_stmt* const altitude_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddAltitude, AddAltitude);
@@ -314,8 +318,8 @@ size_t STPTextureDatabase::STPTextureSplatBuilder::altitudeSize() const {
 	return this->Database->getInt(GetAltitudeCount);
 }
 
-void STPTextureDatabase::STPTextureSplatBuilder::addGradient
-	(Sample sample, float minGradient, float maxGradient, float lowerBound, float upperBound, STPTextureInformation::STPTextureID texture_id) {
+void STPTextureDatabase::STPTextureSplatBuilder::addGradient(Sample sample, float minGradient, float maxGradient,
+	float lowerBound, float upperBound, STPTextureInformation::STPTextureID texture_id) {
 	static constexpr string_view AddGradient =
 		"INSERT INTO GradientStructure (GSID, Sample, minGradient, maxGradient, LowerBound, UpperBound, TID) VALUES(?, ?, ?, ?, ?, ?, ?);";
 	sqlite3_stmt* const gradient_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddGradient, AddGradient);
@@ -339,7 +343,8 @@ size_t STPTextureDatabase::STPTextureSplatBuilder::gradientSize() const {
 	return this->Database->getInt(GetGradientCount);
 }
 
-STPTextureDatabase::STPDatabaseView::STPDatabaseView(const STPTextureDatabase& db) : Database(db), Impl(db.Database.get()), SplatBuilder(db.SplatBuilder) {
+STPTextureDatabase::STPDatabaseView::STPDatabaseView(const STPTextureDatabase& db) :
+	Database(db), Impl(db.Database.get()), SplatBuilder(db.SplatBuilder) {
 
 }
 
@@ -651,7 +656,8 @@ size_t STPTextureDatabase::viewGroupSize() const {
 	return this->Database->getInt(GetViewGroupCount);
 }
 
-STPTextureInformation::STPTextureID STPTextureDatabase::addTexture(STPTextureInformation::STPViewGroupID group_id, const optional<std::string_view>& name) {
+STPTextureInformation::STPTextureID STPTextureDatabase::addTexture(
+	STPTextureInformation::STPViewGroupID group_id, const optional<std::string_view>& name) {
 	static constexpr string_view AddTexture =
 		"INSERT INTO Texture (TID, Name, VGID) VALUES(?, ?, ?);";
 	sqlite3_stmt* texture_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddTexture, AddTexture);
@@ -678,8 +684,8 @@ void STPTextureDatabase::removeTexture(STPTextureInformation::STPTextureID textu
 	this->Database->removeInt(texture_stmt, static_cast<int>(texture_id));
 }
 
-void STPTextureDatabase::addMap
-	(STPTextureInformation::STPTextureID texture_id, STPTextureType type, STPTextureInformation::STPMapGroupID group_id, const void* texture_data) {
+void STPTextureDatabase::addMap(STPTextureInformation::STPTextureID texture_id, STPTextureType type,
+	STPTextureInformation::STPMapGroupID group_id, const void* texture_data) {
 	static constexpr string_view AddMap =
 		"INSERT INTO Map (MID, Type, MGID, Data, TID) VALUES(?, ?, ?, ?, ?);";
 	sqlite3_stmt* const texture_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddMap, AddMap);
