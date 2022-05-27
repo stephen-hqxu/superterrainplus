@@ -49,8 +49,9 @@ STPAmbientOcclusion::STPOcclusionKernelInstance::STPOcclusionKernelInstance
 	}
 }
 
-STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kernel_instance, STPGaussianFilter&& filter, const STPScreenInitialiser& kernel_init) :
-	RandomRotationVector(GL_TEXTURE_2D), 
+STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kernel_instance, STPGaussianFilter&& filter,
+	const STPScreenInitialiser& kernel_init) :
+	RandomRotationVector(GL_TEXTURE_2D),
 	NoiseDimension(kernel_instance.Kernel.RotationVectorSize), BlurWorker(std::move(filter)) {
 	const char* const ssao_source_file = SSAOShaderFilename.data();
 	STPShaderManager::STPShaderSource ssao_source(ssao_source_file, *STPFile(ssao_source_file));
@@ -70,7 +71,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 	const auto& kernel_setting = kernel_instance.Kernel;
 	/* --------------------------------- setup random number generators ------------------------------ */
 	//setup random number generators
-	uniform_real_distribution dist(0.0f, 1.0f);//generates random floats between 0.0 and 1.0
+	uniform_real_distribution dist(0.0f, 1.0f); //generates random floats between 0.0 and 1.0
 	mt19937_64 rngMachine(kernel_setting.RandomSampleSeed);
 	const STPOcclusionKernelInstance::STPKernelRNG rng = std::bind(dist, rngMachine);
 
@@ -92,7 +93,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 		.uniform(glProgramUniform1i, "GeoDepth", 0)
 		.uniform(glProgramUniform1i, "GeoNormal", 1)
 		.uniform(glProgramUniformHandleui64ARB, "RandomRotationVector", *this->RandomRotationVectorHandle);
-	
+
 	//setup kernel data based on chosen algorithm
 	kernel_instance.uniformKernel(this->OffScreenRenderer, rng);
 

@@ -47,7 +47,8 @@ public:
 
 };
 
-STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLightFrustum& light_frustum) : STPLightShadow(resolution, STPShadowMapFormat::Array), 
+STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLightFrustum& light_frustum) :
+	STPLightShadow(resolution, STPShadowMapFormat::Array), 
 	LightDirection(vec3(0.0f)), LightFrustum(light_frustum), LightSpaceOutdated(true) {
 	const auto& [div, band_radius, focus_camera, distance_mul] = this->LightFrustum;
 	if (distance_mul < 1.0f) {
@@ -157,9 +158,11 @@ mat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const STPMatr
 	});
 
 	//each corner is normalised, so sum them up to get the coordinate of centre
-	const dvec3 centre = 
-		static_cast<dvec4>(std::accumulate(corner.cbegin(), corner.cend(), STPVector4d(), std::plus<STPVector4d>())) / (1.0 * corner.size());
-	alignas(STPMatrix4x4d) const dmat4 lightView_data = glm::lookAt(centre + static_cast<dvec3>(this->LightDirection), centre, dvec3(0.0, 1.0, 0.0));
+	const dvec3 centre =
+		static_cast<dvec4>(std::accumulate(corner.cbegin(), corner.cend(), STPVector4d(), std::plus<STPVector4d>()))
+		/ (1.0 * corner.size());
+	alignas(STPMatrix4x4d) const dmat4 lightView_data =
+		glm::lookAt(centre + static_cast<dvec3>(this->LightDirection), centre, dvec3(0.0, 1.0, 0.0));
 	const STPMatrix4x4d lightView = STPMatrix4x4d(lightView_data);
 
 	//align the light frustum tightly around the current view frustum
@@ -180,15 +183,13 @@ mat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const STPMatr
 		&maxZ = maxExt.z;
 	if (minZ < 0.0f) {
 		minZ *= zDistance;
-	}
-	else {
+	} else {
 		minZ /= zDistance;
 	}
 
 	if (maxZ < 0.0f) {
 		maxZ /= zDistance;
-	}
-	else {
+	} else {
 		maxZ *= zDistance;
 	}
 
@@ -219,12 +220,11 @@ void STPCascadedShadowMap::calcAllLightSpace(mat4* light_space) const {
 		if (i == 0u) {
 			//the first frustum
 			current_light = this->calcLightSpace(near, shadow_level[i] + level_offset, camView);
-		}
-		else if (i < shadow_level.size()) {
+		} else if (i < shadow_level.size()) {
 			//the middle
-			current_light = this->calcLightSpace(shadow_level[i - 1u] - level_offset, shadow_level[i] + level_offset, camView);
-		}
-		else {
+			current_light =
+				this->calcLightSpace(shadow_level[i - 1u] - level_offset, shadow_level[i] + level_offset, camView);
+		} else {
 			//the last one
 			current_light = this->calcLightSpace(shadow_level[i - 1u] - level_offset, far, camView);
 		}

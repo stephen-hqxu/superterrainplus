@@ -45,9 +45,8 @@ using std::unique_lock;
 using std::exception_ptr;
 
 using std::for_each;
-using std::make_unique;
-using std::make_pair;
 using std::make_optional;
+using std::make_unique;
 using std::nullopt;
 
 using namespace SuperTerrainPlus;
@@ -388,7 +387,8 @@ public:
 	 * Note that the coordinate of local chunk should specify chunk map offset rather than chunk world position.
 	 * @param stream The CUDA stream where work will be submitted to.
 	*/
-	void computeSplatmap(const STPRenderingBufferMemory& buffer, const STPTextureFactory::STPRequestingChunkInfo& requesting_chunk, cudaStream_t stream) {
+	void computeSplatmap(const STPRenderingBufferMemory& buffer,
+		const STPTextureFactory::STPRequestingChunkInfo& requesting_chunk, cudaStream_t stream) {
 		//prepare texture and surface object
 		cudaTextureObject_t biomemap, heightfield;
 		cudaSurfaceObject_t splatmap;
@@ -511,7 +511,8 @@ STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : Generator(make_uni
 		STPcudaCheckErr(cudaMallocPitch(&mem, &pitch, buffer_size.x * channelSize, buffer_size.y));
 		return mem;
 	};
-	FOR_EACH_BUFFER(this->TerrainMapExchangeCache.MapCache[i] = allocate_cache(this->TerrainMapExchangeCache.Pitch[i], STPRenderingBufferMemory::Format[i]))
+	FOR_EACH_BUFFER(this->TerrainMapExchangeCache.MapCache[i] =
+						allocate_cache(this->TerrainMapExchangeCache.Pitch[i], STPRenderingBufferMemory::Format[i]))
 
 	const unsigned int renderedChunkCount = setting.RenderedChunk.x * setting.RenderedChunk.y;
 	this->renderingLocal.reserve(renderedChunkCount);
@@ -564,7 +565,8 @@ void STPWorldPipeline::backupBuffer(const STPRenderingBufferMemory& buffer) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
 	auto copy_buffer = [stream = *this->BufferStream, buffer_size = chunk_setting.RenderedChunk * chunk_setting.MapSize]
 		(void* dest, size_t dest_pitch, cudaArray_t src, size_t channelSize) -> void {
-		STPcudaCheckErr(cudaMemcpy2DFromArrayAsync(dest, dest_pitch, src, 0, 0, buffer_size.x * channelSize, buffer_size.y, cudaMemcpyDeviceToDevice, stream));
+		STPcudaCheckErr(cudaMemcpy2DFromArrayAsync(
+			dest, dest_pitch, src, 0, 0, buffer_size.x * channelSize, buffer_size.y, cudaMemcpyDeviceToDevice, stream));
 	};
 
 	//backup our rendering
@@ -573,11 +575,12 @@ void STPWorldPipeline::backupBuffer(const STPRenderingBufferMemory& buffer) {
 }
 
 void STPWorldPipeline::clearBuffer(const STPRenderingBufferMemory& destination, unsigned int dest_idx) {
-	auto erase_buffer = [stream = *this->BufferStream, clearBuffer = this->TerrainMapClearBuffer, clearBufferPitch = this->TerrainMapClearBufferPitch,
-		&dimension = this->ChunkSetting.MapSize, buffer_offset = this->calcBufferOffset(dest_idx)](cudaArray_t dest, size_t channelSize) -> void {
-		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(dest, buffer_offset.x * channelSize, buffer_offset.y, 
-			clearBuffer, clearBufferPitch, 
-			dimension.x * channelSize, dimension.y, cudaMemcpyDeviceToDevice, stream));
+	auto erase_buffer = [stream = *this->BufferStream, clearBuffer = this->TerrainMapClearBuffer,
+							clearBufferPitch = this->TerrainMapClearBufferPitch,
+							&dimension = this->ChunkSetting.MapSize, buffer_offset = this->calcBufferOffset(dest_idx)](
+							cudaArray_t dest, size_t channelSize) -> void {
+		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(dest, buffer_offset.x * channelSize, buffer_offset.y, clearBuffer,
+			clearBufferPitch, dimension.x * channelSize, dimension.y, cudaMemcpyDeviceToDevice, stream));
 	};
 
 	//clear unloaded chunk, so the engine won't display the chunk from previous rendered chunks
@@ -593,11 +596,11 @@ bool STPWorldPipeline::mapSubData(const STPRenderingBufferMemory& buffer, ivec2 
 	}
 
 	//chunk is ready, copy to rendering buffer
-	auto copy_buffer = [stream = *this->BufferStream, &dimension = this->ChunkSetting.MapSize, buffer_offset = this->calcBufferOffset(chunkID)]
-		(cudaArray_t dest, const void* src, size_t channelSize) -> void {
+	auto copy_buffer = [stream = *this->BufferStream, &dimension = this->ChunkSetting.MapSize,
+						   buffer_offset = this->calcBufferOffset(chunkID)](
+						   cudaArray_t dest, const void* src, size_t channelSize) -> void {
 		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(dest, buffer_offset.x * channelSize, buffer_offset.y, src,
-			dimension.x * channelSize, dimension.x * channelSize,
-			dimension.y, cudaMemcpyHostToDevice, stream));
+			dimension.x * channelSize, dimension.x * channelSize, dimension.y, cudaMemcpyHostToDevice, stream));
 	};
 
 	unsigned int index;
@@ -629,16 +632,18 @@ bool STPWorldPipeline::load(const dvec3& cameraPos) {
 	bool centreChanged = false, 
 		shouldClearBuffer = false;
 	//check if the central position has changed or not
-	if (const ivec2 thisCentralPos = STPChunk::calcWorldChunkCoordinate(cameraPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScaling);
+	if (const ivec2 thisCentralPos = STPChunk::calcWorldChunkCoordinate(
+			cameraPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScaling);
 		thisCentralPos != this->lastCenterLocation) {
 		//changed
 		centreChanged = true;
 		//backup the current rendering locals
 		this->TerrainMapExchangeCache.LocalCache.clear();
-		for (auto [local_it, chunkID] = make_pair(this->renderingLocal.cbegin(), 0u); local_it != this->renderingLocal.cend(); local_it++, chunkID++) {
-			const auto [position, status] = *local_it;
-			this->TerrainMapExchangeCache.LocalCache.try_emplace(position, chunkID, status);
-		}
+		std::for_each(this->renderingLocal.cbegin(), this->renderingLocal.cend(),
+			[chunkID = 0u, &local_cache = this->TerrainMapExchangeCache.LocalCache](const auto local) mutable {
+			const auto [position, status] = local;
+			local_cache.try_emplace(position, chunkID++, status);
+		});
 
 		//recalculate loading chunks
 		this->renderingLocal.clear();
@@ -649,16 +654,18 @@ bool STPWorldPipeline::load(const dvec3& cameraPos) {
 			chunk_setting.RenderedChunk);
 
 		//we also need chunkID, which is just the index of the visible chunk from top-left to bottom-right
-		for (auto [it, chunkID] = make_pair(allChunks.begin(), 0u); it != allChunks.end(); it++, chunkID++) {
-			this->renderingLocal.emplace_back(*it, false);
-			this->renderingLocalLookup.emplace(*it, chunkID);
-		}
+		std::for_each(allChunks.cbegin(), allChunks.cend(),
+			[chunkID = 0u, &local = this->renderingLocal, &local_lookup = this->renderingLocalLookup](
+				const auto chunk) mutable {
+			local.emplace_back(chunk, false);
+			local_lookup.emplace(chunk, chunkID++);
+		});
 
 		this->lastCenterLocation = thisCentralPos;
 		//clear up previous rendering buffer
 		shouldClearBuffer = true;
-	}
-	else if (std::all_of(this->renderingLocal.cbegin(), this->renderingLocal.cend(), [](auto i) -> bool {return i.second; })) {
+	} else if (std::all_of(this->renderingLocal.cbegin(), this->renderingLocal.cend(),
+				   [](auto i) -> bool { return i.second; })) {
 		//if all chunks are loaded there is no need to do those complicated stuff
 		return false;
 	}

@@ -22,8 +22,10 @@ void STPRainDropSetting::STPErosionBrushGenerator::makeDeviceAvailable() {
 	this->ErosionBrushWeightsDevice = STPSmartDeviceMemory::makeDevice<float[]>(this->ErosionBrushWeightsCache.size());
 
 	//copy
-	STPcudaCheckErr(cudaMemcpy(this->ErosionBrushIndicesDevice.get(), this->ErosionBrushIndicesCache.data(), sizeof(int) * this->ErosionBrushIndicesCache.size(), cudaMemcpyHostToDevice));
-	STPcudaCheckErr(cudaMemcpy(this->ErosionBrushWeightsDevice.get(), this->ErosionBrushWeightsCache.data(), sizeof(float) * this->ErosionBrushWeightsCache.size(), cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMemcpy(this->ErosionBrushIndicesDevice.get(), this->ErosionBrushIndicesCache.data(),
+		sizeof(int) * this->ErosionBrushIndicesCache.size(), cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMemcpy(this->ErosionBrushWeightsDevice.get(), this->ErosionBrushWeightsCache.data(),
+		sizeof(float) * this->ErosionBrushWeightsCache.size(), cudaMemcpyHostToDevice));
 
 	//assign the raw pointer to setting
 	this->Storage.ErosionBrushIndices = this->ErosionBrushIndicesDevice.get();

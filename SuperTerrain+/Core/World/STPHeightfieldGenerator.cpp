@@ -29,9 +29,10 @@ using glm::uvec2;
 using glm::vec2;
 using glm::vec3;
 
-STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting& chunk_settings, const STPEnvironment::STPHeightfieldSetting& heightfield_settings,
-	const STPDiversityGenerator& diversity_generator, unsigned int hint_level_of_concurrency)
-	: generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings) {
+STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting& chunk_settings,
+	const STPEnvironment::STPHeightfieldSetting& heightfield_settings, const STPDiversityGenerator& diversity_generator,
+	unsigned int hint_level_of_concurrency) :
+	generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings) {
 	if (!chunk_settings.validate()) {
 		throw STPException::STPInvalidEnvironment("Values from STPChunkSetting are not validated");
 	}
@@ -46,7 +47,8 @@ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkS
 	//allocating space
 	//heightfield settings
 	this->Heightfield_Setting_d = STPSmartDeviceMemory::makeDevice<STPEnvironment::STPHeightfieldSetting>();
-	STPcudaCheckErr(cudaMemcpy(this->Heightfield_Setting_d.get(), &this->Heightfield_Setting_h, sizeof(STPEnvironment::STPHeightfieldSetting), cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMemcpy(this->Heightfield_Setting_d.get(), &this->Heightfield_Setting_h,
+		sizeof(STPEnvironment::STPHeightfieldSetting), cudaMemcpyHostToDevice));
 
 	//create memory pool
 	cudaMemPoolProps pool_props = { };
@@ -56,7 +58,8 @@ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkS
 	pool_props.handleTypes = cudaMemHandleTypeNone;
 	STPcudaCheckErr(cudaMemPoolCreate(&this->MapCacheDevice, &pool_props));
 	//TODO: smartly determine the average memory pool size
-	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short)) * info.FreeSlipRange.x * info.FreeSlipRange.y * hint_level_of_concurrency;
+	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short)) * info.FreeSlipRange.x * info.FreeSlipRange.y
+		* hint_level_of_concurrency;
 	STPcudaCheckErr(cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres));
 	this->TextureBufferAttr.DeviceMemPool = this->MapCacheDevice;
 }
@@ -142,7 +145,8 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 				//request a RNG from the RNG pool
 				unique_lock<mutex> rng_lock(this->RNGPoolLock);
 				if (this->RNGPool.empty()) {
-					rng_buffer.emplace(STPHeightfieldKernel::curandInit(this->Heightfield_Setting_h.Seed, this->Heightfield_Setting_h.RainDropCount, stream));
+					rng_buffer.emplace(STPHeightfieldKernel::curandInit(
+						this->Heightfield_Setting_h.Seed, this->Heightfield_Setting_h.RainDropCount, stream));
 				} else {
 					rng_buffer.emplace(move(this->RNGPool.front()));
 					this->RNGPool.pop();

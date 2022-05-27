@@ -21,7 +21,6 @@ BreakConstructorInitializers: AfterColon
 
 # C
 ColumnLimit: 120
-CommentPragmas: '^[^ ]' # do not add space before comment
 ContinuationIndentWidth: 4
 Cpp11BracedListStyle: false
 
@@ -73,6 +72,9 @@ SpaceInEmptyParentheses: false
 SpacesInAngles: Never
 SpacesInConditionalStatement: false
 SpacesInCStyleCastParentheses: false
+SpacesInLineCommentPrefix:
+    Maximum: 0
+    Minimum: 0
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 Standard: c++17

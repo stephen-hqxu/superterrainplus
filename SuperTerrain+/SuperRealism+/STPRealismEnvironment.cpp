@@ -200,9 +200,8 @@ bool STPPerspectiveCameraSetting::validate() const {
 	static constexpr auto range = [](double val, double min, double max) constexpr -> double {
 		return val > min && val < max;
 	};
-	static constexpr double TWO_PI = glm::pi<double>() * 2.0;
 
-	return range(this->ViewAngle, 0.0, TWO_PI)
+	return range(this->ViewAngle, 0.0, glm::pi<double>() * 2.0)
 		&& this->ZoomSensitivity > 0.0
 		&& this->ZoomLimit.x > 0.0
 		&& this->ZoomLimit.y > 0.0

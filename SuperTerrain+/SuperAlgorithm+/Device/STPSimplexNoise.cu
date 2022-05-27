@@ -80,7 +80,8 @@ __device__ float STPSimplexNoise::simplex2D(float x, float y) const {
 		}
 		else {
 			weight[vertex] *= weight[vertex];
-			corner[vertex] = weight[vertex] * weight[vertex] * dot2D(this->grad2D(grad_i[vertex], 0), this->grad2D(grad_i[vertex], 1), dst_x[vertex], dst_y[vertex]);
+			corner[vertex] = weight[vertex] * weight[vertex]
+				* dot2D(this->grad2D(grad_i[vertex], 0), this->grad2D(grad_i[vertex], 1), dst_x[vertex], dst_y[vertex]);
 		}
 	}
 

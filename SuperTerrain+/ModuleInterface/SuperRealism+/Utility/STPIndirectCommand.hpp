@@ -30,7 +30,9 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STPDrawElement {
 		public:
 
-			STPOpenGL::STPuint Count, InstancedCount, FirstIndex, BaseVertex, BaseInstance;
+			STPOpenGL::STPuint Count, InstancedCount, FirstIndex;
+			STPOpenGL::STPint BaseVertex;
+			STPOpenGL::STPuint BaseInstance;
 
 		};
 
@@ -41,6 +43,41 @@ namespace SuperTerrainPlus::STPRealism {
 		public:
 
 			STPOpenGL::STPuint GroupCountX, GroupCountY, GroupCountZ;
+
+		};
+
+		/**
+		 * @brief Provides bindless buffer information.
+		*/
+		struct STPBindlessPtrNV {
+		public:
+
+			STPOpenGL::STPuint Index, Reserve;
+			STPOpenGL::STPuint64 Address, Length;
+
+		};
+
+		/**
+		 * @brief Provides indirect command for MultiDrawArraysIndirectBindlessNV function.
+		*/
+		struct STPDrawArrayBindlessNV {
+		public:
+
+			STPDrawArray Cmd;
+			STPBindlessPtrNV* VertexBuffer;
+
+		};
+
+		/**
+		 * @brief Provides indirect command for MultiDrawElementsIndirectBindlessNV function.
+		*/
+		struct STPDrawElementBindlessNV {
+		public:
+
+			STPDrawElement Cmd;
+			STPOpenGL::STPuint Reserve;
+			STPBindlessPtrNV IndexBuffer;
+			STPBindlessPtrNV* VertexBuffer;
 
 		};
 

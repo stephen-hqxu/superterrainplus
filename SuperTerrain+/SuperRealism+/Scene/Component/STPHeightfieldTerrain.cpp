@@ -53,7 +53,7 @@ constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 	0u,
 	1u,
 	0u,
-	0u,
+	0,
 	0u
 };
 

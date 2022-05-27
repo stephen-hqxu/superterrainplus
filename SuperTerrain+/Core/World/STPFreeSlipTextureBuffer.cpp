@@ -18,7 +18,9 @@ using std::unique_ptr;
 using glm::uvec2;
 
 template<typename T>
-STPFreeSlipTextureBuffer<T>::STPHostCallbackDeleter::STPHostCallbackDeleter(cudaStream_t stream, STPPinnedMemoryPool* memPool) : Data(make_pair(stream, memPool)) {
+STPFreeSlipTextureBuffer<T>::STPHostCallbackDeleter::STPHostCallbackDeleter(
+	cudaStream_t stream, STPPinnedMemoryPool* memPool) :
+	Data(make_pair(stream, memPool)) {
 
 }
 
@@ -40,7 +42,8 @@ void STPFreeSlipTextureBuffer<T>::STPHostCallbackDeleter::operator()(T* ptr) con
 }
 
 template<typename T>
-STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(STPFreeSlipTexture& texture, STPFreeSlipTextureData data, const STPFreeSlipTextureAttribute& attr) : 
+STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(STPFreeSlipTexture& texture,
+	STPFreeSlipTextureData data, const STPFreeSlipTextureAttribute& attr) : 
 	Attr(attr), Data(data), Buffer(texture) {
 	const STPFreeSlipInformation& info = this->Attr.TextureInfo;
 	const unsigned int freeslip_count = info.FreeSlipChunk.x * info.FreeSlipChunk.y;
@@ -73,7 +76,8 @@ void STPFreeSlipTextureBuffer<T>::destroyAllocation() {
 		//we need to copy the large buffer back to each chunk
 		if (*this->Integration == STPFreeSlipLocation::DeviceMemory) {
 			//copy device memory to pinned memory we have allocated previously
-			STPcudaCheckErr(cudaMemcpyAsync(this->HostIntegration.get(), this->DeviceIntegration.get(), freeslip_size, cudaMemcpyDeviceToHost, this->Data.Stream));
+			STPcudaCheckErr(cudaMemcpyAsync(this->HostIntegration.get(), this->DeviceIntegration.get(), freeslip_size,
+				cudaMemcpyDeviceToHost, this->Data.Stream));
 		}
 
 		//disintegrate merged buffer
@@ -174,7 +178,8 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 		this->DeviceIntegration = STPSmartDeviceMemory::makeStreamedDevice<T[]>(this->Attr.DeviceMemPool, this->Data.Stream, freeslip_count);
 		//copy
 		if (this->Data.Mode != STPFreeSlipTextureData::STPMemoryMode::WriteOnly) {
-			STPcudaCheckErr(cudaMemcpyAsync(this->DeviceIntegration.get(), this->HostIntegration.get(), freeslip_size, cudaMemcpyHostToDevice, this->Data.Stream));
+			STPcudaCheckErr(cudaMemcpyAsync(this->DeviceIntegration.get(), this->HostIntegration.get(), freeslip_size,
+				cudaMemcpyHostToDevice, this->Data.Stream));
 		}
 		//no copy is needed if we only write to the buffer
 		texture = this->DeviceIntegration.get();

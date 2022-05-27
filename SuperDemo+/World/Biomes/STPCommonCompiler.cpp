@@ -56,8 +56,9 @@ constexpr static auto generateInclude() {
 constexpr static auto CoreInclude = generateInclude<SuperTerrainPlus_CoreInclude>();
 constexpr static auto DeviceInclude = generateInclude<SuperAlgorithmPlus_DeviceInclude>();
 
-STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk, 
-	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : CapabilityOption(string("-arch=sm_") + to_string(STPCommonCompiler::getArchitecture(0))),
+STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk,
+	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
+	CapabilityOption(string("-arch=sm_") + to_string(STPCommonCompiler::getArchitecture(0))),
 	SimplexPermutation(simplex_setting), Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk) {
 	//setup compiler options
 	this->SourceInfo.Option

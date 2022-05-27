@@ -149,8 +149,8 @@ namespace STPStart {
 				STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
 
 				const auto& chunk_setting = config.ChunkSetting;
-				config.HeightfieldSetting = std::move(
-					STPTerrainParaLoader::getGeneratorSetting(this->engineINI.at("2DTerrainINF"), chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
+				config.HeightfieldSetting = std::move(STPTerrainParaLoader::getGeneratorSetting(
+					this->engineINI.at("2DTerrainINF"), chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
 
 				if (!config.validate()) {
 					throw STPException::STPInvalidEnvironment("Configurations are not validated");
@@ -279,7 +279,8 @@ namespace STPStart {
 			float TerrainAltitude = 0.0f;
 			{
 				//terrain
-				const STPEnvironment::STPMeshSetting mesh_setting = STPTerrainParaLoader::getRenderingSetting(this->engineINI.at("2DTerrainINF"));
+				const STPEnvironment::STPMeshSetting mesh_setting =
+					STPTerrainParaLoader::getRenderingSetting(this->engineINI.at("2DTerrainINF"));
 				TerrainAltitude = mesh_setting.Altitude;
 
 				const STPHeightfieldTerrain<true>::STPTerrainShaderOption terrain_opt = {
@@ -298,7 +299,8 @@ namespace STPStart {
 			}
 			{
 				//water
-				const STPEnvironment::STPWaterSetting water_setting = STPTerrainParaLoader::getWaterSetting(this->engineINI.at("Water"), TerrainAltitude);
+				const STPEnvironment::STPWaterSetting water_setting =
+					STPTerrainParaLoader::getWaterSetting(this->engineINI.at("Water"), TerrainAltitude);
 
 				//define water level for watery biome
 				STPWater::STPBiomeWaterLevel water_level;
@@ -335,7 +337,8 @@ namespace STPStart {
 			}
 			{
 				//BSDF
-				const STPEnvironment::STPBidirectionalScatteringSetting bsdf_setting = STPTerrainParaLoader::getBSDFSetting(this->engineINI.at("Water"));
+				const STPEnvironment::STPBidirectionalScatteringSetting bsdf_setting =
+					STPTerrainParaLoader::getBSDFSetting(this->engineINI.at("Water"));
 
 				this->BSDFEffect.emplace(screen_renderer_init);
 				this->BSDFEffect->setScattering(bsdf_setting);

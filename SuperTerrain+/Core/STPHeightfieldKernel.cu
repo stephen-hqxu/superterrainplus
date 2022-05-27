@@ -13,7 +13,8 @@ using glm::uvec2;
 
 __global__ static void curandInitKERNEL(STPHeightfieldKernel::STPcurand_t*, unsigned long long, unsigned int);
 
-__global__ static void hydraulicErosionKERNEL(float*, const STPEnvironment::STPHeightfieldSetting*, STPFreeSlipInformation, STPHeightfieldKernel::STPcurand_t*);
+__global__ static void hydraulicErosionKERNEL(
+	float*, const STPEnvironment::STPHeightfieldSetting*, STPFreeSlipInformation, STPHeightfieldKernel::STPcurand_t*);
 
 __global__ static void texture32Fto16KERNEL(float*, unsigned short*, uvec2);
 
@@ -33,9 +34,9 @@ __host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(un
 	return rng;
 }
 
-__host__ void STPHeightfieldKernel::hydraulicErosion
-	(float* heightmap_storage, const STPEnvironment::STPHeightfieldSetting* heightfield_settings, const STPFreeSlipInformation& freeslip_info,
-		unsigned int brush_size, unsigned int raindrop_count, STPcurand_t* rng, cudaStream_t stream) {
+__host__ void STPHeightfieldKernel::hydraulicErosion(float* heightmap_storage,
+	const STPEnvironment::STPHeightfieldSetting* heightfield_settings, const STPFreeSlipInformation& freeslip_info,
+	unsigned int brush_size, unsigned int raindrop_count, STPcurand_t* rng, cudaStream_t stream) {
 	//brush contains two components: weights (float) and indices (int)
 	const unsigned int erosionBrushCache_size = brush_size * (sizeof(int) + sizeof(float));
 	//launch para
@@ -81,8 +82,9 @@ __global__ void curandInitKERNEL(STPHeightfieldKernel::STPcurand_t* rng, unsigne
 //It's raining
 #include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
 
-__global__ void hydraulicErosionKERNEL
-	(float* heightmap_storage, const STPEnvironment::STPHeightfieldSetting* heightfield_settings, STPFreeSlipInformation freeslip_info, STPHeightfieldKernel::STPcurand_t* rng) {
+__global__ void hydraulicErosionKERNEL(float* heightmap_storage,
+	const STPEnvironment::STPHeightfieldSetting* heightfield_settings, STPFreeSlipInformation freeslip_info,
+	STPHeightfieldKernel::STPcurand_t* rng) {
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
 	if (index >= heightfield_settings->RainDropCount) {

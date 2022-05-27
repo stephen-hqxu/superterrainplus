@@ -105,7 +105,8 @@ private:
 			//ptr is trivially destructor so we don't need to call destroy
 			AllocTr::deallocate(alloc, ptr, size);
 		};
-		unique_ptr_alloc cache(AllocTr::allocate(this->arrayAllocator, new_capacity), bind(deleter, _1, this->arrayAllocator, new_capacity));
+		unique_ptr_alloc cache(AllocTr::allocate(this->arrayAllocator, new_capacity),
+			bind(deleter, _1, this->arrayAllocator, new_capacity));
 
 		//copy will handle the case when begin == end
 		std::copy(this->cbegin(), this->cend(), cache.get());
@@ -390,7 +391,9 @@ private:
 
 		//get the biome using the index from dictionary
 		//if not we need to insert that many extra entries so we can use sample to index the dictionary directly
-		if (unsigned int& bin_index = diff <= 0 ? *this->Dictionary.insert_back_n(static_cast<size_t>((-diff) + 1u), NO_ENTRY) : this->Dictionary[sample]; 
+		if (unsigned int& bin_index = diff <= 0
+				? *this->Dictionary.insert_back_n(static_cast<size_t>((-diff) + 1u), NO_ENTRY)
+				: this->Dictionary[sample];
 			bin_index == NO_ENTRY) {
 			//biome not exist, add and initialise
 			STPSingleHistogram::STPBin& bin = this->Bin.emplace_back();
@@ -399,8 +402,7 @@ private:
 			//record the index in the bin and store to dictionary
 			bin_index = static_cast<unsigned int>(this->Bin.size()) - 1;
 			return bin;
-		}
-		else {
+		} else {
 			return this->Bin[bin_index];
 		}
 	}
@@ -530,19 +532,14 @@ void STPSingleHistogramFilter::copy_to_buffer(STPDefaultHistogramBuffer& target,
 	//copy bin
 	if (normalise) {
 		//sum everything in the accumulator
-		const float sum = static_cast<float>(std::accumulate(acc_beg, acc_end, 0u, [](auto init, const STPSingleHistogram::STPBin& bin) { return init + bin.Data.Quantity; }));
-		std::transform(
-			acc_beg,
-			acc_end,
-			target_dest_begin,
-			[sum](auto bin) {
-				//we need to make a copy
-				bin.Data.Weight = 1.0f * bin.Data.Quantity / sum;
-				return bin;
-			}
-		);
-	}
-	else {
+		const float sum = static_cast<float>(std::accumulate(acc_beg, acc_end, 0u,
+			[](auto init, const STPSingleHistogram::STPBin& bin) { return init + bin.Data.Quantity; }));
+		std::transform(acc_beg, acc_end, target_dest_begin, [sum](auto bin) {
+			//we need to make a copy
+			bin.Data.Weight = 1.0f * bin.Data.Quantity / sum;
+			return bin;
+		});
+	} else {
 		//just copy the data
 		std::copy(acc_beg, acc_end, target_dest_begin);
 	}
@@ -600,15 +597,11 @@ void STPSingleHistogramFilter::copy_to_output(STPPinnedHistogramBuffer* buffer,
 	if (workplaceID != 0u) {
 		//do a offset correction first
 		//no need to do that for thread 0 since offset starts at zero
-		std::transform(
-			workplace_memory.HistogramStartOffset.cbegin(),
-			workplace_memory.HistogramStartOffset.cend(),
+		std::transform(workplace_memory.HistogramStartOffset.cbegin(), workplace_memory.HistogramStartOffset.cend(),
 			offset_base_it,
 			//get the starting index, so the current buffer connects to the previous buffer seamlessly
-			[bin_base = output_base.x](auto offset) { return bin_base + offset; }
-		);
-	}
-	else {
+			[bin_base = output_base.x](auto offset) { return bin_base + offset; });
+	} else {
 		//direct copy for threadID 0
 		std::copy(workplace_memory.HistogramStartOffset.cbegin(), workplace_memory.HistogramStartOffset.cend(), offset_base_it);
 	}
@@ -687,8 +680,8 @@ void STPSingleHistogramFilter::filter_horizontal(STPPinnedHistogramBuffer* histo
 	}
 }
 
-void STPSingleHistogramFilter::filter
-	(const Sample* sample_map, const STPFreeSlipInformation& freeslip_info, STPPinnedHistogramBuffer* histogram_output, uvec2 central_chunk_index, unsigned int radius) {
+void STPSingleHistogramFilter::filter(const Sample* sample_map, const STPFreeSlipInformation& freeslip_info,
+	STPPinnedHistogramBuffer* histogram_output, uvec2 central_chunk_index, unsigned int radius) {
 	using namespace std::placeholders;
 	using std::bind;
 	using std::future;
@@ -765,8 +758,7 @@ void STPSingleHistogramFilter::filter
 			if (w == STPSingleHistogramFilter::Parallelism - 2u) {
 				//calculate the range for the last thread, to ensure all remaining columns are all done by the last thread
 				w_range.y = width_start + total_width;
-			}
-			else {
+			} else {
 				w_range.y += width_step;
 			}
 		}
@@ -785,8 +777,7 @@ void STPSingleHistogramFilter::filter
 			h_range.x = h_range.y;
 			if (w == STPSingleHistogramFilter::Parallelism - 2u) {
 				h_range.y = dimension.y;
-			}
-			else {
+			} else {
 				h_range.y += height_step;
 			}
 		}

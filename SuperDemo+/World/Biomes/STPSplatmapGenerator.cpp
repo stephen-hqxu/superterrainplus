@@ -23,9 +23,9 @@ using glm::uvec2;
 using glm::uvec3;
 using glm::value_ptr;
 
-STPSplatmapGenerator::STPSplatmapGenerator
-	(const STPCommonCompiler& program, const STPTextureDatabase::STPDatabaseView& database_view, 
-		const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting) :
+STPSplatmapGenerator::STPSplatmapGenerator(const STPCommonCompiler& program,
+	const STPTextureDatabase::STPDatabaseView& database_view,
+	const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting) :
 	//bias is a scaling value, we need to calculate the reciprocal.
 	STPTextureFactory(database_view, chunk_setting), KernelProgram(program) {
 	//compile source code
@@ -48,8 +48,8 @@ void STPSplatmapGenerator::initGenerator() {
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
 
-void STPSplatmapGenerator::splat
-	(cudaTextureObject_t biomemap_tex, cudaTextureObject_t heightmap_tex, cudaSurfaceObject_t splatmap_surf, const STPTI::STPSplatGeneratorInformation& info, cudaStream_t stream) const {
+void STPSplatmapGenerator::splat(cudaTextureObject_t biomemap_tex, cudaTextureObject_t heightmap_tex,
+	cudaSurfaceObject_t splatmap_surf, const STPTI::STPSplatGeneratorInformation& info, cudaStream_t stream) const {
 	int Mingridsize, blocksize;
 	//smart launch config
 	STPcudaCheckErr(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->SplatmapEntry, nullptr, 0ull, 0));
@@ -57,7 +57,8 @@ void STPSplatmapGenerator::splat
 	const uvec3 Dimgridsize = uvec3((this->MapDimension + Dimblocksize - 1u) / Dimblocksize, info.LocalCount);
 
 	//launch kernel
-	constexpr static size_t BufferSize = sizeof(biomemap_tex) + sizeof(heightmap_tex) + sizeof(splatmap_surf) + sizeof(STPTI::STPSplatGeneratorInformation);
+	constexpr static size_t BufferSize = sizeof(biomemap_tex) + sizeof(heightmap_tex) + sizeof(splatmap_surf)
+		+ sizeof(STPTI::STPSplatGeneratorInformation);
 	size_t buffer_size = BufferSize;
 	unsigned char buffer[BufferSize];
 	unsigned char* current_buffer = buffer;

@@ -20,20 +20,23 @@ using std::exception_ptr;
 
 using namespace SuperTerrainPlus;
 
-STPRuntimeCompilable::STPSourceInformation::STPSourceArgument& STPRuntimeCompilable::STPSourceInformation::STPSourceArgument::operator[](const char arg[]) {
+STPRuntimeCompilable::STPSourceInformation::STPSourceArgument&
+	STPRuntimeCompilable::STPSourceInformation::STPSourceArgument::operator[](const char arg[]) {
 	//inserting a string literal will not cause undefined behaviour
 	//string is a better choice but CUDA API only takes char array, so for simplicity store string literal.
 	this->emplace_back(arg);
 	return *this;
 }
 
-STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption& STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption::operator()(CUjit_option flag, void* value) {
+STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption&
+	STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption::operator()(CUjit_option flag, void* value) {
 	this->OptionFlag.emplace_back(flag);
 	this->OptionValue.emplace_back(value);
 	return *this;
 }
 
-STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption& STPRuntimeCompilable::STPLinkerInformation::getDataOption(const string& source_name) {
+STPRuntimeCompilable::STPLinkerInformation::STPDataJitOption& STPRuntimeCompilable::STPLinkerInformation::getDataOption(
+	const string& source_name) {
 	//it will insert a new entry automatically if source_name is not found
 	return this->DataOption[source_name];
 }
@@ -74,9 +77,9 @@ bool STPRuntimeCompilable::detachArchive(const string& archive_name) {
 string STPRuntimeCompilable::compileSource(const string& source_name, const string& source_code, const STPSourceInformation& source_info) {
 	//make sure the source name is unique
 	if (this->CompilationDatabase.find(source_name) != this->CompilationDatabase.end()) {
-		throw STPException::STPMemoryError(
-			(string(__FILE__) + "::" + string(__FUNCTION__) + "\nA duplicate source with name '" + source_name + "' has been compiled before.").c_str()
-		);
+		throw STPException::STPMemoryError((string(__FILE__) + "::" + string(__FUNCTION__)
+			+ "\nA duplicate source with name '" + source_name + "' has been compiled before.")
+											   .c_str());
 	}
 
 	vector<const char*> external_header;
@@ -161,7 +164,8 @@ void STPRuntimeCompilable::linkProgram(STPLinkerInformation& linker_info, CUjitI
 	//create a linker
 	CUlinkState linker_cache;
 	STPLinkerInformation::STPDataJitOption& linkerOption = linker_info.LinkerOption;
-	STPcudaCheckErr(cuLinkCreate(static_cast<int>(linkerOption.OptionFlag.size()), linkerOption.OptionFlag.data(), linkerOption.OptionValue.data(), &linker_cache));
+	STPcudaCheckErr(cuLinkCreate(static_cast<int>(linkerOption.OptionFlag.size()), linkerOption.OptionFlag.data(),
+		linkerOption.OptionValue.data(), &linker_cache));
 	ManagedCUlinkState linker(linker_cache, &STPRuntimeCompilable::deleteLink);
 
 	//for each entry, add compiled data to the linker
@@ -199,7 +203,8 @@ void STPRuntimeCompilable::linkProgram(STPLinkerInformation& linker_info, CUjitI
 			//flag exists
 			auto& individual_option = curr_option->second;
 			STPcudaCheckErr(cuLinkAddData(linker_cache, input_type, code.get(), codeSize, compiled->first.c_str(),
-				static_cast<int>(individual_option.OptionFlag.size()), individual_option.OptionFlag.data(), individual_option.OptionValue.data()));
+				static_cast<int>(individual_option.OptionFlag.size()), individual_option.OptionFlag.data(),
+				individual_option.OptionValue.data()));
 		}
 	}
 
@@ -234,7 +239,9 @@ void STPRuntimeCompilable::linkProgram(STPLinkerInformation& linker_info, CUjitI
 const STPRuntimeCompilable::STPLoweredName& STPRuntimeCompilable::retrieveSourceLoweredName(const string& source_name) const {
 	auto name_expression = this->CompilationNameDatabase.find(source_name);
 	if (name_expression == this->CompilationNameDatabase.end()) {
-		throw STPException::STPMemoryError((string(__FILE__) + "::" + string(__FUNCTION__) + "\nSource name cannot be found in source database.").c_str());
+		throw STPException::STPMemoryError(
+			(string(__FILE__) + "::" + string(__FUNCTION__) + "\nSource name cannot be found in source database.")
+				.c_str());
 	}
 	return name_expression->second;
 }

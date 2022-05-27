@@ -44,7 +44,7 @@ constexpr static STPIndirectCommand::STPDrawElement QuadDrawCommand = {
 	static_cast<unsigned int>(QuadIndex.size()),
 	1u,
 	0u,
-	0u,
+	0,
 	0u
 };
 

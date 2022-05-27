@@ -173,8 +173,9 @@ public:
 			Cfar - Cnear
 		));
 		this->MappedBuffer->Far = static_cast<float>(Cfar);
-		this->MappedBuffer->Ortho = 
-			this->Camera.ProjectionType == STPCamera::STPProjectionCategory::Orthographic ? std::numeric_limits<unsigned int>::max() : 0u;
+		this->MappedBuffer->Ortho = this->Camera.ProjectionType == STPCamera::STPProjectionCategory::Orthographic
+			? std::numeric_limits<unsigned int>::max()
+			: 0u;
 		//update values
 		this->Buffer.flushMappedBufferRange(0, sizeof(STPPackedCameraBuffer));
 
@@ -284,7 +285,8 @@ private:
 	}
 
 	//this shader is used to do some additional operations during depth rendering
-	constexpr static auto ShadowDepthPassShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPShadowDepthPass", ".frag");
+	constexpr static auto ShadowDepthPassShaderFilename =
+		STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPShadowDepthPass", ".frag");
 
 	//shadow map texture properties
 	GLsizei ShadowLevel = 1;
@@ -617,8 +619,10 @@ public:
 		});
 		//upload new handles
 		STPGeometryBufferRawHandle raw_handle;
-		std::transform(this->GHandle->cbegin(), this->GHandle->cend(), raw_handle.begin(), [](const auto& handle) { return *handle; });
-		this->OffScreenRenderer.uniform(glProgramUniformHandleui64vARB, "GBuffer", static_cast<GLsizei>(raw_handle.size()), raw_handle.data());
+		std::transform(this->GHandle->cbegin(), this->GHandle->cend(), raw_handle.begin(),
+			[](const auto& handle) { return *handle; });
+		this->OffScreenRenderer.uniform(
+			glProgramUniformHandleui64vARB, "GBuffer", static_cast<GLsizei>(raw_handle.size()), raw_handle.data());
 
 		using std::move;
 		//store the new objects
@@ -707,7 +711,8 @@ public:
 
 };
 
-STPScenePipeline::STPScenePipeline(const STPCamera& camera, const STPMaterialLibrary* mat_lib, const STPScenePipelineInitialiser& scene_init) :
+STPScenePipeline::STPScenePipeline(const STPCamera& camera, 
+	const STPMaterialLibrary* mat_lib, const STPScenePipelineInitialiser& scene_init) :
 	SceneMemoryCurrent{ }, SceneMemoryLimit(scene_init.ShaderCapacity),
 	hasMaterialLibrary(mat_lib),
 	CameraMemory(make_unique<STPCameraInformationMemory>(camera)), 
@@ -887,7 +892,8 @@ void STPScenePipeline::setResolution(uvec2 resolution) {
 
 void STPScenePipeline::setExtinctionArea(float factor) const {
 	if (factor < 0.0f && factor > 1.0f) {
-		throw STPException::STPBadNumericRange("The extinction factor is a multiplier to far viewing distance and hence it should be a normalised value");
+		throw STPException::STPBadNumericRange(
+			"The extinction factor is a multiplier to far viewing distance and hence it should be a normalised value");
 	}
 
 	this->GeometryLightPass->setFloat("ExtinctionBand", factor);
@@ -944,7 +950,8 @@ inline void STPScenePipeline::shadeObject(const Ao* ao, const Pp* post_process, 
 void STPScenePipeline::traverse() {
 	const auto& [object, object_shadow, trans_obj, env_obj, unique_light_space_size, light_shadow, ao, bsdf, post_process] = this->SceneComponent;
 	if (!post_process) {
-		throw STPException::STPUnsupportedFunctionality("It is currently not allowed to render to default framebuffer without post processing, "
+		throw STPException::STPUnsupportedFunctionality(
+			"It is currently not allowed to render to default framebuffer without post processing, "
 			"because there is no stencil information written.");
 	}
 
@@ -1031,7 +1038,8 @@ void STPScenePipeline::traverse() {
 		//preserve the alpha in the current buffer because it contains information about aerial perspective to be used later
 		//source colour has already been pre-blended in the shader
 		glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE);
-		bsdf->scatter(this->SceneTexture.DepthStencil, this->GeometryLightPass->getNormal(), this->GeometryLightPass->getMaterial());
+		bsdf->scatter(this->SceneTexture.DepthStencil, this->GeometryLightPass->getNormal(),
+			this->GeometryLightPass->getMaterial());
 
 		glDisable(GL_BLEND);
 	}

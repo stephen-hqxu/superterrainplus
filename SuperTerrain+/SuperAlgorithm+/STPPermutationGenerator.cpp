@@ -61,7 +61,8 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	//now copy the host table to the device
 	this->ManagedPermutation = STPSmartDeviceMemory::makeDevice<unsigned char[]>(PermutationHost.size());
 	this->Permutation = this->ManagedPermutation.get();
-	STPcudaCheckErr(cudaMemcpy(this->Permutation, PermutationHost.data(), sizeof(unsigned char) * PermutationHost.size(), cudaMemcpyHostToDevice));
+	STPcudaCheckErr(cudaMemcpy(this->Permutation, PermutationHost.data(),
+		sizeof(unsigned char) * PermutationHost.size(), cudaMemcpyHostToDevice));
 
 	using glm::radians;
 	//generate the gradient table

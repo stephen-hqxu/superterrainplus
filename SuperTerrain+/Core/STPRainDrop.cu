@@ -84,7 +84,8 @@ __device__ void STPRainDrop::operator()(float* map, const STPEnvironment::STPRai
 	//Rain drop is still alive, continue descending...
 	while (this->volume >= settings->minWaterVolume) {
 		//The position of droplet on the map index
-		const unsigned int mapIndex = static_cast<unsigned int>(this->raindrop_pos.y) * this->Dimension.x + static_cast<unsigned int>(this->raindrop_pos.x);
+		const unsigned int mapIndex = static_cast<unsigned int>(this->raindrop_pos.y) * this->Dimension.x
+			+ static_cast<unsigned int>(this->raindrop_pos.x);
 		//calculate the offset of the droplet inside cell (0,0) and cell (1,1)
 		const vec2 offset_cell = this->raindrop_pos - static_cast<vec2>(static_cast<ivec2>(this->raindrop_pos));
 		//check if the particle is not accelerating and is it surrounded by a lot of other particles
@@ -103,9 +104,11 @@ __device__ void STPRainDrop::operator()(float* map, const STPEnvironment::STPRai
 		this->raindrop_pos += this->raindrop_dir;
 
 		//check if the raindrop brushing range falls out of the map
-		if ((this->raindrop_dir.x == 0.0f && this->raindrop_dir.y == 0.0f) 
-			|| this->raindrop_pos.x < (brushRadius * 1.0f) || this->raindrop_pos.x >= 1.0f * this->Dimension.x - brushRadius
-			|| this->raindrop_pos.y < (brushRadius * 1.0f) || this->raindrop_pos.y >= 1.0f * this->Dimension.y - brushRadius) {
+		if ((this->raindrop_dir.x == 0.0f && this->raindrop_dir.y == 0.0f)
+			|| this->raindrop_pos.x < (brushRadius * 1.0f)
+			|| this->raindrop_pos.x >= 1.0f * this->Dimension.x - brushRadius
+			|| this->raindrop_pos.y < (brushRadius * 1.0f)
+			|| this->raindrop_pos.y >= 1.0f * this->Dimension.y - brushRadius) {
 			//ending the life of this poor raindrop
 			this->volume = 0.0f;
 			this->sediment = 0.0f;
@@ -121,7 +124,9 @@ __device__ void STPRainDrop::operator()(float* map, const STPEnvironment::STPRai
 		//if carrying more sediment than capacity, or it's flowing uphill
 		if (this->sediment > sedimentCapacity || deltaHeight > 0.0f) {
 			//If flowing uphill (delta height > 0) try to fill up the current height, otherwise deposit a fraction of the excess sediment
-			const float depositAmount = (deltaHeight > 0.0f) ? fminf(deltaHeight, this->sediment) : (this->sediment - sedimentCapacity) * settings->DepositSpeed ;
+			const float depositAmount = (deltaHeight > 0.0f)
+				? fminf(deltaHeight, this->sediment)
+				: (this->sediment - sedimentCapacity) * settings->DepositSpeed;
 			this->sediment -= depositAmount;
 
 			//add the sediment to the four nodes of the current cell using bilinear interpolation

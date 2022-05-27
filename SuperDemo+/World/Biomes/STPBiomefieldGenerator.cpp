@@ -33,7 +33,8 @@ STPBiomefieldGenerator::STPBiomefieldGenerator(const STPCommonCompiler& program,
 	STPcudaCheckErr(cuMemPoolCreate(&this->HistogramCacheDevice, &pool_props));
 	//it's pretty hard to predict
 	constexpr size_t avg_bin_per_pixel = 2ull, deg_para = 5ull;
-	cuuint64_t release_thres = this->MapSize.x * this->MapSize.y * (sizeof(unsigned int) + sizeof(SuperTerrainPlus::STPAlgorithm::STPSingleHistogram::STPBin) * avg_bin_per_pixel) * deg_para;
+	cuuint64_t release_thres = this->MapSize.x * this->MapSize.y * (sizeof(unsigned int)
+		+ sizeof(SuperTerrainPlus::STPAlgorithm::STPSingleHistogram::STPBin) * avg_bin_per_pixel) * deg_para;
 	cuMemPoolSetAttribute(this->HistogramCacheDevice, CU_MEMPOOL_ATTR_RELEASE_THRESHOLD, &release_thres);
 }
 
@@ -111,7 +112,8 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_d.HistogramStartOffset, offset_size, this->HistogramCacheDevice, stream));
 	//and copy
 	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.Bin, histogram_h.Bin, bin_size, cudaMemcpyHostToDevice, stream));
-	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset, offset_size, cudaMemcpyHostToDevice, stream));
+	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset, offset_size,
+		cudaMemcpyHostToDevice, stream));
 	//returning the buffer back to the pool, make sure all copies are done
 	STPcudaCheckErr(cudaStreamSynchronize(stream));
 	{

@@ -79,7 +79,7 @@ constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
 	static_cast<unsigned int>(BoxIndex.size()),
 	1u,
 	0u,
-	0u,
+	0,
 	0u
 };
 
@@ -235,7 +235,8 @@ void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_sett
 }
 
 STPSun::STPBundledData<STPLightSpectrum> STPSun::generateSunSpectrum(unsigned int spectrum_length, const mat3& ray_space) const {
-	this->SpectrumEmulator.uniform(glProgramUniformMatrix3fv, "SunToRayDirection", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(ray_space));
+	this->SpectrumEmulator.uniform(
+		glProgramUniformMatrix3fv, "SunToRayDirection", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(ray_space));
 	//setup output
 	const auto spectrum_creator = make_tuple(spectrum_length, GL_RGBA16F);
 	STPBundledData<STPLightSpectrum> spectrum = make_pair(
