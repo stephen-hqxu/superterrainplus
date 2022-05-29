@@ -17,7 +17,6 @@ body:
         label: The limitation
         description: |
             Provide a clear and concise description of the limitation in the current version of SuperTerrain+.
-        render: markdown
       validations:
         required: true
         
@@ -27,7 +26,6 @@ body:
         label: The solution
         description: |
             Write a clear and concise description of the requesting feature, and demonstrate how this feature will resolve the identified limitation.
-        render: markdown
       validations:
         required: true
         
@@ -36,5 +34,4 @@ body:
       attributes:
         label: The additional
         description: |
-            Add any other context about the feature you are requesting here; for example, if you have any suggestion how this feature should be implemented.
-        render: markdown
+            Add any other context about the feature you are requesting here; for example, if you have any suggestion how this feature could be implemented.
