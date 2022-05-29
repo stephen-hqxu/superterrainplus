@@ -1,5 +1,5 @@
 name: 🌟 Feature Request
-description: I have a new idea.
+description: I have a new idea
 body:
     - type: checkboxes
       id: the-issue

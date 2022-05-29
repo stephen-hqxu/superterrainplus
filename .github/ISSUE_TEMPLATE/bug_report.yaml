@@ -18,7 +18,6 @@ body:
         description: |
             Specify the category of the bug you are reporting.
         options:
-            - Compilation warning
             - Compilation error
             - Runtime crash
             - Visual artefact
@@ -50,8 +49,8 @@ body:
       attributes:
         label: The reproduction
         description: |
-            Steps to reproduce the behaviour as you have mentioned. Usually you should provide a small and self-contained piece of code that uses SuperTerrain+ and specify any relevant configuration and compiler flags, as applicable.
-        placeholder: |
+            Describe procedures to reproduce the behaviour as you have mentioned. Usually you should provide a small and self-contained piece of code that uses SuperTerrain+ and specify any relevant configuration and compiler flag, if applicable.
+        value: |
             1. Go to ...
             2. Set the setting ... to value ...
             3. Use these code ...
