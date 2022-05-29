@@ -89,7 +89,7 @@ body:
             Provide information of the platform where you work and the bug can be reproduced.
         value: |
             **GPU model**:
-            **Graphics driver**:
+            **Graphics driver version**:
             **CUDA version**:
             **Compiler and version**:
       validations:
