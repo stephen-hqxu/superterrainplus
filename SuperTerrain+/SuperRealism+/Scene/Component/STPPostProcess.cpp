@@ -102,8 +102,14 @@ TONE_MAPPING_NAME(Disable)::STPToneMappingDefinition() : STPToneMappingCurve(STP
 
 //For disabled tone mapping function, nothing needs to be defined in the functor.
 
-TONE_MAPPING_NAME(GranTurismo)::STPToneMappingDefinition() : STPToneMappingCurve(STPToneMappingFunction::GranTurismo), 
-	MaxBrightness(1.0f), Contrast(1.0f), LinearStart(0.22f), LinearLength(0.4f), BlackTightness(1.33f), Pedestal(0.0f) {
+TONE_MAPPING_NAME(GranTurismo)::STPToneMappingDefinition() :
+	STPToneMappingCurve(STPToneMappingFunction::GranTurismo), 
+	MaxBrightness(1.0f),
+	Contrast(1.0f),
+	LinearStart(0.22f),
+	LinearLength(0.4f),
+	BlackTightness(1.33f),
+	Pedestal(0.0f) {
 
 }
 
@@ -126,8 +132,12 @@ TONE_MAPPING_DEF(GranTurismo) {
 		.uniform(glProgramUniform1f, "Tone.CP", CP);
 }
 
-TONE_MAPPING_NAME(Lottes)::STPToneMappingDefinition() : STPToneMappingCurve(STPToneMappingFunction::Lottes), 
-	Contrast(1.6f), Shoulder(0.977f), HDRMax(8.0f), Middle(vec2(0.18f, 0.267f)) {
+TONE_MAPPING_NAME(Lottes)::STPToneMappingDefinition() :
+	STPToneMappingCurve(STPToneMappingFunction::Lottes), 
+	Contrast(1.6f),
+	Shoulder(0.977f),
+	HDRMax(8.0f),
+	Middle(vec2(0.18f, 0.267f)) {
 
 }
 
@@ -149,9 +159,15 @@ TONE_MAPPING_DEF(Lottes) {
 		.uniform(glProgramUniform1f, "Tone.d", this->Shoulder);
 }
 
-TONE_MAPPING_NAME(Uncharted2)::STPToneMappingDefinition() : STPToneMappingCurve(STPToneMappingFunction::Uncharted2), 
-	ShoulderStrength(0.22f), LinearStrength(0.3f), LinearAngle(0.1f),
-	ToeStrength(0.2f), ToeNumerator(0.01f), ToeDenominator(0.3f), LinearWhite(11.2f) {
+TONE_MAPPING_NAME(Uncharted2)::STPToneMappingDefinition() :
+	STPToneMappingCurve(STPToneMappingFunction::Uncharted2), 
+	ShoulderStrength(0.22f),
+	LinearStrength(0.3f),
+	LinearAngle(0.1f),
+	ToeStrength(0.2f),
+	ToeNumerator(0.01f),
+	ToeDenominator(0.3f),
+	LinearWhite(11.2f) {
 
 }
 

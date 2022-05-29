@@ -1,7 +1,6 @@
-#pragma once
-
 //DO NOT INCLUDE THIS HEADER SEPARATELY
 #ifdef _STP_LAYER_MANAGER_H_
+
 template <class L, size_t C, class... Arg>
 SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity::STPLayerManager::insert(Arg&&... args) {
 	//make sure only STPLayer is supplied as template, error throws at compile time
@@ -28,4 +27,5 @@ SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity::STPLay
 	}
 	return newLayer;
 }
+
 #endif//_STP_LAYER_MANAGER_H_

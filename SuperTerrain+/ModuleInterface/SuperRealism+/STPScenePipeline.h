@@ -59,7 +59,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief STPShadingEquation is an adaptive shading model selector for the renderer.
 		*/
-		class STP_REALISM_API STPShadingEquation {
+		class STP_REALISM_API STPShadingEquation : public STPEnvironment::STPSetting {
 		private:
 
 			friend class STPScenePipeline;
@@ -88,7 +88,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 			STPShadingEquation& operator=(STPShadingEquation&&) = delete;
 
-			~STPShadingEquation() = default;
+			virtual ~STPShadingEquation() = default;
 
 		};
 
@@ -97,7 +97,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief STPShadowMapFilterFunction is an adaptive shadow map filter manager for any shadow map filter.
 		*/
-		class STP_REALISM_API STPShadowMapFilterFunction {
+		class STP_REALISM_API STPShadowMapFilterFunction : public STPEnvironment::STPSetting {
 		private:
 
 			friend class STPScenePipeline;
@@ -148,7 +148,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @brief Check if all values for the filter are valid.
 			 * @return True if all of them are valid.
 			*/
-			bool valid() const;
+			virtual bool validate() const override;
 
 		};
 
@@ -419,6 +419,8 @@ template<> struct STP_REALISM_API STPScenePipeline::STPShadingModelDescription<S
 
 		~STPShadingModelDescription() = default;
 
+		bool validate() const override;
+
 		//As Blinn-Phong model does not properly handle roughness material,
 		//such that it is emulated by a linear equation and calculate the specular power as a linear interpolation of the roughness.
 
@@ -446,6 +448,8 @@ template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STP
 
 		~STPShadowMapFilterKernel() = default;
 
+		bool validate() const override;
+
 		//Specifies the radius of the filter kernel.
 		//Larger radius gives smoother shadow but also slower.
 		unsigned int KernelRadius;
@@ -464,6 +468,8 @@ template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STP
 		STPShadowMapFilterKernel();
 
 		~STPShadowMapFilterKernel() = default;
+
+		bool validate() const override;
 
 		//The minimum variance value. 
 		//This helps to reduce shadow acne effects when light direction is parallel to the surface.

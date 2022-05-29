@@ -63,12 +63,16 @@ STPScenePipeline::STPShadingEquation::STPShadingEquation(STPShadingModel model) 
 
 }
 
-STPScenePipeline::STPShadowMapFilterFunction::STPShadowMapFilterFunction(STPShadowMapFilter filter) : Filter(filter), 
-	DepthBias(vec2(0.0f)), NormalBias(vec2(0.0f)), BiasFarMultiplier(1.0f), CascadeBlendArea(0.0f) {
+STPScenePipeline::STPShadowMapFilterFunction::STPShadowMapFilterFunction(STPShadowMapFilter filter) :
+	Filter(filter), 
+	DepthBias(vec2(0.0f)),
+	NormalBias(vec2(0.0f)),
+	BiasFarMultiplier(1.0f),
+	CascadeBlendArea(0.0f) {
 
 }
 
-bool STPScenePipeline::STPShadowMapFilterFunction::valid() const {
+bool STPScenePipeline::STPShadowMapFilterFunction::validate() const {
 	return this->DepthBias.x > this->DepthBias.y
 		&& this->NormalBias.x > this->NormalBias.y;
 }
@@ -469,6 +473,13 @@ public:
 		//remember 0 means no extinction whereas 1 means fully invisible
 		ExtinctionStencilCuller(STPAlphaCulling::STPCullComparator::LessEqual, 0.0f,
 			STPAlphaCulling::STPCullConnector::Or, STPAlphaCulling::STPCullComparator::Greater, 1.0f, lighting_init) {
+		if (!shadow_filter.validate()) {
+			throw STPException::STPBadNumericRange("The shadow map filter has invalid values");
+		}
+		if (!shading_equa.validate()) {
+			throw STPException::STPBadNumericRange("The shading model has invalid parameters");
+		}
+
 		const bool cascadeLayerBlend = shadow_filter.CascadeBlendArea > 0.0f;
 
 		//do something to the fragment shader
@@ -729,10 +740,6 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera,
 	GeometryLightPass(make_unique<STPGeometryBufferResolution>(
 		*this, *scene_init.ShadingModel, *scene_init.ShadowFilter, *scene_init.GeometryBufferInitialiser)), 
 	DefaultClearColor(vec4(vec3(0.0f), 1.0f)) {
-	if (!scene_init.ShadowFilter->valid()) {
-		throw STPException::STPBadNumericRange("The shadow filter has invalid settings");
-	}
-	
 	if (this->hasMaterialLibrary) {
 		//setup material library
 		(**mat_lib).bindBase(GL_SHADER_STORAGE_BUFFER, 2u);
@@ -1103,28 +1110,36 @@ void STPScenePipeline::traverse() {
 #define SHADOW_FILTER_NAME(FILT) STPScenePipeline::STPShadowMapFilterKernel<STPShadowMapFilter::FILT>
 #define SHADOW_FILTER_CLASS(FILT) template struct STP_REALISM_API SHADOW_FILTER_NAME(FILT)
 #define SHADOW_FILTER_DEF(FILT) void SHADOW_FILTER_NAME(FILT)::operator()(STPProgramManager& program) const
+#define SHADOW_FILTER_VALIDATE(FILT) bool SHADOW_FILTER_NAME(FILT)::validate() const
 
 //Explicit Instantiation of some shadow filters
 SHADOW_FILTER_CLASS(Nearest);
 SHADOW_FILTER_CLASS(Bilinear);
 
 //Explicit Specialisation of some even more complicated shadow filters
-SHADOW_FILTER_NAME(PCF)::STPShadowMapFilterKernel() : STPShadowMapFilterFunction(STPShadowMapFilter::PCF), 
-	KernelRadius(1u), KernelDistance(1.0f) {
+SHADOW_FILTER_NAME(PCF)::STPShadowMapFilterKernel() :
+	STPShadowMapFilterFunction(STPShadowMapFilter::PCF),
+	KernelRadius(1u),
+	KernelDistance(1.0f) {
 
 }
 
 SHADOW_FILTER_DEF(PCF) {
-	if (this->KernelRadius == 0u || this->KernelDistance <= 0.0f) {
-		throw STPException::STPBadNumericRange("Both kernel radius and distance should be positive");
-	}
-
 	program.uniform(glProgramUniform1ui, "Filter.Kr", this->KernelRadius)
 		.uniform(glProgramUniform1f, "Filter.Ks", this->KernelDistance);
 }
 
-SHADOW_FILTER_NAME(VSM)::STPShadowMapFilterKernel() : STPShadowMapFilterFunction(STPShadowMapFilter::VSM), 
-	minVariance(0.0f), mipmapLevel(1u), AnisotropyFilter(1.0f) {
+SHADOW_FILTER_VALIDATE(PCF) {
+	return this->STPShadowMapFilterFunction::validate()
+		&& this->KernelRadius > 0u
+		&& this->KernelDistance > 0.0f;
+}
+
+SHADOW_FILTER_NAME(VSM)::STPShadowMapFilterKernel() :
+	STPShadowMapFilterFunction(STPShadowMapFilter::VSM), 
+	minVariance(0.0f),
+	mipmapLevel(1u),
+	AnisotropyFilter(1.0f) {
 
 }
 
@@ -1132,8 +1147,13 @@ SHADOW_FILTER_DEF(VSM) {
 	program.uniform(glProgramUniform1f, "Filter.minVar", this->minVariance);
 }
 
+SHADOW_FILTER_VALIDATE(VSM) {
+	return this->STPShadowMapFilterFunction::validate();
+}
+
 #define SHADING_MODEL_NAME(MOD) STPScenePipeline::STPShadingModelDescription<STPScenePipeline::STPShadingModel::MOD>
 #define SHADING_MODEL_DEF(MOD) void SHADING_MODEL_NAME(MOD)::operator()(STPProgramManager& program) const
+#define SHADING_MODEL_VALIDATE(MOD) bool SHADING_MODEL_NAME(MOD)::validate() const
 
 SHADING_MODEL_NAME(BlinnPhong)::STPShadingModelDescription() :
 	STPShadingEquation(STPShadingModel::BlinnPhong), 
@@ -1147,4 +1167,9 @@ SHADING_MODEL_DEF(BlinnPhong) {
 		.uniform(glProgramUniform1f, "ShadingModel.maxRough", this->RoughnessRange.y)
 		.uniform(glProgramUniform1f, "ShadingModel.minShin", this->ShininessRange.x)
 		.uniform(glProgramUniform1f, "ShadingModel.maxShin", this->ShininessRange.y);
+}
+
+SHADING_MODEL_VALIDATE(BlinnPhong) {
+	return this->RoughnessRange.y > this->RoughnessRange.x
+		&& this->ShininessRange.y > this->ShininessRange.x;
 }

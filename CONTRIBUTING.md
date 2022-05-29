@@ -23,6 +23,48 @@ A consistent code style improves readability of codebase and helps future develo
 
 However, currently clang-format is still imperfect and cannot fully replicate my complex coding style, so please do not use it to format the entire file, and only do so on the newly changed code; this also helps reducing the size of diffs and makes code review easier.
 
-## What's Next
+### Naming convention
 
-I guess that's it, because this is a new project and the community is still small, so it might be better to be less restrictive. I will add more contribution guidelines in the future.
+- All files, namespaces, structures and classes should have their names prefixed with *STP*, the first character of each word in the name should be capitalised; no symbol other than alphabetical characters should be allowed in their names.
+- Name of member variables should follow the same naming convention as structures and classes but without the *STP* prefix.
+- All member functions and member variables from within the class should always be called with `this->`. Hence no prefix of *m* or something similar should be added.
+- Include guards should be given a name pattern of `_{FILENAME}_{EXTENSION}_` and capitalised everything. Some examples are:
+
+```cpp
+
+//STPRenderer.h
+#ifndef _STP_RENDERER_H_
+
+//STPTerrainRenderer.hpp
+#ifndef _STP_TERRAIN_RENDERER_HPP_
+
+```
+
+### Conditional statement
+
+- When working with `if`, consider if you can reduce the amount of code enclosed inside the block by flipping the logic over, and avoid using `else` when it is unnecessary. For example:
+
+```cpp
+
+//Bad
+if (!hasError) {
+	/* 1k lines of code inside the `if` block */
+	return value;
+	
+} else { //unnecessary `else` after return
+	throw std::exception("Something went wrong!");
+}
+
+//Good
+if(hasError) {
+	throw std::exception("Something went wrong!");
+}
+
+/* 1k lines of code */
+return value;
+
+```
+
+- When working with `switch`, avoid using `break` when it is unnecessary, such as using `return` in all `case`s.
+
+---

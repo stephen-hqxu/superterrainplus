@@ -65,7 +65,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPLayer* start();
 
 		/**
-		 * @brief Get the number of layer, i.e., the number of vertices presented in thsi graph, managed by manager.
+		 * @brief Get the number of layer, i.e., the number of vertices presented in this graph, managed by manager.
 		 * @return The number of layer
 		*/
 		size_t getLayerCount() const;

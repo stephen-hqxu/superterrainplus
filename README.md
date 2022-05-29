@@ -1,12 +1,10 @@
-<h1 align="center"> Super Terrain + </h1>
+![SuperTerrain+ Project Logo](https://user-images.githubusercontent.com/77457215/170828638-faba7769-1a04-46ac-a625-8179914284d1.png)
 
 [![GitHub Releases](https://img.shields.io/github/v/release/stephen-hqxu/superterrainplus?include_prereleases&label=Release)](https://github.com/stephen-hqxu/superterrainplus/releases)
 [![GitHub License](https://img.shields.io/github/license/stephen-hqxu/superterrainplus?label=License)](https://github.com/stephen-hqxu/superterrainplus/blob/master/LICENSE)
 [![3rd-Party License](https://img.shields.io/badge/License-3rd--party-green)](https://github.com/stephen-hqxu/superterrainplus/blob/master/3rd-Party)
 [![Project Roadmap](https://img.shields.io/badge/Project-Roadmap-cd853f)](https://github.com/stephen-hqxu/superterrainplus/projects)
 [![Documentation](https://img.shields.io/badge/-Documentation-fa8072)](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/README.md)
-
-<p align="center"> A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering </p>
 
 ## :eyes: Overview
 
@@ -188,7 +186,7 @@ The following extensions are not required but will be made used by the engine au
 - [GL_NV_representative_fragment_test](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_representative_fragment_test.txt)
 - ~~[GL_NV_shading_rate_image](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shading_rate_image.txt)~~
 
-> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview) or [online extension database](https://opengl.gpuinfo.org/). When you download GLAD please make sure mandatory extensions are included.
+> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview) or [online extension database](https://opengl.gpuinfo.org/).
 
 ### :gear: Build Instruction
 

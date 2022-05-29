@@ -201,7 +201,7 @@ grass, soil, sand, snow := (64u, 60u, 55u)
 
 # Usage
 
-A *TDL* script can be parsed by `SuperTerrainPlus::STPDiversity::STPTextureDefinitionLanguage`, and the data defined in a *TDL* script can then be loaded into a texture database.
+A *TDL* script can be parsed by `SuperTerrainPlus::STPAlgorithm::STPTextureDefinitionLanguage`, and the data defined in a *TDL* script can then be loaded into a texture database.
 
 Remember, texture names declared earlier have no real meaning other than being reference values. Therefore the parser will convert texture names into some IDs pointing into the texture database being added, and then user can manipulate the database further using this piece of information, for example uploading texture map data.
 

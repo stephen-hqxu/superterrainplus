@@ -169,9 +169,9 @@ SCENARIO("INI writer can format all data as an INI document", "[AlgorithmHost][I
 					STPINIWriter::SpaceAroundAssignment | STPINIWriter::SpaceAroundSectionName
 				};
 				constexpr pair<string_view, string_view> AllOutput[] = {
-					make_pair("[Food]", "main course = beef fillet"),
-					make_pair("[ Food ]", "main course=beef fillet"),
-					make_pair("[ Food ]", "main course = beef fillet"),
+					make_pair("\n[Food]", "main course = beef fillet"),
+					make_pair("\n\n[ Food ]", "main course=beef fillet"),
+					make_pair("\n[ Food ]", "main course = beef fillet"),
 				};
 
 				REQUIRE_NOTHROW([&Writer, &Storage, ChosenFlag = AllFlag[Trial]]() { Writer.emplace(Storage, ChosenFlag); }());
