@@ -18,7 +18,7 @@ body:
         description: |
             Provide a clear and concise description of the limitation in the current version of SuperTerrain+.
         render: markdown
-      validation:
+      validations:
         required: true
         
     - type: textarea
@@ -28,7 +28,7 @@ body:
         description: |
             Write a clear and concise description of the requesting feature, and demonstrate how this feature will resolve the identified limitation.
         render: markdown
-      validation:
+      validations:
         required: true
         
     - type: textarea
