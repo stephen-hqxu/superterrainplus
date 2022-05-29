@@ -1,0 +1,40 @@
+name: 🌟 Feature Request
+description: I have a new idea.
+body:
+    - type: checkboxes
+      id: the-issue
+      attributes:
+        label: The issue
+        description: |
+            Thanks for taking the time to fill out this feature request! To avoid opening a duplicate issue, please search the issue tracker to see if there is an existing issue for the feature you are requesting.
+        options:
+            - label: I could not find a similar issue and confirm this is a new feature.
+              required: true
+              
+    - type: textarea
+      id: the-limitation
+      attributes:
+        label: The limitation
+        description: |
+            Provide a clear and concise description of the limitation in the current version of SuperTerrain+.
+        render: markdown
+      validation:
+        required: true
+        
+    - type: textarea
+      id: the-feature
+      attributes:
+        label: The solution
+        description: |
+            Write a clear and concise description of the requesting feature, and demonstrate how this feature will resolve the identified limitation.
+        render: markdown
+      validation:
+        required: true
+        
+    - type: textarea
+      id: the-additional
+      attributes:
+        label: The additional
+        description: |
+            Add any other context about the feature you are requesting here; for example, if you have any suggestion how this feature should be implemented.
+        render: markdown

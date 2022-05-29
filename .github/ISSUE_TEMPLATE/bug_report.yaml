@@ -107,7 +107,7 @@ body:
     - type: checkboxes
       id: the-contribution
       attributes:
-        label: The Contribution
+        label: The contribution
         description: |
             Would you like to make a contribution to fix this issue?
         options:
