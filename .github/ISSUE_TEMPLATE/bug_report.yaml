@@ -1,0 +1,112 @@
+name: 🐛 Bug Report
+description: I have discovered a unintended behaviour in the program
+body:
+    - type: checkboxes
+      id: the-issue
+      attributes:
+        label: The issue
+        description: |
+            Thanks for taking the time to fill out this bug report! To avoid opening a duplicate issue, please search the issue tracker to see if there is an existing issue for the problem you are experiencing.
+        options:
+            - label: I could not find a similar issue and confirm this is a new bug.
+              required: true
+        
+    - type: dropdown
+      id: the-category
+      attributes:
+        label: The category
+        description: |
+            Specify the category of the bug you are reporting.
+        options:
+            - Compilation error
+            - Runtime crash
+            - Visual artefact
+            - Performance
+            - Others
+      validations:
+        required: true
+    
+    - type: textarea
+      id: the-problem
+      attributes:
+        label: The problem
+        description: |
+            Describe the issue you are experiencing with SuperTerrain+. Provide a clear and concise description of what you were trying to do and what happened, along with any error message you encountered or screenshot, if applicable.
+      validations:
+        required: true
+    
+    - type: textarea
+      id: the-expectation
+      attributes:
+        label: The expectation
+        description: |
+            Provide a clear and concise description of what you are expecting the program to behave.
+      validations:
+        required: true
+    
+    - type: textarea
+      id: the-reproduction
+      attributes:
+        label: The reproduction
+        description: |
+            Describe procedures to reproduce the behaviour as you have mentioned. Usually you should provide a small and self-contained piece of code that uses SuperTerrain+ and specify any relevant configuration and compiler flag, if applicable.
+        value: |
+            1. Go to ...
+            2. Set the setting ... to value ...
+            3. Use these code ...
+            4. Run the application
+            5. See error as ...
+      validations:
+        required: true
+    
+    - type: input
+      id: the-release
+      attributes:
+        label: The release
+        description: |
+            Specify the release version of SuperTerrain+ you had problem with. If you are not using a release, please specify the full commit hash.
+        placeholder: |
+            e.g. 0.1.2 or 2a44ebe0fdd545496f35502ee26235c464c57c6a
+      validations:
+        required: true
+        
+    - type: input
+      id: the-operating-system
+      attributes:
+        label: The operating system
+        description: |
+            Provide the operating system and version you are using.
+        placeholder: |
+            e.g. Windows 10 21H2
+      validations:
+        required: true
+        
+    - type: textarea
+      id: the-platform
+      attributes:
+        label: The platform
+        description: |
+            Provide information of the platform where you work and the bug can be reproduced.
+        value: |
+            **GPU model**:
+            **Graphics driver version**:
+            **CUDA version**:
+            **Compiler and version**:
+      validations:
+        required: true
+        
+    - type: textarea
+      id: the-additional
+      attributes:
+        label: The additional
+        description: |
+            Add any other context about the problem you are experiencing here; for example, if you have any idea why this bug was happening.
+        
+    - type: checkboxes
+      id: the-contribution
+      attributes:
+        label: The contribution
+        description: |
+            Would you like to make a contribution to fix this issue?
+        options:
+            - label: I would like to be assigned to resolve to this issue.
