@@ -173,13 +173,9 @@ void STPWater::render() const {
 	this->updateWaveTime(elapsed.count());
 
 	STPWorldPipeline& world_gen = this->TerrainObject.TerrainGenerator;
-	//water as a transparent object is always rendered before opaque object like terrain.
-	//so may be sync is not necessary?
-	world_gen.wait();
-
 	//prepare for texture
-	glBindTextureUnit(0, world_gen[STPWorldPipeline::STPRenderingBufferType::BIOME]);
-	glBindTextureUnit(1, world_gen[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
+	glBindTextureUnit(0, world_gen[STPWorldPipeline::STPTerrainMapType::Biomemap]);
+	glBindTextureUnit(1, world_gen[STPWorldPipeline::STPTerrainMapType::Heightmap]);
 	//prepare for plane data, which shares with the terrain
 	this->TerrainObject.TerrainMesh->bindPlaneVertexArray();
 	this->TerrainObject.TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);

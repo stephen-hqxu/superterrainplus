@@ -26,9 +26,9 @@
 #include <glm/mat4x4.hpp>
 
 using std::array;
+using std::make_unique;
 using std::numeric_limits;
 using std::unique_ptr;
-using std::make_unique;
 
 using glm::ivec2;
 using glm::uvec2;
@@ -208,6 +208,11 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 	this->NoiseSample.textureStorage<STPTexture::STPDimension::THREE>(1, GL_R8, this->RandomTextureDimension);
 	this->NoiseSample.wrap(GL_REPEAT);
 	this->NoiseSample.filter(GL_NEAREST, GL_LINEAR);
+
+	/* -------------------------------------------- initialise ----------------------------------------- */
+	this->TerrainGenerator.load(option.InitialViewPosition);
+	//force update the model matrix
+	this->updateTerrainModel();
 }
 
 dvec2 STPHeightfieldTerrain<false>::calcBaseChunkPosition(dvec2 horizontal_offset) {
@@ -217,6 +222,29 @@ dvec2 STPHeightfieldTerrain<false>::calcBaseChunkPosition(dvec2 horizontal_offse
 		base_chunk_coord = STPChunk::offsetChunk(ivec2(0), chunk_settings.ChunkSize, chunk_offset);
 
 	return static_cast<dvec2>(base_chunk_coord) + horizontal_offset;
+}
+
+inline void STPHeightfieldTerrain<false>::updateTerrainModel() {
+	//update model matrix
+	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
+	dmat4 Model = glm::identity<dmat4>();
+	//move the terrain centre to the camera
+	const ivec2& chunkCentre = this->TerrainGenerator.centre();
+	Model = glm::scale(Model, dvec3(
+		chunk_setting.ChunkScaling,
+		1.0f,
+		chunk_setting.ChunkScaling
+	));
+	Model = glm::translate(Model, dvec3(
+		chunkCentre.x + chunk_setting.ChunkOffset.x,
+		chunk_setting.ChunkOffset.y,
+		chunkCentre.y + chunk_setting.ChunkOffset.z
+	));
+
+	//update the current model matrix
+	//use double precision for intermediate calculation to avoid rounding errors, and cast to single precision.
+	this->TerrainVertex.uniform(glProgramUniformMatrix4fv, this->MeshModelLocation, 1, 
+		static_cast<GLboolean>(GL_FALSE), value_ptr(static_cast<mat4>(Model)));
 }
 
 void STPHeightfieldTerrain<false>::setMesh(const STPEnvironment::STPMeshSetting& mesh_setting) {
@@ -276,39 +304,18 @@ void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 
 void STPHeightfieldTerrain<false>::setViewPosition(const dvec3& viewPos) {
 	//prepare heightfield
-	if (!this->TerrainGenerator.load(viewPos)) {
+	if (this->TerrainGenerator.load(viewPos) != STPWorldPipeline::STPWorldLoadStatus::Swapped) {
 		//centre chunk has yet changed, nothing to do.
 		return;
 	}
 
-	//update model matrix
-	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
-	dmat4 Model = glm::identity<dmat4>();
-	//move the terrain centre to the camera
-	const ivec2& chunkCentre = this->TerrainGenerator.centre();
-	Model = glm::scale(Model, dvec3(
-		chunk_setting.ChunkScaling,
-		1.0f,
-		chunk_setting.ChunkScaling
-	));
-	Model = glm::translate(Model, dvec3(
-		chunkCentre.x + chunk_setting.ChunkOffset.x,
-		chunk_setting.ChunkOffset.y,
-		chunkCentre.y + chunk_setting.ChunkOffset.z
-	));
-
-	//update the current model matrix
-	//use double precision for intermediate calculation to avoid rounding errors, and cast to single precision.
-	this->TerrainVertex.uniform(glProgramUniformMatrix4fv, this->MeshModelLocation, 1, static_cast<GLboolean>(GL_FALSE), value_ptr(static_cast<mat4>(Model)));
+	this->updateTerrainModel();
 }
 
 void STPHeightfieldTerrain<false>::render() const {
-	//waiting for the heightfield generator to finish
-	this->TerrainGenerator.wait();
-
 	//prepare for rendering
-	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
-	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::SPLAT]);
+	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPTerrainMapType::Heightmap]);
+	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPTerrainMapType::Splatmap]);
 
 	this->TerrainMesh->bindPlaneVertexArray();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
@@ -378,10 +385,8 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count
 }
 
 void STPHeightfieldTerrain<true>::renderDepth(size_t light_space_count) const {
-	this->TerrainGenerator.wait();
-
 	//in this case we only need heightfield for tessellation
-	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD]);
+	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPTerrainMapType::Heightmap]);
 
 	this->TerrainMesh->bindPlaneVertexArray();
 	this->TerrainRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);

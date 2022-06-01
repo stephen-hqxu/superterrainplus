@@ -16,12 +16,18 @@
 #include <glm/common.hpp>
 
 //Container
+#include <vector>
+#include <unordered_map>
+#include <unordered_set>
+#include <array>
 #include <list>
 #include <queue>
 #include <optional>
 
+#include <limits>
 #include <algorithm>
 #include <sstream>
+#include <shared_mutex>
 #include <type_traits>
 
 //GLM
@@ -32,19 +38,25 @@ using glm::dvec2;
 using glm::ivec3;
 using glm::dvec3;
 
+using std::array;
 using std::list;
-using std::vector;
+using std::optional;
+using std::pair;
 using std::queue;
 using std::unordered_map;
-using std::optional;
+using std::unordered_set;
+using std::vector;
+
+using std::atomic_bool;
+using std::exception_ptr;
 using std::future;
 using std::mutex;
-using std::shared_mutex;
 using std::shared_lock;
+using std::shared_mutex;
 using std::unique_lock;
-using std::exception_ptr;
 
 using std::for_each;
+using std::make_pair;
 using std::make_optional;
 using std::make_unique;
 using std::nullopt;
@@ -52,7 +64,7 @@ using std::nullopt;
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
 
-//Used by STPGeneratorManager for storing async exceptions
+//Used by STPGeneratorManager for storing asynchronous exceptions
 #define STORE_EXCEPTION(FUN) try { \
 	FUN; \
 } \
@@ -63,15 +75,20 @@ catch (...) { \
 	} \
 }
 
-#define BUFFER_INDEX(M) static_cast<std::underlying_type_t<STPWorldPipeline::STPRenderingBufferType>>(M)
-#define FOR_EACH_BUFFER(FUN) for(unsigned int i = 0u; i < STPWorldPipeline::BufferCount; i++) { \
-	FUN; \
-}
+#define TERRAIN_MAP_INDEX(M) static_cast<std::underlying_type_t<STPWorldPipeline::STPTerrainMapType>>(M)
 
-inline size_t STPWorldPipeline::STPHashivec2::operator()(const ivec2& position) const {
-	//combine hash
-	return STPHashCombine::combine(0ull, position.x, position.y);
-}
+/**
+ * @brief The hash function for the glm::ivec2
+ */
+struct STPHashivec2 {
+public:
+
+	inline size_t operator()(const ivec2& position) const {
+		//combine hash
+		return STPHashCombine::combine(0ull, position.x, position.y);
+	}
+
+};
 
 class STPWorldPipeline::STPGeneratorManager {
 private:
@@ -89,8 +106,9 @@ public:
 private:
 
 	STPWorldPipeline& Pipeline;
+	const STPEnvironment::STPChunkSetting& ChunkSetting;
 
-	//Store exception thrown from async execution
+	//Store exception thrown from asynchronous execution
 	queue<exception_ptr> ExceptionStorage;
 	shared_mutex ExceptionStorageLock;
 
@@ -113,7 +131,7 @@ private:
 	 * @param chunkCoord The world coordinate of the chunk
 	 * @return The chunk offset in world coordinate.
 	*/
-	inline dvec2 calcOffset(const ivec2& chunkCoord) const {
+	inline dvec2 calcOffset(const ivec2& chunkCoord) const noexcept {
 		const STPEnvironment::STPChunkSetting& chk_config = this->ChunkSetting;
 		return STPChunk::calcChunkMapOffset(chunkCoord, chk_config.ChunkSize, chk_config.MapSize, chk_config.MapOffset);
 	}
@@ -123,7 +141,7 @@ private:
 	 * @param chunkCoord The central chunk world coordinate
 	 * @return A list of all neighbour chunk position
 	*/
-	inline STPChunk::STPChunkCoordinateCache getNeighbour(const ivec2& chunkCoord) const {
+	inline STPChunk::STPChunkCoordinateCache getNeighbour(const ivec2& chunkCoord) const noexcept {
 		const STPEnvironment::STPChunkSetting& chk_config = this->ChunkSetting;
 		return STPChunk::calcChunkNeighbour(chunkCoord, chk_config.ChunkSize, chk_config.FreeSlipChunk);
 	}
@@ -214,8 +232,8 @@ private:
 
 	/**
 	 * @brief Recursively prepare neighbour chunks for the central chunk.
-	 * The first recursion will prepare neighbour biomemaps for heightmap generation.
-	 * The second recursion will prepare neighbour heightmaps for erosion.
+	 * The first recursion will prepare neighbour biomemap for heightmap generation.
+	 * The second recursion will prepare neighbour heightmap for erosion.
 	 * @param chunkCoord The coordinate to the chunk which should be prepared.
 	 * @param rec_depth Please leave this empty, this is the recursion depth and will be managed properly
 	 * @return If all neighbours are ready to be used, true is returned.
@@ -245,7 +263,7 @@ private:
 					return nullopt;
 				}
 				//no need to continue if centre chunk is available
-				//since the centre chunk might be used as a neighbour chunk later, we only return bool instead of a pointer
+				//since the centre chunk might be used as a neighbour chunk later, we only return boolean instead of a pointer
 				//after checkChunk() is performed for every chunks, we can grab all pointers and check for occupancy in other functions.
 				return make_optional<STPChunk::STPSharedMapVisitor>(center->second);
 			}
@@ -357,8 +375,6 @@ private:
 
 public:
 
-	const STPEnvironment::STPChunkSetting& ChunkSetting;
-
 	/**
 	 * @brief Initialise generator manager with pipeline stages filled with generators.
 	 * @param setup The pointer to all pipeline stages.
@@ -366,7 +382,7 @@ public:
 	*/
 	STPGeneratorManager(STPWorldPipeline::STPPipelineSetup& setup, STPWorldPipeline& pipeline) : 
 		generateBiomemap(*setup.BiomemapGenerator), generateHeightfield(*setup.HeightfieldGenerator), generateSplatmap(*setup.SplatmapGenerator), 
-		Pipeline(pipeline), GeneratorWorker(5u), ChunkSetting(*setup.ChunkSetting) {
+		Pipeline(pipeline), ChunkSetting(this->Pipeline.ChunkSetting), GeneratorWorker(5u) {
 
 	}
 
@@ -381,54 +397,6 @@ public:
 	~STPGeneratorManager() = default;
 
 	/**
-	 * @brief Prepare and generate splatmap for rendering.
-	 * @param buffer Rendering buffer on device side, a mapped OpenGL pointer.
-	 * @param requesting_chunk Specify chunks that need to have splatmap generated.
-	 * Note that the coordinate of local chunk should specify chunk map offset rather than chunk world position.
-	 * @param stream The CUDA stream where work will be submitted to.
-	*/
-	void computeSplatmap(const STPRenderingBufferMemory& buffer,
-		const STPTextureFactory::STPRequestingChunkInfo& requesting_chunk, cudaStream_t stream) {
-		//prepare texture and surface object
-		cudaTextureObject_t biomemap, heightfield;
-		cudaSurfaceObject_t splatmap;
-		//make sure all description are zero init
-		cudaResourceDesc res_desc = { };
-		res_desc.resType = cudaResourceTypeArray;
-		cudaTextureDesc tex_desc = { };
-		tex_desc.addressMode[0] = cudaAddressModeClamp;
-		tex_desc.addressMode[1] = cudaAddressModeClamp;
-		tex_desc.addressMode[2] = cudaAddressModeClamp;
-		tex_desc.normalizedCoords = 0;
-
-		//biomemap
-		res_desc.res.array.array = buffer.Map[BUFFER_INDEX(STPWorldPipeline::STPRenderingBufferType::BIOME)];
-		tex_desc.filterMode = cudaFilterModePoint;
-		tex_desc.readMode = cudaReadModeElementType;
-		STPcudaCheckErr(cudaCreateTextureObject(&biomemap, &res_desc, &tex_desc, nullptr));
-
-		//heightfield
-		res_desc.res.array.array = buffer.Map[BUFFER_INDEX(STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD)];
-		tex_desc.filterMode = cudaFilterModeLinear;
-		tex_desc.readMode = cudaReadModeNormalizedFloat;
-		STPcudaCheckErr(cudaCreateTextureObject(&heightfield, &res_desc, &tex_desc, nullptr));
-
-		//splatmap
-		res_desc.res.array.array = buffer.Map[BUFFER_INDEX(STPWorldPipeline::STPRenderingBufferType::SPLAT)];
-		STPcudaCheckErr(cudaCreateSurfaceObject(&splatmap, &res_desc));
-
-		//launch splatmap computer
-		this->generateSplatmap(biomemap, heightfield, splatmap, requesting_chunk, stream);
-
-		//before deallocation happens make sure everything has finished.
-		STPcudaCheckErr(cudaStreamSynchronize(stream));
-		//finish up, we have to delete it every time because resource array may change every time we re-map it
-		STPcudaCheckErr(cudaDestroyTextureObject(biomemap));
-		STPcudaCheckErr(cudaDestroyTextureObject(heightfield));
-		STPcudaCheckErr(cudaDestroySurfaceObject(splatmap));
-	}
-
-	/**
 	 * @brief Request a pointer to the chunk given a world coordinate.
 	 * @param chunk_coord The world coordinate where the chunk is requesting.
 	 * @return The shared visitor to the requested chunk.
@@ -436,7 +404,7 @@ public:
 	 * In case chunk is not ready, such as being used by other chunks, or map generation is in progress, nullptr is returned.
 	*/
 	auto getChunk(const ivec2& chunk_coord) {
-		//check if there's any exception thrown from previous async compute launch
+		//check if there's any exception thrown from previous asynchronous compute launch
 		bool hasException;
 		{
 			shared_lock<shared_mutex> checkExceptionLock(this->ExceptionStorageLock);
@@ -466,328 +434,759 @@ public:
 		return this->recNeighbourChecking(chunk_coord);
 	}
 
+	/**
+	 * @brief Prepare and generate splatmap for rendering.
+	 * @tparam M The terrain map memory.
+	 * @param buffer The terrain map on device side, a mapped OpenGL pointer.
+	 * @param requesting_chunk Specify chunks that need to have splatmap generated.
+	 * Note that the coordinate of local chunk should specify chunk map offset rather than chunk world position.
+	*/
+	template<class M>
+	void computeSplatmap(const M& buffer,
+		const STPTextureFactory::STPRequestingChunkInfo& requesting_chunk) const {
+		//prepare texture and surface object
+		cudaTextureObject_t biomemap, heightfield;
+		cudaSurfaceObject_t splatmap;
+		//make sure all description are zero init
+		cudaResourceDesc res_desc = {};
+		res_desc.resType = cudaResourceTypeArray;
+		cudaTextureDesc tex_desc = {};
+		tex_desc.addressMode[0] = cudaAddressModeClamp;
+		tex_desc.addressMode[1] = cudaAddressModeClamp;
+		tex_desc.addressMode[2] = cudaAddressModeClamp;
+		tex_desc.normalizedCoords = 0;
+
+		//biomemap
+		res_desc.res.array.array = buffer[TERRAIN_MAP_INDEX(STPWorldPipeline::STPTerrainMapType::Biomemap)];
+		tex_desc.filterMode = cudaFilterModePoint;
+		tex_desc.readMode = cudaReadModeElementType;
+		STPcudaCheckErr(cudaCreateTextureObject(&biomemap, &res_desc, &tex_desc, nullptr));
+
+		//heightfield
+		res_desc.res.array.array = buffer[TERRAIN_MAP_INDEX(STPWorldPipeline::STPTerrainMapType::Heightmap)];
+		tex_desc.filterMode = cudaFilterModeLinear;
+		tex_desc.readMode = cudaReadModeNormalizedFloat;
+		STPcudaCheckErr(cudaCreateTextureObject(&heightfield, &res_desc, &tex_desc, nullptr));
+
+		//splatmap
+		res_desc.res.array.array = buffer[TERRAIN_MAP_INDEX(STPWorldPipeline::STPTerrainMapType::Splatmap)];
+		STPcudaCheckErr(cudaCreateSurfaceObject(&splatmap, &res_desc));
+
+		const cudaStream_t stream = *this->Pipeline.BufferStream;
+		//launch splatmap computer
+		this->generateSplatmap(biomemap, heightfield, splatmap, requesting_chunk, stream);
+
+		//before deallocation happens make sure everything has finished.
+		STPcudaCheckErr(cudaStreamSynchronize(stream));
+		//finish up, we have to delete it every time because resource array may change every time we re-map it
+		STPcudaCheckErr(cudaDestroyTextureObject(biomemap));
+		STPcudaCheckErr(cudaDestroyTextureObject(heightfield));
+		STPcudaCheckErr(cudaDestroySurfaceObject(splatmap));
+	}
+
 };
 
-STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) : Generator(make_unique<STPGeneratorManager>(setup, *this)), 
-	BufferStream(cudaStreamNonBlocking), PipelineWorker(1u), ChunkSetting(*setup.ChunkSetting) {
-	const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
-	const uvec2 buffer_size(setting.RenderedChunk * setting.MapSize);
-	auto setupTex = [buffer_size](GLuint texture, GLint min_filter, GLint mag_filter, GLsizei levels, GLenum internalFormat) -> void {
-		//set texture parameter
-		glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTextureParameteri(texture, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, min_filter);
-		glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, mag_filter);
-		//allocation
-		glTextureStorage2D(texture, levels, internalFormat, buffer_size.x, buffer_size.y);
+#define FOR_EACH_MEMORY_START() for (size_t i = 0u; i < STPWorldPipeline::STPMemoryManager::MemoryUnitCapacity; i++) {
+#define FOR_EACH_MEMORY_END() }
+
+class STPWorldPipeline::STPMemoryManager {
+public:
+
+	//The number of map data in a memory unit.
+	constexpr static size_t MemoryUnitCapacity = 3ull;
+	//Channel size in byte (not bit) for each map.
+	constexpr static size_t MemoryFormat[3] = {
+		sizeof(Sample),
+		sizeof(unsigned short),
+		sizeof(unsigned char)
 	};
-	auto regTex = [](GLuint texture, cudaGraphicsResource_t* res, unsigned int reg_flag = cudaGraphicsRegisterFlagsNone) -> void {
-		//register CUDA texture
-		STPcudaCheckErr(cudaGraphicsGLRegisterImage(res, texture, GL_TEXTURE_2D, reg_flag));
-		STPcudaCheckErr(cudaGraphicsResourceSetMapFlags(*res, cudaGraphicsMapFlagsNone));
+	//Maximum value of memory format
+	constexpr static size_t MaxMemoryFormat = *std::max_element(MemoryFormat, MemoryFormat + MemoryUnitCapacity);
+
+	/**
+	 * @brief STPMemoryBlock is a collection of memory units containing a complete set of world data.
+	*/
+	struct STPMemoryBlock {
+	public:
+
+		//A memory unit in a memory block is a single piece of memory of one type of world data.
+		template<typename T>
+		using STPMemoryUnit = array<T, MemoryUnitCapacity>;
+		//Terrain maps that are mapped to CUDA array.
+		using STPMappedMemoryUnit = STPMemoryUnit<cudaArray_t>;
+
+		//index 0: R16UI biome map
+		//index 1: R16 height map
+		//index 2: R8UI splat map
+		STPMemoryUnit<GLuint> TerrainMap;
+		//registered CUDA graphics handle for GL terrain maps.
+		STPMemoryUnit<cudaGraphicsResource_t> TerrainMapResource;
+
+		//A status flag indicating if all local chunks in this memory block
+		//have their memory loaded from the host memory.
+		atomic_bool LocalChunkComplete;
+		//Vector that stored rendered chunk world position and loading status (True is loaded, false otherwise).
+		vector<pair<ivec2, bool>> LocalChunkRecord;
+		//Use chunk world coordinate to lookup chunk ID, which is the index to the local chunk record.
+		unordered_map<ivec2, unsigned int, STPHashivec2> LocalChunkDictionary;
+
+		/**
+		 * @brief Initialise a memory block.
+		 * @param manager The pointer to the dependent world memory manager.
+		*/
+		STPMemoryBlock(const STPMemoryManager& manager) : LocalChunkComplete(true) {
+			const STPEnvironment::STPChunkSetting& setting = manager.ChunkSetting;
+			const uvec2 buffer_size = setting.RenderedChunk * setting.MapSize;
+			auto setupMap = 
+				[buffer_size](GLuint texture, GLint min_filter, GLint mag_filter, GLsizei levels, GLenum internal) -> void {
+				//set texture parameter
+				glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				glTextureParameteri(texture, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+				glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, min_filter);
+				glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, mag_filter);
+				//allocation
+				glTextureStorage2D(texture, levels, internal, buffer_size.x, buffer_size.y);
+			};
+			auto registerMap = 
+				[](GLuint texture, cudaGraphicsResource_t* res, unsigned int reg_flag = cudaGraphicsRegisterFlagsNone) -> void {
+				//register CUDA texture
+				STPcudaCheckErr(cudaGraphicsGLRegisterImage(res, texture, GL_TEXTURE_2D, reg_flag));
+				STPcudaCheckErr(cudaGraphicsResourceSetMapFlags(*res, cudaGraphicsMapFlagsNone));
+			};
+
+			//creating texture map
+			glCreateTextures(GL_TEXTURE_2D, 3, this->TerrainMap.data());
+			//biomemap
+			setupMap(this->TerrainMap[0], GL_NEAREST, GL_NEAREST, 1, GL_R16UI);
+			registerMap(this->TerrainMap[0], &this->TerrainMapResource[0]);
+			//heightfield
+			setupMap(this->TerrainMap[1], GL_LINEAR, GL_LINEAR, 1, GL_R16);
+			registerMap(this->TerrainMap[1], &this->TerrainMapResource[1]);
+			//splatmap
+			setupMap(this->TerrainMap[2], GL_NEAREST, GL_NEAREST, 1, GL_R8UI);
+			registerMap(this->TerrainMap[2], &this->TerrainMapResource[2], cudaGraphicsRegisterFlagsSurfaceLoadStore);
+
+			const unsigned int renderedChunkCount = setting.RenderedChunk.x * setting.RenderedChunk.y;
+			//reserve memory for lookup tables
+			this->LocalChunkRecord.reserve(renderedChunkCount);
+			this->LocalChunkDictionary.reserve(renderedChunkCount);
+		}
+
+		STPMemoryBlock(const STPMemoryBlock&) = delete;
+
+		STPMemoryBlock(STPMemoryBlock&&) = delete;
+
+		STPMemoryBlock& operator=(const STPMemoryBlock&) = delete;
+
+		STPMemoryBlock& operator=(STPMemoryBlock&&) = delete;
+
+		~STPMemoryBlock() {
+			//unregister texture
+			FOR_EACH_MEMORY_START()
+				STPcudaCheckErr(cudaGraphicsUnregisterResource(this->TerrainMapResource[i]));
+			FOR_EACH_MEMORY_END()
+
+			//delete texture map
+			glDeleteTextures(3, this->TerrainMap.data());
+		}
+
+		/**
+		 * @brief Set the CUDA resource mapping flag for each GL texture.
+		 * @param flag The resource mapping flag.
+		*/
+		inline void setMappingFlag(unsigned int flag) const {
+			FOR_EACH_MEMORY_START()
+				STPcudaCheckErr(cudaGraphicsResourceSetMapFlags(this->TerrainMapResource[i], flag));
+			FOR_EACH_MEMORY_END()
+		}
+
+		/**
+		 * @brief Copy the local chunk lookup table from one memory block to the current one.
+		 * @param block The memory block from which is copied in.
+		*/
+		inline void copyLocalChunkTable(const STPMemoryBlock& block) {
+			//copy local status record table
+			this->LocalChunkRecord.clear();
+			std::copy(block.LocalChunkRecord.cbegin(), block.LocalChunkRecord.cend(),
+				std::back_inserter(this->LocalChunkRecord));
+			this->LocalChunkComplete = static_cast<bool>(block.LocalChunkComplete);
+
+			//copy local index lookup table
+			this->LocalChunkDictionary.clear();
+			for_each(block.LocalChunkDictionary.cbegin(), block.LocalChunkDictionary.cend(),
+				[chunkIdx = 0u, &local_dict = this->LocalChunkDictionary](const auto local) mutable {
+				local_dict.try_emplace(local.first, chunkIdx++);
+			});
+		}
+
+		/**
+		 * @brief Recompute the chunk tables.
+		 * @param rendered_chunk A range of rendered chunks.
+		*/
+		inline void recomputeLocalChunkTable(const STPChunk::STPChunkCoordinateCache& rendered_chunk) {
+			this->LocalChunkRecord.clear();
+			this->LocalChunkDictionary.clear();
+			this->LocalChunkComplete = false;
+			//we also need chunkID, which is just the index of the visible chunk from top-left to bottom-right
+			for_each(rendered_chunk.cbegin(), rendered_chunk.cend(),
+				[chunkIdx = 0u, &local_status = this->LocalChunkRecord,
+					&local_dict = this->LocalChunkDictionary](const auto chunk_pos) mutable {
+				local_status.emplace_back(chunk_pos, false);
+				local_dict.try_emplace(chunk_pos, chunkIdx++);
+			});
+		}
+
+		/**
+		 * @brief Map the GL terrain texture to CUDA array.
+		 * @param stream The CUDA stream where the work is submitted to.
+		 * @return The mapped CUDA array.
+		*/
+		inline STPMappedMemoryUnit mapTerrainMap(cudaStream_t stream) {
+			STPMappedMemoryUnit map;
+			//map the texture, all OpenGL related work must be done on the main contexted thread
+			//CUDA will make sure all previous graphics API calls are finished before stream begins
+			STPcudaCheckErr(cudaGraphicsMapResources(3, this->TerrainMapResource.data(), stream));
+			//we only have one texture, so index is always zero
+			FOR_EACH_MEMORY_START()
+				STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&map[i], this->TerrainMapResource[i], 0, 0));
+			FOR_EACH_MEMORY_END()
+
+			return map;
+		}
+
+		/**
+		 * @brief Unmap the GL terrain texture from CUDA array.
+		 * @param stream The CUDA stream where the unmap should be synchronised.
+		*/
+		inline void unmapTerrainmap(cudaStream_t stream) {
+			//sync the stream that modifies the texture and unmap the chunk
+			//CUDA will make sure all previous pending works in the stream has finished before graphics API can be called
+			STPcudaCheckErr(cudaGraphicsUnmapResources(3, this->TerrainMapResource.data(), stream));
+		}
+
+		/**
+		 * @brief Force reload a terrain map.
+		 * @param chunkPos The chunk position to be reloaded.
+		 * @return The status indicating if the chunk position is in the local rendered area,
+		 * and if the reload flag has been set correctly.
+		*/
+		inline bool reloadMap(const ivec2& chunkPos) {
+			auto it = this->LocalChunkDictionary.find(chunkPos);
+			if (it == this->LocalChunkDictionary.end()) {
+				//chunk position provided is not required to be rendered, or new rendering area has changed
+				return false;
+			}
+			//found, trigger a reload
+			this->LocalChunkRecord[it->second].second = false;
+			this->LocalChunkComplete = false;
+			return true;
+		}
+
 	};
 
-	//creating texture
-	glCreateTextures(GL_TEXTURE_2D, 3, this->TerrainMap);
-	//biomemap in R format
-	setupTex(this->TerrainMap[0], GL_NEAREST, GL_NEAREST, 1, GL_R16UI);
-	regTex(this->TerrainMap[0], this->TerrainMapRes);
-	//heightfield in R format
-	setupTex(this->TerrainMap[1], GL_LINEAR, GL_LINEAR, 1, GL_R16);
-	regTex(this->TerrainMap[1], this->TerrainMapRes + 1);
-	//splatmap in R format
-	setupTex(this->TerrainMap[2], GL_NEAREST, GL_NEAREST, 1, GL_R8UI);
-	regTex(this->TerrainMap[2], this->TerrainMapRes + 2, cudaGraphicsRegisterFlagsSurfaceLoadStore);
+private:
 
-	//init clear buffers that are used to clear texture when new rendered chunks are loaded (we need to clear the previous chunk data)
-	const uvec2 clearBuffer_format = buffer_size * uvec2(sizeof(unsigned short), 1u);
-	STPcudaCheckErr(cudaMallocPitch(&this->TerrainMapClearBuffer, &this->TerrainMapClearBufferPitch, clearBuffer_format.x, clearBuffer_format.y));
-	STPcudaCheckErr(cudaMemset2D(this->TerrainMapClearBuffer, this->TerrainMapClearBufferPitch, 0x88u, clearBuffer_format.x, clearBuffer_format.y));
+	STPWorldPipeline& Pipeline;
+	const STPEnvironment::STPChunkSetting& ChunkSetting;
 
-	//init rendering back buffer cache
-	auto allocate_cache = [&buffer_size](size_t& pitch, size_t channelSize) -> void* {
-		void* mem;
-		STPcudaCheckErr(cudaMallocPitch(&mem, &pitch, buffer_size.x * channelSize, buffer_size.y));
-		return mem;
+	STPMemoryBlock MemoryBuffer[2];
+	//The transfer cache is used because cudaMemcpy2DArrayToArray does not have a streamed version
+	STPSmartDeviceMemory::STPPitchedDeviceMemory<unsigned char[]> MapClearBuffer, MapTransferCache;
+
+	//Record indices of chunks that need to have splatmap computed for the current task.
+	unordered_set<unsigned int> ComputingChunk;
+	constexpr static array<ivec2, 8ull> NeighbourCoordinateOffset = {
+		ivec2(-1, -1),
+		ivec2(+0, -1),
+		ivec2(+1, -1),
+		ivec2(-1, +0),
+		ivec2(+1, +0),
+		ivec2(-1, +1),
+		ivec2(+0, +1),
+		ivec2(+1, +1)
 	};
-	FOR_EACH_BUFFER(this->TerrainMapExchangeCache.MapCache[i] =
-						allocate_cache(this->TerrainMapExchangeCache.Pitch[i], STPRenderingBufferMemory::Format[i]))
 
-	const unsigned int renderedChunkCount = setting.RenderedChunk.x * setting.RenderedChunk.y;
-	this->renderingLocal.reserve(renderedChunkCount);
-	this->renderingLocalLookup.reserve(renderedChunkCount);
-	this->TerrainMapExchangeCache.LocalCache.reserve(renderedChunkCount);
-}
+	/**
+	 * @brief Calculate the map offset on the terrain map to reach a specific local chunk.
+	 * @param index The local chunk index.
+	 * @return The chunk memory offset on the map.
+	*/
+	inline uvec2 calcLocalMapOffset(unsigned int index) const noexcept {
+		const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
+		const unsigned int rendered_width = chunk_setting.RenderedChunk.x;
 
-STPWorldPipeline::~STPWorldPipeline() {
-	//wait until the worker has finished
-	if (this->MapLoader.valid()) {
-		this->MapLoader.get();
+		//calculate global offset, basically
+		const uvec2 chunkIdx(index % rendered_width, index / rendered_width);
+		return chunk_setting.MapSize * chunkIdx;
 	}
 
-	//wait for the stream to finish
-	STPcudaCheckErr(cudaStreamSynchronize(*this->BufferStream));
+public:
 
-	//unregistered resource
-	for (int i = 0; i < 3; i++) {
-		STPcudaCheckErr(cudaGraphicsUnregisterResource(this->TerrainMapRes[i]));
-	}
-	//delete texture
-	glDeleteTextures(3, this->TerrainMap);
+	//Double buffering.
+	//Front buffer is passed to the user.
+	const STPMemoryBlock* FrontBuffer;
+	//Back buffer holds the currently in-progress generation.
+	STPMemoryBlock* BackBuffer;
 
-	//delete clear buffer
-	STPcudaCheckErr(cudaFree(this->TerrainMapClearBuffer));
-	//delete rendering back buffer cache
-	FOR_EACH_BUFFER(cudaFree(this->TerrainMapExchangeCache.MapCache[i]))
-}
+private:
 
-void STPWorldPipeline::copySubBufferFromSubCache
-	(const STPRenderingBufferMemory& dest, unsigned int dest_idx, unsigned int src_idx) {
-	auto copy_from_cache = [stream = *this->BufferStream, &dimension = this->ChunkSetting.MapSize,
-		src_offset = this->calcBufferOffset(src_idx), dest_offset = this->calcBufferOffset(dest_idx)]
-		(cudaArray_t dest, const void* src, size_t src_pitch, size_t channelSize) -> void {
-		//calculate the first pixel to be copied from
-		const unsigned char* src_start = 
-			(reinterpret_cast<const unsigned char*>(src) + src_offset.y * src_pitch) + src_offset.x * channelSize;
+	//Store the CUDA array after mapping the back buffer
+	STPMemoryBlock::STPMappedMemoryUnit MappedBackBuffer;
+	bool isBackBufferMapped;
 
-		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(dest, dest_offset.x * channelSize, dest_offset.y,
-			src_start, src_pitch,
-			dimension.x * channelSize, dimension.y, cudaMemcpyDeviceToDevice, stream));
-	};
-
-	//copy old cache to the new buffer
-	FOR_EACH_BUFFER(copy_from_cache(dest.Map[i], 
-		this->TerrainMapExchangeCache.MapCache[i], this->TerrainMapExchangeCache.Pitch[i], STPRenderingBufferMemory::Format[i]))
-}
-
-void STPWorldPipeline::backupBuffer(const STPRenderingBufferMemory& buffer) {
-	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
-	auto copy_buffer = [stream = *this->BufferStream, buffer_size = chunk_setting.RenderedChunk * chunk_setting.MapSize]
-		(void* dest, size_t dest_pitch, cudaArray_t src, size_t channelSize) -> void {
-		STPcudaCheckErr(cudaMemcpy2DFromArrayAsync(
-			dest, dest_pitch, src, 0, 0, buffer_size.x * channelSize, buffer_size.y, cudaMemcpyDeviceToDevice, stream));
-	};
-
-	//backup our rendering
-	FOR_EACH_BUFFER(copy_buffer(this->TerrainMapExchangeCache.MapCache[i], this->TerrainMapExchangeCache.Pitch[i], 
-		buffer.Map[i], STPRenderingBufferMemory::Format[i]))
-}
-
-void STPWorldPipeline::clearBuffer(const STPRenderingBufferMemory& destination, unsigned int dest_idx) {
-	auto erase_buffer = [stream = *this->BufferStream, clearBuffer = this->TerrainMapClearBuffer,
-							clearBufferPitch = this->TerrainMapClearBufferPitch,
-							&dimension = this->ChunkSetting.MapSize, buffer_offset = this->calcBufferOffset(dest_idx)](
-							cudaArray_t dest, size_t channelSize) -> void {
-		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(dest, buffer_offset.x * channelSize, buffer_offset.y, clearBuffer,
-			clearBufferPitch, dimension.x * channelSize, dimension.y, cudaMemcpyDeviceToDevice, stream));
-	};
-
-	//clear unloaded chunk, so the engine won't display the chunk from previous rendered chunks
-	FOR_EACH_BUFFER(erase_buffer(destination.Map[i], STPRenderingBufferMemory::Format[i]))
-}
-
-bool STPWorldPipeline::mapSubData(const STPRenderingBufferMemory& buffer, ivec2 chunkCoord, unsigned int chunkID) {
-	//ask provider if we can get the chunk
-	const optional<STPChunk::STPSharedMapVisitor> chunk = this->Generator->getChunk(chunkCoord);
-	if (!chunk) {
-		//not ready yet
-		return false;
+	/**
+	 * @brief Correct the CUDA graphics mapping flag for the buffers.
+	*/
+	inline void correctResourceMappingFlag() {
+		this->FrontBuffer->setMappingFlag(cudaGraphicsMapFlagsReadOnly);
+		this->BackBuffer->setMappingFlag(cudaGraphicsMapFlagsNone);
 	}
 
-	//chunk is ready, copy to rendering buffer
-	auto copy_buffer = [stream = *this->BufferStream, &dimension = this->ChunkSetting.MapSize,
-						   buffer_offset = this->calcBufferOffset(chunkID)](
-						   cudaArray_t dest, const void* src, size_t channelSize) -> void {
-		STPcudaCheckErr(cudaMemcpy2DToArrayAsync(dest, buffer_offset.x * channelSize, buffer_offset.y, src,
-			dimension.x * channelSize, dimension.x * channelSize, dimension.y, cudaMemcpyHostToDevice, stream));
-	};
+public:
 
-	unsigned int index;
-	//copy buffer to GL texture
-	index = BUFFER_INDEX(STPWorldPipeline::STPRenderingBufferType::BIOME);
-	copy_buffer(buffer.Map[index], chunk->biomemap(), STPRenderingBufferMemory::Format[index]);
-	index = BUFFER_INDEX(STPWorldPipeline::STPRenderingBufferType::HEIGHTFIELD);
-	copy_buffer(buffer.Map[index], chunk->heightmapBuffer(), STPRenderingBufferMemory::Format[index]);
+	/**
+	 * @brief Initialise a world memory manager.
+	 * @param pipeline The pointer to the dependent world pipeline.
+	*/
+	STPMemoryManager(STPWorldPipeline& pipeline) :
+		Pipeline(pipeline), ChunkSetting(this->Pipeline.ChunkSetting),
+		MemoryBuffer { STPMemoryBlock(*this), STPMemoryBlock(*this) },
+		FrontBuffer(this->MemoryBuffer), BackBuffer(this->MemoryBuffer + 1u), isBackBufferMapped(false) {
+		const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
+		const uvec2 mapDim = setting.MapSize, 
+			clearBuffer_size = mapDim * uvec2(MaxMemoryFormat, 1u);
+		const unsigned int chunkCount = setting.RenderedChunk.x * setting.RenderedChunk.y;
 
-	return true;
-}
+		//init clear buffers that are used to clear texture when new rendered chunks are loaded
+		//(we need to clear the previous chunk data)
+		this->MapClearBuffer =
+			STPSmartDeviceMemory::makePitchedDevice<unsigned char[]>(clearBuffer_size.x, clearBuffer_size.y);
+		this->MapTransferCache =
+			STPSmartDeviceMemory::makePitchedDevice<unsigned char[]>(clearBuffer_size.x, clearBuffer_size.y);
 
-uvec2 STPWorldPipeline::calcBufferOffset(unsigned int index) const {
-	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
-	const unsigned int rendered_width = chunk_setting.RenderedChunk.x;
+		const cudaStream_t stream = *this->Pipeline.BufferStream;
+		//clear the `clear` buffer
+		const auto& [clear_ptr, clear_pitch] = this->MapClearBuffer;
+		STPcudaCheckErr(
+			cudaMemset2DAsync(clear_ptr.get(), clear_pitch, 0x80u, clearBuffer_size.x, clearBuffer_size.y, stream));
 
-	//calculate global offset, basically
-	const uvec2 chunkIdx(index % rendered_width, index / rendered_width);
-	return chunk_setting.MapSize * chunkIdx;
-}
+		//initialise pixel value in the texture rather than leaving them as undefined.
+		for (int b = 0; b < 2; b++) {
+			STPMemoryBlock& block = this->MemoryBuffer[b];
+			const auto& mapped = block.mapTerrainMap(stream);
 
-bool STPWorldPipeline::load(const dvec3& cameraPos) {
-	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
-	//waiting for the previous worker to finish(if any)
-	this->wait();
-	//make sure there isn't any worker accessing the loading_chunks, otherwise undefined behaviour warning
+			//clear every chunk
+			for (unsigned int y = 0u; y < setting.RenderedChunk.y; y++) {
+				for (unsigned int x = 0u; x < setting.RenderedChunk.x; x++) {
+					const uvec2 localMapOffset = uvec2(x, y) * setting.MapSize;
+					FOR_EACH_MEMORY_START()
+						STPcudaCheckErr(cudaMemcpy2DToArrayAsync(mapped[i], localMapOffset.x * MemoryFormat[i], localMapOffset.y,
+							clear_ptr.get(), clear_pitch, mapDim.x * MemoryFormat[i], mapDim.y,
+							cudaMemcpyDeviceToDevice, stream));
+					FOR_EACH_MEMORY_END()
+				}
+			}
 
-	//Whenever camera changes location, all previous rendering buffers are dumped
-	bool centreChanged = false, 
-		shouldClearBuffer = false;
-	//check if the central position has changed or not
-	if (const ivec2 thisCentralPos = STPChunk::calcWorldChunkCoordinate(
-			cameraPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScaling);
-		thisCentralPos != this->lastCenterLocation) {
-		//changed
-		centreChanged = true;
-		//backup the current rendering locals
-		this->TerrainMapExchangeCache.LocalCache.clear();
-		std::for_each(this->renderingLocal.cbegin(), this->renderingLocal.cend(),
-			[chunkID = 0u, &local_cache = this->TerrainMapExchangeCache.LocalCache](const auto local) mutable {
-			const auto [position, status] = local;
-			local_cache.try_emplace(position, chunkID++, status);
-		});
+			block.unmapTerrainmap(stream);
+		}
+		//clean up
+		STPcudaCheckErr(cudaStreamSynchronize(stream));
+		this->correctResourceMappingFlag();
 
-		//recalculate loading chunks
-		this->renderingLocal.clear();
-		this->renderingLocalLookup.clear();
-		const STPChunk::STPChunkCoordinateCache allChunks = STPChunk::calcChunkNeighbour(
-			thisCentralPos,
-			chunk_setting.ChunkSize,
-			chunk_setting.RenderedChunk);
-
-		//we also need chunkID, which is just the index of the visible chunk from top-left to bottom-right
-		std::for_each(allChunks.cbegin(), allChunks.cend(),
-			[chunkID = 0u, &local = this->renderingLocal, &local_lookup = this->renderingLocalLookup](
-				const auto chunk) mutable {
-			local.emplace_back(chunk, false);
-			local_lookup.emplace(chunk, chunkID++);
-		});
-
-		this->lastCenterLocation = thisCentralPos;
-		//clear up previous rendering buffer
-		shouldClearBuffer = true;
-	} else if (std::all_of(this->renderingLocal.cbegin(), this->renderingLocal.cend(),
-				   [](auto i) -> bool { return i.second; })) {
-		//if all chunks are loaded there is no need to do those complicated stuff
-		return false;
+		this->ComputingChunk.reserve(chunkCount);
 	}
 
-	//otherwise start loading
-	if (this->renderingLocal.size() == 0) {
-		throw STPException::STPMemoryError("Unable to retrieve a list of chunks need to be rendered.");
-	}
-	//async chunk loader
-	auto asyncChunkLoader = [this, &chunk_setting](STPRenderingBufferMemory map_data) -> void {
-		//requesting rendering buffer
-		unsigned int num_chunkLoaded = 0u;
-		//keep a record of which chunk's rendering buffer has been updated
-		STPDiversity::STPTextureFactory::STPRequestingChunkInfo updated_chunk;
-		//check all workers and release chunks once they have finished.
-		for (unsigned int i = 0u; i < this->renderingLocal.size(); i++) {
-			auto& [chunkPos, chunkLoaded] = this->renderingLocal[i];
+	STPMemoryManager(const STPMemoryManager&) = delete;
 
-			if (chunkLoaded) {
-				//skip this chunk if loading has been completed before
+	STPMemoryManager(STPMemoryManager&&) = delete;
+
+	STPMemoryManager& operator=(const STPMemoryManager&) = delete;
+
+	STPMemoryManager& operator=(STPMemoryManager&&) = delete;
+
+	~STPMemoryManager() = default;
+
+	/**
+	 * @brief Get the corresponding terrain map given a type from the front buffer.
+	 * @param type The type of the map to be retrieved.
+	*/
+	inline GLuint getMap(STPWorldPipeline::STPTerrainMapType type) const noexcept {
+		return this->FrontBuffer->TerrainMap[TERRAIN_MAP_INDEX(type)];
+	}
+
+	/**
+	 * @brief Map the back buffer.
+	 * If the back buffer is already mapped, no operation is performed.
+	*/
+	inline void mapBackBuffer() {
+		if (this->isBackBufferMapped) {
+			return;
+		}
+		this->MappedBackBuffer = this->BackBuffer->mapTerrainMap(*this->Pipeline.BufferStream);
+		this->isBackBufferMapped = true;
+	}
+
+	/**
+	 * @brief Unmap the back buffer.
+	 * The mapped back buffer array becomes undefined.
+	 * If the back buffer is not mapped, no operation is performed.
+	*/
+	inline void unmapBackBuffer() {
+		if (!this->isBackBufferMapped) {
+			return;
+		}
+		this->BackBuffer->unmapTerrainmap(*this->Pipeline.BufferStream);
+		this->isBackBufferMapped = false;
+	}
+
+	/**
+	 * @brief Get the array to the mapped back buffer.
+	 * @return The array to the mapped back buffer.
+	*/
+	inline const STPMemoryBlock::STPMappedMemoryUnit& getMappedBackBuffer() const {
+		return this->MappedBackBuffer;
+	}
+
+	/**
+	 * @brief Swap the pointer of front and back buffer.
+	*/
+	inline void swapBuffer() {
+		std::swap(const_cast<STPMemoryBlock*&>(this->FrontBuffer), this->BackBuffer);
+		this->correctResourceMappingFlag();
+	}
+
+	/**
+	 * @brief Attempt to reuse as many chunks in the back buffer as possible from the front buffer.
+	 * If a chunk cannot be reused, it will be cleared instead.
+	 * @param backBuffer_ptr The mapped back buffer.
+	*/
+	void reuseBuffer(const STPMemoryBlock::STPMappedMemoryUnit& backBuffer_ptr) {
+		const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
+		const uvec2 mapDim = chunk_setting.MapSize;
+
+		cudaStream_t stream = *this->Pipeline.BufferStream;
+		//map the front buffer as read-only
+		STPMemoryBlock* frontBuffer_w = const_cast<STPMemoryBlock*>(this->FrontBuffer);
+		const auto frontBuffer_ptr = frontBuffer_w->mapTerrainMap(stream);
+
+		bool allLoaded = true;
+		const auto& front_local_dict = this->FrontBuffer->LocalChunkDictionary;
+		//here we perform an optimisation: reuse chunk that has been rendered previously from the front buffer
+		for (auto& [chunkPos, loaded] : this->BackBuffer->LocalChunkRecord) {
+			//checking the new back buffer chunk, is there any old chunk has the same world coordinate as the new chunk?
+			auto equal_pos_it = front_local_dict.find(chunkPos);
+
+			const unsigned int back_buffer_chunkIdx = this->BackBuffer->LocalChunkDictionary.at(chunkPos);
+			if (equal_pos_it != front_local_dict.cend()) {
+				//found, check if the previous cache is complete
+				const unsigned int front_buffer_chunkIdx = equal_pos_it->second;
+				const bool front_status = this->FrontBuffer->LocalChunkRecord[front_buffer_chunkIdx].second;
+
+				if (front_status) {
+					//if the previous front buffer chunk is complete, copy to the back buffer
+					{
+						const uvec2 src_offset = this->calcLocalMapOffset(front_buffer_chunkIdx),
+							dest_offset = this->calcLocalMapOffset(back_buffer_chunkIdx);
+						const auto& [trans_ptr, trans_pitch] = this->MapTransferCache;
+
+						//no async version for function cudaMemcpy2DArrayToArray, wtf???
+						FOR_EACH_MEMORY_START()
+							//front buffer -> cache
+							STPcudaCheckErr(cudaMemcpy2DFromArrayAsync(trans_ptr.get(), trans_pitch, frontBuffer_ptr[i],
+								src_offset.x * MemoryFormat[i], src_offset.y, mapDim.x * MemoryFormat[i], mapDim.y,
+								cudaMemcpyDeviceToDevice, stream));
+							//cache -> back buffer
+							STPcudaCheckErr(cudaMemcpy2DToArrayAsync(backBuffer_ptr[i], dest_offset.x * MemoryFormat[i],
+								dest_offset.y, trans_ptr.get(), trans_pitch, mapDim.x * MemoryFormat[i], mapDim.y,
+								cudaMemcpyDeviceToDevice, stream));
+						FOR_EACH_MEMORY_END()
+					}
+
+					//mark this chunk is loaded in the back buffer
+					loaded = true;
+					continue;
+				}
+			}
+			//the current back buffer chunk has no usable chunk, we need to load it from chunk storage later
+			//clear this chunk
+			{
+				const uvec2 dest_offset = this->calcLocalMapOffset(back_buffer_chunkIdx);
+				const auto& [clear_ptr, clear_pitch] = this->MapClearBuffer;
+				FOR_EACH_MEMORY_START()
+					STPcudaCheckErr(cudaMemcpy2DToArrayAsync(backBuffer_ptr[i], dest_offset.x * MemoryFormat[i],
+						dest_offset.y, clear_ptr.get(), clear_pitch, mapDim.x * MemoryFormat[i], mapDim.y,
+						cudaMemcpyDeviceToDevice, stream));
+				FOR_EACH_MEMORY_END()
+			}
+			//there is at least one chunk not loaded, so the entire terrain map is not complete
+			allLoaded = false;
+		}
+		//update overall chunk complete status for back buffer
+		this->BackBuffer->LocalChunkComplete = allLoaded;
+
+		//unmap the front buffer
+		frontBuffer_w->unmapTerrainmap(stream);
+
+		//record indices of chunks that need to be computed
+		const auto& backBuf_rec = this->BackBuffer->LocalChunkRecord;
+		this->ComputingChunk.clear();
+		//To avoid artefacts, if any chunk is a neighbour of those chunks we just recorded, need to recompute them as
+		//well. This is to mainly avoid splatmap seams. The logic is, if previously those chunks do not have a valid
+		//neighbour but this time they have one, The border of them may not be aligned properly with the new chunks.
+		const uvec2 rendered_chunk = chunk_setting.RenderedChunk;
+		const unsigned int maxChunkIdx = rendered_chunk.x * rendered_chunk.y,
+			chunkRowCount = chunk_setting.RenderedChunk.x;
+		for (unsigned int chunkIdx = 0u; chunkIdx < backBuf_rec.size(); chunkIdx++) {
+			if (backBuf_rec[chunkIdx].second) {
+				//if this chunk already has data, skip it along with its neighbours.
 				continue;
 			}
-			//load chunk into rendering buffer
-			if (this->mapSubData(map_data, chunkPos, i)) {
-				//loaded
-				chunkLoaded = true;
-				num_chunkLoaded++;
-				//mark updated rendering buffer
-				//we need to use the chunk normalised coordinate to get the splatmap offset, 
-				//splatmap offset needs to be consistent with the heightmap and biomemap
-				const vec2 offset = static_cast<vec2>(STPChunk::calcChunkMapOffset(
-					chunkPos,
-					chunk_setting.ChunkSize,
-					chunk_setting.MapSize,
-					chunk_setting.MapOffset));
-				//local chunk coordinate
-				const uvec2 local_coord = STPChunk::calcLocalChunkCoordinate(i, chunk_setting.RenderedChunk);
-				updated_chunk.emplace_back(STPDiversity::STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation
-					{ local_coord.x, local_coord.y, offset.x, offset.y });
-			}
-		}
-		if (!updated_chunk.empty()) {
-			//there exists chunk that has rendering buffer updated, we need to update splatmap as well
-			this->Generator->computeSplatmap(map_data, updated_chunk, *this->BufferStream);
-		}
-	};
 
-	//texture storage
-	//map the texture, all OpenGL related work must be done on the main contexted thread
-	//CUDA will make sure all previous graphics API calls are finished before stream begins
-	STPcudaCheckErr(cudaGraphicsMapResources(3, this->TerrainMapRes, *this->BufferStream));
-	STPRenderingBufferMemory buffer_ptr;
-	//we only have one texture, so index is always zero
-	FOR_EACH_BUFFER(STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(buffer_ptr.Map + i, this->TerrainMapRes[i], 0, 0)))
-	//clear up the render buffer for every chunk
-	if (shouldClearBuffer) {
-		//backup the current buffer before clearing
-		this->backupBuffer(buffer_ptr);
-
-		const STPLocalChunkCache& cacheDict = this->TerrainMapExchangeCache.LocalCache;
-		//here we perform an optimisation: reuse chunk that has been rendered previously from the old rendering buffer
-		for (auto& [chunkPos, loaded] : this->renderingLocal) {
-			//check in the new rendered chunk, is there any old chunk has the same world coordinate as the new chunk?
-			auto pos_it = cacheDict.find(chunkPos);
-
-			const unsigned int buffer_chunkID = this->renderingLocalLookup.at(chunkPos);
-			if (pos_it != cacheDict.cend()) {
-				//found, check if the previous cache is complete
-
-				const auto [cache_chunkID, cache_status] = pos_it->second;
-				if (cache_status) {
-					//if the previous cache is complete, copy to new buffer
-					this->copySubBufferFromSubCache(buffer_ptr, buffer_chunkID, cache_chunkID);
-					//mark this chunk as loaded
-					loaded = true;
-
+			//for each neighbour of each computing chunk...
+			for (const ivec2 coord_offset : this->NeighbourCoordinateOffset) {
+				//small negative number will become a huge unsigned,
+				//so when checking for validity we don't need to consider negative number.
+				const uvec2 current_coord =
+					static_cast<uvec2>(ivec2(chunkIdx % chunkRowCount, chunkIdx / chunkRowCount) + coord_offset);
+				//make sure the coordinate is in a valid range
+				if (current_coord.x >= rendered_chunk.x || current_coord.y >= rendered_chunk.y) {
 					continue;
 				}
 
+				this->ComputingChunk.emplace(current_coord.x + current_coord.y * chunkRowCount);
 			}
-			//the current new chunk has no usable buffer, we need to load it from chunk storage later
-			//clear this chunk
-			this->clearBuffer(buffer_ptr, buffer_chunkID);
-
 		}
 	}
 
-	//group mapped data together and start loading chunk
-	this->MapLoader = this->PipelineWorker.enqueue_future(asyncChunkLoader, buffer_ptr);
-	return centreChanged;
-}
+	/**
+	 * @brief Trigger a chunk buffer reload for the back buffer.
+	 * @param chunkCoord The chunk coordinate for the chunk to be reloaded.
+	 * @return True if the chunk coordinate is triggered to be reloaded.
+	 * False if chunk coordinate is not in rendered area.
+	*/
+	inline bool reloadBuffer(ivec2 chunkCoord) {
+		const bool reload_status = this->BackBuffer->reloadMap(chunkCoord);
+		if (reload_status) {
+			//also trigger a re-compute if it has been reloaded
+			this->ComputingChunk.emplace(this->BackBuffer->LocalChunkDictionary.at(chunkCoord));
+		}
 
-bool STPWorldPipeline::reload(const ivec2& chunkPos) {
-	auto it = this->renderingLocalLookup.find(chunkPos);
-	if (it == this->renderingLocalLookup.end()) {
-		//chunk position provided is not required to be rendered, or new rendering area has changed
-		return false;
+		return reload_status;
 	}
-	//found, trigger a reload
-	this->renderingLocal[it->second].second = false;
-	return true;
+
+	/**
+	 * @brief Transfer terrain map on host side to device (OpenGL) texture by a local chunk.
+	 * @param buffer Texture map on device side, a mapped OpenGL pointer.
+	 * @param chunk_visitor The visitor to read the chunk data.
+	 * @param chunkIdx Local chunk index that specified which chunk in render area will be overwritten.
+	*/
+	void sendChunkToBuffer(const STPMemoryBlock::STPMappedMemoryUnit& buffer,
+		const STPChunk::STPSharedMapVisitor& chunk_visitor, unsigned int chunkIdx) {
+		//chunk is ready, copy to rendering buffer
+		auto copy_buffer = [stream = *this->Pipeline.BufferStream, dimension = this->ChunkSetting.MapSize,
+			buffer_offset = this->calcLocalMapOffset(chunkIdx)]
+			(cudaArray_t dest, const void* src, size_t channelSize) -> void {
+			STPcudaCheckErr(cudaMemcpy2DToArrayAsync(dest, buffer_offset.x * channelSize, buffer_offset.y, src,
+				dimension.x * channelSize, dimension.x * channelSize, dimension.y, cudaMemcpyHostToDevice, stream));
+		};
+
+		unsigned int index;
+		//copy buffer to GL texture
+		index = TERRAIN_MAP_INDEX(STPWorldPipeline::STPTerrainMapType::Biomemap);
+		copy_buffer(buffer[index], chunk_visitor.biomemap(), MemoryFormat[index]);
+		index = TERRAIN_MAP_INDEX(STPWorldPipeline::STPTerrainMapType::Heightmap);
+		copy_buffer(buffer[index], chunk_visitor.heightmapBuffer(), MemoryFormat[index]);
+	}
+
+	/**
+	 * @brief Copy the local chunk lookup table from the front buffer to the back buffer.
+	*/
+	inline void copyLocalChunkTable() {
+		this->BackBuffer->copyLocalChunkTable(*this->FrontBuffer);
+	}
+
+	/**
+	 * @brief Recompute the local chunk status record and index lookup table.
+	 * @param chunkPos The new chunk position.
+	*/
+	inline void recomputeLocalChunkTable(const ivec2& chunkPos) {
+		const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
+
+		STPChunk::STPChunkCoordinateCache allChunks =
+			STPChunk::calcChunkNeighbour(chunkPos, setting.ChunkSize, setting.RenderedChunk);
+		this->BackBuffer->recomputeLocalChunkTable(allChunks);
+	}
+
+	/**
+	 * @brief Generate a list of chunks that are required to have splatmap computed, based on the compute table.
+	 * Therefore splatmap of all chunks should be computed after all chunks have finished.
+	 * @return The splatmap generator requesting info.
+	*/
+	STPDiversity::STPTextureFactory::STPRequestingChunkInfo generateSplatmapGeneratorInfo() const {
+		STPDiversity::STPTextureFactory::STPRequestingChunkInfo requesting_info;
+		requesting_info.reserve(this->ComputingChunk.size());
+
+		for_each(this->ComputingChunk.cbegin(), this->ComputingChunk.cend(),
+			[&requesting_info, &chunk_setting = this->ChunkSetting,
+				&chunk_record = std::as_const(this->BackBuffer->LocalChunkRecord)](const unsigned int index) {
+				//mark updated rendering buffer
+				//we need to use the chunk normalised coordinate to get the splatmap offset,
+				//splatmap offset needs to be consistent with the heightmap and biomemap
+				const vec2 offset = static_cast<vec2>(STPChunk::calcChunkMapOffset(chunk_record[index].first,
+					chunk_setting.ChunkSize, chunk_setting.MapSize, chunk_setting.MapOffset));
+				//local chunk coordinate
+				const uvec2 local_coord = STPChunk::calcLocalChunkCoordinate(index, chunk_setting.RenderedChunk);
+				requesting_info.emplace_back(
+					STPDiversity::STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation
+					{ local_coord.x, local_coord.y, offset.x, offset.y }
+				);
+			});
+
+		return requesting_info;
+	}
+
+};
+
+STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) :
+	ChunkSetting(*setup.ChunkSetting), BufferStream(cudaStreamNonBlocking),
+	Generator(make_unique<STPGeneratorManager>(setup, *this)), Memory(make_unique<STPMemoryManager>(*this)),
+	LastCentreLocation(ivec2(std::numeric_limits<int>::min())), PipelineWorker(1u) {
+	
 }
 
-void STPWorldPipeline::wait() {
+STPWorldPipeline::~STPWorldPipeline() {
 	//sync the chunk loading and make sure the chunk loader has finished before return
 	if (this->MapLoader.valid()) {
 		//wait for finish first
 		this->MapLoader.get();
-		//sync the stream that modifies the texture and unmap the chunk
-		//CUDA will make sure all previous pending works in the stream has finished before graphics API can be called
-		STPcudaCheckErr(cudaGraphicsUnmapResources(3, this->TerrainMapRes, *this->BufferStream));
 	}
+	this->Memory->unmapBackBuffer();
+
+	//wait for the stream to finish everything
+	STPcudaCheckErr(cudaStreamSynchronize(*this->BufferStream));
 }
 
-const ivec2& STPWorldPipeline::centre() const {
-	return this->lastCenterLocation;
+inline STPWorldPipeline::STPChunkLoaderStatus STPWorldPipeline::isLoaderBusy() {
+	if (!this->MapLoader.valid()) {
+		//no work is being done
+		return STPChunkLoaderStatus::Free;
+	}
+	if (this->MapLoader.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
+		//still working
+		return STPChunkLoaderStatus::Busy;
+	}
+	this->MapLoader.get();
+	return STPChunkLoaderStatus::Yield;
 }
 
-STPOpenGL::STPuint STPWorldPipeline::operator[](STPRenderingBufferType type) const {
-	return this->TerrainMap[static_cast<std::underlying_type_t<STPRenderingBufferType>>(type)];
+const ivec2& STPWorldPipeline::centre() const noexcept {
+	return this->LastCentreLocation;
 }
 
-const STPDiversity::STPTextureFactory& STPWorldPipeline::splatmapGenerator() const {
+STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos) {
+	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
+	
+	/* -------------------------------- Status Check --------------------------------- */
+	const STPChunkLoaderStatus loaderStatus = this->isLoaderBusy();
+	const bool backBufferReady = this->Memory->BackBuffer->LocalChunkComplete;
+	bool shouldClearBuffer = false;
+
+	//check if the central position has changed or not
+	if (const ivec2 thisCentrePos = STPChunk::calcWorldChunkCoordinate(
+			viewPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScaling);
+		thisCentrePos != this->LastCentreLocation) {
+		//centre position changed
+		if (loaderStatus == STPChunkLoaderStatus::Busy) {
+			//loader is working on the back buffer for a previous task
+			return STPWorldLoadStatus::BufferExhaust;
+		}
+		//discard previous unfinished task and move on to the new task
+		
+		//backup the current rendering locals
+		this->Memory->copyLocalChunkTable();
+		//recalculate loading chunks
+		this->Memory->recomputeLocalChunkTable(thisCentrePos);
+
+		this->LastCentreLocation = thisCentrePos;
+		//clear up previous rendering buffer
+		shouldClearBuffer = true;
+		//start loading the new rendered chunks
+		this->Memory->mapBackBuffer();
+	} else {
+		//centre position has not changed
+		if (loaderStatus == STPChunkLoaderStatus::Busy) {
+			//loader is working on the back buffer for the current task
+			return STPWorldLoadStatus::BackBufferBusy;
+		}
+		if (backBufferReady) {
+			if (loaderStatus == STPChunkLoaderStatus::Yield) {
+				//current task just done completely
+				//synchronise the buffer before passing to the user
+				this->Memory->unmapBackBuffer();
+				this->Memory->swapBuffer();
+				return STPWorldLoadStatus::Swapped;
+			}
+			return STPWorldLoadStatus::Unchanged;
+		}
+		//continue loading the current rendered chunks
+	}
+
+	/* ----------------------------- Asynchronous Chunk Loading ------------------------------- */
+	auto asyncChunkLoader = [&mem_mgr = *this->Memory, &gen_mgr = *this->Generator, &chunk_setting](const auto& map_data) -> void {
+		auto& local_record = mem_mgr.BackBuffer->LocalChunkRecord;
+		bool allLoaded = true;
+		//check all workers and release chunks once they have finished.
+		for (unsigned int i = 0u; i < local_record.size(); i++) {
+			auto& [chunkPos, chunkLoaded] = local_record[i];
+			if (chunkLoaded) {
+				//skip this chunk if loading has been completed before
+				continue;
+			}
+
+			//ask provider if we can get the chunk
+			const optional<STPChunk::STPSharedMapVisitor> chunk = gen_mgr.getChunk(chunkPos);
+			if (chunk) {
+				//load chunk into device texture
+				mem_mgr.sendChunkToBuffer(map_data, chunk.value(), i);
+				chunkLoaded = true;
+				continue;
+			}
+
+			//chunk is not gettable
+			allLoaded = false;
+		}
+		//generate splatmap after all chunks had their maps loaded from host, so we only need to generate once.
+		if (allLoaded) {
+			//there exists chunk that has terrain maps updated, we need to update splatmap as well
+			gen_mgr.computeSplatmap(map_data, mem_mgr.generateSplatmapGeneratorInfo());
+		}
+
+		//update chunk complete status
+		mem_mgr.BackBuffer->LocalChunkComplete = allLoaded;
+	};
+
+	/* ----------------------------- Front Buffer Backup -------------------------------- */
+	const auto& backBuffer_ptr = this->Memory->getMappedBackBuffer();
+	//Search if any chunk in the front buffer can be reused.
+	//If so, copy to the back buffer; if not, clear the chunk.
+	if (shouldClearBuffer) {
+		this->Memory->reuseBuffer(backBuffer_ptr);
+	}
+
+	//group mapped data together and start loading chunk
+	this->MapLoader = this->PipelineWorker.enqueue_future(asyncChunkLoader, std::cref(backBuffer_ptr));
+	return STPWorldLoadStatus::BackBufferBusy;
+}
+
+bool STPWorldPipeline::reload(const ivec2& chunkCoord) {
+	return this->Memory->reloadBuffer(chunkCoord);
+}
+
+STPOpenGL::STPuint STPWorldPipeline::operator[](STPTerrainMapType type) const noexcept {
+	return this->Memory->getMap(type);
+}
+
+const STPDiversity::STPTextureFactory& STPWorldPipeline::splatmapGenerator() const noexcept {
 	return this->Generator->generateSplatmap;
 }

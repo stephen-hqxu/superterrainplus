@@ -4,11 +4,6 @@
 
 #include <SuperTerrain+/STPCoreDefine.h>
 #include <SuperTerrain+/STPOpenGL.h>
-//Containers
-#include <vector>
-#include <unordered_map>
-//System
-#include <memory>
 
 #include "../Environment/STPChunkSetting.h"
 //Chunk
@@ -19,7 +14,9 @@
 #include "./Diversity/Texture/STPTextureFactory.h"
 //Multithreading
 #include "../Utility/STPThreadPool.h"
-#include <shared_mutex>
+
+//System
+#include <memory>
 
 //CUDA
 #include <cuda_runtime.h>
@@ -29,7 +26,7 @@ namespace SuperTerrainPlus {
 	/**
 	 * @brief STPWorldPipeline is the master terrain generation pipeline that manages all generators and storage system, generate terrain and prepare data 
 	 * for rendering. It loads up data from storage class, composing and preparing data for renderer. 
-	 * If data is currently ready, map will be loaded to rendering buffer; otherwise map generators are called for texture synthesis.
+	 * If data is currently ready, map will be loaded to terrain map buffer; otherwise map generators are called for texture synthesis.
 	*/
 	class STP_API STPWorldPipeline {
 	public:
@@ -51,147 +48,77 @@ namespace SuperTerrainPlus {
 		};
 
 		/**
-		 * @brief STPRenderingBufferType specifies the type of rendering buffer to retrieve
+		 * @brief STPWorldLoadStatus indicates a chunk loading status when the user is requesting a new chunk.
 		*/
-		enum class STPRenderingBufferType : unsigned char {
-			//Biomemap
-			BIOME = 0x00u,
-			//Heightmap
-			HEIGHTFIELD = 0x01u,
-			//Splatmap
-			SPLAT = 0x02u
+		enum class STPWorldLoadStatus : unsigned char {
+			//The centre chunk location has no change, no operation is performed.
+			Unchanged = 0x00u,
+			//The centre chunk location has changed, and operation is already in progress.
+			//The user can keep using the front buffer without being affected.
+			BackBufferBusy = 0x01u,
+			//Since last time the world is requested to reload, some operations have been finished.
+			//Back and front buffer has been swapped with the new information loaded.
+			Swapped = 0x02u,
+			//There is already a pending chunk loading requesting and back buffer is still in used.
+			//No more vacant buffer to perform asynchronous operation for another task.
+			//This new request is then ignored.
+			BufferExhaust = 0xFFu
 		};
+
+		/**
+		 * @brief STPTerrainMapType specifies the type of terrain map to retrieve
+		*/
+		enum class STPTerrainMapType : unsigned char {
+			Biomemap = 0x00u,
+			Heightmap = 0x01u,
+			Splatmap = 0x02u
+		};
+
+		const STPEnvironment::STPChunkSetting& ChunkSetting;
 
 	private:
 
 		/**
-		 * @brief The hash function for the glm::ivec2
+		 * @brief STPChunkLoaderStatus indicates the working status of the chunk loader.
 		*/
-		struct STPHashivec2 {
-		public:
-
-			size_t operator()(const glm::ivec2&) const;
-
+		enum class STPChunkLoaderStatus : unsigned char {
+			//No work is being processed.
+			Free = 0x00u,
+			//Some works are being done right now.
+			Busy = 0x01u,
+			//Was busy, but it has finished.
+			Yield = 0x02u
 		};
 
-		//The total number of rendering buffer we have currently.
-		//Biomemap, heightfield and splatmap
-		static constexpr size_t BufferCount = 3ull;
-
-		//Vector that stored rendered chunk world position and loading status (True is loaded, false otherwise)
-		typedef std::vector<std::pair<glm::ivec2, bool>> STPLocalChunkStatus;
-		//Use chunk world coordinate to lookup chunk ID
-		typedef std::unordered_map<glm::ivec2, unsigned int, STPHashivec2> STPLocalChunkDictionary;
-		typedef std::unordered_map<glm::ivec2, std::pair<unsigned int, bool>, STPHashivec2> STPLocalChunkCache;
-
-		/**
-		 * @brief STPRenderingBufferMemory contains data to mapped GL texture data.
-		*/
-		struct STPRenderingBufferMemory {
-		public:
-
-			//Channel size in byte (not bit) for each map
-			//Remember to update this value in case OpenGL buffer changes internal channel format
-			constexpr static size_t Format[STPWorldPipeline::BufferCount] = {
-				sizeof(STPDiversity::Sample),
-				sizeof(unsigned short),
-				sizeof(unsigned char)
-			};
-
-			//Map data
-			cudaArray_t Map[STPWorldPipeline::BufferCount];
-
-		};
-
-		/**
-		 * @brief STPRenderingBufferCache contains data as a backup of rendering buffer memory
-		*/
-		struct STPRenderingBufferCache {
-		public:
-
-			//Map cache data
-			void* MapCache[STPWorldPipeline::BufferCount];
-			//pitch size
-			size_t Pitch[STPWorldPipeline::BufferCount];
-
-			//A record of rendering locals for the current rendering buffer
-			STPLocalChunkCache LocalCache;
-
-		};
-
+		//CUDA stream
+		STPSmartStream BufferStream;
 		/**
 		 * @brief STPGeneratorManager aims to send instructions to terrain generators when the pipeline requests for chunks and it is not ready in the storage.
 		*/
 		class STPGeneratorManager;
 		std::unique_ptr<STPGeneratorManager> Generator;
+		/**
+		 * @brief STPMemoryManager manages memory usage for the world pipeline, such as heightmap data.
+		*/
+		class STPMemoryManager;
+		std::unique_ptr<STPMemoryManager> Memory;
 
-		//CUDA stream
-		STPSmartStream BufferStream;
-
-		//index 0: R16UI biome map
-		//index 1: R16 height map
-		//index 2: R8UI splat map
-		STPOpenGL::STPuint TerrainMap[STPWorldPipeline::BufferCount];
-		//registered buffer and texture
-		cudaGraphicsResource_t TerrainMapRes[STPWorldPipeline::BufferCount];
-		//empty buffer (using CUDA pinned memory) that is used to clear a chunk data
-		void* TerrainMapClearBuffer;
-		size_t TerrainMapClearBufferPitch;
-		//A cache that holds the previous rendered chunk memory to update the new rendered chunk
-		STPRenderingBufferCache TerrainMapExchangeCache;
-
-		//for automatic chunk loading
-		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the currentCentralPos is different from this value
-		glm::ivec2 lastCenterLocation = glm::ivec2(std::numeric_limits<int>::min());//the last world position of the central chunk of the entire visible chunks
-		//determine which chunks to render and whether it's loaded, index of element denotes chunk local ID
-		STPLocalChunkStatus renderingLocal;
-		STPLocalChunkDictionary renderingLocalLookup;
+		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the
+		//currentCentralPos is different from this value the last world position of the central chunk of the entire
+		//visible chunks
+		glm::ivec2 LastCentreLocation;
 
 		//async chunk loader
 		STPThreadPool PipelineWorker;
 		std::future<void> MapLoader;
 
 		/**
-		 * @brief Copy from a portion of rendering buffer to another portion of rendering buffer.
-		 * @param dest The destination of the rendering buffer to be copied to.
-		 * @param dest_idx The local chunk index to the destination rendering sub-buffer.
-		 * @param src_idx The local chunk index to the source rendering sub-buffer.
+		 * @brief Check if the map loader thread is busy.
+		 * @return A chunk loader status value.
 		*/
-		void copySubBufferFromSubCache(const STPRenderingBufferMemory&, unsigned int, unsigned int);
-
-		/**
-		 * @brief Copy the given rendering buffer to a backup buffer in the current pipeline.
-		 * @param buffer The rendering buffer to be backed-up.
-		*/
-		void backupBuffer(const STPRenderingBufferMemory&);
-
-		/**
-		 * @brief Clear up the rendering buffer of the chunk map.
-		 * @param destination The location to store all loaded maps, and it will be erased.
-		 * @param dest_idx The local chunk index to the destination rendering sub-buffer to be cleared.
-		*/
-		void clearBuffer(const STPRenderingBufferMemory&, unsigned int);
-
-		/**
-		 * @brief Transfer rendering buffer on host side to device (OpenGL) rendering buffer by local chunk.
-		 * @param buffer Rendering buffer on device side, a mapped OpenGL pointer.
-		 * Rendering buffer is continuous, function will determine pointer offset and only chunk specified in the "image" argument will be updated.
-		 * @param chunkCoord World coordinate of the chunk that will be used to update render buffer
-		 * @param chunkID Local chunk ID that specified which chunk in rendering buffer will be overwritten.
-		 * @return True if request has been submitted, false if given chunk is not available.
-		*/
-		bool mapSubData(const STPRenderingBufferMemory&, glm::ivec2, unsigned int);
-
-		/**
-		 * @brief Get the chunk offset on a rendering buffer given a local chunk index.
-		 * @param index The local chunk index.
-		 * @return The chunk index offset on the rendering buffer.
-		*/
-		glm::uvec2 calcBufferOffset(unsigned int) const;
+		STPChunkLoaderStatus isLoaderBusy();
 
 	public:
-
-		const STPEnvironment::STPChunkSetting& ChunkSetting;
 
 		/**
 		 * @brief Initialise world pipeline with pipeline stages loaded.
@@ -211,52 +138,43 @@ namespace SuperTerrainPlus {
 
 		/**
 		 * @brief Automatically load the chunks based on camera position, visible range and chunk size.
-		 * It will handle whether the central chunk has been changed compare to last time it was called, and determine whether or not to reload or continue waiting for loading
-		 * for the current chunk.
-		 * If previous worker has yet finished, function will be blocked until the previous returned, then it will be proceed.
-		 * Loading must be sync with wait() or it will incur undefined behaviour.
+		 * It will handle whether the central chunk has been changed compare to last time it was called, 
+		 * and determine whether or not to reload or continue waiting for loading for the current chunk.
 		 * @param viewPos The world position of the viewer
-		 * @return The status of change of the central chunk.
-		 * True if the central chunk has been changed, false otherwise.
+		 * @return The load status.
+		 * How the function should behave is indicated by the load status returned.
 		*/
-		bool load(const glm::dvec3&);
+		STPWorldLoadStatus load(const glm::dvec3&);
 
 		/**
-		 * @brief Change the rendering chunk status to force reload that will trigger a chunk texture reload onto rendering buffer.
-		 * Only when chunk position is being rendered, if chunk position is not in the rendering range, command is ignored.
+		 * @brief Change the rendering chunk status to force reload terrain map onto the GL texture memory.
+		 * If chunk position is not in the rendering range, command is ignored.
 		 * It will insert current chunk into reloading queue and chunk will not be reloaded until the next rendering loop.
-		 * When the rendering chunks are changed, all un-processed queries are discarded as all new rendering chunks are reloaded regardless.
+		 * When the rendering chunks are changed, all unprocessed queries are discarded as all new rendering chunks are reloaded regardless.
 		 * @param chunkCoord The world coordinate of the chunk required for reloading
 		 * @return True if query has been submitted successfully, false if chunk is not in the rendering range or the same query has been submitted before.
 		*/
 		bool reload(const glm::ivec2&);
 
 		/**
-		 * @brief Sync the map loading operations to make sure the work has finished before this function returns.
-		 * This function should be called by the renderer before rendering to ensure data safety.
-		*/
-		void wait();
-
-		/**
 		 * @brief Get the current world position of the central chunk.
 		 * @return The pointer to the current central chunk.
 		*/
-		const glm::ivec2& centre() const;
+		const glm::ivec2& centre() const noexcept;
 
 		/**
-		 * @brief Get the current OpenGL rendering buffer.
-		 * it's the rendering buffer for this frame.
-		 * @type The type of rendering buffer to retrieve
-		 * @return The current rendering buffer
+		 * @brief Get the GL texture object containing the terrain map on the current front buffer.
+		 * @type The type of terrain map to retrieve
+		 * @return The GL object with the requesting terrain map.
 		*/
-		STPOpenGL::STPuint operator[](STPRenderingBufferType) const;
+		STPOpenGL::STPuint operator[](STPTerrainMapType) const noexcept;
 
 		/**
 		 * @brief Retrieve the pointer to splatmap generator.
 		 * This can be used by the renderer for rule-based multi-biome terrain texture splatting.
 		 * @return The splatmap generator.
 		*/
-		const STPDiversity::STPTextureFactory& splatmapGenerator() const;
+		const STPDiversity::STPTextureFactory& splatmapGenerator() const noexcept;
 
 	};
 

@@ -72,6 +72,37 @@ namespace SuperTerrainPlus {
 				STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<STPSmartDeviceMemory::NoArray<T>>
 			>;
 
+		/**
+		 * @brief STPPitchedDeviceMemory is a managed device memory with pitch.
+		 * The deleter utilises cudaFree()
+		*/
+		template<typename T>
+		struct STPPitchedDeviceMemory {
+		public:
+
+			STPDeviceMemory<T> Pointer;
+			size_t Pitch;
+
+			/**
+			 * @brief Create an empty pitched device memory.
+			*/
+			STPPitchedDeviceMemory();
+
+			/**
+			 * @brief Create a new managed pitched device memory.
+			 * @param ptr The pitched device pointer.
+			 * @param pitch The pointer pitch.
+			*/
+			STPPitchedDeviceMemory(NoArray<T>*, size_t);
+
+			STPPitchedDeviceMemory(STPPitchedDeviceMemory&&) noexcept = default;
+
+			STPPitchedDeviceMemory& operator=(STPPitchedDeviceMemory&&) noexcept = default;
+
+			~STPPitchedDeviceMemory() = default;
+
+		};
+
 		//Some helper functions
 
 		/**
@@ -93,6 +124,16 @@ namespace SuperTerrainPlus {
 		*/
 		template<typename T>
 		static STPStreamedDeviceMemory<T> makeStreamedDevice(cudaMemPool_t, cudaStream_t, size_t = 1ull);
+
+		/**
+		 * @brief Create a STPPitchedDeviceMemory which is a smart pointer to pitched device memory with regular device deleter.
+		 * @tparam T The type of the pointer.
+		 * @param width The width of the memory, in the number of element.
+		 * @param height The height of the memory, in the number of element.
+		 * @return The smart pointer the pitched memory allocated.
+		*/
+		template<typename T>
+		static STPPitchedDeviceMemory<T> makePitchedDevice(size_t, size_t);
 
 	};
 

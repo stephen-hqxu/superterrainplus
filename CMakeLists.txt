@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 project(SuperTerrain+
-VERSION 0.13.7
+VERSION 0.13.11
 LANGUAGES CXX CUDA
 DESCRIPTION "A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering."
 HOMEPAGE_URL "https://github.com/stephen-hqxu/superterrainplus"

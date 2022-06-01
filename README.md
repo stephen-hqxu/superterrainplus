@@ -271,10 +271,10 @@ For redistributed open source project, see *3rd-Party* directory to find the lic
 - [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
 - [Simulating the Colors of the Sky](https://www.scratchapixel.com/lessons/procedural-generation-virtual-worlds/simulating-sky) from *Scratchapixel*
 - [Physically-based atmospheric scattering](https://github.com/wwwtyro/glsl-atmosphere/)
-- [Cascaded Shadow Mapping](https://learnopengl.com/Guest-Articles/2021/CSM) by *M·rton ¡rbÛcz* from *Learn OpenGL*
+- [Cascaded Shadow Mapping](https://learnopengl.com/Guest-Articles/2021/CSM) by *M√°rton √Årb√≥cz* from *Learn OpenGL*
 - [Cascaded Shadow Maps](https://docs.microsoft.com/en-us/windows/win32/dxtecharts/cascaded-shadow-maps) from *Microsoft*
 - [Variance Shadow Maps](https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-8-summed-area-variance-shadow-maps)
-- [A Primer On Efficient Rendering Algorithms & Clustered Shading](http://www.aortiz.me/2018/12/21/CG.html#part-2) by *¡ngel Ortiz*
+- [A Primer On Efficient Rendering Algorithms & Clustered Shading](http://www.aortiz.me/2018/12/21/CG.html) by *√Ångel Ortiz*
 - [Forward vs Deferred vs Forward+ Rendering with DirectX 11](https://www.3dgep.com/forward-plus/#Experiment_Setup_and_Performance_Results) by *Jeremiah van Oosten*
 - [SSAO](https://learnopengl.com/Advanced-Lighting/SSAO) from *Learn OpenGL*
 - [HBAO](https://github.com/nvpro-samples/gl_ssao) and [HBAO+](https://github.com/NVIDIAGameWorks/HBAOPlus)

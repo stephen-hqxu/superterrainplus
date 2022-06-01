@@ -65,6 +65,10 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STPTerrainShaderOption {
 		public:
 
+			//The initial position of the viewer.
+			//This is used to initialise the rendered chunk position for the first few frames when heightmap are not yet generated.
+			glm::dvec3 InitialViewPosition;
+
 			//Specify the dimension of the noise sampling texture to be used in the shader.
 			//Higher scale provides more randomness but also consumes more memory.
 			glm::uvec3 NoiseDimension;
@@ -103,6 +107,11 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The base chunk position.
 		*/
 		glm::dvec2 calcBaseChunkPosition(glm::dvec2);
+
+		/**
+		 * @brief Update the terrain model matrix based on the current centre chunk position.
+		*/
+		void updateTerrainModel();
 
 	public:
 

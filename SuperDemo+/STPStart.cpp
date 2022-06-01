@@ -289,6 +289,7 @@ namespace STPStart {
 				TerrainAltitude = mesh_setting.Altitude;
 
 				const STPHeightfieldTerrain<true>::STPTerrainShaderOption terrain_opt = {
+					this->ViewPosition,
 					uvec3(128u, 128u, 6u),
 					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform
 				};
