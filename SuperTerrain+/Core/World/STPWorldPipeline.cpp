@@ -47,7 +47,6 @@ using std::unordered_map;
 using std::unordered_set;
 using std::vector;
 
-using std::atomic_bool;
 using std::exception_ptr;
 using std::future;
 using std::mutex;
@@ -522,9 +521,6 @@ public:
 		//registered CUDA graphics handle for GL terrain maps.
 		STPMemoryUnit<cudaGraphicsResource_t> TerrainMapResource;
 
-		//A status flag indicating if all local chunks in this memory block
-		//have their memory loaded from the host memory.
-		atomic_bool LocalChunkComplete;
 		//Vector that stored rendered chunk world position and loading status (True is loaded, false otherwise).
 		vector<pair<ivec2, bool>> LocalChunkRecord;
 		//Use chunk world coordinate to lookup chunk ID, which is the index to the local chunk record.
@@ -534,7 +530,7 @@ public:
 		 * @brief Initialise a memory block.
 		 * @param manager The pointer to the dependent world memory manager.
 		*/
-		STPMemoryBlock(const STPMemoryManager& manager) : LocalChunkComplete(true) {
+		STPMemoryBlock(const STPMemoryManager& manager) {
 			const STPEnvironment::STPChunkSetting& setting = manager.ChunkSetting;
 			const uvec2 buffer_size = setting.RenderedChunk * setting.MapSize;
 			auto setupMap = 
@@ -602,32 +598,12 @@ public:
 		}
 
 		/**
-		 * @brief Copy the local chunk lookup table from one memory block to the current one.
-		 * @param block The memory block from which is copied in.
-		*/
-		inline void copyLocalChunkTable(const STPMemoryBlock& block) {
-			//copy local status record table
-			this->LocalChunkRecord.clear();
-			std::copy(block.LocalChunkRecord.cbegin(), block.LocalChunkRecord.cend(),
-				std::back_inserter(this->LocalChunkRecord));
-			this->LocalChunkComplete = static_cast<bool>(block.LocalChunkComplete);
-
-			//copy local index lookup table
-			this->LocalChunkDictionary.clear();
-			for_each(block.LocalChunkDictionary.cbegin(), block.LocalChunkDictionary.cend(),
-				[chunkIdx = 0u, &local_dict = this->LocalChunkDictionary](const auto local) mutable {
-				local_dict.try_emplace(local.first, chunkIdx++);
-			});
-		}
-
-		/**
 		 * @brief Recompute the chunk tables.
 		 * @param rendered_chunk A range of rendered chunks.
 		*/
 		inline void recomputeLocalChunkTable(const STPChunk::STPChunkCoordinateCache& rendered_chunk) {
 			this->LocalChunkRecord.clear();
 			this->LocalChunkDictionary.clear();
-			this->LocalChunkComplete = false;
 			//we also need chunkID, which is just the index of the visible chunk from top-left to bottom-right
 			for_each(rendered_chunk.cbegin(), rendered_chunk.cend(),
 				[chunkIdx = 0u, &local_status = this->LocalChunkRecord,
@@ -679,7 +655,6 @@ public:
 			}
 			//found, trigger a reload
 			this->LocalChunkRecord[it->second].second = false;
-			this->LocalChunkComplete = false;
 			return true;
 		}
 
@@ -696,14 +671,15 @@ private:
 
 	//Record indices of chunks that need to have splatmap computed for the current task.
 	unordered_set<unsigned int> ComputingChunk;
-	constexpr static array<ivec2, 8ull> NeighbourCoordinateOffset = {
+	constexpr static array<ivec2, 9ull> NeighbourCoordinateOffset = {
 		ivec2(-1, -1),
-		ivec2(+0, -1),
+		ivec2( 0, -1),
 		ivec2(+1, -1),
-		ivec2(-1, +0),
-		ivec2(+1, +0),
+		ivec2(-1,  0),
+		ivec2( 0,  0),
+		ivec2(+1,  0),
 		ivec2(-1, +1),
-		ivec2(+0, +1),
+		ivec2( 0, +1),
 		ivec2(+1, +1)
 	};
 
@@ -743,6 +719,30 @@ private:
 		this->BackBuffer->setMappingFlag(cudaGraphicsMapFlagsNone);
 	}
 
+	/**
+	 * @brief Given a chunk index, trigger a recompute of itself and its valid neighbours.
+	 * @param chunkIdx The chunk index to be triggered.
+	*/
+	void recomputeNeighbour(unsigned int chunkIdx) {
+		const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
+
+		const uvec2 rendered_chunk = setting.RenderedChunk;
+		const unsigned int chunkRowCount = rendered_chunk.x;
+		//for each neighbour of each computing chunk...
+		for (const ivec2 coord_offset : this->NeighbourCoordinateOffset) {
+			//small negative number will become a huge unsigned,
+			//so when checking for validity we don't need to consider negative number.
+			const uvec2 current_coord =
+				static_cast<uvec2>(ivec2(chunkIdx % chunkRowCount, chunkIdx / chunkRowCount) + coord_offset);
+			//make sure the coordinate is in a valid range
+			if (current_coord.x >= rendered_chunk.x || current_coord.y >= rendered_chunk.y) {
+				continue;
+			}
+
+			this->ComputingChunk.emplace(current_coord.x + current_coord.y * chunkRowCount);
+		}
+	}
+
 public:
 
 	/**
@@ -767,9 +767,8 @@ public:
 
 		const cudaStream_t stream = *this->Pipeline.BufferStream;
 		//clear the `clear` buffer
-		const auto& [clear_ptr, clear_pitch] = this->MapClearBuffer;
-		STPcudaCheckErr(
-			cudaMemset2DAsync(clear_ptr.get(), clear_pitch, 0x80u, clearBuffer_size.x, clearBuffer_size.y, stream));
+		STPcudaCheckErr(cudaMemset2DAsync(this->MapClearBuffer.get(), this->MapClearBuffer.Pitch, 0x80u,
+			clearBuffer_size.x, clearBuffer_size.y, stream));
 
 		//initialise pixel value in the texture rather than leaving them as undefined.
 		for (int b = 0; b < 2; b++) {
@@ -781,9 +780,9 @@ public:
 				for (unsigned int x = 0u; x < setting.RenderedChunk.x; x++) {
 					const uvec2 localMapOffset = uvec2(x, y) * setting.MapSize;
 					FOR_EACH_MEMORY_START()
-						STPcudaCheckErr(cudaMemcpy2DToArrayAsync(mapped[i], localMapOffset.x * MemoryFormat[i], localMapOffset.y,
-							clear_ptr.get(), clear_pitch, mapDim.x * MemoryFormat[i], mapDim.y,
-							cudaMemcpyDeviceToDevice, stream));
+						STPcudaCheckErr(cudaMemcpy2DToArrayAsync(mapped[i], localMapOffset.x * MemoryFormat[i],
+							localMapOffset.y, this->MapClearBuffer.get(), this->MapClearBuffer.Pitch,
+							mapDim.x * MemoryFormat[i], mapDim.y, cudaMemcpyDeviceToDevice, stream));
 					FOR_EACH_MEMORY_END()
 				}
 			}
@@ -870,7 +869,6 @@ public:
 		STPMemoryBlock* frontBuffer_w = const_cast<STPMemoryBlock*>(this->FrontBuffer);
 		const auto frontBuffer_ptr = frontBuffer_w->mapTerrainMap(stream);
 
-		bool allLoaded = true;
 		const auto& front_local_dict = this->FrontBuffer->LocalChunkDictionary;
 		//here we perform an optimisation: reuse chunk that has been rendered previously from the front buffer
 		for (auto& [chunkPos, loaded] : this->BackBuffer->LocalChunkRecord) {
@@ -888,18 +886,17 @@ public:
 					{
 						const uvec2 src_offset = this->calcLocalMapOffset(front_buffer_chunkIdx),
 							dest_offset = this->calcLocalMapOffset(back_buffer_chunkIdx);
-						const auto& [trans_ptr, trans_pitch] = this->MapTransferCache;
 
 						//no async version for function cudaMemcpy2DArrayToArray, wtf???
 						FOR_EACH_MEMORY_START()
 							//front buffer -> cache
-							STPcudaCheckErr(cudaMemcpy2DFromArrayAsync(trans_ptr.get(), trans_pitch, frontBuffer_ptr[i],
-								src_offset.x * MemoryFormat[i], src_offset.y, mapDim.x * MemoryFormat[i], mapDim.y,
-								cudaMemcpyDeviceToDevice, stream));
+							STPcudaCheckErr(cudaMemcpy2DFromArrayAsync(this->MapTransferCache.get(),
+								this->MapTransferCache.Pitch, frontBuffer_ptr[i], src_offset.x * MemoryFormat[i],
+								src_offset.y, mapDim.x * MemoryFormat[i], mapDim.y, cudaMemcpyDeviceToDevice, stream));
 							//cache -> back buffer
 							STPcudaCheckErr(cudaMemcpy2DToArrayAsync(backBuffer_ptr[i], dest_offset.x * MemoryFormat[i],
-								dest_offset.y, trans_ptr.get(), trans_pitch, mapDim.x * MemoryFormat[i], mapDim.y,
-								cudaMemcpyDeviceToDevice, stream));
+								dest_offset.y, this->MapTransferCache.get(), this->MapTransferCache.Pitch,
+								mapDim.x * MemoryFormat[i], mapDim.y, cudaMemcpyDeviceToDevice, stream));
 						FOR_EACH_MEMORY_END()
 					}
 
@@ -912,18 +909,13 @@ public:
 			//clear this chunk
 			{
 				const uvec2 dest_offset = this->calcLocalMapOffset(back_buffer_chunkIdx);
-				const auto& [clear_ptr, clear_pitch] = this->MapClearBuffer;
 				FOR_EACH_MEMORY_START()
 					STPcudaCheckErr(cudaMemcpy2DToArrayAsync(backBuffer_ptr[i], dest_offset.x * MemoryFormat[i],
-						dest_offset.y, clear_ptr.get(), clear_pitch, mapDim.x * MemoryFormat[i], mapDim.y,
-						cudaMemcpyDeviceToDevice, stream));
+						dest_offset.y, this->MapClearBuffer.get(), this->MapClearBuffer.Pitch, mapDim.x * MemoryFormat[i],
+						mapDim.y, cudaMemcpyDeviceToDevice, stream));
 				FOR_EACH_MEMORY_END()
 			}
-			//there is at least one chunk not loaded, so the entire terrain map is not complete
-			allLoaded = false;
 		}
-		//update overall chunk complete status for back buffer
-		this->BackBuffer->LocalChunkComplete = allLoaded;
 
 		//unmap the front buffer
 		frontBuffer_w->unmapTerrainmap(stream);
@@ -934,28 +926,13 @@ public:
 		//To avoid artefacts, if any chunk is a neighbour of those chunks we just recorded, need to recompute them as
 		//well. This is to mainly avoid splatmap seams. The logic is, if previously those chunks do not have a valid
 		//neighbour but this time they have one, The border of them may not be aligned properly with the new chunks.
-		const uvec2 rendered_chunk = chunk_setting.RenderedChunk;
-		const unsigned int maxChunkIdx = rendered_chunk.x * rendered_chunk.y,
-			chunkRowCount = chunk_setting.RenderedChunk.x;
 		for (unsigned int chunkIdx = 0u; chunkIdx < backBuf_rec.size(); chunkIdx++) {
 			if (backBuf_rec[chunkIdx].second) {
 				//if this chunk already has data, skip it along with its neighbours.
 				continue;
 			}
 
-			//for each neighbour of each computing chunk...
-			for (const ivec2 coord_offset : this->NeighbourCoordinateOffset) {
-				//small negative number will become a huge unsigned,
-				//so when checking for validity we don't need to consider negative number.
-				const uvec2 current_coord =
-					static_cast<uvec2>(ivec2(chunkIdx % chunkRowCount, chunkIdx / chunkRowCount) + coord_offset);
-				//make sure the coordinate is in a valid range
-				if (current_coord.x >= rendered_chunk.x || current_coord.y >= rendered_chunk.y) {
-					continue;
-				}
-
-				this->ComputingChunk.emplace(current_coord.x + current_coord.y * chunkRowCount);
-			}
+			this->recomputeNeighbour(chunkIdx);
 		}
 	}
 
@@ -969,7 +946,8 @@ public:
 		const bool reload_status = this->BackBuffer->reloadMap(chunkCoord);
 		if (reload_status) {
 			//also trigger a re-compute if it has been reloaded
-			this->ComputingChunk.emplace(this->BackBuffer->LocalChunkDictionary.at(chunkCoord));
+			const unsigned int chunkIdx = this->BackBuffer->LocalChunkDictionary.at(chunkCoord);
+			this->recomputeNeighbour(chunkIdx);
 		}
 
 		return reload_status;
@@ -997,13 +975,6 @@ public:
 		copy_buffer(buffer[index], chunk_visitor.biomemap(), MemoryFormat[index]);
 		index = TERRAIN_MAP_INDEX(STPWorldPipeline::STPTerrainMapType::Heightmap);
 		copy_buffer(buffer[index], chunk_visitor.heightmapBuffer(), MemoryFormat[index]);
-	}
-
-	/**
-	 * @brief Copy the local chunk lookup table from the front buffer to the back buffer.
-	*/
-	inline void copyLocalChunkTable() {
-		this->BackBuffer->copyLocalChunkTable(*this->FrontBuffer);
 	}
 
 	/**
@@ -1089,7 +1060,6 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 	
 	/* -------------------------------- Status Check --------------------------------- */
 	const STPChunkLoaderStatus loaderStatus = this->isLoaderBusy();
-	const bool backBufferReady = this->Memory->BackBuffer->LocalChunkComplete;
 	bool shouldClearBuffer = false;
 
 	//check if the central position has changed or not
@@ -1103,8 +1073,6 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 		}
 		//discard previous unfinished task and move on to the new task
 		
-		//backup the current rendering locals
-		this->Memory->copyLocalChunkTable();
 		//recalculate loading chunks
 		this->Memory->recomputeLocalChunkTable(thisCentrePos);
 
@@ -1119,7 +1087,10 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 			//loader is working on the back buffer for the current task
 			return STPWorldLoadStatus::BackBufferBusy;
 		}
-		if (backBufferReady) {
+		//loader is not busy, we can safely read from the memory
+		if (const auto& back_local_record = this->Memory->BackBuffer->LocalChunkRecord;
+			std::all_of(back_local_record.cbegin(), back_local_record.cend(),
+				[](const auto& rec) { return rec.second; })) {
 			if (loaderStatus == STPChunkLoaderStatus::Yield) {
 				//current task just done completely
 				//synchronise the buffer before passing to the user
@@ -1161,9 +1132,6 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 			//there exists chunk that has terrain maps updated, we need to update splatmap as well
 			gen_mgr.computeSplatmap(map_data, mem_mgr.generateSplatmapGeneratorInfo());
 		}
-
-		//update chunk complete status
-		mem_mgr.BackBuffer->LocalChunkComplete = allLoaded;
 	};
 
 	/* ----------------------------- Front Buffer Backup -------------------------------- */

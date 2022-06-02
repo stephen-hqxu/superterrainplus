@@ -280,8 +280,11 @@ SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Util
 		std::fill_n(HostData.get(), 8, Data);
 
 		WHEN("A smart device memory is requested") {
+			constexpr static size_t RowSize2D = sizeof(unsigned int) * 4u;
+
 			auto DeviceData = STPSmartDeviceMemory::makeDevice<unsigned int[]>(8);
 			auto StreamedDeviceData = STPSmartDeviceMemory::makeStreamedDevice<unsigned int[]>(STPTestInformation::TestDeviceMemoryPool, 0, 8);
+			auto PitchedDeviceData = STPSmartDeviceMemory::makePitchedDevice<unsigned int[]>(4, 2);
 
 			THEN("Smart device memory can be used like normal memory") {
 				constexpr static size_t DataSize = sizeof(unsigned int) * 8ull;
@@ -299,6 +302,13 @@ SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Util
 				STPcudaCheckErr(cudaMemcpyAsync(StreamedDeviceData.get(), HostData.get(), DataSize, cudaMemcpyHostToDevice, 0));
 				STPcudaCheckErr(cudaMemcpyAsync(ReturnedData.get(), StreamedDeviceData.get(), DataSize, cudaMemcpyDeviceToHost, 0));
 				STPcudaCheckErr(cudaStreamSynchronize(0));
+				VERIFY_DATA();
+
+				//pitched device memory
+				STPcudaCheckErr(cudaMemcpy2D(PitchedDeviceData.get(), PitchedDeviceData.Pitch, HostData.get(),
+					RowSize2D, RowSize2D, 2, cudaMemcpyHostToDevice));
+				STPcudaCheckErr(cudaMemcpy2D(ReturnedData.get(), RowSize2D, PitchedDeviceData.get(),
+					PitchedDeviceData.Pitch, RowSize2D, 2, cudaMemcpyDeviceToHost));
 				VERIFY_DATA();
 			}
 

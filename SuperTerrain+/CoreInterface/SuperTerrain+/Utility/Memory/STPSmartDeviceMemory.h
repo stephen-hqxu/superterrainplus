@@ -77,10 +77,9 @@ namespace SuperTerrainPlus {
 		 * The deleter utilises cudaFree()
 		*/
 		template<typename T>
-		struct STPPitchedDeviceMemory {
+		struct STPPitchedDeviceMemory : public STPDeviceMemory<T> {
 		public:
 
-			STPDeviceMemory<T> Pointer;
 			size_t Pitch;
 
 			/**

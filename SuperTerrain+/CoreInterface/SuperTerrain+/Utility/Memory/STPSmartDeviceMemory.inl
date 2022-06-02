@@ -24,7 +24,8 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPit
 }
 
 template<typename T>
-inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPitchedDeviceMemory(NoArray<T>* ptr, size_t pitch) : Pointer(ptr), Pitch(pitch) {
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPitchedDeviceMemory(NoArray<T>* ptr, size_t pitch) :
+	STPDeviceMemory<T>(ptr), Pitch(pitch) {
 	
 }
 

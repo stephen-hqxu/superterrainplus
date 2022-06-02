@@ -109,4 +109,4 @@ body:
         description: |
             Would you like to make a contribution to fix this issue?
         options:
-            - label: I would like to be assigned to resolve to this issue.
+            - label: I would like to be assigned to resolve this issue.
