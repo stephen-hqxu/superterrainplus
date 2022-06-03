@@ -5,6 +5,8 @@
 #include <SuperTerrain+/Exception/STPAsyncGenerationError.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
+#include <SuperTerrain+/Utility/Memory/STPSmartEvent.h>
+
 //Hasher
 #include <SuperTerrain+/Utility/STPHashCombine.h>
 
@@ -24,6 +26,7 @@
 #include <queue>
 #include <optional>
 
+#include <utility>
 #include <limits>
 #include <algorithm>
 #include <sstream>
@@ -485,6 +488,126 @@ public:
 
 };
 
+//The implementation of initObjectArray.
+//TODO: put the definition inside that function for C++ 20 and template lambda
+template<class T, typename Arg, size_t... Is>
+inline static auto initObjectArraySequence(Arg&& arg, std::index_sequence<Is...>) {
+	return array<T, sizeof...(Is)> { (Is, std::forward<Arg>(arg))... };
+}
+
+/**
+ * @brief Initialise an array of objects with the same argument.
+ * @tparam T The type of the object.
+ * @tparam Arg The type of the argument.
+ * @tparam Count The number of object in the array.
+ * @param arg The argument for initialisation.
+*/
+template<class T, size_t Count, typename Arg>
+inline static auto initObjectArray(Arg&& arg) {
+	return initObjectArraySequence<T>(std::forward<Arg>(arg), std::make_index_sequence<Count> {});
+}
+
+/**
+ * @brief STPConcurrentStreamManager handles multiple streams and their synchronisation to exploit stream parallelism.
+*/
+class STPConcurrentStreamManager {
+private:
+
+	//Specifies how many parallel worker should be used.
+	constexpr static unsigned char Parallelism = 4u;
+	//Locate the currently active memory worker.
+	unsigned char WorkerIndex = 0u;
+
+	//The transfer cache is used because cudaMemcpy2DArrayToArray does not have a streamed version.
+	//Each worker will have a transfer cache.
+	array<STPSmartDeviceMemory::STPPitchedDeviceMemory<unsigned char[]>, Parallelism> MapTransferCache;
+	//N auxiliary workers
+	array<STPSmartStream, Parallelism> MemoryWorker;
+	//synchronisation of N workers + the main working stream
+	array<STPSmartEvent, Parallelism + 1u> MemoryWorkerSync;
+
+public:
+
+	/**
+	 * @brief Initialise a concurrent stream manager instance.
+	 * @param cache_texture_dim Species the dimension of the cache texture.
+	 * Each stream will be allocated with one cache texture.
+	*/
+	STPConcurrentStreamManager(uvec2 cache_texture_dim) :
+		MemoryWorker(initObjectArray<STPSmartStream, Parallelism, unsigned int>(cudaStreamNonBlocking)),
+		MemoryWorkerSync(initObjectArray<STPSmartEvent, Parallelism + 1u, unsigned int>(cudaEventDisableTiming)) {
+		//allocate memory for transfer cache for each stream
+		std::generate(this->MapTransferCache.begin(), this->MapTransferCache.end(), [&dim = cache_texture_dim]() {
+			return STPSmartDeviceMemory::makePitchedDevice<unsigned char[]>(dim.x, dim.y);
+		});
+	}
+
+	STPConcurrentStreamManager(const STPConcurrentStreamManager&) = delete;
+
+	STPConcurrentStreamManager(STPConcurrentStreamManager&&) = delete;
+
+	STPConcurrentStreamManager& operator=(const STPConcurrentStreamManager&) = delete;
+
+	STPConcurrentStreamManager& operator=(STPConcurrentStreamManager&&) = delete;
+
+	~STPConcurrentStreamManager() {
+		//wait for all worker streams to finish
+		for_each(this->MemoryWorker.cbegin(), this->MemoryWorker.cend(),
+			[](const auto& stream) { STPcudaCheckErr(cudaStreamSynchronize(*stream)); });
+	}
+
+	/**
+	 * @brief Ask the worker streams to wait for the main stream before starting tasks enqueued after.
+	 * @param main The main stream whom workers are waiting for.
+	*/
+	inline void workersWaitMain(cudaStream_t main) const {
+		//the last event is for the main stream
+		const cudaEvent_t mainEvent = *this->MemoryWorkerSync[STPConcurrentStreamManager::Parallelism];
+
+		//record the status of the main stream
+		STPcudaCheckErr(cudaEventRecord(mainEvent, main));
+		//all workers thread should not begin later tasks until the main stream has reached this point
+		for_each(this->MemoryWorker.cbegin(), this->MemoryWorker.cend(),
+			[&mainEvent](const auto& stream) { STPcudaCheckErr(cudaStreamWaitEvent(*stream, mainEvent)); });
+	}
+
+	/**
+	 * @brief Ask the main stream to wait for all worker streams before starting tasks enqueued after.
+	 * @param main The main stream to wait.
+	*/
+	inline void mainWaitsWorkers(cudaStream_t main) const {
+		//record the status of all worker streams.
+		for (int worker = 0; worker < this->MemoryWorker.size(); worker++) {
+			STPcudaCheckErr(cudaEventRecord(*this->MemoryWorkerSync[worker], *this->MemoryWorker[worker]));
+		}
+		//main stream should not continue until all workers are done
+		for_each(this->MemoryWorkerSync.cbegin(), this->MemoryWorkerSync.cend(),
+			[&main](const auto& event) { STPcudaCheckErr(cudaStreamWaitEvent(main, *event)); });
+	}
+
+	/**
+	 * @brief Grab the next memory worker stream.
+	 * We cycle the workers to maximise ability of parallelism.
+	 * @return The currently active memory worker.
+	*/
+	inline cudaStream_t nextWorker() {
+		const unsigned char idx = this->WorkerIndex++;
+		//wrap the index around
+		this->WorkerIndex %= STPConcurrentStreamManager::Parallelism;
+		return *this->MemoryWorker[idx];
+	}
+
+	/**
+	 * @brief Get the transfer cache of the current memory worker.
+	 * @return The pointer to the transfer cache.
+	*/
+	inline auto& currentTransferCache() {
+		//worker 0 uses cache 1, 1 uses 2, ..., N - 2 uses N - 1, N - 1 uses 0.
+		return this->MapTransferCache[this->WorkerIndex];
+	}
+
+};
+
 #define FOR_EACH_MEMORY_START() for (size_t i = 0u; i < STPWorldPipeline::STPMemoryManager::MemoryUnitCapacity; i++) {
 #define FOR_EACH_MEMORY_END() }
 
@@ -665,9 +788,12 @@ private:
 	STPWorldPipeline& Pipeline;
 	const STPEnvironment::STPChunkSetting& ChunkSetting;
 
-	STPMemoryBlock MemoryBuffer[2];
-	//The transfer cache is used because cudaMemcpy2DArrayToArray does not have a streamed version
-	STPSmartDeviceMemory::STPPitchedDeviceMemory<unsigned char[]> MapClearBuffer, MapTransferCache;
+	array<STPMemoryBlock, 2ull> MemoryBuffer;
+	//clear buffer is just a memory filled with the same value as clear value.
+	STPSmartDeviceMemory::STPPitchedDeviceMemory<unsigned char[]> MapClearBuffer;
+	//Store the CUDA array after mapping the back buffer
+	STPMemoryBlock::STPMappedMemoryUnit MappedBackBuffer;
+	bool isBackBufferMapped;
 
 	//Record indices of chunks that need to have splatmap computed for the current task.
 	unordered_set<unsigned int> ComputingChunk;
@@ -697,26 +823,12 @@ private:
 		return chunk_setting.MapSize * chunkIdx;
 	}
 
-public:
-
-	//Double buffering.
-	//Front buffer is passed to the user.
-	const STPMemoryBlock* FrontBuffer;
-	//Back buffer holds the currently in-progress generation.
-	STPMemoryBlock* BackBuffer;
-
-private:
-
-	//Store the CUDA array after mapping the back buffer
-	STPMemoryBlock::STPMappedMemoryUnit MappedBackBuffer;
-	bool isBackBufferMapped;
-
 	/**
-	 * @brief Correct the CUDA graphics mapping flag for the buffers.
+	 * @brief Calculate the size of cache memory for each chunk.
+	 * @return The cache size, x is in the number of byte while y is the number of element.
 	*/
-	inline void correctResourceMappingFlag() {
-		this->FrontBuffer->setMappingFlag(cudaGraphicsMapFlagsReadOnly);
-		this->BackBuffer->setMappingFlag(cudaGraphicsMapFlagsNone);
+	inline uvec2 calcChunkCacheSize() const noexcept {
+		return this->ChunkSetting.MapSize * uvec2(STPMemoryManager::MaxMemoryFormat, 1u);
 	}
 
 	/**
@@ -745,52 +857,73 @@ private:
 
 public:
 
+	STPConcurrentStreamManager Worker;
+
+	//Double buffering.
+	//Front buffer is passed to the user.
+	const STPMemoryBlock* FrontBuffer;
+	//Back buffer holds the currently in-progress generation.
+	STPMemoryBlock* BackBuffer;
+
+private:
+
+	/**
+	 * @brief Correct the CUDA graphics mapping flag for the buffers.
+	*/
+	inline void correctResourceMappingFlag() {
+		this->FrontBuffer->setMappingFlag(cudaGraphicsMapFlagsReadOnly);
+		this->BackBuffer->setMappingFlag(cudaGraphicsMapFlagsNone);
+	}
+
+public:
+
 	/**
 	 * @brief Initialise a world memory manager.
 	 * @param pipeline The pointer to the dependent world pipeline.
 	*/
 	STPMemoryManager(STPWorldPipeline& pipeline) :
 		Pipeline(pipeline), ChunkSetting(this->Pipeline.ChunkSetting),
-		MemoryBuffer { STPMemoryBlock(*this), STPMemoryBlock(*this) },
-		FrontBuffer(this->MemoryBuffer), BackBuffer(this->MemoryBuffer + 1u), isBackBufferMapped(false) {
+		MemoryBuffer(initObjectArray<STPMemoryBlock, 2ull>(*this)), isBackBufferMapped(false),
+		Worker(this->calcChunkCacheSize()),
+		FrontBuffer(&this->MemoryBuffer[0]), BackBuffer(&this->MemoryBuffer[1]) {
 		const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
-		const uvec2 mapDim = setting.MapSize, 
-			clearBuffer_size = mapDim * uvec2(MaxMemoryFormat, 1u);
+		const uvec2 mapDim = setting.MapSize,
+			clearBuffer_size = this->calcChunkCacheSize();
 		const unsigned int chunkCount = setting.RenderedChunk.x * setting.RenderedChunk.y;
 
 		//init clear buffers that are used to clear texture when new rendered chunks are loaded
 		//(we need to clear the previous chunk data)
 		this->MapClearBuffer =
 			STPSmartDeviceMemory::makePitchedDevice<unsigned char[]>(clearBuffer_size.x, clearBuffer_size.y);
-		this->MapTransferCache =
-			STPSmartDeviceMemory::makePitchedDevice<unsigned char[]>(clearBuffer_size.x, clearBuffer_size.y);
 
-		const cudaStream_t stream = *this->Pipeline.BufferStream;
+		const cudaStream_t stream_main = *this->Pipeline.BufferStream;
 		//clear the `clear` buffer
 		STPcudaCheckErr(cudaMemset2DAsync(this->MapClearBuffer.get(), this->MapClearBuffer.Pitch, 0x80u,
-			clearBuffer_size.x, clearBuffer_size.y, stream));
+			clearBuffer_size.x, clearBuffer_size.y, stream_main));
 
 		//initialise pixel value in the texture rather than leaving them as undefined.
-		for (int b = 0; b < 2; b++) {
-			STPMemoryBlock& block = this->MemoryBuffer[b];
-			const auto& mapped = block.mapTerrainMap(stream);
+		for (auto& block : this->MemoryBuffer) {
+			const auto& mapped = block.mapTerrainMap(stream_main);
 
-			//clear every chunk
+			//clear every chunk in parallel
+			//make sure workers do not start until main stream has mapped the texture
+			this->Worker.workersWaitMain(stream_main);
 			for (unsigned int y = 0u; y < setting.RenderedChunk.y; y++) {
 				for (unsigned int x = 0u; x < setting.RenderedChunk.x; x++) {
 					const uvec2 localMapOffset = uvec2(x, y) * setting.MapSize;
 					FOR_EACH_MEMORY_START()
 						STPcudaCheckErr(cudaMemcpy2DToArrayAsync(mapped[i], localMapOffset.x * MemoryFormat[i],
 							localMapOffset.y, this->MapClearBuffer.get(), this->MapClearBuffer.Pitch,
-							mapDim.x * MemoryFormat[i], mapDim.y, cudaMemcpyDeviceToDevice, stream));
+							mapDim.x * MemoryFormat[i], mapDim.y, cudaMemcpyDeviceToDevice, this->Worker.nextWorker()));
 					FOR_EACH_MEMORY_END()
 				}
 			}
-
-			block.unmapTerrainmap(stream);
+			//also ensure main stream does not unmap the texture while workers are working hard
+			this->Worker.mainWaitsWorkers(stream_main);
+			block.unmapTerrainmap(stream_main);
 		}
 		//clean up
-		STPcudaCheckErr(cudaStreamSynchronize(stream));
+		STPcudaCheckErr(cudaStreamSynchronize(stream_main));
 		this->correctResourceMappingFlag();
 
 		this->ComputingChunk.reserve(chunkCount);
@@ -864,14 +997,17 @@ public:
 		const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
 		const uvec2 mapDim = chunk_setting.MapSize;
 
-		cudaStream_t stream = *this->Pipeline.BufferStream;
+		cudaStream_t stream_main = *this->Pipeline.BufferStream;
 		//map the front buffer as read-only
 		STPMemoryBlock* frontBuffer_w = const_cast<STPMemoryBlock*>(this->FrontBuffer);
-		const auto frontBuffer_ptr = frontBuffer_w->mapTerrainMap(stream);
+		const auto frontBuffer_ptr = frontBuffer_w->mapTerrainMap(stream_main);
 
 		const auto& front_local_dict = this->FrontBuffer->LocalChunkDictionary;
 		//here we perform an optimisation: reuse chunk that has been rendered previously from the front buffer
+		//make sure memory is available before any worker can begin
+		this->Worker.workersWaitMain(stream_main);
 		for (auto& [chunkPos, loaded] : this->BackBuffer->LocalChunkRecord) {
+			const cudaStream_t stream_worker = this->Worker.nextWorker();
 			//checking the new back buffer chunk, is there any old chunk has the same world coordinate as the new chunk?
 			auto equal_pos_it = front_local_dict.find(chunkPos);
 
@@ -887,16 +1023,17 @@ public:
 						const uvec2 src_offset = this->calcLocalMapOffset(front_buffer_chunkIdx),
 							dest_offset = this->calcLocalMapOffset(back_buffer_chunkIdx);
 
-						//no async version for function cudaMemcpy2DArrayToArray, wtf???
+						//Each worker is assigned with a transfer cache, and works submitted to one worker queue are executed sequentially.
+						const auto& trans_cache = this->Worker.currentTransferCache();
 						FOR_EACH_MEMORY_START()
 							//front buffer -> cache
-							STPcudaCheckErr(cudaMemcpy2DFromArrayAsync(this->MapTransferCache.get(),
-								this->MapTransferCache.Pitch, frontBuffer_ptr[i], src_offset.x * MemoryFormat[i],
-								src_offset.y, mapDim.x * MemoryFormat[i], mapDim.y, cudaMemcpyDeviceToDevice, stream));
+							STPcudaCheckErr(cudaMemcpy2DFromArrayAsync(trans_cache.get(), trans_cache.Pitch,
+								frontBuffer_ptr[i], src_offset.x * MemoryFormat[i], src_offset.y,
+								mapDim.x * MemoryFormat[i], mapDim.y, cudaMemcpyDeviceToDevice, stream_worker));
 							//cache -> back buffer
 							STPcudaCheckErr(cudaMemcpy2DToArrayAsync(backBuffer_ptr[i], dest_offset.x * MemoryFormat[i],
-								dest_offset.y, this->MapTransferCache.get(), this->MapTransferCache.Pitch,
-								mapDim.x * MemoryFormat[i], mapDim.y, cudaMemcpyDeviceToDevice, stream));
+								dest_offset.y, trans_cache.get(), trans_cache.Pitch, mapDim.x * MemoryFormat[i], mapDim.y,
+								cudaMemcpyDeviceToDevice, stream_worker));
 						FOR_EACH_MEMORY_END()
 					}
 
@@ -912,13 +1049,14 @@ public:
 				FOR_EACH_MEMORY_START()
 					STPcudaCheckErr(cudaMemcpy2DToArrayAsync(backBuffer_ptr[i], dest_offset.x * MemoryFormat[i],
 						dest_offset.y, this->MapClearBuffer.get(), this->MapClearBuffer.Pitch, mapDim.x * MemoryFormat[i],
-						mapDim.y, cudaMemcpyDeviceToDevice, stream));
+						mapDim.y, cudaMemcpyDeviceToDevice, stream_worker));
 				FOR_EACH_MEMORY_END()
 			}
 		}
-
+		//make sure workers on the memory are finished before releasing
+		this->Worker.mainWaitsWorkers(stream_main);
 		//unmap the front buffer
-		frontBuffer_w->unmapTerrainmap(stream);
+		frontBuffer_w->unmapTerrainmap(stream_main);
 
 		//record indices of chunks that need to be computed
 		const auto& backBuf_rec = this->BackBuffer->LocalChunkRecord;
@@ -958,11 +1096,12 @@ public:
 	 * @param buffer Texture map on device side, a mapped OpenGL pointer.
 	 * @param chunk_visitor The visitor to read the chunk data.
 	 * @param chunkIdx Local chunk index that specified which chunk in render area will be overwritten.
+	 * @param stream The stream where works are sent.
 	*/
 	void sendChunkToBuffer(const STPMemoryBlock::STPMappedMemoryUnit& buffer,
-		const STPChunk::STPSharedMapVisitor& chunk_visitor, unsigned int chunkIdx) {
+		const STPChunk::STPSharedMapVisitor& chunk_visitor, unsigned int chunkIdx, cudaStream_t stream) {
 		//chunk is ready, copy to rendering buffer
-		auto copy_buffer = [stream = *this->Pipeline.BufferStream, dimension = this->ChunkSetting.MapSize,
+		auto copy_buffer = [&stream, dimension = this->ChunkSetting.MapSize,
 			buffer_offset = this->calcLocalMapOffset(chunkIdx)]
 			(cudaArray_t dest, const void* src, size_t channelSize) -> void {
 			STPcudaCheckErr(cudaMemcpy2DToArrayAsync(dest, buffer_offset.x * channelSize, buffer_offset.y, src,
@@ -1104,10 +1243,14 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 	}
 
 	/* ----------------------------- Asynchronous Chunk Loading ------------------------------- */
-	auto asyncChunkLoader = [&mem_mgr = *this->Memory, &gen_mgr = *this->Generator, &chunk_setting](const auto& map_data) -> void {
+	auto asyncChunkLoader = [&mem_mgr = *this->Memory, &gen_mgr = *this->Generator,
+			stream_main = *this->BufferStream](const auto& map_data) -> void {
 		auto& local_record = mem_mgr.BackBuffer->LocalChunkRecord;
+		STPConcurrentStreamManager& stream_mgr = mem_mgr.Worker;
 		bool allLoaded = true;
+
 		//check all workers and release chunks once they have finished.
+		stream_mgr.workersWaitMain(stream_main);
 		for (unsigned int i = 0u; i < local_record.size(); i++) {
 			auto& [chunkPos, chunkLoaded] = local_record[i];
 			if (chunkLoaded) {
@@ -1119,7 +1262,7 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 			const optional<STPChunk::STPSharedMapVisitor> chunk = gen_mgr.getChunk(chunkPos);
 			if (chunk) {
 				//load chunk into device texture
-				mem_mgr.sendChunkToBuffer(map_data, chunk.value(), i);
+				mem_mgr.sendChunkToBuffer(map_data, chunk.value(), i, stream_mgr.nextWorker());
 				chunkLoaded = true;
 				continue;
 			}
@@ -1127,11 +1270,17 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 			//chunk is not gettable
 			allLoaded = false;
 		}
+		stream_mgr.mainWaitsWorkers(stream_main);
+
 		//generate splatmap after all chunks had their maps loaded from host, so we only need to generate once.
 		if (allLoaded) {
 			//there exists chunk that has terrain maps updated, we need to update splatmap as well
 			gen_mgr.computeSplatmap(map_data, mem_mgr.generateSplatmapGeneratorInfo());
 		}
+		//wait for the work to finish in the loader thread
+		//if the rendering thread issues rendering command after buffer swapping but some works have yet finished,
+		//it may stall the rendering thread.
+		STPcudaCheckErr(cudaStreamSynchronize(stream_main));
 	};
 
 	/* ----------------------------- Front Buffer Backup -------------------------------- */

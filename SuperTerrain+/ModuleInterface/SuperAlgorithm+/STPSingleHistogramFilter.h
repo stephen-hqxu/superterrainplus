@@ -3,21 +3,13 @@
 #define _STP_SINGLE_HISTOGRAM_FILTER_H_
 
 #include <SuperAlgorithm+/STPAlgorithmDefine.h>
-//Container
-#include <queue>
-#include <array>
-#include <utility>
-//Thread Safety
-#include <mutex>
-
 #include <SuperTerrain+/World/Diversity/STPBiomeDefine.h>
 //Engine Components
-#include <SuperTerrain+/Utility/STPThreadPool.h>
 #include <SuperTerrain+/World/Chunk/STPFreeSlipInformation.hpp>
-//GLM
-#include <glm/vec2.hpp>
 //Single Histogram Data Structure
 #include "STPSingleHistogram.hpp"
+
+#include <memory>
 
 namespace SuperTerrainPlus::STPAlgorithm {
 
@@ -56,94 +48,10 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		};
 
 		/**
-		 * @brief Accumulator acts as a cache for each row or column iteration.
-		 * The accumulator for the next pixel equals to the accumulator from the previous pixel plus the left/down out-of-range radius pixel and
-		 * minus the right/up in-range radius pixel.
+		 * @brief STPSHFKernel is the implementation of the single histogram filter.
 		*/
-		class STPAccumulator;
-
-		//A workplace is some available memory for a complete histogram generation
-		typedef std::pair<STPDefaultHistogramBuffer, STPAccumulator> STPWorkplace;
-		typedef std::unique_ptr<STPWorkplace[]> STPMemoryBlock;
-		//All available workplaces are expressed as queue of pointers.
-		std::queue<STPMemoryBlock> MemoryBlockCache;
-		std::mutex CacheLock;
-
-		//After some experiment, we found out 4 parallel workers is the sweet spot.
-		constexpr static unsigned char Parallelism = 4u;
-		//A multi-thread worker for concurrent per-pixel histogram generation
-		STPThreadPool filter_worker;
-
-		/**
-		 * @brief Request an available workplace for workers to generate histogram.
-		 * Workplace guarantees critical access, meaning all memory resides will not be modified by other workers until it is returned.
-		 * @return The pointer to free block of working memory
-		*/
-		STPMemoryBlock requestWorkplace();
-
-		/**
-		 * @brief Return a workplace back to the system so it can be used by other tasks later.
-		 * @param block The pointer to the memory block to be returned. This memory will be no longer valid after this function returns.
-		*/
-		void returnWorkplace(STPMemoryBlock&);
-
-		/**
-		 * @brief Copy the content in accumulator to the histogram buffer.
-		 * Caller should make sure Output buffer has been preallocated, the size equals to the sum of all thread buffers.
-		 * @param target The target histogram buffer
-		 * @param acc The accumulator to be copied
-		 * @param normalise True to normalise the histogram in accumulator before copying.
-		 * After normalisation, STPBin.Data should use Weight rather than Quantity, and the sum of weight of all bins in the accumulator is 1.0f
-		*/
-		static void copy_to_buffer(STPDefaultHistogramBuffer&, STPAccumulator&, bool);
-
-		/**
-		 * @brief Perform vertical pass histogram filter
-		 * @param sample_map The input sample map, usually it's biomemap.
-		 * @param freeslip_rangeX The number of row pixel in the free-slip range.
-		 * @param dimensionY The number of column pixel of the samplemap in one chunk.
-		 * @param vertical_start_offset The vertical starting offset on the texture.
-		 * The start offset should make the worker starts at the first y coordinate of the central texture.
-		 * @param w_range Denotes the width start and end that will be computed by the current function call.
-		 * The range should start from the halo (central image x index minus radius), and should use global index.
-		 * The range end applies as well (central image x index plus dimension plus radius)
-		 * @param workplace The pointer to the allocated working memory.
-		 * @param radius The radius of the filter.
-		*/
-		void filter_vertical(const STPDiversity::Sample*, unsigned int, unsigned int, unsigned int, glm::uvec2, STPWorkplace&, unsigned int);
-
-		/**
-		 * @brief Merge buffers from each thread into a large chunk of output data.
-		 * It will perform offset correction for HistogramStartOffset.
-		 * @param buffer The histogram buffer that will be merged to
-		 * @param workplace_memory The pointer to the thread memory where the buffer will be copied from.
-		 * @param workplaceID The ID of the workplace in the department. Note that threadID 0 doesn't require offset correction.
-		 * @param output_base The base start index from the beginning of output container for each thread for bin and histogram offset
-		*/
-		void copy_to_output(STPPinnedHistogramBuffer*, const STPDefaultHistogramBuffer&, unsigned char, glm::uvec2);
-
-		/**
-		 * @brief Perform horizontal pass histogram filter.
-		 * The input is the ouput from horizontal pass
-		 * @param histogram_input The output histogram buffer from the vertical pass
-		 * @param dimension The dimension of one texture
-		 * @param h_range Denotes the height start and end that will be computed by the current function call.
-		 * The range should start from 0.
-		 * The range end at the height of the texture
-		 * @param workplace The pointer to the allocated working memory.
-		 * @param radius The radius of the filter
-		*/
-		void filter_horizontal(STPPinnedHistogramBuffer*, const glm::uvec2&, glm::uvec2, STPWorkplace&, unsigned int);
-
-		/**
-		 * @brief Performa a complete histogram filter
-		 * @param sample_map The input sample map for filter.
-		 * @param freeslip_info The information about the free-slip logic applies to the samplemap.
-		 * @param histogram_output The histogram buffer that will be used as buffer, and also output the final output
-		 * @param central_chunk_index The local free-slip coordinate points to the central chunk.
-		 * @param radius The radius of the filter
-		*/
-		void filter(const STPDiversity::Sample*, const STPFreeSlipInformation&, STPPinnedHistogramBuffer*, glm::uvec2, unsigned int);
+		class STPSHFKernel;
+		std::unique_ptr<STPSHFKernel> Kernel;
 
 	public:
 

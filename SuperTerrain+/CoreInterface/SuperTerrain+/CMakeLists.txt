@@ -39,6 +39,7 @@ Utility/Algebra/STPVector4d.inl
 Utility/Memory/STPMemoryPool.h
 Utility/Memory/STPSmartDeviceMemory.h
 Utility/Memory/STPSmartDeviceMemory.inl
+Utility/Memory/STPSmartEvent.h
 Utility/Memory/STPSmartStream.h
 # /Utility
 Utility/STPDeviceErrorHandler.h

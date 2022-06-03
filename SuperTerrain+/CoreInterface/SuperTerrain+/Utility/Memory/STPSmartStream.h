@@ -20,15 +20,13 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief The default deleter for unique_ptr, which calls the CUDA API to destroy a stream
 		*/
-		struct STPStreamDestroyer {
+		struct STP_API STPStreamDestroyer {
 		public:
 
 			void operator()(cudaStream_t) const;
 
 		};
-
 		using STPStream_t = std::remove_pointer_t<cudaStream_t>;
-
 		//The smart stream deleted by custom deleter
 		std::unique_ptr<STPStream_t, STPStreamDestroyer> Stream;
 
