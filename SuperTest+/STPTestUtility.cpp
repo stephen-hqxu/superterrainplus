@@ -10,8 +10,10 @@
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 #define STP_DEVICE_ERROR_SUPPRESS_CERR
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/Memory/STPSmartEvent.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartStream.h>
 #include <SuperTerrain+/Utility/Memory/STPMemoryPool.h>
+#include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 //SuperTerrain+/SuperTerrain+/Exception
 #include <SuperTerrain+/Exception/STPCUDAError.h>
@@ -170,6 +172,42 @@ SCENARIO("STPDeviceErrorHandler reports CUDA API error", "[Utility][STPDeviceErr
 
 }
 
+SCENARIO("STPSmartEvent manages CUDA event smartly", "[Utility][STPSmartEvent]") {
+
+	GIVEN("A smart event object") {
+		STPSmartEvent start, end;
+
+		WHEN("There are some works to be done with the event") {
+			constexpr static size_t DataSize = 8ull;
+
+			unique_ptr<unsigned int[]> Source = make_unique<unsigned int[]>(DataSize),
+				Destination = make_unique<unsigned int[]>(DataSize);
+			//initialise data
+			std::fill_n(Source.get(), DataSize, GENERATE(take(1, random(0u, 66666666u))));
+			std::fill_n(Destination.get(), DataSize, 0u);
+
+			THEN("CUDA should be doing work on the event") {
+				REQUIRE_NOTHROW(STPcudaCheckErr(cudaEventRecord(*start, 0)));
+				REQUIRE_NOTHROW(STPcudaCheckErr(cudaMemcpyAsync(Destination.get(), Source.get(), sizeof(unsigned int) * DataSize, cudaMemcpyHostToHost, 0)));
+				REQUIRE_NOTHROW(STPcudaCheckErr(cudaEventRecord(*end, 0)));
+
+				STPcudaCheckErr(cudaStreamSynchronize(0));
+				//timing
+				float time = 0.0f;
+				STPcudaCheckErr(cudaEventElapsedTime(&time, *start, *end));
+				//well such a simple copy should be fast right?
+				CHECK(time < 10.0f);
+
+				//verify data
+				REQUIRE(std::equal(Destination.get(), Destination.get() + DataSize, Source.get()));
+			}
+
+		}
+
+	}
+
+}
+
 enum class SmartStreamType : unsigned char {
 	Default = 0x00u,
 	Priority = 0x01u
@@ -212,7 +250,7 @@ TEMPLATE_TEST_CASE_METHOD_SIG(SmartStreamTester, "STPSmartStream manages CUDA st
 	}
 
 	GIVEN("A smart stream object") {
-		cudaStream_t stream = *dynamic_cast<const STPSmartStream&>(*this);
+		cudaStream_t stream = *static_cast<const STPSmartStream&>(*this);
 
 		WHEN("Some data needs to be done by CUDA") {
 			const unsigned long long Original = GENERATE(take(3u, random(0ull, 1313131313ull)));
@@ -258,6 +296,68 @@ TEMPLATE_TEST_CASE_METHOD_SIG(STPMemoryPool, "STPMemoryPool reuses memory whenev
 				
 				THEN("Error should be thrown to notify that memory size should be positive") {
 					REQUIRE_THROWS_AS(this->request(0ull), STPException::STPBadNumericRange);
+				}
+
+			}
+
+		}
+
+	}
+
+}
+
+template<typename T>
+struct ObjectCreator {
+private:
+
+	T Counter = static_cast<T>(123);
+
+public:
+
+	unique_ptr<T> operator()() {
+		return make_unique<T>(this->Counter++);
+	}
+
+};
+
+template<typename T>
+class ObjectPoolTester : protected STPObjectPool<unique_ptr<T>, ObjectCreator<T>> {
+public:
+
+	ObjectPoolTester() : STPObjectPool() {
+
+	}
+
+};
+
+TEMPLATE_TEST_CASE_METHOD(ObjectPoolTester, "STPObjectPool reuses object whenever possible", "[Utility][STPObjectPool]",
+	float, unsigned int){
+	using std::move;
+
+	GIVEN("A fresh object pool") {
+
+		WHEN("An object is requested") {
+			auto Obj = this->requestObject();
+
+			THEN("The requested object should be constructed appropriately") {
+				REQUIRE(*Obj == static_cast<TestType>(123));
+			}
+
+			AND_WHEN("The object is returned and re-requested") {
+				this->returnObject(move(Obj));
+				auto ReObj = this->requestObject();
+
+				THEN("The requested object should be the same as the first object") {
+					REQUIRE(*ReObj == static_cast<TestType>(123));
+				}
+
+				AND_WHEN("Another object is requested while the pool is empty") {
+					auto AnotherObj = this->requestObject();
+
+					THEN("The newly requested object should be newly created") {
+						REQUIRE(*AnotherObj == static_cast<TestType>(124));
+					}
+
 				}
 
 			}

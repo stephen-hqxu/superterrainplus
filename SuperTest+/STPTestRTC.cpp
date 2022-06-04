@@ -255,7 +255,7 @@ public:
 
 static constexpr char Nonsense[] = "Blah.blah";
 
-SCENARIO_METHOD(RTCTester, "STPDiversityGeneratorRTC manages runtime CUDA scripts and runs the kernel", "[GPGPU][STPRuntimeCompilable]") {
+SCENARIO_METHOD(RTCTester, "STPRuntimeCompilable manages runtime CUDA scripts and runs the kernel", "[GPGPU][STPRuntimeCompilable]") {
 
 	GIVEN("A RTC version of diversity generator with custom implementation and runtime script") {
 

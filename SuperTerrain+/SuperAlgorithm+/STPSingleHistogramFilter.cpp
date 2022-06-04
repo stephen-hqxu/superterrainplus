@@ -5,6 +5,8 @@
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 //Threading
 #include <SuperTerrain+/Utility/STPThreadPool.h>
+//Memory
+#include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
 
 //CUDA
 #include <cuda_runtime.h>
@@ -20,10 +22,7 @@
 #include <type_traits>
 
 //Container
-#include <queue>
 #include <utility>
-//Thread Safety
-#include <mutex>
 
 #include <cstring>
 
@@ -35,10 +34,7 @@ using glm::uvec2;
 
 using std::allocator;
 using std::allocator_traits;
-using std::mutex;
 using std::pair;
-using std::queue;
-using std::unique_lock;
 using std::unique_ptr;
 
 using std::make_pair;
@@ -509,49 +505,28 @@ private:
 
 	};
 
+	//After some experiment, we found out 4 parallel workers is the sweet spot.
+	constexpr static unsigned char Parallelism = 4u;
 	//A workplace is some available memory for a complete histogram generation
 	typedef pair<STPDefaultHistogramBuffer, STPAccumulator> STPWorkplace;
 	typedef unique_ptr<STPWorkplace[]> STPMemoryBlock;
-	//All available workplaces are expressed as queue of pointers.
-	queue<STPMemoryBlock> MemoryBlockCache;
-	mutex CacheLock;
-
-	//After some experiment, we found out 4 parallel workers is the sweet spot.
-	constexpr static unsigned char Parallelism = 4u;
-	//A multi-thread worker for concurrent per-pixel histogram generation
-	STPThreadPool FilterWorker;
 
 	/**
-	 * @brief Request an available workplace for workers to generate histogram.
-	 * Workplace guarantees critical access, meaning all memory resides will not be modified by other workers until it
-	 * is returned.
-	 * @return The pointer to free block of working memory
+	 * @brief STPMemoryBlockAllocator allocates a new memory block.
 	*/
-	STPMemoryBlock requestWorkplace() {
-		unique_lock<mutex> write(this->CacheLock);
-		//check if there is any free organisation
-		if (this->MemoryBlockCache.empty()) {
-			//request new
+	struct STPMemoryBlockAllocator {
+	public:
+
+		inline STPMemoryBlock operator()() const {
 			return make_unique<STPWorkplace[]>(STPSHFKernel::Parallelism);
 		}
 
-		//get existing from the queue
-		STPMemoryBlock block = std::move(this->MemoryBlockCache.front());
-		this->MemoryBlockCache.pop();
-		return block;
-	}
+	};
 
-	/**
-	 * @brief Return a workplace back to the system so it can be used by other tasks later.
-	 * @param block The pointer to the memory block to be returned. This memory will be no longer valid after this
-	 * function returns.
-	*/
-	inline void returnWorkplace(STPMemoryBlock& block) {
-		unique_lock<mutex> write(this->CacheLock);
-
-		//push the id back to the free working memory
-		this->MemoryBlockCache.emplace(std::move(block));
-	}
+	//All available workplaces are expressed as queue of pointers.
+	STPObjectPool<STPMemoryBlock, STPMemoryBlockAllocator> MemoryBlockCache;
+	//A multi-thread worker for concurrent per-pixel histogram generation
+	STPThreadPool FilterWorker;
 
 	/**
 	 * @brief Copy the content in accumulator to the histogram buffer.
@@ -794,7 +769,7 @@ public:
 			central_starting_coordinate = dimension * central_chunk_index;
 
 		//request a working memory
-		STPMemoryBlock memoryBlock = this->requestWorkplace();
+		STPMemoryBlock memoryBlock = this->MemoryBlockCache.requestObject();
 
 		auto sync_then_copy_to_output = [&filter_worker = this->FilterWorker,
 			histogram_output, &workgroup, &memoryBlock]() -> void {
@@ -888,7 +863,7 @@ public:
 		}
 
 		//finished, return working memory
-		this->returnWorkplace(memoryBlock);
+		this->MemoryBlockCache.returnObject(std::move(memoryBlock));
 	}
 
 };

@@ -54,4 +54,4 @@ namespace SuperTerrainPlus {
 	};
 
 }
-#endif //_STP_SMART_EVENT_H_
+#endif//_STP_SMART_EVENT_H_

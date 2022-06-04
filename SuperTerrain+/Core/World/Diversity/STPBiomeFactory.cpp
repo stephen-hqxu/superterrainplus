@@ -11,7 +11,15 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPDiversity;
 
-STPBiomeFactory::STPBiomeFactory(uvec3 dimension) : BiomeDimension(dimension) {
+STPBiomeFactory::STPProductionLineCreator::STPProductionLineCreator(const STPBiomeFactory& factory) : Factory(factory) {
+
+}
+
+STPBiomeFactory::STPLayerManager_t STPBiomeFactory::STPProductionLineCreator::operator()() const {
+	return make_unique<STPLayerManager>(this->Factory.supply());
+}
+
+STPBiomeFactory::STPBiomeFactory(uvec3 dimension) : LayerProductionLine(*this), BiomeDimension(dimension) {
 	if (dimension.x == 0u || dimension.y == 0u || dimension.z == 0u) {
 		throw STPException::STPBadNumericRange("No component in a dimension vector should be zero");
 	}
@@ -19,26 +27,6 @@ STPBiomeFactory::STPBiomeFactory(uvec3 dimension) : BiomeDimension(dimension) {
 
 STPBiomeFactory::STPBiomeFactory(uvec2 dimension) : STPBiomeFactory(uvec3(dimension.x, 1u, dimension.y)) {
 
-}
-
-STPBiomeFactory::STPLayerManager_t STPBiomeFactory::requestProductionLine() {
-	std::unique_lock lock(this->ProductionLock);
-	STPLayerManager_t line;
-
-	if (this->LayerProductionLine.empty()) {
-		//no more idling line? Create a new one
-		return make_unique<STPLayerManager>(std::move(this->supply()));
-	}
-	//otherwise simply pop from the idling queue
-	line = move(this->LayerProductionLine.front());
-	this->LayerProductionLine.pop();
-	return line;
-}
-
-void STPBiomeFactory::returnProductionLine(STPLayerManager_t& line) {
-	std::unique_lock lock(this->ProductionLock);
-	//simply put it back
-	this->LayerProductionLine.emplace(move(line));
 }
 
 void STPBiomeFactory::operator()(Sample* biomemap, ivec3 offset) {
@@ -49,7 +37,7 @@ void STPBiomeFactory::operator()(Sample* biomemap, ivec3 offset) {
 
 	//it's a 2D biome
 	//request a production line
-	STPLayerManager_t producer = this->requestProductionLine();
+	STPLayerManager_t producer = this->LayerProductionLine.requestObject();
 
 	//loop through and generate the biome map
 	//why not using CUDA and do it in parallel? Because the biome layers are cached, tested and parallel performance is a piece of shit
@@ -63,5 +51,5 @@ void STPBiomeFactory::operator()(Sample* biomemap, ivec3 offset) {
 	}
 
 	//free the producer
-	this->returnProductionLine(producer);
+	this->LayerProductionLine.returnObject(std::move(producer));
 }

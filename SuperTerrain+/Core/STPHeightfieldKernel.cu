@@ -28,7 +28,7 @@ __host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(un
 	//because RNG storage is persistent, i.e., we will be keep reusing it once allocated, no need to allocate from a memory pool.
 	STPcurand_arr rng = STPSmartDeviceMemory::makeDevice<STPcurand_t[]>(count);
 	//and send to kernel to init rng sequences
-	curandInitKERNEL << <gridsize, blocksize, 0, stream >> > (rng.get(), seed, count);
+	curandInitKERNEL<<<gridsize, blocksize, 0, stream>>>(rng.get(), seed, count);
 	STPcudaCheckErr(cudaGetLastError());
 
 	return rng;
@@ -45,7 +45,8 @@ __host__ void STPHeightfieldKernel::hydraulicErosion(float* heightmap_storage,
 	gridsize = (raindrop_count + blocksize - 1) / blocksize;
 
 	//erode the heightmap
-	hydraulicErosionKERNEL << <gridsize, blocksize, erosionBrushCache_size, stream >> > (heightmap_storage, heightfield_settings, freeslip_info, rng);
+	hydraulicErosionKERNEL<<<gridsize, blocksize, erosionBrushCache_size, stream>>>(
+		heightmap_storage, heightfield_settings, freeslip_info, rng);
 	STPcudaCheckErr(cudaGetLastError());
 }
 
@@ -58,7 +59,8 @@ __host__ void STPHeightfieldKernel::texture32Fto16(float* input, unsigned short*
 		Dimgridsize = (totalDimension + Dimblocksize - 1u) / Dimblocksize;
 
 	//compute
-	texture32Fto16KERNEL << <dim3(Dimgridsize.x, Dimgridsize.y), dim3(Dimblocksize.x, Dimblocksize.y), 0, stream >> > (input, output, totalDimension);
+	texture32Fto16KERNEL<<<dim3(Dimgridsize.x, Dimgridsize.y), dim3(Dimblocksize.x, Dimblocksize.y), 0, stream>>>(
+		input, output, totalDimension);
 	STPcudaCheckErr(cudaGetLastError());
 }
 

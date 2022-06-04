@@ -4,17 +4,16 @@
 
 #include <SuperTerrain+/STPCoreDefine.h>
 //System
-#include <mutex>
 #include <vector>
-#include <queue>
 //CUDA
-//CUDA lib are included in the "Engine" section
 #include <curand_kernel.h>
+
 //Engine
 #include "STPDiversityGenerator.hpp"
 #include "STPFreeSlipTextureBuffer.h"
 #include "../../Utility/Memory/STPSmartStream.h"
 #include "../../Utility/Memory/STPSmartDeviceMemory.h"
+#include "../../Utility/Memory/STPObjectPool.h"
 //Settings
 #include "../../Environment/STPHeightfieldSetting.h"
 #include "../../Environment/STPChunkSetting.h"
@@ -35,7 +34,7 @@ namespace SuperTerrainPlus {
 		typedef unsigned short STPGeneratorOperation;
 
 		//TODO You can change your preferred RNG here!
-		typedef curandStatePhilox4_32_10 curandRNG;
+		typedef curandStatePhilox4_32_10 STPcurandRNG;
 
 		//Generate a new heightmap and store the result in the provided memory space
 		constexpr static STPGeneratorOperation HeightmapGeneration = 1u << 0u;
@@ -76,6 +75,38 @@ namespace SuperTerrainPlus {
 
 	private:
 
+		/**
+		 * @brief STPStreamCreator is the default stream creator for the heightfield generator.
+		*/
+		struct STPStreamCreator {
+		public:
+
+			STPSmartStream operator()() const;
+
+		};
+
+		/**
+		 * @brief STPRNGCreator allocates memory for the heightfield random number generator.
+		*/
+		struct STPRNGCreator {
+		private:
+
+			const unsigned long long Seed;
+			//The array length of the RNG
+			const unsigned int Length;
+
+		public:
+
+			/**
+			 * @brief Initialise the RNG creator.
+			 * @param heightfield_setting The heightfield setting to be used.
+			*/
+			STPRNGCreator(const STPEnvironment::STPHeightfieldSetting&);
+
+			STPSmartDeviceMemory::STPDeviceMemory<STPcurandRNG[]> operator()(cudaStream_t) const;
+
+		};
+
 		//multi-biome heightmap generator linked with external
 		const STPDiversityGenerator& generateHeightmap;
 		//heightfield generation parameters
@@ -87,11 +118,9 @@ namespace SuperTerrainPlus {
 
 		//Temp cache on device for heightmap computation
 		mutable cudaMemPool_t MapCacheDevice;
-		mutable std::queue<STPSmartStream> StreamPool;
-		mutable std::mutex StreamPoolLock;
+		mutable STPObjectPool<STPSmartStream, STPStreamCreator> StreamPool;
 		//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independence
-		mutable std::queue<STPSmartDeviceMemory::STPDeviceMemory<curandRNG[]>> RNGPool;
-		mutable std::mutex RNGPoolLock;
+		mutable STPObjectPool<STPSmartDeviceMemory::STPDeviceMemory<STPcurandRNG[]>, STPRNGCreator> RNGPool;
 
 	public:
 

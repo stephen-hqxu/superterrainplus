@@ -68,8 +68,8 @@ __host__ void STPRandomTextureGenerator::generate(cudaArray_t output, uvec3 dime
 	//computing
 	const T base = min,
 		range = (max - min);
-	generateRandomTextureKERNEL << <dim3(Dimgridsize.x, Dimgridsize.y, Dimgridsize.z), dim3(Dimblocksize.x, Dimblocksize.y, Dimblocksize.z) >> > 
-		(noise_buffer, dimension, seed, base, range);
+	generateRandomTextureKERNEL<<<dim3(Dimgridsize.x, Dimgridsize.y, Dimgridsize.z),
+		dim3(Dimblocksize.x, Dimblocksize.y, Dimblocksize.z)>>>(noise_buffer, dimension, seed, base, range);
 	STPcudaCheckErr(cudaGetLastError());
 
 	//clear up

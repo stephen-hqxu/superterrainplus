@@ -14,9 +14,7 @@ using glm::uvec2;
 using glm::vec2;
 using glm::value_ptr;
 
-using std::unique_lock;
 using std::move;
-using std::mutex;
 
 STPBiomefieldGenerator::STPBiomefieldGenerator(const STPCommonCompiler& program, uvec2 dimension, unsigned int interpolation_radius)
 	: STPDiversityGenerator(), MapSize(dimension), KernelProgram(program), InterpolationRadius(interpolation_radius) {
@@ -66,6 +64,10 @@ void STPBiomefieldGenerator::initGenerator() {
 }
 
 using namespace SuperTerrainPlus::STPAlgorithm;
+
+inline auto STPBiomefieldGenerator::STPHistogramBufferCreator::operator()() const {
+	return STPSingleHistogramFilter::createHistogramBuffer();
+}
 	
 void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap_buffer, 
 	STPFreeSlipSampleTextureBuffer& biomemap_buffer, const STPFreeSlipInformation& freeslip_info, vec2 offset, cudaStream_t stream) const {
@@ -82,20 +84,7 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	const Sample* biomemap = biomemap_buffer(STPFreeSlipSampleTextureBuffer::STPFreeSlipLocation::HostMemory);
 
 	//histogram filter
-	STPSingleHistogramFilter::STPHistogramBuffer_t histogram_buffer;
-	{
-		unique_lock<mutex> buffer_lock(this->BufferPoolLock);
-		//try to grab a buffer
-		if (this->BufferPool.empty()) {
-			//no more buffer available? create a new one
-			histogram_buffer = move(STPSingleHistogramFilter::createHistogramBuffer());
-		}
-		else {
-			//otherwise grab an existing one
-			histogram_buffer = move(this->BufferPool.front());
-			this->BufferPool.pop();
-		}
-	}
+	STPSingleHistogramFilter::STPHistogramBuffer_t histogram_buffer = this->BufferPool.requestObject();
 	//start execution
 	//host to host memory copy is always synchronous, so the host memory should be available now
 	STPSingleHistogram histogram_h;
@@ -116,10 +105,7 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 		cudaMemcpyHostToDevice, stream));
 	//returning the buffer back to the pool, make sure all copies are done
 	STPcudaCheckErr(cudaStreamSynchronize(stream));
-	{
-		unique_lock<mutex> buffer_lock(this->BufferPoolLock);
-		this->BufferPool.emplace(move(histogram_buffer));
-	}
+	this->BufferPool.returnObject(move(histogram_buffer));
 
 	//launch kernel
 	const float2 gpu_offset = make_float2(offset.x, offset.y);

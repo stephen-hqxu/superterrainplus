@@ -2,15 +2,15 @@
 #ifndef _STP_BIOMEFIELD_GENERATOR_H_
 #define _STP_BIOMEFIELD_GENERATOR_H_
 
-//System
-#include <queue>
-#include <mutex>
 //Multi-biome Heightfield Generator
 #include <SuperTerrain+/World/Chunk/STPDiversityGenerator.hpp>
 #include "STPCommonCompiler.h"
 #include "STPBiome.hpp"
 //Biome Interpolation
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
+//Pool
+#include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
+
 #include <glm/vec2.hpp>
 //GLM
 #include <glm/vec2.hpp>
@@ -38,10 +38,18 @@ namespace STPDemo {
 
 		const unsigned int InterpolationRadius;
 
+		/**
+		 * @brief STPHistogramBufferCreator creates a new single histogram buffer.
+		*/
+		struct STPHistogramBufferCreator {
+		public:
+
+			auto operator()() const;
+
+		};
 		//A queue of histogram buffer
-		typedef std::queue<SuperTerrainPlus::STPAlgorithm::STPSingleHistogramFilter::STPHistogramBuffer_t> STPHistogramBufferPool;
-		mutable STPHistogramBufferPool BufferPool;
-		mutable std::mutex BufferPoolLock;
+		mutable SuperTerrainPlus::STPObjectPool<SuperTerrainPlus::STPAlgorithm::STPSingleHistogramFilter::STPHistogramBuffer_t,
+			STPHistogramBufferCreator> BufferPool;
 
 		/**
 		 * @brief Init the multi-height generator

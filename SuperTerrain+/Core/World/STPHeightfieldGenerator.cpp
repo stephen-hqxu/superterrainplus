@@ -14,8 +14,6 @@
 using namespace SuperTerrainPlus;
 
 using std::vector;
-using std::mutex;
-using std::unique_lock;
 using std::optional;
 using std::move;
 using std::make_unique;
@@ -29,10 +27,26 @@ using glm::uvec2;
 using glm::vec2;
 using glm::vec3;
 
+inline STPSmartStream STPHeightfieldGenerator::STPStreamCreator::operator()() const {
+	//we want the stream to not be blocked by default stream
+	return STPSmartStream(cudaStreamNonBlocking);
+}
+
+STPHeightfieldGenerator::STPRNGCreator::STPRNGCreator(const STPEnvironment::STPHeightfieldSetting& heightfield_setting) :
+	Seed(heightfield_setting.Seed),
+	Length(heightfield_setting.RainDropCount) {
+
+}
+
+inline STPSmartDeviceMemory::STPDeviceMemory<STPHeightfieldGenerator::STPcurandRNG[]>
+	STPHeightfieldGenerator::STPRNGCreator::operator()(cudaStream_t stream) const {
+	return STPHeightfieldKernel::curandInit(this->Seed, this->Length, stream);
+}
+
 STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting& chunk_settings,
 	const STPEnvironment::STPHeightfieldSetting& heightfield_settings, const STPDiversityGenerator& diversity_generator,
 	unsigned int hint_level_of_concurrency) :
-	generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings) {
+	generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings), RNGPool(this->Heightfield_Setting_h) {
 	if (!chunk_settings.validate()) {
 		throw STPException::STPInvalidEnvironment("Values from STPChunkSetting are not validated");
 	}
@@ -87,9 +101,9 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 
 	//creating stream so CPU thread can calculate all chunks altogether
 	//if exception is thrown during exception, stream will be the last object to be deleted, automatically
-	optional<STPSmartStream> stream_buffer;
+	optional<STPSmartStream> smart_stream;
 	cudaStream_t stream;
-	optional<STPSmartDeviceMemory::STPDeviceMemory<curandRNG[]>> rng_buffer;
+	optional<STPSmartDeviceMemory::STPDeviceMemory<STPcurandRNG[]>> rng_buffer;
 	//limit the scope for std::optional to control the destructor call
 	{
 		//heightmap
@@ -99,19 +113,8 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 		optional<STPFreeSlipSampleTextureBuffer> biomemap_buffer;
 
 		//setup phase
-		//we want the stream to not be blocked by default stream
-		{
-			unique_lock<mutex> stream_lock(this->StreamPoolLock);
-			if (this->StreamPool.empty()) {
-				//create a new stream
-				stream_buffer.emplace(cudaStreamNonBlocking);
-			} else {
-				//grab an existing stream
-				stream_buffer.emplace(move(this->StreamPool.front()));
-				this->StreamPool.pop();
-			}
-		}
-		stream = **stream_buffer;
+		smart_stream.emplace(this->StreamPool.requestObject());
+		stream = **smart_stream;
 
 		//Flag: HeightmapGeneration
 		if (flag[0]) {
@@ -141,17 +144,7 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 
 		//Flag: Erosion
 		if (flag[1]) {
-			{
-				//request a RNG from the RNG pool
-				unique_lock<mutex> rng_lock(this->RNGPoolLock);
-				if (this->RNGPool.empty()) {
-					rng_buffer.emplace(STPHeightfieldKernel::curandInit(
-						this->Heightfield_Setting_h.Seed, this->Heightfield_Setting_h.RainDropCount, stream));
-				} else {
-					rng_buffer.emplace(move(this->RNGPool.front()));
-					this->RNGPool.pop();
-				}
-			}
+			rng_buffer.emplace(this->RNGPool.requestObject(stream));
 			STPHeightfieldKernel::hydraulicErosion(
 				(*heightmap_buffer)(STPFreeSlipFloatTextureBuffer::STPFreeSlipLocation::DeviceMemory), this->Heightfield_Setting_d.get(),
 				this->TextureBufferAttr.TextureInfo,
@@ -183,11 +176,7 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 	STPcudaCheckErr(cudaStreamSynchronize(stream));
 	if (rng_buffer.has_value()) {
 		//if we have previously grabbed a RNG from the pool, return it
-		unique_lock<mutex> rng_lock(this->RNGPoolLock);
-		this->RNGPool.emplace(move(*rng_buffer));
+		this->RNGPool.returnObject(move(rng_buffer.value()));
 	}
-	{
-		unique_lock<mutex> stream_lock(this->StreamPoolLock);
-		this->StreamPool.emplace(move(*stream_buffer));
-	}
+	this->StreamPool.returnObject(move(smart_stream.value()));
 }
