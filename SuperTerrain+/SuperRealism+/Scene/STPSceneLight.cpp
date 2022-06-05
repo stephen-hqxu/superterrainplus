@@ -117,7 +117,7 @@ STPDirectionalLight::STPDirectionalLight(STPDirectionalLightShadow&& dir_shadow,
 }
 
 const STPLightShadow* STPDirectionalLight::getLightShadow() const {
-	return this->Shadow ? &this->Shadow.value() : nullptr;
+	return this->Shadow ? &*this->Shadow : nullptr;
 }
 
 void STPDirectionalLight::setSpectrumCoordinate(float coord) {

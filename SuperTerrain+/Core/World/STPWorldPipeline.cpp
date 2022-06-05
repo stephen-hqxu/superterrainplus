@@ -1262,7 +1262,7 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 			const optional<STPChunk::STPSharedMapVisitor> chunk = gen_mgr.getChunk(chunkPos);
 			if (chunk) {
 				//load chunk into device texture
-				mem_mgr.sendChunkToBuffer(map_data, chunk.value(), i, stream_mgr.nextWorker());
+				mem_mgr.sendChunkToBuffer(map_data, *chunk, i, stream_mgr.nextWorker());
 				chunkLoaded = true;
 				continue;
 			}

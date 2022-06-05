@@ -43,7 +43,7 @@ SCENARIO("TDL interpreter parses a TDL script", "[AlgorithmHost][Texture][STPTex
 					auto& SplatBuilder = Database.getSplatBuilder();
 					const auto View = Database.visit();
 
-					REQUIRE_NOTHROW([&Parser, &TexVar, &Database]() { TexVar = Parser.value()(Database); }());
+					REQUIRE_NOTHROW([&Parser, &TexVar, &Database]() { TexVar = (*Parser)(Database); }());
 
 					//verify correctness of texture
 					CHECK(TexVar.size() == 4ull);

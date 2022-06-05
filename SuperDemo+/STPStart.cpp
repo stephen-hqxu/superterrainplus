@@ -312,7 +312,7 @@ namespace STPStart {
 				STPWater::STPBiomeWaterLevel water_level;
 				water_level[0u] = 0.5f;
 
-				this->WaterRenderer.emplace(this->TerrainRenderer.value(), water_level);
+				this->WaterRenderer.emplace(*this->TerrainRenderer, water_level);
 				this->RenderPipeline->add(*this->WaterRenderer);
 				//setup
 				this->WaterRenderer->setWater(water_setting);

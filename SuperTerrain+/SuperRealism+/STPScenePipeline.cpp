@@ -781,7 +781,7 @@ STPScenePipeline::~STPScenePipeline() {
 
 const STPShaderManager* STPScenePipeline::getDepthShader() const {
 	//if depth shader is not applicable, return nullptr
-	return this->GeometryShadowPass->DepthPassShader.has_value() ? &this->GeometryShadowPass->DepthPassShader.value() : nullptr;
+	return this->GeometryShadowPass->DepthPassShader.has_value() ? &*this->GeometryShadowPass->DepthPassShader : nullptr;
 }
 
 void STPScenePipeline::addLight(STPSceneLight& light) {

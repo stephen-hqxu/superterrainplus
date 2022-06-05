@@ -697,7 +697,7 @@ void STPTextureDatabase::addMap(STPTextureInformation::STPTextureID texture_id, 
 	//send the pointer as a blob
 	//here we have told user to manage the lifetime of texture for us, so sqlite doesn't need to worry about that
 	//never assume the size of a pointer
-	STPsqliteCheckErr(sqlite3_bind_blob(texture_stmt, 4, &texture_data, sizeof(decltype(texture_data)), SQLITE_STATIC));
+	STPsqliteCheckErr(sqlite3_bind_blob(texture_stmt, 4, &texture_data, sizeof(texture_data), SQLITE_STATIC));
 	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 5, static_cast<int>(texture_id)));
 
 	this->Database->execStmt(texture_stmt);

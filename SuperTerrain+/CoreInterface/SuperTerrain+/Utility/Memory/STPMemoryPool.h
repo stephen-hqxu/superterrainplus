@@ -61,14 +61,14 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief Attach a header to the beginning of the memory block
 		 * @param memory The pointer to the memory block, must be larger than the content size
-		 * @param content The header of the content to be writtn
+		 * @param content The header of the content to be written
 		*/
 		static void encodeHeader(unsigned char*, STPHeader);
 
 		/**
 		 * @brief Detach a header from the beginning of the memory block.
-		 * If there is no header presented, undefined behavioud.
-		 * @param memory The pointer to the memory block, must contatins header in before the given pointer.
+		 * If there is no header presented, undefined behaviour.
+		 * @param memory The pointer to the memory block, must contains header in before the given pointer.
 		 * @return content The header of the content.
 		*/
 		static STPHeader decodeHeader(unsigned char*);

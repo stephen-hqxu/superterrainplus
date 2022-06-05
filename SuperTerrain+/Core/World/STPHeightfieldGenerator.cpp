@@ -101,8 +101,8 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 
 	//creating stream so CPU thread can calculate all chunks altogether
 	//if exception is thrown during exception, stream will be the last object to be deleted, automatically
-	optional<STPSmartStream> smart_stream;
-	cudaStream_t stream;
+	STPSmartStream smart_stream = this->StreamPool.requestObject();
+	cudaStream_t stream = *smart_stream;
 	optional<STPSmartDeviceMemory::STPDeviceMemory<STPcurandRNG[]>> rng_buffer;
 	//limit the scope for std::optional to control the destructor call
 	{
@@ -111,10 +111,6 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 		optional<STPFreeSlipRenderTextureBuffer> heightfield_buffer;
 		//biomemap
 		optional<STPFreeSlipSampleTextureBuffer> biomemap_buffer;
-
-		//setup phase
-		smart_stream.emplace(this->StreamPool.requestObject());
-		stream = **smart_stream;
 
 		//Flag: HeightmapGeneration
 		if (flag[0]) {
@@ -176,7 +172,7 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 	STPcudaCheckErr(cudaStreamSynchronize(stream));
 	if (rng_buffer.has_value()) {
 		//if we have previously grabbed a RNG from the pool, return it
-		this->RNGPool.returnObject(move(rng_buffer.value()));
+		this->RNGPool.returnObject(move(*rng_buffer));
 	}
-	this->StreamPool.returnObject(move(smart_stream.value()));
+	this->StreamPool.returnObject(move(smart_stream));
 }
