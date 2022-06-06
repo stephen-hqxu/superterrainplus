@@ -170,7 +170,6 @@ vec3 calcDirectionalLight(vec3 position_world, vec3 normal, float shininess, Dir
 	const float diffuse = dir_light->Kd * max(dot(lightDir, normal), 0.0f);
 	//specular
 	const vec3 viewDir = normalize(Camera.Position - position_world),
-		reflectDir = reflect(-lightDir, normal),
 		halfwayDir = normalize(lightDir + viewDir);
 	const float specular = dir_light->Ks * pow(max(dot(normal, halfwayDir), 0.0f), shininess);
 	

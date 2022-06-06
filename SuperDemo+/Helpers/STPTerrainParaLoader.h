@@ -4,8 +4,7 @@
 
 //INI
 #include <SuperAlgorithm+/Parser/INI/STPINIStorage.hpp>
-//GLM
-#include <glm/vec2.hpp>
+
 //Settings
 #include <SuperTerrain+/Environment/STPConfiguration.h>
 #include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
@@ -46,7 +45,7 @@ namespace STPDemo {
 		 * @param slipRange The size of the free-slip range of the erosion
 		 * @return The launch parameter, if certain parameters are missing in the section, exception will be thrown
 		*/
-		SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting getGeneratorSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&, glm::uvec2);
+		SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting getGeneratorSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
 
 		/**
 		 * @brief Load the simplex noise setting.

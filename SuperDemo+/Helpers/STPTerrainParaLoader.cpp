@@ -78,13 +78,12 @@ STPEnvironment::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const STPI
 	return chunks_options;
 }
 
-STPEnvironment::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(const STPINISectionView& section, uvec2 slipRange) {
+STPEnvironment::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(const STPINISectionView& section) {
 	//get the default settings
 	STPEnvironment::STPHeightfieldSetting launch_options;
 	
 	//set the parameter one by one, enjoy :)
 	launch_options.Seed = section.at("seed").to<STPDiversity::Seed>();
-	launch_options.setErosionBrushRadius(slipRange, section.at("brush_radius").to<unsigned int>());
 	launch_options.Inertia = section.at("inertia").to<float>();
 	launch_options.SedimentCapacityFactor = section.at("sediment_capacity_factor").to<float>();
 	launch_options.minSedimentCapacity = section.at("min_sediment_capacity").to<float>();
@@ -96,6 +95,7 @@ STPEnvironment::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(
 	launch_options.DepositSpeed = section.at("deposit_speed").to<float>();
 	launch_options.EvaporateSpeed = section.at("evaporate_speed").to<float>();
 	launch_options.Gravity = section.at("gravity").to<float>();
+	launch_options.ErosionBrushRadius = section.at("brush_radius").to<unsigned int>();
 	launch_options.RainDropCount = section.at("iteration").to<unsigned int>();
 
 	//return the value

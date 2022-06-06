@@ -14,7 +14,7 @@ using glm::uvec2;
 __global__ static void curandInitKERNEL(STPHeightfieldKernel::STPcurand_t*, unsigned long long, unsigned int);
 
 __global__ static void hydraulicErosionKERNEL(
-	float*, const STPEnvironment::STPHeightfieldSetting*, STPFreeSlipInformation, STPHeightfieldKernel::STPcurand_t*);
+	float*, const STPEnvironment::STPHeightfieldSetting*, STPFreeSlipInformation, STPErosionBrush, STPHeightfieldKernel::STPcurand_t*);
 
 __global__ static void texture32Fto16KERNEL(float*, unsigned short*, uvec2);
 
@@ -36,9 +36,9 @@ __host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(un
 
 __host__ void STPHeightfieldKernel::hydraulicErosion(float* heightmap_storage,
 	const STPEnvironment::STPHeightfieldSetting* heightfield_settings, const STPFreeSlipInformation& freeslip_info,
-	unsigned int brush_size, unsigned int raindrop_count, STPcurand_t* rng, cudaStream_t stream) {
+	const STPErosionBrush& brush, unsigned int raindrop_count, STPcurand_t* rng, cudaStream_t stream) {
 	//brush contains two components: weights (float) and indices (int)
-	const unsigned int erosionBrushCache_size = brush_size * (sizeof(int) + sizeof(float));
+	const unsigned int erosionBrushCache_size = brush.BrushSize * (sizeof(int) + sizeof(float));
 	//launch para
 	int Mingridsize, gridsize, blocksize;
 	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &hydraulicErosionKERNEL, erosionBrushCache_size));
@@ -46,7 +46,7 @@ __host__ void STPHeightfieldKernel::hydraulicErosion(float* heightmap_storage,
 
 	//erode the heightmap
 	hydraulicErosionKERNEL<<<gridsize, blocksize, erosionBrushCache_size, stream>>>(
-		heightmap_storage, heightfield_settings, freeslip_info, rng);
+		heightmap_storage, heightfield_settings, freeslip_info, brush, rng);
 	STPcudaCheckErr(cudaGetLastError());
 }
 
@@ -86,7 +86,7 @@ __global__ void curandInitKERNEL(STPHeightfieldKernel::STPcurand_t* rng, unsigne
 
 __global__ void hydraulicErosionKERNEL(float* heightmap_storage,
 	const STPEnvironment::STPHeightfieldSetting* heightfield_settings, STPFreeSlipInformation freeslip_info,
-	STPHeightfieldKernel::STPcurand_t* rng) {
+	STPErosionBrush brush, STPHeightfieldKernel::STPcurand_t* rng) {
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
 	if (index >= heightfield_settings->RainDropCount) {
@@ -107,13 +107,13 @@ __global__ void hydraulicErosionKERNEL(float* heightmap_storage,
 	//generating random location
 	//first we generate the number (0.0f, 1.0f]
 	vec2 initPos = vec2(curand_uniform(&rng[index]), curand_uniform(&rng[index]));
-	//range convertion
+	//range conversion
 	initPos *= base;
 	initPos += range;
 
 	//spawn the raindrop
 	STPRainDrop droplet(initPos, heightfield_settings->initWaterVolume, heightfield_settings->initSpeed, freeslip_info.FreeSlipRange);
-	droplet(heightmap_storage, static_cast<const STPEnvironment::STPRainDropSetting*>(heightfield_settings));
+	droplet(heightmap_storage, static_cast<const STPEnvironment::STPRainDropSetting&>(*heightfield_settings), brush);
 }
 
 #include <limits>

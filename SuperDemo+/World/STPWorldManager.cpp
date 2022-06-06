@@ -205,9 +205,9 @@ public:
 
 };
 
-STPWorldManager::STPWorldManager(const string& tex_filename_prefix, STPEnvironment::STPConfiguration&& settings,
+STPWorldManager::STPWorldManager(const string& tex_filename_prefix, const STPEnvironment::STPConfiguration& settings,
 	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
-	WorldSetting(std::move(settings)), SharedProgram(this->WorldSetting.ChunkSetting, simplex_setting),
+	WorldSetting(settings), SharedProgram(this->WorldSetting.ChunkSetting, simplex_setting),
 	linkStatus(false), Texture(make_unique<STPWorldManager::STPWorldSplattingAgent>(tex_filename_prefix)) {
 	if (!this->WorldSetting.validate()) {
 		throw invalid_argument("World settings are not valid.");

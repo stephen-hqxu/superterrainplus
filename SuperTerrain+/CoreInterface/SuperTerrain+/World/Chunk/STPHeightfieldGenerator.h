@@ -10,6 +10,7 @@
 
 //Engine
 #include "STPDiversityGenerator.hpp"
+#include "STPErosionBrushGenerator.h"
 #include "STPFreeSlipTextureBuffer.h"
 #include "../../Utility/Memory/STPSmartStream.h"
 #include "../../Utility/Memory/STPSmartDeviceMemory.h"
@@ -112,6 +113,9 @@ namespace SuperTerrainPlus {
 		//heightfield generation parameters
 		const STPEnvironment::STPHeightfieldSetting& Heightfield_Setting_h;
 		STPSmartDeviceMemory::STPDeviceMemory<STPEnvironment::STPHeightfieldSetting> Heightfield_Setting_d;
+
+		//generate brush for hydraulic erosion
+		const STPErosionBrushGenerator ErosionBrush;
 
 		//free-slip index table generator
 		STPFreeSlipTextureAttribute TextureBufferAttr;

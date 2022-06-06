@@ -18,20 +18,10 @@ namespace SuperTerrainPlus::STPEnvironment {
 		STPChunkSetting ChunkSetting;
 		STPHeightfieldSetting HeightfieldSetting;
 
-		//STPHeightfieldSetting is non-copiable
-
 		/**
 		 * @brief Init STPConfiguration with all settings set to their default
 		*/
 		STPConfiguration() = default;
-
-		STPConfiguration(const STPConfiguration&) = delete;
-
-		STPConfiguration(STPConfiguration&&) noexcept = default;
-
-		STPConfiguration& operator=(const STPConfiguration&) = delete;
-
-		STPConfiguration& operator=(STPConfiguration&&) noexcept = default;
 
 		~STPConfiguration() = default;
 

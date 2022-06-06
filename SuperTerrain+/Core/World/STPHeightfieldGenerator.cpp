@@ -46,7 +46,9 @@ inline STPSmartDeviceMemory::STPDeviceMemory<STPHeightfieldGenerator::STPcurandR
 STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting& chunk_settings,
 	const STPEnvironment::STPHeightfieldSetting& heightfield_settings, const STPDiversityGenerator& diversity_generator,
 	unsigned int hint_level_of_concurrency) :
-	generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings), RNGPool(this->Heightfield_Setting_h) {
+	generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings),
+	ErosionBrush(chunk_settings.FreeSlipChunk.x * chunk_settings.MapSize.x, this->Heightfield_Setting_h.ErosionBrushRadius),
+	RNGPool(this->Heightfield_Setting_h) {
 	if (!chunk_settings.validate()) {
 		throw STPException::STPInvalidEnvironment("Values from STPChunkSetting are not validated");
 	}
@@ -142,9 +144,9 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 		if (flag[1]) {
 			rng_buffer.emplace(this->RNGPool.requestObject(stream));
 			STPHeightfieldKernel::hydraulicErosion(
-				(*heightmap_buffer)(STPFreeSlipFloatTextureBuffer::STPFreeSlipLocation::DeviceMemory), this->Heightfield_Setting_d.get(),
-				this->TextureBufferAttr.TextureInfo,
-				this->Heightfield_Setting_h.getErosionBrushSize(), this->Heightfield_Setting_h.RainDropCount, rng_buffer->get(), stream);
+				(*heightmap_buffer)(STPFreeSlipFloatTextureBuffer::STPFreeSlipLocation::DeviceMemory),
+				this->Heightfield_Setting_d.get(), this->TextureBufferAttr.TextureInfo, this->ErosionBrush.getBrush(),
+				this->Heightfield_Setting_h.RainDropCount, rng_buffer->get(), stream);
 		}
 
 		//Flag: RenderingBufferGeneration

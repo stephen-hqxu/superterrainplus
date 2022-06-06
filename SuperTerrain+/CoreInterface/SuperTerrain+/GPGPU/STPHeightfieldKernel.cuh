@@ -18,6 +18,7 @@
 
 //Free-Slip
 #include "../World/Chunk/STPFreeSlipInformation.hpp"
+#include "../World/Chunk/STPErosionBrush.hpp"
 //Settings
 #include "../Environment/STPHeightfieldSetting.h"
 
@@ -41,18 +42,18 @@ namespace SuperTerrainPlus {
 		__host__ STPcurand_arr curandInit(unsigned long long, unsigned int, cudaStream_t);
 
 		/**
-		 * @brief Performing hydraulic erosion for the given heightmap terrain
+		 * @brief Performing hydraulic erosion for the given heightmap terrain.
 		 * @param height_storage The floating point heightmap with global-local free-slip management.
 		 * Heightmap must be available in device memory.
-		 * @param heightfield_settings The settings to use to generate heightmap, must be in device memory space
-		 * @param freeslip_info The information about the free-slip erosion
-		 * @param brush_size The number of erosion brush. The brush weight must have the same size as the brush indices
-		 * @param raindrop_count The number of raindrop to spawn and erode the terrain
-		 * @param rng The random number generator map sequence, independent for each rain drop
-		 * @param stream Specify a CUDA stream work will be submitted to
+		 * @param heightfield_settings The settings to use to generate heightmap, must be in device memory space.
+		 * @param freeslip_info The information about the free-slip erosion.
+		 * @param brush The information about the generated erosion brush.
+		 * @param raindrop_count The number of raindrop to spawn and erode the terrain.
+		 * @param rng The random number generator map sequence, independent for each rain drop.
+		 * @param stream Specify a CUDA stream work will be submitted to.
 		*/
 		__host__ void hydraulicErosion(float*, const STPEnvironment::STPHeightfieldSetting*, const STPFreeSlipInformation&,
-			unsigned int, unsigned int, STPcurand_t*, cudaStream_t);
+			const STPErosionBrush&, unsigned int, STPcurand_t*, cudaStream_t);
 
 		/**
 		 * @brief Texture channel format conversion. FP32 to INT16.

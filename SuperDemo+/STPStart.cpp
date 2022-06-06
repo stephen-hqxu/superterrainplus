@@ -149,8 +149,7 @@ namespace STPStart {
 				STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
 
 				const auto& chunk_setting = config.ChunkSetting;
-				config.HeightfieldSetting = std::move(STPTerrainParaLoader::getGeneratorSetting(
-					this->engineINI.at("2DTerrainINF"), chunk_setting.MapSize * chunk_setting.FreeSlipChunk));
+				config.HeightfieldSetting = STPTerrainParaLoader::getGeneratorSetting(this->engineINI.at("2DTerrainINF"));
 
 				if (!config.validate()) {
 					throw STPException::STPInvalidEnvironment("Configurations are not validated");
@@ -159,7 +158,7 @@ namespace STPStart {
 
 			//setup world manager
 			try {
-				this->WorldManager.emplace(string(this->biomeINI.at("").at("texture_path_prefix")), std::move(config), simplex);
+				this->WorldManager.emplace(string(this->biomeINI.at("").at("texture_path_prefix")), config, simplex);
 				//the old setting has been moved to the world manager, need to refresh the pointer
 				const auto& chunk_setting = this->WorldManager->getWorldSetting().ChunkSetting;
 

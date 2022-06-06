@@ -10,9 +10,11 @@
 //CUDA Runtime
 #include <cuda_runtime.h>
 //Settings
-#include "../Environment/STPRainDropSetting.cuh"
+#include "../Environment/STPRainDropSetting.h"
+#include "../World/Chunk/STPErosionBrush.hpp"
 //Free slipper
 #include "../World/Chunk/STPFreeSlipInformation.hpp"
+
 //GLM
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
@@ -37,17 +39,15 @@ namespace SuperTerrainPlus {
 	private:
 
 		//The current position of the raindrop
-		glm::vec2 raindrop_pos;
+		glm::vec2 Position;
 		//Direction of water flow
-		glm::vec2 raindrop_dir;
+		glm::vec2 Direction;
 		//Flowing speed
-		float speed;
-		//Flowing velocity
-		glm::vec2 velocity;
+		float Speed;
 		//Water volume
-		float volume;
+		float Volume;
 		//The amount of sediment it carries
-		float sediment = 0.0f;
+		float Sediment = 0.0f;
 
 		const glm::uvec2 Dimension;
 
@@ -73,11 +73,12 @@ namespace SuperTerrainPlus {
 
 		/**
 		 * @brief Performing hydraulic erosion algorithm to descend the raindrop downhill once, 
-		 * water drop will bring sediment but lose water each time this method is called
-		 * @param map - The floating point heightmap with free slip configurations
-		 * @param settings - The raindrop settings for erosion
+		 * water drop will bring sediment but lose water each time this method is called.
+		 * @param map - The floating point heightmap with free slip configurations.
+		 * @param settings - The raindrop settings for erosion.
+		 * @param brush - The generated erosion brush table.
 		*/
-		__device__ void operator()(float*, const STPEnvironment::STPRainDropSetting*);
+		__device__ void operator()(float*, const STPEnvironment::STPRainDropSetting&, const STPErosionBrush&);
 
 	};
 

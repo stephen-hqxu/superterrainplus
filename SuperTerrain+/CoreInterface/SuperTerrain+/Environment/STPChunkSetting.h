@@ -16,13 +16,13 @@ namespace SuperTerrainPlus::STPEnvironment {
 	struct STP_API STPChunkSetting : public STPSetting {
 	public:
 
-		//Determine the the X*Y number of unit planes, greater chunk size will give more chunk details
+		//Determine the X*Y number of unit planes, greater chunk size will give more chunk details
 		//It's highly recommend to use squared chunk size
 		glm::uvec2 ChunkSize;
 		//Determine the size of all generated maps, it's recommend to have the same ratio as the chunk size to avoid any possible up/down scaling on texture
 		glm::uvec2 MapSize;
-		//Determine the X*Y number of chunk to be renderered surrounded by player, greater value will give further visible distance.
-		//It's highly recommend to use the squared rendering distance, and odd number which makes centering the chunk easier.
+		//Determine the X*Y number of chunk to be rendered surrounded by player, greater value will give further visible distance.
+		//It's highly recommend to use the squared rendering distance, and odd number which makes centring the chunk easier.
 		glm::uvec2 RenderedChunk;
 		//Determine the offset of all the chunks in (x,y,z) direction, usually there is no need to change the value other than (0,0,0)
 		glm::dvec3 ChunkOffset;
@@ -35,7 +35,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		glm::uvec2 FreeSlipChunk;
 
 		/**
-		 * @brief Init STPChunksPara with defualt values
+		 * @brief Init STPChunksPara with default values
 		*/
 		STPChunkSetting();
 

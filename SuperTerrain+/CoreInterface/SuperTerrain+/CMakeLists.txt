@@ -6,9 +6,8 @@ STPSQLite.h
 # /Environment
 Environment/STPChunkSetting.h
 Environment/STPConfiguration.h
-Environment/STPErosionBrushGenerator.h
 Environment/STPHeightfieldSetting.h
-Environment/STPRainDropSetting.cuh
+Environment/STPRainDropSetting.h
 Environment/STPSetting.hpp
 # /Exception
 Exception/STPAsyncGenerationError.h
@@ -55,6 +54,8 @@ Utility/STPThreadPool.inl
 # /World/Chunk
 World/Chunk/STPChunk.h
 World/Chunk/STPDiversityGenerator.hpp
+World/Chunk/STPErosionBrush.hpp
+World/Chunk/STPErosionBrushGenerator.h
 World/Chunk/STPFreeSlipInformation.hpp
 World/Chunk/STPFreeSlipTextureBuffer.h
 World/Chunk/STPHeightfieldGenerator.h

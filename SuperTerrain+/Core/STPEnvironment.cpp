@@ -58,3 +58,42 @@ bool STPHeightfieldSetting::validate() const {
 	//check the raindrop parameter plus also heightmap parameter
 	return this->STPRainDropSetting::validate();
 }
+
+//STPRainDropSetting.h
+
+STPRainDropSetting::STPRainDropSetting() :
+	STPSetting(),
+	RainDropCount(0u),
+	Inertia(0.0f),
+	SedimentCapacityFactor(1.0f),
+	minSedimentCapacity(0.0f),
+	initWaterVolume(1.0f),
+	minWaterVolume(0.0f),
+	Friction(0.0f),
+	initSpeed(0.0f),
+	ErodeSpeed(0.0f),
+	DepositSpeed(0.0f),
+	EvaporateSpeed(0.0f),
+	Gravity(1.0f),
+	ErosionBrushRadius(0u) {
+
+}
+
+bool STPRainDropSetting::validate() const {
+	static constexpr auto checkRange = [](float value, float lower, float upper) constexpr -> bool {
+		return value >= lower && value <= upper;
+	};
+
+	return checkRange(this->Inertia, 0.0f, 1.0f)
+		&& this->SedimentCapacityFactor > 0.0f
+		&& this->minSedimentCapacity >= 0.0f
+		&& this->initWaterVolume > 0.0f
+		&& this->minWaterVolume >= 0.0f
+		&& checkRange(this->Friction, 0.0f, 1.0f)
+		&& this->initSpeed >= 0.0f
+		&& checkRange(this->ErodeSpeed, 0.0f, 1.0f)
+		&& checkRange(this->DepositSpeed, 0.0f, 1.0f)
+		&& checkRange(this->EvaporateSpeed, 0.0f, 1.0f)
+		&& this->Gravity > 0.0f
+		&& this->ErosionBrushRadius != 0u;
+}

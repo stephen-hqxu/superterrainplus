@@ -7,40 +7,58 @@
 //SuperTerrain+/Environment
 #include <SuperTerrain+/Environment/STPConfiguration.h>
 #include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
+//SuperTerrain+/World
+#include <SuperTerrain+/World/Chunk/STPErosionBrushGenerator.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
+#include <optional>
+
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPEnvironment;
+
+using std::optional;
 
 using glm::vec2;
 using glm::uvec2;
 using glm::vec3;
 
-SCENARIO_METHOD(STPRainDropSetting, "STPRainDropSetting can generate an erosion brush with indices and weights available on device",
-	"[Environment][STPRainDropSetting]") {
-	constexpr static uvec2 FreeSlipRange = uvec2(16u);
+SCENARIO("STPErosionBrushGenerator can generate an erosion brush with indices and weights available on device",
+	"[Environment][STPErosionBrushGenerator]") {
+	constexpr static unsigned int FreeSlipRangeX = 16u;
 	constexpr static unsigned int Radius = 4u;
-	constexpr static unsigned int PixelCount = FreeSlipRange.x * FreeSlipRange.y;
 
-	GIVEN("A fresh raindrop setting object with erosion brush parameters") {
+	GIVEN("A fresh erosion brush generator with erosion brush parameters") {
+		optional<STPErosionBrushGenerator> Generator;
 
 		WHEN("Parameters given to erosion brush generator is incorrect") {
 			
 			THEN("Generation should be halted") {
-				REQUIRE_THROWS_AS(this->setErosionBrushRadius(FreeSlipRange, 0u), STPException::STPBadNumericRange);
-				REQUIRE_THROWS_AS(this->setErosionBrushRadius(uvec2(32u, 0u), Radius), STPException::STPBadNumericRange);
+				REQUIRE_THROWS_AS(
+					[&Generator]() {
+						Generator.emplace(FreeSlipRangeX, 0u);
+					}(),
+					STPException::STPBadNumericRange);
+				REQUIRE_THROWS_AS(
+					[&Generator]() {
+						Generator.emplace(0u, Radius);
+					}(),
+					STPException::STPBadNumericRange);
 			}
 
 		}
 
 		WHEN("Erosion brush is correctly generated") {
-			REQUIRE_NOTHROW(this->setErosionBrushRadius(FreeSlipRange, Radius));
+			REQUIRE_NOTHROW([&Generator]() {
+				Generator.emplace(FreeSlipRangeX, Radius);
+			}());
 
 			THEN("Erosion brush information is available on device side") {
-				REQUIRE(this->getErosionBrushRadius() == Radius);
-				REQUIRE(this->getErosionBrushSize() <= PixelCount);
+				const auto BrushData = Generator->getBrush();
+
+				//assume the free-slip range.x == .y
+				REQUIRE(BrushData.BrushSize <= FreeSlipRangeX * FreeSlipRangeX);
 				//reading the erosion brush indices and weights take too much effort, skip that ;)
 			}
 
@@ -65,6 +83,7 @@ static void fillHeightfieldSetting(STPHeightfieldSetting* env) {
 	env->DepositSpeed = 0.25f;
 	env->EvaporateSpeed = 0.05f;
 	env->Gravity = 9.81f;
+	env->ErosionBrushRadius = 8u;
 }
 
 SCENARIO_METHOD(STPHeightfieldSetting, "STPHeightfieldSetting stores setting for heightfield map generation and simulation", 
@@ -72,16 +91,6 @@ SCENARIO_METHOD(STPHeightfieldSetting, "STPHeightfieldSetting stores setting for
 
 	GIVEN("A heightfield setting object") {
 		fillHeightfieldSetting(dynamic_cast<STPHeightfieldSetting*>(this));
-
-		WHEN("Erosion brush is not yet generated") {
-
-			THEN("Setting should not be validated") {
-				REQUIRE_FALSE(this->validate());
-			}
-
-		}
-
-		REQUIRE_NOTHROW(this->setErosionBrushRadius(uvec2(32u), 8u));
 
 		WHEN("Heightfield setting values are all correct") {
 
@@ -277,7 +286,6 @@ SCENARIO_METHOD(STPConfiguration, "STPConfiguration stores all environment objec
 		}
 
 		WHEN("All setting objects in the configuration are validated") {
-			this->HeightfieldSetting.setErosionBrushRadius(uvec2(64u), 7u);
 
 			THEN("Configuration should be validated") {
 				REQUIRE(this->validate());

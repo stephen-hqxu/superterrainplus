@@ -2,7 +2,7 @@
 #ifndef _STP_HEIGHTFIELD_SETTING_H_
 #define _STP_HEIGHTFIELD_SETTING_H_
 
-#include "STPRainDropSetting.cuh"
+#include "STPRainDropSetting.h"
 
 namespace SuperTerrainPlus::STPEnvironment {
 
@@ -13,25 +13,15 @@ namespace SuperTerrainPlus::STPEnvironment {
 	public:
 
 		//Heightfield Generator Parameters
-		//the seed used for any random opertaion during generation
+		//the seed used for any random operation during generation
 		unsigned long long Seed;
 
 		//Hydraulic Erosion Parameters are inherited from super class
-
-		//STPRainDropSetting is non-copiable
 
 		/**
 		 * @brief Init STPHeightfieldSetting with defaults
 		*/
 		STPHeightfieldSetting();
-
-		STPHeightfieldSetting(const STPHeightfieldSetting&) = delete;
-
-		STPHeightfieldSetting(STPHeightfieldSetting&&) noexcept = default;
-
-		STPHeightfieldSetting& operator=(const STPHeightfieldSetting&) = delete;
-
-		STPHeightfieldSetting& operator=(STPHeightfieldSetting&&) noexcept = default;
 
 		~STPHeightfieldSetting() = default;
 

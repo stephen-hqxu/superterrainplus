@@ -1,13 +1,11 @@
 set(STP_MAIN_ENGINE_SOURCE
 STPEngineInitialiser.cpp
 STPEnvironment.cpp
-STPErosionBrushGenerator.cpp
 STPException.cpp
 STPRuntimeCompilable.cpp
 
 STPHeightfieldKernel.cu
 STPRainDrop.cu
-STPRainDropSetting.cu
 # /Utility
 Utility/STPDeviceErrorHandler.cpp
 Utility/STPFile.cpp
@@ -25,6 +23,7 @@ World/Diversity/STPTextureDatabase.cpp
 World/Diversity/STPTextureFactory.cpp
 # /World
 World/STPChunk.cpp
+World/STPErosionBrushGenerator.cpp
 World/STPFreeSlipTextureBuffer.cpp
 World/STPHeightfieldGenerator.cpp
 World/STPWorldPipeline.cpp
