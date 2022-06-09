@@ -268,6 +268,7 @@ For redistributed open source project, see *3rd-Party* directory to find the lic
 
 ### Photorealistic rendering
 
+- [Normal map blending](https://blog.selfshadow.com/publications/blending-in-detail/)
 - [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
 - [Simulating the Colors of the Sky](https://www.scratchapixel.com/lessons/procedural-generation-virtual-worlds/simulating-sky) from *Scratchapixel*
 - [Physically-based atmospheric scattering](https://github.com/wwwtyro/glsl-atmosphere/)

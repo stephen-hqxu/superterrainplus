@@ -80,14 +80,6 @@ namespace SuperTerrainPlus::STPRealism {
 			*/
 			STPShadingEquation(STPShadingModel);
 
-			STPShadingEquation(const STPShadingEquation&) = default;
-
-			STPShadingEquation(STPShadingEquation&&) noexcept = default;
-
-			STPShadingEquation& operator=(const STPShadingEquation&) = delete;
-
-			STPShadingEquation& operator=(STPShadingEquation&&) = delete;
-
 			virtual ~STPShadingEquation() = default;
 
 		};
@@ -133,14 +125,6 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @param filter The type of shadow map filter.
 			*/
 			STPShadowMapFilterFunction(STPShadowMapFilter);
-
-			STPShadowMapFilterFunction(const STPShadowMapFilterFunction&) = default;
-
-			STPShadowMapFilterFunction(STPShadowMapFilterFunction&&) noexcept = default;
-
-			STPShadowMapFilterFunction& operator=(const STPShadowMapFilterFunction&) = delete;
-
-			STPShadowMapFilterFunction& operator=(STPShadowMapFilterFunction&&) = delete;
 
 			virtual ~STPShadowMapFilterFunction() = default;
 

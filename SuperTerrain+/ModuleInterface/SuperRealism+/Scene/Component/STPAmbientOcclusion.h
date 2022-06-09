@@ -94,14 +94,6 @@ namespace SuperTerrainPlus::STPRealism {
 			*/
 			STPOcclusionKernelInstance(const STPEnvironment::STPOcclusionKernelSetting&, STPOcclusionAlgorithm);
 
-			STPOcclusionKernelInstance(const STPOcclusionKernelInstance&) = default;
-
-			STPOcclusionKernelInstance(STPOcclusionKernelInstance&&) noexcept = default;
-
-			STPOcclusionKernelInstance& operator=(const STPOcclusionKernelInstance&) = delete;
-
-			STPOcclusionKernelInstance& operator=(STPOcclusionKernelInstance&&) = delete;
-
 			virtual ~STPOcclusionKernelInstance() = default;
 
 		};

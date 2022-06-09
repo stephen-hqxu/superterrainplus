@@ -83,14 +83,6 @@ namespace SuperTerrainPlus::STPRealism {
 			*/
 			STPToneMappingCurve(STPToneMappingFunction);
 
-			STPToneMappingCurve(const STPToneMappingCurve&) = default;
-
-			STPToneMappingCurve(STPToneMappingCurve&&) noexcept = default;
-
-			STPToneMappingCurve& operator=(const STPToneMappingCurve&) = delete;
-
-			STPToneMappingCurve& operator=(STPToneMappingCurve&&) = delete;
-
 			virtual ~STPToneMappingCurve() = default;
 
 		};

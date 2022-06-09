@@ -322,11 +322,11 @@ namespace STPStart {
 			{
 				const STPINISectionView& ao_section = engine.at("AmbientOcclusion");
 				//blur
-				STPGaussianFilter blur_filter(
-					ao_section.at("variance").to<double>(),
-					ao_section.at("kernel_distance").to<double>(),
-					ao_section.at("kernel_radius").to<unsigned int>(),
-				screen_renderer_init);
+				STPGaussianFilter::STPFilterKernel<STPGaussianFilter::STPFilterVariant::BilateralFilter> blur_kernel;
+				blur_kernel.Variance = ao_section.at("variance").to<double>();
+				blur_kernel.SampleDistance = ao_section.at("kernel_distance").to<double>();
+				blur_kernel.Radius = ao_section.at("kernel_radius").to<unsigned int>();
+				blur_kernel.Sharpness = ao_section.at("sharpness").to<float>();
 
 				//ambient occlusion
 				const STPEnvironment::STPOcclusionKernelSetting ao_setting = STPTerrainParaLoader::getAOSetting(ao_section);
@@ -337,7 +337,7 @@ namespace STPStart {
 				ao_kernel.DirectionStep = ao_section.at("direction_step").to<unsigned int>();
 				ao_kernel.RayStep = ao_section.at("ray_step").to<unsigned int>();
 
-				this->AOEffect.emplace(ao_kernel, std::move(blur_filter), screen_renderer_init);
+				this->AOEffect.emplace(ao_kernel, STPGaussianFilter(blur_kernel, screen_renderer_init), screen_renderer_init);
 				this->RenderPipeline->add(*this->AOEffect);
 			}
 			{

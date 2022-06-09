@@ -20,6 +20,6 @@ void main(){
 	//Normalise sun and view direction
 	const AtmosphereComposition comp = atmosphere(Atmo, normalize(SunPosition), normalize(RayDirection));
 	
-	//Convert the scattering factors into atmoshpere color
+	//Convert the scattering factors into atmosphere colour
 	FragColor = vec4(Atmo.iSun * (comp.colSun + comp.colSky), 1.0f);
 }

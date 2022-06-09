@@ -135,7 +135,7 @@ void STPAmbientOcclusion::occlude(const STPTexture& depth, const STPTexture& nor
 	STPSampler::unbind(1);
 
 	//blur the output to reduce noise
-	this->BlurWorker.filter(this->OcclusionResultContainer.ScreenColor, output);
+	this->BlurWorker.filter(depth, this->OcclusionResultContainer.ScreenColor, output);
 }
 
 #define AO_KERNEL_NAME(ALG) STPAmbientOcclusion::STPOcclusionKernel<STPAmbientOcclusion::STPOcclusionAlgorithm::ALG>
