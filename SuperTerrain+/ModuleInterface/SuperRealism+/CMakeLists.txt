@@ -40,6 +40,7 @@ Scene/Component/STPGaussianFilter.h
 Scene/Component/STPHeightfieldTerrain.h
 Scene/Component/STPPostProcess.h
 Scene/Component/STPScreen.h
+Scene/Component/STPSkybox.h
 Scene/Component/STPSun.h
 Scene/Component/STPWater.h
 # /Scene/Light

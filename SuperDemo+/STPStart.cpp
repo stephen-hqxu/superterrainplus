@@ -192,12 +192,18 @@ namespace STPStart {
 
 			//setup vertex shader for off-screen rendering that can be shared
 			const STPScreen::STPScreenVertexShader ScreenVertexShader;
+			const STPSkybox::STPSkyboxVertexShader SkyboxVertexShader;
 
 			//this buffer is a shared pointer wrapper and we don't need to manage its lifetime
 			const auto OffScreenVertexBuffer = std::make_shared<const STPScreen::STPScreenVertexBuffer>();
 			STPScreen::STPScreenInitialiser screen_renderer_init;
 			screen_renderer_init.VertexShader = &ScreenVertexShader;
 			screen_renderer_init.SharedVertexBuffer = OffScreenVertexBuffer;
+
+			const auto SkyboxVertexBuffer = std::make_shared<const STPSkybox::STPSkyboxVertexBuffer>();
+			STPSkybox::STPSkyboxInitialiser skybox_renderer_init;
+			skybox_renderer_init.VertexShader = &SkyboxVertexShader;
+			skybox_renderer_init.SharedVertexBuffer = SkyboxVertexBuffer;
 
 			STPMaterialLibrary::STPMaterialID waterMaterialID;
 			//setup scene pipeline
@@ -258,7 +264,7 @@ namespace STPStart {
 					make_pair(
 						normalize(vec3(1.0f, -0.1f, 0.0f)),
 						normalize(vec3(0.0f, 1.0f, 0.0f))
-					));
+					), skybox_renderer_init);
 				this->RenderPipeline->add(*this->SunRenderer);
 				//setup atmosphere
 				const STPEnvironment::STPAtmosphereSetting& atm_setting = atmo_setting;

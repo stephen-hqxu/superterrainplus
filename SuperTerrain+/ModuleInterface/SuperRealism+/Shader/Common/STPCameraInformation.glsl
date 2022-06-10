@@ -9,16 +9,17 @@ layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 	layout(offset = 128) mat4 Projection;
 	layout(offset = 192) mat4 InvProjection;
 
-	layout(offset = 256) mat4 ProjectionView;
-	layout(offset = 320) mat4 InvProjectionView;
+	layout(offset = 256) mat4 ProjectionViewRotation;//projection * mat4(mat3(view)), view only keeps rotation part.
+	layout(offset = 320) mat4 ProjectionView;
+	layout(offset = 384) mat4 InvProjectionView;
 
 	//Camera properties
-	layout(offset = 384) vec3 LinearDepthFactor;
-	layout(offset = 396) float Far;
+	layout(offset = 448) vec3 LinearDepthFactor;
+	layout(offset = 460) float Far;
 	//Of course we can check type of projection by examining the projection matrix, 
 	//for example projection is orthographic if and only if Projection[3][3] == 1.0f.
 	//It is faster to compute the result on host than computing every frame.
-	layout(offset = 400) bool useOrtho;
+	layout(offset = 464) bool useOrtho;
 } Camera;
 
 /* --------------------------------------------------------------------- */

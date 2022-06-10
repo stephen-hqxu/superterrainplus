@@ -121,7 +121,7 @@ private:
 		mat4 V;
 		mat3x4 VNorm;
 
-		mat4 P, InvP, PV, InvPV;
+		mat4 P, InvP, PVr, PV, InvPV;
 
 		vec3 LDFac;
 		float Far;
@@ -138,12 +138,13 @@ private:
 		&& offsetof(STPPackedCameraBuffer, P) == 128
 		&& offsetof(STPPackedCameraBuffer, InvP) == 192
 
-		&& offsetof(STPPackedCameraBuffer, PV) == 256
-		&& offsetof(STPPackedCameraBuffer, InvPV) == 320
+		&& offsetof(STPPackedCameraBuffer, PVr) == 256
+		&& offsetof(STPPackedCameraBuffer, PV) == 320
+		&& offsetof(STPPackedCameraBuffer, InvPV) == 384
 
-		&& offsetof(STPPackedCameraBuffer, LDFac) == 384
-		&& offsetof(STPPackedCameraBuffer, Far) == 396
-		&& offsetof(STPPackedCameraBuffer, Ortho) == 400,
+		&& offsetof(STPPackedCameraBuffer, LDFac) == 448
+		&& offsetof(STPPackedCameraBuffer, Far) == 460
+		&& offsetof(STPPackedCameraBuffer, Ortho) == 464,
 	"The alignment of camera buffer does not obey std430 packing rule");
 
 public:
@@ -249,9 +250,10 @@ public:
 
 		//update compound matrices
 		if (PV_changed) {
-			const STPMatrix4x4d proj_view = *cameraProjection * *cameraView;
+			const STPMatrix4x4d proj_view = *cameraProjection * (*cameraView);
 
 			//update the precomputed values
+			camBuf->PVr = static_cast<mat4>(*cameraProjection * (cameraView->asMatrix3x3d()));
 			camBuf->PV = static_cast<mat4>(proj_view);
 			camBuf->InvPV = static_cast<mat4>(proj_view.inverse());
 			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, PV), sizeof(mat4) * 2);

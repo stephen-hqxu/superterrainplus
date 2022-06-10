@@ -36,15 +36,10 @@ constexpr static array<signed char, 16ull> QuadVertex = {
 	+1, -1,			1, 0,
 	+1, +1,			1, 1
 };
-constexpr static array<unsigned char, 6ull> QuadIndex = {
-	0, 1, 2,
-	0, 2, 3
-};
-constexpr static STPIndirectCommand::STPDrawElement QuadDrawCommand = {
-	static_cast<unsigned int>(QuadIndex.size()),
+constexpr static STPIndirectCommand::STPDrawArray QuadDrawCommand = {
+	4u,
 	1u,
 	0u,
-	0,
 	0u
 };
 
@@ -103,7 +98,6 @@ const STPShaderManager& STPScreen::STPScreenVertexShader::operator*() const {
 STPScreen::STPScreenVertexBuffer::STPScreenVertexBuffer() {
 	//send of off screen quad
 	this->ScreenBuffer.bufferStorageSubData(QuadVertex.data(), QuadVertex.size() * sizeof(signed char), GL_NONE);
-	this->ScreenIndex.bufferStorageSubData(QuadIndex.data(), QuadIndex.size() * sizeof(unsigned char), GL_NONE);
 	//rendering command
 	this->ScreenRenderCommand.bufferStorageSubData(&QuadDrawCommand, sizeof(QuadDrawCommand), GL_NONE);
 
@@ -112,7 +106,6 @@ STPScreen::STPScreenVertexBuffer::STPScreenVertexBuffer() {
 	attr.format(2, GL_BYTE, GL_FALSE, sizeof(signed char))
 		.format(2, GL_BYTE, GL_FALSE, sizeof(signed char))
 		.vertexBuffer(this->ScreenBuffer, 0)
-		.elementBuffer(this->ScreenIndex)
 		.binding();
 	this->ScreenArray.enable(0u, 2u);
 }
@@ -127,16 +120,18 @@ void STPScreen::initScreenRenderer(const STPShaderManager& screen_fs, const STPS
 	if (screen_fs.Type != GL_FRAGMENT_SHADER) {
 		throw STPException::STPInvalidArgument("The shader initialised for off-screen rendering must be a fragment shader");
 	}
+	const auto& [screen_vs, screen_buf] = screen_init;
+
 	//initialise screen vertex buffer
-	this->ScreenVertex = shared_ptr(screen_init.SharedVertexBuffer);
+	this->ScreenVertex = shared_ptr(screen_buf);
 
 	//setup screen program
 	this->OffScreenRenderer
-		.attach(**screen_init.VertexShader)
+		.attach(**screen_vs)
 		.attach(screen_fs)
 		.finalise();
 }
 
 void STPScreen::drawScreen() const {
-	glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_BYTE, nullptr);
+	glDrawArraysIndirect(GL_TRIANGLE_FAN, nullptr);
 }

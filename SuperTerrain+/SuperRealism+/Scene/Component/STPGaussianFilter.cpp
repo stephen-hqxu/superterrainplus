@@ -207,7 +207,8 @@ FILTER_KERNEL_NAME(BilateralFilter)::STPFilterKernel() :
 FILTER_KERNEL_UNIFORM(BilateralFilter) {
 	this->STPFilterExecution::operator()(program);
 
-	program.uniform(glProgramUniform1f, "StandardDeviation", static_cast<float>(calcGaussianStd(this->Variance)))
+	program.uniform(glProgramUniform1i, "ImgDepth", 1)
+		.uniform(glProgramUniform1f, "StandardDeviation", static_cast<float>(calcGaussianStd(this->Variance)))
 		.uniform(glProgramUniform1f, "InvTwoVarSqr", static_cast<float>(calcGaussianResponseFactor(this->Variance)))
 		.uniform(glProgramUniform1f, "Sharpness", this->Sharpness);
 }

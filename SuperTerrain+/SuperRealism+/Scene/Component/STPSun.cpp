@@ -6,8 +6,6 @@
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
-//Indirect
-#include <SuperRealism+/Utility/STPIndirectCommand.hpp>
 
 //GLM
 #include <glm/trigonometric.hpp>
@@ -16,7 +14,6 @@
 
 //Container
 #include <tuple>
-#include <array>
 
 #include <glad/glad.h>
 
@@ -33,7 +30,6 @@ using glm::vec3;
 using glm::dvec3;
 using glm::mat3;
 
-using std::array;
 using std::tuple;
 using std::make_from_tuple;
 using std::make_pair;
@@ -43,48 +39,13 @@ using SuperTerrainPlus::STPFile;
 using SuperTerrainPlus::SuperRealismPlus_ShaderPath;
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static auto SkyShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSun", ".vert", ".frag");
+constexpr static auto SkyShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSun", ".frag");
 constexpr static auto SpectrumShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSunSpectrum", ".comp");
 
-constexpr static array<signed char, 24ull> BoxVertex = { 
-	-1, -1, -1, //origin
-	+1, -1, -1, //x=1
-	+1, -1, +1, //x=z=1
-	-1, -1, +1, //z=1
-	-1, +1, -1, //y=1
-	+1, +1, -1, //x=y=1
-	+1, +1, +1, //x=y=z=1
-	-1, +1, +1  //y=z=1
-};
-constexpr static array<unsigned char, 36ull> BoxIndex = {
-	0, 1, 2,
-	0, 2, 3,
-
-	0, 1, 5,
-	0, 5, 4,
-
-	1, 2, 6,
-	1, 6, 5,
-
-	2, 3, 7,
-	2, 7, 6,
-
-	3, 0, 4,
-	3, 4, 7,
-
-	4, 5, 6,
-	4, 6, 7
-};
-constexpr static STPIndirectCommand::STPDrawElement SkyDrawCommand = {
-	static_cast<unsigned int>(BoxIndex.size()),
-	1u,
-	0u,
-	0,
-	0u
-};
-
-STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundledData<vec3>& spectrum_domain) : SunSetting(sun_setting),
-	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull), SunDirectionCache(0.0) {
+STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundledData<vec3>& spectrum_domain,
+	const STPSkyboxInitialiser& sun_init) : SunSetting(sun_setting),
+	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull),
+	SunDirectionCache(0.0) {
 	//validate the setting
 	if (!this->SunSetting.validate()) {
 		throw STPException::STPInvalidEnvironment("Sun setting provided is invalid");
@@ -92,39 +53,19 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 	//calculate starting LST
 	this->Day = 1.0 * this->SunSetting.DayStartOffset / (1.0 * this->SunSetting.DayLength);
 
-	//setup sky rendering buffer
-	this->RayDirectionBuffer.bufferStorageSubData(BoxVertex.data(), BoxVertex.size() * sizeof(signed char), GL_NONE);
-	this->RayDirectionIndex.bufferStorageSubData(BoxIndex.data(), BoxIndex.size() * sizeof(unsigned char), GL_NONE);
-	//setup rendering command
-	this->SkyRenderCommand.bufferStorageSubData(&SkyDrawCommand, sizeof(SkyDrawCommand), GL_NONE);
-	//setup vertex array
-	STPVertexArray::STPVertexAttributeBuilder attr = this->RayDirectionArray.attribute();
-	attr.format(3, GL_BYTE, GL_FALSE, sizeof(signed char))
-		.vertexBuffer(this->RayDirectionBuffer, 0)
-		.elementBuffer(this->RayDirectionIndex)
-		.binding();
-	this->RayDirectionArray.enable(0u);
-
 	//setup sky renderer
-	STPShaderManager sky_shader[SkyShaderFilename.size()] = 
-		{ GL_VERTEX_SHADER, GL_FRAGMENT_SHADER };
-	for (unsigned int i = 0u; i < SkyShaderFilename.size(); i++) {
-		//build the shader filename
-		const char* const sky_source_file = SkyShaderFilename[i].data();
-		STPShaderManager::STPShaderSource sky_source(sky_source_file, *STPFile(sky_source_file));
+	STPShaderManager sky_shader(GL_FRAGMENT_SHADER);
+	//build the shader filename
+	const char* const sky_source_file = SkyShaderFilename.data();
+	STPShaderManager::STPShaderSource sky_source(sky_source_file, *STPFile(sky_source_file));
+	//compile
+	sky_shader(sky_source);
 
-		//compile
-		sky_shader[i](sky_source);
-
-		//put shader into the program
-		this->SkyRenderer.attach(sky_shader[i]);
-	}
-
-	//link
-	this->SkyRenderer.finalise();
+	//initialise skybox renderer
+	this->initSkyboxRenderer(sky_shader, sun_init);
 
 	//uniform setup
-	this->SunPositionLocation = this->SkyRenderer.uniformLocation("SunPosition");
+	this->SunPositionLocation = this->SkyboxRenderer.uniformLocation("SunPosition");
 
 	/* ---------------------------------------- sun spectrum emulator ----------------------------------- */
 	//setup spectrum emulator
@@ -221,7 +162,7 @@ void STPSun::advanceTick(unsigned long long tick) {
 	)));
 
 	//update sun position in the shader
-	this->SkyRenderer.uniform(glProgramUniform3fv, this->SunPositionLocation, 1, value_ptr(this->SunDirectionCache));
+	this->SkyboxRenderer.uniform(glProgramUniform3fv, this->SunPositionLocation, 1, value_ptr(this->SunDirectionCache));
 }
 
 void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
@@ -230,7 +171,7 @@ void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_sett
 		throw STPException::STPInvalidEnvironment("Atmosphere setting is invalid");
 	}
 
-	STPSun::updateAtmosphere(this->SkyRenderer, atmo_setting);
+	STPSun::updateAtmosphere(this->SkyboxRenderer, atmo_setting);
 	STPSun::updateAtmosphere(this->SpectrumEmulator, atmo_setting);
 }
 
@@ -275,14 +216,5 @@ float STPSun::spectrumCoordinate() const {
 }
 
 void STPSun::render() const {
-	//setup context
-	this->SkyRenderer.use();
-	this->RayDirectionArray.bind();
-	this->SkyRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
-
-	//draw
-	glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_BYTE, nullptr);
-
-	//clear up
-	STPProgramManager::unuse();
+	this->drawSkybox();
 }

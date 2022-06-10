@@ -29,6 +29,7 @@ Scene/Component/STPGaussianFilter.cpp
 Scene/Component/STPHeightfieldTerrain.cpp
 Scene/Component/STPPostProcess.cpp
 Scene/Component/STPScreen.cpp
+Scene/Component/STPSkybox.cpp
 Scene/Component/STPSun.cpp
 Scene/Component/STPWater.cpp
 # /Scene

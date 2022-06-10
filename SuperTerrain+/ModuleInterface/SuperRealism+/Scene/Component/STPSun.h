@@ -6,10 +6,6 @@
 //Setting
 #include "../../Environment/STPSunSetting.h"
 #include "../../Environment/STPAtmosphereSetting.h"
-//Rendering Engine
-#include "../../Object/STPProgramManager.h"
-#include "../../Object/STPBuffer.h"
-#include "../../Object/STPVertexArray.h"
 
 #include "../Light/STPLightSpectrum.h"
 #include "../STPSceneObject.h"
@@ -36,12 +32,6 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		const STPEnvironment::STPSunSetting SunSetting;
-
-		//Those buffers specify the ray direction from the camera
-		STPBuffer RayDirectionBuffer, RayDirectionIndex, SkyRenderCommand;
-		STPVertexArray RayDirectionArray;
-		//Shaders
-		STPProgramManager SkyRenderer;
 
 		//The number of day elapsed
 		//The integer part is the number of day, the fractional part is the local solar time.
@@ -84,8 +74,9 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param spectrum_domain For sun spectrum emulation.
 		 * Specifies The sun direction for the first iteration and the last iteration.
 		 * Sun direction in between will be interpolated.
+		 * @param sun_init The initialiser for sun and sky renderer.
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, const STPBundledData<glm::vec3>&);
+		STPSun(const STPEnvironment::STPSunSetting&, const STPBundledData<glm::vec3>&, const STPSkyboxInitialiser&);
 
 		STPSun(const STPSun&) = delete;
 

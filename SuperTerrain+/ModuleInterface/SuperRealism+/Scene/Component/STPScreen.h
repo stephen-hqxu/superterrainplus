@@ -80,7 +80,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief STPScreenVertexShader provides a vertex shader for off-screen rendering.
-		 * This vertex shader can be shared by many screen renderers during initialisation.
 		*/
 		class STP_REALISM_API STPScreenVertexShader {
 		private:
@@ -114,14 +113,12 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief STPScreenVertexBuffer provides vertex buffer objects for screen drawing.
-		 * It is recommended to share this buffer among different screen instances within the same context.
-		 * The vertex buffer is not allowed to be moved to avoid making all referenced screen instance holding a deleted reference.
 		*/
 		class STP_REALISM_API STPScreenVertexBuffer {
 		private:
 
 			//The buffer to represent the off-screen rendering screen
-			STPBuffer ScreenBuffer, ScreenIndex, ScreenRenderCommand;
+			STPBuffer ScreenBuffer, ScreenRenderCommand;
 			STPVertexArray ScreenArray;
 
 		public:
@@ -133,11 +130,11 @@ namespace SuperTerrainPlus::STPRealism {
 
 			STPScreenVertexBuffer(const STPScreenVertexBuffer&) = delete;
 
-			STPScreenVertexBuffer(STPScreenVertexBuffer&&) = delete;
+			STPScreenVertexBuffer(STPScreenVertexBuffer&&) noexcept = default;
 
 			STPScreenVertexBuffer& operator=(const STPScreenVertexBuffer&) = delete;
 
-			STPScreenVertexBuffer& operator=(STPScreenVertexBuffer&&) = delete;
+			STPScreenVertexBuffer& operator=(STPScreenVertexBuffer&&) noexcept = default;
 
 			~STPScreenVertexBuffer() = default;
 
@@ -159,8 +156,6 @@ namespace SuperTerrainPlus::STPRealism {
 			//This vertex shader can be safely destroyed after initialisation and no reference is retained.
 			const STPScreenVertexShader* VertexShader;
 			//The vertex buffer to be shared with different screen instances.
-			//This buffer is managed by all shared instances automatically and the caller
-			//do not have to retain the buffer.
 			std::weak_ptr<const STPScreenVertexBuffer> SharedVertexBuffer;
 
 		};

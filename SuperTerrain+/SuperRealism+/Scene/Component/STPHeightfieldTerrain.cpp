@@ -282,7 +282,7 @@ void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 	cudaArray_t random_buffer;
 
 	//CUDA will throw error when mapping on a texture with bindless handle active, so we need to deactivate it first.
-	this->NoiseSampleHandle.~STPBindlessTexture();
+	this->NoiseSampleHandle = STPBindlessTexture();
 	//register CUDA graphics
 	STPcudaCheckErr(cudaGraphicsGLRegisterImage(&res, *this->NoiseSample, GL_TEXTURE_3D, cudaGraphicsRegisterFlagsWriteDiscard));
 	//map

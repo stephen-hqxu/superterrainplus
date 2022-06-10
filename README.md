@@ -282,6 +282,11 @@ For redistributed open source project, see *3rd-Party* directory to find the lic
 - [PBR theory](https://learnopengl.com/PBR/Theory) from *Learn OpenGL*
 - [Procedural water animation](https://www.shadertoy.com/view/4dBcRD)
 
+**Night rendering**
+
+- [Stars and auroras](https://www.shadertoy.com/view/XtGGRt)
+- [Star Nest](https://www.shadertoy.com/view/XlfGRj)
+
 **HDR**
 
 - [Filmic tone mapping functions](https://bruop.github.io/tonemapping/) by *Bruno Opsenica*

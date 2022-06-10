@@ -7,6 +7,8 @@
 #include "../Object/STPShaderManager.h"
 #include "../Object/STPProgramManager.h"
 #include "../Object/STPPipelineManager.h"
+//Base Renderer
+#include "./Component/STPSkybox.h"
 
 //Container
 #include <array>
@@ -113,7 +115,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief STPEnvironmentObject is a special type of object that contributes to the environmental effects.
 		 * It does not have a solid body and does not interact with other objects in the scene.
 		*/
-		class STPEnvironmentObject : public STPRenderable {
+		class STPEnvironmentObject : protected STPSkybox, public STPRenderable {
 		public:
 
 			/**

@@ -6,8 +6,7 @@
 layout(early_fragment_tests) in;
 
 //Input
-//normalized ray direction, typically a ray cast from the observers eye through a pixel
-in vec3 RayDirection;
+in vec3 FragRayDirection;
 //Output
 layout (location = 0) out vec4 FragColor;
 
@@ -18,7 +17,7 @@ uniform vec3 SunPosition;
 void main(){
 	//Compute the resultant scattering factors
 	//Normalise sun and view direction
-	const AtmosphereComposition comp = atmosphere(Atmo, normalize(SunPosition), normalize(RayDirection));
+	const AtmosphereComposition comp = atmosphere(Atmo, normalize(SunPosition), normalize(FragRayDirection));
 	
 	//Convert the scattering factors into atmosphere colour
 	FragColor = vec4(Atmo.iSun * (comp.colSun + comp.colSky), 1.0f);
