@@ -5,11 +5,6 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //Screen
 #include "STPScreen.h"
-//Object
-#include "../../Object/STPSampler.h"
-#include "../../Object/STPTexture.h"
-#include "../../Object/STPBindlessTexture.h"
-#include "../../Object/STPFrameBuffer.h"
 
 #include "../../Environment/STPBidirectionalScatteringSetting.h"
 
@@ -25,12 +20,9 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPBidirectionalScattering : private STPScreen {
 	private:
 
-		STPSampler ColorSampler, DepthSampler, NormalSampler, MaterialSampler;
-		//capture copies of raw data from the scene without the transparent object.
-		STPTexture SceneColor, SceneDepth;
-		STPBindlessTexture SceneColorHandle, SceneDepthHandle;
+		STPSampler NormalSampler, MaterialSampler;
 		//This framebuffer is used for copying data from the scene into the internal memory.
-		STPFrameBuffer RawSceneColorCopier, RawSceneDepthCopier;
+		STPSimpleScreenBindlessFrameBuffer RawSceneColorCopier, RawSceneDepthCopier;
 
 		//Record the dimension of the current buffer.
 		glm::uvec2 BufferDimension;

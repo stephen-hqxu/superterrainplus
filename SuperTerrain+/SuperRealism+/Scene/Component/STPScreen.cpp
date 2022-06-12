@@ -47,7 +47,8 @@ STPScreen::STPSimpleScreenFrameBuffer::STPSimpleScreenFrameBuffer() : ScreenColo
 
 }
 
-void STPScreen::STPSimpleScreenFrameBuffer::setScreenBuffer(STPTexture* stencil, const uvec2& dimension, STPOpenGL::STPenum internal) {
+STPTexture STPScreen::STPSimpleScreenFrameBuffer::updateScreenFrameBuffer(
+	STPTexture* stencil, const uvec2& dimension, STPOpenGL::STPenum internal) {
 	if (dimension.x == 0u || dimension.y == 0u) {
 		throw STPException::STPBadNumericRange("Both component of a screen buffer dimension must be positive");
 	}
@@ -60,8 +61,7 @@ void STPScreen::STPSimpleScreenFrameBuffer::setScreenBuffer(STPTexture* stencil,
 	this->ScreenColorContainer.attach(GL_COLOR_ATTACHMENT0, new_screen_color, 0);
 	if (stencil) {
 		this->ScreenColorContainer.attach(GL_STENCIL_ATTACHMENT, *stencil, 0);
-	}
-	else {
+	} else {
 		//detach stencil buffer if none is provided because the framebuffer needs to be resized
 		this->ScreenColorContainer.detachTexture(GL_STENCIL_ATTACHMENT);
 	}
@@ -70,9 +70,12 @@ void STPScreen::STPSimpleScreenFrameBuffer::setScreenBuffer(STPTexture* stencil,
 		throw STPException::STPGLError("Screen framebuffer cannot be validated");
 	}
 
+	return new_screen_color;
+}
+
+void STPScreen::STPSimpleScreenFrameBuffer::setScreenBuffer(STPTexture* stencil, const uvec2& dimension, STPOpenGL::STPenum internal) {
 	//store the new texture
-	using std::move;
-	this->ScreenColor = move(new_screen_color);
+	this->ScreenColor = std::move(this->updateScreenFrameBuffer(stencil, dimension, internal));
 }
 
 void STPScreen::STPSimpleScreenFrameBuffer::clearScreenBuffer(const vec4& color) {
@@ -81,6 +84,27 @@ void STPScreen::STPSimpleScreenFrameBuffer::clearScreenBuffer(const vec4& color)
 
 void STPScreen::STPSimpleScreenFrameBuffer::capture() const {
 	this->ScreenColorContainer.bind(GL_FRAMEBUFFER);
+}
+
+STPScreen::STPSimpleScreenBindlessFrameBuffer::STPSimpleScreenBindlessFrameBuffer() : STPSimpleScreenFrameBuffer() {
+
+}
+
+void STPScreen::STPSimpleScreenBindlessFrameBuffer::setScreenBuffer(
+	STPTexture* stencil, const uvec2& dimension, STPOpenGL::STPenum internal) {
+	using std::move;
+	STPTexture new_screen_color = this->updateScreenFrameBuffer(stencil, dimension, internal);
+	//update bindless handle
+	this->ScreenColorHandle = move(STPBindlessTexture(new_screen_color, this->ScreenColorSampler));
+	this->ScreenColor = move(new_screen_color);
+}
+
+SuperTerrainPlus::STPOpenGL::STPuint64 STPScreen::STPSimpleScreenBindlessFrameBuffer::getColorHandle() const {
+	return *this->ScreenColorHandle;
+}
+
+void STPScreen::STPSimpleScreenBindlessFrameBuffer::bindColorSampler(STPOpenGL::STPuint unit) const {
+	return this->ScreenColorSampler.bind(unit);
 }
 
 STPScreen::STPScreenVertexShader::STPScreenVertexShader() : ScreenVertexShader(GL_VERTEX_SHADER) {

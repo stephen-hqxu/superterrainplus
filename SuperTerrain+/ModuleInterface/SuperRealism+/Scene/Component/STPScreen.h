@@ -7,7 +7,8 @@
 #include "../../Object/STPBuffer.h"
 #include "../../Object/STPVertexArray.h"
 #include "../../Object/STPFrameBuffer.h"
-#include "../../Object/STPTexture.h"
+#include "../../Object/STPSampler.h"
+#include "../../Object/STPBindlessTexture.h"
 
 #include "../../Object/STPShaderManager.h"
 #include "../../Object/STPProgramManager.h"
@@ -38,6 +39,19 @@ namespace SuperTerrainPlus::STPRealism {
 			STPTexture ScreenColor;
 			STPFrameBuffer ScreenColorContainer;
 
+		protected:
+
+			/**
+			 * @brief Reattach a newly allocated texture to the framebuffer.
+			 * @param stencil The stencil buffer to be bound.
+			 * @param dimension The size of the new texture.
+			 * @param internal The internal format of the new texture.
+			 * @return The newly allocated texture which has been attached.
+			*/
+			STPTexture updateScreenFrameBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum);
+
+		public:
+
 			/**
 			 * @brief Initialise a new simple screen framebuffer instance.
 			*/
@@ -51,7 +65,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 			STPSimpleScreenFrameBuffer& operator=(STPSimpleScreenFrameBuffer&&) noexcept = default;
 
-			~STPSimpleScreenFrameBuffer() = default;
+			virtual ~STPSimpleScreenFrameBuffer() = default;
 
 			/**
 			 * @brief Setup the screen buffer property.
@@ -62,7 +76,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @param dimension The new dimension for the rendering screen.
 			 * @param internal Specifies the sized internal format for the new screen buffer.
 			*/
-			void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum);
+			virtual void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum);
 
 			/**
 			 * @brief Clear the colour attachment of the screen buffer.
@@ -75,6 +89,46 @@ namespace SuperTerrainPlus::STPRealism {
 			 * To deactivate, bind framebuffer target to any other points.
 			*/
 			void capture() const;
+
+		};
+
+		/**
+		 * @brief Similar to STPSimpleScreenFrameBuffer, except the texture contains a bindless handle.
+		 * @see STPSimpleScreenFrameBuffer
+		*/
+		class STP_REALISM_API STPSimpleScreenBindlessFrameBuffer : public STPSimpleScreenFrameBuffer {
+		public:
+
+			//The bindless handle for the screen colour texture.
+			STPSampler ScreenColorSampler;
+			STPBindlessTexture ScreenColorHandle;
+
+			STPSimpleScreenBindlessFrameBuffer();
+
+			STPSimpleScreenBindlessFrameBuffer(const STPSimpleScreenBindlessFrameBuffer&) = delete;
+
+			STPSimpleScreenBindlessFrameBuffer(STPSimpleScreenBindlessFrameBuffer&&) noexcept = default;
+
+			STPSimpleScreenBindlessFrameBuffer& operator=(const STPSimpleScreenBindlessFrameBuffer&) = delete;
+
+			STPSimpleScreenBindlessFrameBuffer& operator=(STPSimpleScreenBindlessFrameBuffer&&) noexcept = default;
+
+			~STPSimpleScreenBindlessFrameBuffer() = default;
+
+			void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum) override;
+
+			/**
+			 * @brief Get the bindless handle to the screen colour texture.
+			 * @return The bindless handle.
+			 * The handle will be changed if the screen resolution has been changed.
+			*/
+			STPOpenGL::STPuint64 getColorHandle() const;
+
+			/**
+			 * @brief Bind the colour sampler to a texture unit.
+			 * @param unit Specifies the texture unit to be bound.
+			*/
+			void bindColorSampler(STPOpenGL::STPuint) const;
 
 		};
 
