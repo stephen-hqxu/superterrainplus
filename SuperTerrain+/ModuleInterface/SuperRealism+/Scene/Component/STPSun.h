@@ -6,9 +6,10 @@
 //Setting
 #include "../../Environment/STPSunSetting.h"
 #include "../../Environment/STPAtmosphereSetting.h"
-
+//Renderer
 #include "../Light/STPLightSpectrum.h"
 #include "../STPSceneObject.h"
+#include "STPSkybox.h"
 
 //GLM
 #include <glm/vec3.hpp>
@@ -22,7 +23,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * It also allows, optionally, day-night cycle and switches light intensity.
 	 * Atmospheric scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
 	*/
-	class STP_REALISM_API STPSun : public STPSceneObject::STPEnvironmentObject {
+	class STP_REALISM_API STPSun : private STPSkybox, public STPSceneObject::STPEnvironmentObject {
 	public:
 
 		//A pair of two equivalent types.

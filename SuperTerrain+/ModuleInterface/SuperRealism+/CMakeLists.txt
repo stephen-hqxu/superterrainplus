@@ -12,6 +12,7 @@ Environment/STPMeshSetting.h
 Environment/STPOcclusionKernelSetting.h
 Environment/STPOrthographicCameraSetting.h
 Environment/STPPerspectiveCameraSetting.h
+Environment/STPStarfieldSetting.h
 Environment/STPSunSetting.h
 Environment/STPTessellationSetting.h
 Environment/STPWaterSetting.h
@@ -41,6 +42,7 @@ Scene/Component/STPHeightfieldTerrain.h
 Scene/Component/STPPostProcess.h
 Scene/Component/STPScreen.h
 Scene/Component/STPSkybox.h
+Scene/Component/STPStarfield.h
 Scene/Component/STPSun.h
 Scene/Component/STPWater.h
 # /Scene/Light

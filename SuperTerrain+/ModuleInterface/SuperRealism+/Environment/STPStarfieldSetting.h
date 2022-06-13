@@ -1,0 +1,44 @@
+#pragma once
+#ifndef _STP_STARFIELD_SETTING_H_
+#define _STP_STARFIELD_SETTING_H_
+
+#include <SuperRealism+/STPRealismDefine.h>
+#include <SuperTerrain+/Environment/STPSetting.hpp>
+
+namespace SuperTerrainPlus::STPEnvironment {
+
+	/**
+	 * @brief STPStarfieldSetting contains settings for rendering a procedural starfield.
+	*/
+	struct STPStarfieldSetting : public STPSetting {
+	public:
+
+		//Control how likely star will appear at each position.
+		//Higher likelihood makes the starfield denser.
+		float InitialLikelihood, OctaveLikelihoodMultiplier;
+		//Control the size of each star.
+		float InitialScale, OctaveScaleMultiplier;
+		//Each generated star has a soft edge fading off away from the star centre,
+		//this parameter controls the softness of the edge.
+		float EdgeDistanceFalloff;
+		//Specifies the speed stars shine.
+		float ShineSpeed;
+		//An intensity multiplier to the output of the star colour.
+		float LuminosityMultiplier;
+
+		//Specifies the number of iteration for starfield generation.
+		//More octave gives a larger number of star but also degrades the performance.
+		unsigned int Octave;
+
+		/**
+		 * @brief Default-initialise a starfield setting instance.
+		*/
+		STPStarfieldSetting();
+
+		~STPStarfieldSetting() = default;
+
+		bool validate() const override;
+
+	};
+}
+#endif//_STP_STARFIELD_SETTING_H_

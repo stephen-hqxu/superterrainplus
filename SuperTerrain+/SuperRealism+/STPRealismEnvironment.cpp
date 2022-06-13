@@ -6,6 +6,7 @@
 #include <SuperRealism+/Environment/STPOcclusionKernelSetting.h>
 #include <SuperRealism+/Environment/STPOrthographicCameraSetting.h>
 #include <SuperRealism+/Environment/STPPerspectiveCameraSetting.h>
+#include <SuperRealism+/Environment/STPStarfieldSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>
 #include <SuperRealism+/Environment/STPTessellationSetting.h>
 #include <SuperRealism+/Environment/STPWaterSetting.h>
@@ -207,6 +208,35 @@ bool STPPerspectiveCameraSetting::validate() const {
 		&& this->ZoomLimit.y > 0.0
 		&& this->ZoomLimit.x <= this->ZoomLimit.y
 		&& this->Aspect > 0.0;
+}
+
+//STPStarfieldSetting.h
+
+STPStarfieldSetting::STPStarfieldSetting() :
+	InitialLikelihood(0.1f),
+	OctaveLikelihoodMultiplier(1.0f),
+	InitialScale(1.0f),
+	OctaveScaleMultiplier(1.0f),
+	EdgeDistanceFalloff(1.0f),
+	ShineSpeed(1.0f),
+	LuminosityMultiplier(1.0f),
+	Octave(1u) {
+
+}
+
+bool STPStarfieldSetting::validate() const {
+	static constexpr auto isNormalised = [](float num) constexpr -> bool {
+		return num > 0.0f && num < 1.0f;
+	};
+
+	return isNormalised(this->InitialLikelihood)
+		&& this->OctaveLikelihoodMultiplier > 0.0f
+		&& this->InitialScale > 0.0f
+		&& this->OctaveScaleMultiplier > 0.0f
+		&& this->EdgeDistanceFalloff > 0.0f
+		&& this->ShineSpeed > 0.0f
+		&& this->LuminosityMultiplier > 0.0f
+		&& this->Octave > 0u;
 }
 
 //STPSunSetting.h

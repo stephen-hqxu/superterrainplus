@@ -106,7 +106,9 @@ __global__ void hydraulicErosionKERNEL(float* heightmap_storage,
 
 	//generating random location
 	//first we generate the number (0.0f, 1.0f]
-	vec2 initPos = vec2(curand_uniform(&rng[index]), curand_uniform(&rng[index]));
+	vec2 initPos = { };
+	initPos.x = curand_uniform(&rng[index]);
+	initPos.y = curand_uniform(&rng[index]);
 	//range conversion
 	initPos *= base;
 	initPos += range;
