@@ -130,8 +130,10 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Not all filter variants use depth information.
 		 * @param input The pointer to the input texture.
 		 * @param output Specifies the framebuffer where the filter output will be stored.
+		 * @param output_blending True to enable blending for the output.
+		 * Blend function is not modified.
 		*/
-		void filter(const STPTexture&, const STPTexture&, STPFrameBuffer&) const;
+		void filter(const STPTexture&, const STPTexture&, STPFrameBuffer&, bool) const;
 
 	};
 

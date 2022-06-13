@@ -112,7 +112,8 @@ void STPAmbientOcclusion::setScreenSpace(STPTexture* stencil, uvec2 dimension) {
 	this->OffScreenRenderer.uniform(glProgramUniform2fv, "RotationVectorScale", 1, value_ptr(noise_scale));
 }
 
-void STPAmbientOcclusion::occlude(const STPTexture& depth, const STPTexture& normal, STPFrameBuffer& output) const {
+void STPAmbientOcclusion::occlude(
+	const STPTexture& depth, const STPTexture& normal, STPFrameBuffer& output, bool output_blending) const {
 	//binding
 	depth.bind(0);
 	normal.bind(1);
@@ -135,7 +136,13 @@ void STPAmbientOcclusion::occlude(const STPTexture& depth, const STPTexture& nor
 	STPSampler::unbind(1);
 
 	//blur the output to reduce noise
-	this->BlurWorker.filter(depth, this->OcclusionResultContainer.ScreenColor, output);
+	if (output_blending) {
+		//ambient occlusion results will be blended with the AO from geometry buffer
+		//computed AO will be multiplicatively blended with the AO from the output framebuffer
+		//blending will be enabled inside the filter implementation
+		glBlendFunc(GL_DST_COLOR, GL_ZERO);
+	}
+	this->BlurWorker.filter(depth, this->OcclusionResultContainer.ScreenColor, output, output_blending);
 }
 
 #define AO_KERNEL_NAME(ALG) STPAmbientOcclusion::STPOcclusionKernel<STPAmbientOcclusion::STPOcclusionAlgorithm::ALG>

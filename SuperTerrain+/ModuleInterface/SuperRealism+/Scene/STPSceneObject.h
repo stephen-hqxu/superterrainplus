@@ -116,6 +116,11 @@ namespace SuperTerrainPlus::STPRealism {
 		class STPEnvironmentObject : public STPRenderable {
 		public:
 
+			//Specifies an output colour intensity multiplier.
+			//Set this value to zero or any negative value will effectively skips this environment object during rendering.
+			//Setting to a value greater than one will be clamped.
+			float EnvironmentVisibility = 1.0f;
+
 			/**
 			 * @brief Init a new STPEnvironmentObject.
 			*/

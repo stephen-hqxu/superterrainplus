@@ -151,7 +151,8 @@ void STPGaussianFilter::setBorderColor(vec4 border) {
 	this->InputImageSampler.borderColor(this->BorderColor);
 }
 
-void STPGaussianFilter::filter(const STPTexture& depth, const STPTexture& input, STPFrameBuffer& output) const {
+void STPGaussianFilter::filter(
+	const STPTexture& depth, const STPTexture& input, STPFrameBuffer& output, bool output_blending) const {
 	//only the input texture data requires sampler
 	//output is an image object
 	this->InputImageSampler.bind(0u);
@@ -183,7 +184,15 @@ void STPGaussianFilter::filter(const STPTexture& depth, const STPTexture& input,
 	filter_pass = 1u;
 	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
 
-	this->drawScreen();
+	if (output_blending) {
+		glEnable(GL_BLEND);
+
+		this->drawScreen();
+
+		glDisable(GL_BLEND);
+	} else {
+		this->drawScreen();
+	}
 
 	/* ------------------------------------------------------------------------------ */
 	//clear up

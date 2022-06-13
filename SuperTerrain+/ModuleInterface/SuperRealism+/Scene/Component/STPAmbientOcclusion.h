@@ -148,8 +148,9 @@ namespace SuperTerrainPlus::STPRealism {
 		 * This depth data will be used to reconstruct geometry position.
 		 * @param normal The texture which contains geometry normal data.
 		 * @param output The pointer to the framebuffer where the final ambient occlusion output will be stored.
+		 * @param output_blending True to enable multiplicative blending with the output.
 		*/
-		void occlude(const STPTexture&, const STPTexture&, STPFrameBuffer&) const;
+		void occlude(const STPTexture&, const STPTexture&, STPFrameBuffer&, bool) const;
 
 	};
 

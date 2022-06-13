@@ -42,15 +42,13 @@ __host__ void STPRandomTextureGenerator::generate(cudaArray_t output, uvec3 dime
 	if (dimension.y == 1u && dimension.z == 1u) {
 		//a 1D texture
 		Dimblocksize = uvec3(static_cast<unsigned int>(blocksize), uvec2(1u));
-	}
-	else {
+	} else {
 		const uvec2 Dimblocksize2D(32u, static_cast<unsigned int>(blocksize) / 32u);
 
 		if (dimension.z == 1u) {
 			//a 2D texture
 			Dimblocksize = uvec3(Dimblocksize2D, 1u);
-		}
-		else {
+		} else {
 			//a 3D texture
 			Dimblocksize = uvec3(Dimblocksize2D.y, 8u, Dimblocksize2D.x / 8u);
 		}
