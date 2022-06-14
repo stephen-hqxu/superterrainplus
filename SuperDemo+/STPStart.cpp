@@ -16,6 +16,7 @@
 #include <SuperRealism+/Scene/STPMaterialLibrary.h>
 #include <SuperRealism+/Scene/Component/STPHeightfieldTerrain.h>
 #include <SuperRealism+/Scene/Component/STPSun.h>
+#include <SuperRealism+/Scene/Component/STPStarfield.h>
 #include <SuperRealism+/Scene/Component/STPWater.h>
 #include <SuperRealism+/Scene/Component/STPAmbientOcclusion.h>
 #include <SuperRealism+/Scene/Component/STPBidirectionalScattering.h>
@@ -96,6 +97,7 @@ namespace STPStart {
 
 		//Object
 		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPStarfield> StarfieldRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>> TerrainRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPWater> WaterRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPAmbientOcclusion> AOEffect;
@@ -104,6 +106,7 @@ namespace STPStart {
 		//Light
 		optional<SuperTerrainPlus::STPRealism::STPAmbientLight> Skylight;
 		optional<SuperTerrainPlus::STPRealism::STPDirectionalLight> Sunlight;
+		optional<SuperTerrainPlus::STPRealism::STPAmbientLight> Nightlight;
 		//Material
 		SuperTerrainPlus::STPRealism::STPMaterialLibrary SceneMaterial;
 		//Rendering Pipeline
@@ -227,7 +230,7 @@ namespace STPStart {
 				scene_shadow_function.KernelDistance = 2.45f;
 
 				STPScenePipeline::STPSceneShaderCapacity& scene_cap = scene_init.ShaderCapacity;
-				scene_cap.AmbientLight = 1ull;
+				scene_cap.AmbientLight = 2ull;
 				scene_cap.DirectionalLight = 1ull;
 
 				//setup material library
@@ -278,10 +281,44 @@ namespace STPStart {
 
 				using std::move;
 				//setup light
+				//daylight
 				this->Skylight.emplace(move(sky_spec));
 				this->Sunlight.emplace(make_optional<STPCascadedShadowMap>(2048u, shadow_frustum), move(sun_spec));
 				this->RenderPipeline->add(*this->Skylight);
 				this->RenderPipeline->add(*this->Sunlight);
+
+				//night-light
+				STPLightSpectrum nightlight_spec(3u, GL_RGB8);
+				nightlight_spec.setData(STPLightSpectrum::STPColourArray<glm::u8vec3> {
+					{  0u, 0u, 0u },
+					{ 29u, 56u,	97u },
+					{ 218u, 223, 247u }
+				});
+
+				this->Nightlight.emplace(move(nightlight_spec));
+				this->RenderPipeline->add(*this->Nightlight);
+			}
+			{
+				//starfield
+				const STPEnvironment::STPStarfieldSetting starfield_setting =
+					STPTerrainParaLoader::getStarfieldSetting(this->engineINI.at("Night"));
+
+				STPLightSpectrum starfield_spec(4u, GL_RGB8);
+				starfield_spec.setData(STPLightSpectrum::STPColourArray<glm::u8vec3> {
+					{ 129u, 194u, 235u },
+					{ 232u, 169u, 146u },
+					{ 101u, 184u, 155u },
+					{ 225u, 208u, 242u }
+				});
+
+				const STPStarfield::STPStarfieldModel starfield_model = {
+					&starfield_spec,
+					true
+				};
+
+				this->StarfieldRenderer.emplace(starfield_model, skybox_renderer_init);
+				this->StarfieldRenderer->setStarfield(starfield_setting, static_cast<unsigned int>(this->getNextSeed()));
+				this->RenderPipeline->add(*this->StarfieldRenderer);
 			}
 
 			//setup solid object
@@ -365,13 +402,15 @@ namespace STPStart {
 			}
 
 			//light property setup
-			STPEnvironment::STPLightSetting::STPAmbientLightSetting sun_ambient;
-			sun_ambient.AmbientStrength = 0.5f;
-			STPEnvironment::STPLightSetting::STPDirectionalLightSetting sun_directional;
-			sun_directional.DiffuseStrength = 1.6f;
-			sun_directional.SpecularStrength = 6.5f;
-			this->Skylight->setAmbient(sun_ambient);
-			this->Sunlight->setDirectional(sun_directional);
+			STPEnvironment::STPLightSetting::STPAmbientLightSetting light_ambient;
+			light_ambient.AmbientStrength = 0.5f;
+			STPEnvironment::STPLightSetting::STPDirectionalLightSetting light_directional;
+			light_directional.DiffuseStrength = 1.6f;
+			light_directional.SpecularStrength = 6.5f;
+			this->Skylight->setAmbient(light_ambient);
+			this->Sunlight->setDirectional(light_directional);
+			light_ambient.AmbientStrength = 0.15f;
+			this->Nightlight->setAmbient(light_ambient);
 
 			//scene pipeline setup
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
@@ -411,12 +450,17 @@ namespace STPStart {
 			if (tickGain > 0ull) {
 				//change the sun position
 				this->SunRenderer->advanceTick(tickGain);
+				const vec3 sunDir = this->SunRenderer->sunDirection();
+				const float nightLum = 1.0f - glm::smoothstep(-0.1f, 0.03f, sunDir.y);
 
 				const float sun_specUV =  this->SunRenderer->spectrumCoordinate();
 				//update light status.
 				this->Skylight->setSpectrumCoordinate(sun_specUV);
 				this->Sunlight->setSpectrumCoordinate(sun_specUV);
-				this->Sunlight->setLightDirection(this->SunRenderer->sunDirection());
+				this->Sunlight->setLightDirection(sunDir);
+				//update night status.
+				this->Nightlight->setSpectrumCoordinate(nightLum);
+				this->StarfieldRenderer->EnvironmentVisibility = nightLum;
 			}
 
 			//render, all async operations are sync automatically

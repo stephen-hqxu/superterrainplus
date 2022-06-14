@@ -14,6 +14,7 @@
 #include <SuperRealism+/Environment/STPOcclusionKernelSetting.h>
 #include <SuperRealism+/Environment/STPWaterSetting.h>
 #include <SuperRealism+/Environment/STPBidirectionalScatteringSetting.h>
+#include <SuperRealism+/Environment/STPStarfieldSetting.h>
 
 #include <utility>
 
@@ -61,6 +62,13 @@ namespace STPDemo {
 		*/
 		std::pair<SuperTerrainPlus::STPEnvironment::STPSunSetting, SuperTerrainPlus::STPEnvironment::STPAtmosphereSetting>
 			getSkySetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
+
+		/**
+		 * @brief Load the settings for procedural starfield rendering.
+		 * @param section The INI section contains the star settings.
+		 * @return Setting for starfield.
+		*/
+		SuperTerrainPlus::STPEnvironment::STPStarfieldSetting getStarfieldSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
 
 		/**
 		 * @brief Load the settings for ambient occlusion.

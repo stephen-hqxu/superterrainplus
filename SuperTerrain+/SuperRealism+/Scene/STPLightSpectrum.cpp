@@ -10,7 +10,10 @@
 #include <glm/vec2.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <type_traits>
+
 using glm::uvec2;
+using glm::u8vec3;
 using glm::ivec3;
 using glm::uvec3;
 using glm::vec3;
@@ -43,10 +46,27 @@ SuperTerrainPlus::STPOpenGL::STPuint64 STPLightSpectrum::spectrumHandle() const 
 	return *this->SpectrumHandle;
 }
 
-void STPLightSpectrum::setData(const STPColorArray& color) {
+template<typename T>
+void STPLightSpectrum::setData(const STPColourArray<T>& color) {
 	if (color.size() > this->SpectrumLength) {
 		throw STPException::STPMemoryError("There is insufficient amount of memory to hold all colours specified in the array");
 	}
 
-	this->Spectrum.textureSubImage<STPTexture::STPDimension::ONE>(0, ivec3(0), uvec3(color.size(), uvec2(1u)), GL_RGB, GL_FLOAT, color.data());
+	using std::is_same_v;
+	//determine format and type
+	GLenum format = 0u, type = 0u;
+	if constexpr (is_same_v<T, vec3>) {
+		format = GL_RGB;
+		type = GL_FLOAT;
+	} else if constexpr (is_same_v<T, u8vec3>) {
+		format = GL_RGB;
+		type = GL_UNSIGNED_BYTE;
+	}
+
+	this->Spectrum.textureSubImage<STPTexture::STPDimension::ONE>(0, ivec3(0), uvec3(color.size(), uvec2(1u)), format, type, color.data());
 }
+
+//Explicit Instantiation
+#define SET_DATA(TYPE) template STP_REALISM_API void STPLightSpectrum::setData<TYPE>(const STPColourArray<TYPE>&)
+SET_DATA(vec3);
+SET_DATA(u8vec3);

@@ -220,6 +220,7 @@ STPStarfieldSetting::STPStarfieldSetting() :
 	EdgeDistanceFalloff(1.0f),
 	ShineSpeed(1.0f),
 	LuminosityMultiplier(1.0f),
+	MinimumAltitude(-1.0f),
 	Octave(1u) {
 
 }

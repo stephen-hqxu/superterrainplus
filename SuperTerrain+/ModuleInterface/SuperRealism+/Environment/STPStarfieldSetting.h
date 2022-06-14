@@ -10,7 +10,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 	/**
 	 * @brief STPStarfieldSetting contains settings for rendering a procedural starfield.
 	*/
-	struct STPStarfieldSetting : public STPSetting {
+	struct STP_REALISM_API STPStarfieldSetting : public STPSetting {
 	public:
 
 		//Control how likely star will appear at each position.
@@ -25,6 +25,9 @@ namespace SuperTerrainPlus::STPEnvironment {
 		float ShineSpeed;
 		//An intensity multiplier to the output of the star colour.
 		float LuminosityMultiplier;
+		//Specifies a minimum direction elevation for which stars should be rendered.
+		//Note that ray elevation is within the range [-1.0, 1.0].
+		float MinimumAltitude;
 
 		//Specifies the number of iteration for starfield generation.
 		//More octave gives a larger number of star but also degrades the performance.

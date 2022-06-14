@@ -142,6 +142,22 @@ pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtmosphereSetting> STPTer
 	return pair(sun, atmo);
 }
 
+STPEnvironment::STPStarfieldSetting STPTerrainParaLoader::getStarfieldSetting(
+	const SuperTerrainPlus::STPAlgorithm::STPINISectionView& section) {
+	STPEnvironment::STPStarfieldSetting star;
+	star.InitialLikelihood = section.at("init_likelihood").to<float>();
+	star.OctaveLikelihoodMultiplier = section.at("likelihood_mul").to<float>();
+	star.InitialScale = section.at("init_scale").to<float>();
+	star.OctaveScaleMultiplier = section.at("scale_mul").to<float>();
+	star.EdgeDistanceFalloff = section.at("edge_falloff").to<float>();
+	star.ShineSpeed = section.at("shine_speed").to<float>();
+	star.LuminosityMultiplier = section.at("brightness").to<float>();
+	star.MinimumAltitude = section.at("min_altitude").to<float>();
+	star.Octave = section.at("octave").to<unsigned int>();
+
+	return star;
+}
+
 STPEnvironment::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(const STPINISectionView& section) {
 	STPEnvironment::STPOcclusionKernelSetting ao_kernel;
 

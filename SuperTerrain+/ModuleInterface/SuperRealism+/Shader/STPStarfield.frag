@@ -11,6 +11,7 @@ struct StarfieldSetting{
 	float Thres;
 	float spdShine;
 	float LumMul;
+	float MinAlt;
 	unsigned int Oct;
 };
 
@@ -30,6 +31,10 @@ vec3 hash33(vec3);
 
 void main(){
 	const vec3 rayDir = normalize(FragRayDirection);
+	if(rayDir.y < Star.MinAlt){
+		FragColor = vec4(vec3(0.0f), 1.0f);
+		return;
+	}
 
 	vec3 starColor = vec3(0.0f);
 	float likelihood = Star.iLklh;

@@ -906,14 +906,8 @@ inline void STPScenePipeline::drawEnvironment(const Env& env) const {
 		return;
 	}
 	// the number of environment object is non-zero
-
 	auto draw_env = [alpha_mean_factor = 1.0f / static_cast<float>(env.size())](const auto rendering_env) -> void {
 		const float env_vis = rendering_env->EnvironmentVisibility;
-		if (env_vis < 0.0f) {
-			//invisible, skip rendering
-			return;
-		}
-
 		glBlendColor(env_vis, env_vis, env_vis, alpha_mean_factor);
 		rendering_env->render();
 	};
@@ -925,7 +919,13 @@ inline void STPScenePipeline::drawEnvironment(const Env& env) const {
 	//for the rests, we want to sum all environment colours up while multiplying each colour by a visibility factor
 	//for alpha, we mean them
 	glBlendFunc(GL_CONSTANT_COLOR, GL_ONE);
-	for_each(++env.cbegin(), env.cend(), draw_env);
+	for_each(++env.cbegin(), env.cend(), [&draw_env](const auto rendering_env) {
+		if (rendering_env->EnvironmentVisibility <= 0.0f) {
+			//invisible, skip rendering
+			return;
+		}
+		draw_env(rendering_env);
+	});
 
 	glDisable(GL_BLEND);
 }
@@ -1080,6 +1080,10 @@ void STPScenePipeline::traverse() {
 	glStencilMask(0x00);
 
 	/* ------------------------------------- aerial perspective ----------------------------- */
+	if (env_obj.empty()) {
+		//AP only works with environment objects.
+		goto skipEnvironment;
+	}
 	//render the environment again at extinction pixels onto a cache
 	glStencilFunc(GL_EQUAL, ExtinctionMask, ExtinctionMask);
 	//not an error: there is no need to clear the old data in the cache
@@ -1100,6 +1104,7 @@ void STPScenePipeline::traverse() {
 
 	glDisable(GL_BLEND);
 
+	skipEnvironment:
 	/* -------------------------------------- post processing -------------------------------- */
 	glDisable(GL_STENCIL_TEST);
 	//time to draw onto the main framebuffer

@@ -51,9 +51,11 @@ Procedural technique is one of the most popular topics in computer graphics and 
 
 ### Real-time photorealistic rendering
 
-- [x] Procedural atmospheric scattering
-- [x] Aerial perspective
-- [x] Realistic sun orbiting
+- [x] Procedural sky rendering
+  - [x] Atmospheric scattering
+  - [x] Aerial perspective
+  - [x] Seasonal effect
+  - [x] Starfield
 - [x] Deferred shading
 - [ ] Post-processing
   - [x] Filmic tone mapping
@@ -83,7 +85,6 @@ Procedural technique is one of the most popular topics in computer graphics and 
   - [x] Fresnel effect
   - [ ] Caustics
   - [ ] Underwater crepuscular rays
-- [ ] Night rendering
 - [ ] Procedural weather effect
 - [ ] Real-time global illumination
 

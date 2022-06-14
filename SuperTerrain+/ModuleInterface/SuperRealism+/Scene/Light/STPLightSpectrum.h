@@ -27,7 +27,8 @@ namespace SuperTerrainPlus::STPRealism {
 	public:
 
 		//Contains an array of colour
-		typedef std::vector<glm::vec3> STPColorArray;
+		template<typename T>
+		using STPColourArray = std::vector<T>;
 
 		//Record the length of the spectrum, i.e., the number of pixel.
 		const unsigned int SpectrumLength;
@@ -65,7 +66,8 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Set the light spectrum with new array of colours.
 		 * @param colour The array of colour to be filled into the spectrum.
 		*/
-		void setData(const STPColorArray&);
+		template<typename T>
+		void setData(const STPColourArray<T>&);
 
 	};
 

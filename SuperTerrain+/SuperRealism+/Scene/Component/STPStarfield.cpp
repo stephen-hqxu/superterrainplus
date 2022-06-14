@@ -18,7 +18,7 @@ using SuperTerrainPlus::STPFile;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto StarfieldShaderFilename =
-	STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/Starfield", ".frag");
+	STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPStarfield", ".frag");
 
 STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSkyboxInitialiser& starfield_init) :
 	StarlightSpectrum(std::move(*starfield_model.StarlightSpectrum)) {
@@ -57,6 +57,7 @@ void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starf
 		.uniform(glProgramUniform1f, "Star.Thres", starfield_setting.EdgeDistanceFalloff)
 		.uniform(glProgramUniform1f, "Star.spdShine", starfield_setting.ShineSpeed)
 		.uniform(glProgramUniform1f, "Star.LumMul", starfield_setting.LuminosityMultiplier)
+		.uniform(glProgramUniform1f, "Star.MinAlt", starfield_setting.MinimumAltitude)
 		.uniform(glProgramUniform1ui, "Star.Oct", starfield_setting.Octave)
 		.uniform(glProgramUniform1ui, "RandomSeed", rng_seed);
 
