@@ -435,21 +435,21 @@ namespace STPStart {
 		 * @param delta The time difference from the last frame.
 		*/
 		inline void render(double delta) {
-			//Advance one tick after that many seconds have built up
-			constexpr static double TickScale = 0.1;
+			//Update light after that many second, to avoid doing expensive update every frame.
+			constexpr static double LightUpdateFrequency = 0.1;
 			//update timer
 			this->FrametimeRemainer += delta;
-			//calculate how many tick has elapsed
-			unsigned long long tickGain = static_cast<unsigned long long>(glm::floor(this->FrametimeRemainer / TickScale));
-			//deduct used ticks and store the remainder
-			this->FrametimeRemainer -= TickScale * tickGain;
+			const double timeGain = glm::floor(this->FrametimeRemainer / LightUpdateFrequency);
 
 			//prepare terrain texture first (async), because this is a slow operation
 			this->TerrainRenderer->setViewPosition(this->ViewPosition);
 
-			if (tickGain > 0ull) {
+			if (timeGain > 0.0) {
+				const double update_delta = timeGain * LightUpdateFrequency;
+				this->FrametimeRemainer -= update_delta;
+
 				//change the sun position
-				this->SunRenderer->advanceTick(tickGain);
+				this->SunRenderer->advanceTime(update_delta);
 				const vec3 sunDir = this->SunRenderer->sunDirection();
 				const float nightLum = 1.0f - glm::smoothstep(-0.1f, 0.03f, sunDir.y);
 

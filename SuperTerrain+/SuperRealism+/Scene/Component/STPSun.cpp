@@ -43,15 +43,14 @@ constexpr static auto SkyShaderFilename = STPFile::generateFilename(SuperRealism
 constexpr static auto SpectrumShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSunSpectrum", ".comp");
 
 STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundledData<vec3>& spectrum_domain,
-	const STPSkyboxInitialiser& sun_init) : SunSetting(sun_setting),
-	AnglePerTick(radians(360.0 / (1.0 * sun_setting.DayLength))), NoonTime(sun_setting.DayLength / 2ull),
-	SunDirectionCache(0.0) {
+	const STPSkyboxInitialiser& sun_init) : SunSetting(sun_setting), SunDirectionCache(0.0) {
+	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
 	//validate the setting
-	if (!this->SunSetting.validate()) {
+	if (!sun.validate()) {
 		throw STPException::STPInvalidEnvironment("Sun setting provided is invalid");
 	}
 	//calculate starting LST
-	this->Day = 1.0 * this->SunSetting.DayStartOffset / (1.0 * this->SunSetting.DayLength);
+	this->Day = 1.0 * sun.DayStart / (1.0 * sun.DayLength) + sun.YearStart;
 
 	//setup sky renderer
 	STPShaderManager sky_shader(GL_FRAGMENT_SHADER);
@@ -108,26 +107,27 @@ const vec3& STPSun::sunDirection() const {
 	return this->SunDirectionCache;
 }
 
-void STPSun::advanceTick(unsigned long long tick) {
+void STPSun::advanceTime(double delta_second) {
 	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
 
 	//offset the timer
 	//increment day count
-	this->Day += 1.0 * tick / (1.0 * sun.DayLength);
+	this->Day += delta_second / (1.0 * sun.DayLength);
 	//wrap the day around if it is the next year
 	if (this->Day >= 1.0 * sun.YearLength) {
 		this->Day -= static_cast<double>(sun.YearLength);
 	}
-	//the fractional part of Day is the fraction in a day
-	const unsigned long long LocalSolarTime = static_cast<unsigned long long>(glm::round(glm::fract(this->Day) * sun.DayLength));
 
 	//the old direction cache is no longer accurate, needs to recalculate
 	static constexpr double TWO_PI = glm::pi<double>() * 2.0;
 	static constexpr auto saturate = [](double val) constexpr -> double {
 		return clamp(val, -1.0, 1.0);
 	};
-	//calculate hour angle
-	const double HRA = this->AnglePerTick * static_cast<long long>(LocalSolarTime - this->NoonTime);
+	//Calculate hour angle based on the local solar time (LST), i.e., current time in a day - noon time;
+	//the noon time is essentially half of the day length.
+	//The fraction of this->Day is the percentage time has passed in one day.
+	//Consider one day as 360 degree, hour angle is the angle at LST in a day.
+	const double HRA = TWO_PI * (glm::fract(this->Day) - 0.5);
 	//calculate declination, the angle between the sun and the equator plane
 	const double delta = sun.Obliquity * -glm::cos(TWO_PI * this->Day / (1.0 * sun.YearLength)),
 		phi = sun.Latitude;

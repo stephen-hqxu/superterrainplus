@@ -14,13 +14,14 @@ namespace SuperTerrainPlus::STPEnvironment {
 	struct STP_REALISM_API STPSunSetting : public STPSetting {
 	public:
 
-		//The number of tick per day
-		//Tick is the unit of time, however the actual meaning of tick is implementation defined (by the user).
-		unsigned long long DayLength;
-		//The tick set to at the start of the sun application
-		unsigned long long DayStartOffset;
-		//The number of day per year
+		//The length of a day in second.
+		unsigned int DayLength;
+		//The second in a day set to at the beginning.
+		unsigned int DayStart;
+		//The number of day per year.
 		unsigned int YearLength;
+		//The day in a year set to at the beginning.
+		unsigned int YearStart;
 
 		//The angle between an object's rotational axis and its orbital axis, in radians, which is the line perpendicular to its orbital plane; 
 		//equivalently, it is the angle between its equatorial plane and orbital plane.

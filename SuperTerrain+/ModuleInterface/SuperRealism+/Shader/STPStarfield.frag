@@ -43,7 +43,7 @@ void main(){
 		const vec3 scaled_dir = rayDir * scale,
 			//We first divide the sky into a number of grids,
 			//we refer one of the four grid vertices closest to the origin as pivot.
-			grid = floor(scaled_dir),
+			pivot = floor(scaled_dir),
 			//A grid contains a number of pixels,
 			//and we can locate each pixel within a grid with a local position with respect to the grid.
 			//We also want the pivot to be at the centre of the grid instead of on the corner,
@@ -51,7 +51,8 @@ void main(){
 			pixel_grid_local = fract(scaled_dir) - 0.5f;
 		
 		//now pick up a random number for the grid
-		const vec3 grid_rand = hash33(grid);
+		//all pixels in a grid will have the same random number
+		const vec3 grid_rand = hash33(pivot);
 		//To reduce population of star, only grids that pass the likelihood test host stars.
 		if(likelihood >= grid_rand.x){
 			//Then add a little bit of animation, we want to make the stars shine.

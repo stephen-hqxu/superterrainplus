@@ -36,20 +36,16 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//The number of day elapsed
 		//The integer part is the number of day, the fractional part is the local solar time.
-		//The time according to the position of the sun in the sky relative to one specific location on the ground, in tick
+		//The time according to the position of the sun in the sky relative to one specific location on the ground, in seconds.
 		double Day;
-		//The angle changed per tick, in radians
-		const double AnglePerTick;
-		//Denotes the tick at noon time, equals to day length by 2
-		const unsigned long long NoonTime;
 		//Records the most recent calculation to avoid re-computation.
 		//The elevation angle is the angle between the sun and the horizontal. 
 		//The elevation angle is similar to the zenith angle but it is measured from the horizontal rather than from the vertical, 
-		//thus making the elevation angle = 90° - zenith.
+		//thus making the elevation angle = 90 deg - zenith.
 		//The azimuth angle is the compass direction from which the sunlight is coming. 
 		//At solar noon, the sun is always directly south in the northern hemisphere and directly north in the southern hemisphere.
 		//At the equinoxes, the sun rises directly east and sets directly west regardless of the latitude, 
-		//thus making the azimuth angles 90° at sunrise and 270° at sunset. 
+		//thus making the azimuth angles 90 deg at sunrise and 270 deg at sunset. 
 		//In general however, the azimuth angle varies with the latitude and time of year.
 		glm::vec3 SunDirectionCache;
 
@@ -97,9 +93,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Bring the timer forward by a delta amount and update the sun position.
-		 * @param tick The number of tick to be added to the current LST.
+		 * @param delta_second The number of second added to the current local solar time.
 		*/
-		void advanceTick(unsigned long long);
+		void advanceTime(double);
 
 		/**
 		 * @brief Update the renderer with new atmosphere setting.

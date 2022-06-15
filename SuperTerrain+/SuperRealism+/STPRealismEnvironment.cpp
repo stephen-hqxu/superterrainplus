@@ -243,9 +243,10 @@ bool STPStarfieldSetting::validate() const {
 //STPSunSetting.h
 
 STPSunSetting::STPSunSetting() : 
-	DayLength(24000ull),
-	DayStartOffset(0ull),
+	DayLength(1u),
+	DayStart(0u),
 	YearLength(1u),
+	YearStart(0u),
 
 	Obliquity(0.0), 
 	Latitude(0.0) {
@@ -258,10 +259,10 @@ bool STPSunSetting::validate() const {
 		return val >= min && val <= max;
 	};
 
-	return this->DayLength > 0ull
-		&& ((this->DayLength & 0x01ull) == 0x00ull)//must be an even number
-		&& this->DayStartOffset < this->DayLength
+	return this->DayLength > 0u
+		&& this->DayStart < this->DayLength
 		&& this->YearLength > 0u
+		&& this->YearStart < this->YearLength
 		&& range_check(this->Obliquity, 0.0, PI_BY_2)
 		&& range_check(this->Latitude, -PI_BY_2, PI_BY_2);
 }

@@ -770,22 +770,14 @@ const STPShaderManager* STPScenePipeline::getDepthShader() const {
 
 void STPScenePipeline::addLight(STPSceneLight& light) {
 	{
+		using LT = STPSceneLight::STPLightType;
 		//test if we still have enough memory to add a light.
 		const STPSceneShaderCapacity& current_usage = this->SceneMemoryCurrent,
 			limit_usage = this->SceneMemoryLimit;
-		switch (light.Type) {
-		case STPSceneLight::STPLightType::Ambient:
-			if (current_usage.AmbientLight < limit_usage.AmbientLight) {
-				break;
-			}
-			[[fallthrough]];
-		case STPSceneLight::STPLightType::Directional:
-			if (current_usage.DirectionalLight < limit_usage.DirectionalLight) {
-				break;
-			}
+		
+		if (light.Type == LT::Ambient && current_usage.AmbientLight >= limit_usage.AmbientLight
+			|| light.Type == LT::Directional && current_usage.DirectionalLight >= limit_usage.DirectionalLight) {
 			throw STPException::STPMemoryError("The number of this type of light has reached the limit");
-		default:
-			break;
 		}
 	}
 

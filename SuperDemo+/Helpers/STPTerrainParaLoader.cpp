@@ -83,7 +83,7 @@ STPEnvironment::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(
 	STPEnvironment::STPHeightfieldSetting launch_options;
 	
 	//set the parameter one by one, enjoy :)
-	launch_options.Seed = section.at("seed").to<STPDiversity::Seed>();
+	launch_options.Seed = section.at("seed").to<unsigned long long>();
 	launch_options.Inertia = section.at("inertia").to<float>();
 	launch_options.SedimentCapacityFactor = section.at("sediment_capacity_factor").to<float>();
 	launch_options.minSedimentCapacity = section.at("min_sediment_capacity").to<float>();
@@ -114,9 +114,10 @@ STPEnvironment::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplexSetting(c
 
 pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtmosphereSetting> STPTerrainParaLoader::getSkySetting(const STPINISectionView& section) {
 	STPEnvironment::STPSunSetting sun;
-	sun.DayLength = section.at("day_length").to<size_t>();
-	sun.DayStartOffset = section.at("day_start").to<size_t>();
+	sun.DayLength = section.at("day_length").to<unsigned int>();
+	sun.DayStart = section.at("day_start").to<unsigned int>();
 	sun.YearLength = section.at("year_length").to<unsigned int>();
+	sun.YearStart = section.at("year_start").to<unsigned int>();
 	sun.Obliquity = section.at("axial_tilt").to<double>();
 	sun.Latitude = section.at("latitude").to<double>();
 
