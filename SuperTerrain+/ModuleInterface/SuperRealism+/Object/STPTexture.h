@@ -172,6 +172,15 @@ namespace SuperTerrainPlus::STPRealism {
 		template<STPDimension Dim>
 		void textureSubImage(STPOpenGL::STPint, glm::ivec3, glm::uvec3, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
 
+		/**
+		 * @brief Fills all a texture image with a constant value
+		 * @param level The level of texture containing the region to be cleared.
+		 * @param format The format of the data whose address in memory is given by data.
+		 * @param type The type of the data whose address in memory is given by data.
+		 * @param data The address in memory of the data to be used to clear the specified region.
+		*/
+		void clearTextureImage(STPOpenGL::STPint, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
+
 	};
 
 }

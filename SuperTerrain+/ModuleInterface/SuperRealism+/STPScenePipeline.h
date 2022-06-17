@@ -265,21 +265,21 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Draw the environment.
 		 * @tparam Env An array of environment rendering components.
 		 * @param env The pointer the environment object.
+		 * @param vp The size of the viewport.
 		*/
 		template<class Env>
-		void drawEnvironment(const Env&) const;
+		void drawEnvironment(const Env&, const glm::vec4&) const;
 
 		/**
 		 * @brief Shade the object.
 		 * It assumes the G-Buffer framebuffer is currently bound.
-		 * @tparam Clr Set to true to clear the post-process buffer before lighting.
 		 * @tparam Ao The ambient occlusion object.
 		 * @tparam Pp The post-processing object.
 		 * @param ao The pointer to the AO object.
 		 * @param post_process The pointer to the post-processing object.
 		 * @param mask Specifies the mask for which the pixels should be shaded.
 		*/
-		template<bool Clr, class Ao, class Pp>
+		template<class Ao, class Pp>
 		void shadeObject(const Ao*, const Pp*, unsigned char) const;
 
 	public:

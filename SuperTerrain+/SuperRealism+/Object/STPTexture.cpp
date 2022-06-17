@@ -137,3 +137,7 @@ TEXTURE_SUBIMAGE(TWO) {
 TEXTURE_SUBIMAGE(THREE) {
 	glTextureSubImage3D(this->Texture.get(), level, offset.x, offset.y, offset.z, dimension.x, dimension.y, dimension.z, format, type, pixel);
 }
+
+void STPTexture::clearTextureImage(STPOpenGL::STPint level, STPOpenGL::STPenum format, STPOpenGL::STPenum type, const void* data) {
+	glClearTexImage(this->Texture.get(), level, format, type, data);
+}

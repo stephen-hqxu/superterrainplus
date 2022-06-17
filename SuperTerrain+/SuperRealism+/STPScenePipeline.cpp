@@ -440,14 +440,29 @@ private:
 	//This object updates stencil buffer to update geometries that are in the extinction zone
 	STPAlphaCulling ExtinctionStencilCuller;
 
+	//A 1-by-1 texture of black colour and user-set clear colour; can be used to draw to clear the screen.
+	STPTexture BlackColorTexture, ClearColorTexture;
+	STPFrameBuffer ExtinctionCullingContainer;
+	//Temporarily stores all environment colours before blended with the scene
+	STPSimpleScreenFrameBuffer ExtinctionEnvironmentCache;
+
 	constexpr static auto DeferredShaderFilename =
 		STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPDeferredShading", ".frag");
 
+	/**
+	 * @brief Draw a texture onto a screen.
+	 * @param texture The texture target to be drawn.
+	 * @param sampler The sampler to be used.
+	 * @param vp The coordinate of the screen.
+	*/
+	static inline void drawTextureScreen(GLuint texture, GLuint sampler, const vec4& vp) {
+		glDrawTextureNV(texture, sampler, vp.x, vp.y, vp.z, vp.w, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f);
+	}
+
 public:
 
-	STPFrameBuffer AmbientOcclusionContainer, ExtinctionCullingContainer;
-	//Temporarily stores all environment colours before blended with the scene
-	STPSimpleScreenFrameBuffer ExtinctionEnvironmentCache;
+	//Holding the ambient occlusion and stencil.
+	STPFrameBuffer AmbientOcclusionContainer;
 
 	/**
 	 * @brief Init a new geometry buffer resolution instance.
@@ -464,7 +479,8 @@ public:
 		//alpha culling, set to discard pixels that are not in the extinction zone
 		//remember 0 means no extinction whereas 1 means fully invisible
 		ExtinctionStencilCuller(STPAlphaCulling::STPCullComparator::LessEqual, 0.0f,
-			STPAlphaCulling::STPCullConnector::Or, STPAlphaCulling::STPCullComparator::Greater, 1.0f, lighting_init) {
+			STPAlphaCulling::STPCullConnector::Or, STPAlphaCulling::STPCullComparator::Greater, 1.0f, lighting_init),
+		BlackColorTexture(GL_TEXTURE_2D), ClearColorTexture(GL_TEXTURE_2D) {
 		if (!shadow_filter.validate()) {
 			throw STPException::STPBadNumericRange("The shadow map filter has invalid values");
 		}
@@ -526,6 +542,14 @@ public:
 		//no colour will be written to the extinction buffer
 		this->ExtinctionCullingContainer.readBuffer(GL_NONE);
 		this->ExtinctionCullingContainer.drawBuffer(GL_NONE);
+		//pure colour texture
+		const array<STPTexture*, 2ull> pureColorTexture = { &this->BlackColorTexture, &this->ClearColorTexture };
+		for_each(pureColorTexture.cbegin(), pureColorTexture.cend(), [BlackColour = vec4(vec3(0.0f), 1.0f)](auto* tex) {
+			tex->textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGBA8, uvec3(1u));
+			tex->clearTextureImage(0, GL_RGBA, GL_FLOAT, value_ptr(BlackColour));
+			tex->filter(GL_NEAREST, GL_NEAREST);
+			tex->wrap(GL_REPEAT);
+		});
 	}
 
 	STPGeometryBufferResolution(const STPGeometryBufferResolution&) = delete;
@@ -611,6 +635,7 @@ public:
 
 		//a separate framebuffer with ambient occlusion attachment
 		this->AmbientOcclusionContainer.attach(GL_COLOR_ATTACHMENT0, ao, 0);
+		this->AmbientOcclusionContainer.attach(GL_STENCIL_ATTACHMENT, depth_stencil, 0);
 		//update the stencil buffer used for extinction culling
 		this->ExtinctionCullingContainer.attach(GL_STENCIL_ATTACHMENT, depth_stencil, 0);
 		//environment rendering cache which stores environment colours, we definitely want to use HDR
@@ -650,6 +675,38 @@ public:
 	}
 
 	/**
+	 * @brief Set the colour of clear colour texture.
+	 * @param colour The clear colour set to.
+	*/
+	inline void setClearTextureColor(const vec4& colour) {
+		this->ClearColorTexture.clearTextureImage(0, GL_RGBA, GL_FLOAT, value_ptr(colour));
+	}
+
+	/**
+	 * @brief Draw a screen filled with black colour. Fragment tests apply.
+	 * @param vp The location of the viewport
+	*/
+	inline void drawBlackScreen(const vec4& vp) const {
+		STPGeometryBufferResolution::drawTextureScreen(*this->BlackColorTexture, 0u, vp);
+	}
+
+	/**
+	 * @brief Draw a screen filled with user-set clear colour. Fragment tests apply.
+	 * @param vp The location of the viewport.
+	*/
+	inline void drawClearColorScreen(const vec4& vp) const {
+		STPGeometryBufferResolution::drawTextureScreen(*this->ClearColorTexture, 0u, vp);
+	}
+
+	/**
+	 * @brief Draw a screen filled with the extinction environment cache. Fragment tests apply.
+	 * @param vp The location of the viewport.
+	*/
+	inline void drawExtinctionCacheScreen(const vec4& vp) const {
+		STPGeometryBufferResolution::drawTextureScreen(*this->ExtinctionEnvironmentCache.ScreenColor, *this->GSampler, vp);
+	}
+
+	/**
 	 * @brief Get the normal geometry buffer.
 	 * @return The pointer to the normal geometry buffer.
 	*/
@@ -667,19 +724,26 @@ public:
 	}
 
 	/**
-	 * @brief Get the sampler for G-Buffer.
-	 * @return The G-Buffer sampler.
-	*/
-	inline const STPSampler& getGBufferSampler() const {
-		return this->GSampler;
-	}
-
-	/**
 	 * @brief Enable rendering to geometry buffer and captured under the current G-buffer resolution instance.
 	 * To disable further rendering to this buffer, bind framebuffer to any other target.
 	*/
 	inline void capture() {
 		this->GeometryContainer.bind(GL_FRAMEBUFFER);
+	}
+
+	/**
+	 * @brief Enable rendering onto the extinction environment cache.
+	*/
+	inline void captureExtinctionEnv() {
+		this->ExtinctionEnvironmentCache.capture();
+	}
+
+	/**
+	 * @brief Enable rendering using the extinction culling framebuffer.
+	 * This framebuffer only has a stencil attachment, no colour is rendered.
+	*/
+	inline void captureExtinctionCulling() {
+		this->ExtinctionCullingContainer.bind(GL_FRAMEBUFFER);
 	}
 
 	/**
@@ -723,7 +787,7 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera,
 	GeometryShadowPass(make_unique<STPShadowPipeline>(*scene_init.ShadowFilter)),
 	GeometryLightPass(make_unique<STPGeometryBufferResolution>(
 		*this, *scene_init.ShadingModel, *scene_init.ShadowFilter, *scene_init.GeometryBufferInitialiser)), 
-	DefaultClearColor(vec4(vec3(0.0f), 1.0f)) {
+	DefaultClearColor(vec4(0.0f)) {
 	if (this->hasMaterialLibrary) {
 		//setup material library
 		(**mat_lib).bindBase(GL_SHADER_STORAGE_BUFFER, 2u);
@@ -748,7 +812,7 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera,
 	glBlendEquation(GL_FUNC_ADD);
 
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	this->setClearColor(vec4(vec3(0.0f), 1.0f));
 	glClearStencil(0x00);
 	glClearDepth(1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -829,9 +893,9 @@ const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryLimit
 
 void STPScenePipeline::setClearColor(vec4 color) {
 	glClearColor(color.r, color.g, color.b, color.a);
-	glClear(GL_COLOR_BUFFER_BIT);
 	//update member variable
 	this->DefaultClearColor = color;
+	this->GeometryLightPass->setClearTextureColor(color);
 }
 
 bool STPScenePipeline::setRepresentativeFragmentTest(bool val) {
@@ -893,36 +957,34 @@ void STPScenePipeline::setExtinctionArea(float factor) const {
 }
 
 template<class Env>
-inline void STPScenePipeline::drawEnvironment(const Env& env) const {
+inline void STPScenePipeline::drawEnvironment(const Env& env, const vec4& vp) const {
 	if (env.empty()) {
+		//clear the environment to a user-set value
+		this->GeometryLightPass->drawClearColorScreen(vp);
 		return;
 	}
-	// the number of environment object is non-zero
-	auto draw_env = [alpha_mean_factor = 1.0f / static_cast<float>(env.size())](const auto rendering_env) -> void {
-		const float env_vis = rendering_env->EnvironmentVisibility;
-		glBlendColor(env_vis, env_vis, env_vis, alpha_mean_factor);
-		rendering_env->render();
-	};
+	//clear the environment area
+	this->GeometryLightPass->drawBlackScreen(vp);
 
 	glEnable(GL_BLEND);
-	//do an overwriting rendering for the first environment object to abandon any old data containing garbage data or background colour
-	glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
-	draw_env(env.front());
-	//for the rests, we want to sum all environment colours up while multiplying each colour by a visibility factor
+	//we want to sum all environment colours up while multiplying each colour by a visibility factor
 	//for alpha, we mean them
 	glBlendFunc(GL_CONSTANT_COLOR, GL_ONE);
-	for_each(++env.cbegin(), env.cend(), [&draw_env](const auto rendering_env) {
-		if (rendering_env->EnvironmentVisibility <= 0.0f) {
+	for_each(env.cbegin(), env.cend(), [alpha_mean_factor = 1.0f / static_cast<float>(env.size())](const auto rendering_env) {
+		const float env_vis = rendering_env->EnvironmentVisibility;
+		if (env_vis <= 0.0f) {
 			//invisible, skip rendering
 			return;
 		}
-		draw_env(rendering_env);
+
+		glBlendColor(env_vis, env_vis, env_vis, alpha_mean_factor);
+		rendering_env->render();
 	});
 
 	glDisable(GL_BLEND);
 }
 
-template<bool Clr, class Ao, class Pp>
+template<class Ao, class Pp>
 inline void STPScenePipeline::shadeObject(const Ao* ao, const Pp* post_process, unsigned char mask) const {
 	//from this step we start performing off-screen rendering using the buffer we got from previous steps.
 	//off-screen rendering does not need depth test
@@ -947,10 +1009,8 @@ inline void STPScenePipeline::shadeObject(const Ao* ao, const Pp* post_process, 
 
 	//render the final scene to an post process buffer memory
 	post_process->capture();
-	if constexpr (Clr) {
-		//clear old colour data to default clear colour
-		glClear(GL_COLOR_BUFFER_BIT);
-	}
+	//no need to clear colour, we will always draw over the whole screen.
+	//even if there is no environment object, we will still draw a constant colour.
 	/* ----------------------------------------- light resolve ------------------------------------ */
 	this->GeometryLightPass->resolve();
 }
@@ -980,6 +1040,7 @@ void STPScenePipeline::traverse() {
 	//query the viewport size
 	ivec4 viewport_dim;
 	glGetIntegerv(GL_VIEWPORT, value_ptr(viewport_dim));
+	const vec4 screen_coord = static_cast<vec4>(viewport_dim);
 
 	//process rendering components.
 	/* ------------------------------------------ shadow pass -------------------------------- */
@@ -1008,12 +1069,12 @@ void STPScenePipeline::traverse() {
 	/* ======================================== shading opaque objects =================================== */
 	//face culling is useless for screen drawing
 	glDisable(GL_CULL_FACE);
-	this->shadeObject<true>(ao, post_process, ObjectMask);
+	this->shadeObject(ao, post_process, ObjectMask);
 
 	/* -------------------------------------- environment rendering -------------------------------- */
 	//draw the environment on everything that is empty
 	glStencilFunc(GL_EQUAL, EnvironmentMask, 0xFF);
-	this->drawEnvironment(env_obj);
+	this->drawEnvironment(env_obj, screen_coord);
 
 	/* ===================================== transparent object rendering ================================= */
 	if (trans_obj.empty()) {
@@ -1038,7 +1099,7 @@ void STPScenePipeline::traverse() {
 
 	/* ----------------------------------- shade transparent objects ----------------------------------- */
 	//only shade newly rendered objects to the post process buffer.
-	this->shadeObject<false>(ao, post_process, TransparentMask);
+	this->shadeObject(ao, post_process, TransparentMask);
 
 	if (bsdf) {
 		//render special effects for transparent objects
@@ -1065,22 +1126,18 @@ void STPScenePipeline::traverse() {
 	glStencilFunc(GL_NOTEQUAL, ExtinctionMask, ObjectMask);
 	//no synchronisation of the colour attachment is needed as the extinction culling is performed on another framebuffer
 	
-	this->GeometryLightPass->ExtinctionCullingContainer.bind(GL_FRAMEBUFFER);
+	this->GeometryLightPass->captureExtinctionCulling();
 	this->GeometryLightPass->cullNonExtinction(**post_process);
 
 	//turn off stencil writing
 	glStencilMask(0x00);
 
 	/* ------------------------------------- aerial perspective ----------------------------- */
-	if (env_obj.empty()) {
-		//AP only works with environment objects.
-		goto skipEnvironment;
-	}
 	//render the environment again at extinction pixels onto a cache
 	glStencilFunc(GL_EQUAL, ExtinctionMask, ExtinctionMask);
 	//not an error: there is no need to clear the old data in the cache
-	this->GeometryLightPass->ExtinctionEnvironmentCache.capture();
-	this->drawEnvironment(env_obj);
+	this->GeometryLightPass->captureExtinctionEnv();
+	this->drawEnvironment(env_obj, screen_coord);
 
 	//switch back to post process buffer
 	post_process->capture();
@@ -1089,14 +1146,10 @@ void STPScenePipeline::traverse() {
 	//alpha 1 means there is no object (default alpha), or object is fully extinct
 	//alpha 0 means object is fully visible
 	glBlendFuncSeparate(GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA, GL_ZERO, GL_ONE);
-	const vec4 screen_coord = static_cast<vec4>(viewport_dim);
-	glDrawTextureNV(*this->GeometryLightPass->ExtinctionEnvironmentCache.ScreenColor,
-		*this->GeometryLightPass->getGBufferSampler(), screen_coord.x, screen_coord.y, screen_coord.z, screen_coord.w,
-		0.0f, 0.0f, 0.0f, 1.0f, 1.0f);
+	this->GeometryLightPass->drawExtinctionCacheScreen(screen_coord);
 
 	glDisable(GL_BLEND);
 
-	skipEnvironment:
 	/* -------------------------------------- post processing -------------------------------- */
 	glDisable(GL_STENCIL_TEST);
 	//time to draw onto the main framebuffer
