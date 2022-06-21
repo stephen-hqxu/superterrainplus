@@ -5,6 +5,7 @@ STPScenePipeline.h
 STPScenePipeline.inl
 # /Environment
 Environment/STPAtmosphereSetting.h
+Environment/STPAuroraSetting.h
 Environment/STPBidirectionalScatteringSetting.h
 Environment/STPCameraSetting.h
 Environment/STPLightSetting.h

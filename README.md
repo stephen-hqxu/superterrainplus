@@ -266,6 +266,7 @@ For redistributed / adapted / derived open source projects, see *3rd-Party* dire
 ### Geometry generation
 
 - [Animated grassland generation](https://github.com/spacejack/terra)
+- [Tree Generator](http://andrewmarsh.com/software/tree3d-web/) by *Andrew Marsh*
 
 ### Photorealistic rendering
 

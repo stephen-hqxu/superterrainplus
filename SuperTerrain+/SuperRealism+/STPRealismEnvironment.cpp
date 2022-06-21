@@ -1,4 +1,5 @@
 #include <SuperRealism+/Environment/STPAtmosphereSetting.h>
+#include <SuperRealism+/Environment/STPAuroraSetting.h>
 #include <SuperRealism+/Environment/STPBidirectionalScatteringSetting.h>
 #include <SuperRealism+/Environment/STPCameraSetting.h>
 #include <SuperRealism+/Environment/STPLightSetting.h>
@@ -55,6 +56,66 @@ bool STPAtmosphereSetting::validate() const {
 		&& this->MieScatteringDirection > 0.0f
 		&& this->PrimaryRayStep > 0u
 		&& this->SecondaryRayStep > 0u;
+}
+
+//STPAuroraSetting.h
+
+STPAuroraSetting::STPTriangularNoiseSetting::STPNoiseFractalSetting::STPNoiseFractalSetting() :
+	InitialAmplitude(1.0f),
+	Persistence(1.0f),
+	Lacunarity(1.0f) {
+
+}
+
+bool STPAuroraSetting::STPTriangularNoiseSetting::STPNoiseFractalSetting::validate() const {
+	return this->InitialAmplitude > 0.0f
+		&& this->Persistence > 0.0f
+		&& this->Lacunarity > 0.0f;
+}
+
+STPAuroraSetting::STPTriangularNoiseSetting::STPTriangularNoiseSetting() :
+	MainNoise(),
+	DistortionNoise(),
+	InitialDistortionFrequency(1.0f),
+	Curvature(0.0f),
+	OctaveRotation(0.0f),
+	AnimationSpeed(1.0f),
+	Contrast(1.0f),
+	MaximumIntensity(1.0f),
+	Octave(1u) {
+
+}
+
+bool STPAuroraSetting::STPTriangularNoiseSetting::validate() const {
+	return this->MainNoise.validate()
+		&& this->DistortionNoise.validate()
+		&& this->InitialDistortionFrequency > 0.0f
+		&& this->AnimationSpeed > 0.0f
+		&& this->Contrast > 0.0f
+		&& this->MaximumIntensity > 0.0f
+		&& this->Octave > 0u;
+}
+
+STPAuroraSetting::STPAuroraSetting() :
+	Noise(),
+	AuroraPlaneHeight(1.0f),
+	AuroraPlaneProjectionBias(0.1f),
+	StepSize(0.1f),
+	AltitudeFadeStart(1.0f),
+	AltitudeFadeEnd(0.0f),
+	LuminosityMultiplier(1.0f),
+	Iteration(1u) {
+
+}
+
+bool STPAuroraSetting::validate() const {
+	return this->Noise.validate()
+		&& this->AuroraPlaneHeight > 0.0f
+		&& this->AuroraPlaneProjectionBias > 0.0f
+		&& this->StepSize > 0.0f
+		&& this->AltitudeFadeStart > this->AltitudeFadeEnd
+		&& this->LuminosityMultiplier > 0.0f
+		&& this->Iteration > 0u;
 }
 
 //STPBidirectionalScatteringSetting.h
