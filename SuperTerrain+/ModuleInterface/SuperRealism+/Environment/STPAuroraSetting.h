@@ -72,9 +72,10 @@ namespace SuperTerrainPlus::STPEnvironment {
 
 		//The main aurora noise generation function.
 		STPTriangularNoiseSetting Noise;
-		//Specifies the altitude of the aurora generated.
+		//Specifies the flatness of the aurora sphere where aurora is generated.
 		//Altitude is emulated by expanding / contracting the space in between a sphere or oval.
-		float AuroraPlaneHeight;
+		//Smaller value makes the sphere flatter, turning into a pie.
+		float AuroraSphereFlatness;
 		//A bias value used when projecting a sphere space to a plane.
 		//The bias value rotates the sphere to avoid having the plane extended to infinity at horizon, i.e., division by zero.
 		//It rotates the sphere towards negative y axis.

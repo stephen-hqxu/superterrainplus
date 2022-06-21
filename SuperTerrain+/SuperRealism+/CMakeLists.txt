@@ -24,6 +24,7 @@ Object/STPVertexArray.cpp
 # /Scene/Component
 Scene/Component/STPAlphaCulling.cpp
 Scene/Component/STPAmbientOcclusion.cpp
+Scene/Component/STPAurora.cpp
 Scene/Component/STPBidirectionalScattering.cpp
 Scene/Component/STPGaussianFilter.cpp
 Scene/Component/STPHeightfieldTerrain.cpp

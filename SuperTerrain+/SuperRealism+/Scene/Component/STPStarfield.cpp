@@ -41,8 +41,7 @@ STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSk
 }
 
 inline void STPStarfield::updateShineTime(double time) const {
-	//It is safe because the constant in the uniform function is just for semantics, it does not modify any member value.
-	const_cast<STPProgramManager&>(this->SkyboxRenderer).uniform(glProgramUniform1f, this->ShineTimeLocation, static_cast<float>(time));
+	this->SkyboxRenderer.uniform(glProgramUniform1f, this->ShineTimeLocation, static_cast<float>(time));
 }
 
 void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starfield_setting, unsigned int rng_seed) {

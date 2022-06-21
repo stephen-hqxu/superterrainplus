@@ -18,7 +18,7 @@ struct TriNoiseSetting{
 };
 
 struct AuroraSetting{
-	float Alt, stepSz, projRot;
+	float Flat, stepSz, projRot;
 	//x: the fading band length, equals to fading start - fading end
 	//y: fading end, altitude below which aurora has zero intensity
 	vec2 Fade;
@@ -61,7 +61,7 @@ void main(){
 		//The altitude contracts the dome towards the centre, i.e., a sphere to a pie.
 		//To avoid division by zero when the view direction altitude is zero, add a small bias.
 		//The bias will rotate the projection sphere.
-		const float projection_distance = (Aurora.Alt + step_count) / (rayDir.y + Aurora.projRot),
+		const float projection_distance = (Aurora.Flat + step_count) / (rayDir.y + Aurora.projRot),
 			//Don't care about altitude, aurora will fade out gradually as altitude increases, leaving a tail.
 			step_intensity = triangularNoise((projection_distance * rayDir).xz);
 

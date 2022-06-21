@@ -109,7 +109,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 	protected:
 
-		STPProgramManager SkyboxRenderer;
+		mutable STPProgramManager SkyboxRenderer;
 
 		/**
 		 * @brief Initialise the skybox renderer.

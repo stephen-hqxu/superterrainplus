@@ -37,6 +37,7 @@ Object/STPVertexArray.h
 # /Scene/Component
 Scene/Component/STPAlphaCulling.h
 Scene/Component/STPAmbientOcclusion.h
+Scene/Component/STPAurora.h
 Scene/Component/STPBidirectionalScattering.h
 Scene/Component/STPGaussianFilter.h
 Scene/Component/STPHeightfieldTerrain.h

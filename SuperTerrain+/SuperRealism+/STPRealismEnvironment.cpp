@@ -98,7 +98,7 @@ bool STPAuroraSetting::STPTriangularNoiseSetting::validate() const {
 
 STPAuroraSetting::STPAuroraSetting() :
 	Noise(),
-	AuroraPlaneHeight(1.0f),
+	AuroraSphereFlatness(1.0f),
 	AuroraPlaneProjectionBias(0.1f),
 	StepSize(0.1f),
 	AltitudeFadeStart(1.0f),
@@ -110,7 +110,7 @@ STPAuroraSetting::STPAuroraSetting() :
 
 bool STPAuroraSetting::validate() const {
 	return this->Noise.validate()
-		&& this->AuroraPlaneHeight > 0.0f
+		&& this->AuroraSphereFlatness > 0.0f
 		&& this->AuroraPlaneProjectionBias > 0.0f
 		&& this->StepSize > 0.0f
 		&& this->AltitudeFadeStart > this->AltitudeFadeEnd
