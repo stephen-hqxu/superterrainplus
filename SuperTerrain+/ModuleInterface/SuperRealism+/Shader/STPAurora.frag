@@ -51,10 +51,10 @@ void main(){
 	}
 
 	vec3 auroraColor = vec3(0.0f);
-	float step_count = 0.0f, color_uv = 0.0f;
-	//minus one to ensure the entire UV range [0.0, 1.0] is utilised.
+	float step_count = 0.0f, altitude = 0.0f;
+	//minus one to ensure the entire altitude range [0.0, 1.0] is utilised.
 	//Otherwise only [0.0, (Iter - 1) / (Iter)] is used.
-	const float color_uv_inc = 1.0f / float(Aurora.Iter - 1u);
+	const float altitude_inc = 1.0f / float(Aurora.Iter - 1u);
 	//We build the aurora using a bottom-up approach, and evaluate the noise function at each altitude step.
 	for(uint i = 0u; i < Aurora.Iter; i++){
 		//As the skybox is emulated as a dome, we want to project the aurora onto an infinite plane.
@@ -63,14 +63,15 @@ void main(){
 		//The bias will rotate the projection sphere.
 		const float projection_distance = (Aurora.Flat + step_count) / (rayDir.y + Aurora.projRot),
 			//Don't care about altitude, aurora will fade out gradually as altitude increases, leaving a tail.
-			step_intensity = triangularNoise((projection_distance * rayDir).xz);
+			//We want the intensity to decrease as the altitude increases
+			step_intensity = triangularNoise((projection_distance * rayDir).xz) * (1.0f - altitude);
 
-		//apply some colours to the aurora, based on the current step count
-		auroraColor += step_intensity * textureLod(AuroraColorSpectrum, color_uv, 0.0f).rgb;
+		//apply some colours to the aurora, based on the current altitude
+		auroraColor += step_intensity * textureLod(AuroraColorSpectrum, altitude, 0.0f).rgb;
 
 		//increment step
 		step_count += Aurora.stepSz;
-		color_uv += color_uv_inc;
+		altitude += altitude_inc;
 	}
 
 	//altitude fading, a simple linear interpolation

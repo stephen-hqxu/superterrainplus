@@ -56,6 +56,7 @@ Procedural technique is one of the most popular topics in computer graphics and 
   - [x] Aerial perspective
   - [x] Seasonal effect
   - [x] Starfield
+  - [x] Aurora
 - [x] Deferred shading
 - [ ] Post-processing
   - [x] Filmic tone mapping

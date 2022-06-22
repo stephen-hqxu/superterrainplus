@@ -2,7 +2,6 @@ set(STP_REALISM_ENGINE_INTERFACE
 STPRealismDefine.h
 STPRendererInitialiser.h
 STPScenePipeline.h
-STPScenePipeline.inl
 # /Environment
 Environment/STPAtmosphereSetting.h
 Environment/STPAuroraSetting.h

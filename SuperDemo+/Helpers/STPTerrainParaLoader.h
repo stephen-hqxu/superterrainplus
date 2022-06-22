@@ -15,6 +15,7 @@
 #include <SuperRealism+/Environment/STPWaterSetting.h>
 #include <SuperRealism+/Environment/STPBidirectionalScatteringSetting.h>
 #include <SuperRealism+/Environment/STPStarfieldSetting.h>
+#include <SuperRealism+/Environment/STPAuroraSetting.h>
 
 #include <utility>
 
@@ -69,6 +70,13 @@ namespace STPDemo {
 		 * @return Setting for starfield.
 		*/
 		SuperTerrainPlus::STPEnvironment::STPStarfieldSetting getStarfieldSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
+
+		/**
+		 * @brief Load the settings for procedural aurora rendering.
+		 * @param section The INI section.
+		 * @return Aurora setting.
+		*/
+		SuperTerrainPlus::STPEnvironment::STPAuroraSetting getAuroraSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
 
 		/**
 		 * @brief Load the settings for ambient occlusion.

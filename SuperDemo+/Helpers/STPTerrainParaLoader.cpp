@@ -143,8 +143,7 @@ pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtmosphereSetting> STPTer
 	return pair(sun, atmo);
 }
 
-STPEnvironment::STPStarfieldSetting STPTerrainParaLoader::getStarfieldSetting(
-	const SuperTerrainPlus::STPAlgorithm::STPINISectionView& section) {
+STPEnvironment::STPStarfieldSetting STPTerrainParaLoader::getStarfieldSetting(const STPINISectionView& section) {
 	STPEnvironment::STPStarfieldSetting star;
 	star.InitialLikelihood = section.at("init_likelihood").to<float>();
 	star.OctaveLikelihoodMultiplier = section.at("likelihood_mul").to<float>();
@@ -157,6 +156,37 @@ STPEnvironment::STPStarfieldSetting STPTerrainParaLoader::getStarfieldSetting(
 	star.Octave = section.at("octave").to<unsigned int>();
 
 	return star;
+}
+
+STPEnvironment::STPAuroraSetting STPTerrainParaLoader::getAuroraSetting(const STPINISectionView& section) {
+	STPEnvironment::STPAuroraSetting aurora;
+	auto& tri = aurora.Noise;
+	auto& main_fractal = tri.MainNoise, &distortion_fractal = tri.DistortionNoise;
+
+	main_fractal.InitialAmplitude = section.at("main_init_amplitude").to<float>();
+	main_fractal.Persistence = section.at("main_persistence").to<float>();
+	main_fractal.Lacunarity = section.at("main_lacunarity").to<float>();
+	distortion_fractal.InitialAmplitude = section.at("distortion_init_amplitude").to<float>();
+	distortion_fractal.Persistence = section.at("distortion_persistence").to<float>();
+	distortion_fractal.Lacunarity = section.at("distortion_lacunarity").to<float>();
+
+	tri.InitialDistortionFrequency = section.at("init_distortion_freq").to<float>();
+	tri.Curvature = section.at("curvature").to<float>();
+	tri.OctaveRotation = section.at("octave_rotation").to<float>();
+	tri.AnimationSpeed = section.at("aurora_speed").to<float>();
+	tri.Contrast = section.at("contrast").to<float>();
+	tri.MaximumIntensity = section.at("max_intensity").to<float>();
+	tri.Octave = section.at("tri_noise_octave").to<unsigned int>();
+
+	aurora.AuroraSphereFlatness = section.at("flatness").to<float>();
+	aurora.AuroraPlaneProjectionBias = section.at("projection_bias").to<float>();
+	aurora.StepSize = section.at("step_size").to<float>();
+	aurora.AltitudeFadeStart = section.at("fade_start").to<float>();
+	aurora.AltitudeFadeEnd = section.at("fade_end").to<float>();
+	aurora.LuminosityMultiplier = section.at("aurora_brightness").to<float>();
+	aurora.Iteration = section.at("aurora_iteration").to<unsigned int>();
+
+	return aurora;
 }
 
 STPEnvironment::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(const STPINISectionView& section) {

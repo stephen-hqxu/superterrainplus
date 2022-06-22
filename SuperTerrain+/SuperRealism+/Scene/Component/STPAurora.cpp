@@ -85,7 +85,7 @@ void STPAurora::setAurora(const STPEnvironment::STPAuroraSetting& aurora_setting
 		.uniform(glProgramUniform1f, "TriNoise.Spd", tri_noise.AnimationSpeed)
 		.uniform(glProgramUniform1f, "TriNoise.C", tri_noise.Contrast)
 		.uniform(glProgramUniform1f, "TriNoise.maxInt", tri_noise.MaximumIntensity)
-		.uniform(glProgramUniform1ui, "Aurora.Oct", tri_noise.Octave);
+		.uniform(glProgramUniform1ui, "TriNoise.Oct", tri_noise.Octave);
 
 	//timer reset
 	this->updateAuroraTime(0.0);

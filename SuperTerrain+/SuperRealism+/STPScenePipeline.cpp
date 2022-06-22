@@ -60,6 +60,9 @@ using std::for_each;
 
 using namespace SuperTerrainPlus::STPRealism;
 
+//Nothing can be more black than this...
+constexpr static vec4 ConstantBlackColour = vec4(vec3(0.0f), 1.0f);
+
 STPScenePipeline::STPShadingEquation::STPShadingEquation(STPShadingModel model) : Model(model) {
 
 }
@@ -440,8 +443,10 @@ private:
 	//This object updates stencil buffer to update geometries that are in the extinction zone
 	STPAlphaCulling ExtinctionStencilCuller;
 
-	//A 1-by-1 texture of black colour and user-set clear colour; can be used to draw to clear the screen.
-	STPTexture BlackColorTexture, ClearColorTexture;
+	//A 1-by-1 texture of environment clear colour; can be used to draw to clear pixels belong to environment object.
+	//If there is any environment present, the clear colour is set to black.
+	//If there is no environment object, it is set to a user-specified clear colour.
+	STPTexture ClearEnvironmentTexture;
 	STPFrameBuffer ExtinctionCullingContainer;
 	//Temporarily stores all environment colours before blended with the scene
 	STPSimpleScreenFrameBuffer ExtinctionEnvironmentCache;
@@ -480,7 +485,7 @@ public:
 		//remember 0 means no extinction whereas 1 means fully invisible
 		ExtinctionStencilCuller(STPAlphaCulling::STPCullComparator::LessEqual, 0.0f,
 			STPAlphaCulling::STPCullConnector::Or, STPAlphaCulling::STPCullComparator::Greater, 1.0f, lighting_init),
-		BlackColorTexture(GL_TEXTURE_2D), ClearColorTexture(GL_TEXTURE_2D) {
+		ClearEnvironmentTexture(GL_TEXTURE_2D) {
 		if (!shadow_filter.validate()) {
 			throw STPException::STPBadNumericRange("The shadow map filter has invalid values");
 		}
@@ -517,7 +522,7 @@ public:
 			sampler.wrap(GL_CLAMP_TO_BORDER);
 			sampler.borderColor(border);
 		};
-		setGBufferSampler(this->GSampler, vec4(vec3(0.0f), 1.0f));
+		setGBufferSampler(this->GSampler, ConstantBlackColour);
 		setGBufferSampler(this->DepthSampler, vec4(1.0f));
 
 		/* ------------------------------- initial framebuffer setup ---------------------------------- */
@@ -543,13 +548,10 @@ public:
 		this->ExtinctionCullingContainer.readBuffer(GL_NONE);
 		this->ExtinctionCullingContainer.drawBuffer(GL_NONE);
 		//pure colour texture
-		const array<STPTexture*, 2ull> pureColorTexture = { &this->BlackColorTexture, &this->ClearColorTexture };
-		for_each(pureColorTexture.cbegin(), pureColorTexture.cend(), [BlackColour = vec4(vec3(0.0f), 1.0f)](auto* tex) {
-			tex->textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGBA8, uvec3(1u));
-			tex->clearTextureImage(0, GL_RGBA, GL_FLOAT, value_ptr(BlackColour));
-			tex->filter(GL_NEAREST, GL_NEAREST);
-			tex->wrap(GL_REPEAT);
-		});
+		this->ClearEnvironmentTexture.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGBA8, uvec3(1u));
+		this->ClearEnvironmentTexture.clearTextureImage(0, GL_RGBA, GL_FLOAT, value_ptr(ConstantBlackColour));
+		this->ClearEnvironmentTexture.filter(GL_NEAREST, GL_NEAREST);
+		this->ClearEnvironmentTexture.wrap(GL_REPEAT);
 	}
 
 	STPGeometryBufferResolution(const STPGeometryBufferResolution&) = delete;
@@ -675,27 +677,20 @@ public:
 	}
 
 	/**
-	 * @brief Set the colour of clear colour texture.
+	 * @brief Set the colour of clear environment texture.
 	 * @param colour The clear colour set to.
 	*/
-	inline void setClearTextureColor(const vec4& colour) {
-		this->ClearColorTexture.clearTextureImage(0, GL_RGBA, GL_FLOAT, value_ptr(colour));
+	inline void setClearEnvironmentColor(const vec4& colour) {
+		this->ClearEnvironmentTexture.clearTextureImage(0, GL_RGBA, GL_FLOAT, value_ptr(colour));
 	}
 
 	/**
-	 * @brief Draw a screen filled with black colour. Fragment tests apply.
-	 * @param vp The location of the viewport
-	*/
-	inline void drawBlackScreen(const vec4& vp) const {
-		STPGeometryBufferResolution::drawTextureScreen(*this->BlackColorTexture, 0u, vp);
-	}
-
-	/**
-	 * @brief Draw a screen filled with user-set clear colour. Fragment tests apply.
+	 * @brief Draw a screen filled with environment clear colour. Fragment tests apply.
+	 * The colour to be cleared depends on the number of environment object presented in the scene pipeline.
 	 * @param vp The location of the viewport.
 	*/
-	inline void drawClearColorScreen(const vec4& vp) const {
-		STPGeometryBufferResolution::drawTextureScreen(*this->ClearColorTexture, 0u, vp);
+	inline void drawClearEnvironmentScreen(const vec4& vp) const {
+		STPGeometryBufferResolution::drawTextureScreen(*this->ClearEnvironmentTexture, 0u, vp);
 	}
 
 	/**
@@ -787,7 +782,7 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera,
 	GeometryShadowPass(make_unique<STPShadowPipeline>(*scene_init.ShadowFilter)),
 	GeometryLightPass(make_unique<STPGeometryBufferResolution>(
 		*this, *scene_init.ShadingModel, *scene_init.ShadowFilter, *scene_init.GeometryBufferInitialiser)), 
-	DefaultClearColor(vec4(0.0f)) {
+	DefaultClearColor(ConstantBlackColour) {
 	if (this->hasMaterialLibrary) {
 		//setup material library
 		(**mat_lib).bindBase(GL_SHADER_STORAGE_BUFFER, 2u);
@@ -812,7 +807,7 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera,
 	glBlendEquation(GL_FUNC_ADD);
 
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	this->setClearColor(vec4(vec3(0.0f), 1.0f));
+	this->setClearColor(ConstantBlackColour);
 	glClearStencil(0x00);
 	glClearDepth(1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -832,7 +827,45 @@ const STPShaderManager* STPScenePipeline::getDepthShader() const {
 	return this->GeometryShadowPass->DepthPassShader.has_value() ? &*this->GeometryShadowPass->DepthPassShader : nullptr;
 }
 
-void STPScenePipeline::addLight(STPSceneLight& light) {
+const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryUsage() const {
+	return this->SceneMemoryCurrent;
+}
+
+const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryLimit() const {
+	return this->SceneMemoryLimit;
+}
+
+void STPScenePipeline::add(STPSceneObject::STPOpaqueObject<false>& opaque) {
+	this->SceneComponent.OpaqueObjectDatabase.emplace_back(&opaque);
+}
+
+void STPScenePipeline::add(STPSceneObject::STPOpaqueObject<false>& opaque, STPSceneObject::STPOpaqueObject<true>& opaque_shadow) {
+	STPScenePipeline::STPSceneGraph& scene_graph = this->SceneComponent;
+
+	this->add(opaque);
+	scene_graph.ShadowOpaqueObject.emplace_back(&opaque_shadow);
+
+	//now configure this shadow-casting object with each depth configuration
+	for_each(scene_graph.UniqueLightSpaceSize.cbegin(), scene_graph.UniqueLightSpaceSize.cend(),
+		[&opaque_shadow, depth_shader = this->getDepthShader()]
+		(const auto depth_config) { opaque_shadow.addDepthConfiguration(depth_config, depth_shader); });
+}
+
+void STPScenePipeline::add(STPSceneObject::STPTransparentObject& transparent) {
+	this->SceneComponent.TransparentObjectDatabase.emplace_back(&transparent);
+}
+
+void STPScenePipeline::add(STPSceneObject::STPEnvironmentObject& environment) {
+	STPScenePipeline::STPSceneGraph& scene_graph = this->SceneComponent;
+
+	if (scene_graph.EnvironmentObjectDatabase.empty()) {
+		//we are going to add our first environment object, set clear colour to black.
+		this->GeometryLightPass->setClearEnvironmentColor(ConstantBlackColour);
+	}
+	scene_graph.EnvironmentObjectDatabase.emplace_back(&environment);
+}
+
+void STPScenePipeline::add(STPSceneLight& light) {
 	{
 		using LT = STPSceneLight::STPLightType;
 		//test if we still have enough memory to add a light.
@@ -866,6 +899,8 @@ void STPScenePipeline::addLight(STPSceneLight& light) {
 				shadow_obj->addDepthConfiguration(newLightSpaceCount, depth_shader);
 			}
 		}
+
+		scene_graph.ShadowLight.emplace_back(&light);
 	}
 	//add light to the lighting shader
 	this->GeometryLightPass->addLight(light);
@@ -883,19 +918,30 @@ void STPScenePipeline::addLight(STPSceneLight& light) {
 	}
 }
 
-const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryUsage() const {
-	return this->SceneMemoryCurrent;
+void STPScenePipeline::add(STPAmbientOcclusion& ambient_occlusion) {
+	this->SceneComponent.AmbientOcclusionObject = &ambient_occlusion;
 }
 
-const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryLimit() const {
-	return this->SceneMemoryLimit;
+void STPScenePipeline::add(STPBidirectionalScattering& bsdf) {
+	if (!this->hasMaterialLibrary) {
+		throw STPException::STPMemoryError("Bidirectional scattering effect requires material data, "
+			"however material library is not available in this scene pipeline instance");
+	}
+	this->SceneComponent.BSDFObject = &bsdf;
+}
+
+void STPScenePipeline::add(STPPostProcess& post_process) {
+	this->SceneComponent.PostProcessObject = &post_process;
 }
 
 void STPScenePipeline::setClearColor(vec4 color) {
 	glClearColor(color.r, color.g, color.b, color.a);
 	//update member variable
 	this->DefaultClearColor = color;
-	this->GeometryLightPass->setClearTextureColor(color);
+	if (this->SceneComponent.EnvironmentObjectDatabase.empty()) {
+		//if there is any environment object, we should maintain black clear colour
+		this->GeometryLightPass->setClearEnvironmentColor(color);
+	}
 }
 
 bool STPScenePipeline::setRepresentativeFragmentTest(bool val) {
@@ -958,13 +1004,11 @@ void STPScenePipeline::setExtinctionArea(float factor) const {
 
 template<class Env>
 inline void STPScenePipeline::drawEnvironment(const Env& env, const vec4& vp) const {
+	//clear the environment area
+	this->GeometryLightPass->drawClearEnvironmentScreen(vp);
 	if (env.empty()) {
-		//clear the environment to a user-set value
-		this->GeometryLightPass->drawClearColorScreen(vp);
 		return;
 	}
-	//clear the environment area
-	this->GeometryLightPass->drawBlackScreen(vp);
 
 	glEnable(GL_BLEND);
 	//we want to sum all environment colours up while multiplying each colour by a visibility factor

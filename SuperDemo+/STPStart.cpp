@@ -17,6 +17,7 @@
 #include <SuperRealism+/Scene/Component/STPHeightfieldTerrain.h>
 #include <SuperRealism+/Scene/Component/STPSun.h>
 #include <SuperRealism+/Scene/Component/STPStarfield.h>
+#include <SuperRealism+/Scene/Component/STPAurora.h>
 #include <SuperRealism+/Scene/Component/STPWater.h>
 #include <SuperRealism+/Scene/Component/STPAmbientOcclusion.h>
 #include <SuperRealism+/Scene/Component/STPBidirectionalScattering.h>
@@ -98,6 +99,7 @@ namespace STPStart {
 		//Object
 		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPStarfield> StarfieldRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPAurora> AuroraRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>> TerrainRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPWater> WaterRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPAmbientOcclusion> AOEffect;
@@ -320,6 +322,35 @@ namespace STPStart {
 				this->StarfieldRenderer->setStarfield(starfield_setting, static_cast<unsigned int>(this->getNextSeed()));
 				this->RenderPipeline->add(*this->StarfieldRenderer);
 			}
+			{
+				//aurora
+				const STPEnvironment::STPAuroraSetting aurora_setting =
+					STPTerrainParaLoader::getAuroraSetting(this->engineINI.at("Night"));
+
+				using glm::u8vec3;
+				//generate the colour spectrum for aurora
+				STPLightSpectrum aurora_spec(10u, GL_SRGB8);
+				STPLightSpectrum::STPColourArray<u8vec3> aurora_colour;
+				aurora_colour.reserve(10u);
+
+				//main body colour
+				constexpr static u8vec3 baseColA = u8vec3(25u, 79u, 60u), baseColB = u8vec3(91u, 255u, 190u);
+				//transition colour
+				constexpr static u8vec3 transColA = u8vec3(99u, 196u, 182u);
+				//tail colour
+				constexpr static u8vec3 tailColA = u8vec3(109u, 145u, 167u), tailColB = u8vec3(90u, 100u, 129u);
+				aurora_colour.insert(aurora_colour.end(), 1u, baseColA);
+				aurora_colour.insert(aurora_colour.end(), 4u, baseColB);
+				aurora_colour.insert(aurora_colour.end(), 1u, transColA);
+				aurora_colour.insert(aurora_colour.end(), 2u, tailColA);
+				aurora_colour.insert(aurora_colour.end(), 2u, tailColB);
+
+				aurora_spec.setData(aurora_colour);
+
+				this->AuroraRenderer.emplace(std::move(aurora_spec), skybox_renderer_init);
+				this->AuroraRenderer->setAurora(aurora_setting);
+				this->RenderPipeline->add(*this->AuroraRenderer);
+			}
 
 			//setup solid object
 			//-------------------------------------------
@@ -339,7 +370,7 @@ namespace STPStart {
 				DepthTessSetting.MaxTessLevel *= 0.5f;
 
 				this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_opt);
-				this->RenderPipeline->add(*this->TerrainRenderer);
+				this->RenderPipeline->add(*this->TerrainRenderer, *this->TerrainRenderer);
 				//initial setup
 				this->TerrainRenderer->setMesh(mesh_setting);
 				this->TerrainRenderer->setDepthMeshQuality(DepthTessSetting);
@@ -461,6 +492,7 @@ namespace STPStart {
 				//update night status.
 				this->Nightlight->setSpectrumCoordinate(nightLum);
 				this->StarfieldRenderer->EnvironmentVisibility = nightLum;
+				this->AuroraRenderer->EnvironmentVisibility = nightLum;
 			}
 
 			//render, all async operations are sync automatically

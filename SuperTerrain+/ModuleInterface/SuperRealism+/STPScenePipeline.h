@@ -253,13 +253,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The pointer to the depth shader. Null pointer is returned if depth shader is unused.
 		*/
 		const STPShaderManager* getDepthShader() const;
-		
-		/**
-		 * @brief Add a light to the scene pipeline.
-		 * Exception is thrown if the scene pipeline has no more memory to hold more lights.
-		 * @param light The pointer to the light that should be added.
-		*/
-		void addLight(STPSceneLight&);
 
 		/**
 		 * @brief Draw the environment.
@@ -339,14 +332,19 @@ namespace SuperTerrainPlus::STPRealism {
 		const STPSceneShaderCapacity& getMemoryLimit() const;
 
 		/**
-		 * @brief Add a rendering component to the scene pipeline.
-		 * @tparam Obj The type of the object.
+		 * @brief Add a scene object to the scene pipeline.
 		 * @param object The pointer to the object to be added.
 		 * The pointer is retained by the scene pipeline; unless the pipeline is destroyed or object is removed from it,
 		 * the lifetime of this object should remain.
 		*/
-		template<class Obj>
-		void add(Obj&);
+		void add(STPSceneObject::STPOpaqueObject<false>&);
+		void add(STPSceneObject::STPOpaqueObject<false>&, STPSceneObject::STPOpaqueObject<true>&);
+		void add(STPSceneObject::STPTransparentObject&);
+		void add(STPSceneObject::STPEnvironmentObject&);
+		void add(STPSceneLight&);
+		void add(STPAmbientOcclusion&);
+		void add(STPBidirectionalScattering&);
+		void add(STPPostProcess&);
 
 		/**
 		 * @brief Specify clear values for the colour buffers.
@@ -469,5 +467,4 @@ template<> struct STP_REALISM_API STPScenePipeline::STPShadowMapFilterKernel<STP
 #undef SHADOW_MAP_FILTER_DEF
 
 }
-#include "STPScenePipeline.inl"
 #endif//_STP_SCENE_PIPELINE_H_
