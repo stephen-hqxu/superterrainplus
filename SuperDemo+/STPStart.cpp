@@ -290,7 +290,7 @@ namespace STPStart {
 				this->RenderPipeline->add(*this->Sunlight);
 
 				//night-light
-				STPLightSpectrum nightlight_spec(3u, GL_RGB8);
+				STPLightSpectrum nightlight_spec(3u, GL_SRGB8);
 				nightlight_spec.setData(STPLightSpectrum::STPColourArray<glm::u8vec3> {
 					{  0u, 0u, 0u },
 					{ 29u, 56u,	97u },
@@ -305,7 +305,7 @@ namespace STPStart {
 				const STPEnvironment::STPStarfieldSetting starfield_setting =
 					STPTerrainParaLoader::getStarfieldSetting(this->engineINI.at("Night"));
 
-				STPLightSpectrum starfield_spec(4u, GL_RGB8);
+				STPLightSpectrum starfield_spec(4u, GL_SRGB8);
 				starfield_spec.setData(STPLightSpectrum::STPColourArray<glm::u8vec3> {
 					{ 129u, 194u, 235u },
 					{ 232u, 169u, 146u },
@@ -440,6 +440,9 @@ namespace STPStart {
 			light_directional.SpecularStrength = 6.5f;
 			this->Skylight->setAmbient(light_ambient);
 			this->Sunlight->setDirectional(light_directional);
+			//trigger an initial rendering to the shadow map to avoid reading garbage data
+			//if the rendering loop starts at night when sunlight has zero intensity
+			this->Sunlight->setLightDirection(this->SunRenderer->sunDirection());
 			light_ambient.AmbientStrength = 0.15f;
 			this->Nightlight->setAmbient(light_ambient);
 
@@ -479,17 +482,24 @@ namespace STPStart {
 				const double update_delta = timeGain * LightUpdateFrequency;
 				this->FrametimeRemainer -= update_delta;
 
+				const float sun_specUV = this->SunRenderer->spectrumCoordinate(),
+					//from experiments scattering is not visible when spectrum coordinate is below this value under the current setting
+					sun_visibility = glm::smoothstep(-0.03f, 0.0f, sun_specUV);
+
 				//change the sun position
+				this->SunRenderer->EnvironmentVisibility = sun_visibility;
 				this->SunRenderer->advanceTime(update_delta);
 				const vec3 sunDir = this->SunRenderer->sunDirection();
-				const float nightLum = 1.0f - glm::smoothstep(-0.1f, 0.03f, sunDir.y);
+				const float nightLum = 1.0f - glm::smoothstep(-0.03f, 0.03f, sunDir.y);
 
-				const float sun_specUV =  this->SunRenderer->spectrumCoordinate();
-				//update light status.
+				//update light status
 				this->Skylight->setSpectrumCoordinate(sun_specUV);
+				//setting light direction triggers an update to the shadow map
+				//so do not update shadow map if intensity of the sun is zero, e.g., at night
+				this->Sunlight->STPSceneLight::getLightShadow()->ShadowMapUpdateMask = sun_visibility > 0.0f;
 				this->Sunlight->setSpectrumCoordinate(sun_specUV);
 				this->Sunlight->setLightDirection(sunDir);
-				//update night status.
+				//update night status
 				this->Nightlight->setSpectrumCoordinate(nightLum);
 				this->StarfieldRenderer->EnvironmentVisibility = nightLum;
 				this->AuroraRenderer->EnvironmentVisibility = nightLum;

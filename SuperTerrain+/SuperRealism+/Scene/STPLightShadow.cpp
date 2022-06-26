@@ -13,7 +13,8 @@ using glm::vec4;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPLightShadow::STPLightShadow(unsigned int resolution, STPShadowMapFormat format) : ShadowMapFormat(format), ShadowMapResolution(resolution) {
+STPLightShadow::STPLightShadow(unsigned int resolution, STPShadowMapFormat format) :
+	ShadowMapFormat(format), ShadowMapResolution(resolution), ShadowMapShouldUpdate(true), ShadowMapUpdateMask(true) {
 	if (this->ShadowMapResolution == 0u) {
 		throw STPException::STPBadNumericRange("The resolution of the shadow map should be a positive integer");
 	}

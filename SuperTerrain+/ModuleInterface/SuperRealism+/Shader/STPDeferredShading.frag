@@ -113,21 +113,22 @@ uniform float ExtinctionBand;
 
 //Calculate light colour for the current fragment position
 vec3 calcAmbientLight(float, AmbientLight* restrict);
-vec3 calcDirectionalLight(vec3, vec3, float, DirectionalLight* restrict);
+vec3 calcDirectionalLight(vec3, vec3, vec3, float, DirectionalLight* restrict);
 //This function returns the light intensity multiplier in the range [0.0, 1.0], with 0.0 means no light and 1.0 means full light.
 float sampleShadow(vec3, float, DirectionalShadow* restrict);
 
 void main(){
-	const float fragment_depth = textureLod(G_DEPTH, FragTexCoord, 0).r;
+	const float fragment_depth = textureLod(G_DEPTH, FragTexCoord, 0.0f).r;
 	//recover world position
 	const vec3 position_world = fragDepthReconstruction(fragment_depth, FragTexCoord),
-		normal_world = normalize(textureLod(G_NORMAL, FragTexCoord, 0).rgb);
+		normal_world = normalize(textureLod(G_NORMAL, FragTexCoord, 0.0f).rgb);
 	//get material data from the G-buffer
-	const vec3 Albedo = textureLod(G_ALBEDO, FragTexCoord, 0).rgb;
-	const float Roughness = textureLod(G_ROUGHNESS, FragTexCoord, 0).r,
-		Ambient = textureLod(G_AO, FragTexCoord, 0).r;
-	vec3 LightColor = vec3(0.0f);
+	const vec3 Albedo = textureLod(G_ALBEDO, FragTexCoord, 0.0f).rgb;
+	const float Roughness = textureLod(G_ROUGHNESS, FragTexCoord, 0.0f).r,
+		Ambient = textureLod(G_AO, FragTexCoord, 0.0f).r;
 
+	const vec3 viewDirection = normalize(Camera.Position - position_world);
+	vec3 LightColor = vec3(0.0f);
 	//For non-PBR rendering equation, a simple linear function can be used.
 	//For PBR rendering equation, well just, implement the equation.
 #if SHADING_MODEL == 0
@@ -141,7 +142,7 @@ void main(){
 	}
 	//directional light pass
 	for(int i = 0; i < DirCount; i++){
-		LightColor += calcDirectionalLight(position_world, normal_world, Shininess, DirectionalLightList[i]);
+		LightColor += calcDirectionalLight(position_world, viewDirection, normal_world, Shininess, DirectionalLightList[i]);
 	}
 	
 	//extinction calculation, making the transition to camera far clipping plane smooth instead of having a strong cut
@@ -156,21 +157,20 @@ void main(){
 }
 
 vec3 calcAmbientLight(float ambient_strength, AmbientLight* restrict amb_light){
-	const vec3 indirect_color = textureLod(amb_light->AmbSpec, amb_light->SpecCoord, 0).rgb;
+	const vec3 indirect_color = textureLod(amb_light->AmbSpec, amb_light->SpecCoord, 0.0f).rgb;
 	const float ambient = ambient_strength * amb_light->Ka;
 
 	return indirect_color * ambient;
 }
 
-vec3 calcDirectionalLight(vec3 position_world, vec3 normal, float shininess, DirectionalLight* restrict dir_light){
-	const vec3 direct_color = textureLod(dir_light->DirSpec, dir_light->SpecCoord, 0).rgb;
+vec3 calcDirectionalLight(vec3 position_world, vec3 view_direction, vec3 normal, float shininess, DirectionalLight* restrict dir_light){
+	const vec3 direct_color = textureLod(dir_light->DirSpec, dir_light->SpecCoord, 0.0f).rgb;
 
 	//diffuse
 	const vec3 lightDir = normalize(dir_light->Dir);
 	const float diffuse = dir_light->Kd * max(dot(lightDir, normal), 0.0f);
 	//specular
-	const vec3 viewDir = normalize(Camera.Position - position_world),
-		halfwayDir = normalize(lightDir + viewDir);
+	const vec3 halfwayDir = normalize(lightDir + view_direction);
 	const float specular = dir_light->Ks * pow(max(dot(normal, halfwayDir), 0.0f), shininess);
 	
 	float light_intensity = 1.0f;
@@ -204,7 +204,7 @@ float filterShadow(SHADOW_MAP_FORMAT shadow_map, vec2 projection_coord, float fr
 	float intensity = 0.0f;
 	for(int i = -radius; i <= radius; i++){
 		for(int j = -radius; j <= radius; j++){
-			intensity += textureLod(shadow_map, vec4(projection_coord + pcf_sampling_texel * vec2(i, j), layer, frag_depth), 0).r;
+			intensity += textureLod(shadow_map, vec4(projection_coord + pcf_sampling_texel * vec2(i, j), layer, frag_depth), 0.0f).r;
 		}
 	}
 
@@ -228,7 +228,7 @@ float filterShadow(SHADOW_MAP_FORMAT shadow_map, vec2 projection_coord, float fr
 	return max_probability;
 #else
 	//no filter, nearest and linear filtering are done by hardware automatically
-	return textureLod(shadow_map, vec4(projection_coord, layer, frag_depth), 0).r;
+	return textureLod(shadow_map, vec4(projection_coord, layer, frag_depth), 0.0f).r;
 #endif
 }
 

@@ -66,9 +66,6 @@ namespace SuperTerrainPlus::STPRealism {
 		//Memory to where light space matrices should be stored
 		glm::mat4* LightSpaceMatrix;
 
-		//A flag to indicate if light space matrices need to be recalculated
-		bool LightSpaceOutdated;
-
 		/**
 		 * @brief Calculate the light space matrix for a particular view frustum.
 		 * @param near The near plane.
@@ -77,6 +74,12 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The light space view matrix.
 		*/
 		glm::mat4 calcLightSpace(double, double, const STPMatrix4x4d&) const;
+
+		/**
+		 * @brief Trigger a shadow map update due to automatic shadow map update mechanism.
+		 * The update is affected by the mask.
+		*/
+		void requireShadowMapUpdate();
 
 		/**
 		 * @brief Calculate the light space view matrices for all divisions of view frustum and store them into mapped light buffer.
@@ -130,8 +133,6 @@ namespace SuperTerrainPlus::STPRealism {
 		size_t lightSpaceDimension() const override;
 
 		STPOpenGL::STPuint64 lightSpaceMatrixAddress() const override;
-
-		void forceLightSpaceUpdate() override;
 
 	};
 

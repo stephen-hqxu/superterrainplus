@@ -72,6 +72,12 @@ namespace SuperTerrainPlus::STPRealism {
 		//The shadow map is required to be a square such that this represents the extent length.
 		const unsigned int ShadowMapResolution;
 
+		//A flag to indicate if light space matrices need to be recalculated and shadow map should be updated.
+		//It can be set manually to trigger a force update, or it will be set by the engine automatically whenever applicable.
+		bool ShadowMapShouldUpdate;
+		//A mask to prevent any automatically-triggered shadow map update, if set to false.
+		bool ShadowMapUpdateMask;
+
 		/**
 		 * @brief Init a light shadow instance.
 		 * @param resolution The resolution of the shadow map. Specifically this should specify the extent length of the shadow map.
@@ -111,11 +117,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The address to the light space matrix in the shadow data buffer.
 		*/
 		virtual STPOpenGL::STPuint64 lightSpaceMatrixAddress() const = 0;
-
-		/**
-		 * @brief Trigger a force update to the light space information.
-		*/
-		virtual void forceLightSpaceUpdate() = 0;
 
 		/**
 		 * @brief Set the texture used to capture scene depth information.

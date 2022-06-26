@@ -57,6 +57,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Set the light direction.
+		 * If directional light shadow is enabled, this will also trigger an update
+		 * and re-render the shadow map on the nest rendering loop.
 		 * @param dir The light direction to be set.
 		*/
 		void setLightDirection(const glm::vec3&);

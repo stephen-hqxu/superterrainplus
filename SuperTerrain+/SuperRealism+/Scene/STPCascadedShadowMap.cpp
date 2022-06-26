@@ -48,8 +48,7 @@ public:
 };
 
 STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLightFrustum& light_frustum) :
-	STPLightShadow(resolution, STPShadowMapFormat::Array), 
-	LightDirection(vec3(0.0f)), LightFrustum(light_frustum), LightSpaceOutdated(true) {
+	STPLightShadow(resolution, STPShadowMapFormat::Array), LightDirection(vec3(0.0f)), LightFrustum(light_frustum) {
 	const auto& [div, band_radius, focus_camera, distance_mul] = this->LightFrustum;
 	if (distance_mul < 1.0f) {
 		throw STPException::STPBadNumericRange("A less-than-one shadow distance is not able to cover the view frustum");
@@ -112,7 +111,7 @@ using std::move;
 
 STPCascadedShadowMap::STPCascadedShadowMap(STPCascadedShadowMap&& csm) noexcept : 
 	STPLightShadow(move(csm)), LightDirection(csm.LightDirection), LightFrustum(csm.LightFrustum), 
-	LightSpaceMatrix(csm.LightSpaceMatrix), LightSpaceOutdated(csm.LightSpaceOutdated) {
+	LightSpaceMatrix(csm.LightSpaceMatrix) {
 	//register the new listener
 	this->LightFrustum.Focus->registerListener(this);
 }
@@ -231,19 +230,30 @@ void STPCascadedShadowMap::calcAllLightSpace(mat4* light_space) const {
 	}
 }
 
+inline void STPCascadedShadowMap::requireShadowMapUpdate() {
+	if (!this->ShadowMapUpdateMask) {
+		//don't modify the update status if the mask if false, i.e., don't trigger automatic update
+		return;
+	}
+	//don't do this:
+	//* should_update = true && mask;
+	//because it will overwrite the existing flag, if the flag is set manually by user via force update.
+	this->ShadowMapShouldUpdate = true;
+}
+
 void STPCascadedShadowMap::onMove(const STPCamera&) {
 	//view matrix changes
-	this->LightSpaceOutdated = true;
+	this->requireShadowMapUpdate();
 }
 
 void STPCascadedShadowMap::onRotate(const STPCamera&) {
 	//view matrix also changes
-	this->LightSpaceOutdated = true;
+	this->requireShadowMapUpdate();
 }
 
 void STPCascadedShadowMap::onReshape(const STPCamera&) {
 	//projection matrix changes
-	this->LightSpaceOutdated = true;
+	this->requireShadowMapUpdate();
 }
 
 void STPCascadedShadowMap::updateShadowMapHandle(STPOpenGL::STPuint64 handle) {
@@ -253,7 +263,7 @@ void STPCascadedShadowMap::updateShadowMapHandle(STPOpenGL::STPuint64 handle) {
 
 void STPCascadedShadowMap::setDirection(const vec3& dir) {
 	this->LightDirection = dir;
-	this->LightSpaceOutdated = true;
+	this->requireShadowMapUpdate();
 }
 
 const vec3& STPCascadedShadowMap::getDirection() const {
@@ -261,11 +271,11 @@ const vec3& STPCascadedShadowMap::getDirection() const {
 }
 
 bool STPCascadedShadowMap::updateLightSpace() {
-	if (this->LightSpaceOutdated) {
+	if (this->ShadowMapShouldUpdate) {
 		//need to also update light space matrix if shadow has been turned on for this light
 		this->calcAllLightSpace(this->LightSpaceMatrix);
 
-		this->LightSpaceOutdated = false;
+		this->ShadowMapShouldUpdate = false;
 		return true;
 	}
 	return false;
@@ -277,8 +287,4 @@ inline size_t STPCascadedShadowMap::lightSpaceDimension() const {
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPCascadedShadowMap::lightSpaceMatrixAddress() const {
 	return *this->ShadowDataAddress + sizeof(STPPackedCSMBufferHeader);
-}
-
-void STPCascadedShadowMap::forceLightSpaceUpdate() {
-	this->LightSpaceOutdated = true;
 }
