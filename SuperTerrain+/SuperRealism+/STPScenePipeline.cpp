@@ -38,9 +38,9 @@
 
 using glm::uvec2;
 using glm::vec2;
+using glm::dvec2;
 using glm::uvec3;
 using glm::vec3;
-using glm::dvec3;
 using glm::ivec4;
 using glm::uvec4;
 using glm::vec4;
@@ -127,7 +127,7 @@ private:
 
 		mat4 P, InvP, PVr, PV, InvPV;
 
-		vec3 LDFac;
+		vec2 LDFac;
 		float Far;
 		//use uint because GL uses 32-bit for boolean
 		unsigned int Ortho;
@@ -147,8 +147,8 @@ private:
 		&& offsetof(STPPackedCameraBuffer, InvPV) == 384
 
 		&& offsetof(STPPackedCameraBuffer, LDFac) == 448
-		&& offsetof(STPPackedCameraBuffer, Far) == 460
-		&& offsetof(STPPackedCameraBuffer, Ortho) == 464,
+		&& offsetof(STPPackedCameraBuffer, Far) == 456
+		&& offsetof(STPPackedCameraBuffer, Ortho) == 460,
 	"The alignment of camera buffer does not obey std430 packing rule");
 
 public:
@@ -180,9 +180,8 @@ public:
 		const STPEnvironment::STPCameraSetting& camSet = this->Camera.cameraStatus();
 		const double Cnear = camSet.Near, Cfar = camSet.Far;
 
-		this->MappedBuffer->LDFac = static_cast<vec3>(dvec3(
-			2.0 * Cfar * Cnear,
-			Cfar + Cnear,
+		this->MappedBuffer->LDFac = static_cast<vec2>(dvec2(
+			Cfar * Cnear,
 			Cfar - Cnear
 		));
 		this->MappedBuffer->Far = static_cast<float>(Cfar);
@@ -392,7 +391,7 @@ public:
 			shadow_instance.captureDepth();
 			//clear old values
 			if (this->isVSMDerived) {
-				shadow_instance.clearShadowMapColor(vec4(1.0f));
+				shadow_instance.clearShadowMapColor();
 			} else {
 				glClear(GL_DEPTH_BUFFER_BIT);
 			}
@@ -517,13 +516,13 @@ public:
 		this->initScreenRenderer(deffered_shader, lighting_init);
 
 		/* ------------------------------- setup G-buffer sampler ------------------------------------- */
-		auto setGBufferSampler = [](STPSampler& sampler, const auto& border) -> void {
+		auto setGBufferSampler = [](STPSampler& sampler) -> void {
 			sampler.filter(GL_NEAREST, GL_NEAREST);
 			sampler.wrap(GL_CLAMP_TO_BORDER);
-			sampler.borderColor(border);
+			sampler.borderColor(ConstantBlackColour);
 		};
-		setGBufferSampler(this->GSampler, ConstantBlackColour);
-		setGBufferSampler(this->DepthSampler, vec4(1.0f));
+		setGBufferSampler(this->GSampler);
+		setGBufferSampler(this->DepthSampler);
 
 		/* ------------------------------- initial framebuffer setup ---------------------------------- */
 		this->GeometryContainer.drawBuffers({
@@ -788,11 +787,14 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera,
 		(**mat_lib).bindBase(GL_SHADER_STORAGE_BUFFER, 2u);
 	}
 
+	//we want to use reversed depth buffer, which is more suitable for DirectX clip volume.
+	glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+
 	//Multi-sampling is unnecessary in deferred shading
 	glDisable(GL_MULTISAMPLE);
 	//set up initial GL context states
 	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
+	glDepthFunc(GL_GREATER);
 	glDepthMask(GL_TRUE);
 
 	glDisable(GL_STENCIL_TEST);
@@ -809,7 +811,7 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera,
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	this->setClearColor(ConstantBlackColour);
 	glClearStencil(0x00);
-	glClearDepth(1.0);
+	glClearDepth(0.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 	//tessellation settings

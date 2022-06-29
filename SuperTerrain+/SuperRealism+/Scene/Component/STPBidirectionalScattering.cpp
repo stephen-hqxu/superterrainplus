@@ -38,8 +38,9 @@ STPBidirectionalScattering::STPBidirectionalScattering(const STPScreenInitialise
 		sampler.borderColor(border);
 		sampler.filter(GL_NEAREST, GL_NEAREST);
 	};
-	setSampler(this->RawSceneColorCopier.ScreenColorSampler, vec4(vec3(0.0f), 1.0f));
-	setSampler(this->RawSceneDepthCopier.ScreenColorSampler, vec4(1.0f));
+	constexpr static vec4 BlackColour = vec4(vec3(0.0f), 1.0f);
+	setSampler(this->RawSceneColorCopier.ScreenColorSampler, BlackColour);
+	setSampler(this->RawSceneDepthCopier.ScreenColorSampler, BlackColour);
 	//make the default normal to be facing the camera
 	setSampler(this->NormalSampler, vec4(vec2(0.0f), vec2(1.0f)));
 	setSampler(this->MaterialSampler, uvec4(0u));
@@ -79,10 +80,10 @@ void STPBidirectionalScattering::copyScene(const STPTexture& color, const STPTex
 	//experiment shows copy by draw command yields the best performance
 	//copy colour
 	this->RawSceneColorCopier.capture();
-	glDrawTextureNV(*color, *this->RawSceneColorCopier.ScreenColorSampler, 0.0f, 0.0f, dim.x, dim.y, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
+	glDrawTextureNV(*color, *this->RawSceneColorCopier.ScreenColorSampler, 0.0f, 0.0f, dim.x, dim.y, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f);
 	//copy depth
 	this->RawSceneDepthCopier.capture();
-	glDrawTextureNV(*depth, *this->RawSceneDepthCopier.ScreenColorSampler, 0.0f, 0.0f, dim.x, dim.y, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
+	glDrawTextureNV(*depth, *this->RawSceneDepthCopier.ScreenColorSampler, 0.0f, 0.0f, dim.x, dim.y, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f);
 
 	//reset framebuffer binding point
 	STPFrameBuffer::unbind(GL_FRAMEBUFFER);

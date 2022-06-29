@@ -35,13 +35,13 @@ float getLinearDepthAt(vec2);
 
 void main(){
 	//find the material for the current fragment
-	const unsigned int object_mat_id = textureLod(ObjectMaterial, FragTexCoord, 0).r;
+	const unsigned int object_mat_id = textureLod(ObjectMaterial, FragTexCoord, 0.0f).r;
 	const STPMaterialProperty object_mat = Material[object_mat_id];
-	const float object_depth = textureLod(ObjectDepth, FragTexCoord, 0).r;
+	const float object_depth = textureLod(ObjectDepth, FragTexCoord, 0.0f).r;
 	
 	//get the raw inputs
 	const vec3 position_view = fragDepthReconstruction(object_depth, FragTexCoord),
-		normal_view = normalize(Camera.ViewNormal * textureLod(ObjectNormal, FragTexCoord, 0).rgb),
+		normal_view = normalize(Camera.ViewNormal * textureLod(ObjectNormal, FragTexCoord, 0.0f).rgb),
 		//calculate reflection vector from input
 		incident_direction = normalize(position_view),
 		reflection_direction = normalize(reflect(incident_direction, normal_view)),
@@ -59,7 +59,7 @@ void main(){
 	const vec3 fresnelColor = mix(reflection_color, refraction_color, clamp(refractiveFactor, 0.0f, 1.0f));
 
 	//make the object more transparent at lower depth
-	FragColor = vec4(mix(refraction_color, fresnelColor, displayOpacity), displayOpacity);
+	FragColor = vec4(mix(textureLod(SceneColor, FragTexCoord, 0.0f).rgb, fresnelColor, displayOpacity), displayOpacity);
 }
 
 //compare the current sample depth with the actual depth on the depth buffer
@@ -137,9 +137,9 @@ vec3 findClosestHitColor(vec3 ray_origin, vec3 ray_dir, mat4x2 proj_xy){
 	}
 
 	//read the colour value at this point
-	return textureLod(SceneColor, closestHit, 0).rgb;
+	return textureLod(SceneColor, closestHit, 0.0f).rgb;
 }
 
 float getLinearDepthAt(vec2 uv){
-	return lineariseDepth(textureLod(SceneDepth, uv, 0).r);
+	return lineariseDepth(textureLod(SceneDepth, uv, 0.0f).r);
 }

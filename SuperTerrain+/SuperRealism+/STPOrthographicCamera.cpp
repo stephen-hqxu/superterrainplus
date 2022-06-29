@@ -24,13 +24,14 @@ STPOrthographicCamera::STPOrthographicCamera
 
 const STPMatrix4x4d& STPOrthographicCamera::ortho() const {
 	if (this->ProjectionOutdated) {
-		alignas(STPMatrix4x4d) const dmat4 projection_data = glm::ortho(
+		//similar to perspective projection, flip near and far plane
+		alignas(STPMatrix4x4d) const dmat4 projection_data = glm::orthoRH_ZO(
 			this->Frustum.Left, 
 			this->Frustum.Right, 
 			this->Frustum.Bottom, 
 			this->Frustum.Top,
-			this->Camera.Near,
-			this->Camera.Far
+			this->Camera.Far,
+			this->Camera.Near
 		);
 		this->OrthographicProjection = STPMatrix4x4d(projection_data);
 		this->ProjectionOutdated = false;
@@ -44,13 +45,13 @@ const STPMatrix4x4d& STPOrthographicCamera::projection() const {
 }
 
 STPMatrix4x4d STPOrthographicCamera::projection(double near, double far) const {
-	alignas(STPMatrix4x4d) const dmat4 projection_data = glm::ortho(
+	alignas(STPMatrix4x4d) const dmat4 projection_data = glm::orthoRH_ZO(
 		this->Frustum.Left,
 		this->Frustum.Right,
 		this->Frustum.Bottom,
 		this->Frustum.Top,
-		near,
-		far
+		far,
+		near
 	);
 	return STPMatrix4x4d(projection_data);
 }

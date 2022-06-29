@@ -212,8 +212,8 @@ float filterShadow(SHADOW_MAP_FORMAT shadow_map, vec2 projection_coord, float fr
 #elif LIGHT_SHADOW_FILTER == 16
 	//Variance Shadow Map
 	const vec2 moment = texture(shadow_map, vec3(projection_coord, layer)).rg;
-	//one tail inequality is only valid if current depth > moment.x
-	if(frag_depth <= moment.x){
+	//one tail inequality is only valid if current depth < moment.x, because of reversed depth
+	if(frag_depth >= moment.x){
 		return 1.0f;
 	}
 
@@ -236,7 +236,10 @@ vec3 determineShadowCoord(vec4 worldPos, mat4* restrict light_space){
 	//convert world position to light clip space
 	const vec4 fraglightPos = *light_space * worldPos;
 	//perform perspective division and transform to [0, 1] range
-	return (fraglightPos.xyz / fraglightPos.w) * 0.5f + 0.5f;
+	vec3 fragShadowCoord = (fraglightPos.xyz / fraglightPos.w);
+	//depth is already in [0, 1] because the projection definition uses DirectX convention
+	fragShadowCoord.xy = fragShadowCoord.xy * 0.5f + 0.5f;
+	return fragShadowCoord;
 }
 
 vec2 determineLayerFarBias(uint layer, uint cascadeCount, float* restrict div, float original_bias){
@@ -268,7 +271,7 @@ float sampleShadow(vec3 world_position, float rawBias, DirectionalShadow* restri
 
 	const vec3 projCoord = determineShadowCoord(fragworldPos, dir_shadow->LightMatrix + layer);
 	const float currentDepth = projCoord.z;
-	if (currentDepth > 1.0f) {
+	if (currentDepth < 0.0f) {
 		//keep the light intensity at 0.0 when outside the far plane region of the light's frustum.
 		return 1.0f;
 	}
@@ -285,8 +288,9 @@ float sampleShadow(vec3 world_position, float rawBias, DirectionalShadow* restri
 		//by scaling the shadow texel, we can configure the step size within a filter kernel
 		filter_texel = Filter.Ks * shadowTexel;
 #endif
-
-	const float light_intensity = filterShadow(dir_shadow->CascadedShadowMap, projCoord.xy, currentDepth - layerBias, layer
+	
+	//the bias moves the fragment towards the light slightly, and in reversed depth buffer, closer is bigger, so use addition
+	const float light_intensity = filterShadow(dir_shadow->CascadedShadowMap, projCoord.xy, currentDepth + layerBias, layer
 #ifdef USE_PCF_FILTER
 		, filter_texel, totalKernel_sq_inv
 #endif
@@ -304,7 +308,7 @@ float sampleShadow(vec3 world_position, float rawBias, DirectionalShadow* restri
 		//now repeat all previous calculations for this new layer
 		const vec3 blendProjCoord = determineShadowCoord(fragworldPos, dir_shadow->LightMatrix + nextLayer);
 		const float blendDepth = blendProjCoord.z;
-		if(blendDepth > 1.0f){
+		if(blendDepth < 0.0f){
 			//if the blending layer is outside, simply abort blending
 			return light_intensity;
 		}
@@ -314,7 +318,7 @@ float sampleShadow(vec3 world_position, float rawBias, DirectionalShadow* restri
 		const float blendBias = blendLayerFarBias.y;
 
 		//apply filter as usual
-		const float blend_light_intensity = filterShadow(dir_shadow->CascadedShadowMap, blendProjCoord.xy, blendDepth - blendBias, nextLayer
+		const float blend_light_intensity = filterShadow(dir_shadow->CascadedShadowMap, blendProjCoord.xy, blendDepth + blendBias, nextLayer
 #ifdef USE_PCF_FILTER
 			, filter_texel, totalKernel_sq_inv
 #endif

@@ -9,3 +9,7 @@ All historical release notes are exported and can be found in [Changelog](https:
 **STPDiversity**
 
 - [*Texture Definition Language* specification](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/tdl-specification.md)
+
+**STPRealism**
+
+- [Reversed depth buffer](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/reversed-depth-buffer.md)

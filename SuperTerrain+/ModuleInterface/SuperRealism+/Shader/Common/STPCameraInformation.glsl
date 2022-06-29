@@ -14,12 +14,12 @@ layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 	layout(offset = 384) mat4 InvProjectionView;
 
 	//Camera properties
-	layout(offset = 448) vec3 LinearDepthFactor;
-	layout(offset = 460) float Far;
+	layout(offset = 448) vec2 LinearDepthFactor;
+	layout(offset = 456) float Far;
 	//Of course we can check type of projection by examining the projection matrix, 
 	//for example projection is orthographic if and only if Projection[3][3] == 1.0f.
 	//It is faster to compute the result on host than computing every frame.
-	layout(offset = 464) bool useOrtho;
+	layout(offset = 460) bool useOrtho;
 } Camera;
 
 /* --------------------------------------------------------------------- */
@@ -35,8 +35,8 @@ layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 //depth should have range [0, 1]
 //fragment texture coordinate should also be in [0, 1] range
 vec3 fragDepthReconstruction(float frag_depth, vec2 frag_coord) {
-	//OpenGL requires NDC to be in range [-1, 1], so we need to convert the range
-	const vec4 position_ndc = vec4(vec3(frag_coord, frag_depth) * 2.0f - 1.0f, 1.0f),
+	//OpenGL requires NDC.xy to be in range [-1, 1] and we are using [0, 1] depth, so we need to convert the range
+	const vec4 position_ndc = vec4(vec3(frag_coord * 2.0f - 1.0f, frag_depth), 1.0f),
 		position_world = DEPTH_CONVERSION_MAT * position_ndc;
 
 	return position_world.xyz / position_world.w;
@@ -58,9 +58,12 @@ vec2 fragViewToNDC(mat4x2 projection_xy, vec3 position_view) {
 
 #ifdef EMIT_LINEARISE_DEPTH_IMPL
 float lineariseDepth(float depth) {
-	//depth needs to be converted to range [-1, 1]
-	//2 * far * near / (far + near - (2 * z - 1) * (far - near))
-	return Camera.LinearDepthFactor.x / (Camera.LinearDepthFactor.y - (2.0f * depth - 1.0f) * Camera.LinearDepthFactor.z);
+	//depth remains in the range [0, 1] in reversed, so convert it to [1, 0]
+	//both exchanging far and near values and flipping the depth range works
+	//here we flip the depth by doing 1 - z
+	//far * near / (far - (1 - z) * (far - near))
+	return Camera.LinearDepthFactor.x / (Camera.Far - (1.0f - depth) * Camera.LinearDepthFactor.y);
+	//linear depth is positive
 }
 #endif//EMIT_LINEARISE_DEPTH_IMPL
 

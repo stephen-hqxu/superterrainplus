@@ -133,10 +133,12 @@ mat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const STPMatr
 			for (unsigned int y = 0u; y < 2u; y++) {
 				for (unsigned int z = 0u; z < 2u; z++) {
 					frustumCorner[index++] = STPVector4d(
+						//the frustum box fits the NDC clip volume
+						//note that we are working with zero-to-one depth
 						dvec4(
 							2.0 * x - 1.0,
 							2.0 * y - 1.0,
-							2.0 * z - 1.0,
+							z,
 							1.0
 						)
 					);
@@ -193,7 +195,8 @@ mat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const STPMatr
 	}
 
 	//finally, we are dealing with a directional light so shadow is parallel
-	alignas(STPMatrix4x4d) const dmat4 lightProjection_data = glm::ortho(minExt.x, maxExt.x, minExt.y, maxExt.y, minZ, maxZ);
+	//near, far clipping planes are swapped due to use of reversed depth
+	alignas(STPMatrix4x4d) const dmat4 lightProjection_data = glm::orthoRH_ZO(minExt.x, maxExt.x, minExt.y, maxExt.y, maxZ, minZ);
 	const STPMatrix4x4d lightProjection = STPMatrix4x4d(lightProjection_data);
 
 	return static_cast<mat4>(lightProjection * lightView);

@@ -9,9 +9,13 @@
 
 using glm::uvec2;
 using glm::uvec3;
+using glm::vec3;
 using glm::vec4;
 
 using namespace SuperTerrainPlus::STPRealism;
+
+//clear depth colour to zero
+constexpr static vec4 BlackColour = vec4(vec3(0.0f), 1.0f);
 
 STPLightShadow::STPLightShadow(unsigned int resolution, STPShadowMapFormat format) :
 	ShadowMapFormat(format), ShadowMapResolution(resolution), ShadowMapShouldUpdate(true), ShadowMapUpdateMask(true) {
@@ -72,11 +76,11 @@ void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::S
 
 	//others
 	shadow_map.wrap(GL_CLAMP_TO_BORDER);
-	shadow_map.borderColor(vec4(1.0f));
+	shadow_map.borderColor(BlackColour);
 	if (!useColorInternal) {
 		//enable depth sampler for depth-based shadow maps
 		//setup compare function so we can use shadow sampler in the shader
-		shadow_map.compareFunction(GL_LESS);
+		shadow_map.compareFunction(GL_GREATER);
 		shadow_map.compareMode(GL_COMPARE_REF_TO_TEXTURE);
 	}
 
@@ -113,8 +117,8 @@ void STPLightShadow::captureDepth() const {
 	this->ShadowMapContainer.bind(GL_FRAMEBUFFER);
 }
 
-void STPLightShadow::clearShadowMapColor(const vec4& clear_color) {
-	this->ShadowMapContainer.clearColor(0, clear_color);
+void STPLightShadow::clearShadowMapColor() {
+	this->ShadowMapContainer.clearColor(0, BlackColour);
 }
 
 void STPLightShadow::generateShadowMipmap() {

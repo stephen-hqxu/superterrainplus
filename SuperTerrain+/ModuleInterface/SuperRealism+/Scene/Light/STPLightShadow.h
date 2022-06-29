@@ -143,9 +143,8 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Clear colour in the shadow map.
 		 * This option is ignored if the shadow map has no colour channel.
-		 * @param clear_color The colour to be used to clear the shadow map to.
 		*/
-		void clearShadowMapColor(const glm::vec4&);
+		void clearShadowMapColor();
 
 		/**
 		 * @brief Generate shadow mipmap.

@@ -237,7 +237,7 @@ namespace STPStart {
 
 				//setup material library
 				auto waterMaterial = STPMaterialLibrary::DefaultMaterial;
-				waterMaterial.Opacity = 1.0f;
+				waterMaterial.Opacity = 0.01f;
 				waterMaterial.Reflexivity = 2.5f;
 				waterMaterial.RefractiveIndex = 1.333f;
 				waterMaterialID = this->SceneMaterial.add(waterMaterial);

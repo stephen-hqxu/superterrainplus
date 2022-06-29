@@ -51,8 +51,6 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 	}
 	//calculate starting LST
 	this->Day = 1.0 * sun.DayStart / (1.0 * sun.DayLength) + sun.YearStart;
-	//calculate initial sun direction
-	this->advanceTime(0.0);
 
 	//setup sky renderer
 	STPShaderManager sky_shader(GL_FRAGMENT_SHADER);
@@ -67,6 +65,8 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 
 	//uniform setup
 	this->SunPositionLocation = this->SkyboxRenderer.uniformLocation("SunPosition");
+	//calculate initial sun direction
+	this->advanceTime(0.0);
 
 	/* ---------------------------------------- sun spectrum emulator ----------------------------------- */
 	//setup spectrum emulator

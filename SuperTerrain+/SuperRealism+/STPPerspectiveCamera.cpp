@@ -39,11 +39,12 @@ const SuperTerrainPlus::STPEnvironment::STPPerspectiveCameraSetting& STPPerspect
 const STPMatrix4x4d& STPPerspectiveCamera::perspective() const {
 	if (this->ProjectionOutdated) {
 		//update the projection matrix
-		alignas(STPMatrix4x4d) const dmat4 projection_data = glm::perspective(
+		//remember we are using reversed depth, so flip near and far plane
+		alignas(STPMatrix4x4d) const dmat4 projection_data = glm::perspectiveRH_ZO(
 			this->Frustum.ViewAngle,
 			this->Frustum.Aspect,
-			this->Camera.Near,
-			this->Camera.Far
+			this->Camera.Far,
+			this->Camera.Near
 		);
 		this->PerspectiveProjection = STPMatrix4x4d(projection_data);
 		this->ProjectionOutdated = false;
@@ -57,11 +58,11 @@ const STPMatrix4x4d& STPPerspectiveCamera::projection() const {
 }
 
 STPMatrix4x4d STPPerspectiveCamera::projection(double near, double far) const {
-	alignas(STPMatrix4x4d) const dmat4 projection_data = glm::perspective(
+	alignas(STPMatrix4x4d) const dmat4 projection_data = glm::perspectiveRH_ZO(
 		this->Frustum.ViewAngle,
 		this->Frustum.Aspect,
-		near,
-		far
+		far,
+		near
 	);
 	return STPMatrix4x4d(projection_data);
 }

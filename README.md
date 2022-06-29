@@ -91,6 +91,7 @@ Procedural technique is one of the most popular topics in computer graphics and 
 
 ### Optimisation technique
 
+- [x] Reversed depth buffer
 - [ ] Frustum culling
 - [ ] Variable rate shading
 - [ ] Mesh shading
