@@ -20,10 +20,10 @@ using glm::uvec2;
 using glm::dvec2;
 using glm::value_ptr;
 
-using SuperTerrainPlus::STPFile;
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static auto PlaneGenerationShaderFilename = STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPPlaneGeometry", ".comp");
+constexpr static auto PlaneGenerationShaderFilename =
+	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPPlaneGeometry", ".comp");
 
 STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position) {
 	if (tile_dimension.x == 0u || tile_dimension.y == 0u) {
@@ -47,7 +47,7 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 	//setup tile buffer generator shader
 	STPShaderManager tile_generator(GL_COMPUTE_SHADER);
 	const char* const tile_source_file = PlaneGenerationShaderFilename.data();
-	STPShaderManager::STPShaderSource tile_source(tile_source_file, *STPFile(tile_source_file));
+	STPShaderManager::STPShaderSource tile_source(tile_source_file, STPFile::read(tile_source_file));
 	//compile shader
 	tile_generator(tile_source);
 

@@ -14,17 +14,16 @@ using std::chrono::duration;
 
 using glm::uvec3;
 
-using SuperTerrainPlus::STPFile;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto StarfieldShaderFilename =
-	STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPStarfield", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPStarfield", ".frag");
 
 STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSkyboxInitialiser& starfield_init) :
 	StarlightSpectrum(std::move(*starfield_model.StarlightSpectrum)) {
 	//setup starfield renderer
 	const char* const star_source_file = StarfieldShaderFilename.data();
-	STPShaderManager::STPShaderSource star_source(star_source_file, *STPFile(star_source_file));
+	STPShaderManager::STPShaderSource star_source(star_source_file, STPFile::read(star_source_file));
 
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 	Macro("STAR_QUADRATIC_ATTENUATION", (starfield_model.UseQuadraticAttenuation ? 1 : 0));

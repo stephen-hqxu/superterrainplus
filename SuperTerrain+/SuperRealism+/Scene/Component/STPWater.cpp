@@ -26,12 +26,12 @@ using glm::ivec3;
 using glm::vec4;
 using glm::value_ptr;
 
-using SuperTerrainPlus::STPFile;
+using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
 //Water shader shares a majority part with the terrain shader.
-constexpr static auto WaterShaderFilename = STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPHeightfieldTerrain", ".tesc", ".tese");
-constexpr static auto WaterFragmentShaderFilename = STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPWater", ".frag");
+constexpr static auto WaterShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPHeightfieldTerrain", ".tesc", ".tese");
+constexpr static auto WaterFragmentShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPWater", ".frag");
 constexpr static size_t WaterShaderCount = 3ull;
 
 STPWater::STPWater(const STPHeightfieldTerrain<false>& terrain, const STPBiomeWaterLevel& water_level) :
@@ -42,7 +42,7 @@ STPWater::STPWater(const STPHeightfieldTerrain<false>& terrain, const STPBiomeWa
 	};
 	for (unsigned int i = 0u; i < WaterShaderCount; i++) {
 		const char* const water_source_file = i < 2u ? WaterShaderFilename[i].data() : WaterFragmentShaderFilename.data();
-		STPShaderManager::STPShaderSource water_source(water_source_file, *STPFile(water_source_file));
+		STPShaderManager::STPShaderSource water_source(water_source_file, STPFile::read(water_source_file));
 
 		if (i < 2u) {
 			//tessellation shaders

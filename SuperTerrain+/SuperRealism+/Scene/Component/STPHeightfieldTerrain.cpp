@@ -80,7 +80,7 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 	};
 	for (unsigned int i = 0u; i < HeightfieldTerrainShaderFilename.size(); i++) {
 		const char* const source_file = HeightfieldTerrainShaderFilename[i].data();
-		STPShaderManager::STPShaderSource shader_source(source_file, *STPFile(source_file));
+		STPShaderManager::STPShaderSource shader_source(source_file, STPFile::read(source_file));
 
 		if (i == 3u) {
 			//fragment shader
@@ -355,7 +355,7 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count
 	//geometry shader for depth writing
 	//make a copy of the original source because we need to modify it
 	const char* const shadow_source_file = HeightfieldTerrainShadowShaderFilename.data();
-	STPShaderManager::STPShaderSource shadow_shader_source(shadow_source_file, *STPFile(shadow_source_file));
+	STPShaderManager::STPShaderSource shadow_shader_source(shadow_source_file, STPFile::read(shadow_source_file));
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 	//disable eval shader output because shadow pass does need those data

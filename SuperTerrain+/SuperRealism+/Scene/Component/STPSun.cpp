@@ -35,8 +35,7 @@ using std::make_from_tuple;
 using std::make_pair;
 using std::make_tuple;
 
-using SuperTerrainPlus::STPFile;
-using SuperTerrainPlus::SuperRealismPlus_ShaderPath;
+using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto SkyShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSun", ".frag");
@@ -56,7 +55,7 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 	STPShaderManager sky_shader(GL_FRAGMENT_SHADER);
 	//build the shader filename
 	const char* const sky_source_file = SkyShaderFilename.data();
-	STPShaderManager::STPShaderSource sky_source(sky_source_file, *STPFile(sky_source_file));
+	STPShaderManager::STPShaderSource sky_source(sky_source_file, STPFile::read(sky_source_file));
 	//compile
 	sky_shader(sky_source);
 
@@ -72,7 +71,7 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 	//setup spectrum emulator
 	STPShaderManager spectrum_shader(GL_COMPUTE_SHADER);
 	const char* const spectrum_source_file = SpectrumShaderFilename.data();
-	STPShaderManager::STPShaderSource spectrum_source(spectrum_source_file, *STPFile(spectrum_source_file));
+	STPShaderManager::STPShaderSource spectrum_source(spectrum_source_file, STPFile::read(spectrum_source_file));
 
 	spectrum_shader(spectrum_source);
 	this->SpectrumEmulator.attach(spectrum_shader);

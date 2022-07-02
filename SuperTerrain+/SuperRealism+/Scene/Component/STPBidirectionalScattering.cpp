@@ -18,15 +18,15 @@ using glm::vec3;
 using glm::uvec4;
 using glm::vec4;
 
-using SuperTerrainPlus::STPFile;
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static auto BSDFShaderFilename = STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPBidirectionalScattering", ".frag");
+constexpr static auto BSDFShaderFilename =
+	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPBidirectionalScattering", ".frag");
 
 STPBidirectionalScattering::STPBidirectionalScattering(const STPScreenInitialiser& screen_init) : BufferDimension(uvec2(0u)) {
 	/* --------------------------------------- build shader ----------------------------------------------- */
 	const char* const scattering_shader_file = BSDFShaderFilename.data();
-	STPShaderManager::STPShaderSource scattering_source(scattering_shader_file , *STPFile(scattering_shader_file));
+	STPShaderManager::STPShaderSource scattering_source(scattering_shader_file , STPFile::read(scattering_shader_file));
 
 	STPShaderManager scattering_shader(GL_FRAGMENT_SHADER);
 	scattering_shader(scattering_source);

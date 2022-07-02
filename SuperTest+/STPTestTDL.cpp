@@ -19,7 +19,7 @@
 //This is a TDL with correct syntax
 constexpr char TerrainTDL[] = "./TestData/Terrain.tdl";
 
-using SuperTerrainPlus::STPFile;
+using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPAlgorithm;
 using namespace SuperTerrainPlus::STPDiversity;
 
@@ -35,8 +35,8 @@ SCENARIO("TDL interpreter parses a TDL script", "[AlgorithmHost][Texture][STPTex
 		WHEN("A texture database needs to be filled with texture splatting rules") {
 
 			THEN("TDL can be parsed from source code") {
-				const STPFile TestTDLString(TerrainTDL);
-				REQUIRE_NOTHROW([&Parser, &TestTDLString]() { Parser.emplace(*TestTDLString); }());
+				const string TestTDLString = STPFile::read(TerrainTDL);
+				REQUIRE_NOTHROW([&Parser, &TestTDLString]() { Parser.emplace(TestTDLString); }());
 
 				AND_THEN("Splat rules can be loaded into texture database correctly") {
 					STPTextureDatabase Database;

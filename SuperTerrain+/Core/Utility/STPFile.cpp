@@ -15,7 +15,7 @@ using std::istreambuf_iterator;
 
 using namespace SuperTerrainPlus;
 
-STPFile::STPFile(const char* filename) {
+string STPFile::read(const char* filename) {
 	using std::ios;
 	//open the file
 	ifstream fileIO(filename, ios::in);
@@ -27,14 +27,13 @@ STPFile::STPFile(const char* filename) {
 	}
 
 	//read all lines
+	string content;
 	//reserve space for string output
 	fileIO.seekg(0, ios::end);
-	this->Content.reserve(fileIO.tellg());
+	content.reserve(fileIO.tellg());
 	fileIO.seekg(0, ios::beg);
 	//copy to output
-	this->Content.assign(istreambuf_iterator<char>(fileIO), istreambuf_iterator<char>());
-}
+	content.assign(istreambuf_iterator<char>(fileIO), istreambuf_iterator<char>());
 
-const string& STPFile::operator*() const {
-	return this->Content;
+	return content;
 }

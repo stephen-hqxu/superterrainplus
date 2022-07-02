@@ -134,7 +134,7 @@ void STPShaderManager::initialise() {
 
 		ostringstream filename;
 		filename << SuperRealismPlus_ShaderPath << path;
-		includeImpl(path.data(), path.length(), *STPFile(filename.str().c_str()));
+		includeImpl(path.data(), path.length(), STPFile::read(filename.str().c_str()));
 	}
 }
 

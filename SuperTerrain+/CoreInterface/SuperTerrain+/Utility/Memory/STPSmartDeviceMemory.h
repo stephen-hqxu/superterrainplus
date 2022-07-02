@@ -14,52 +14,52 @@ namespace SuperTerrainPlus {
 	/**
 	 * @brief STPSmartDeviceMemory is a collection of managed device memory
 	*/
-	class STPSmartDeviceMemory final {
-	private:
+	namespace STPSmartDeviceMemory {
 
-		STPSmartDeviceMemory() = delete;
+		/**
+		 * @brief Inline implementation for template function of smart device memory.
+		*/
+		namespace STPSmartDeviceMemoryImpl {
 
-		~STPSmartDeviceMemory() = delete;
+			//Treat array as a regular type since cudaFree() treats array like normal pointer
+			template<typename T>
+			using NoArray = std::remove_all_extents_t<T>;
 
-		//Treat array as a regular type since cudaFree() treats array like normal pointer
-		template<typename T>
-		using NoArray = std::remove_all_extents_t<T>;
+			//Delete device memory using cudaFree();
+			template<typename T>
+			struct STPDeviceMemoryDeleter {
+			public:
 
-		//Delete device memory using cudaFree();
-		template<typename T>
-		struct STPDeviceMemoryDeleter {
-		public:
+				void operator()(T*) const;
 
-			void operator()(T*) const;
+			};
 
-		};
+			//Delete device memory using cudaFreeAsync();
+			template<typename T>
+			struct STPStreamedDeviceMemoryDeleter {
+			private:
 
-		//Delete device memory using cudaFreeAsync();
-		template<typename T>
-		struct STPStreamedDeviceMemoryDeleter {
-		private:
+				std::optional<cudaStream_t> Stream;
 
-			std::optional<cudaStream_t> Stream;
+			public:
 
-		public:
+				STPStreamedDeviceMemoryDeleter() = default;
 
-			STPStreamedDeviceMemoryDeleter() = default;
+				STPStreamedDeviceMemoryDeleter(cudaStream_t);
 
-			STPStreamedDeviceMemoryDeleter(cudaStream_t);
+				void operator()(T*) const;
 
-			void operator()(T*) const;
+			};
 
-		};
-
-	public:
+		}
 
 		//STPDeviceMemory is a normal device memory version of std::unique_ptr.
 		//The deleter utilises cudaFree()
 		template<typename T>
 		using STPDeviceMemory =
 			std::unique_ptr<
-				STPSmartDeviceMemory::NoArray<T>,
-				STPSmartDeviceMemory::STPDeviceMemoryDeleter<STPSmartDeviceMemory::NoArray<T>>
+				STPSmartDeviceMemoryImpl::NoArray<T>,
+				STPSmartDeviceMemoryImpl::STPDeviceMemoryDeleter<STPSmartDeviceMemoryImpl::NoArray<T>>
 			>;
 
 		//STPStreamedDeviceMemory is a stream-ordered device memory deleter.
@@ -68,8 +68,8 @@ namespace SuperTerrainPlus {
 		template<typename T>
 		using STPStreamedDeviceMemory = 
 			std::unique_ptr<
-				STPSmartDeviceMemory::NoArray<T>,
-				STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<STPSmartDeviceMemory::NoArray<T>>
+				STPSmartDeviceMemoryImpl::NoArray<T>,
+				STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<STPSmartDeviceMemoryImpl::NoArray<T>>
 			>;
 
 		/**
@@ -92,7 +92,7 @@ namespace SuperTerrainPlus {
 			 * @param ptr The pitched device pointer.
 			 * @param pitch The pointer pitch.
 			*/
-			STPPitchedDeviceMemory(NoArray<T>*, size_t);
+			STPPitchedDeviceMemory(STPSmartDeviceMemoryImpl::NoArray<T>*, size_t);
 
 			STPPitchedDeviceMemory(STPPitchedDeviceMemory&&) noexcept = default;
 
@@ -111,7 +111,7 @@ namespace SuperTerrainPlus {
 		 * @return The smart pointer to the memory allocated
 		*/
 		template<typename T>
-		static STPDeviceMemory<T> makeDevice(size_t = 1ull);
+		STPDeviceMemory<T> makeDevice(size_t = 1ull);
 
 		/**
 		 * @brief Create a STPStreamedDeviceMemory which is a smart pointer to device memory with stream-ordered device deleter
@@ -122,7 +122,7 @@ namespace SuperTerrainPlus {
 		 * @return The streamed smart pointer to the memory allocated
 		*/
 		template<typename T>
-		static STPStreamedDeviceMemory<T> makeStreamedDevice(cudaMemPool_t, cudaStream_t, size_t = 1ull);
+		STPStreamedDeviceMemory<T> makeStreamedDevice(cudaMemPool_t, cudaStream_t, size_t = 1ull);
 
 		/**
 		 * @brief Create a STPPitchedDeviceMemory which is a smart pointer to pitched device memory with regular device deleter.
@@ -132,9 +132,9 @@ namespace SuperTerrainPlus {
 		 * @return The smart pointer the pitched memory allocated.
 		*/
 		template<typename T>
-		static STPPitchedDeviceMemory<T> makePitchedDevice(size_t, size_t);
+		STPPitchedDeviceMemory<T> makePitchedDevice(size_t, size_t);
 
-	};
+	}
 
 }
 #include "STPSmartDeviceMemory.inl"

@@ -17,11 +17,11 @@
 using std::array;
 using std::shared_ptr;
 
-using SuperTerrainPlus::STPFile;
 using SuperTerrainPlus::SuperRealismPlus_ShaderPath;
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static auto SkyboxShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSkybox", ".vert");
+constexpr static auto SkyboxShaderFilename =
+	SuperTerrainPlus::STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSkybox", ".vert");
 
 constexpr static array<signed char, 24ull> BoxVertex = { 
 	-1, -1, -1, //origin
@@ -62,7 +62,7 @@ constexpr static STPIndirectCommand::STPDrawElement BoxDrawCommand = {
 
 STPSkybox::STPSkyboxVertexShader::STPSkyboxVertexShader() : SkyboxVertexShader(GL_VERTEX_SHADER) {
 	const char* const skybox_source_file = SkyboxShaderFilename.data();
-	STPShaderManager::STPShaderSource skybox_source(skybox_source_file, *STPFile(skybox_source_file));
+	STPShaderManager::STPShaderSource skybox_source(skybox_source_file, STPFile::read(skybox_source_file));
 
 	//compile
 	this->SkyboxVertexShader(skybox_source);

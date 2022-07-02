@@ -7,10 +7,10 @@
 //GLAD
 #include <glad/glad.h>
 
-using SuperTerrainPlus::STPFile;
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static auto AlphaCullingFilename = STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAlphaCulling", ".frag");
+constexpr static auto AlphaCullingFilename =
+	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAlphaCulling", ".frag");
 
 STPAlphaCulling::STPAlphaCulling(STPCullComparator comp, float limit, const STPScreenInitialiser& screen_init) {
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
@@ -60,7 +60,7 @@ inline const char* STPAlphaCulling::connectorString(STPCullConnector conn) {
 inline void STPAlphaCulling::prepareAlphaShader(const STPShaderManager::STPShaderSource::STPMacroValueDictionary& macro, const STPScreenInitialiser& screen_init) {
 	//setup alpha culling shading program
 	const char* const culling_shader_file = AlphaCullingFilename.data();
-	STPShaderManager::STPShaderSource cull_source(culling_shader_file, *STPFile(culling_shader_file));
+	STPShaderManager::STPShaderSource cull_source(culling_shader_file, STPFile::read(culling_shader_file));
 	cull_source.define(macro);
 
 	//build the program

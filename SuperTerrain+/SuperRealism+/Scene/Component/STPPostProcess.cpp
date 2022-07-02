@@ -35,7 +35,7 @@ STPPostProcess::STPToneMappingCurve::STPToneMappingCurve(STPToneMappingFunction 
 STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const STPScreenInitialiser& post_process_init) {
 	//setup post process shader
 	const char* const source_file = PostProcessShaderFilename.data();
-	STPShaderManager::STPShaderSource post_source(source_file, *STPFile(source_file));
+	STPShaderManager::STPShaderSource post_source(source_file, STPFile::read(source_file));
 
 	//fragment shader
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;

@@ -140,8 +140,8 @@ public:
 		tex_desc.InteralFormat = GL_R8;
 		this->x1024_r = this->Database.addMapGroup(tex_desc);
 
-		const STPFile rawTDL(STPWorldSplattingAgent::TDLFilename);
-		const STPTextureDefinitionLanguage TDLParser(*rawTDL);
+		const string rawTDL = STPFile::read(STPWorldSplattingAgent::TDLFilename);
+		const STPTextureDefinitionLanguage TDLParser(rawTDL);
 		//build texture splatting rules
 		const STPTextureDefinitionLanguage::STPTextureVariable textureName = TDLParser(this->Database);
 		//build database with texture data

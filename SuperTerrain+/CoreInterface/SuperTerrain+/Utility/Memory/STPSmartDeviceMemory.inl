@@ -4,17 +4,19 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 
 template<typename T>
-inline void SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemoryDeleter<T>::operator()(T* ptr) const {
+inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPDeviceMemoryDeleter<T>::operator()(T* ptr) const {
 	STPcudaCheckErr(cudaFree(ptr));
 }
 
 template<typename T>
-inline SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::STPStreamedDeviceMemoryDeleter(cudaStream_t stream) : Stream(stream) {
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<T>::STPStreamedDeviceMemoryDeleter
+	(cudaStream_t stream) : Stream(stream) {
 	
 }
 
 template<typename T>
-inline void SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemoryDeleter<T>::operator()(T* ptr) const {
+inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<T>::operator()
+	(T* ptr) const {
 	STPcudaCheckErr(cudaFreeAsync(ptr, *this->Stream));
 }
 
@@ -24,12 +26,13 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPit
 }
 
 template<typename T>
-inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPitchedDeviceMemory(NoArray<T>* ptr, size_t pitch) :
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPitchedDeviceMemory
+	(STPSmartDeviceMemoryImpl::NoArray<T>* ptr, size_t pitch) :
 	STPDeviceMemory<T>(ptr), Pitch(pitch) {
 	
 }
 
-#define TYPE_SANITISE using U = NoArray<T>; \
+#define TYPE_SANITISE using U = STPSmartDeviceMemoryImpl::NoArray<T>; \
 U* cache
 
 template<typename T>
@@ -51,7 +54,7 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemory<T> SuperT
 	//allocate using the pool
 	STPcudaCheckErr(cudaMallocFromPoolAsync(&cache, sizeof(U) * size, memPool, stream));
 	//init the streamed deleter
-	return STPStreamedDeviceMemory<T>(cache, STPStreamedDeviceMemoryDeleter<U>(stream));
+	return STPStreamedDeviceMemory<T>(cache, STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<U>(stream));
 }
 
 template<typename T>

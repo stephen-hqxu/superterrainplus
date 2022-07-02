@@ -25,7 +25,7 @@ using std::make_pair;
 
 constexpr static char TestINIFilename[] = "./TestData/Data.ini";
 
-using SuperTerrainPlus::STPFile;
+using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPAlgorithm;
 
 using namespace Catch::Matchers;
@@ -58,12 +58,12 @@ SCENARIO("INI reader can parsed all values correctly", "[AlgorithmHost][INI][STP
 	optional<STPINIReader> Reader;
 
 	GIVEN("A syntactically correct raw INI string") {
-		const STPFile TestINIString(TestINIFilename);
+		const string TestINIString = STPFile::read(TestINIFilename);
 
 		WHEN("It is fed into the INI reader") {
 
 			THEN("It can be parsed successfully without errors") {
-				REQUIRE_NOTHROW([&Reader, &TestINIString]() { Reader.emplace(*TestINIString); }());
+				REQUIRE_NOTHROW([&Reader, &TestINIString]() { Reader.emplace(TestINIString); }());
 
 				AND_THEN("All parsed values are correct") {
 					const auto& Storage = **Reader;

@@ -312,7 +312,7 @@ public:
 			this->DepthPassShader.emplace(GL_FRAGMENT_SHADER);
 
 			const char* const shader_source_file = STPShadowPipeline::ShadowDepthPassShaderFilename.data();
-			STPShaderManager::STPShaderSource shader_source(shader_source_file, *STPFile(shader_source_file));
+			STPShaderManager::STPShaderSource shader_source(shader_source_file, STPFile::read(shader_source_file));
 			STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 			//VSM uses moments instead of regular depth value to calculate shadows
@@ -496,7 +496,7 @@ public:
 
 		//do something to the fragment shader
 		const char* const lighting_source_file = DeferredShaderFilename.data();
-		STPShaderManager::STPShaderSource deferred_source(lighting_source_file, *STPFile(lighting_source_file));
+		STPShaderManager::STPShaderSource deferred_source(lighting_source_file, STPFile::read(lighting_source_file));
 		STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 		const STPSceneShaderCapacity& memory_cap = this->Pipeline.SceneMemoryLimit;

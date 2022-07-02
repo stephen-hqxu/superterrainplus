@@ -612,9 +612,12 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);//we are running at OpenGL 4.6
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_FALSE);//not necessary for forward compatibility
+		glfwWindowHint(GLFW_CONTEXT_ROBUSTNESS, GLFW_LOSE_CONTEXT_ON_RESET);
+		glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_RELEASE_BEHAVIOR_FLUSH);
 #ifdef _DEBUG
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-		glfwWindowHint(GLFW_CONTEXT_ROBUSTNESS, GLFW_LOSE_CONTEXT_ON_RESET);
+#else
+		glfwWindowHint(GLFW_CONTEXT_NO_ERROR, GLFW_TRUE);
 #endif
 
 		//rendering preferences
@@ -622,8 +625,9 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwWindowHint(GLFW_GREEN_BITS, 8);
 		glfwWindowHint(GLFW_BLUE_BITS, 8);
 		glfwWindowHint(GLFW_ALPHA_BITS, 8);
-		glfwWindowHint(GLFW_DEPTH_BITS, 24);
-		glfwWindowHint(GLFW_STENCIL_BITS, 8);
+		//fragment tests are unused on default framebuffer
+		glfwWindowHint(GLFW_DEPTH_BITS, 0);
+		glfwWindowHint(GLFW_STENCIL_BITS, 0);
 		glfwWindowHint(GLFW_SAMPLES, 0);
 
 		//creation of the rendering window
@@ -691,14 +695,15 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 
 int main() {
 	using SuperTerrainPlus::STPAlgorithm::STPINIReader;
-	using SuperTerrainPlus::STPFile;
+	namespace File = SuperTerrainPlus::STPFile;
 	//read configuration
-	const static STPFile engineData("./Engine.ini"), biomeData("./Biome.ini");
+	const string engineData = File::read("./Engine.ini"),
+		biomeData = File::read("./Biome.ini");
 	//get INI
-	static optional<const STPINIReader> engineINIReader, biomeINIReader;
+	optional<const STPINIReader> engineINIReader, biomeINIReader;
 	try {
-		engineINIReader.emplace(*engineData);
-		biomeINIReader.emplace(*biomeData);
+		engineINIReader.emplace(engineData);
+		biomeINIReader.emplace(biomeData);
 	} catch (const SuperTerrainPlus::STPException::STPInvalidSyntax& se) {
 		cerr << se.what() << endl;
 		return -1;
@@ -713,7 +718,7 @@ int main() {
 		return -1;
 	}
 	//welcome
-	cout << *SuperTerrainPlus::STPFile("./Resource/welcome.txt") << endl;
+	cout << File::read("./Resource/welcome.txt") << endl;
 	cout << "OpenGL Version: " << glGetString(GL_VERSION) << endl;
 	cout << "OpenGL Vendor: " << glGetString(GL_VENDOR) << endl;
 	cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << '\n' << endl;

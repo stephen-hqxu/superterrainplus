@@ -29,11 +29,10 @@ using std::unique_ptr;
 using std::make_unique;
 using std::transform;
 
-using SuperTerrainPlus::STPFile;
 using namespace SuperTerrainPlus::STPRealism;
 
 static constexpr auto FilterShaderFilename = 
-	STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPGaussianFilterKernel", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPGaussianFilterKernel", ".frag");
 
 /**
  * @brief Calculate the filter kernel extent length based on the radius.
@@ -118,7 +117,7 @@ STPGaussianFilter::STPGaussianFilter(const STPFilterExecution& execution, const 
 	//setup filter compute shader
 	const char* const filter_source_file = FilterShaderFilename.data();
 	//process source code
-	STPShaderManager::STPShaderSource filter_source(filter_source_file, *STPFile(filter_source_file));
+	STPShaderManager::STPShaderSource filter_source(filter_source_file, STPFile::read(filter_source_file));
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 	Macro("GAUSSIAN_KERNEL_SIZE", calcExtentLength(execution.Radius))

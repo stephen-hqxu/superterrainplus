@@ -10,29 +10,26 @@ namespace SuperTerrainPlus {
 	/**
 	 * @brief STPHashCombine contains a simple function for combining multiple hash results together
 	*/
-	class STPHashCombine {
-	private:
-
-		//static-only class, no instantiation is allowed
-		STPHashCombine() = delete;
-
-		~STPHashCombine() = delete;
-
-		//TODO: change to template lambda and put it inside combine()
+	namespace STPHashCombine {
 
 		/**
-		 * @brief Combine a hash with the next value
-		 * @tparam T The type of the next value
-		 * @param seed The old hash input, and the output of combined hash
-		 * @param value The next value to be hashed
+		 * @brief Inline implementation of template function for hash combiner.
 		*/
-		template<typename T>
-		static void combineOne(size_t&, const T&);
+		namespace STPHashCombineImpl {
 
-	public:
+			//TODO: change to template lambda and put it inside combine()
+			/**
+			 * @brief Combine a hash with the next value
+			 * @tparam T The type of the next value
+			 * @param seed The old hash input, and the output of combined hash
+			 * @param value The next value to be hashed
+			 */
+			template<typename T>
+			void combineOne(size_t&, const T&);
+
+		}
 
 		//Forwarding is not necessary because only primitive types can be hashed
-
 		/**
 		 * @brief Combine a hash with all values in the order specified
 		 * @tparam ...T All types of values
@@ -41,9 +38,9 @@ namespace SuperTerrainPlus {
 		 * @return The resultant hash output that has been combined with all values
 		*/
 		template<typename... T>
-		static size_t combine(size_t, const T&...);
+		size_t combine(size_t, const T&...);
 
-	};
+	}
 
 }
 #include "STPHashCombine.inl"

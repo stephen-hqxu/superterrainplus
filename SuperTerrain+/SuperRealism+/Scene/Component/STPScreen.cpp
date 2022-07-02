@@ -110,7 +110,7 @@ void STPScreen::STPSimpleScreenBindlessFrameBuffer::bindColorSampler(STPOpenGL::
 STPScreen::STPScreenVertexShader::STPScreenVertexShader() : ScreenVertexShader(GL_VERTEX_SHADER) {
 	//read source
 	const char* const screen_source_file = ScreenShaderFilename.data();
-	STPShaderManager::STPShaderSource shader_source(screen_source_file, *STPFile(screen_source_file));
+	STPShaderManager::STPShaderSource shader_source(screen_source_file, STPFile::read(screen_source_file));
 	//compile
 	this->ScreenVertexShader(shader_source);
 }

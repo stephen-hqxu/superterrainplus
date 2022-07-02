@@ -102,13 +102,13 @@ protected:
 		}
 
 		//read source code
-		const STPFile src = STPFile(RTCTester::SourceLocation);
+		const string src = STPFile::read(RTCTester::SourceLocation);
 
 		//compile
 		auto startCompile = [&src_info, &src, this]() {
 			string log;
 			try {
-				log = this->compileSource(RTCTester::SourceName, *src, src_info);
+				log = this->compileSource(RTCTester::SourceName, src, src_info);
 			}
 			catch (const STPException::STPCompilationError& ce) {
 				//compile time error

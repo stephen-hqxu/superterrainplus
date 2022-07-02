@@ -20,15 +20,14 @@ using glm::value_ptr;
 using std::chrono::steady_clock;
 using std::chrono::duration;
 
-using SuperTerrainPlus::STPFile;
 using namespace SuperTerrainPlus::STPRealism;
 
 static constexpr auto AuroraShaderFilename =
-	STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAurora", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAurora", ".frag");
 
 STPAurora::STPAurora(STPLightSpectrum&& aurora_spectrum, const STPSkyboxInitialiser& aurora_init) : AuroraSpectrum(std::move(aurora_spectrum)) {
 	const char* const aurora_source_file = AuroraShaderFilename.data();
-	const STPShaderManager::STPShaderSource aurora_source(aurora_source_file, *STPFile(aurora_source_file));
+	const STPShaderManager::STPShaderSource aurora_source(aurora_source_file, STPFile::read(aurora_source_file));
 
 	STPShaderManager aurora_fs(GL_FRAGMENT_SHADER);
 	aurora_fs(aurora_source);

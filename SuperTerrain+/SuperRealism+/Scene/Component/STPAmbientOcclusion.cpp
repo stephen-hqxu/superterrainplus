@@ -36,11 +36,10 @@ using glm::vec4;
 using glm::normalize;
 using glm::value_ptr;
 
-using SuperTerrainPlus::STPFile;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto SSAOShaderFilename = 
-	STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAmbientOcclusion", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAmbientOcclusion", ".frag");
 
 STPAmbientOcclusion::STPOcclusionKernelInstance::STPOcclusionKernelInstance
 	(const STPEnvironment::STPOcclusionKernelSetting& kernel_setting, STPOcclusionAlgorithm algorithm) : Occluder(algorithm), Kernel(kernel_setting) {
@@ -54,7 +53,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 	RandomRotationVector(GL_TEXTURE_2D),
 	NoiseDimension(kernel_instance.Kernel.RotationVectorSize), BlurWorker(std::move(filter)) {
 	const char* const ssao_source_file = SSAOShaderFilename.data();
-	STPShaderManager::STPShaderSource ssao_source(ssao_source_file, *STPFile(ssao_source_file));
+	STPShaderManager::STPShaderSource ssao_source(ssao_source_file, STPFile::read(ssao_source_file));
 
 	//setup ao fragment shader
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
