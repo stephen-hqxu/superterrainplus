@@ -3,8 +3,6 @@
 #define _STP_PIPELINE_MANAGER_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
-//Compatibility
-#include <SuperTerrain+/STPOpenGL.h>
 
 //Program
 #include "STPProgramManager.h"
@@ -27,7 +25,7 @@ namespace SuperTerrainPlus::STPRealism {
 			void operator()(STPOpenGL::STPuint) const;
 
 		};
-		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPPipelineDeleter>> STPSmartPipeline;
+		typedef STPSmartGLuintObject<STPPipelineDeleter> STPSmartPipeline;
 		//A program pipeline
 		STPSmartPipeline Pipeline;
 

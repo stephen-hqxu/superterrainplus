@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL
-#include <SuperTerrain+/Utility/STPNullablePrimitive.h>
+#include "STPNullableObject.hpp"
 //Shader
 #include "STPShaderManager.h"
 
@@ -35,7 +35,7 @@ namespace SuperTerrainPlus::STPRealism {
 			void operator()(STPOpenGL::STPuint) const;
 
 		};
-		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPProgramDeleter>> STPSmartProgram;
+		typedef STPSmartGLuintObject<STPProgramDeleter> STPSmartProgram;
 		//A shader program
 		STPSmartProgram Program;
 

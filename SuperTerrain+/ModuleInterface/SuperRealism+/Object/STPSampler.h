@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Management
-#include <SuperTerrain+/Utility/STPNullablePrimitive.h>
+#include "STPNullableObject.hpp"
 
 #include "STPImageParameter.hpp"
 
@@ -25,7 +25,7 @@ namespace SuperTerrainPlus::STPRealism {
 			void operator()(STPOpenGL::STPuint) const;
 
 		};
-		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPSamplerDeleter>> STPSmartSampler;
+		typedef STPSmartGLuintObject<STPSamplerDeleter> STPSmartSampler;
 		//SBO
 		STPSmartSampler Sampler;
 

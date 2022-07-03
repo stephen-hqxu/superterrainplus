@@ -49,6 +49,7 @@ Utility/STPFile.inl
 Utility/STPHashCombine.h
 Utility/STPHashCombine.inl
 Utility/STPNullablePrimitive.h
+Utility/STPNullablePrimitive.inl
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl
 # /World/Chunk

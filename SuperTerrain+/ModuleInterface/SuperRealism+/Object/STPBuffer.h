@@ -4,11 +4,10 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Object Management
-#include <SuperTerrain+/Utility/STPNullablePrimitive.h>
+#include "STPNullableObject.hpp"
 
 //Container
 #include <vector>
-#include <memory>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -27,7 +26,7 @@ namespace SuperTerrainPlus::STPRealism {
 			void operator()(STPOpenGL::STPuint) const;
 
 		};
-		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPBufferDeleter>> STPSmartBuffer;
+		typedef STPSmartGLuintObject<STPBufferDeleter> STPSmartBuffer;
 		//VBO
 		STPSmartBuffer Buffer;
 

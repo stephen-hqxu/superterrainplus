@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 project(SuperTerrain+
-VERSION 0.14.3
+VERSION 0.14.5
 LANGUAGES CXX CUDA
 DESCRIPTION "A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering."
 HOMEPAGE_URL "https://github.com/stephen-hqxu/superterrainplus"
@@ -29,11 +29,11 @@ add_subdirectory(GLAD)
 # add main STP engine
 add_subdirectory(SuperTerrain+)
 # add demo program to show how STP engine works
-if(${STP_BUILD_DEMO})
+if(STP_BUILD_DEMO)
 	add_subdirectory(SuperDemo+)
 endif()
 # add unit test program
-if(${STP_BUILD_TEST})
+if(STP_BUILD_TEST)
 	enable_testing()
 	add_subdirectory(SuperTest+)
 endif()

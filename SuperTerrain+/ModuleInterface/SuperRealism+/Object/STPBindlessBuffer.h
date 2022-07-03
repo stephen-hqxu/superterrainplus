@@ -25,7 +25,7 @@ namespace SuperTerrainPlus::STPRealism {
 			void operator()(STPOpenGL::STPuint) const;
 
 		};
-		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPBindlessBufferInvalidater>> STPSmartBindlessBuffer;
+		typedef STPSmartGLuintObject<STPBindlessBufferInvalidater> STPSmartBindlessBuffer;
 		//Bindless VBO
 		STPSmartBindlessBuffer Buffer;
 		//The address acquired from the buffer.

@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Object Management
-#include <SuperTerrain+/Utility/STPNullablePrimitive.h>
+#include "STPNullableObject.hpp"
 
 //Container
 #include <string>
@@ -139,7 +139,7 @@ namespace SuperTerrainPlus::STPRealism {
 			void operator()(STPOpenGL::STPuint) const;
 
 		};
-		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPShaderDeleter>> STPSmartShaderObject;
+		typedef STPSmartGLuintObject<STPShaderDeleter> STPSmartShaderObject;
 		//An OpenGL shader object
 		STPSmartShaderObject Shader;
 

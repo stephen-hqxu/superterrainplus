@@ -24,6 +24,7 @@ Object/STPBindlessTexture.h
 Object/STPBuffer.h
 Object/STPFrameBuffer.h
 Object/STPImageParameter.hpp
+Object/STPNullableObject.hpp
 Object/STPPipelineManager.h
 Object/STPProgramManager.h
 Object/STPProgramManager.inl

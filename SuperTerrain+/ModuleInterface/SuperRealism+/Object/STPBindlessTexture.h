@@ -26,7 +26,7 @@ namespace SuperTerrainPlus::STPRealism {
 			void operator()(STPOpenGL::STPuint64) const;
 
 		};
-		typedef std::unique_ptr<STPOpenGL::STPuint64, STPNullableGLuint64::STPNullableDeleter<STPBindlessTextureInvalidater>> STPSmartBindlessTexture;
+		typedef STPSmartGLuint64Object<STPBindlessTextureInvalidater> STPSmartBindlessTexture;
 		//Bindless TBO
 		STPSmartBindlessTexture Handle;
 

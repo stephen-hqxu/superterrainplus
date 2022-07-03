@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Object Management
-#include <SuperTerrain+/Utility/STPNullablePrimitive.h>
+#include "STPNullableObject.hpp"
 //GL Object
 #include "STPTexture.h"
 #include "STPRenderBuffer.h"
@@ -31,7 +31,7 @@ namespace SuperTerrainPlus::STPRealism {
 			void operator()(STPOpenGL::STPuint) const;
 
 		};
-		typedef std::unique_ptr<STPOpenGL::STPuint, STPNullableGLuint::STPNullableDeleter<STPFrameBufferDeleter>> STPSmartFrameBuffer;
+		typedef STPSmartGLuintObject<STPFrameBufferDeleter> STPSmartFrameBuffer;
 		//FBO
 		STPSmartFrameBuffer FrameBuffer;
 

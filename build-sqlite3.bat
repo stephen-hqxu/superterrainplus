@@ -1,7 +1,7 @@
 REM * This is a helper script for building a minimal and fastest SQLite3 database library for SuperTerrain+ on Windows,
 REM		by omitting certain features the engine does not require.
-REM * Please run the script at the as directory as amalgamated SQLite3 source files.
-REM * It is not mandatory to build the library with this script, it is compatible with default-compiled settings.
+REM * It is not mandatory to build the library with this script, it is compatible with default settings.
+REM * Please run the script in the same directory as amalgamated SQLite3 source files.
 REM * The script needs to be executed from Native Tools Command Prompt for Visual Studio, either x86 or x64.
 @echo OFF
 

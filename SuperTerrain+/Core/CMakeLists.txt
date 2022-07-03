@@ -10,7 +10,6 @@ STPRainDrop.cu
 Utility/STPDeviceErrorHandler.cpp
 Utility/STPFile.cpp
 Utility/STPMemoryPool.cpp
-Utility/STPNullablePrimitive.cpp
 Utility/STPSmartEvent.cpp
 Utility/STPSmartStream.cpp
 Utility/STPThreadPool.cpp

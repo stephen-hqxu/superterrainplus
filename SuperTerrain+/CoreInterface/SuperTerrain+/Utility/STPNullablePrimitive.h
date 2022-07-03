@@ -2,22 +2,16 @@
 #ifndef _STP_NULLABLE_PRIMITIVE_H_
 #define _STP_NULLABLE_PRIMITIVE_H_
 
-#include <SuperTerrain+/STPCoreDefine.h>
-//System
-#include <memory>
-//GL
-#include <SuperTerrain+/STPOpenGL.h>
-
 namespace SuperTerrainPlus {
 
 	/**
 	 * @brief STPNullablePrimitive allows hacking a primitive value into a fake pointer.
-	 * This can be benefitial to manage resource as a unique_ptr without allocating dynamic memory.
+	 * This can be beneficial to manage resource as a unique_ptr without allocating dynamic memory.
 	 * @tparam Pri A primitive type, or any type that allows null comparison.
 	 * @param Null Provide a value that denotes Null for this type.
 	*/
-	template<class Pri, Pri Null>
-	struct STP_API STPNullablePrimitive {
+	template<typename Pri, Pri Null>
+	class STPNullablePrimitive {
 	public:
 
 		/**
@@ -28,7 +22,7 @@ namespace SuperTerrainPlus {
 		struct STPNullableDeleter {
 		private:
 
-			Del deleter;
+			Del Deleter;
 
 		public:
 
@@ -38,9 +32,7 @@ namespace SuperTerrainPlus {
 			 * @brief Delete the nullable primitive.
 			 * @param ptr The "pointer" to the primitive value.
 			*/
-			void operator()(pointer ptr) const {
-				this->deleter(ptr);
-			}
+			void operator()(pointer) const noexcept;
 
 		};
 
@@ -52,44 +44,40 @@ namespace SuperTerrainPlus {
 	public:
 
 		/**
-		 * @brief Intialise a nullable primitive with default value
+		 * @brief Initialise a nullable primitive with default value
 		*/
-		STPNullablePrimitive() = default;
+		STPNullablePrimitive() noexcept = default;
 
 		/**
 		 * @brief Initialise a nullable primitive with value of Null (nullptr)
 		 * @param A null pointer.
 		*/
-		STPNullablePrimitive(std::nullptr_t);
+		STPNullablePrimitive(std::nullptr_t) noexcept;
 
 		/**
-		 * @brief Initialse a nullable primitive with a value.
+		 * @brief Initialise a nullable primitive with a value.
 		 * @param value The value of this nullable primitive.
 		*/
-		STPNullablePrimitive(Pri);
+		STPNullablePrimitive(Pri) noexcept;
 
 		/**
 		 * @brief Convert the nullable primitive to the actual primitive.
 		*/
-		operator Pri() const;
+		operator Pri() const noexcept;
 
 		/**
 		 * @brief Convert the nullable primitive to the actual primitive.
 		 * @return The primitive value;
 		*/
-		Pri operator*() const;
+		Pri operator*() const noexcept;
 
 		/* Nullable comparator */
 
-		bool operator==(std::nullptr_t) const;
-		bool operator!=(std::nullptr_t) const;
+		bool operator==(std::nullptr_t) const noexcept;
+		bool operator!=(std::nullptr_t) const noexcept;
 
 	};
 
-	//A nullable GLuint type
-	//Most OpenGL objects use GLuint format, doing this allow manging GL objects as a smart pointer.
-	typedef STPNullablePrimitive<STPOpenGL::STPuint, 0u> STPNullableGLuint;
-	typedef STPNullablePrimitive<STPOpenGL::STPuint64, 0ull> STPNullableGLuint64;
-
 }
+#include "STPNullablePrimitive.inl"
 #endif//_STP_NULLABLE_PRIMITIVE_H_
