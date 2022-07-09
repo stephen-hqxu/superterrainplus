@@ -614,7 +614,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_FALSE);//not necessary for forward compatibility
 		glfwWindowHint(GLFW_CONTEXT_ROBUSTNESS, GLFW_LOSE_CONTEXT_ON_RESET);
 		glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_RELEASE_BEHAVIOR_FLUSH);
-#ifdef _DEBUG
+#ifndef NDEBUG
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #else
 		glfwWindowHint(GLFW_CONTEXT_NO_ERROR, GLFW_TRUE);

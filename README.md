@@ -10,7 +10,8 @@
 
 <p align="center">
 	<img src="https://img.shields.io/badge/C%2B%2B_17-00599C?style=flat&logo=c%2B%2B&logoColor=white" />
-	<img src="https://img.shields.io/badge/NVIDIA-CUDA_11.3-76B900?style=flat&logo=nvidia&logoColor=white" />
+	<img src="https://img.shields.io/badge/CUDA_11.3-76B900?style=flat&logo=nvidia&logoColor=white" />
+	<img src="https://img.shields.io/badge/OptiX_7-76B900?style=flat&logo=nvidia&logoColor=white" />
 	<img src="https://img.shields.io/badge/OpenGL_4.6-FFFFFF?style=flat&logo=opengl" />
 	<img src="https://img.shields.io/badge/CMake_3.18-064F8C?style=flat&logo=cmake&logoColor=white" />
 </p>
@@ -86,8 +87,8 @@ Procedural technique is one of the most popular topics in computer graphics and 
   - [x] Fresnel effect
   - [ ] Caustics
   - [ ] Underwater crepuscular rays
+- [ ] Real-time rasterisation-ray tracing hybrid global illumination
 - [ ] Procedural weather effect
-- [ ] Real-time global illumination
 
 ### Optimisation technique
 

@@ -27,7 +27,7 @@ add_subdirectory(${STP_REALISM_ENGINE})
 
 # setup the template target
 add_library(${STP_TEMPLATE_INCLUDE} INTERFACE)
-# config file include
+# configure file include
 target_include_directories(${STP_TEMPLATE_INCLUDE}
 INTERFACE ${STP_TEMPLATE_OUTPUT}
 )
@@ -60,5 +60,6 @@ PUBLIC ${STP_MAIN_ENGINE} # main engine has all CUDA drivers linked as public
 target_link_libraries(${STP_REALISM_ENGINE}
 # template file contains private path to some shader source code
 PRIVATE ${STP_GLAD} ${STP_TEMPLATE_INCLUDE}
+PUBLIC OptiX::OptiX
 PUBLIC ${STP_MAIN_ENGINE}
 )

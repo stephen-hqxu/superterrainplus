@@ -5,6 +5,7 @@ STPOrthographicCamera.cpp
 STPPerspectiveCamera.cpp
 STPPlaneGeometry.cpp
 STPRealismEnvironment.cpp
+STPRendererErrorHandler.cpp
 STPRendererInitialiser.cpp
 STPScenePipeline.cpp
 

@@ -44,6 +44,7 @@ Utility/Memory/STPSmartEvent.h
 Utility/Memory/STPSmartStream.h
 # /Utility
 Utility/STPDeviceErrorHandler.h
+Utility/STPDeviceErrorHandlerBlueprint.hpp
 Utility/STPFile.h
 Utility/STPFile.inl
 Utility/STPHashCombine.h

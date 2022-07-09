@@ -2,21 +2,12 @@
 #ifndef _STP_DEVICE_ERROR_HANDLER_H_
 #define _STP_DEVICE_ERROR_HANDLER_H_
 
-#ifdef STP_DEVICE_ERROR_SUPPRESS_CERR
-#undef STP_DEVICE_ERROR_SUPPRESS_CERR
-#define STP_DEVICE_ERROR_SUPPRESS_CERR true
-#else
-#define STP_DEVICE_ERROR_SUPPRESS_CERR false
-#endif
-
 #include <SuperTerrain+/STPCoreDefine.h>
 
-namespace SuperTerrainPlus {
-	template<typename Err>
-	STP_API void STPEngineAssert(Err, const char* __restrict, const char* __restrict, int, bool) noexcept(false);
-}
+#define STP_ENGINE_ASSERT_QUAL STP_API
+#include "STPDeviceErrorHandlerBlueprint.hpp"
 
-#define STPcudaCheckErr(ec) SuperTerrainPlus::STPEngineAssert(ec, __FILE__, __FUNCTION__, __LINE__, STP_DEVICE_ERROR_SUPPRESS_CERR)
-#define STPsqliteCheckErr(ec) STPcudaCheckErr(ec)
+#define STPcudaCheckErr(EC) STP_ASSERT_ENGINE_BASIC(EC)
+#define STPsqliteCheckErr(EC) STP_ASSERT_ENGINE_BASIC(EC)
 
 #endif//_STP_DEVICE_ERROR_HANDLER_H_

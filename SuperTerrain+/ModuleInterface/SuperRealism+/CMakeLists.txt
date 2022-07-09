@@ -67,6 +67,7 @@ Utility/STPDebugCallback.h
 Utility/STPIndirectCommand.hpp
 Utility/STPLogHandler.hpp
 Utility/STPRandomTextureGenerator.cuh
+Utility/STPRendererErrorHandler.h
 )
 
 list(TRANSFORM STP_REALISM_ENGINE_INTERFACE PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")

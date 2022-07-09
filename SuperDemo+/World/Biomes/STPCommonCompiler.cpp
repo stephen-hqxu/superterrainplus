@@ -66,7 +66,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		["-fmad=false"]
 		[this->CapabilityOption.c_str()]
 		["-rdc=true"]
-#ifdef _DEBUG
+#ifndef NDEBUG
 		["-G"]
 #endif
 		["-maxrregcount=80"]
@@ -76,7 +76,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 
 	//setup linker options
 	this->LinkInfo.LinkerOption
-#ifdef _DEBUG
+#ifndef NDEBUG
 		//if debug has turned on, optimisation must be 0 or linker will be crying...
 		(CU_JIT_OPTIMIZATION_LEVEL, (void*)0u)
 		(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
@@ -86,7 +86,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		(CU_JIT_LOG_VERBOSE, (void*)1);
 	
 	//setup module options
-#ifdef _DEBUG
+#ifndef NDEBUG
 	this->LinkInfo.ModuleOption
 		(CU_JIT_GENERATE_DEBUG_INFO, (void*)1);
 #endif
