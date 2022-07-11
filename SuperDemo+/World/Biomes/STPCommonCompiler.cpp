@@ -1,6 +1,8 @@
 #include "STPCommonCompiler.h"
 #include <SuperAlgorithm+/STPAlgorithmDeviceInfo.h>
 
+#include <SuperTerrain+/STPEngineInitialiser.h>
+
 //Error
 #include <SuperTerrain+/Exception/STPCompilationError.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
@@ -52,30 +54,130 @@ constexpr static auto generateInclude() {
 	return includeOption;
 }
 
+/**
+ * @brief STPCompilerLog contains allocated memory for compiler and linker logs
+*/
+struct STPCompilerLog {
+public:
+
+	constexpr static unsigned int LogSize = 1024u;
+
+	//Various of logs
+	char linker_info_log[LogSize], linker_error_log[LogSize];
+	char module_info_log[LogSize], module_error_log[LogSize];
+};
+
 //Include dir of the engines
 constexpr static auto CoreInclude = generateInclude<SuperTerrainPlus_CoreInclude>();
 constexpr static auto DeviceInclude = generateInclude<SuperAlgorithmPlus_DeviceInclude>();
 
-STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk,
-	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
-	CapabilityOption(string("-arch=sm_") + to_string(STPCommonCompiler::getArchitecture(0))),
-	SimplexPermutation(simplex_setting), Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk) {
-	//setup compiler options
-	this->SourceInfo.Option
-		["-std=c++17"]
-		["-fmad=false"]
-		[this->CapabilityOption.c_str()]
-		["-rdc=true"]
-#ifndef NDEBUG
-		["-G"]
-#endif
-		["-maxrregcount=80"]
-		//set include paths
-		[CoreInclude.data()]
-		[DeviceInclude.data()];
+#define HANDLE_COMPILE(FUNC) \
+STPDeviceRuntimeBinary::STPCompilationOutput output; \
+try { \
+	output = FUNC; \
+	if (!output.Log.empty()) { \
+		cout << output.Log << endl; \
+	} \
+} catch (const SuperTerrainPlus::STPException::STPCompilationError& error) { \
+	cerr << error.what() << endl; \
+	std::terminate(); \
+}
 
+STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk,
+	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : SimplexPermutation(simplex_setting),
+	Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk) {
+	const auto commonSourceInfo = [capabilityOption = string("-arch=sm_") + to_string(STPEngineInitialiser::architecture(0))]() {
+		STPDeviceRuntimeBinary::STPSourceInformation info;
+		//setup compiler options
+		info.Option
+			["-std=c++17"]
+			[capabilityOption]
+			["-rdc=true"]
+#ifndef NDEBUG
+			["-G"]
+#endif
+			["-maxrregcount=80"]
+			//set include paths
+			[CoreInclude.data()]
+			[DeviceInclude.data()];
+
+		return info;
+	}();
+
+	STPDeviceRuntimeBinary bin_common, bin_biome, bin_splat;
+	using std::move;
+	STPDeviceRuntimeBinary::STPLoweredName commonName;
+	/* -------------------------------- common compiler ----------------------------- */
+	{
+		//Filename
+		constexpr static char CommonGeneratorFilename[] = "./Script/STPCommonGenerator.cu";
+
+		//load source code
+		const string commongen_source = STPFile::read(CommonGeneratorFilename);
+		//set compiler options
+		STPDeviceRuntimeBinary::STPSourceInformation commongen_info = commonSourceInfo;
+		//this common generator only contains a few shared variables
+		commongen_info.NameExpression
+			["STPCommonGenerator::Dimension"]
+			["STPCommonGenerator::HalfDimension"]
+			["STPCommonGenerator::RenderedDimension"]
+			["STPCommonGenerator::Permutation"];
+		//compile
+		HANDLE_COMPILE(bin_common.compileFromSource("STPCommonGenerator", commongen_source, commongen_info))
+		commonName = move(output.LoweredName);
+	}
+	/* ------------------------------- biomefield compiler ----------------------------- */
+	{
+		//File name of the generator script
+		constexpr static char GeneratorFilename[] = "./Script/STPMultiHeightGenerator.cu";
+		constexpr static char BiomePropertyFilename[] = "./STPBiomeProperty.hpp";
+
+		//read script
+		const string multiheightfield_source = STPFile::read(GeneratorFilename);
+		const string biomeprop_hdr = STPFile::read(BiomePropertyFilename);
+		//attach biome property
+		STPDeviceRuntimeBinary::STPExternalHeaderSource header;
+		header.emplace("STPBiomeProperty", biomeprop_hdr);
+		//attach source code and load up default compiler options, it returns a copy
+		STPDeviceRuntimeBinary::STPSourceInformation multiheightfield_info = commonSourceInfo;
+		//we only need to adjust options that are unique to different sources
+		multiheightfield_info.NameExpression
+			//global function
+			["generateMultiBiomeHeightmap"]
+			//constant
+			["BiomeTable"];
+		//options are all set
+		multiheightfield_info.ExternalHeader
+			["STPBiomeProperty"];
+		HANDLE_COMPILE(bin_biome.compileFromSource(
+			"STPMultiHeightGenerator", multiheightfield_source, multiheightfield_info, header))
+		this->BiomefieldName = move(output.LoweredName);
+	}
+	/* ---------------------------------- splatmap compiler -------------------------------- */
+	{
+		//File name of the generator script
+		constexpr static char GeneratorFilename[] = "./Script/STPSplatmapGenerator.cu";
+
+		//read source code
+		const string splatmap_source = STPFile::read(GeneratorFilename);
+		//load default compiler settings
+		STPDeviceRuntimeBinary::STPSourceInformation source_info = commonSourceInfo;
+		source_info.NameExpression
+			["SplatDatabase"]
+			//global function
+			["generateTextureSplatmap"];
+		//compile
+		HANDLE_COMPILE(bin_splat.compileFromSource("STPSplatmapGenerator", splatmap_source, source_info))
+		this->SplatmapName = move(output.LoweredName);
+	}
+	/* -------------------------------------- link -------------------------------------- */
 	//setup linker options
-	this->LinkInfo.LinkerOption
+	using BinT = STPDeviceRuntimeProgram::STPBinaryType;
+	const STPDeviceRuntimeProgram::STPLinkerInformation::STPDataJitOption common_data_option;
+	STPDeviceRuntimeProgram::STPLinkerInformation linkInfo;
+	STPCompilerLog log;
+
+	linkInfo.LinkerOption
 #ifndef NDEBUG
 		//if debug has turned on, optimisation must be 0 or linker will be crying...
 		(CU_JIT_OPTIMIZATION_LEVEL, (void*)0u)
@@ -83,103 +185,29 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 #else
 		(CU_JIT_OPTIMIZATION_LEVEL, (void*)4u)
 #endif
-		(CU_JIT_LOG_VERBOSE, (void*)1);
+		(CU_JIT_LOG_VERBOSE, (void*)1)
+		(CU_JIT_INFO_LOG_BUFFER, log.linker_info_log)
+		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize)
+		(CU_JIT_ERROR_LOG_BUFFER, log.linker_error_log)
+		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize);
 	
 	//setup module options
+	linkInfo.ModuleOption
 #ifndef NDEBUG
-	this->LinkInfo.ModuleOption
-		(CU_JIT_GENERATE_DEBUG_INFO, (void*)1);
+		(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
 #endif
+		(CU_JIT_INFO_LOG_BUFFER, log.module_info_log)
+		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize)
+		(CU_JIT_ERROR_LOG_BUFFER, log.module_error_log)
+		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize);
+	linkInfo.DataOption.emplace_back(&bin_common, BinT::PTX, common_data_option);
+	linkInfo.DataOption.emplace_back(&bin_biome, BinT::PTX, common_data_option);
+	linkInfo.DataOption.emplace_back(&bin_splat, BinT::PTX, common_data_option);
 
-	//attach device algorithm library
-	this->attachArchive("SuperAlgorithm+Device", string(SuperTerrainPlus::SuperAlgorithmPlus_DeviceLibrary));
+	linkInfo.ArchiveOption.emplace_back(SuperTerrainPlus::SuperAlgorithmPlus_DeviceLibrary, common_data_option);
 
-	this->setupCommonGenerator();
-	//compile individual source codes
-	this->setupBiomefieldGenerator();
-	this->setupSplatmapGenerator();
-
-	//link all source codes
-	this->finalise();
-}
-
-#define HANDLE_COMPILE(FUNC) \
-try { \
-	const string log = FUNC; \
-	if (!log.empty()) { \
-		cout << log << endl; \
-	} \
-} \
-catch (const SuperTerrainPlus::STPException::STPCompilationError& error) { \
-	cerr << error.what() << endl; \
-	std::terminate(); \
-}
-
-void STPCommonCompiler::setupCommonGenerator() {
-	//Filename
-	constexpr static char CommonGeneratorFilename[] = "./Script/STPCommonGenerator.cu";
-
-	//load source code
-	const string commongen_source = STPFile::read(CommonGeneratorFilename);
-	//set compiler options
-	STPRuntimeCompilable::STPSourceInformation commongen_info = this->getCompilerOptions();
-	//this common generator only contains a few shared variables
-	commongen_info.NameExpression
-		["STPCommonGenerator::Dimension"]
-	["STPCommonGenerator::HalfDimension"]
-	["STPCommonGenerator::RenderedDimension"]
-	["STPCommonGenerator::Permutation"];
-	//compile
-	HANDLE_COMPILE(this->compileSource("STPCommonGenerator", commongen_source, commongen_info))
-	
-}
-
-void STPCommonCompiler::setupBiomefieldGenerator() {
-	//File name of the generator script
-	constexpr static char GeneratorFilename[] = "./Script/STPMultiHeightGenerator.cu";
-	constexpr static char BiomePropertyFilename[] = "./STPBiomeProperty.hpp";
-
-	//read script
-	const string multiheightfield_source = STPFile::read(GeneratorFilename);
-	const string biomeprop_hdr = STPFile::read(BiomePropertyFilename);
-	//attach biome property
-	this->attachHeader("STPBiomeProperty", biomeprop_hdr);
-	//attach source code and load up default compiler options, it returns a copy
-	STPRuntimeCompilable::STPSourceInformation multiheightfield_info = this->getCompilerOptions();
-	//we only need to adjust options that are unique to different sources
-	multiheightfield_info.NameExpression
-		//global function
-		["generateMultiBiomeHeightmap"]
-	//constant
-	["BiomeTable"];
-	//options are all set
-	multiheightfield_info.ExternalHeader
-		["STPBiomeProperty"];
-	HANDLE_COMPILE(this->compileSource("STPMultiHeightGenerator", multiheightfield_source, multiheightfield_info))
-}
-
-void STPCommonCompiler::setupSplatmapGenerator() {
-	//File name of the generator script
-	constexpr static char GeneratorFilename[] = "./Script/STPSplatmapGenerator.cu";
-
-	//read source code
-	const string splatmap_source = STPFile::read(GeneratorFilename);
-	//load default compiler settings
-	STPCommonCompiler::STPSourceInformation source_info = this->getCompilerOptions();
-	source_info.NameExpression
-		["SplatDatabase"]
-	//global function
-	["generateTextureSplatmap"];
-	//compile
-	HANDLE_COMPILE(this->compileSource("STPSplatmapGenerator", splatmap_source, source_info))
-}
-
-void STPCommonCompiler::finalise() {
-	//linker log output
-	STPCommonCompiler::STPCompilerLog log;
-	STPRuntimeCompilable::STPLinkerInformation link_info = this->getLinkerOptions(log);
 	try {
-		this->linkProgram(link_info, CU_JIT_INPUT_PTX);
+		this->GeneratorProgram.linkFromBinary(linkInfo);
 		cout << log.linker_info_log << endl;
 		cout << log.module_info_log << endl;
 
@@ -187,12 +215,15 @@ void STPCommonCompiler::finalise() {
 		CUdeviceptr dimension, half_dimension, rendered_dimension, perm;
 		size_t dimensionSize, half_dimensionSize, rendered_dimensionSize, permSize;
 		//source information
-		const auto& name = this->retrieveSourceLoweredName("STPCommonGenerator");
-		CUmodule program = this->getGeneratorModule();
-		STPcudaCheckErr(cuModuleGetGlobal(&dimension, &dimensionSize, program, name.at("STPCommonGenerator::Dimension")));
-		STPcudaCheckErr(cuModuleGetGlobal(&half_dimension, &half_dimensionSize, program, name.at("STPCommonGenerator::HalfDimension")));
-		STPcudaCheckErr(cuModuleGetGlobal(&rendered_dimension, &rendered_dimensionSize, program, name.at("STPCommonGenerator::RenderedDimension")));
-		STPcudaCheckErr(cuModuleGetGlobal(&perm, &permSize, program, name.at("STPCommonGenerator::Permutation")));
+		const CUmodule program = *this->GeneratorProgram;
+		STPcudaCheckErr(cuModuleGetGlobal(&dimension, &dimensionSize, program,
+			commonName.at("STPCommonGenerator::Dimension").c_str()));
+		STPcudaCheckErr(cuModuleGetGlobal(&half_dimension, &half_dimensionSize,program,
+			commonName.at("STPCommonGenerator::HalfDimension").c_str()));
+		STPcudaCheckErr(cuModuleGetGlobal(&rendered_dimension, &rendered_dimensionSize, program,
+			commonName.at("STPCommonGenerator::RenderedDimension").c_str()));
+		STPcudaCheckErr(cuModuleGetGlobal(&perm, &permSize, program,
+			commonName.at("STPCommonGenerator::Permutation").c_str()));
 		//send data
 		const vec2 halfDim = static_cast<vec2>(this->Dimension) / 2.0f;
 		const uvec2 RenderedDim = this->RenderingRange * this->Dimension;
@@ -201,8 +232,7 @@ void STPCommonCompiler::finalise() {
 		STPcudaCheckErr(cuMemcpyHtoD(rendered_dimension, value_ptr(RenderedDim), rendered_dimensionSize));
 		//note that we are copying permutation to device, the underlying pointers are managed by this class
 		STPcudaCheckErr(cuMemcpyHtoD(perm, &(*this->SimplexPermutation), permSize));
-	}
-	catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
+	} catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
 		cerr << error.what() << std::endl;
 		cerr << log.linker_error_log << endl;
 		cerr << log.module_error_log << endl;
@@ -210,33 +240,14 @@ void STPCommonCompiler::finalise() {
 	}
 }
 
-STPRuntimeCompilable::STPSourceInformation STPCommonCompiler::getCompilerOptions() const {
-	//return a copy of that, because one compiler may need to compile multiple sources
-	return this->SourceInfo;
-}
-
-STPRuntimeCompilable::STPLinkerInformation STPCommonCompiler::getLinkerOptions(STPCompilerLog& log) const {
-	//make a copy of the link info so we don't modify the original one
-	STPRuntimeCompilable::STPLinkerInformation link_info = this->LinkInfo;
-	//fill in logs
-	link_info.LinkerOption
-		(CU_JIT_INFO_LOG_BUFFER, log.linker_info_log)
-		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize)
-		(CU_JIT_ERROR_LOG_BUFFER, log.linker_error_log)
-		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize);
-	link_info.ModuleOption
-		(CU_JIT_INFO_LOG_BUFFER, log.module_info_log)
-		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize)
-		(CU_JIT_ERROR_LOG_BUFFER, log.module_error_log)
-		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize);
-
-	return link_info;
-}
-
 CUmodule STPCommonCompiler::getProgram() const {
-	return this->getGeneratorModule();
+	return *this->GeneratorProgram;
 }
 
-const STPRuntimeCompilable::STPLoweredName& STPCommonCompiler::getLoweredNameDictionary(const string& name) const {
-	return this->retrieveSourceLoweredName(name);
+const STPDeviceRuntimeBinary::STPLoweredName& STPCommonCompiler::getBiomefieldName() const {
+	return this->BiomefieldName;
+}
+
+const STPDeviceRuntimeBinary::STPLoweredName& STPCommonCompiler::getSplatmapName() const {
+	return this->SplatmapName;
 }

@@ -1,8 +1,9 @@
 set(STP_MAIN_ENGINE_SOURCE
+STPDeviceRuntimeBinary.cpp
+STPDeviceRuntimeProgram.cpp
 STPEngineInitialiser.cpp
 STPEnvironment.cpp
 STPException.cpp
-STPRuntimeCompilable.cpp
 
 STPHeightfieldKernel.cu
 STPRainDrop.cu

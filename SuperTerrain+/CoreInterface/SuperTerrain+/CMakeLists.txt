@@ -24,9 +24,10 @@ Exception/STPMemoryError.h
 Exception/STPSerialisationError.h
 Exception/STPUnsupportedFunctionality.h
 # /GPGPU
+GPGPU/STPDeviceRuntimeBinary.h
+GPGPU/STPDeviceRuntimeProgram.h
 GPGPU/STPHeightfieldKernel.cuh
 GPGPU/STPRainDrop.cuh
-GPGPU/STPRuntimeCompilable.h
 # /Utility/Algebra
 Utility/Algebra/STPAlgebraCommon.h
 Utility/Algebra/STPAlgebraCommon.inl

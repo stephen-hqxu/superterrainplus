@@ -66,3 +66,11 @@ void STPEngineInitialiser::init(int device) {
 bool STPEngineInitialiser::hasInit() {
 	return GLInit && EngineInit;
 }
+
+int STPEngineInitialiser::architecture(int device) {
+	int major, minor;
+	STPcudaCheckErr(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, device));
+	STPcudaCheckErr(cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, device));
+
+	return major * 10 + minor;
+}

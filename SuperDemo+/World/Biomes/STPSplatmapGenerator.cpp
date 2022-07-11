@@ -38,9 +38,9 @@ void STPSplatmapGenerator::initGenerator() {
 	CUdeviceptr splat_database;
 	size_t splat_databaseSize;
 	//get variable names
-	const auto& name = this->KernelProgram.getLoweredNameDictionary("STPSplatmapGenerator");
-	STPcudaCheckErr(cuModuleGetFunction(&this->SplatmapEntry, program, name.at("generateTextureSplatmap")));
-	STPcudaCheckErr(cuModuleGetGlobal(&splat_database, &splat_databaseSize, program, name.at("SplatDatabase")));
+	const auto& name = this->KernelProgram.getSplatmapName();
+	STPcudaCheckErr(cuModuleGetFunction(&this->SplatmapEntry, program, name.at("generateTextureSplatmap").c_str()));
+	STPcudaCheckErr(cuModuleGetGlobal(&splat_database, &splat_databaseSize, program, name.at("SplatDatabase").c_str()));
 	//add splat-database and gradient bias
 	const STPTextureInformation::STPSplatRuleDatabase splatDb = this->getSplatDatabase();
 	STPcudaCheckErr(cuMemcpyHtoD(splat_database, &splatDb, splat_databaseSize));

@@ -8,7 +8,9 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 //SuperTerrain+/GPGPU
-#include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
+#include <SuperTerrain+/GPGPU/STPDeviceRuntimeBinary.h>
+#include <SuperTerrain+/GPGPU/STPDeviceRuntimeProgram.h>
+#include <SuperTerrain+/STPEngineInitialiser.h>
 
 //Utils
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
@@ -42,7 +44,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-class RTCTester : protected STPRuntimeCompilable {
+class RTCTester : protected STPDeviceRuntimeProgram {
 private:
 
 	constexpr static char SourceLocation[] = "./TestData/MatrixArithmetic.rtc";
@@ -69,15 +71,14 @@ protected:
 
 	CUfunction MattransformAdd, MattransformSub, Matscale;
 
-	void testCompilation(bool test_enable, bool attach_header) {
+	std::pair<STPDeviceRuntimeBinary, STPDeviceRuntimeBinary::STPLoweredName> testCompilation(bool test_enable, bool attach_header) {
 		using namespace std::string_literals;
-		const string Capability = "-arch=sm_"s + std::to_string(RTCTester::getArchitecture(0));
+		const string Capability = "-arch=sm_"s + std::to_string(STPEngineInitialiser::architecture(0));
 		//settings
-		STPSourceInformation src_info;
+		STPDeviceRuntimeBinary::STPSourceInformation src_info;
 		src_info.Option
 			["-std=c++17"]
-			[Capability.c_str()]
-			["-fmad=false"];
+			[Capability.c_str()];
 		if (test_enable) {
 			//it's a define switch to test if compiler options are taken by the compiler
 			//if this symbol is not defined it should throw an error
@@ -90,12 +91,13 @@ protected:
 			[RTCTester::TransformAdd]
 			[RTCTester::TransformSub]
 			["scale"];
+		STPDeviceRuntimeBinary::STPExternalHeaderSource header;
 		if (attach_header) {
 			//define a macro to enable external header testing
 			src_info.Option
 				["-DSTP_TEST_EXTERNAL_HEADER"];
 			//attach header source code to the database
-			REQUIRE(this->attachHeader(RTCTester::ExternalHeaderName, RTCTester::ExternalHeaderSource));
+			header.emplace(RTCTester::ExternalHeaderName, RTCTester::ExternalHeaderSource);
 			//add to compiler list
 			src_info.ExternalHeader
 				[RTCTester::ExternalHeaderName];
@@ -105,21 +107,24 @@ protected:
 		const string src = STPFile::read(RTCTester::SourceLocation);
 
 		//compile
-		auto startCompile = [&src_info, &src, this]() {
-			string log;
+		STPDeviceRuntimeBinary binary;
+		STPDeviceRuntimeBinary::STPLoweredName lowered_name;
+		auto startCompile = [&src_info, &src, &binary, &header, &lowered_name]() {
+			STPDeviceRuntimeBinary::STPCompilationOutput output;
 			try {
-				log = this->compileSource(RTCTester::SourceName, src, src_info);
-			}
-			catch (const STPException::STPCompilationError& ce) {
+				output = binary.compileFromSource(RTCTester::SourceName, src, src_info, header);
+			} catch (const STPException::STPCompilationError& ce) {
 				//compile time error
 				cerr << ce.what() << endl;
 				//rethrow it
 				throw;
 			}
 			//print the log (if any)
-			if (!log.empty()) {
-				cout << log << endl;
+			if (!output.Log.empty()) {
+				cout << output.Log << endl;
 			}
+
+			lowered_name = std::move(output.LoweredName);
 		};
 		CHECKED_IF(test_enable) {
 			CHECKED_IF(attach_header) {
@@ -132,9 +137,11 @@ protected:
 		CHECKED_ELSE(test_enable) {
 			REQUIRE_THROWS_WITH(startCompile(), Catch::Matchers::ContainsSubstring("STP_TEST_ENABLE"));
 		}
+
+		return std::pair(std::move(binary), lowered_name);
 	}
 
-	void testLink() {
+	void testLink(const STPDeviceRuntimeBinary& binary) {
 		//log
 		constexpr static unsigned int logSize = 1024u;
 		char linker_info[logSize], linker_error[logSize];
@@ -148,8 +155,9 @@ protected:
 			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize)
 			(CU_JIT_ERROR_LOG_BUFFER, linker_error)
 			(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize);
-		link_info.getDataOption(RTCTester::SourceName)
-			(CU_JIT_MAX_REGISTERS, (void*)72u);
+		STPLinkerInformation::STPDataJitOption source_option;
+		source_option(CU_JIT_MAX_REGISTERS, (void*)72u);
+		link_info.DataOption.emplace_back(&binary, STPBinaryType::PTX, source_option);
 		link_info.ModuleOption
 		(CU_JIT_INFO_LOG_BUFFER, module_info)
 			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize)
@@ -160,9 +168,8 @@ protected:
 		//link
 		REQUIRE_NOTHROW([&]() {
 			try {
-				this->linkProgram(link_info, CU_JIT_INPUT_PTX);
-			}
-			catch (...) {
+				this->linkFromBinary(link_info);
+			} catch (...) {
 				//print error log
 				cerr << linker_error << endl;
 				cerr << module_error << endl;
@@ -174,21 +181,20 @@ protected:
 		}());
 	}
 
-	void prepData() {
-		const STPLoweredName& name = this->retrieveSourceLoweredName(RTCTester::SourceName);
-		auto program = this->getGeneratorModule();
+	void prepData(const STPDeviceRuntimeBinary::STPLoweredName& lowered_name) {
+		const auto program = **this;
 		CUdeviceptr matrixDim_d;
 		size_t matrixDimSize;
 
 		//get the pointer to the variable
 		const uint2 matrixDim_h = make_uint2(RTCTester::MatDim.x, RTCTester::MatDim.y);
-		STPcudaCheckErr(cuModuleGetGlobal(&matrixDim_d, &matrixDimSize, program, name.at("MatrixDimension")));
+		STPcudaCheckErr(cuModuleGetGlobal(&matrixDim_d, &matrixDimSize, program, lowered_name.at("MatrixDimension").c_str()));
 		STPcudaCheckErr(cuMemcpyHtoD(matrixDim_d, &matrixDim_h, matrixDimSize));
 
 		//get function pointer
-		STPcudaCheckErr(cuModuleGetFunction(&this->MattransformAdd, program, name.at(RTCTester::TransformAdd)));
-		STPcudaCheckErr(cuModuleGetFunction(&this->MattransformSub, program, name.at(RTCTester::TransformSub)));
-		STPcudaCheckErr(cuModuleGetFunction(&this->Matscale, program, name.at("scale")));
+		STPcudaCheckErr(cuModuleGetFunction(&this->MattransformAdd, program, lowered_name.at(RTCTester::TransformAdd).c_str()));
+		STPcudaCheckErr(cuModuleGetFunction(&this->MattransformSub, program, lowered_name.at(RTCTester::TransformSub).c_str()));
+		STPcudaCheckErr(cuModuleGetFunction(&this->Matscale, program, lowered_name.at("scale").c_str()));
 	}
 
 	mat4 matrixTransform(CUfunction func, const mat4& matA, const mat4& matB, float factor) {
@@ -242,7 +248,7 @@ protected:
 
 public:
 
-	RTCTester() : STPRuntimeCompilable() {
+	RTCTester() {
 		//context has been init at the start of the test program
 		const unsigned int matSize = RTCTester::MatDim.x * RTCTester::MatDim.y;
 		this->MatA = STPSmartDeviceMemory::makeDevice<float[]>(matSize);
@@ -255,7 +261,7 @@ public:
 
 static constexpr char Nonsense[] = "Blah.blah";
 
-SCENARIO_METHOD(RTCTester, "STPRuntimeCompilable manages runtime CUDA scripts and runs the kernel", "[GPGPU][STPRuntimeCompilable]") {
+SCENARIO_METHOD(RTCTester, "STPRuntimeCompilable manages runtime CUDA scripts and runs the kernel", "[GPGPU][STPDeviceRuntimeBinary][STPDeviceRuntimeProgram]") {
 
 	GIVEN("A RTC version of diversity generator with custom implementation and runtime script") {
 
@@ -268,22 +274,14 @@ SCENARIO_METHOD(RTCTester, "STPRuntimeCompilable manages runtime CUDA scripts an
 
 		}
 
-		WHEN("Retrieve source lowered name from a non-existing source code") {
-
-			THEN("No lowered name is returned with an error thrown") {
-				REQUIRE_THROWS_AS(this->retrieveSourceLoweredName(Nonsense), STPException::STPMemoryError);
-			}
-
-		}
-
 		WHEN("A piece of working source code is added to the program") {
 
 			THEN("Program can be compiled without errors") {
-				this->testCompilation(true, false);
+				const auto [binary, lowered_name] = this->testCompilation(true, false);
 
 				AND_THEN("After linking, data can be sent to kernel, after the execution result can be retrieved, and correctness is verified") {
-					this->testLink();
-					REQUIRE_NOTHROW(this->prepData());
+					this->testLink(binary);
+					REQUIRE_NOTHROW(this->prepData(lowered_name));
 					//round the number to 1 d.p. to avoid float rounding issue during assertion
 					//compilation is a slow process, so we only test it once
 					const auto Data = GENERATE(take(1, chunk(18, map<float>([](auto f) { return roundf(f * 10.0f) / 10.0f; }, random(-6666.0f, 6666.0f)))));
@@ -301,29 +299,6 @@ SCENARIO_METHOD(RTCTester, "STPRuntimeCompilable manages runtime CUDA scripts an
 
 				}
 
-				AND_WHEN("The same piece of source code is re-added to the program") {
-
-					THEN("Diversity generator does not allow the same source code to be added") {
-						STPSourceInformation test_info;
-						const string randomSource("#error This source code is not intended to be compiled\n");
-						REQUIRE_THROWS_AS(this->compileSource(RTCTester::SourceName, randomSource, test_info), STPException::STPMemoryError);
-					}
-
-				}
-
-			}
-
-			AND_WHEN("Source is asked to be discarded") {
-
-				THEN("Source code is discarded if it has been compiled before") {
-					this->testCompilation(true, false);
-					REQUIRE(this->discardSource(RTCTester::SourceName));
-				}
-
-				THEN("Nothing should happen if source code name is not found in the database") {
-					REQUIRE_FALSE(this->discardSource(Nonsense));
-				}
-
 			}
 
 			AND_GIVEN("An external header") {
@@ -332,50 +307,6 @@ SCENARIO_METHOD(RTCTester, "STPRuntimeCompilable manages runtime CUDA scripts an
 
 					THEN("Header is recognised by the compiler and can be used alongside with the source file") {
 						this->testCompilation(true, true);
-
-						AND_WHEN("The same header is attached to the program") {
-
-							THEN("Program should not allow header with the same name to be added") {
-								REQUIRE_FALSE(this->attachHeader(RTCTester::ExternalHeaderName, RTCTester::ExternalHeaderSource));
-							}
-
-						}
-
-					}
-
-					AND_WHEN("Header is asked to be discarded") {
-
-						THEN("Header should be discarded if it exists") {
-							REQUIRE(this->attachHeader(Nonsense, Nonsense));
-							REQUIRE(this->detachHeader(Nonsense));
-						}
-
-						THEN("Nothing should happen if header name is not found") {
-							REQUIRE_FALSE(this->detachHeader(Nonsense));
-						}
-
-					}
-
-				}
-
-			}
-
-			AND_GIVEN("An archive file") {
-
-				WHEN("Archive is attached to the program database") {
-					//TODO: I don't have an archive on my hand to be tested
-
-					AND_WHEN("Archive is asked to be discarded") {
-
-						THEN("Archive should be discarded if it exists") {
-							REQUIRE(this->attachArchive(Nonsense, Nonsense));
-							REQUIRE(this->detachArchive(Nonsense));
-						}
-
-						THEN("Nothing should happen if the archive name is not found") {
-							REQUIRE_FALSE(this->detachArchive(Nonsense));
-						}
-
 					}
 
 				}

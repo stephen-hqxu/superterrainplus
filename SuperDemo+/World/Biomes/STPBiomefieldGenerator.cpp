@@ -46,9 +46,9 @@ void STPBiomefieldGenerator::initGenerator() {
 	CUdeviceptr biome_prop;
 	size_t biome_propSize;
 	//get names and start copying
-	const auto& name = this->KernelProgram.getLoweredNameDictionary("STPMultiHeightGenerator");
-	STPcudaCheckErr(cuModuleGetFunction(&this->GeneratorEntry, program, name.at("generateMultiBiomeHeightmap")));
-	STPcudaCheckErr(cuModuleGetGlobal(&biome_prop, &biome_propSize, program, name.at("BiomeTable")));
+	const auto& name = this->KernelProgram.getBiomefieldName();
+	STPcudaCheckErr(cuModuleGetFunction(&this->GeneratorEntry, program, name.at("generateMultiBiomeHeightmap").c_str()));
+	STPcudaCheckErr(cuModuleGetGlobal(&biome_prop, &biome_propSize, program, name.at("BiomeTable").c_str()));
 
 	//copy biome properties
 	//currently we have two biomes
