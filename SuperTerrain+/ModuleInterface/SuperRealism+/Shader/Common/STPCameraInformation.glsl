@@ -1,6 +1,12 @@
 #ifndef _STP_CAMERA_INFORMATION_GLSL_
 #define _STP_CAMERA_INFORMATION_GLSL_
 
+/* -------------------------------------- public functions shared externally ----------------------------- */
+//OpenGL requires NDC.xy to be in range [-1, 1] and we are using [0, 1] depth
+#define STP_DEPTH_BUFFER_TO_NDC(UV, DEPTH) vec4(vec3(UV * 2.0f - 1.0f, DEPTH), 1.0f)
+
+/* ----------------------------------------------- private functions ------------------------------------- */
+#ifndef __cplusplus
 layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 	layout(offset = 0) vec3 Position;
 	layout(offset = 16) mat4 View;
@@ -35,11 +41,9 @@ layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 //depth should have range [0, 1]
 //fragment texture coordinate should also be in [0, 1] range
 vec3 fragDepthReconstruction(float frag_depth, vec2 frag_coord) {
-	//OpenGL requires NDC.xy to be in range [-1, 1] and we are using [0, 1] depth, so we need to convert the range
-	const vec4 position_ndc = vec4(vec3(frag_coord * 2.0f - 1.0f, frag_depth), 1.0f),
-		position_world = DEPTH_CONVERSION_MAT * position_ndc;
-
-	return position_world.xyz / position_world.w;
+	const vec4 position_scaled = DEPTH_CONVERSION_MAT * STP_DEPTH_BUFFER_TO_NDC(frag_coord, frag_depth);
+	//perform perspective division to un-scale the projection
+	return position_scaled.xyz / position_scaled.w;
 }
 
 #undef DEPTH_CONVERSION_MAT
@@ -66,5 +70,6 @@ float lineariseDepth(float depth) {
 	//linear depth is positive
 }
 #endif//EMIT_LINEARISE_DEPTH_IMPL
+#endif//__cplusplus
 
 #endif//_STP_CAMERA_INFORMATION_GLSL_
