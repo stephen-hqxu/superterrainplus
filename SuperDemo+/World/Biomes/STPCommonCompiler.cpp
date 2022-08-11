@@ -6,7 +6,7 @@
 
 //Error
 #include <SuperTerrain+/Exception/STPCompilationError.h>
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //IO
 #include <iostream>
@@ -190,22 +190,22 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		size_t dimensionSize, half_dimensionSize, rendered_dimensionSize, permSize;
 		//source information
 		const CUmodule program = *this->GeneratorProgram;
-		STPcudaCheckErr(cuModuleGetGlobal(&dimension, &dimensionSize, program,
+		STP_CHECK_CUDA(cuModuleGetGlobal(&dimension, &dimensionSize, program,
 			commonName.at("STPCommonGenerator::Dimension").c_str()));
-		STPcudaCheckErr(cuModuleGetGlobal(&half_dimension, &half_dimensionSize,program,
+		STP_CHECK_CUDA(cuModuleGetGlobal(&half_dimension, &half_dimensionSize,program,
 			commonName.at("STPCommonGenerator::HalfDimension").c_str()));
-		STPcudaCheckErr(cuModuleGetGlobal(&rendered_dimension, &rendered_dimensionSize, program,
+		STP_CHECK_CUDA(cuModuleGetGlobal(&rendered_dimension, &rendered_dimensionSize, program,
 			commonName.at("STPCommonGenerator::RenderedDimension").c_str()));
-		STPcudaCheckErr(cuModuleGetGlobal(&perm, &permSize, program,
+		STP_CHECK_CUDA(cuModuleGetGlobal(&perm, &permSize, program,
 			commonName.at("STPCommonGenerator::Permutation").c_str()));
 		//send data
 		const vec2 halfDim = static_cast<vec2>(this->Dimension) / 2.0f;
 		const uvec2 RenderedDim = this->RenderingRange * this->Dimension;
-		STPcudaCheckErr(cuMemcpyHtoD(dimension, value_ptr(this->Dimension), dimensionSize));
-		STPcudaCheckErr(cuMemcpyHtoD(half_dimension, value_ptr(halfDim), half_dimensionSize));
-		STPcudaCheckErr(cuMemcpyHtoD(rendered_dimension, value_ptr(RenderedDim), rendered_dimensionSize));
+		STP_CHECK_CUDA(cuMemcpyHtoD(dimension, value_ptr(this->Dimension), dimensionSize));
+		STP_CHECK_CUDA(cuMemcpyHtoD(half_dimension, value_ptr(halfDim), half_dimensionSize));
+		STP_CHECK_CUDA(cuMemcpyHtoD(rendered_dimension, value_ptr(RenderedDim), rendered_dimensionSize));
 		//note that we are copying permutation to device, the underlying pointers are managed by this class
-		STPcudaCheckErr(cuMemcpyHtoD(perm, &(*this->SimplexPermutation), permSize));
+		STP_CHECK_CUDA(cuMemcpyHtoD(perm, &(*this->SimplexPermutation), permSize));
 	} catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
 		cerr << error.what() << std::endl;
 		cerr << log.linker_error_log << endl;

@@ -1,10 +1,10 @@
 #include <SuperTerrain+/Utility/Memory/STPMemoryPool.h>
 
-//Error
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 //CUDA
 #include <cuda_runtime.h>
+//Error
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 using namespace SuperTerrainPlus;
 
@@ -20,7 +20,7 @@ inline static void* allocate(size_t size) {
 	}
 	else {
 		void* mem;
-		STPcudaCheckErr(cudaMallocHost(&mem, size));
+		STP_CHECK_CUDA(cudaMallocHost(&mem, size));
 		return mem;
 	}
 }
@@ -31,7 +31,7 @@ void STPMemoryPool<T>::STPMemoryDeleter::operator()(void* ptr) const {
 		free(ptr);
 	}
 	else {
-		STPcudaCheckErr(cudaFreeHost(ptr));
+		STP_CHECK_CUDA(cudaFreeHost(ptr));
 	}
 }
 

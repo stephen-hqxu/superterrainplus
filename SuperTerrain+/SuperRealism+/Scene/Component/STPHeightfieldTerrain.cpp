@@ -5,7 +5,7 @@
 
 //Error
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
@@ -284,18 +284,18 @@ void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 	//CUDA will throw error when mapping on a texture with bindless handle active, so we need to deactivate it first.
 	this->NoiseSampleHandle = STPBindlessTexture();
 	//register CUDA graphics
-	STPcudaCheckErr(cudaGraphicsGLRegisterImage(&res, *this->NoiseSample, GL_TEXTURE_3D, cudaGraphicsRegisterFlagsWriteDiscard));
+	STP_CHECK_CUDA(cudaGraphicsGLRegisterImage(&res, *this->NoiseSample, GL_TEXTURE_3D, cudaGraphicsRegisterFlagsWriteDiscard));
 	//map
-	STPcudaCheckErr(cudaGraphicsMapResources(1, &res));
-	STPcudaCheckErr(cudaGraphicsSubResourceGetMappedArray(&random_buffer, res, 0u, 0u));
+	STP_CHECK_CUDA(cudaGraphicsMapResources(1, &res));
+	STP_CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&random_buffer, res, 0u, 0u));
 
 	//compute
 	STPRandomTextureGenerator::generate<unsigned char>(random_buffer, this->RandomTextureDimension, seed, 
 		numeric_limits<unsigned char>::min(), numeric_limits<unsigned char>::max());
 
 	//clear up
-	STPcudaCheckErr(cudaGraphicsUnmapResources(1, &res));
-	STPcudaCheckErr(cudaGraphicsUnregisterResource(res));
+	STP_CHECK_CUDA(cudaGraphicsUnmapResources(1, &res));
+	STP_CHECK_CUDA(cudaGraphicsUnregisterResource(res));
 
 	//create bindless handle for noise sampler
 	this->NoiseSampleHandle = STPBindlessTexture(this->NoiseSample);

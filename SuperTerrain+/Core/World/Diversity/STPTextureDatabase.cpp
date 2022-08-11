@@ -1,12 +1,11 @@
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureDatabase.h>
 
+#include <SuperTerrain+/STPSQLite.h>
 //Error
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDatabaseErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPDatabaseError.h>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
-//Database
-#include <SuperTerrain+/STPSQLite.h>
 //System
 #include <string>
 #include <algorithm>
@@ -38,7 +37,7 @@ private:
 	public:
 
 		inline void operator()(sqlite3_stmt* stmt) const {
-			STPsqliteCheckErr(sqlite3_finalize(stmt));
+			STP_CHECK_SQLITE3(sqlite3_finalize(stmt));
 		}
 
 	};
@@ -77,13 +76,13 @@ public:
 	STPTextureDatabaseImpl() {
 		const string filename = "STPTextureDatabase_" + std::to_string(STPTextureDatabaseImpl::InstanceCounter++);
 		//open database connection
-		STPsqliteCheckErr(sqlite3_open_v2(filename.c_str(), &this->SQL,
+		STP_CHECK_SQLITE3(sqlite3_open_v2(filename.c_str(), &this->SQL,
 			SQLITE_OPEN_MEMORY | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_NOFOLLOW
 				| SQLITE_OPEN_PRIVATECACHE, nullptr));
 
 		auto configure = [SQL = this->SQL](int opt, int val) -> bool {
 			int report;
-			STPsqliteCheckErr(sqlite3_db_config(SQL, opt, val, &report));
+			STP_CHECK_SQLITE3(sqlite3_db_config(SQL, opt, val, &report));
 			//usually it should always be true, unless sqlite is bugged
 			return report == val;
 		};
@@ -107,7 +106,7 @@ public:
 
 	~STPTextureDatabaseImpl() {
 		//close the database connection
-		STPsqliteCheckErr(sqlite3_close_v2(this->SQL));
+		STP_CHECK_SQLITE3(sqlite3_close_v2(this->SQL));
 	}
 
 	/**
@@ -115,8 +114,8 @@ public:
 	 * @param stmt The statement to be reset
 	*/
 	static void resetStmt(sqlite3_stmt* stmt) {
-		STPsqliteCheckErr(sqlite3_reset(stmt));
-		STPsqliteCheckErr(sqlite3_clear_bindings(stmt));
+		STP_CHECK_SQLITE3(sqlite3_reset(stmt));
+		STP_CHECK_SQLITE3(sqlite3_clear_bindings(stmt));
 	}
 
 	/**
@@ -127,7 +126,7 @@ public:
 		char* err_msg;
 		try {
 			//we don't need callback function since create table does not return anything
-			STPsqliteCheckErr(sqlite3_exec(this->SQL, sql.data(), nullptr, nullptr, &err_msg));
+			STP_CHECK_SQLITE3(sqlite3_exec(this->SQL, sql.data(), nullptr, nullptr, &err_msg));
 		}
 		catch (const STPException::STPDatabaseError& dbe) {
 			//concatenate error message and throw a new one
@@ -146,7 +145,7 @@ public:
 	*/
 	STPSmartStmt createStmt(const string_view& sql, unsigned int flag = 0u) {
 		sqlite3_stmt* newStmt;
-		STPsqliteCheckErr(sqlite3_prepare_v3(this->SQL, sql.data(), static_cast<int>(sql.size()), flag, &newStmt, nullptr));
+		STP_CHECK_SQLITE3(sqlite3_prepare_v3(this->SQL, sql.data(), static_cast<int>(sql.size()), flag, &newStmt, nullptr));
 		return STPSmartStmt(newStmt);
 	}
 
@@ -217,9 +216,9 @@ public:
 	 * @param blob_size The number of byte in the data.
 	*/
 	void addIntBlob(sqlite3_stmt* stmt, int integer, const void* blob, int blob_size) {
-		STPsqliteCheckErr(sqlite3_bind_int(stmt, 1, integer));
+		STP_CHECK_SQLITE3(sqlite3_bind_int(stmt, 1, integer));
 		//we tell sqlite to copy the object and it will manage its lifetime for us
-		STPsqliteCheckErr(sqlite3_bind_blob(stmt, 2, blob, blob_size, SQLITE_TRANSIENT));
+		STP_CHECK_SQLITE3(sqlite3_bind_blob(stmt, 2, blob, blob_size, SQLITE_TRANSIENT));
 
 		this->execStmt(stmt);
 	}
@@ -230,7 +229,7 @@ public:
 	 * @param integer The integer as the first argument to the statement.
 	*/
 	void removeInt(sqlite3_stmt* stmt, int integer) {
-		STPsqliteCheckErr(sqlite3_bind_int(stmt, 1, integer));
+		STP_CHECK_SQLITE3(sqlite3_bind_int(stmt, 1, integer));
 
 		this->execStmt(stmt);
 	}
@@ -244,7 +243,7 @@ public:
 	 * This pointer remains valid until, see sqlite3 documentation for sqlite3_column_blob().
 	*/
 	const void* getBlobWithInt(sqlite3_stmt* stmt, int integer) {
-		STPsqliteCheckErr(sqlite3_bind_int(stmt, 1, integer));
+		STP_CHECK_SQLITE3(sqlite3_bind_int(stmt, 1, integer));
 		//now we need to retrieve the the blob data, since int should be a primary key, we expect a unique result
 		if (!this->execStmt(stmt)) {
 			//no data was retrieved, meaning int is invalid and nothing has been retrieved
@@ -303,10 +302,10 @@ void STPTextureDatabase::STPTextureSplatBuilder::addAltitude(
 	sqlite3_stmt* const altitude_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddAltitude, AddAltitude);
 
 	//insert new altitude configuration into altitude table
-	STPsqliteCheckErr(sqlite3_bind_int(altitude_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
-	STPsqliteCheckErr(sqlite3_bind_int(altitude_stmt, 2, static_cast<int>(sample)));
-	STPsqliteCheckErr(sqlite3_bind_double(altitude_stmt, 3, static_cast<double>(upperBound)));
-	STPsqliteCheckErr(sqlite3_bind_int(altitude_stmt, 4, static_cast<int>(texture_id)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(altitude_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(altitude_stmt, 2, static_cast<int>(sample)));
+	STP_CHECK_SQLITE3(sqlite3_bind_double(altitude_stmt, 3, static_cast<double>(upperBound)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(altitude_stmt, 4, static_cast<int>(texture_id)));
 	//execute
 	this->Database->execStmt(altitude_stmt);
 }
@@ -325,13 +324,13 @@ void STPTextureDatabase::STPTextureSplatBuilder::addGradient(Sample sample, floa
 	sqlite3_stmt* const gradient_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddGradient, AddGradient);
 
 	//insert new gradient configuration into gradient table
-	STPsqliteCheckErr(sqlite3_bind_int(gradient_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
-	STPsqliteCheckErr(sqlite3_bind_int(gradient_stmt, 2, static_cast<int>(sample)));
-	STPsqliteCheckErr(sqlite3_bind_double(gradient_stmt, 3, static_cast<double>(minGradient)));
-	STPsqliteCheckErr(sqlite3_bind_double(gradient_stmt, 4, static_cast<double>(maxGradient)));
-	STPsqliteCheckErr(sqlite3_bind_double(gradient_stmt, 5, static_cast<double>(lowerBound)));
-	STPsqliteCheckErr(sqlite3_bind_double(gradient_stmt, 6, static_cast<double>(upperBound)));
-	STPsqliteCheckErr(sqlite3_bind_int(gradient_stmt, 7, static_cast<int>(texture_id)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(gradient_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(gradient_stmt, 2, static_cast<int>(sample)));
+	STP_CHECK_SQLITE3(sqlite3_bind_double(gradient_stmt, 3, static_cast<double>(minGradient)));
+	STP_CHECK_SQLITE3(sqlite3_bind_double(gradient_stmt, 4, static_cast<double>(maxGradient)));
+	STP_CHECK_SQLITE3(sqlite3_bind_double(gradient_stmt, 5, static_cast<double>(lowerBound)));
+	STP_CHECK_SQLITE3(sqlite3_bind_double(gradient_stmt, 6, static_cast<double>(upperBound)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(gradient_stmt, 7, static_cast<int>(texture_id)));
 
 	this->Database->execStmt(gradient_stmt);
 }
@@ -663,14 +662,14 @@ STPTextureInformation::STPTextureID STPTextureDatabase::addTexture(
 	sqlite3_stmt* texture_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddTexture, AddTexture);
 
 	//request a bunch of texture IDs
-	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(STPTextureDatabase::TextureIDAccumulator)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(STPTextureDatabase::TextureIDAccumulator)));
 	if (name.has_value()) {
-		STPsqliteCheckErr(sqlite3_bind_text(texture_stmt, 2, name->data(), static_cast<int>(name->length() * sizeof(char)), SQLITE_TRANSIENT));
+		STP_CHECK_SQLITE3(sqlite3_bind_text(texture_stmt, 2, name->data(), static_cast<int>(name->length() * sizeof(char)), SQLITE_TRANSIENT));
 	}
 	else {
-		STPsqliteCheckErr(sqlite3_bind_null(texture_stmt, 2));
+		STP_CHECK_SQLITE3(sqlite3_bind_null(texture_stmt, 2));
 	}
-	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 3, static_cast<int>(group_id)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 3, static_cast<int>(group_id)));
 
 	this->Database->execStmt(texture_stmt);
 	return STPTextureDatabase::TextureIDAccumulator++;
@@ -691,14 +690,14 @@ void STPTextureDatabase::addMap(STPTextureInformation::STPTextureID texture_id, 
 	sqlite3_stmt* const texture_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddMap, AddMap);
 
 	//set data
-	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
-	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 2, static_cast<int>(type)));
-	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 3, static_cast<int>(group_id)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 2, static_cast<int>(type)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 3, static_cast<int>(group_id)));
 	//send the pointer as a blob
 	//here we have told user to manage the lifetime of texture for us, so sqlite doesn't need to worry about that
 	//never assume the size of a pointer
-	STPsqliteCheckErr(sqlite3_bind_blob(texture_stmt, 4, &texture_data, sizeof(texture_data), SQLITE_STATIC));
-	STPsqliteCheckErr(sqlite3_bind_int(texture_stmt, 5, static_cast<int>(texture_id)));
+	STP_CHECK_SQLITE3(sqlite3_bind_blob(texture_stmt, 4, &texture_data, sizeof(texture_data), SQLITE_STATIC));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 5, static_cast<int>(texture_id)));
 
 	this->Database->execStmt(texture_stmt);
 }

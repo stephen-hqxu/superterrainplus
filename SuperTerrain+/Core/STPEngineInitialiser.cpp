@@ -4,10 +4,12 @@
 #include <glad/glad.h>
 //CUDA
 #include <cuda_runtime.h>
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
 //Compatibility
 #include <SuperTerrain+/STPOpenGL.h>
 #include <SuperTerrain+/STPSQLite.h>
+
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
+#include <SuperTerrain+/Utility/STPDatabaseErrorHandler.hpp>
 
 #include <type_traits>
 
@@ -50,15 +52,15 @@ bool STPEngineInitialiser::initGLexplicit(STPglProc process) {
 
 void STPEngineInitialiser::init(int device) {
 	//CUDA
-	STPcudaCheckErr(cudaSetDevice(device));
+	STP_CHECK_CUDA(cudaSetDevice(device));
 	//init context in case the first call is CUDA driver API
-	STPcudaCheckErr(cudaFree(0));
+	STP_CHECK_CUDA(cudaFree(0));
 	//setup
-	STPcudaCheckErr(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
-	STPcudaCheckErr(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte));
+	STP_CHECK_CUDA(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+	STP_CHECK_CUDA(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte));
 
 	//SQLite3
-	STPsqliteCheckErr(sqlite3_initialize());
+	STP_CHECK_SQLITE3(sqlite3_initialize());
 
 	EngineInit = true;
 }
@@ -69,8 +71,8 @@ bool STPEngineInitialiser::hasInit() {
 
 int STPEngineInitialiser::architecture(int device) {
 	int major, minor;
-	STPcudaCheckErr(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, device));
-	STPcudaCheckErr(cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, device));
+	STP_CHECK_CUDA(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, device));
+	STP_CHECK_CUDA(cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, device));
 
 	return major * 10 + minor;
 }

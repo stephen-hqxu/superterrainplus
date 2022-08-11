@@ -3,7 +3,7 @@
 #include <iostream>
 //Error
 #include <SuperTerrain+/Exception/STPCUDAError.h>
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -39,11 +39,11 @@ void STPSplatmapGenerator::initGenerator() {
 	size_t splat_databaseSize;
 	//get variable names
 	const auto& name = this->KernelProgram.getSplatmapName();
-	STPcudaCheckErr(cuModuleGetFunction(&this->SplatmapEntry, program, name.at("generateTextureSplatmap").c_str()));
-	STPcudaCheckErr(cuModuleGetGlobal(&splat_database, &splat_databaseSize, program, name.at("SplatDatabase").c_str()));
+	STP_CHECK_CUDA(cuModuleGetFunction(&this->SplatmapEntry, program, name.at("generateTextureSplatmap").c_str()));
+	STP_CHECK_CUDA(cuModuleGetGlobal(&splat_database, &splat_databaseSize, program, name.at("SplatDatabase").c_str()));
 	//add splat-database and gradient bias
 	const STPTextureInformation::STPSplatRuleDatabase splatDb = this->getSplatDatabase();
-	STPcudaCheckErr(cuMemcpyHtoD(splat_database, &splatDb, splat_databaseSize));
+	STP_CHECK_CUDA(cuMemcpyHtoD(splat_database, &splatDb, splat_databaseSize));
 }
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
@@ -52,7 +52,7 @@ void STPSplatmapGenerator::splat(cudaTextureObject_t biomemap_tex, cudaTextureOb
 	cudaSurfaceObject_t splatmap_surf, const STPTI::STPSplatGeneratorInformation& info, cudaStream_t stream) const {
 	int Mingridsize, blocksize;
 	//smart launch config
-	STPcudaCheckErr(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->SplatmapEntry, nullptr, 0ull, 0));
+	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->SplatmapEntry, nullptr, 0ull, 0));
 	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u);
 	const uvec3 Dimgridsize = uvec3((this->MapDimension + Dimblocksize - 1u) / Dimblocksize, info.LocalCount);
 
@@ -76,9 +76,9 @@ void STPSplatmapGenerator::splat(cudaTextureObject_t biomemap_tex, cudaTextureOb
 		CU_LAUNCH_PARAM_BUFFER_SIZE, &buffer_size,
 		CU_LAUNCH_PARAM_END
 	};
-	STPcudaCheckErr(cuLaunchKernel(this->SplatmapEntry,
+	STP_CHECK_CUDA(cuLaunchKernel(this->SplatmapEntry,
 		Dimgridsize.x, Dimgridsize.y, Dimgridsize.z,
 		Dimblocksize.x, Dimblocksize.y, 1u,
 		0u, stream, nullptr, config));
-	STPcudaCheckErr(cudaGetLastError());
+	STP_CHECK_CUDA(cudaGetLastError());
 }

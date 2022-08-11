@@ -6,12 +6,15 @@
 #include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
 
+//CUDA
+#include "STPTestInformation.h"
+#include <cuda_runtime.h>
+#include <cuda.h>
+#include <nvrtc.h>
+
 //SuperTerrain+/SuperTerrain+/Utility
 #include <SuperTerrain+/Utility/STPThreadPool.h>
-#define STP_DEVICE_ERROR_SUPPRESS_CERR
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Utility/Memory/STPSmartEvent.h>
-#include <SuperTerrain+/Utility/Memory/STPSmartStream.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Utility/Memory/STPMemoryPool.h>
 #include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
@@ -20,10 +23,6 @@
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPDeadThreadPool.h>
 
-//CUDA
-#include "STPTestInformation.h"
-#include <cuda.h>
-#include <nvrtc.h>
 
 #include <algorithm>
 #include <optional>
@@ -149,9 +148,9 @@ SCENARIO("STPDeviceErrorHandler reports CUDA API error", "[Utility][STPDeviceErr
 			AND_WHEN("API call is successful") {
 
 				THEN("No error is thrown") {
-					CHECK_NOTHROW(STPcudaCheckErr(cudaError::cudaSuccess));
-					CHECK_NOTHROW(STPcudaCheckErr(CUresult::CUDA_SUCCESS));
-					CHECK_NOTHROW(STPcudaCheckErr(nvrtcResult::NVRTC_SUCCESS));
+					CHECK_NOTHROW(STP_CHECK_CUDA(cudaError::cudaSuccess));
+					CHECK_NOTHROW(STP_CHECK_CUDA(CUresult::CUDA_SUCCESS));
+					CHECK_NOTHROW(STP_CHECK_CUDA(nvrtcResult::NVRTC_SUCCESS));
 				}
 
 			}
@@ -159,111 +158,11 @@ SCENARIO("STPDeviceErrorHandler reports CUDA API error", "[Utility][STPDeviceErr
 			AND_WHEN("API call throws error") {
 
 				THEN("Error should be reported") {
-					CHECK_THROWS_AS(STPcudaCheckErr(cudaError::cudaErrorInvalidValue), STPException::STPCUDAError);
-					CHECK_THROWS_AS(STPcudaCheckErr(CUresult::CUDA_ERROR_INVALID_VALUE), STPException::STPCUDAError);
-					CHECK_THROWS_AS(STPcudaCheckErr(nvrtcResult::NVRTC_ERROR_OUT_OF_MEMORY), STPException::STPCUDAError);
+					CHECK_THROWS_AS(STP_CHECK_CUDA(cudaError::cudaErrorInvalidValue), STPException::STPCUDAError);
+					CHECK_THROWS_AS(STP_CHECK_CUDA(CUresult::CUDA_ERROR_INVALID_VALUE), STPException::STPCUDAError);
+					CHECK_THROWS_AS(STP_CHECK_CUDA(nvrtcResult::NVRTC_ERROR_OUT_OF_MEMORY), STPException::STPCUDAError);
 				}
 
-			}
-
-		}
-
-	}
-
-}
-
-SCENARIO("STPSmartEvent manages CUDA event smartly", "[Utility][STPSmartEvent]") {
-
-	GIVEN("A smart event object") {
-		STPSmartEvent start, end;
-
-		WHEN("There are some works to be done with the event") {
-			constexpr static size_t DataSize = 8ull;
-
-			unique_ptr<unsigned int[]> Source = make_unique<unsigned int[]>(DataSize),
-				Destination = make_unique<unsigned int[]>(DataSize);
-			//initialise data
-			std::fill_n(Source.get(), DataSize, GENERATE(take(1, random(0u, 66666666u))));
-			std::fill_n(Destination.get(), DataSize, 0u);
-
-			THEN("CUDA should be doing work on the event") {
-				REQUIRE_NOTHROW(STPcudaCheckErr(cudaEventRecord(*start, 0)));
-				REQUIRE_NOTHROW(STPcudaCheckErr(cudaMemcpyAsync(Destination.get(), Source.get(), sizeof(unsigned int) * DataSize, cudaMemcpyHostToHost, 0)));
-				REQUIRE_NOTHROW(STPcudaCheckErr(cudaEventRecord(*end, 0)));
-
-				STPcudaCheckErr(cudaStreamSynchronize(0));
-				//timing
-				float time = 0.0f;
-				STPcudaCheckErr(cudaEventElapsedTime(&time, *start, *end));
-				//well such a simple copy should be fast right?
-				CHECK(time < 10.0f);
-
-				//verify data
-				REQUIRE(std::equal(Destination.get(), Destination.get() + DataSize, Source.get()));
-			}
-
-		}
-
-	}
-
-}
-
-enum class SmartStreamType : unsigned char {
-	Default = 0x00u,
-	Priority = 0x01u
-};
-
-template<SmartStreamType Pri>
-class SmartStreamTester : protected STPSmartStream {
-public:
-
-	SmartStreamTester();
-
-};
-template<>
-SmartStreamTester<SmartStreamType::Default>::SmartStreamTester() : STPSmartStream() {
-
-}
-
-template<>
-SmartStreamTester<SmartStreamType::Priority>::SmartStreamTester() : STPSmartStream(cudaStreamDefault, 0u) {
-
-}
-
-TEMPLATE_TEST_CASE_METHOD_SIG(SmartStreamTester, "STPSmartStream manages CUDA stream smartly", "[Utility][STPSmartStream]",
-	((SmartStreamType Pri), Pri), SmartStreamType::Default, SmartStreamType::Priority) {
-
-	WHEN("Trying to retrieve CUDA stream priority range") {
-
-		THEN("Value can be retrieved without error") {
-			STPSmartStream::STPStreamPriorityRange range;
-			REQUIRE_NOTHROW([&range]() -> void {
-				range = STPSmartStream::getStreamPriorityRange();
-				
-			}());
-			//verify
-			//in fact, CUDA define the "low" value as the greatest priority
-			auto [low, high] = range;
-			REQUIRE(low <= high);
-		}
-
-	}
-
-	GIVEN("A smart stream object") {
-		cudaStream_t stream = *static_cast<const STPSmartStream&>(*this);
-
-		WHEN("Some data needs to be done by CUDA") {
-			const unsigned long long Original = GENERATE(take(3u, random(0ull, 1313131313ull)));
-
-			THEN("CUDA should be doing work on the stream without throwing errors") {
-				unsigned long long Destination;
-				//actually, host to host copy is synchronous, but CUDA will still use the stream to make sure all previous works are done.
-				REQUIRE_NOTHROW(STPcudaCheckErr(cudaMemcpyAsync(&Destination, &Original, sizeof(unsigned long long), cudaMemcpyHostToHost, stream)));
-
-				AND_THEN("Work done should be verified") {
-					REQUIRE_NOTHROW(STPcudaCheckErr(cudaStreamSynchronize(stream)));
-					REQUIRE(Destination == Original);
-				}
 			}
 
 		}
@@ -394,20 +293,20 @@ SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Util
 
 				//copy back and forth
 				//regular device memory
-				STPcudaCheckErr(cudaMemcpy(DeviceData.get(), HostData.get(), DataSize, cudaMemcpyHostToDevice));
-				STPcudaCheckErr(cudaMemcpy(ReturnedData.get(), DeviceData.get(), DataSize, cudaMemcpyDeviceToHost));
+				STP_CHECK_CUDA(cudaMemcpy(DeviceData.get(), HostData.get(), DataSize, cudaMemcpyHostToDevice));
+				STP_CHECK_CUDA(cudaMemcpy(ReturnedData.get(), DeviceData.get(), DataSize, cudaMemcpyDeviceToHost));
 				VERIFY_DATA();
 
 				//stream-ordered device memory
-				STPcudaCheckErr(cudaMemcpyAsync(StreamedDeviceData.get(), HostData.get(), DataSize, cudaMemcpyHostToDevice, 0));
-				STPcudaCheckErr(cudaMemcpyAsync(ReturnedData.get(), StreamedDeviceData.get(), DataSize, cudaMemcpyDeviceToHost, 0));
-				STPcudaCheckErr(cudaStreamSynchronize(0));
+				STP_CHECK_CUDA(cudaMemcpyAsync(StreamedDeviceData.get(), HostData.get(), DataSize, cudaMemcpyHostToDevice, 0));
+				STP_CHECK_CUDA(cudaMemcpyAsync(ReturnedData.get(), StreamedDeviceData.get(), DataSize, cudaMemcpyDeviceToHost, 0));
+				STP_CHECK_CUDA(cudaStreamSynchronize(0));
 				VERIFY_DATA();
 
 				//pitched device memory
-				STPcudaCheckErr(cudaMemcpy2D(PitchedDeviceData.get(), PitchedDeviceData.Pitch, HostData.get(),
+				STP_CHECK_CUDA(cudaMemcpy2D(PitchedDeviceData.get(), PitchedDeviceData.Pitch, HostData.get(),
 					RowSize2D, RowSize2D, 2, cudaMemcpyHostToDevice));
-				STPcudaCheckErr(cudaMemcpy2D(ReturnedData.get(), RowSize2D, PitchedDeviceData.get(),
+				STP_CHECK_CUDA(cudaMemcpy2D(ReturnedData.get(), RowSize2D, PitchedDeviceData.get(),
 					PitchedDeviceData.Pitch, RowSize2D, 2, cudaMemcpyDeviceToHost));
 				VERIFY_DATA();
 			}

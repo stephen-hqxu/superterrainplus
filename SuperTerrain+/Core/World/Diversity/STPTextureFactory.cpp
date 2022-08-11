@@ -1,6 +1,6 @@
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureFactory.h>
 
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
@@ -194,7 +194,7 @@ template<typename T>
 STPSmartDeviceMemory::STPDeviceMemory<T[]> STPTextureFactory::copyToDevice(const std::vector<T>& data) {
 	STPSmartDeviceMemory::STPDeviceMemory<T[]> device = STPSmartDeviceMemory::makeDevice<T[]>(data.size());
 	//copy to device
-	STPcudaCheckErr(cudaMemcpy(device.get(), data.data(), sizeof(T) * data.size(), cudaMemcpyHostToDevice));
+	STP_CHECK_CUDA(cudaMemcpy(device.get(), data.data(), sizeof(T) * data.size(), cudaMemcpyHostToDevice));
 
 	return device;
 }
@@ -211,7 +211,7 @@ void STPTextureFactory::operator()(cudaTextureObject_t biomemap_tex, cudaTexture
 	}
 
 	//prepare the request
-	STPcudaCheckErr(cudaMemcpyAsync(this->LocalChunkInfo.get(), requesting_local.data(), 
+	STP_CHECK_CUDA(cudaMemcpyAsync(this->LocalChunkInfo.get(), requesting_local.data(), 
 		requesting_local.size() * sizeof(STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation), cudaMemcpyHostToDevice, stream));
 	//the LocalChunkID array is overallocated, so we also need to send the size of actual data to device
 

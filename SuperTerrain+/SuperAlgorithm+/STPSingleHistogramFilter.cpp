@@ -1,15 +1,16 @@
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 
+//CUDA
+#include <cuda_runtime.h>
+
 //Error
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 //Threading
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 //Memory
 #include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
 
-//CUDA
-#include <cuda_runtime.h>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -51,12 +52,12 @@ public:
 	T* allocate(size_t size) const {
 		T* mem;
 		//note that the allocator-provided size is the number of object, not byte
-		STPcudaCheckErr(cudaMallocHost(&mem, size * sizeof(T)));
+		STP_CHECK_CUDA(cudaMallocHost(&mem, size * sizeof(T)));
 		return mem;
 	}
 
 	void deallocate(T* mem, size_t) const {
-		STPcudaCheckErr(cudaFreeHost(mem));
+		STP_CHECK_CUDA(cudaFreeHost(mem));
 	}
 
 };

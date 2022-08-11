@@ -1,8 +1,10 @@
 #include <SuperRealism+/Utility/STPRandomTextureGenerator.cuh>
 
 //Error
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
+
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceObject.h>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -35,7 +37,7 @@ __host__ void STPRandomTextureGenerator::generate(cudaArray_t output, uvec3 dime
 
 	//calculate launch configuration
 	int Mingridsize, blocksize;
-	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &generateRandomTextureKERNEL<T>));
+	STP_CHECK_CUDA(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &generateRandomTextureKERNEL<T>));
 
 	//determine block size based on dimension
 	uvec3 Dimblocksize;
@@ -60,18 +62,14 @@ __host__ void STPRandomTextureGenerator::generate(cudaArray_t output, uvec3 dime
 	desc.resType = cudaResourceTypeArray;
 	desc.res.array.array = output;
 
-	cudaSurfaceObject_t noise_buffer;
-	STPcudaCheckErr(cudaCreateSurfaceObject(&noise_buffer, &desc));
+	STPSmartDeviceObject::STPSurface noise_buffer = STPSmartDeviceObject::makeSurface(desc);
 
 	//computing
 	const T base = min,
 		range = (max - min);
 	generateRandomTextureKERNEL<<<dim3(Dimgridsize.x, Dimgridsize.y, Dimgridsize.z),
-		dim3(Dimblocksize.x, Dimblocksize.y, Dimblocksize.z)>>>(noise_buffer, dimension, seed, base, range);
-	STPcudaCheckErr(cudaGetLastError());
-
-	//clear up
-	STPcudaCheckErr(cudaDestroySurfaceObject(noise_buffer));
+		dim3(Dimblocksize.x, Dimblocksize.y, Dimblocksize.z)>>>(noise_buffer.get(), dimension, seed, base, range);
+	STP_CHECK_CUDA(cudaGetLastError());
 }
 
 /* ---------------------------- Kernel definition ------------------------------------ */

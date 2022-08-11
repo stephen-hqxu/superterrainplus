@@ -8,11 +8,9 @@ STPException.cpp
 STPHeightfieldKernel.cu
 STPRainDrop.cu
 # /Utility
-Utility/STPDeviceErrorHandler.cpp
 Utility/STPFile.cpp
 Utility/STPMemoryPool.cpp
-Utility/STPSmartEvent.cpp
-Utility/STPSmartStream.cpp
+Utility/STPSmartDeviceObject.cpp
 Utility/STPThreadPool.cpp
 # /World/Diversity
 World/Diversity/STPBiomeFactory.cpp

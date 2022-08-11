@@ -1,10 +1,11 @@
 #include <SuperAlgorithm+/STPPermutationGenerator.h>
 
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
-
 //CUDA Runtime
 #include <cuda_runtime.h>
+//Error
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
+#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
+
 
 #include <glm/trigonometric.hpp>
 
@@ -61,7 +62,7 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	//now copy the host table to the device
 	this->ManagedPermutation = STPSmartDeviceMemory::makeDevice<unsigned char[]>(PermutationHost.size());
 	this->Permutation = this->ManagedPermutation.get();
-	STPcudaCheckErr(cudaMemcpy(this->Permutation, PermutationHost.data(),
+	STP_CHECK_CUDA(cudaMemcpy(this->Permutation, PermutationHost.data(),
 		sizeof(unsigned char) * PermutationHost.size(), cudaMemcpyHostToDevice));
 
 	using glm::radians;
@@ -78,7 +79,7 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	//copy the host gradient to device
 	this->ManagedGradient2D = STPSmartDeviceMemory::makeDevice<float[]>(this->Gradient2DSize * 2);
 	this->Gradient2D = this->ManagedGradient2D.get();
-	STPcudaCheckErr(cudaMemcpy(this->Gradient2D, Gradient2DHost.get(), sizeof(float) * this->Gradient2DSize * 2, cudaMemcpyHostToDevice));
+	STP_CHECK_CUDA(cudaMemcpy(this->Gradient2D, Gradient2DHost.get(), sizeof(float) * this->Gradient2DSize * 2, cudaMemcpyHostToDevice));
 	//finishing up
 }
 

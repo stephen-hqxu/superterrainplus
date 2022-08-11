@@ -41,13 +41,13 @@ Utility/Memory/STPObjectPool.h
 Utility/Memory/STPObjectPool.inl
 Utility/Memory/STPSmartDeviceMemory.h
 Utility/Memory/STPSmartDeviceMemory.inl
-Utility/Memory/STPSmartEvent.h
-Utility/Memory/STPSmartStream.h
+Utility/Memory/STPSmartDeviceObject.h
 # /Utility
-Utility/STPDeviceErrorHandler.h
-Utility/STPDeviceErrorHandlerBlueprint.hpp
+Utility/STPDatabaseErrorHandler.hpp
+Utility/STPDeviceErrorHandler.hpp
 Utility/STPFile.h
 Utility/STPFile.inl
+Utility/STPGenericErrorHandlerBlueprint.hpp
 Utility/STPHashCombine.h
 Utility/STPHashCombine.inl
 Utility/STPNullablePrimitive.h

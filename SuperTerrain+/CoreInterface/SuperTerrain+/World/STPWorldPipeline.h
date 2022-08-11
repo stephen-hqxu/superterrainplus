@@ -15,6 +15,8 @@
 //Multithreading
 #include "../Utility/STPThreadPool.h"
 
+#include "../Utility/Memory/STPSmartDeviceObject.h"
+
 //System
 #include <memory>
 
@@ -91,7 +93,7 @@ namespace SuperTerrainPlus {
 		};
 
 		//CUDA stream
-		STPSmartStream BufferStream;
+		STPSmartDeviceObject::STPStream BufferStream;
 		/**
 		 * @brief STPGeneratorManager aims to send instructions to terrain generators when the pipeline requests for chunks and it is not ready in the storage.
 		*/

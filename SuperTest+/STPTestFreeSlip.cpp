@@ -12,7 +12,7 @@
 #include <SuperTerrain+/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 //Error
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //Shared Test Data
 #include "STPTestInformation.h"
@@ -95,8 +95,8 @@ protected:
 			//if it's a device memory, we need to copy it to host before we can use it
 			this->MergedDevice = this->CurrentMergedTexture;
 			this->MergedHost = make_unique<T[]>(FBT::SmallSize);
-			STPcudaCheckErr(cudaMemcpyAsync(this->MergedHost.get(), this->MergedDevice, FBT::SmallSize * sizeof(T), cudaMemcpyDeviceToHost, 0));
-			STPcudaCheckErr(cudaStreamSynchronize(0));
+			STP_CHECK_CUDA(cudaMemcpyAsync(this->MergedHost.get(), this->MergedDevice, FBT::SmallSize * sizeof(T), cudaMemcpyDeviceToHost, 0));
+			STP_CHECK_CUDA(cudaStreamSynchronize(0));
 
 			//reassign pointer so later assertions can use it on host side
 			this->CurrentMergedTexture = MergedHost.get();
@@ -117,7 +117,7 @@ protected:
 
 	inline void updateDeviceBuffer() {
 		if (this->CurrentLocation == MemoryLocation::DeviceMemory) {
-			STPcudaCheckErr(cudaMemcpyAsync(this->MergedDevice, this->CurrentMergedTexture, FreeSlipBufferTester<T>::SmallSize * sizeof(T), cudaMemcpyHostToDevice, 0));
+			STP_CHECK_CUDA(cudaMemcpyAsync(this->MergedDevice, this->CurrentMergedTexture, FreeSlipBufferTester<T>::SmallSize * sizeof(T), cudaMemcpyHostToDevice, 0));
 		}
 		//there is no device buffer in host memory mode
 	}

@@ -12,8 +12,11 @@
 #include <SuperTerrain+/GPGPU/STPDeviceRuntimeProgram.h>
 #include <SuperTerrain+/STPEngineInitialiser.h>
 
+//CUDA
+#include <cuda_runtime.h>
+
 //Utils
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 #include <SuperTerrain+/Utility/STPFile.h>
 
@@ -21,8 +24,6 @@
 #include <SuperTerrain+/Exception/STPSerialisationError.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
-//CUDA
-#include <cuda_runtime.h>
 
 //GLM
 #include <glm/vec4.hpp>
@@ -188,21 +189,21 @@ protected:
 
 		//get the pointer to the variable
 		const uint2 matrixDim_h = make_uint2(RTCTester::MatDim.x, RTCTester::MatDim.y);
-		STPcudaCheckErr(cuModuleGetGlobal(&matrixDim_d, &matrixDimSize, program, lowered_name.at("MatrixDimension").c_str()));
-		STPcudaCheckErr(cuMemcpyHtoD(matrixDim_d, &matrixDim_h, matrixDimSize));
+		STP_CHECK_CUDA(cuModuleGetGlobal(&matrixDim_d, &matrixDimSize, program, lowered_name.at("MatrixDimension").c_str()));
+		STP_CHECK_CUDA(cuMemcpyHtoD(matrixDim_d, &matrixDim_h, matrixDimSize));
 
 		//get function pointer
-		STPcudaCheckErr(cuModuleGetFunction(&this->MattransformAdd, program, lowered_name.at(RTCTester::TransformAdd).c_str()));
-		STPcudaCheckErr(cuModuleGetFunction(&this->MattransformSub, program, lowered_name.at(RTCTester::TransformSub).c_str()));
-		STPcudaCheckErr(cuModuleGetFunction(&this->Matscale, program, lowered_name.at("scale").c_str()));
+		STP_CHECK_CUDA(cuModuleGetFunction(&this->MattransformAdd, program, lowered_name.at(RTCTester::TransformAdd).c_str()));
+		STP_CHECK_CUDA(cuModuleGetFunction(&this->MattransformSub, program, lowered_name.at(RTCTester::TransformSub).c_str()));
+		STP_CHECK_CUDA(cuModuleGetFunction(&this->Matscale, program, lowered_name.at("scale").c_str()));
 	}
 
 	mat4 matrixTransform(CUfunction func, const mat4& matA, const mat4& matB, float factor) {
 		assert(func != this->Matscale);
 
 		//copy input to device
-		STPcudaCheckErr(cudaMemcpy(this->MatA.get(), value_ptr(matA), sizeof(mat4), cudaMemcpyHostToDevice));
-		STPcudaCheckErr(cudaMemcpy(this->MatB.get(), value_ptr(matB), sizeof(mat4), cudaMemcpyHostToDevice));
+		STP_CHECK_CUDA(cudaMemcpy(this->MatA.get(), value_ptr(matA), sizeof(mat4), cudaMemcpyHostToDevice));
+		STP_CHECK_CUDA(cudaMemcpy(this->MatB.get(), value_ptr(matB), sizeof(mat4), cudaMemcpyHostToDevice));
 
 		//launch kernel
 		{
@@ -215,12 +216,12 @@ protected:
 				&ma,
 				&mb
 			};
-			STPcudaCheckErr(cuLaunchKernel(func,
+			STP_CHECK_CUDA(cuLaunchKernel(func,
 				1u, 1u, 1u,
 				8u, 4u, 1u,
 				0u, 0, args, nullptr
 			));
-			STPcudaCheckErr(cudaGetLastError());
+			STP_CHECK_CUDA(cudaGetLastError());
 		}
 		{
 			//scale
@@ -231,17 +232,17 @@ protected:
 				&input,
 				&factor
 			};
-			STPcudaCheckErr(cuLaunchKernel(this->Matscale,
+			STP_CHECK_CUDA(cuLaunchKernel(this->Matscale,
 				1u, 1u, 1u,
 				8u, 4u, 1u,
 				0u, 0, args, nullptr
 			));
 		}
-		STPcudaCheckErr(cuStreamSynchronize(0));
+		STP_CHECK_CUDA(cuStreamSynchronize(0));
 
 		//copy the result back
 		mat4 matOut;
-		STPcudaCheckErr(cudaMemcpy(value_ptr(matOut), this->MatOut.get(), sizeof(mat4), cudaMemcpyDeviceToHost));
+		STP_CHECK_CUDA(cudaMemcpy(value_ptr(matOut), this->MatOut.get(), sizeof(mat4), cudaMemcpyDeviceToHost));
 
 		return matOut;
 	}

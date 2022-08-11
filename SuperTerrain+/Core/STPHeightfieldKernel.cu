@@ -1,7 +1,7 @@
 #include <SuperTerrain+/GPGPU/STPHeightfieldKernel.cuh>
 
 //Error
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 /* --------- Kernel Declaration ----------- */
 
@@ -21,7 +21,7 @@ __global__ static void texture32Fto16KERNEL(float*, unsigned short*, uvec2);
 __host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(unsigned long long seed, unsigned int count, cudaStream_t stream) {
 	//determine launch parameters
 	int Mingridsize, gridsize, blocksize;
-	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &curandInitKERNEL));
+	STP_CHECK_CUDA(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &curandInitKERNEL));
 	gridsize = (count + blocksize - 1) / blocksize;
 
 	//allocating spaces for rng storage array
@@ -29,7 +29,7 @@ __host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(un
 	STPcurand_arr rng = STPSmartDeviceMemory::makeDevice<STPcurand_t[]>(count);
 	//and send to kernel to init rng sequences
 	curandInitKERNEL<<<gridsize, blocksize, 0, stream>>>(rng.get(), seed, count);
-	STPcudaCheckErr(cudaGetLastError());
+	STP_CHECK_CUDA(cudaGetLastError());
 
 	return rng;
 }
@@ -41,27 +41,27 @@ __host__ void STPHeightfieldKernel::hydraulicErosion(float* heightmap_storage,
 	const unsigned int erosionBrushCache_size = brush.BrushSize * (sizeof(int) + sizeof(float));
 	//launch para
 	int Mingridsize, gridsize, blocksize;
-	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &hydraulicErosionKERNEL, erosionBrushCache_size));
+	STP_CHECK_CUDA(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &hydraulicErosionKERNEL, erosionBrushCache_size));
 	gridsize = (raindrop_count + blocksize - 1) / blocksize;
 
 	//erode the heightmap
 	hydraulicErosionKERNEL<<<gridsize, blocksize, erosionBrushCache_size, stream>>>(
 		heightmap_storage, heightfield_settings, freeslip_info, brush, rng);
-	STPcudaCheckErr(cudaGetLastError());
+	STP_CHECK_CUDA(cudaGetLastError());
 }
 
 __host__ void STPHeightfieldKernel::texture32Fto16(float* input, unsigned short* output, uvec2 dimension, unsigned int channel, cudaStream_t stream) {
 	const uvec2 totalDimension = dimension * channel;
 
 	int Mingridsize, blocksize;
-	STPcudaCheckErr(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &texture32Fto16KERNEL));
+	STP_CHECK_CUDA(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &texture32Fto16KERNEL));
 	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
 		Dimgridsize = (totalDimension + Dimblocksize - 1u) / Dimblocksize;
 
 	//compute
 	texture32Fto16KERNEL<<<dim3(Dimgridsize.x, Dimgridsize.y), dim3(Dimblocksize.x, Dimblocksize.y), 0, stream>>>(
 		input, output, totalDimension);
-	STPcudaCheckErr(cudaGetLastError());
+	STP_CHECK_CUDA(cudaGetLastError());
 }
 
 /* --------- Kernel Definition ----------- */

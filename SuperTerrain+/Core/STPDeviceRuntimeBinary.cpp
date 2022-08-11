@@ -2,7 +2,7 @@
 
 //Error
 #include <SuperTerrain+/Exception/STPCompilationError.h>
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //System
 #include <algorithm>
@@ -25,7 +25,7 @@ STPDeviceRuntimeBinary::STPSourceInformation::STPSourceArgument&
 }
 
 void STPDeviceRuntimeBinary::STPProgramDeleter::operator()(nvrtcProgram program) const {
-	STPcudaCheckErr(nvrtcDestroyProgram(&program));
+	STP_CHECK_CUDA(nvrtcDestroyProgram(&program));
 }
 
 nvrtcProgram STPDeviceRuntimeBinary::operator*() const {
@@ -66,7 +66,7 @@ STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compileFrom
 	//external_header and external_header_code should have the same size
 	//create a new program
 	nvrtcProgram program;
-	STPcudaCheckErr(nvrtcCreateProgram(&program, source_code.c_str(), source_name.c_str(),
+	STP_CHECK_CUDA(nvrtcCreateProgram(&program, source_code.c_str(), source_name.c_str(),
 		static_cast<int>(raw_header_name.size()), raw_header_code.data(), raw_header_name.data()));
 	STPManagedProgram managed_program(program);
 	//compile the new program
@@ -81,10 +81,10 @@ STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compileFrom
 
 		//add name expression
 		std::for_each(name_expr_arg.cbegin(), name_expr_arg.cend(),
-			[program](const auto& str) { STPcudaCheckErr(nvrtcAddNameExpression(program, str.c_str())); });
+			[program](const auto& str) { STP_CHECK_CUDA(nvrtcAddNameExpression(program, str.c_str())); });
 
 		//compile
-		STPcudaCheckErr(nvrtcCompileProgram(program, static_cast<int>(raw_option.size()), raw_option.data()));
+		STP_CHECK_CUDA(nvrtcCompileProgram(program, static_cast<int>(raw_option.size()), raw_option.data()));
 
 	} catch (...) {
 		//restore the exception if any, because we want to get the log
@@ -93,9 +93,9 @@ STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compileFrom
 
 	//logging
 	size_t logSize;
-	STPcudaCheckErr(nvrtcGetProgramLogSize(program, &logSize));
+	STP_CHECK_CUDA(nvrtcGetProgramLogSize(program, &logSize));
 	output_log.resize(logSize);
-	STPcudaCheckErr(nvrtcGetProgramLog(program, output_log.data()));
+	STP_CHECK_CUDA(nvrtcGetProgramLog(program, output_log.data()));
 
 	if (exptr) {
 		throw STPException::STPCompilationError(output_log.c_str());
@@ -106,7 +106,7 @@ STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compileFrom
 	for (const auto& expr : name_expr_arg) {
 		const char* lowered_name;
 		//we expect every name added previously are valid
-		STPcudaCheckErr(nvrtcGetLoweredName(program, expr.c_str(), &lowered_name));
+		STP_CHECK_CUDA(nvrtcGetLoweredName(program, expr.c_str(), &lowered_name));
 
 		//add it to the output
 		output_name.emplace(expr, lowered_name);

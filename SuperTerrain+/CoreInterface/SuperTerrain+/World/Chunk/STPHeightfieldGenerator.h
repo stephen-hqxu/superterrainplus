@@ -12,7 +12,7 @@
 #include "STPDiversityGenerator.hpp"
 #include "STPErosionBrushGenerator.h"
 #include "STPFreeSlipTextureBuffer.h"
-#include "../../Utility/Memory/STPSmartStream.h"
+#include "../../Utility/Memory/STPSmartDeviceObject.h"
 #include "../../Utility/Memory/STPSmartDeviceMemory.h"
 #include "../../Utility/Memory/STPObjectPool.h"
 //Settings
@@ -82,7 +82,7 @@ namespace SuperTerrainPlus {
 		struct STPStreamCreator {
 		public:
 
-			STPSmartStream operator()() const;
+			STPSmartDeviceObject::STPStream operator()() const;
 
 		};
 
@@ -121,8 +121,8 @@ namespace SuperTerrainPlus {
 		STPFreeSlipTextureAttribute TextureBufferAttr;
 
 		//Temp cache on device for heightmap computation
-		mutable cudaMemPool_t MapCacheDevice;
-		mutable STPObjectPool<STPSmartStream, STPStreamCreator> StreamPool;
+		mutable STPSmartDeviceObject::STPMemPool MapCacheDevice;
+		mutable STPObjectPool<STPSmartDeviceObject::STPStream, STPStreamCreator> StreamPool;
 		//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independence
 		mutable STPObjectPool<STPSmartDeviceMemory::STPDeviceMemory<STPcurandRNG[]>, STPRNGCreator> RNGPool;
 
@@ -139,7 +139,7 @@ namespace SuperTerrainPlus {
 		STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting&, const STPEnvironment::STPHeightfieldSetting&,
 			const STPDiversityGenerator&, unsigned int);
 
-		~STPHeightfieldGenerator();
+		~STPHeightfieldGenerator() = default;
 
 		STPHeightfieldGenerator(const STPHeightfieldGenerator&) = delete;
 
