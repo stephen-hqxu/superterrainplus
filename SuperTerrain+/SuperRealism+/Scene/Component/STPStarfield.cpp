@@ -17,7 +17,7 @@ using glm::uvec3;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto StarfieldShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPStarfield", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPStarfield", ".frag");
 
 STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSkyboxInitialiser& starfield_init) :
 	StarlightSpectrum(std::move(*starfield_model.StarlightSpectrum)) {

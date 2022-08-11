@@ -288,7 +288,7 @@ private:
 
 	//this shader is used to do some additional operations during depth rendering
 	constexpr static auto ShadowDepthPassShaderFilename =
-		STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPShadowDepthPass", ".frag");
+		STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPShadowDepthPass", ".frag");
 
 	//shadow map texture properties
 	GLsizei ShadowLevel = 1;
@@ -451,7 +451,7 @@ private:
 	STPSimpleScreenFrameBuffer ExtinctionEnvironmentCache;
 
 	constexpr static auto DeferredShaderFilename =
-		STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPDeferredShading", ".frag");
+		STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPDeferredShading", ".frag");
 
 	/**
 	 * @brief Draw a texture onto a screen.

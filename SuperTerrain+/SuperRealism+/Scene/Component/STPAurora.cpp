@@ -23,7 +23,7 @@ using std::chrono::duration;
 using namespace SuperTerrainPlus::STPRealism;
 
 static constexpr auto AuroraShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAurora", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPAurora", ".frag");
 
 STPAurora::STPAurora(STPLightSpectrum&& aurora_spectrum, const STPSkyboxInitialiser& aurora_init) : AuroraSpectrum(std::move(aurora_spectrum)) {
 	const char* const aurora_source_file = AuroraShaderFilename.data();

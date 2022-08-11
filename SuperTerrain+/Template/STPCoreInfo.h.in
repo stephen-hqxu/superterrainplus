@@ -1,0 +1,20 @@
+#pragma once
+#ifndef _STP_CORE_INFO_H_
+#define _STP_CORE_INFO_H_
+
+namespace SuperTerrainPlus {
+	
+	/**
+	 * @brief STPCoreInfo contains information about the SuperTerrain+ core library.
+	*/
+	namespace STPCoreInfo {
+		
+		//SuperTerrain+ include path
+		constexpr static char CoreInclude[] = "@STP_CORE_INCLUDE@";
+		//Nvidia CUDA include directory.
+		constexpr static char CUDAInclude[] = "@CUDAToolkit_INCLUDE_DIRS@";
+		
+	}
+	
+}
+#endif//_STP_CORE_INFO_H_

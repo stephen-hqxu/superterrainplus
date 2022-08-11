@@ -133,7 +133,7 @@ void STPShaderManager::initialise() {
 		using namespace SuperTerrainPlus;
 
 		ostringstream filename;
-		filename << SuperRealismPlus_ShaderPath << path;
+		filename << STPRealismInfo::ShaderPath << path;
 		includeImpl(path.data(), path.length(), STPFile::read(filename.str().c_str()));
 	}
 }

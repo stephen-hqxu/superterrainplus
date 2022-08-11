@@ -1,4 +1,5 @@
 #include "STPCommonCompiler.h"
+#include <SuperTerrain+/STPCoreInfo.h>
 #include <SuperAlgorithm+/STPAlgorithmDeviceInfo.h>
 
 #include <SuperTerrain+/STPEngineInitialiser.h>
@@ -32,44 +33,17 @@ using glm::uvec2;
 using glm::value_ptr;
 
 /**
- * @brief Generate include directory compiler option.
- * @return The include directory feeds into the compiler.
-*/
-template<const string_view& Str>
-constexpr static auto generateInclude() {
-	constexpr string_view includePrefix = "-I ";
-	constexpr size_t optionLength = Str.length() + includePrefix.length();
-
-	array<char, optionLength + 1u> includeOption = { };
-	auto appendStr = [i = 0, &includeOption](const string_view& str) mutable {
-		for (const char c : str) {
-			includeOption[i++] = c;
-		}
-	};
-	appendStr(includePrefix);
-	appendStr(Str);
-	//null termination
-	includeOption[optionLength] = 0;
-
-	return includeOption;
-}
-
-/**
  * @brief STPCompilerLog contains allocated memory for compiler and linker logs
 */
 struct STPCompilerLog {
 public:
 
-	constexpr static unsigned int LogSize = 1024u;
+	constexpr static size_t LogSize = 1024u;
 
 	//Various of logs
 	char linker_info_log[LogSize], linker_error_log[LogSize];
 	char module_info_log[LogSize], module_error_log[LogSize];
 };
-
-//Include dir of the engines
-constexpr static auto CoreInclude = generateInclude<SuperTerrainPlus_CoreInclude>();
-constexpr static auto DeviceInclude = generateInclude<SuperAlgorithmPlus_DeviceInclude>();
 
 #define HANDLE_COMPILE(FUNC) \
 STPDeviceRuntimeBinary::STPCompilationOutput output; \
@@ -98,8 +72,8 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 #endif
 			["-maxrregcount=80"]
 			//set include paths
-			[CoreInclude.data()]
-			[DeviceInclude.data()];
+			["-I " + string(STPCoreInfo::CoreInclude)]
+			["-I " + string(STPAlgorithm::STPAlgorithmDeviceInfo::DeviceInclude)];
 
 		return info;
 	}();
@@ -204,7 +178,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 	linkInfo.DataOption.emplace_back(&bin_biome, BinT::PTX, common_data_option);
 	linkInfo.DataOption.emplace_back(&bin_splat, BinT::PTX, common_data_option);
 
-	linkInfo.ArchiveOption.emplace_back(SuperTerrainPlus::SuperAlgorithmPlus_DeviceLibrary, common_data_option);
+	linkInfo.ArchiveOption.emplace_back(STPAlgorithm::STPAlgorithmDeviceInfo::DeviceLibrary, common_data_option);
 
 	try {
 		this->GeneratorProgram.linkFromBinary(linkInfo);

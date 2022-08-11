@@ -74,6 +74,4 @@ list(TRANSFORM STP_REALISM_ENGINE_INTERFACE PREPEND "${CMAKE_CURRENT_SOURCE_DIR}
 set(STP_REALISM_ENGINE_INTERFACE ${STP_REALISM_ENGINE_INTERFACE} PARENT_SCOPE)
 
 # config file for the realism rendering engine
-# output the path to the GLSL shader code
-set(SuperRealism+ShaderPath ${SuperRealism+Include}/Shader)
 setupConfigTemplate(${STP_REALISM_ENGINE} STPRealismInfo.h.in Include/STPRealismInfo.h STPRealismInfo.h)

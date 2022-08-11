@@ -23,7 +23,7 @@ using glm::value_ptr;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto PlaneGenerationShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPPlaneGeometry", ".comp");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPPlaneGeometry", ".comp");
 
 STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position) {
 	if (tile_dimension.x == 0u || tile_dimension.y == 0u) {

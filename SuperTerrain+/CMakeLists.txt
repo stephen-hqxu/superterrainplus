@@ -2,12 +2,13 @@ set(STP_TEMPLATE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Template)
 set(STP_TEMPLATE_OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>TemplateInterface)
 set(STP_CORE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/CoreInterface)
 set(STP_MODULE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/ModuleInterface)
-# config file information
-set(SuperTerrain+CoreInclude ${STP_CORE_INCLUDE})
-set(SuperAlgorithm+DeviceInclude ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/Device)
-set(SuperRealism+Include ${STP_MODULE_INCLUDE}/${STP_REALISM_ENGINE})
 # a helper function to quickly setup config file
 function(setupConfigTemplate BuildTarget TemplateInput TemplateOutput ConfigFilename)
+	# config file information
+	set(SuperAlgorithm+DeviceInclude ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/Device)
+	set(SuperRealism+ShaderPath ${STP_MODULE_INCLUDE}/${STP_REALISM_ENGINE}/Shader)
+	set(SuperRealism+OptiXSDK ${OptiX_INSTALL_DIR}/SDK)
+
 	configure_file(${STP_TEMPLATE_DIR}/${TemplateInput} ${TemplateOutput} @ONLY)
 	file(GENERATE
 	OUTPUT ${STP_TEMPLATE_OUTPUT}/${BuildTarget}/${ConfigFilename}

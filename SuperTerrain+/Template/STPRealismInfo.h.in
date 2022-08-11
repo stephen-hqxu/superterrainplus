@@ -2,12 +2,21 @@
 #ifndef _STP_REALISM_INFO_H_
 #define _STP_REALISM_INFO_H_
 
-namespace SuperTerrainPlus {
+namespace SuperTerrainPlus::STPRealism {
 	
 	/**
-	 * @brief Denotes the path to SuperRealism+ shader
+	 * @brief STPRealismInfo contains file information for realism rendering library used by runtime compilers.
 	*/
-	constexpr static char SuperRealismPlus_ShaderPath[] = "@SuperRealism+ShaderPath@";
+	namespace STPRealismInfo {
+		
+		//SuperRealism+ shader path
+		constexpr static char ShaderPath[] = "@SuperRealism+ShaderPath@";
+		//Nvidia OptiX API include directory
+		constexpr static char OptiXInclude[] = "@OptiX_INCLUDE_DIR@";
+		//Nvidia OptiX API SDK sample directory
+		constexpr static char OptiXSDK[] = "@SuperRealism+OptiXSDK@";
+		
+	}
 
 }
 #endif//_STP_REALISM_INFO_H_

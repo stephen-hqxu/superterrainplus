@@ -82,3 +82,6 @@ World/STPWorldPipeline.h
 # prefix main engine header path
 list(TRANSFORM STP_MAIN_ENGINE_INTERFACE PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 set(STP_MAIN_ENGINE_INTERFACE ${STP_MAIN_ENGINE_INTERFACE} PARENT_SCOPE)
+
+# config file for the main engine
+setupConfigTemplate(${STP_MAIN_ENGINE} STPCoreInfo.h.in Include/STPCoreInfo.h STPCoreInfo.h)

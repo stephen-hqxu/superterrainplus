@@ -39,7 +39,7 @@ using glm::value_ptr;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto SSAOShaderFilename = 
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAmbientOcclusion", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPAmbientOcclusion", ".frag");
 
 STPAmbientOcclusion::STPOcclusionKernelInstance::STPOcclusionKernelInstance
 	(const STPEnvironment::STPOcclusionKernelSetting& kernel_setting, STPOcclusionAlgorithm algorithm) : Occluder(algorithm), Kernel(kernel_setting) {

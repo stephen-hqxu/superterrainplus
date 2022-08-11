@@ -32,7 +32,7 @@ using std::transform;
 using namespace SuperTerrainPlus::STPRealism;
 
 static constexpr auto FilterShaderFilename = 
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPGaussianFilterKernel", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPGaussianFilterKernel", ".frag");
 
 /**
  * @brief Calculate the filter kernel extent length based on the radius.

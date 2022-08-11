@@ -35,11 +35,10 @@ using std::make_from_tuple;
 using std::make_pair;
 using std::make_tuple;
 
-using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static auto SkyShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSun", ".frag");
-constexpr static auto SpectrumShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSunSpectrum", ".comp");
+constexpr static auto SkyShaderFilename = SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPSun", ".frag");
+constexpr static auto SpectrumShaderFilename = SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPSunSpectrum", ".comp");
 
 STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundledData<vec3>& spectrum_domain,
 	const STPSkyboxInitialiser& sun_init) : SunSetting(sun_setting), SunDirectionCache(0.0) {

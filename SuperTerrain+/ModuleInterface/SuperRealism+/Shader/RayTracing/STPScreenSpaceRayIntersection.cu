@@ -4,7 +4,7 @@
 #include "STPVectorUtility.cuh"
 
 //OptiX
-#include <optix_device.h>
+#include <optix.h>
 
 using namespace SuperTerrainPlus::STPRealism;
 

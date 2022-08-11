@@ -21,7 +21,7 @@ using glm::vec4;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto BSDFShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPBidirectionalScattering", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPBidirectionalScattering", ".frag");
 
 STPBidirectionalScattering::STPBidirectionalScattering(const STPScreenInitialiser& screen_init) : BufferDimension(uvec2(0u)) {
 	/* --------------------------------------- build shader ----------------------------------------------- */

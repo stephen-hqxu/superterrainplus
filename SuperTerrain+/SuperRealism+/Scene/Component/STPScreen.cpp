@@ -27,7 +27,7 @@ using glm::vec4;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto ScreenShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPScreen", ".vert");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPScreen", ".vert");
 
 constexpr static array<signed char, 16ull> QuadVertex = {
 	//Position		//TexCoord

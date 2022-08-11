@@ -40,13 +40,13 @@ using glm::mat4;
 using glm::dmat4;
 using glm::value_ptr;
 
-using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static auto HeightfieldTerrainShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPHeightfieldTerrain", 
-	".vert", ".tesc", ".tese", ".frag");
+constexpr static auto HeightfieldTerrainShaderFilename = SuperTerrainPlus::STPFile::generateFilename(
+	STPRealismInfo::ShaderPath, "/STPHeightfieldTerrain", ".vert", ".tesc", ".tese", ".frag");
 //geometry shader is only used in shadow pass
-constexpr static auto HeightfieldTerrainShadowShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPHeightfieldTerrain", ".geom");
+constexpr static auto HeightfieldTerrainShadowShaderFilename = SuperTerrainPlus::STPFile::generateFilename(
+	STPRealismInfo::ShaderPath, "/STPHeightfieldTerrain", ".geom");
 
 constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 	//Need to set the number of terrain tile during initialisation

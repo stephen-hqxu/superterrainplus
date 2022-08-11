@@ -10,7 +10,7 @@
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto AlphaCullingFilename =
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAlphaCulling", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPAlphaCulling", ".frag");
 
 STPAlphaCulling::STPAlphaCulling(STPCullComparator comp, float limit, const STPScreenInitialiser& screen_init) {
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;

@@ -26,12 +26,13 @@ using glm::ivec3;
 using glm::vec4;
 using glm::value_ptr;
 
-using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
 //Water shader shares a majority part with the terrain shader.
-constexpr static auto WaterShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPHeightfieldTerrain", ".tesc", ".tese");
-constexpr static auto WaterFragmentShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPWater", ".frag");
+constexpr static auto WaterShaderFilename = SuperTerrainPlus::STPFile::generateFilename(
+	STPRealismInfo::ShaderPath, "/STPHeightfieldTerrain", ".tesc", ".tese");
+constexpr static auto WaterFragmentShaderFilename = SuperTerrainPlus::STPFile::generateFilename(
+	STPRealismInfo::ShaderPath, "/STPWater", ".frag");
 constexpr static size_t WaterShaderCount = 3ull;
 
 STPWater::STPWater(const STPHeightfieldTerrain<false>& terrain, const STPBiomeWaterLevel& water_level) :
