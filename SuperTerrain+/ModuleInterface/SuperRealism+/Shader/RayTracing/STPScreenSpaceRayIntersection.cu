@@ -6,9 +6,12 @@
 //OptiX
 #include <optix.h>
 
+//System
+#include <cuda/std/limits>
+
 using namespace SuperTerrainPlus::STPRealism;
 
-extern __constant__ STPScreenSpaceRayIntersection SSRIData;
+extern __constant__ STPScreenSpaceRayIntersectionData SSRIData;
 
 //Ray data passed between each shader
 struct STPSSRIPayload {
@@ -66,7 +69,7 @@ __device__ __forceinline__ static void setPrimitiveData(const STPSSRIPayload& da
 __device__ __forceinline__ static void setEnvironmentData() {
 	//primitiveID zero is reserved for no intersection,
 	//which either denotes an environment pixel, or ray is invisible
-	optixSetPayload_0(STPScreenSpaceRayIntersection::EnvironmentRayID);
+	optixSetPayload_0(STPScreenSpaceRayIntersectionData::EnvironmentRayID);
 	optixSetPayload_1(optixUndefinedValue());
 	optixSetPayload_2(optixUndefinedValue());
 	optixSetPayload_3(optixUndefinedValue());
@@ -90,7 +93,7 @@ __global__ void __raygen__launchScreenSpaceRay() {
 	const float3 ray_ori = STPFragmentUtility::reconstructDepthToWorld(SSRIData.InvProjectionView, ray_depth, uv);
 
 	//stencil test
-	const unsigned char stencil_result = STPScreenSpaceRayIntersection::RayVisibilityMask & stencil;
+	const unsigned char stencil_result = STPScreenSpaceRayIntersectionData::RayVisibilityMask & stencil;
 	const unsigned int rayVisibility = stencil_result == 0u ? 0x00u : 0xFFu;
 
 	//start the magic
@@ -107,17 +110,17 @@ __global__ void __raygen__launchScreenSpaceRay() {
 	//store stencil result
 	surf2Dwrite(stencil_result | data.PrimitiveID, SSRIData.SSStencil, texCoord.x, texCoord.y);
 
-	if (data.PrimitiveID == STPScreenSpaceRayIntersection::EnvironmentRayID) {
+	if (data.PrimitiveID == STPScreenSpaceRayIntersectionData::EnvironmentRayID) {
 		//environment ray has no vertex data
 		return;
 	}
-	const uint2 pixel_uv = make_uint2(data.UV * 0xFFFFu);
+	const uint2 pixel_uv = make_uint2(data.UV * cuda::std::numeric_limits<unsigned short>::max());
 	surf2Dwrite(make_float4(data.Position, 1.0f), SSRIData.GPosition, texCoord.x, texCoord.y);
 	surf2Dwrite(make_ushort2(pixel_uv.x, pixel_uv.y), SSRIData.GTextureCoordinate, texCoord.x, texCoord.y);
 }
 
 __global__ void __closesthit__recordPrimitiveIntersection() {
-	const auto* const data = reinterpret_cast<const STPScreenSpaceRayIntersection::STPPrimitiveHitData*>(optixGetSbtDataPointer()); 
+	const auto* const data = reinterpret_cast<const STPScreenSpaceRayIntersectionData::STPPrimitiveHitData*>(optixGetSbtDataPointer()); 
 	//read primitive vertex data
 	const unsigned int instanceID = optixGetInstanceId(),
 		primitiveIdx = optixGetPrimitiveIndex();
@@ -127,7 +130,7 @@ __global__ void __closesthit__recordPrimitiveIntersection() {
 	float2 uv[3];
 	for (unsigned int i = 0u; i < 3u; i++) {
 		const float* const vertex = data->PrimitiveVertex[instanceID]
-			+ getByIndex(attributeIdx, i) * STPScreenSpaceRayIntersection::STPPrimitiveHitData::AttributeStride;
+			+ getByIndex(attributeIdx, i) * STPScreenSpaceRayIntersectionData::STPPrimitiveHitData::AttributeStride;
 		position[i] = make_float3(vertex[0], vertex[1], vertex[2]);
 		uv[i] = make_float2(vertex[3], vertex[4]);
 	}

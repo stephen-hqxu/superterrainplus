@@ -18,8 +18,7 @@ namespace SuperTerrainPlus {
 	/**
 	 * @brief STPDeviceRuntimeProgram provides a runtime-linking interface for compiled binary code, powered by CUDA.
 	*/
-	class STP_API STPDeviceRuntimeProgram {
-	public:
+	namespace STPDeviceRuntimeProgram {
 
 		/**
 		 * @brief STPBinaryType specifies the type of binary after compilation.
@@ -64,7 +63,7 @@ namespace SuperTerrainPlus {
 			//Given individual option for optional source files.
 			//It will override the global option set for that file.
 			//Also specifies the input type of the binary.
-			std::vector<std::tuple<const STPDeviceRuntimeBinary*, STPBinaryType, STPDataJitOption>> DataOption;
+			std::vector<std::tuple<const STPDeviceRuntimeBinary::STPCompilationOutput::STPCompiledBinary*, STPBinaryType, STPDataJitOption>> DataOption;
 			//All pre-compiled static library that will be linked with the main generator program.
 			//Should provide the filename to locate the archive, and the individual option.
 			std::vector<std::pair<std::string, STPDataJitOption>> ArchiveOption;
@@ -73,40 +72,17 @@ namespace SuperTerrainPlus {
 
 		};
 
-	private:
-
 		/**
 		 * @brief STPModuleDeleter deletes a CUDA module.
 		*/
-		struct STPModuleDeleter {
+		struct STP_API STPModuleDeleter {
 		public:
 
 			void operator()(CUmodule) const;
 
 		};
-		typedef std::unique_ptr<std::remove_pointer_t<CUmodule>, STPModuleDeleter> STPManagedModule;
-		STPManagedModule Module;
-
-	public:
-
-		STPDeviceRuntimeProgram() = default;
-
-		STPDeviceRuntimeProgram(const STPDeviceRuntimeProgram&) = delete;
-
-		STPDeviceRuntimeProgram(STPDeviceRuntimeProgram&&) = default;
-
-		STPDeviceRuntimeProgram& operator=(const STPDeviceRuntimeProgram&) = delete;
-
-		STPDeviceRuntimeProgram& operator=(STPDeviceRuntimeProgram&&) = default;
-
-		~STPDeviceRuntimeProgram() = default;
-
-		/**
-		 * @brief Get the linked module.
-		 * @return The linked module.
-		 * If the program is incomplete, nullptr is returned.
-		*/
-		CUmodule operator*() const;
+		//A managed CUDA module
+		using STPSmartModule = std::unique_ptr<std::remove_pointer_t<CUmodule>, STPModuleDeleter>;
 
 		/**
 		 * @brief Link all provided binaries into a complete program.
@@ -115,8 +91,7 @@ namespace SuperTerrainPlus {
 		 * If linking error occurs, the existing module will not be modified.
 		 * @param linker_info The information for the linker.
 		*/
-		void linkFromBinary(STPLinkerInformation&);
-
-	};
+		STP_API STPSmartModule link(STPLinkerInformation&);
+	}
 }
 #endif//_STP_DEVICE_RUNTIME_PROGRAM_H_

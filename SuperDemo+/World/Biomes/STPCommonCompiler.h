@@ -26,7 +26,7 @@ namespace STPDemo {
 	private:
 
 		//The complete program after linking
-		SuperTerrainPlus::STPDeviceRuntimeProgram GeneratorProgram;
+		SuperTerrainPlus::STPDeviceRuntimeProgram::STPSmartModule GeneratorProgram;
 		//Lowered name for each object file
 		SuperTerrainPlus::STPDeviceRuntimeBinary::STPLoweredName BiomefieldName, SplatmapName;
 

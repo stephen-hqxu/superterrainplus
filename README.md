@@ -3,7 +3,7 @@
 [![GitHub Releases](https://img.shields.io/github/v/release/stephen-hqxu/superterrainplus?include_prereleases&label=Release)](https://github.com/stephen-hqxu/superterrainplus/releases)
 [![GitHub License](https://img.shields.io/github/license/stephen-hqxu/superterrainplus?label=License)](https://github.com/stephen-hqxu/superterrainplus/blob/master/LICENSE)
 [![3rd-Party License](https://img.shields.io/badge/License-3rd--party-green)](https://github.com/stephen-hqxu/superterrainplus/blob/master/3rd-Party)
-[![Project Roadmap](https://img.shields.io/badge/Project-Roadmap-cd853f)](https://github.com/stephen-hqxu/superterrainplus/projects)
+[![Project Roadmap](https://img.shields.io/badge/Project-Roadmap-cd853f)](https://github.com/stephen-hqxu/superterrainplus/projects?type=classic)
 [![Documentation](https://img.shields.io/badge/-Documentation-fa8072)](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/README.md)
 
 ## :eyes: Overview

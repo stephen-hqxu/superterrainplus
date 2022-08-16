@@ -17,7 +17,7 @@ using namespace SuperTerrainPlus;
 struct STPLinkStateDeleter {
 public:
 
-	inline void operator()(CUlinkState link) {
+	inline void operator()(CUlinkState link) const {
 		STP_CHECK_CUDA(cuLinkDestroy(link));
 	}
 
@@ -34,11 +34,7 @@ void STPDeviceRuntimeProgram::STPModuleDeleter::operator()(CUmodule module) cons
 	STP_CHECK_CUDA(cuModuleUnload(module));
 }
 
-CUmodule STPDeviceRuntimeProgram::operator*() const {
-	return this->Module.get();
-}
-
-void STPDeviceRuntimeProgram::linkFromBinary(STPLinkerInformation& linker_info) {
+STPDeviceRuntimeProgram::STPSmartModule STPDeviceRuntimeProgram::link(STPLinkerInformation& linker_info) {
 	auto& [linker_opt, data_opt, archive_opt, module_opt] = linker_info;
 
 	//create a linker
@@ -49,31 +45,25 @@ void STPDeviceRuntimeProgram::linkFromBinary(STPLinkerInformation& linker_info) 
 
 	//add each data to the linker
 	for (auto& [binary, bin_type, data_jit] : data_opt) {
-		const nvrtcProgram program = **binary;
+		const nvrtcProgram program = binary->Program.get();
 		//get code based on user specified binary type
-		size_t codeSize = 0ull;
-		unique_ptr<char[]> code;
+		STPDeviceRuntimeBinary::STPProgramData program_data;
 		CUjitInputType bin_input = { };
 		switch (bin_type) {
 		case STPBinaryType::PTX:
-			STP_CHECK_CUDA(nvrtcGetPTXSize(program, &codeSize));
-			code = make_unique<char[]>(codeSize);
-			STP_CHECK_CUDA(nvrtcGetPTX(program, code.get()));
-
+			program_data = STPDeviceRuntimeBinary::readPTX(program);
 			bin_input = CU_JIT_INPUT_PTX;
 			break;
 		case STPBinaryType::CUBIN:
-			STP_CHECK_CUDA(nvrtcGetCUBINSize(program, &codeSize));
-			code = make_unique<char[]>(codeSize);
-			STP_CHECK_CUDA(nvrtcGetCUBIN(program, code.get()));
-
+			program_data = STPDeviceRuntimeBinary::readCUBIN(program);
 			bin_input = CU_JIT_INPUT_CUBIN;
 			break;
 		}
 
 		//add to the linker
 		//we can safely delete the code after it has been added
-		STP_CHECK_CUDA(cuLinkAddData(linker, bin_input, code.get(), codeSize, binary->name().c_str(),
+		const auto& [code, codeSize] = program_data;
+		STP_CHECK_CUDA(cuLinkAddData(linker, bin_input, code.get(), codeSize, binary->Identifier.c_str(),
 			static_cast<unsigned int>(data_jit.OptionFlag.size()), data_jit.OptionFlag.data(), data_jit.OptionValue.data()));
 	}
 
@@ -94,6 +84,6 @@ void STPDeviceRuntimeProgram::linkFromBinary(STPLinkerInformation& linker_info) 
 	CUmodule module;
 	STP_CHECK_CUDA(cuModuleLoadDataEx(&module, program_cubin,
 		static_cast<unsigned int>(module_opt.OptionFlag.size()), module_opt.OptionFlag.data(), module_opt.OptionValue.data()));
-	//store
-	this->Module = std::move(STPManagedModule(module));
+	
+	return STPSmartModule(module);
 }

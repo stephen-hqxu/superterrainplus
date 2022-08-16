@@ -14,6 +14,7 @@ using std::string;
 using std::ostringstream;
 using std::exception_ptr;
 
+using std::make_unique;
 using std::endl;
 
 using namespace SuperTerrainPlus;
@@ -28,19 +29,13 @@ void STPDeviceRuntimeBinary::STPProgramDeleter::operator()(nvrtcProgram program)
 	STP_CHECK_CUDA(nvrtcDestroyProgram(&program));
 }
 
-nvrtcProgram STPDeviceRuntimeBinary::operator*() const {
-	return this->Program.get();
-}
-
-const string STPDeviceRuntimeBinary::name() const {
-	return this->Name;
-}
-
-STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compileFromSource(
-	const string& source_name, const string& source_code,
+STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compile(
+	string&& source_name, const string& source_code,
 	const STPSourceInformation& source_info, const STPExternalHeaderSource& external_header) {
 	STPCompilationOutput output;
-	auto& [output_log, output_name] = output;
+	auto& [program_object, output_log, output_name] = output;
+	auto& [program_name, managed_program] = program_object;
+	program_name = std::move(source_name);
 
 	const auto& [src_option, src_name_expr, src_external_header] = source_info;
 
@@ -53,7 +48,7 @@ STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compileFrom
 			//cannot find the source of this header
 			ostringstream err;
 			err << "External header '" << required_header_name << "\' is required for source '"
-				<< source_name << "\' but its definition is not found." << endl;
+				<< program_name << "\' but its definition is not found." << endl;
 
 			throw STPException::STPCompilationError(err.str().c_str());
 		}
@@ -66,9 +61,9 @@ STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compileFrom
 	//external_header and external_header_code should have the same size
 	//create a new program
 	nvrtcProgram program;
-	STP_CHECK_CUDA(nvrtcCreateProgram(&program, source_code.c_str(), source_name.c_str(),
+	STP_CHECK_CUDA(nvrtcCreateProgram(&program, source_code.c_str(), program_name.c_str(),
 		static_cast<int>(raw_header_name.size()), raw_header_code.data(), raw_header_name.data()));
-	STPManagedProgram managed_program(program);
+	managed_program = STPSmartProgram(program);
 	//compile the new program
 	const auto& name_expr_arg = src_name_expr.StringArgument;
 	exception_ptr exptr;
@@ -112,9 +107,27 @@ STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compileFrom
 		output_name.emplace(expr, lowered_name);
 	}
 
-	//and finally add the program to our database
-	this->Program = std::move(managed_program);
-	this->Name = source_name;
-
 	return output;
+}
+
+STPDeviceRuntimeBinary::STPProgramData STPDeviceRuntimeBinary::readPTX(nvrtcProgram program) {
+	STPProgramData data;
+	auto& [ptx, ptxSize] = data;
+
+	STP_CHECK_CUDA(nvrtcGetPTXSize(program, &ptxSize));
+	ptx = make_unique<char[]>(ptxSize);
+	STP_CHECK_CUDA(nvrtcGetPTX(program, ptx.get()));
+	
+	return data;
+}
+
+STPDeviceRuntimeBinary::STPProgramData STPDeviceRuntimeBinary::readCUBIN(nvrtcProgram program) {
+	STPProgramData data;
+	auto& [cubin, cubinSize] = data;
+
+	STP_CHECK_CUDA(nvrtcGetCUBINSize(program, &cubinSize));
+	cubin = make_unique<char[]>(cubinSize);
+	STP_CHECK_CUDA(nvrtcGetCUBIN(program, cubin.get()));
+
+	return data;
 }

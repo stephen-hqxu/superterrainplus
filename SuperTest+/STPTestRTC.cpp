@@ -45,7 +45,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-class RTCTester : protected STPDeviceRuntimeProgram {
+class RTCTester {
 private:
 
 	constexpr static char SourceLocation[] = "./TestData/MatrixArithmetic.rtc";
@@ -72,7 +72,7 @@ protected:
 
 	CUfunction MattransformAdd, MattransformSub, Matscale;
 
-	std::pair<STPDeviceRuntimeBinary, STPDeviceRuntimeBinary::STPLoweredName> testCompilation(bool test_enable, bool attach_header) {
+	static STPDeviceRuntimeBinary::STPCompilationOutput testCompilation(bool test_enable, bool attach_header) {
 		using namespace std::string_literals;
 		const string Capability = "-arch=sm_"s + std::to_string(STPEngineInitialiser::architecture(0));
 		//settings
@@ -108,12 +108,10 @@ protected:
 		const string src = STPFile::read(RTCTester::SourceLocation);
 
 		//compile
-		STPDeviceRuntimeBinary binary;
-		STPDeviceRuntimeBinary::STPLoweredName lowered_name;
-		auto startCompile = [&src_info, &src, &binary, &header, &lowered_name]() {
-			STPDeviceRuntimeBinary::STPCompilationOutput output;
+		STPDeviceRuntimeBinary::STPCompilationOutput output;
+		auto startCompile = [&src_info, &src, &output, &header]() {
 			try {
-				output = binary.compileFromSource(RTCTester::SourceName, src, src_info, header);
+				output = STPDeviceRuntimeBinary::compile(RTCTester::SourceName, src, src_info, header);
 			} catch (const STPException::STPCompilationError& ce) {
 				//compile time error
 				cerr << ce.what() << endl;
@@ -124,8 +122,6 @@ protected:
 			if (!output.Log.empty()) {
 				cout << output.Log << endl;
 			}
-
-			lowered_name = std::move(output.LoweredName);
 		};
 		CHECKED_IF(test_enable) {
 			CHECKED_IF(attach_header) {
@@ -139,16 +135,16 @@ protected:
 			REQUIRE_THROWS_WITH(startCompile(), Catch::Matchers::ContainsSubstring("STP_TEST_ENABLE"));
 		}
 
-		return std::pair(std::move(binary), lowered_name);
+		return output;
 	}
 
-	void testLink(const STPDeviceRuntimeBinary& binary) {
+	static STPDeviceRuntimeProgram::STPSmartModule testLink(const STPDeviceRuntimeBinary::STPCompilationOutput::STPCompiledBinary& binary) {
 		//log
 		constexpr static unsigned int logSize = 1024u;
 		char linker_info[logSize], linker_error[logSize];
 		char module_info[logSize], module_error[logSize];
 
-		STPLinkerInformation link_info;
+		STPDeviceRuntimeProgram::STPLinkerInformation link_info;
 		link_info.LinkerOption
 		(CU_JIT_OPTIMIZATION_LEVEL, (void*)0u)
 			(CU_JIT_LOG_VERBOSE, (void*)1)
@@ -156,9 +152,9 @@ protected:
 			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize)
 			(CU_JIT_ERROR_LOG_BUFFER, linker_error)
 			(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize);
-		STPLinkerInformation::STPDataJitOption source_option;
+		STPDeviceRuntimeProgram::STPLinkerInformation::STPDataJitOption source_option;
 		source_option(CU_JIT_MAX_REGISTERS, (void*)72u);
-		link_info.DataOption.emplace_back(&binary, STPBinaryType::PTX, source_option);
+		link_info.DataOption.emplace_back(&binary, STPDeviceRuntimeProgram::STPBinaryType::PTX, source_option);
 		link_info.ModuleOption
 		(CU_JIT_INFO_LOG_BUFFER, module_info)
 			(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)logSize)
@@ -167,9 +163,10 @@ protected:
 			(CU_JIT_LOG_VERBOSE, (void*)1);
 
 		//link
+		STPDeviceRuntimeProgram::STPSmartModule module;
 		REQUIRE_NOTHROW([&]() {
 			try {
-				this->linkFromBinary(link_info);
+				module = STPDeviceRuntimeProgram::link(link_info);
 			} catch (...) {
 				//print error log
 				cerr << linker_error << endl;
@@ -180,10 +177,11 @@ protected:
 			cout << linker_info << endl;
 			cout << module_info << endl;
 		}());
+
+		return module;
 	}
 
-	void prepData(const STPDeviceRuntimeBinary::STPLoweredName& lowered_name) {
-		const auto program = **this;
+	void prepData(CUmodule program, const STPDeviceRuntimeBinary::STPLoweredName& lowered_name) {
 		CUdeviceptr matrixDim_d;
 		size_t matrixDimSize;
 
@@ -278,11 +276,11 @@ SCENARIO_METHOD(RTCTester, "STPRuntimeCompilable manages runtime CUDA scripts an
 		WHEN("A piece of working source code is added to the program") {
 
 			THEN("Program can be compiled without errors") {
-				const auto [binary, lowered_name] = this->testCompilation(true, false);
+				const auto compilation = RTCTester::testCompilation(true, false);
 
 				AND_THEN("After linking, data can be sent to kernel, after the execution result can be retrieved, and correctness is verified") {
-					this->testLink(binary);
-					REQUIRE_NOTHROW(this->prepData(lowered_name));
+					const auto program_module = RTCTester::testLink(compilation.ProgramObject);
+					REQUIRE_NOTHROW(RTCTester::prepData(program_module.get(), compilation.LoweredName));
 					//round the number to 1 d.p. to avoid float rounding issue during assertion
 					//compilation is a slow process, so we only test it once
 					const auto Data = GENERATE(take(1, chunk(18, map<float>([](auto f) { return roundf(f * 10.0f) / 10.0f; }, random(-6666.0f, 6666.0f)))));

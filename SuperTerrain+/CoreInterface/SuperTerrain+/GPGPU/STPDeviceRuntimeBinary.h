@@ -20,8 +20,7 @@ namespace SuperTerrainPlus {
 	/**
 	 * @brief STPDeviceRuntimeBinary provides a device-side runtime compilation toolkit powered by NVRTC.
 	*/
-	class STP_API STPDeviceRuntimeBinary {
-	public:
+	namespace STPDeviceRuntimeBinary {
 
 		/**
 		 * @brief Parameter sets for source compilation.
@@ -72,27 +71,36 @@ namespace SuperTerrainPlus {
 		//Key: original name, Value: mangled name.
 		typedef std::unordered_map<std::string, std::string> STPLoweredName;
 
-	private:
-
 		/**
 		 * @brief STPProgramDeleter deletes a NVRTC program instance.
 		*/
-		struct STPProgramDeleter {
+		struct STP_API STPProgramDeleter {
 		public:
 
 			void operator()(nvrtcProgram) const;
 
 		};
-		typedef std::unique_ptr<std::remove_pointer_t<nvrtcProgram>, STPProgramDeleter> STPManagedProgram;
-		STPManagedProgram Program;
+		//A smartly managed NVRTC compiled program
+		using STPSmartProgram = std::unique_ptr<std::remove_pointer_t<nvrtcProgram>, STPProgramDeleter>;
+		//Raw program data retrieved from compiled program, and the length
+		using STPProgramData = std::pair<std::unique_ptr<char[]>, size_t>;
 
-		//The name of the current program given by the user.
-		std::string Name;
-
-	public:
-
+		/**
+		 * @brief STPCompilationOutput holds the output information of the compiled program.
+		*/
 		struct STPCompilationOutput {
 		public:
+
+			//The compiled NVRTC program object, can be referred as an object file.
+			struct STPCompiledBinary {
+			public:
+
+				//A user-specified name for the program for debugging, can be an empty string.
+				std::string Identifier;
+				//The compiled program.
+				STPSmartProgram Program;
+
+			} ProgramObject;
 
 			//The log from the compiler.
 			std::string Log;
@@ -102,32 +110,6 @@ namespace SuperTerrainPlus {
 			STPLoweredName LoweredName;
 
 		};
-
-		STPDeviceRuntimeBinary() = default;
-
-		STPDeviceRuntimeBinary(const STPDeviceRuntimeBinary&) = delete;
-
-		STPDeviceRuntimeBinary(STPDeviceRuntimeBinary&&) noexcept = default;
-
-		STPDeviceRuntimeBinary& operator=(const STPDeviceRuntimeBinary&) = delete;
-
-		STPDeviceRuntimeBinary& operator=(STPDeviceRuntimeBinary&&) noexcept = default;
-
-		~STPDeviceRuntimeBinary() = default;
-
-		/**
-		 * @brief Get the compiled NVRTC program instance.
-		 * @return The runtime compiled program.
-		 * If no compilation is available, nullptr is returned.
-		*/
-		nvrtcProgram operator*() const;
-
-		/**
-		 * @brief Get the name of the binary assigned by user since the last compilation.
-		 * This is used for debug purposes.
-		 * @return The binary name.
-		*/
-		const std::string name() const;
 
 		/**
 		 * @brief Given a piece of source code, compile it and create the NVRTC program.
@@ -143,9 +125,22 @@ namespace SuperTerrainPlus {
 		 * @return The compilation output.
 		 * @see STPCompilationOutput
 		*/
-		STPCompilationOutput compileFromSource(const std::string&, const std::string&, const STPSourceInformation&,
+		STP_API STPCompilationOutput compile(std::string&&, const std::string&, const STPSourceInformation&,
 			const STPExternalHeaderSource& = STPExternalHeaderSource());
-	
-	};
+
+		/**
+		 * @brief Read PTX code from the underlying compiled program.
+		 * @param program The program.
+		 * @return PTX code associated with the given program.
+		*/
+		STP_API STPProgramData readPTX(nvrtcProgram);
+
+		/**
+		 * @brief Read the CUBIN binary from the underlying compiled program.
+		 * @param program The program.
+		 * @return CUBIN binary associated with the given program.
+		*/
+		STP_API STPProgramData readCUBIN(nvrtcProgram);
+	}
 }
 #endif//_STP_DEVICE_RUNTIME_BINARY_H_

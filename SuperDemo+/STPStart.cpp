@@ -530,7 +530,7 @@ namespace STPStart {
 	class STPLogConsolePrinter : public SuperTerrainPlus::STPRealism::STPLogHandler::STPLogHandlerSolution {
 	public:
 
-		void handle(string&& log) override {
+		void handle(const string& log) override {
 			if (!log.empty()) {
 				cout << log << endl;
 			}

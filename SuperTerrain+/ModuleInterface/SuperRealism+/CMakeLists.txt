@@ -1,4 +1,5 @@
 set(STP_REALISM_ENGINE_INTERFACE
+STPExtendedScenePipeline.h
 STPRealismDefine.h
 STPRendererInitialiser.h
 STPScenePipeline.h
@@ -55,6 +56,7 @@ Scene/Light/STPLightShadow.h
 Scene/Light/STPLightSpectrum.h
 Scene/Light/STPShadowMapFilter.hpp
 # /Scene
+Scene/STPExtendedSceneObject.hpp
 Scene/STPMaterialLibrary.h
 Scene/STPSceneLight.h
 Scene/STPSceneObject.h

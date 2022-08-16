@@ -125,7 +125,7 @@ void STPProgramManager::finalise() {
 	//validation checks if the program can be used as a GL application
 	handle_error(GL_VALIDATE_STATUS);
 
-	STPLogHandler::ActiveLogHandler->handle(std::move(log));
+	STPLogHandler::ActiveLogHandler->handle(log);
 
 	//check the status of the program
 	this->isComputeProgram = this->AttachedShader.count(GL_COMPUTE_SHADER) > 0u;

@@ -15,10 +15,10 @@
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
-	 * @brief STPScreenSpaceRayIntersection is a simple ray-primitive intersection test
+	 * @brief STPScreenSpaceRayIntersectionData provides data for a simple ray-primitive intersection test shader,
 	 * starting a ray from a screen-space origin.
 	*/
-	struct STPScreenSpaceRayIntersection {
+	struct STPScreenSpaceRayIntersectionData {
 	public:
 
 		//Stencil identifiers for rays.

@@ -43,7 +43,7 @@ void STPPipelineManager::finalise() {
 		glGetProgramPipelineInfoLog(this->Pipeline.get(), logLength, NULL, log.data());
 	}
 
-	STPLogHandler::ActiveLogHandler->handle(std::move(log));
+	STPLogHandler::ActiveLogHandler->handle(log);
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint STPPipelineManager::operator*() const {

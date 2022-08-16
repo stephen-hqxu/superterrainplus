@@ -1,6 +1,7 @@
 set(STP_REALISM_ENGINE_SOURCE
 STPCamera.cpp
 STPDebugCallback.cpp
+STPExtendedScenePipeline.cpp
 STPOrthographicCamera.cpp
 STPPerspectiveCamera.cpp
 STPPlaneGeometry.cpp

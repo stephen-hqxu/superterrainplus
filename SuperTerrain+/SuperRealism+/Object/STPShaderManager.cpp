@@ -30,6 +30,10 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
+//Definition for STPLogHandler
+STPLogHandler::STPLogHandlerSolution STPLogHandler::DefaultLogHandler;
+STPLogHandler::STPLogHandlerSolution* STPLogHandler::ActiveLogHandler = &STPLogHandler::DefaultLogHandler;
+
 constexpr static array<string_view, 8ull> mShaderIncludeRegistry = {
 	"/Common/STPAnimatedWave.glsl",
 	"/Common/STPAtmosphericScattering.glsl",
@@ -209,7 +213,7 @@ void STPShaderManager::operator()(const STPShaderSource& source) {
 	}
 
 	//write log
-	STPLogHandler::ActiveLogHandler->handle(std::move(log));
+	STPLogHandler::ActiveLogHandler->handle(log);
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint STPShaderManager::operator*() const {

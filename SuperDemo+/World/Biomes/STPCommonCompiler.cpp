@@ -78,7 +78,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		return info;
 	}();
 
-	STPDeviceRuntimeBinary bin_common, bin_biome, bin_splat;
+	STPDeviceRuntimeBinary::STPCompilationOutput::STPCompiledBinary bin_common, bin_biome, bin_splat;
 	using std::move;
 	STPDeviceRuntimeBinary::STPLoweredName commonName;
 	/* -------------------------------- common compiler ----------------------------- */
@@ -97,7 +97,8 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 			["STPCommonGenerator::RenderedDimension"]
 			["STPCommonGenerator::Permutation"];
 		//compile
-		HANDLE_COMPILE(bin_common.compileFromSource("STPCommonGenerator", commongen_source, commongen_info))
+		HANDLE_COMPILE(STPDeviceRuntimeBinary::compile("STPCommonGenerator", commongen_source, commongen_info))
+		bin_common = move(output.ProgramObject);
 		commonName = move(output.LoweredName);
 	}
 	/* ------------------------------- biomefield compiler ----------------------------- */
@@ -123,8 +124,9 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		//options are all set
 		multiheightfield_info.ExternalHeader
 			["STPBiomeProperty"];
-		HANDLE_COMPILE(bin_biome.compileFromSource(
+		HANDLE_COMPILE(STPDeviceRuntimeBinary::compile(
 			"STPMultiHeightGenerator", multiheightfield_source, multiheightfield_info, header))
+		bin_biome = move(output.ProgramObject);
 		this->BiomefieldName = move(output.LoweredName);
 	}
 	/* ---------------------------------- splatmap compiler -------------------------------- */
@@ -141,7 +143,8 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 			//global function
 			["generateTextureSplatmap"];
 		//compile
-		HANDLE_COMPILE(bin_splat.compileFromSource("STPSplatmapGenerator", splatmap_source, source_info))
+		HANDLE_COMPILE(STPDeviceRuntimeBinary::compile("STPSplatmapGenerator", splatmap_source, source_info))
+		bin_splat = move(output.ProgramObject);
 		this->SplatmapName = move(output.LoweredName);
 	}
 	/* -------------------------------------- link -------------------------------------- */
@@ -181,7 +184,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 	linkInfo.ArchiveOption.emplace_back(STPAlgorithm::STPAlgorithmDeviceInfo::DeviceLibrary, common_data_option);
 
 	try {
-		this->GeneratorProgram.linkFromBinary(linkInfo);
+		this->GeneratorProgram = STPDeviceRuntimeProgram::link(linkInfo);
 		cout << log.linker_info_log << endl;
 		cout << log.module_info_log << endl;
 
@@ -189,7 +192,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		CUdeviceptr dimension, half_dimension, rendered_dimension, perm;
 		size_t dimensionSize, half_dimensionSize, rendered_dimensionSize, permSize;
 		//source information
-		const CUmodule program = *this->GeneratorProgram;
+		const CUmodule program = this->GeneratorProgram.get();
 		STP_CHECK_CUDA(cuModuleGetGlobal(&dimension, &dimensionSize, program,
 			commonName.at("STPCommonGenerator::Dimension").c_str()));
 		STP_CHECK_CUDA(cuModuleGetGlobal(&half_dimension, &half_dimensionSize,program,
@@ -215,7 +218,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 }
 
 CUmodule STPCommonCompiler::getProgram() const {
-	return *this->GeneratorProgram;
+	return this->GeneratorProgram.get();
 }
 
 const STPDeviceRuntimeBinary::STPLoweredName& STPCommonCompiler::getBiomefieldName() const {
