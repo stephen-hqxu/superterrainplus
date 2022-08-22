@@ -57,7 +57,7 @@ constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 	0u
 };
 
-STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, const STPTerrainShaderOption& option) :
+STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, const STPTerrainShaderOption& option) :
 	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(option.NoiseDimension) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	const STPDiversity::STPTextureFactory& splatmap_generator = this->TerrainGenerator.splatmapGenerator();
@@ -145,11 +145,14 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 	/* ------------------------------- setup initial immutable uniforms ---------------------------------- */
 	//setup mesh model uniform location
 	this->MeshModelLocation = this->TerrainVertex.uniformLocation("MeshModel");
+	this->MeshQualityLocation = this->TerrainModeller.uniformLocation("TerrainRenderPass");
 
 	//setup program for meshing the terrain
 	this->TerrainModeller
 		//heightfield for displacement mapping
-		.uniform(glProgramUniform1i, "Heightfield", 0);
+		.uniform(glProgramUniform1i, "Heightfield", 0)
+		//by default we use the high quality mesh for rendering
+		.uniform(glProgramUniform1ui, this->MeshQualityLocation, 0u);
 
 	//setup program that shades terrain with colour
 	this->TerrainShader
@@ -215,7 +218,7 @@ STPHeightfieldTerrain<false>::STPHeightfieldTerrain(STPWorldPipeline& generator_
 	this->updateTerrainModel();
 }
 
-dvec2 STPHeightfieldTerrain<false>::calcBaseChunkPosition(dvec2 horizontal_offset) {
+dvec2 STPHeightfieldTerrain::calcBaseChunkPosition(dvec2 horizontal_offset) {
 	const STPEnvironment::STPChunkSetting& chunk_settings = this->TerrainGenerator.ChunkSetting;
 	//calculate offset
 	const ivec2 chunk_offset = -static_cast<ivec2>(chunk_settings.RenderedChunk / 2u),
@@ -224,7 +227,7 @@ dvec2 STPHeightfieldTerrain<false>::calcBaseChunkPosition(dvec2 horizontal_offse
 	return static_cast<dvec2>(base_chunk_coord) + horizontal_offset;
 }
 
-inline void STPHeightfieldTerrain<false>::updateTerrainModel() {
+inline void STPHeightfieldTerrain::updateTerrainModel() {
 	//update model matrix
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	dmat4 Model = glm::identity<dmat4>();
@@ -247,7 +250,7 @@ inline void STPHeightfieldTerrain<false>::updateTerrainModel() {
 		static_cast<GLboolean>(GL_FALSE), value_ptr(static_cast<mat4>(Model)));
 }
 
-void STPHeightfieldTerrain<false>::setMesh(const STPEnvironment::STPMeshSetting& mesh_setting) {
+void STPHeightfieldTerrain::setMesh(const STPEnvironment::STPMeshSetting& mesh_setting) {
 	if (!mesh_setting.validate()) {
 		throw STPException::STPInvalidEnvironment("Mesh setting is not validated");
 	}
@@ -277,7 +280,14 @@ void STPHeightfieldTerrain<false>::setMesh(const STPEnvironment::STPMeshSetting&
 		.uniform(glProgramUniform1f, "ScaleSetting.Tert", scale_setting.TertiaryFar);
 }
 
-void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
+void STPHeightfieldTerrain::setDepthMeshQuality(const STPEnvironment::STPTessellationSetting& tess) {
+	this->TerrainModeller.uniform(glProgramUniform1f, "Tess[1].MaxLod", tess.MaxTessLevel)
+		.uniform(glProgramUniform1f, "Tess[1].MinLod", tess.MinTessLevel)
+		.uniform(glProgramUniform1f, "Tess[1].MaxDis", tess.FurthestTessDistance)
+		.uniform(glProgramUniform1f, "Tess[1].MinDis", tess.NearestTessDistance);
+}
+
+void STPHeightfieldTerrain::seedRandomBuffer(unsigned long long seed) {
 	cudaGraphicsResource_t res;
 	cudaArray_t random_buffer;
 
@@ -302,7 +312,7 @@ void STPHeightfieldTerrain<false>::seedRandomBuffer(unsigned long long seed) {
 	this->TerrainShader.uniform(glProgramUniformHandleui64ARB, "Noisemap", *this->NoiseSampleHandle);
 }
 
-void STPHeightfieldTerrain<false>::setViewPosition(const dvec3& viewPos) {
+void STPHeightfieldTerrain::setViewPosition(const dvec3& viewPos) {
 	//prepare heightfield
 	if (this->TerrainGenerator.load(viewPos) != STPWorldPipeline::STPWorldLoadStatus::Swapped) {
 		//centre chunk has yet changed, nothing to do.
@@ -312,7 +322,7 @@ void STPHeightfieldTerrain<false>::setViewPosition(const dvec3& viewPos) {
 	this->updateTerrainModel();
 }
 
-void STPHeightfieldTerrain<false>::render() const {
+void STPHeightfieldTerrain::render() const {
 	//prepare for rendering
 	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPTerrainMapType::Heightmap]);
 	glBindTextureUnit(1, this->TerrainGenerator[STPWorldPipeline::STPTerrainMapType::Splatmap]);
@@ -328,25 +338,14 @@ void STPHeightfieldTerrain<false>::render() const {
 	STPPipelineManager::unbind();
 }
 
-STPHeightfieldTerrain<true>::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, const STPTerrainShaderOption& option) :
-	STPHeightfieldTerrain<false>(generator_pipeline, option), MeshQualityLocation(this->TerrainModeller.uniformLocation("TerrainRenderPass")) {
-
-}
-
-void STPHeightfieldTerrain<true>::setDepthMeshQuality(const STPEnvironment::STPTessellationSetting& tess) {
-	this->TerrainModeller.uniform(glProgramUniform1f, "Tess[1].MaxLod", tess.MaxTessLevel)
-		.uniform(glProgramUniform1f, "Tess[1].MinLod", tess.MinTessLevel)
-		.uniform(glProgramUniform1f, "Tess[1].MaxDis", tess.FurthestTessDistance)
-		.uniform(glProgramUniform1f, "Tess[1].MinDis", tess.NearestTessDistance);
-}
-
-bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count, const STPShaderManager* depth_shader) {
+bool STPHeightfieldTerrain::addDepthConfiguration(size_t light_space_count, const STPShaderManager* depth_shader) {
 	//create a new render group
-	if (this->TerrainDepthRenderer.exist(light_space_count)) {
+	auto [depth_group, inserted] = this->TerrainDepthRenderer.try_emplace(light_space_count);
+	if (!inserted) {
 		//group exists, don't add
 		return false;
 	}
-	auto& [depth_renderer, depth_writer_arr] = this->TerrainDepthRenderer.addGroup(light_space_count);
+	auto& [depth_renderer, depth_writer_arr] = depth_group->second;
 	auto& [depth_writer] = depth_writer_arr;
 
 	//now the base renderer is finished, setup depth renderer
@@ -384,7 +383,7 @@ bool STPHeightfieldTerrain<true>::addDepthConfiguration(size_t light_space_count
 	return true;
 }
 
-void STPHeightfieldTerrain<true>::renderDepth(size_t light_space_count) const {
+void STPHeightfieldTerrain::renderDepth(size_t light_space_count) const {
 	//in this case we only need heightfield for tessellation
 	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPTerrainMapType::Heightmap]);
 
@@ -394,7 +393,7 @@ void STPHeightfieldTerrain<true>::renderDepth(size_t light_space_count) const {
 	this->TerrainModeller.uniform(glProgramUniform1ui, this->MeshQualityLocation, 1u);
 
 	//find the correct render group
-	this->TerrainDepthRenderer.findPipeline(light_space_count).bind();
+	this->TerrainDepthRenderer.at(light_space_count).first.bind();
 	//render
 	glDrawElementsIndirect(GL_PATCHES, GL_UNSIGNED_INT, nullptr);
 

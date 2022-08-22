@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_SCENE_OBJECT_H_
-#define _STP_SCENE_OBJECT_H_
+#ifndef _STP_SCENE_OBJECT_HPP_
+#define _STP_SCENE_OBJECT_HPP_
 
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Object
@@ -42,32 +42,12 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief STPOpaqueObject is the base of all opaque objects.
 		 * This type of object does not allow light to pass through and can optionally cast shadow.
-		 * @tparam SM True to denote this opaque object should cast a shadow,
-		 * meaning the depth information of this object will be rendered to a shadow map.
-		 * Usually, an opaque object implementation using shadow may simply derived from the non-casting one.
 		*/
-		template<bool SM>
-		class STPOpaqueObject;
-
-		template<>
-		class STPOpaqueObject<false> : public STPRenderable {
+		class STPOpaqueObject : public STPRenderable {
 		public:
 
 			/**
-			 * @brief Initialise a new opaque object that does not cast shadow.
-			*/
-			STPOpaqueObject() = default;
-
-			virtual ~STPOpaqueObject() = default;
-
-		};
-
-		template<>
-		class STPOpaqueObject<true> {
-		public:
-
-			/**
-			 * @brief Initialise a new opaque object that casts shadow.
+			 * @brief Initialise a new opaque object.
 			*/
 			STPOpaqueObject() = default;
 
@@ -140,70 +120,21 @@ namespace SuperTerrainPlus::STPRealism {
 		 * As GL pipeline object allows free-combination of different programs, so it is recommended to reuse shader program 
 		 * and only create those that change based on different depth rendering configuration.
 		*/
-		template<size_t GS>
-		class STP_REALISM_API STPDepthRenderGroup {
-		public:
+		namespace STPDepthRenderGroup {
+			//A collection of all depth shaders program in a group.
+			template<size_t GS>
+			using STPShaderCollection = std::array<STPProgramManager, GS>;
+			//All members in a depth group.
+			template<size_t GS>
+			using STPGroupMember = std::pair<STPPipelineManager, STPShaderCollection<GS>>;
 
-			static_assert(GS <= 2ull, "Depth render group currently only supports group size up to 2");
-
-			//Contains all depth shader program in a group
-			typedef std::array<STPProgramManager, GS> STPShaderCollection;
-			//All members in a depth group
-			typedef std::pair<STPPipelineManager, STPShaderCollection> STPGroupMember;
-
-		private:
-
-			//Light space size is used for searching for an index, and use this index to locate the pipeline in the other array.
-			std::unordered_map<size_t, STPGroupMember> LightSpaceDatabase;
-
-		public:
-
-			STPDepthRenderGroup() = default;
-
-			STPDepthRenderGroup(const STPDepthRenderGroup&) = delete;
-
-			STPDepthRenderGroup(STPDepthRenderGroup&&) = delete;
-
-			STPDepthRenderGroup& operator=(const STPDepthRenderGroup&) = delete;
-
-			STPDepthRenderGroup& operator=(STPDepthRenderGroup&&) = delete;
-
-			~STPDepthRenderGroup() = default;
-
-			/**
-			 * @brief Check if a depth rendering group has been added.
-			 * @param light_space_count The group configuration.
-			 * @return True if a group with this configuration is found.
-			*/
-			bool exist(size_t) const;
-
-			/**
-			 * @brief Add a new rendering pipeline to depth renderer group.
-			 * @param light_space_count The number of light space information given to this group.
-			 * This will be used as a key to find this group later.
-			 * @return A pointer to a pair of pointers to an array of shader program and a program pipeline.
-			 * It is recommended that the implementation uses the given program shader to create the pipeline.
-			 * All pointers returned is guaranteed to be valid until the end of life of the depth render group instance.
-			 * Exception is thrown if another group with such key exists.
-			*/
-			STPGroupMember& addGroup(size_t);
-
-			/**
-			 * @see The constant version of this function
-			*/
-			STPPipelineManager& findPipeline(size_t);
-
-			/**
-			 * @brief Find the pipeline for a corresponding light space configuration.
-			 * @param light_space_count The number of light space information in the shader.
-			 * @return The pointer to the pipeline with given configuration.
-			 * It is an undefined behaviour if no such pipeline exists, to avoid expensive runtime check.
-			*/
-			const STPPipelineManager& findPipeline(size_t) const;
-
-		};
+			//Light space size is used for searching for an index,
+			//and use this index to locate the pipeline in the other array.
+			template<size_t GS>
+			using STPLightSpaceDatabase = std::unordered_map<size_t, STPGroupMember<GS>>;
+		}
 
 	}
 
 }
-#endif//_STP_SCENE_OBJECT_H_
+#endif//_STP_SCENE_OBJECT_HPP_

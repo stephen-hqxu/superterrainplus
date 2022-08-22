@@ -59,7 +59,7 @@ Scene/Light/STPShadowMapFilter.hpp
 Scene/STPExtendedSceneObject.hpp
 Scene/STPMaterialLibrary.h
 Scene/STPSceneLight.h
-Scene/STPSceneObject.h
+Scene/STPSceneObject.hpp
 # /Utility/Camera
 Utility/Camera/STPCamera.h
 Utility/Camera/STPOrthographicCamera.h

@@ -5,7 +5,7 @@
 #include <SuperRealism+/STPRealismDefine.h>
 #include "../../Environment/STPAuroraSetting.h"
 //Renderer
-#include "../STPSceneObject.h"
+#include "../STPSceneObject.hpp"
 #include "STPSkybox.h"
 #include "../Light/STPLightSpectrum.h"
 

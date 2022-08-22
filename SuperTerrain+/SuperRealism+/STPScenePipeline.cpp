@@ -371,7 +371,7 @@ public:
 	 * It is a undefined behaviour if any of the light is not shadow casting.
 	 * @param ori_vp The current size of the viewport.
 	*/
-	void renderToShadow(const vector<STPSceneObject::STPOpaqueObject<true>*>& shadow_object, const vector<STPSceneLight*>& shadow_light, const ivec4& ori_vp) {
+	void renderToShadow(const vector<STPSceneObject::STPOpaqueObject*>& shadow_object, const vector<STPSceneLight*>& shadow_light, const ivec4& ori_vp) {
 		size_t current_light_space_start = 0ull;
 		for (size_t i = 0ull; i < shadow_light.size(); i++) {
 			auto* const shadowable_light = shadow_light[i];
@@ -837,20 +837,8 @@ const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryLimit
 	return this->SceneMemoryLimit;
 }
 
-void STPScenePipeline::add(STPSceneObject::STPOpaqueObject<false>& opaque) {
+void STPScenePipeline::add(STPSceneObject::STPOpaqueObject& opaque) {
 	this->SceneComponent.OpaqueObjectDatabase.emplace_back(&opaque);
-}
-
-void STPScenePipeline::add(STPSceneObject::STPOpaqueObject<false>& opaque, STPSceneObject::STPOpaqueObject<true>& opaque_shadow) {
-	STPScenePipeline::STPSceneGraph& scene_graph = this->SceneComponent;
-
-	this->add(opaque);
-	scene_graph.ShadowOpaqueObject.emplace_back(&opaque_shadow);
-
-	//now configure this shadow-casting object with each depth configuration
-	for_each(scene_graph.UniqueLightSpaceSize.cbegin(), scene_graph.UniqueLightSpaceSize.cend(),
-		[&opaque_shadow, depth_shader = this->getDepthShader()]
-		(const auto depth_config) { opaque_shadow.addDepthConfiguration(depth_config, depth_shader); });
 }
 
 void STPScenePipeline::add(STPSceneObject::STPTransparentObject& transparent) {
@@ -934,6 +922,17 @@ void STPScenePipeline::add(STPBidirectionalScattering& bsdf) {
 
 void STPScenePipeline::add(STPPostProcess& post_process) {
 	this->SceneComponent.PostProcessObject = &post_process;
+}
+
+void STPScenePipeline::addShadow(STPSceneObject::STPOpaqueObject& opaque_shadow) {
+	STPScenePipeline::STPSceneGraph& scene_graph = this->SceneComponent;
+
+	scene_graph.ShadowOpaqueObject.emplace_back(&opaque_shadow);
+
+	//now configure this shadow-casting object with each depth configuration
+	for_each(scene_graph.UniqueLightSpaceSize.cbegin(), scene_graph.UniqueLightSpaceSize.cend(),
+		[&opaque_shadow, depth_shader = this->getDepthShader()]
+		(const auto depth_config) { opaque_shadow.addDepthConfiguration(depth_config, depth_shader); });
 }
 
 void STPScenePipeline::setClearColor(vec4 color) {

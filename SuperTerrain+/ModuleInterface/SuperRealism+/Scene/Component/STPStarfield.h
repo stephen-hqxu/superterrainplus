@@ -6,7 +6,7 @@
 //Setting
 #include "../../Environment/STPStarfieldSetting.h"
 //Environment Renderer
-#include "../STPSceneObject.h"
+#include "../STPSceneObject.hpp"
 #include "STPSkybox.h"
 #include "../Light/STPLightSpectrum.h"
 

@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Scene
-#include "../STPSceneObject.h"
+#include "../STPSceneObject.hpp"
 //Dependent Terrain
 #include "STPHeightfieldTerrain.h"
 //Object
@@ -30,7 +30,7 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		//The water mesh shares the plane mesh with the terrain object so they can have the same size.
-		const STPHeightfieldTerrain<false>& TerrainObject;
+		const STPHeightfieldTerrain& TerrainObject;
 
 		//A texture to hold all water level data for each biome
 		STPTexture WaterLevelTable;
@@ -63,7 +63,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * This terrain object should remain valid until the water object is destroyed.
 		 * @param water_level A pointer to a dictionary for looking up water level per biome,
 		*/
-		STPWater(const STPHeightfieldTerrain<false>&, const STPBiomeWaterLevel&);
+		STPWater(const STPHeightfieldTerrain&, const STPBiomeWaterLevel&);
 
 		STPWater(const STPWater&) = delete;
 

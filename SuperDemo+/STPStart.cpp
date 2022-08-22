@@ -100,7 +100,7 @@ namespace STPStart {
 		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPStarfield> StarfieldRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPAurora> AuroraRenderer;
-		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>> TerrainRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain> TerrainRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPWater> WaterRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPAmbientOcclusion> AOEffect;
 		optional<SuperTerrainPlus::STPRealism::STPBidirectionalScattering> BSDFEffect;
@@ -153,7 +153,6 @@ namespace STPStart {
 				config.ChunkSetting = STPTerrainParaLoader::getChunkSetting(this->engineINI.at("Generators"));
 				STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
 
-				const auto& chunk_setting = config.ChunkSetting;
 				config.HeightfieldSetting = STPTerrainParaLoader::getGeneratorSetting(this->engineINI.at("2DTerrainINF"));
 
 				if (!config.validate()) {
@@ -361,16 +360,17 @@ namespace STPStart {
 					STPTerrainParaLoader::getRenderingSetting(this->engineINI.at("2DTerrainINF"));
 				TerrainAltitude = mesh_setting.Altitude;
 
-				const STPHeightfieldTerrain<true>::STPTerrainShaderOption terrain_opt = {
+				const STPHeightfieldTerrain::STPTerrainShaderOption terrain_opt = {
 					this->ViewPosition,
 					uvec3(128u, 128u, 6u),
-					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform
+					STPHeightfieldTerrain::STPNormalBlendingAlgorithm::BasisTransform
 				};
 				STPEnvironment::STPTessellationSetting DepthTessSetting = mesh_setting.TessSetting;
 				DepthTessSetting.MaxTessLevel *= 0.5f;
 
 				this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_opt);
-				this->RenderPipeline->add(*this->TerrainRenderer, *this->TerrainRenderer);
+				this->RenderPipeline->add(*this->TerrainRenderer);
+				this->RenderPipeline->addShadow(*this->TerrainRenderer);
 				//initial setup
 				this->TerrainRenderer->setMesh(mesh_setting);
 				this->TerrainRenderer->setDepthMeshQuality(DepthTessSetting);
@@ -541,7 +541,10 @@ namespace STPStart {
 	static optional<STPMasterRenderer> MasterEngine;
 	static STPLogConsolePrinter RendererLogHandler;
 	//Camera
+#pragma warning(push)
+#pragma warning(disable: 4324)//padding due to alignment of AVX
 	static optional<SuperTerrainPlus::STPRealism::STPPerspectiveCamera> MainCamera;
+#pragma warning(pop)
 
 	/* ------------------------------ callback functions ----------------------------------- */
 	constexpr static uvec2 InitialCanvasSize = uvec2(1600u, 900u);

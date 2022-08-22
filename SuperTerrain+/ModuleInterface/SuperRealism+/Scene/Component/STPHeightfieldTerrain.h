@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Scene Node
-#include "../STPSceneObject.h"
+#include "../STPSceneObject.hpp"
 #include "../../Geometry/STPPlaneGeometry.h"
 //GL Utility
 #include "../../Object/STPPipelineManager.h"
@@ -28,13 +28,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 	/**
 	 * @brief STPHeightfieldTerrain is a real-time photorealistic renderer for heightfield-base terrain.
-	 * @tparam SM Indicate if the terrain renderer should allow render to shadow maps.
 	*/
-	template<bool SM>
-	class STPHeightfieldTerrain;
-
-	template<>
-	class STP_REALISM_API STPHeightfieldTerrain<false> : public STPSceneObject::STPOpaqueObject<false> {
+	class STP_REALISM_API STPHeightfieldTerrain : public STPSceneObject::STPOpaqueObject {
 	public:
 
 		friend class STPWater;
@@ -77,10 +72,11 @@ namespace SuperTerrainPlus::STPRealism {
 
 		};
 
-	protected:
+	private:
 
 		//The main terrain generator
 		STPWorldPipeline& TerrainGenerator;
+		STPSceneObject::STPDepthRenderGroup::STPLightSpaceDatabase<1ull> TerrainDepthRenderer;
 
 		//A buffer representing the terrain plane.
 		std::optional<STPPlaneGeometry> TerrainMesh;
@@ -94,7 +90,7 @@ namespace SuperTerrainPlus::STPRealism {
 		mutable STPProgramManager TerrainVertex, TerrainModeller, TerrainShader;
 		STPPipelineManager TerrainRenderer;
 
-		STPOpenGL::STPint MeshModelLocation;
+		STPOpenGL::STPint MeshModelLocation, MeshQualityLocation;
 
 		//data for texture splatting
 		STPBuffer SplatRegion;
@@ -133,13 +129,20 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPHeightfieldTerrain& operator=(STPHeightfieldTerrain&&) = delete;
 
-		virtual ~STPHeightfieldTerrain() = default;
+		~STPHeightfieldTerrain() = default;
 
 		/**
 		 * @brief Update the terrain mesh setting.
 		 * @param mesh_setting The pointer to the new mesh setting to be updated.
 		*/
 		void setMesh(const STPEnvironment::STPMeshSetting&);
+
+		/**
+		 * @brief Specifically adjust the mesh quality when rendering to depth buffer.
+		 * @param tess The pointer to the tessellation setting.
+		 * It is recommended to use a (much) lower quality than the actual rendering.
+		*/
+		void setDepthMeshQuality(const STPEnvironment::STPTessellationSetting&);
 
 		/**
 		 * @brief Set the seed for a texture of random number used during rendering, and regenerate the random texture 
@@ -155,42 +158,13 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void setViewPosition(const glm::dvec3&);
 
+		bool addDepthConfiguration(size_t, const STPShaderManager*) override;
+
 		/**
 		 * @brief Render a regular procedural heightfield terrain.
 		 * Terrain texture must be prepared prior to this call, and this function sync with the generator automatically.
 		*/
 		void render() const override;
-
-	};
-
-	template<>
-	class STP_REALISM_API STPHeightfieldTerrain<true> : public STPSceneObject::STPOpaqueObject<true>, public STPHeightfieldTerrain<false> {
-	private:
-
-		//depth renderer prunes the frag shader.
-		STPSceneObject::STPDepthRenderGroup<1ull> TerrainDepthRenderer;
-
-		const STPOpenGL::STPint MeshQualityLocation;
-
-	public:
-
-		/**
-		 * @brief Initialise the heightfield terrain rendering engine with shadow rendering.
-		 * Arguments are exactly the same as the base version.
-		 * @see STPHeightfieldTerrain<false>.
-		*/
-		STPHeightfieldTerrain(STPWorldPipeline&, const STPTerrainShaderOption&);
-
-		~STPHeightfieldTerrain() = default;
-
-		/**
-		 * @brief Specifically adjust the mesh quality when rendering to depth buffer.
-		 * @param tess The pointer to the tessellation setting.
-		 * It is recommended to use a (much) lower quality than the actual rendering.
-		*/
-		void setDepthMeshQuality(const STPEnvironment::STPTessellationSetting&);
-
-		bool addDepthConfiguration(size_t, const STPShaderManager*) override;
 
 		void renderDepth(size_t) const override;
 

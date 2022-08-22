@@ -35,7 +35,7 @@ constexpr static auto WaterFragmentShaderFilename = SuperTerrainPlus::STPFile::g
 	STPRealismInfo::ShaderPath, "/STPWater", ".frag");
 constexpr static size_t WaterShaderCount = 3ull;
 
-STPWater::STPWater(const STPHeightfieldTerrain<false>& terrain, const STPBiomeWaterLevel& water_level) :
+STPWater::STPWater(const STPHeightfieldTerrain& terrain, const STPBiomeWaterLevel& water_level) :
 	TerrainObject(terrain), WaterLevelTable(GL_TEXTURE_1D) {
 	/* ----------------------------- setup water shader -------------------------------- */
 	STPShaderManager water_shader[WaterShaderCount] = {

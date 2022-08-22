@@ -8,7 +8,7 @@
 #include "../../Environment/STPAtmosphereSetting.h"
 //Renderer
 #include "../Light/STPLightSpectrum.h"
-#include "../STPSceneObject.h"
+#include "../STPSceneObject.hpp"
 #include "STPSkybox.h"
 
 //GLM

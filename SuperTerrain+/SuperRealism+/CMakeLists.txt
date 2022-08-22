@@ -41,7 +41,6 @@ Scene/STPLightShadow.cpp
 Scene/STPLightSpectrum.cpp
 Scene/STPMaterialLibrary.cpp
 Scene/STPSceneLight.cpp
-Scene/STPSceneObject.cpp
 )
 
 #shading and rendering library

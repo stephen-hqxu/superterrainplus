@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Rendering Component
-#include "./Scene/STPSceneObject.h"
+#include "./Scene/STPSceneObject.hpp"
 #include "./Scene/STPSceneLight.h"
 #include "./Scene/Component/STPPostProcess.h"
 #include "./Scene/Component/STPAmbientOcclusion.h"
@@ -176,9 +176,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 			//Scene graph
 			//Object nodes
-			std::vector<STPSceneObject::STPOpaqueObject<false>*> OpaqueObjectDatabase;
+			std::vector<STPSceneObject::STPOpaqueObject*> OpaqueObjectDatabase;
 			//This is a subset-view of opaque object database, a collection of opaque objects that can cast shadow.
-			std::vector<STPSceneObject::STPOpaqueObject<true>*> ShadowOpaqueObject;
+			std::vector<STPSceneObject::STPOpaqueObject*> ShadowOpaqueObject;
 			//Holding all objects that allow light to pass through.
 			//Rendering these objects is a bit more complicated in a deferred renderer.
 			std::vector<STPSceneObject::STPTransparentObject*> TransparentObjectDatabase;
@@ -337,14 +337,21 @@ namespace SuperTerrainPlus::STPRealism {
 		 * The pointer is retained by the scene pipeline; unless the pipeline is destroyed or object is removed from it,
 		 * the lifetime of this object should remain.
 		*/
-		void add(STPSceneObject::STPOpaqueObject<false>&);
-		void add(STPSceneObject::STPOpaqueObject<false>&, STPSceneObject::STPOpaqueObject<true>&);
+		void add(STPSceneObject::STPOpaqueObject&);
 		void add(STPSceneObject::STPTransparentObject&);
 		void add(STPSceneObject::STPEnvironmentObject&);
 		void add(STPSceneLight&);
 		void add(STPAmbientOcclusion&);
 		void add(STPBidirectionalScattering&);
 		void add(STPPostProcess&);
+		/**
+		 * @brief Add a scene object to the scene shadow rendering pipeline.
+		 * In fact, user can add a shadow opaque object without being added to the regular rendering object list,
+		 * this can create a shadow for an invisible object.
+		 * @param object The object to be added to the shadow rendering list.
+		 * @see add
+		*/
+		void addShadow(STPSceneObject::STPOpaqueObject&);
 
 		/**
 		 * @brief Specify clear values for the colour buffers.
