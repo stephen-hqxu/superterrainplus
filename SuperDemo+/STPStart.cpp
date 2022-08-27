@@ -57,6 +57,7 @@
 
 using std::optional;
 using std::string;
+using std::string_view;
 using std::make_pair;
 using std::make_unique;
 using std::make_optional;
@@ -466,13 +467,14 @@ namespace STPStart {
 
 		/**
 		 * @brief Main rendering functions, called every frame.
-		 * @param delta The time difference from the last frame.
+		 * @param abs_second The current frame time in second.
+		 * @param delta_second The time elapsed since the last frame.
 		*/
-		inline void render(double delta) {
+		inline void render(double abs_second, double delta_second) {
 			//Update light after that many second, to avoid doing expensive update every frame.
 			constexpr static double LightUpdateFrequency = 0.1;
 			//update timer
-			this->FrametimeRemainer += delta;
+			this->FrametimeRemainer += delta_second;
 			const double timeGain = glm::floor(this->FrametimeRemainer / LightUpdateFrequency);
 
 			//prepare terrain texture first (async), because this is a slow operation
@@ -488,7 +490,7 @@ namespace STPStart {
 
 				//change the sun position
 				this->SunRenderer->EnvironmentVisibility = sun_visibility;
-				this->SunRenderer->advanceTime(update_delta);
+				this->SunRenderer->updateAnimationTimer(abs_second);
 				const vec3 sunDir = this->SunRenderer->sunDirection();
 				const float nightLum = 1.0f - glm::smoothstep(-0.03f, 0.03f, sunDir.y);
 
@@ -503,6 +505,16 @@ namespace STPStart {
 				this->Nightlight->setSpectrumCoordinate(nightLum);
 				this->StarfieldRenderer->EnvironmentVisibility = nightLum;
 				this->AuroraRenderer->EnvironmentVisibility = nightLum;
+			}
+
+			//update animation timer
+			this->WaterRenderer->updateAnimationTimer(abs_second);
+			//update night animation, if they are visible
+			if (this->StarfieldRenderer->isEnvironmentVisible()) {
+				this->StarfieldRenderer->updateAnimationTimer(abs_second);
+			}
+			if (this->AuroraRenderer->isEnvironmentVisible()) {
+				this->AuroraRenderer->updateAnimationTimer(abs_second);
 			}
 
 			//render, all async operations are sync automatically
@@ -530,7 +542,7 @@ namespace STPStart {
 	class STPLogConsolePrinter : public SuperTerrainPlus::STPRealism::STPLogHandler::STPLogHandlerSolution {
 	public:
 
-		void handle(const string& log) override {
+		void handle(string_view log) override {
 			if (!log.empty()) {
 				cout << log << endl;
 			}
@@ -780,7 +792,7 @@ int main() {
 		//draw
 		STPStart::process_event(deltaTime);
 		try {
-			STPStart::MasterEngine->render(deltaTime);
+			STPStart::MasterEngine->render(currentTime, deltaTime);
 		} catch (const std::exception& e) {
 			cerr << e.what() << endl;
 			STPStart::clearup();

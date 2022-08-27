@@ -1017,7 +1017,7 @@ inline void STPScenePipeline::drawEnvironment(const Env& env, const vec4& vp) co
 	glBlendFunc(GL_CONSTANT_COLOR, GL_ONE);
 	for_each(env.cbegin(), env.cend(), [alpha_mean_factor = 1.0f / static_cast<float>(env.size())](const auto rendering_env) {
 		const float env_vis = rendering_env->EnvironmentVisibility;
-		if (env_vis <= 0.0f) {
+		if (!rendering_env->isEnvironmentVisible()) {
 			//invisible, skip rendering
 			return;
 		}

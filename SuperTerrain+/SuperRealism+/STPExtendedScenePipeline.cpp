@@ -31,6 +31,7 @@
 using std::array;
 using std::tuple;
 using std::string;
+using std::string_view;
 using std::to_string;
 using std::make_unique;
 using std::remove_pointer_t;
@@ -156,9 +157,8 @@ public:
 		STPLogHandler::ActiveLogHandler->handle(ssri_log);
 		
 		//prepare for log cache
-		string log;
+		char log[mDefaultLogSize];
 		size_t logSize = mDefaultLogSize;
-		log.resize(logSize);
 
 		OptixModule ssri_module;
 		OptixPipelineCompileOptions ssri_pipeline_option = { };
@@ -175,13 +175,15 @@ public:
 			const auto [ssri_ptx, ssri_ptxSize] = STPDeviceRuntimeBinary::readPTX(ssri_program);
 
 			STP_CHECK_OPTIX(optixModuleCreateFromPTX(this->Master.Context.get(), &ssri_module_option,
-				&ssri_pipeline_option, ssri_ptx.get(), ssri_ptxSize, log.data(), &logSize, &ssri_module));
+				&ssri_pipeline_option, ssri_ptx.get(), ssri_ptxSize, log, &logSize, &ssri_module));
 			//We don't really care if the actual log size is larger than the default allocated size,
 			//overflown log will be abandoned.
 		}
 		const STPSmartModule ssri_module_manager(ssri_module);
 		//logging
-		STPLogHandler::ActiveLogHandler->handle(log);
+		STPLogHandler::ActiveLogHandler->handle(string_view(log, logSize));
+		//reset initial log size counter
+		logSize = mDefaultLogSize;
 
 		array<OptixProgramGroup, 3ull> ssri_program_group;
 		/* --------------------------------- create program group --------------------------------- */
@@ -206,24 +208,25 @@ public:
 			ssri_pg_desc[2].miss.entryFunctionName = ssri_expr.at("__miss__recordEnvironmentIntersection").c_str();
 
 			STP_CHECK_OPTIX(optixProgramGroupCreate(this->Master.Context.get(), ssri_pg_desc, 3u, &ssri_pg_option,
-				log.data(), &logSize, ssri_program_group.data()));
+				log, &logSize, ssri_program_group.data()));
 		}
 		const array<STPSmartProgramGroup, 3ull> ssri_pg_manager = {
 			STPSmartProgramGroup(ssri_program_group[0]),
 			STPSmartProgramGroup(ssri_program_group[1]),
 			STPSmartProgramGroup(ssri_program_group[2])
 		};
-		STPLogHandler::ActiveLogHandler->handle(log);
+		STPLogHandler::ActiveLogHandler->handle(string_view(log, logSize));
+		logSize = mDefaultLogSize;
 
 		OptixPipeline ssri_pipeline;
 		/* ----------------------------------- create pipeline --------------------------------------- */
 		{
-			OptixPipelineLinkOptions ssri_pipeline_link_option = {};
+			OptixPipelineLinkOptions ssri_pipeline_link_option = { };
 			ssri_pipeline_link_option.maxTraceDepth = 1u;
 			ssri_pipeline_link_option.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 
 			STP_CHECK_OPTIX(optixPipelineCreate(this->Master.Context.get(), &ssri_pipeline_option,
-				&ssri_pipeline_link_option, ssri_program_group.data(), 3u, log.data(), &logSize, &ssri_pipeline));
+				&ssri_pipeline_link_option, ssri_program_group.data(), 3u, log, &logSize, &ssri_pipeline));
 			//store the pipeline, all previously used data can be deleted, and will be done automatically
 			this->IntersectionPipeline = STPSmartPipeline(ssri_pipeline);
 
@@ -238,7 +241,7 @@ public:
 			//then for each scene object, we need another IAS to merge all other IASs into one handle.
 			STP_CHECK_OPTIX(optixPipelineSetStackSize(ssri_pipeline, traversal_stack, state_stack, continuation_stack, 3u));
 		}
-		STPLogHandler::ActiveLogHandler->handle(log);
+		STPLogHandler::ActiveLogHandler->handle(string_view(log, logSize));
 
 		/* ---------------------------- allocate shader binding table -------------------------------- */
 		{

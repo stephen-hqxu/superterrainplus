@@ -18,8 +18,6 @@
 
 using std::unique_ptr;
 using std::make_unique;
-using std::chrono::steady_clock;
-using std::chrono::duration;
 
 using glm::uvec3;
 using glm::ivec3;
@@ -110,10 +108,6 @@ STPWater::STPWater(const STPHeightfieldTerrain& terrain, const STPBiomeWaterLeve
 	this->setWaterMaterial(0u);
 }
 
-inline void STPWater::updateWaveTime(double time) const {
-	this->WaterAnimator.uniform(glProgramUniform1f, this->WaveTimeLocation, static_cast<float>(time));
-}
-
 void STPWater::setWater(const STPEnvironment::STPWaterSetting& water_setting) {
 	if (!water_setting.validate()) {
 		throw STPException::STPInvalidEnvironment("Water setting fails to validate");
@@ -150,11 +144,6 @@ void STPWater::setWater(const STPEnvironment::STPWaterSetting& water_setting) {
 		.uniform(glProgramUniform1f, "WaterWave.octSpd", wave_setting.OctaveSpeed)
 		.uniform(glProgramUniform1f, "WaterWave.Drag", wave_setting.WaveDrag);
 
-	//initialise wave timer
-	this->WaveTimeStart = steady_clock::now();
-	//reset the timer to zero
-	this->updateWaveTime(0.0);
-
 	//Some side note here.
 	//Why not do something like STPSun that warp the timer around after each wave period?
 	//This has an advantage; if we let the program keep running without warping, time counter may overflow.
@@ -168,11 +157,11 @@ void STPWater::setWaterMaterial(STPMaterialLibrary::STPMaterialID water_material
 	this->WaterAnimator.uniform(glProgramUniform1ui, "WaterMaterialID", water_material);
 }
 
-void STPWater::render() const {
-	//update wave timing logic
-	const duration<double> elapsed = steady_clock::now() - this->WaveTimeStart;
-	this->updateWaveTime(elapsed.count());
+void STPWater::updateAnimationTimer(double second) {
+	this->WaterAnimator.uniform(glProgramUniform1f, this->WaveTimeLocation, static_cast<float>(second));
+}
 
+void STPWater::render() const {
 	STPWorldPipeline& world_gen = this->TerrainObject.TerrainGenerator;
 	//prepare for texture
 	glBindTextureUnit(0, world_gen[STPWorldPipeline::STPTerrainMapType::Biomemap]);

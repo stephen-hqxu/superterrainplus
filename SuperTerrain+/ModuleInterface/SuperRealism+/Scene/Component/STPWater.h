@@ -15,10 +15,6 @@
 #include "../../Environment/STPWaterSetting.h"
 #include "../STPMaterialLibrary.h"
 
-//System
-#include <chrono>
-#include <unordered_map>
-
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -26,7 +22,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * Water is rendered as a plane and placed as defined by user with customisable altitude based on location on a biomemap.
 	 * Due to its closed relationship to the heightfield terrain and shares common data with it, it should be used alongside with the terrain renderer.
 	*/
-	class STP_REALISM_API STPWater : public STPSceneObject::STPTransparentObject {
+	class STP_REALISM_API STPWater : public STPSceneObject::STPTransparentObject, public STPSceneObject::STPAnimatedObject {
 	private:
 
 		//The water mesh shares the plane mesh with the terrain object so they can have the same size.
@@ -40,15 +36,6 @@ namespace SuperTerrainPlus::STPRealism {
 		STPPipelineManager WaterRenderer;
 
 		STPOpenGL::STPint WaveTimeLocation;
-
-		//record the wave time at initialisation of water wave.
-		std::chrono::time_point<std::chrono::steady_clock> WaveTimeStart;
-
-		/**
-		 * @brief Update the water wave time.
-		 * @param time The new time to be sent to the shader, in seconds.
-		*/
-		void updateWaveTime(double) const;
 
 	public:
 
@@ -87,6 +74,8 @@ namespace SuperTerrainPlus::STPRealism {
 		 * It is a undefined behaviour if the material ID is invalid with respect to the material library linked with the rendering pipeline.
 		*/
 		void setWaterMaterial(STPMaterialLibrary::STPMaterialID);
+
+		void updateAnimationTimer(double) override;
 
 		void render() const override;
 

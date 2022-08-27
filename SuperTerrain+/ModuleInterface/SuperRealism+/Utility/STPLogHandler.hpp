@@ -3,7 +3,7 @@
 #define _STP_LOG_HANDLER_HPP_
 
 #include <SuperRealism+/STPRealismDefine.h>
-#include <string>
+#include <string_view>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -20,11 +20,11 @@ namespace SuperTerrainPlus::STPRealism {
 
 			/**
 			 * @brief Handle an incoming log.
-			 * @param log A pointer to a constant log string instance.
-			 * Note that the pointer is not guaranteed to be available after the function return,
-			 * retaining the pointer will lead to UB. In that case, user should copy the string.
+			 * @param log A view to the log string.
+			 * Note that the underlying memory to the string is not guaranteed to be available after the function return,
+			 * retaining memory will lead to UB. In that case, user should copy the string content.
 			*/
-			virtual void handle(const std::string&) { }
+			virtual void handle(std::string_view) { }
 
 		};
 

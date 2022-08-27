@@ -532,13 +532,14 @@ private:
 	/**
 	 * @brief Copy the content in accumulator to the histogram buffer.
 	 * Caller should make sure Output buffer has been preallocated, the size equals to the sum of all thread buffers.
-	 * @param target The target histogram buffer.
-	 * @param acc The accumulator to be copied.
-	 * @param normalise True to normalise the histogram in accumulator before copying.
+	 * @tparam Normalise True to normalise the histogram in accumulator before copying.
 	 * After normalisation, STPBin.Data should use Weight rather than Quantity,
 	 * and the sum of weight of all bins in the accumulator is 1.0f.
+	 * @param target The target histogram buffer.
+	 * @param acc The accumulator to be copied.
 	*/
-	static void copyToBuffer(STPDefaultHistogramBuffer& target, STPAccumulator& acc, bool normalise) {
+	template<bool Normalise>
+	static void copyToBuffer(STPDefaultHistogramBuffer& target, STPAccumulator& acc) {
 		const auto [acc_beg, acc_end] = acc();
 		target.HistogramStartOffset.emplace_back(static_cast<unsigned int>(target.Bin.size()));
 
@@ -547,7 +548,7 @@ private:
 		target.Bin.resize(target.Bin.size() + bin_size);
 		auto target_dest_begin = target.Bin.end() - bin_size;
 		//copy bin
-		if (normalise) {
+		if constexpr (Normalise) {
 			//sum everything in the accumulator
 			const float sum = static_cast<float>(std::accumulate(acc_beg, acc_end, 0u,
 				[](auto init, const STPSingleHistogram::STPBin& bin) { return init + bin.Data.Quantity; }));
@@ -597,7 +598,7 @@ private:
 				acc.inc(sample_map[ti + j * freeslip_rangeX], 1u);
 			}
 			//copy the first pixel to buffer
-			STPSHFKernel::copyToBuffer(target, acc, false);
+			STPSHFKernel::copyToBuffer<false>(target, acc);
 			//generate histogram
 			for (unsigned int j = 1u; j < dimensionY; j++) {
 				//load one pixel to the bottom while unloading one pixel from the top
@@ -605,7 +606,7 @@ private:
 				acc.dec(sample_map[ui], 1u);
 
 				//copy the accumulator to buffer
-				STPSHFKernel::copyToBuffer(target, acc, false);
+				STPSHFKernel::copyToBuffer<false>(target, acc);
 
 				//advance to the next central pixel
 				di += freeslip_rangeX;
@@ -692,7 +693,7 @@ private:
 			}
 			//copy the first pixel radius to buffer
 			//we can start normalising data on the go, the accumulator is complete for this pixel
-			STPSHFKernel::copyToBuffer(target, acc, true);
+			STPSHFKernel::copyToBuffer<true>(target, acc);
 			//generate histogram, starting from the second pixel, we only loop through the central texture
 			for (unsigned int j = 1u; j < dimension.x; j++) {
 				//load one pixel to the right while unloading one pixel from the left
@@ -719,7 +720,7 @@ private:
 				}
 
 				//copy accumulator to buffer
-				STPSHFKernel::copyToBuffer(target, acc, true);
+				STPSHFKernel::copyToBuffer<true>(target, acc);
 
 				//advance to the next central pixel
 				ri += dimension.y;

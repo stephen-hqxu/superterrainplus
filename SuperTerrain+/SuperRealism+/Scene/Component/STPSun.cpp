@@ -41,14 +41,13 @@ constexpr static auto SkyShaderFilename = SuperTerrainPlus::STPFile::generateFil
 constexpr static auto SpectrumShaderFilename = SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPSunSpectrum", ".comp");
 
 STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundledData<vec3>& spectrum_domain,
-	const STPSkyboxInitialiser& sun_init) : SunSetting(sun_setting), SunDirectionCache(0.0) {
-	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
+	const STPSkyboxInitialiser& sun_init) :
+	SunSetting(sun_setting), DayStart(1.0 * this->SunSetting.DayStart / (1.0 * this->SunSetting.DayLength) + this->SunSetting.YearStart),
+	Day(0.0), SunDirectionCache(vec3(0.0f)) {
 	//validate the setting
-	if (!sun.validate()) {
+	if (!this->SunSetting.validate()) {
 		throw STPException::STPInvalidEnvironment("Sun setting provided is invalid");
 	}
-	//calculate starting LST
-	this->Day = 1.0 * sun.DayStart / (1.0 * sun.DayLength) + sun.YearStart;
 
 	//setup sky renderer
 	STPShaderManager sky_shader(GL_FRAGMENT_SHADER);
@@ -64,7 +63,7 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 	//uniform setup
 	this->SunPositionLocation = this->SkyboxRenderer.uniformLocation("SunPosition");
 	//calculate initial sun direction
-	this->advanceTime(0.0);
+	this->updateAnimationTimer(0.0);
 
 	/* ---------------------------------------- sun spectrum emulator ----------------------------------- */
 	//setup spectrum emulator
@@ -107,16 +106,11 @@ const vec3& STPSun::sunDirection() const {
 	return this->SunDirectionCache;
 }
 
-void STPSun::advanceTime(double delta_second) {
+void STPSun::updateAnimationTimer(double second) {
 	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
 
-	//offset the timer
-	//increment day count
-	this->Day += delta_second / (1.0 * sun.DayLength);
-	//wrap the day around if it is the next year
-	if (this->Day >= 1.0 * sun.YearLength) {
-		this->Day -= static_cast<double>(sun.YearLength);
-	}
+	//calculate new day count and wrap the day around within a year
+	this->Day = glm::mod(this->DayStart + second / (1.0 * sun.DayLength), 1.0 * sun.YearLength);
 
 	//the old direction cache is no longer accurate, needs to recalculate
 	static constexpr double TWO_PI = glm::pi<double>() * 2.0;

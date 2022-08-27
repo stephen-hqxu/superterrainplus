@@ -9,29 +9,19 @@
 #include "STPSkybox.h"
 #include "../Light/STPLightSpectrum.h"
 
-#include <chrono>
-
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
 	 * @brief STPAurora procedurally generates and simulates northern light effect using procedural noise technique.
 	 * It utilises triangular noise to generate a sharp-fin like pattern and distorts the noise to create aurora striping and tailing effects.
 	*/
-	class STP_REALISM_API STPAurora : private STPSkybox, public STPSceneObject::STPEnvironmentObject {
+	class STP_REALISM_API STPAurora : private STPSkybox, public STPSceneObject::STPEnvironmentObject, public STPSceneObject::STPAnimatedObject {
 	private:
 
-		//Aurora Borealis animation
-		std::chrono::time_point<std::chrono::steady_clock> AuroraTimeStart;
 		//aurora colour effects
 		const STPLightSpectrum AuroraSpectrum;
 
 		STPOpenGL::STPuint AuroraTimeLocation;
-
-		/**
-		 * @brief Update the current aurora animation time.
-		 * @param time The current time.
-		*/
-		void updateAuroraTime(double) const;
 
 	public:
 
@@ -58,6 +48,8 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param aurora_setting The new setting.
 		*/
 		void setAurora(const STPEnvironment::STPAuroraSetting&);
+
+		void updateAnimationTimer(double) override;
 
 		void render() const override;
 

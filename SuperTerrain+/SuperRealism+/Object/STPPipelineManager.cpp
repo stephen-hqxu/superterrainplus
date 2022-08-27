@@ -9,7 +9,8 @@
 //GLAD
 #include <glad/glad.h>
 
-using std::string;
+using std::string_view;
+using std::unique_ptr;
 using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
@@ -34,16 +35,16 @@ STPPipelineManager& STPPipelineManager::stage(STPOpenGL::STPbitfield stage, cons
 }
 
 void STPPipelineManager::finalise() {
-	string log;
+	unique_ptr<char[]> log;
 	//check for log
 	GLint logLength;
 	glGetProgramPipelineiv(this->Pipeline.get(), GL_INFO_LOG_LENGTH, &logLength);
 	if (logLength > 0) {
-		log.resize(logLength);
-		glGetProgramPipelineInfoLog(this->Pipeline.get(), logLength, NULL, log.data());
+		log = make_unique<char[]>(logLength);
+		glGetProgramPipelineInfoLog(this->Pipeline.get(), logLength, NULL, log.get());
 	}
 
-	STPLogHandler::ActiveLogHandler->handle(log);
+	STPLogHandler::ActiveLogHandler->handle(string_view(log.get(), logLength));
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint STPPipelineManager::operator*() const {

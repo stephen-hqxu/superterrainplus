@@ -108,6 +108,37 @@ namespace SuperTerrainPlus::STPRealism {
 
 			virtual ~STPEnvironmentObject() = default;
 
+			/**
+			 * @brief Check if the current environment object is visible based on its current visibility value.
+			 * @return True if the object has visibility greater than zero, false otherwise.
+			*/
+			bool isEnvironmentVisible() const {
+				return this->EnvironmentVisibility > 0.0f;
+			}
+
+		};
+
+		/**
+		 * @brief STPAnimatedObject is a special type of object that carries procedural animation.
+		 * Their animation can be controlled explicitly by application using a timer.
+		*/
+		class STPAnimatedObject {
+		public:
+
+			/**
+			 * @brief Init a new STPAnimatedObject.
+			*/
+			STPAnimatedObject() = default;
+
+			virtual ~STPAnimatedObject() = default;
+
+			/**
+			 * @brief Update the animation timer for the next animation frame.
+			 * @param second The absolute animation time, starting at zero, in second for the new animation frame.
+			 * This time can be, for example, the time elapsed since the start of the program.
+			*/
+			virtual void updateAnimationTimer(double) = 0;
+
 		};
 
 		/**

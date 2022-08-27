@@ -17,9 +17,6 @@ using glm::vec2;
 using glm::mat2;
 using glm::value_ptr;
 
-using std::chrono::steady_clock;
-using std::chrono::duration;
-
 using namespace SuperTerrainPlus::STPRealism;
 
 static constexpr auto AuroraShaderFilename =
@@ -37,10 +34,6 @@ STPAurora::STPAurora(STPLightSpectrum&& aurora_spectrum, const STPSkyboxInitiali
 	/* ----------------------------------- uniform time --------------------------------------- */
 	this->AuroraTimeLocation = this->SkyboxRenderer.uniformLocation("AuroraTime");
 	this->SkyboxRenderer.uniform(glProgramUniformHandleui64ARB, "AuroraColorSpectrum", this->AuroraSpectrum.spectrumHandle());
-}
-
-void STPAurora::updateAuroraTime(double time) const {
-	this->SkyboxRenderer.uniform(glProgramUniform1f, this->AuroraTimeLocation, static_cast<float>(time));
 }
 
 void STPAurora::setAurora(const STPEnvironment::STPAuroraSetting& aurora_setting) {
@@ -85,16 +78,12 @@ void STPAurora::setAurora(const STPEnvironment::STPAuroraSetting& aurora_setting
 		.uniform(glProgramUniform1f, "TriNoise.C", tri_noise.Contrast)
 		.uniform(glProgramUniform1f, "TriNoise.maxInt", tri_noise.MaximumIntensity)
 		.uniform(glProgramUniform1ui, "TriNoise.Oct", tri_noise.Octave);
+}
 
-	//timer reset
-	this->updateAuroraTime(0.0);
-	this->AuroraTimeStart = steady_clock::now();
+void STPAurora::updateAnimationTimer(double second) {
+	this->SkyboxRenderer.uniform(glProgramUniform1f, this->AuroraTimeLocation, static_cast<float>(second));
 }
 
 void STPAurora::render() const {
-	//aurora animation
-	const duration<double> elapsed = steady_clock::now() - this->AuroraTimeStart;
-	this->updateAuroraTime(elapsed.count());
-
 	this->drawSkybox();
 }
