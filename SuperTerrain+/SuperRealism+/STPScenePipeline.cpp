@@ -420,7 +420,7 @@ public:
 
 };
 
-class STPScenePipeline::STPGeometryBufferResolution : private STPScreen {
+class STPScenePipeline::STPGeometryBufferResolution {
 private:
 
 	//The dependent scene pipeline.
@@ -428,6 +428,8 @@ private:
 
 	typedef std::array<STPBindlessTexture, 5ull> STPGeometryBufferHandle;
 	typedef std::array<GLuint64, 5ull> STPGeometryBufferRawHandle;
+
+	STPScreen DeferredQuad;
 
 	STPSampler GSampler, DepthSampler;
 	//G-buffer components
@@ -448,7 +450,7 @@ private:
 	STPTexture ClearEnvironmentTexture;
 	STPFrameBuffer ExtinctionCullingContainer;
 	//Temporarily stores all environment colours before blended with the scene
-	STPSimpleScreenFrameBuffer ExtinctionEnvironmentCache;
+	STPScreen::STPSimpleScreenFrameBuffer ExtinctionEnvironmentCache;
 
 	constexpr static auto DeferredShaderFilename =
 		STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPDeferredShading", ".frag");
@@ -477,7 +479,7 @@ public:
 	 * @param lighting_init The pointer to the lighting shader initialiser
 	*/
 	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadingEquation& shading_equa,
-		const STPShadowMapFilterFunction& shadow_filter, const STPScreenInitialiser& lighting_init) :
+		const STPShadowMapFilterFunction& shadow_filter, const STPScreen::STPScreenInitialiser& lighting_init) :
 		Pipeline(pipeline),
 		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GRoughness(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D),
 		//alpha culling, set to discard pixels that are not in the extinction zone
@@ -513,7 +515,7 @@ public:
 		//compile shader
 		STPShaderManager deffered_shader(GL_FRAGMENT_SHADER);
 		deffered_shader(deferred_source);
-		this->initScreenRenderer(deffered_shader, lighting_init);
+		this->DeferredQuad.initScreenRenderer(deffered_shader, lighting_init);
 
 		/* ------------------------------- setup G-buffer sampler ------------------------------------- */
 		auto setGBufferSampler = [](STPSampler& sampler) -> void {
@@ -532,16 +534,16 @@ public:
 
 		/* --------------------------------- initial buffer setup -------------------------------------- */
 		//global shadow setting
-		this->OffScreenRenderer
+		this->DeferredQuad.OffScreenRenderer
 			.uniform(glProgramUniform2fv, "Filter.Db", 1, value_ptr(shadow_filter.DepthBias))
 			.uniform(glProgramUniform2fv, "Filter.Nb", 1, value_ptr(shadow_filter.NormalBias))
 			.uniform(glProgramUniform1f, "Filter.FarBias", shadow_filter.BiasFarMultiplier);
 		if (cascadeLayerBlend) {
-			this->OffScreenRenderer.uniform(glProgramUniform1f, "Filter.Br", shadow_filter.CascadeBlendArea);
+			this->DeferredQuad.OffScreenRenderer.uniform(glProgramUniform1f, "Filter.Br", shadow_filter.CascadeBlendArea);
 		}
 		//send specialised filter kernel parameters based on type
-		shadow_filter(this->OffScreenRenderer);
-		shading_equa(this->OffScreenRenderer);
+		shadow_filter(this->DeferredQuad.OffScreenRenderer);
+		shading_equa(this->DeferredQuad.OffScreenRenderer);
 
 		//no colour will be written to the extinction buffer
 		this->ExtinctionCullingContainer.readBuffer(GL_NONE);
@@ -593,7 +595,7 @@ public:
 			break;
 		}
 
-		this->OffScreenRenderer.uniform(glProgramUniformui64NV, list_name.str().c_str(), light_data_addr)
+		this->DeferredQuad.OffScreenRenderer.uniform(glProgramUniformui64NV, list_name.str().c_str(), light_data_addr)
 			//because we can safely assume this light has yet added to the scene, which mean after addition of this light,
 			//the memory usage will be incremented by 1.
 			.uniform(glProgramUniform1ui, count_name, static_cast<unsigned int>(current_count) + 1u);
@@ -661,7 +663,7 @@ public:
 		STPGeometryBufferRawHandle raw_handle;
 		std::transform(this->GHandle->cbegin(), this->GHandle->cend(), raw_handle.begin(),
 			[](const auto& handle) { return *handle; });
-		this->OffScreenRenderer.uniform(
+		this->DeferredQuad.OffScreenRenderer.uniform(
 			glProgramUniformHandleui64vARB, "GBuffer", static_cast<GLsizei>(raw_handle.size()), raw_handle.data());
 
 		using std::move;
@@ -744,14 +746,7 @@ public:
 	 * @brief Perform resolution of geometry buffer and perform lighting calculation.
 	*/
 	inline void resolve() {
-		//prepare for rendering the screen
-		this->ScreenVertex->bind();
-		this->OffScreenRenderer.use();
-
-		this->drawScreen();
-
-		//clear up
-		STPProgramManager::unuse();
+		this->DeferredQuad.drawScreen();
 	}
 
 	/**
@@ -768,7 +763,7 @@ public:
 	 * @param value The float value to be set.
 	*/
 	inline void setFloat(const char* name, float value) {
-		this->OffScreenRenderer.uniform(glProgramUniform1f, name, value);
+		this->DeferredQuad.OffScreenRenderer.uniform(glProgramUniform1f, name, value);
 	}
 
 };

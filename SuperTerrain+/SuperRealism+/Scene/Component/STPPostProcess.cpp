@@ -32,7 +32,7 @@ STPPostProcess::STPToneMappingCurve::STPToneMappingCurve(STPToneMappingFunction 
 
 }
 
-STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const STPScreenInitialiser& post_process_init) {
+STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const STPScreen::STPScreenInitialiser& post_process_init) {
 	//setup post process shader
 	const char* const source_file = PostProcessShaderFilename.data();
 	STPShaderManager::STPShaderSource post_source(source_file, STPFile::read(source_file));
@@ -46,7 +46,7 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const ST
 	
 	STPShaderManager post_shader(GL_FRAGMENT_SHADER);
 	post_shader(post_source);
-	this->initScreenRenderer(post_shader, post_process_init);
+	this->PostProcessQuad.initScreenRenderer(post_shader, post_process_init);
 
 	/* -------------------------------- setup sampler ---------------------------------- */
 	this->ImageSampler.filter(GL_NEAREST, GL_NEAREST);
@@ -54,9 +54,9 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const ST
 	this->ImageSampler.borderColor(vec4(vec3(0.0f), 1.0f));
 
 	/* -------------------------------- setup uniform ---------------------------------- */
-	this->OffScreenRenderer.uniform(glProgramUniform1i, "ScreenBuffer", 0);
+	this->PostProcessQuad.OffScreenRenderer.uniform(glProgramUniform1i, "ScreenBuffer", 0);
 	//prepare for tone mapping function definition
-	tone_mapping(this->OffScreenRenderer);
+	tone_mapping(this->PostProcessQuad.OffScreenRenderer);
 }
 
 const STPTexture& STPPostProcess::operator*() const {
@@ -65,7 +65,7 @@ const STPTexture& STPPostProcess::operator*() const {
 
 #define SET_EFFECT(EFF, NAME) template<> \
 	STP_REALISM_API void STPPostProcess::setEffect<STPPostProcess::STPPostEffect::EFF>(float val) { \
-		this->OffScreenRenderer.uniform(glProgramUniform1f, NAME, val); \
+		this->PostProcessQuad.OffScreenRenderer.uniform(glProgramUniform1f, NAME, val); \
 }
 
 SET_EFFECT(Gamma, "Gamma")
@@ -83,12 +83,8 @@ void STPPostProcess::process() const {
 	this->PostProcessResultContainer.ScreenColor.bind(0);
 	this->ImageSampler.bind(0);
 
-	this->ScreenVertex->bind();
-	this->OffScreenRenderer.use();
+	this->PostProcessQuad.drawScreen();
 
-	this->drawScreen();
-
-	STPProgramManager::unuse();
 	//must unbind sampler otherwise it will affect texture in other renderer.
 	STPSampler::unbind(0);
 }

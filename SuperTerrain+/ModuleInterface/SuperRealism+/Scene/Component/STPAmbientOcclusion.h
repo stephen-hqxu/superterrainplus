@@ -23,7 +23,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPAmbientOcclusion is an indirect lighting approximation that 
 	 * tries to approximate indirect lighting by darkening creases, holes and surfaces that are closed to each other.
 	*/
-	class STP_REALISM_API STPAmbientOcclusion : private STPScreen {
+	class STP_REALISM_API STPAmbientOcclusion {
 	public:
 
 		/**
@@ -100,13 +100,15 @@ namespace SuperTerrainPlus::STPRealism {
 
 	private:
 
+		STPScreen OcclusionQuad;
+
 		STPTexture RandomRotationVector;
 		STPBindlessTexture RandomRotationVectorHandle;
 		//Sampler for the external input
 		STPSampler GBufferSampler;
 
 		//ambient occlusion output
-		mutable STPSimpleScreenFrameBuffer OcclusionResultContainer;
+		mutable STPScreen::STPSimpleScreenFrameBuffer OcclusionResultContainer;
 
 		//Store the dimension of the texture which contains random rotation vectors
 		const glm::uvec2 NoiseDimension;
@@ -117,12 +119,12 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Initialise a new ambient occlusion rendering component.
-		 * @param kernel_instance Specifies a kernel instance which selects the ambinet occlusion algorithm to be used.
+		 * @param kernel_instance Specifies a kernel instance which selects the ambient occlusion algorithm to be used.
 		 * The instance will not be retained by the object, it can be safely destroyed by the caller afterwards.
 		 * @param filter A rvalue reference to a Gaussian filter which will be used to blurred the output ambient occlusion.
 		 * @param kernel_init The pointer to ambient occlusion initialiser.
 		*/
-		STPAmbientOcclusion(const STPOcclusionKernelInstance&, STPGaussianFilter&&, const STPScreenInitialiser&);
+		STPAmbientOcclusion(const STPOcclusionKernelInstance&, STPGaussianFilter&&, const STPScreen::STPScreenInitialiser&);
 
 		STPAmbientOcclusion(const STPAmbientOcclusion&) = delete;
 

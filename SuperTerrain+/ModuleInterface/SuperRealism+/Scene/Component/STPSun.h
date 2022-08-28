@@ -23,7 +23,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * It also allows, optionally, day-night cycle and switches light intensity.
 	 * Atmospheric scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
 	*/
-	class STP_REALISM_API STPSun : private STPSkybox, public STPSceneObject::STPEnvironmentObject, public STPSceneObject::STPAnimatedObject {
+	class STP_REALISM_API STPSun : public STPSceneObject::STPEnvironmentObject, public STPSceneObject::STPAnimatedObject {
 	public:
 
 		//A pair of two equivalent types.
@@ -31,6 +31,8 @@ namespace SuperTerrainPlus::STPRealism {
 		using STPBundledData = std::pair<T, T>;
 
 	private:
+
+		STPSkybox SunBox;
 
 		const STPEnvironment::STPSunSetting SunSetting;
 
@@ -75,7 +77,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Sun direction in between will be interpolated.
 		 * @param sun_init The initialiser for sun and sky renderer.
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, const STPBundledData<glm::vec3>&, const STPSkyboxInitialiser&);
+		STPSun(const STPEnvironment::STPSunSetting&, const STPBundledData<glm::vec3>&, const STPSkybox::STPSkyboxInitialiser&);
 
 		STPSun(const STPSun&) = delete;
 

@@ -102,7 +102,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			const unsigned int texture_idx = textureID_converter.at(texture_id);
 			const auto type_idx = static_cast<STPTextureType_t>(textureType_converter.at(type));
 			//populate memory for each layer
-			glTextureSubImage3D(this->Texture[group_idx], 0, 0, 0, layer_idx, desc->Dimension.x, desc->Dimension.y, 1,
+			glTextureSubImage3D(gl_texture, 0, 0, 0, layer_idx, desc->Dimension.x, desc->Dimension.y, 1,
 				desc->ChannelFormat, desc->PixelFormat, img);
 
 			//build data for renderer

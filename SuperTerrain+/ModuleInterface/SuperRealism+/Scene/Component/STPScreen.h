@@ -18,6 +18,7 @@
 
 //System
 #include <memory>
+#include <functional>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -76,7 +77,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @param dimension The new dimension for the rendering screen.
 			 * @param internal Specifies the sized internal format for the new screen buffer.
 			*/
-			virtual void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum);
+			void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum);
 
 			/**
 			 * @brief Clear the colour attachment of the screen buffer.
@@ -115,7 +116,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 			~STPSimpleScreenBindlessFrameBuffer() = default;
 
-			void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum) override;
+			//@see STPSimpleScreenFrameBuffer::setScreenBuffer
+			void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum);
 
 			/**
 			 * @brief Get the bindless handle to the screen colour texture.
@@ -214,29 +216,23 @@ namespace SuperTerrainPlus::STPRealism {
 
 		};
 
-	protected:
+	private:
 
 		std::shared_ptr<const STPScreenVertexBuffer> ScreenVertex;
 
-		STPProgramManager OffScreenRenderer;
-
-		/**
-		 * @brief Initialise the off-screen renderer.
-		 * All old states in the previous screen renderer, if any, is lost and the program is recompiled.
-		 * It is a undefined behaviour if any member variables are used before this function is called for the first time
-		 * since object initialisation.
-		 * @param screen_fs The pointer to the fragment shader used by the pipeline.
-		 * @param screen_init The pointer to the screen initialiser.
-		*/
-		void initScreenRenderer(const STPShaderManager&, const STPScreenInitialiser&);
-
-		/**
-		 * @brief Draw the screen.
-		 * Buffer and program is not bound and used automatically.
-		*/
-		void drawScreen() const;
-
 	public:
+
+		//The OpenGL API call to draw the screen quad
+		typedef void (*STPScreenDrawCall)(void);
+		/**
+		 * @brief STPProgramExecution is a smart guard over a function that uses the screen drawing program.
+		 * It allows the function to issue multiple draw call from the same program without re-using the program repetitively.
+		 * At the end of execution states are cleared up automatically.
+		 * @param draw_call The function to issue draw command.
+		*/
+		typedef std::function<void(STPScreenDrawCall)> STPProgramExecution;
+
+		STPProgramManager OffScreenRenderer;
 
 		/**
 		 * @brief Initialise a screen renderer helper instance.
@@ -251,7 +247,30 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPScreen& operator=(STPScreen&&) noexcept = default;
 
-		virtual ~STPScreen() = default;
+		~STPScreen() = default;
+
+		/**
+		 * @brief Initialise the off-screen renderer.
+		 * All old states in the previous screen renderer, if any, is lost and the program is recompiled.
+		 * It is a undefined behaviour if any member variables are used before this function is called for the first time
+		 * since object initialisation.
+		 * @param screen_fs The pointer to the fragment shader used by the pipeline.
+		 * @param screen_init The pointer to the screen initialiser.
+		*/
+		void initScreenRenderer(const STPShaderManager&, const STPScreenInitialiser&);
+
+		/**
+		 * @brief Draw the screen.
+		 * Buffer and program are bound and used automatically.
+		*/
+		void drawScreen() const;
+
+		/**
+		 * @brief Draw the screen from a function.
+		 * Buffer and program states are bound before invoking the function, and cleared up automatically at the end.
+		 * @param execution The function that contains the drawing sequence.
+		*/
+		void drawScreen(const STPProgramExecution&) const;
 
 	};
 

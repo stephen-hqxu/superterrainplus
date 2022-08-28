@@ -41,7 +41,7 @@ constexpr static auto SkyShaderFilename = SuperTerrainPlus::STPFile::generateFil
 constexpr static auto SpectrumShaderFilename = SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPSunSpectrum", ".comp");
 
 STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundledData<vec3>& spectrum_domain,
-	const STPSkyboxInitialiser& sun_init) :
+	const STPSkybox::STPSkyboxInitialiser& sun_init) :
 	SunSetting(sun_setting), DayStart(1.0 * this->SunSetting.DayStart / (1.0 * this->SunSetting.DayLength) + this->SunSetting.YearStart),
 	Day(0.0), SunDirectionCache(vec3(0.0f)) {
 	//validate the setting
@@ -58,10 +58,10 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 	sky_shader(sky_source);
 
 	//initialise skybox renderer
-	this->initSkyboxRenderer(sky_shader, sun_init);
+	this->SunBox.initSkyboxRenderer(sky_shader, sun_init);
 
 	//uniform setup
-	this->SunPositionLocation = this->SkyboxRenderer.uniformLocation("SunPosition");
+	this->SunPositionLocation = this->SunBox.SkyboxRenderer.uniformLocation("SunPosition");
 	//calculate initial sun direction
 	this->updateAnimationTimer(0.0);
 
@@ -156,7 +156,7 @@ void STPSun::updateAnimationTimer(double second) {
 	)));
 
 	//update sun position in the shader
-	this->SkyboxRenderer.uniform(glProgramUniform3fv, this->SunPositionLocation, 1, value_ptr(this->SunDirectionCache));
+	this->SunBox.SkyboxRenderer.uniform(glProgramUniform3fv, this->SunPositionLocation, 1, value_ptr(this->SunDirectionCache));
 }
 
 void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
@@ -165,7 +165,7 @@ void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_sett
 		throw STPException::STPInvalidEnvironment("Atmosphere setting is invalid");
 	}
 
-	STPSun::updateAtmosphere(this->SkyboxRenderer, atmo_setting);
+	STPSun::updateAtmosphere(this->SunBox.SkyboxRenderer, atmo_setting);
 	STPSun::updateAtmosphere(this->SpectrumEmulator, atmo_setting);
 }
 
@@ -210,5 +210,5 @@ float STPSun::spectrumCoordinate() const {
 }
 
 void STPSun::render() const {
-	this->drawSkybox();
+	this->SunBox.drawSkybox();
 }

@@ -156,6 +156,24 @@ void STPScreen::initScreenRenderer(const STPShaderManager& screen_fs, const STPS
 		.finalise();
 }
 
-void STPScreen::drawScreen() const {
+inline static void drawScreenCall() {
 	glDrawArraysIndirect(GL_TRIANGLE_FAN, nullptr);
+}
+
+void STPScreen::drawScreen() const {
+	this->ScreenVertex->bind();
+	this->OffScreenRenderer.use();
+
+	drawScreenCall();
+
+	STPProgramManager::unuse();
+}
+
+void STPScreen::drawScreen(const STPProgramExecution& execution) const {
+	this->ScreenVertex->bind();
+	this->OffScreenRenderer.use();
+
+	execution(&drawScreenCall);
+
+	STPProgramManager::unuse();
 }

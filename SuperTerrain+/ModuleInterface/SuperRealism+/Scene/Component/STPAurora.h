@@ -15,8 +15,10 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPAurora procedurally generates and simulates northern light effect using procedural noise technique.
 	 * It utilises triangular noise to generate a sharp-fin like pattern and distorts the noise to create aurora striping and tailing effects.
 	*/
-	class STP_REALISM_API STPAurora : private STPSkybox, public STPSceneObject::STPEnvironmentObject, public STPSceneObject::STPAnimatedObject {
+	class STP_REALISM_API STPAurora : public STPSceneObject::STPEnvironmentObject, public STPSceneObject::STPAnimatedObject {
 	private:
+
+		STPSkybox AuroraBox;
 
 		//aurora colour effects
 		const STPLightSpectrum AuroraSpectrum;
@@ -31,7 +33,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * The colour is picked based on the aurora's height, from 0.0 to 1.0.
 		 * @param aurora_init The initialiser for the aurora environment renderer.
 		*/
-		STPAurora(STPLightSpectrum&&, const STPSkyboxInitialiser&);
+		STPAurora(STPLightSpectrum&&, const STPSkybox::STPSkyboxInitialiser&);
 
 		STPAurora(const STPAurora&) = delete;
 

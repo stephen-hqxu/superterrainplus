@@ -22,18 +22,18 @@ using namespace SuperTerrainPlus::STPRealism;
 static constexpr auto AuroraShaderFilename =
 	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPAurora", ".frag");
 
-STPAurora::STPAurora(STPLightSpectrum&& aurora_spectrum, const STPSkyboxInitialiser& aurora_init) : AuroraSpectrum(std::move(aurora_spectrum)) {
+STPAurora::STPAurora(STPLightSpectrum&& aurora_spectrum, const STPSkybox::STPSkyboxInitialiser& aurora_init) : AuroraSpectrum(std::move(aurora_spectrum)) {
 	const char* const aurora_source_file = AuroraShaderFilename.data();
 	const STPShaderManager::STPShaderSource aurora_source(aurora_source_file, STPFile::read(aurora_source_file));
 
 	STPShaderManager aurora_fs(GL_FRAGMENT_SHADER);
 	aurora_fs(aurora_source);
 
-	this->initSkyboxRenderer(aurora_fs, aurora_init);
+	this->AuroraBox.initSkyboxRenderer(aurora_fs, aurora_init);
 
 	/* ----------------------------------- uniform time --------------------------------------- */
-	this->AuroraTimeLocation = this->SkyboxRenderer.uniformLocation("AuroraTime");
-	this->SkyboxRenderer.uniform(glProgramUniformHandleui64ARB, "AuroraColorSpectrum", this->AuroraSpectrum.spectrumHandle());
+	this->AuroraTimeLocation = this->AuroraBox.SkyboxRenderer.uniformLocation("AuroraTime");
+	this->AuroraBox.SkyboxRenderer.uniform(glProgramUniformHandleui64ARB, "AuroraColorSpectrum", this->AuroraSpectrum.spectrumHandle());
 }
 
 void STPAurora::setAurora(const STPEnvironment::STPAuroraSetting& aurora_setting) {
@@ -56,7 +56,7 @@ void STPAurora::setAurora(const STPEnvironment::STPAuroraSetting& aurora_setting
 	);
 
 	//main aurora settings
-	this->SkyboxRenderer.uniform(glProgramUniform1f, "Aurora.Flat", aurora_setting.AuroraSphereFlatness)
+	this->AuroraBox.SkyboxRenderer.uniform(glProgramUniform1f, "Aurora.Flat", aurora_setting.AuroraSphereFlatness)
 		.uniform(glProgramUniform1f, "Aurora.stepSz", aurora_setting.StepSize)
 		.uniform(glProgramUniform1f, "Aurora.projRot", aurora_setting.AuroraPlaneProjectionBias)
 		.uniform(glProgramUniform2fv, "Aurora.Fade", 1, value_ptr(fade))
@@ -81,9 +81,9 @@ void STPAurora::setAurora(const STPEnvironment::STPAuroraSetting& aurora_setting
 }
 
 void STPAurora::updateAnimationTimer(double second) {
-	this->SkyboxRenderer.uniform(glProgramUniform1f, this->AuroraTimeLocation, static_cast<float>(second));
+	this->AuroraBox.SkyboxRenderer.uniform(glProgramUniform1f, this->AuroraTimeLocation, static_cast<float>(second));
 }
 
 void STPAurora::render() const {
-	this->drawSkybox();
+	this->AuroraBox.drawSkybox();
 }

@@ -112,7 +112,7 @@ void STPGaussianFilter::STPFilterExecution::operator()(STPProgramManager& progra
 		.uniform(glProgramUniform1ui, "KernelRadius", this->Radius);
 }
 
-STPGaussianFilter::STPGaussianFilter(const STPFilterExecution& execution, const STPScreenInitialiser& filter_init) :
+STPGaussianFilter::STPGaussianFilter(const STPFilterExecution& execution, const STPScreen::STPScreenInitialiser& filter_init) :
 	BorderColor(vec4(vec3(0.0f), 1.0f)) {
 	//setup filter compute shader
 	const char* const filter_source_file = FilterShaderFilename.data();
@@ -127,10 +127,10 @@ STPGaussianFilter::STPGaussianFilter(const STPFilterExecution& execution, const 
 
 	STPShaderManager filter_shader(GL_FRAGMENT_SHADER);
 	filter_shader(filter_source);
-	this->initScreenRenderer(filter_shader, filter_init);
+	this->GaussianQuad.initScreenRenderer(filter_shader, filter_init);
 
 	//uniform
-	execution(this->OffScreenRenderer);
+	execution(this->GaussianQuad.OffScreenRenderer);
 
 	/* ------------------------------------- sampler for input data ---------------------------------- */
 	this->InputImageSampler.wrap(GL_CLAMP_TO_BORDER);
@@ -159,43 +159,44 @@ void STPGaussianFilter::filter(
 	//clear old intermediate cache because convolutional filter reads data from neighbour pixels
 	this->IntermediateCache.clearScreenBuffer(this->BorderColor);
 
-	this->ScreenVertex->bind();
-	this->OffScreenRenderer.use();
-	GLuint filter_pass;
-	/* ----------------------------- horizontal pass -------------------------------- */
-	//for horizontal pass, read input from user and store output to the first buffer
-	input.bind(0u);
-	depth.bind(1u);
-	this->IntermediateCache.capture();
+	const STPScreen::STPProgramExecution filter_executor = [&input, &depth, &output, &intermediate_cache = this->IntermediateCache, output_blending]
+		(STPScreen::STPScreenDrawCall draw_call) -> void {
+		GLuint filter_pass;
+		/* ----------------------------- horizontal pass -------------------------------- */
+		//for horizontal pass, read input from user and store output to the first buffer
+		input.bind(0u);
+		depth.bind(1u);
+		intermediate_cache.capture();
 
-	//enable horizontal filter subroutine
-	filter_pass = 0u;
-	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
+		//enable horizontal filter subroutine
+		filter_pass = 0u;
+		glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
 
-	this->drawScreen();
+		draw_call();
 
-	/* ------------------------------ vertical pass --------------------------------- */
-	//for vertical pass, read input from the first buffer and output to the user-specified framebuffer
-	this->IntermediateCache.ScreenColor.bind(0u);
-	output.bind(GL_FRAMEBUFFER);
+		/* ------------------------------ vertical pass --------------------------------- */
+		//for vertical pass, read input from the first buffer and output to the user-specified framebuffer
+		intermediate_cache.ScreenColor.bind(0u);
+		output.bind(GL_FRAMEBUFFER);
 
-	//enable vertical filter subroutine
-	filter_pass = 1u;
-	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
+		//enable vertical filter subroutine
+		filter_pass = 1u;
+		glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
 
-	if (output_blending) {
-		glEnable(GL_BLEND);
+		if (output_blending) {
+			glEnable(GL_BLEND);
 
-		this->drawScreen();
+			draw_call();
 
-		glDisable(GL_BLEND);
-	} else {
-		this->drawScreen();
-	}
+			glDisable(GL_BLEND);
+		} else {
+			draw_call();
+		}
+	};
+	this->GaussianQuad.drawScreen(filter_executor);
 
 	/* ------------------------------------------------------------------------------ */
 	//clear up
-	STPProgramManager::unuse();
 	STPSampler::unbind(0u);
 	STPSampler::unbind(1u);
 }

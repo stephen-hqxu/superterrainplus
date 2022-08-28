@@ -49,7 +49,7 @@ STPAmbientOcclusion::STPOcclusionKernelInstance::STPOcclusionKernelInstance
 }
 
 STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kernel_instance, STPGaussianFilter&& filter,
-	const STPScreenInitialiser& kernel_init) :
+	const STPScreen::STPScreenInitialiser& kernel_init) :
 	RandomRotationVector(GL_TEXTURE_2D),
 	NoiseDimension(kernel_instance.Kernel.RotationVectorSize), BlurWorker(std::move(filter)) {
 	const char* const ssao_source_file = SSAOShaderFilename.data();
@@ -65,7 +65,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 
 	STPShaderManager ssao_shader(GL_FRAGMENT_SHADER);
 	ssao_shader(ssao_source);
-	this->initScreenRenderer(ssao_shader, kernel_init);
+	this->OcclusionQuad.initScreenRenderer(ssao_shader, kernel_init);
 
 	const auto& kernel_setting = kernel_instance.Kernel;
 	/* --------------------------------- setup random number generators ------------------------------ */
@@ -86,7 +86,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 	this->RandomRotationVectorHandle = STPBindlessTexture(this->RandomRotationVector);
 
 	/* ------------------------------------------ setup uniform ------------------------------------- */
-	this->OffScreenRenderer.uniform(glProgramUniform1f, "KernelRadius", kernel_setting.SampleRadius)
+	this->OcclusionQuad.OffScreenRenderer.uniform(glProgramUniform1f, "KernelRadius", kernel_setting.SampleRadius)
 		.uniform(glProgramUniform1f, "SampleDepthBias", kernel_setting.Bias)
 		//sampler setup
 		.uniform(glProgramUniform1i, "GeoDepth", 0)
@@ -94,7 +94,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 		.uniform(glProgramUniformHandleui64ARB, "RandomRotationVector", *this->RandomRotationVectorHandle);
 
 	//setup kernel data based on chosen algorithm
-	kernel_instance.uniformKernel(this->OffScreenRenderer, rng);
+	kernel_instance.uniformKernel(this->OcclusionQuad.OffScreenRenderer, rng);
 
 	/* ------------------------------------------- setup output -------------------------------------- */
 	//for ambient occlusion, "no data" should be 1.0
@@ -108,7 +108,7 @@ void STPAmbientOcclusion::setScreenSpace(STPTexture* stencil, uvec2 dimension) {
 	//update uniform
 	//tile noise texture over screen based on screen dimensions divided by noise size
 	const vec2 noise_scale = static_cast<vec2>(dimension) / static_cast<vec2>(this->NoiseDimension);
-	this->OffScreenRenderer.uniform(glProgramUniform2fv, "RotationVectorScale", 1, value_ptr(noise_scale));
+	this->OcclusionQuad.OffScreenRenderer.uniform(glProgramUniform2fv, "RotationVectorScale", 1, value_ptr(noise_scale));
 }
 
 void STPAmbientOcclusion::occlude(
@@ -119,18 +119,15 @@ void STPAmbientOcclusion::occlude(
 	this->GBufferSampler.bind(0);
 	this->GBufferSampler.bind(1);
 
-	this->ScreenVertex->bind();
-	this->OffScreenRenderer.use();
-
 	//we need to clear the old ambient occlusion data
 	//because when we blur it later, we might accidentally read the old data which were culled due to stencil testing
 	this->OcclusionResultContainer.clearScreenBuffer(vec4(1.0f));
 	//capture data into the internal framebuffer
 	this->OcclusionResultContainer.capture();
-	this->drawScreen();
+
+	this->OcclusionQuad.drawScreen();
 
 	//clear up for ambient occlusion stage so it won't overwrite state later
-	STPProgramManager::unuse();
 	STPSampler::unbind(0);
 	STPSampler::unbind(1);
 

@@ -16,7 +16,7 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static auto StarfieldShaderFilename =
 	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPStarfield", ".frag");
 
-STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSkyboxInitialiser& starfield_init) :
+STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSkybox::STPSkyboxInitialiser& starfield_init) :
 	StarlightSpectrum(std::move(*starfield_model.StarlightSpectrum)) {
 	//setup starfield renderer
 	const char* const star_source_file = StarfieldShaderFilename.data();
@@ -29,11 +29,11 @@ STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSk
 	STPShaderManager star_fs(GL_FRAGMENT_SHADER);
 	star_fs(star_source);
 
-	this->initSkyboxRenderer(star_fs, starfield_init);
+	this->StarfieldBox.initSkyboxRenderer(star_fs, starfield_init);
 
 	/* -------------------------------- setup uniform --------------------------------- */
-	this->ShineTimeLocation = this->SkyboxRenderer.uniformLocation("ShineTime");
-	this->SkyboxRenderer.uniform(glProgramUniformHandleui64ARB, "StarColorSpectrum", this->StarlightSpectrum.spectrumHandle());
+	this->ShineTimeLocation = this->StarfieldBox.SkyboxRenderer.uniformLocation("ShineTime");
+	this->StarfieldBox.SkyboxRenderer.uniform(glProgramUniformHandleui64ARB, "StarColorSpectrum", this->StarlightSpectrum.spectrumHandle());
 }
 
 void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starfield_setting, unsigned int rng_seed) {
@@ -41,7 +41,7 @@ void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starf
 		throw STPException::STPInvalidEnvironment("The starfield setting fails to validate");
 	}
 
-	this->SkyboxRenderer.uniform(glProgramUniform1f, "Star.iLklh", starfield_setting.InitialLikelihood)
+	this->StarfieldBox.SkyboxRenderer.uniform(glProgramUniform1f, "Star.iLklh", starfield_setting.InitialLikelihood)
 		.uniform(glProgramUniform1f, "Star.OctLklhMul", starfield_setting.OctaveLikelihoodMultiplier)
 		.uniform(glProgramUniform1f, "Star.iScl", starfield_setting.InitialScale)
 		.uniform(glProgramUniform1f, "Star.OctSclMul", starfield_setting.OctaveScaleMultiplier)
@@ -54,9 +54,9 @@ void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starf
 }
 
 void STPStarfield::updateAnimationTimer(double second) {
-	this->SkyboxRenderer.uniform(glProgramUniform1f, this->ShineTimeLocation, static_cast<float>(second));
+	this->StarfieldBox.SkyboxRenderer.uniform(glProgramUniform1f, this->ShineTimeLocation, static_cast<float>(second));
 }
 
 void STPStarfield::render() const {
-	this->drawSkybox();
+	this->StarfieldBox.drawSkybox();
 }

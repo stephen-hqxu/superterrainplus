@@ -22,7 +22,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * The pixels further away from the filter kernel will have less weight than the pixels closer than it.
 	 * This filter currently only supports a single 8-bit channel filtering.
 	*/
-	class STP_REALISM_API STPGaussianFilter : private STPScreen {
+	class STP_REALISM_API STPGaussianFilter {
 	public:
 
 		/**
@@ -79,9 +79,11 @@ namespace SuperTerrainPlus::STPRealism {
 
 	private:
 
+		STPScreen GaussianQuad;
+
 		STPSampler InputImageSampler, InputDepthSampler;
 		//Separable filter requires a cache to store intermediate result
-		mutable STPSimpleScreenFrameBuffer IntermediateCache;
+		mutable STPScreen::STPSimpleScreenFrameBuffer IntermediateCache;
 
 		glm::vec4 BorderColor;
 
@@ -92,7 +94,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param execution Specifies the filter kernel variant.
 		 * @param filter_init The pointer to the filter initialiser.
 		*/
-		STPGaussianFilter(const STPFilterExecution&, const STPScreenInitialiser&);
+		STPGaussianFilter(const STPFilterExecution&, const STPScreen::STPScreenInitialiser&);
 
 		STPGaussianFilter(const STPGaussianFilter&) = delete;
 

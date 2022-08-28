@@ -17,7 +17,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * It utilises simple grid division algorithm and assign a random likelihood value for each grid,
 	 * and generates stars with soft falloff from the centre of the grid.
 	*/
-	class STP_REALISM_API STPStarfield : private STPSkybox, public STPSceneObject::STPEnvironmentObject, public STPSceneObject::STPAnimatedObject {
+	class STP_REALISM_API STPStarfield : public STPSceneObject::STPEnvironmentObject, public STPSceneObject::STPAnimatedObject {
 	public:
 
 		/**
@@ -37,6 +37,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 	private:
 
+		STPSkybox StarfieldBox;
+
 		//and a colourful starfield
 		const STPLightSpectrum StarlightSpectrum;
 
@@ -50,7 +52,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param starfield_model Specifies the starfield generation model to control the behaviour.
 		 * @param starfield_init The initialiser for the starfield renderer.
 		*/
-		STPStarfield(const STPStarfieldModel&, const STPSkyboxInitialiser&);
+		STPStarfield(const STPStarfieldModel&, const STPSkybox::STPSkyboxInitialiser&);
 
 		STPStarfield(const STPStarfield&) = delete;
 
