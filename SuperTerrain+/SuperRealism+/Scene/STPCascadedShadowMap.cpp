@@ -93,7 +93,10 @@ STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLig
 
 	//skip light space matrix, send frustum divisor
 	float* const shadowData_div = reinterpret_cast<float*>(shadowData_init + shadowBufferDiv_offset);
+#pragma warning(push)
+#pragma warning(disable: 4244)//precision lost from double -> float
 	std::copy(div.cbegin(), div.cend(), shadowData_div);
+#pragma warning(pop)
 
 	//flush data, with persistent mapping it is allowed to perform buffer subdata operation
 	this->ShadowData.unmapBuffer();

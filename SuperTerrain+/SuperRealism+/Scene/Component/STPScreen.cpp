@@ -99,14 +99,6 @@ void STPScreen::STPSimpleScreenBindlessFrameBuffer::setScreenBuffer(
 	this->ScreenColor = move(new_screen_color);
 }
 
-SuperTerrainPlus::STPOpenGL::STPuint64 STPScreen::STPSimpleScreenBindlessFrameBuffer::getColorHandle() const {
-	return *this->ScreenColorHandle;
-}
-
-void STPScreen::STPSimpleScreenBindlessFrameBuffer::bindColorSampler(STPOpenGL::STPuint unit) const {
-	return this->ScreenColorSampler.bind(unit);
-}
-
 STPScreen::STPScreenVertexShader::STPScreenVertexShader() : ScreenVertexShader(GL_VERTEX_SHADER) {
 	//read source
 	const char* const screen_source_file = ScreenShaderFilename.data();

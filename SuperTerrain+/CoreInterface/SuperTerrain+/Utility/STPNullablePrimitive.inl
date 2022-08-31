@@ -19,13 +19,30 @@ inline SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::STPNullablePrimitive(P
 }
 
 template<typename Pri, Pri Null>
+inline SuperTerrainPlus::STPNullablePrimitive<Pri, Null>& SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::operator=(
+	std::nullptr_t) noexcept {
+	this->Value = Null;
+	return *this;
+}
+
+template<typename Pri, Pri Null>
 inline SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::operator Pri() const noexcept {
 	return this->Value;
 }
 
 template<typename Pri, Pri Null>
-inline Pri SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::operator*() const noexcept {
-	return this->Value;
+inline SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::operator bool() const noexcept {
+	return this->Value != Null;
+}
+
+template<typename Pri, Pri Null>
+inline bool SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::operator==(STPNullablePrimitive p) const noexcept {
+	return this->Value == p.Value;
+}
+
+template<typename Pri, Pri Null>
+inline bool SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::operator!=(STPNullablePrimitive p) const noexcept {
+	return this->Value != p.Value;
 }
 
 template<typename Pri, Pri Null>

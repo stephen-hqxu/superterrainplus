@@ -70,8 +70,8 @@ void STPBidirectionalScattering::setCopyBuffer(uvec2 dimension) {
 	//update buffer dimension
 	this->BufferDimension = dimension;
 	//send new handle
-	this->BSDFQuad.OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, "SceneColor", this->RawSceneColorCopier.getColorHandle())
-		.uniform(glProgramUniformHandleui64ARB, "SceneDepth", this->RawSceneDepthCopier.getColorHandle());
+	this->BSDFQuad.OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, "SceneColor", *this->RawSceneColorCopier.ScreenColorHandle)
+		.uniform(glProgramUniformHandleui64ARB, "SceneDepth", *this->RawSceneDepthCopier.ScreenColorHandle);
 }
 
 void STPBidirectionalScattering::copyScene(const STPTexture& color, const STPTexture& depth) {
@@ -93,15 +93,11 @@ void STPBidirectionalScattering::scatter(const STPTexture& depth, const STPTextu
 	depth.bind(0);
 	normal.bind(1);
 	material.bind(2);
-
-	this->RawSceneDepthCopier.bindColorSampler(0);
-	this->NormalSampler.bind(1);
-	this->MaterialSampler.bind(2);
+	const STPSampler::STPSamplerUnitStateManager depth_normal_material_sampler_mgr[3] = {
+		this->RawSceneDepthCopier.ScreenColorSampler.bindManaged(0),
+		this->NormalSampler.bindManaged(1),
+		this->MaterialSampler.bindManaged(2)
+	};
 
 	this->BSDFQuad.drawScreen();
-
-	//clear up
-	STPSampler::unbind(0);
-	STPSampler::unbind(1);
-	STPSampler::unbind(2);
 }

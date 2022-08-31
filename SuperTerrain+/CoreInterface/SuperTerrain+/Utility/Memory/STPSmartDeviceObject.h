@@ -8,10 +8,6 @@
 //CUDA
 #include <cuda_runtime.h>
 
-//System
-#include <memory>
-#include <type_traits>
-
 namespace SuperTerrainPlus {
 
 	/**
@@ -75,17 +71,15 @@ namespace SuperTerrainPlus {
 		}
 
 		//STPStream is a smartly managed CUDA stream object.
-		using STPStream = std::unique_ptr<std::remove_pointer_t<cudaStream_t>, STPSmartDeviceObjectImpl::STPStreamDestroyer>;
+		using STPStream = STPUniqueResource<cudaStream_t, nullptr, STPSmartDeviceObjectImpl::STPStreamDestroyer>;
 		//STPEvent is a smartly managed CUDA event object.
-		using STPEvent = std::unique_ptr<std::remove_pointer_t<cudaEvent_t>, STPSmartDeviceObjectImpl::STPEventDestroyer>;
+		using STPEvent = STPUniqueResource<cudaEvent_t, nullptr, STPSmartDeviceObjectImpl::STPEventDestroyer>;
 		//STPMemPool is a smartly managed CUDA memory pool object.
-		using STPMemPool = std::unique_ptr<std::remove_pointer_t<cudaMemPool_t>, STPSmartDeviceObjectImpl::STPMemPoolDestroyer>;
+		using STPMemPool = STPUniqueResource<cudaMemPool_t, nullptr, STPSmartDeviceObjectImpl::STPMemPoolDestroyer>;
 		//STPTexture is a smartly managed CUDA texture object.
-		using STPTexture = std::unique_ptr<cudaTextureObject_t,
-			STPNullablePrimitive<cudaTextureObject_t, 0ull>::STPNullableDeleter<STPSmartDeviceObjectImpl::STPTextureDestroyer>>;
+		using STPTexture = STPUniqueResource<cudaTextureObject_t, 0ull, STPSmartDeviceObjectImpl::STPTextureDestroyer>;
 		//STPSurface is a smartly managed CUDA surface object.
-		using STPSurface = std::unique_ptr<cudaSurfaceObject_t,
-			STPNullablePrimitive<cudaSurfaceObject_t, 0ull>::STPNullableDeleter<STPSmartDeviceObjectImpl::STPSurfaceDestroyer>>;
+		using STPSurface = STPUniqueResource<cudaSurfaceObject_t, 0ull, STPSmartDeviceObjectImpl::STPSurfaceDestroyer>;
 
 		/**
 		 * @brief Create a new CUDA stream.

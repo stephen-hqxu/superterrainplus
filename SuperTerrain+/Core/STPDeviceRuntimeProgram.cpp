@@ -6,9 +6,6 @@
 
 #include <algorithm>
 
-using std::unique_ptr;
-using std::make_unique;
-
 using namespace SuperTerrainPlus;
 
 /**
@@ -41,7 +38,7 @@ STPDeviceRuntimeProgram::STPSmartModule STPDeviceRuntimeProgram::link(STPLinkerI
 	CUlinkState linker;
 	STP_CHECK_CUDA(cuLinkCreate(static_cast<int>(linker_opt.OptionFlag.size()), linker_opt.OptionFlag.data(),
 		linker_opt.OptionValue.data(), &linker));
-	unique_ptr<std::remove_pointer_t<CUlinkState>, STPLinkStateDeleter> managed_linker(linker);
+	const STPUniqueResource<CUlinkState, nullptr, STPLinkStateDeleter> managed_linker(linker);
 
 	//add each data to the linker
 	for (auto& [binary, bin_type, data_jit] : data_opt) {

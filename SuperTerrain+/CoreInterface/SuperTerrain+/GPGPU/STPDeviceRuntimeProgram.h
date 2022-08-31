@@ -82,7 +82,7 @@ namespace SuperTerrainPlus {
 
 		};
 		//A managed CUDA module
-		using STPSmartModule = std::unique_ptr<std::remove_pointer_t<CUmodule>, STPModuleDeleter>;
+		using STPSmartModule = STPUniqueResource<CUmodule, nullptr, STPModuleDeleter>;
 
 		/**
 		 * @brief Link all provided binaries into a complete program.

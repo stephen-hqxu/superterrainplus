@@ -77,7 +77,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @param dimension The new dimension for the rendering screen.
 			 * @param internal Specifies the sized internal format for the new screen buffer.
 			*/
-			void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum);
+			virtual void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum);
 
 			/**
 			 * @brief Clear the colour attachment of the screen buffer.
@@ -117,20 +117,7 @@ namespace SuperTerrainPlus::STPRealism {
 			~STPSimpleScreenBindlessFrameBuffer() = default;
 
 			//@see STPSimpleScreenFrameBuffer::setScreenBuffer
-			void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum);
-
-			/**
-			 * @brief Get the bindless handle to the screen colour texture.
-			 * @return The bindless handle.
-			 * The handle will be changed if the screen resolution has been changed.
-			*/
-			STPOpenGL::STPuint64 getColorHandle() const;
-
-			/**
-			 * @brief Bind the colour sampler to a texture unit.
-			 * @param unit Specifies the texture unit to be bound.
-			*/
-			void bindColorSampler(STPOpenGL::STPuint) const;
+			void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum) override;
 
 		};
 

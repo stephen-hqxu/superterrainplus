@@ -19,6 +19,10 @@ inline static GLuint createSampler() {
 	return sampler;
 }
 
+void STPSampler::STPSamplerUnbinder::operator()(STPOpenGL::STPuint unit) const {
+	glBindSampler(unit, 0u);
+}
+
 void STPSampler::STPSamplerDeleter::operator()(STPOpenGL::STPuint sampler) const {
 	glDeleteSamplers(1u, &sampler);
 }
@@ -70,10 +74,7 @@ void STPSampler::compareMode(STPOpenGL::STPint mode) {
 	glSamplerParameteri(this->Sampler.get(), GL_TEXTURE_COMPARE_MODE, mode);
 }
 
-void STPSampler::bind(STPOpenGL::STPuint unit) const {
+STPSampler::STPSamplerUnitStateManager STPSampler::bindManaged(STPOpenGL::STPuint unit) const {
 	glBindSampler(unit, this->Sampler.get());
-}
-
-void STPSampler::unbind(STPOpenGL::STPuint unit) {
-	glBindSampler(unit, 0u);
+	return STPSamplerUnitStateManager(unit);
 }

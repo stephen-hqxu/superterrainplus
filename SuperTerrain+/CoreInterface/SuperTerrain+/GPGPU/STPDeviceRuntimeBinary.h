@@ -3,14 +3,12 @@
 #define _STP_DEVICE_RUNTIME_BINARY_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
+#include "../Utility/STPNullablePrimitive.h"
 
 //Container
 #include <unordered_map>
 #include <vector>
 #include <string>
-
-#include <memory>
-#include <type_traits>
 
 //CUDA
 #include <nvrtc.h>
@@ -81,7 +79,7 @@ namespace SuperTerrainPlus {
 
 		};
 		//A smartly managed NVRTC compiled program
-		using STPSmartProgram = std::unique_ptr<std::remove_pointer_t<nvrtcProgram>, STPProgramDeleter>;
+		using STPSmartProgram = STPUniqueResource<nvrtcProgram, nullptr, STPProgramDeleter>;
 		//Raw program data retrieved from compiled program, and the length
 		using STPProgramData = std::pair<std::unique_ptr<char[]>, size_t>;
 

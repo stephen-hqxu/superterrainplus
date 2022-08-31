@@ -8,12 +8,28 @@
 
 #include "STPImageParameter.hpp"
 
+#include <limits>
+
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
-	 * @brief STPSampler is a managed GL sampler object which stores sampling parameters for texture acess inside a shader.
+	 * @brief STPSampler is a managed GL sampler object which stores sampling parameters for texture access inside a shader.
 	*/
 	class STP_REALISM_API STPSampler : public STPImageParameter {
+	public:
+
+		/**
+		 * @brief STPSamplerUnbinder unbinds the sampler from the texture unit.
+		*/
+		struct STP_REALISM_API STPSamplerUnbinder {
+		public:
+
+			void operator()(STPOpenGL::STPuint) const;
+
+		};
+		//A smart texture unit state manager that automatically unbinds the sampler from specified texture unit to avoid state leakage.
+		typedef STPUniqueResource<STPOpenGL::STPuint, std::numeric_limits<STPOpenGL::STPuint>::max(), STPSamplerUnbinder> STPSamplerUnitStateManager;
+
 	private:
 
 		/**
@@ -71,16 +87,14 @@ namespace SuperTerrainPlus::STPRealism {
 		void compareMode(STPOpenGL::STPint) override;
 
 		/**
-		 * @brief Bind a named sampler to a texturing target.
+		 * @brief Bind a named sampler to a texturing target, with automatic binding state management.
+		 * The motivation is sampler states override texture state, causing unwanted state leakage
+		 * if one wishes to use built-in sampler from within the texture directly while the current texture unit has an active sampler.
 		 * @param unit Specifies the index of the texture unit to which the sampler is bound.
+		 * @return The sampler unit state manager.
+		 * This manager will automatically unbind the sampler from this texture unit, based on std::unique_ptr.
 		*/
-		void bind(STPOpenGL::STPuint) const;
-
-		/**
-		 * @brief Unbind a texturing target from a sampler.
-		 * @param unit Specifies the index of the texture unit to which the sampler is unbound.
-		*/
-		static void unbind(STPOpenGL::STPuint);
+		[[nodiscard]] STPSamplerUnitStateManager bindManaged(STPOpenGL::STPuint) const;
 
 	};
 

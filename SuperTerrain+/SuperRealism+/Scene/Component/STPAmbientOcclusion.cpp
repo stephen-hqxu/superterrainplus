@@ -116,20 +116,19 @@ void STPAmbientOcclusion::occlude(
 	//binding
 	depth.bind(0);
 	normal.bind(1);
-	this->GBufferSampler.bind(0);
-	this->GBufferSampler.bind(1);
+	{
+		const STPSampler::STPSamplerUnitStateManager depth_normal_sampler_mgr[2] = {
+			this->GBufferSampler.bindManaged(0),
+			this->GBufferSampler.bindManaged(1)
+		};
+		//we need to clear the old ambient occlusion data
+		//because when we blur it later, we might accidentally read the old data which were culled due to stencil testing
+		this->OcclusionResultContainer.clearScreenBuffer(vec4(1.0f));
+		//capture data into the internal framebuffer
+		this->OcclusionResultContainer.capture();
 
-	//we need to clear the old ambient occlusion data
-	//because when we blur it later, we might accidentally read the old data which were culled due to stencil testing
-	this->OcclusionResultContainer.clearScreenBuffer(vec4(1.0f));
-	//capture data into the internal framebuffer
-	this->OcclusionResultContainer.capture();
-
-	this->OcclusionQuad.drawScreen();
-
-	//clear up for ambient occlusion stage so it won't overwrite state later
-	STPSampler::unbind(0);
-	STPSampler::unbind(1);
+		this->OcclusionQuad.drawScreen();
+	}
 
 	//blur the output to reduce noise
 	if (output_blending) {

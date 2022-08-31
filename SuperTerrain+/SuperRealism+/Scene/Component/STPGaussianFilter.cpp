@@ -154,8 +154,10 @@ void STPGaussianFilter::filter(
 	const STPTexture& depth, const STPTexture& input, STPFrameBuffer& output, bool output_blending) const {
 	//only the input texture data requires sampler
 	//output is an image object
-	this->InputImageSampler.bind(0u);
-	this->InputDepthSampler.bind(1u);
+	const STPSampler::STPSamplerUnitStateManager input_sampler_mgr[2] = {
+		this->InputImageSampler.bindManaged(0u),
+		this->InputDepthSampler.bindManaged(1u)
+	};
 	//clear old intermediate cache because convolutional filter reads data from neighbour pixels
 	this->IntermediateCache.clearScreenBuffer(this->BorderColor);
 
@@ -194,11 +196,6 @@ void STPGaussianFilter::filter(
 		}
 	};
 	this->GaussianQuad.drawScreen(filter_executor);
-
-	/* ------------------------------------------------------------------------------ */
-	//clear up
-	STPSampler::unbind(0u);
-	STPSampler::unbind(1u);
 }
 
 #define FILTER_KERNEL_NAME(VAR) STPGaussianFilter::STPFilterKernel<STPGaussianFilter::STPFilterVariant::VAR>

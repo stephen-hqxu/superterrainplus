@@ -81,12 +81,9 @@ void STPPostProcess::capture() const {
 void STPPostProcess::process() const {
 	//prepare to render
 	this->PostProcessResultContainer.ScreenColor.bind(0);
-	this->ImageSampler.bind(0);
+	const STPSampler::STPSamplerUnitStateManager color_sampler_mgr = this->ImageSampler.bindManaged(0);
 
 	this->PostProcessQuad.drawScreen();
-
-	//must unbind sampler otherwise it will affect texture in other renderer.
-	STPSampler::unbind(0);
 }
 
 #define TONE_MAPPING_NAME(FUNC) STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::FUNC>
