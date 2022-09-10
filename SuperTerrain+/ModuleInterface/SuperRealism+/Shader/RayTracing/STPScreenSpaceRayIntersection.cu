@@ -2,6 +2,7 @@
 
 #include "STPFragmentUtility.cuh"
 #include "STPVectorUtility.cuh"
+#include "STPInstanceIDCoder.cuh"
 
 //OptiX
 #include <optix.h>
@@ -122,15 +123,15 @@ __global__ void __raygen__launchScreenSpaceRay() {
 __global__ void __closesthit__recordPrimitiveIntersection() {
 	const auto* const data = reinterpret_cast<const STPScreenSpaceRayIntersectionData::STPPrimitiveHitData*>(optixGetSbtDataPointer()); 
 	//read primitive vertex data
-	const unsigned int instanceID = optixGetInstanceId(),
-		primitiveIdx = optixGetPrimitiveIndex();
-	const uint3& attributeIdx = data->PrimitiveIndex[instanceID][primitiveIdx];
+	const auto [objectID, instanceID] = STPInstanceIDCoder::decode(optixGetInstanceId());
+	const uint3& attributeIdx = data->PrimitiveIndex[objectID][instanceID][optixGetPrimitiveIndex()];
 	//grab data of each vertex
 	float3 position[3];
 	float2 uv[3];
+	const float* const baseVertex = data->PrimitiveVertex[objectID][instanceID];
 	for (unsigned int i = 0u; i < 3u; i++) {
-		const float* const vertex = data->PrimitiveVertex[instanceID]
-			+ getByIndex(attributeIdx, i) * STPScreenSpaceRayIntersectionData::STPPrimitiveHitData::AttributeStride;
+		const float* const vertex =
+			baseVertex + getByIndex(attributeIdx, i) * STPScreenSpaceRayIntersectionData::STPPrimitiveHitData::AttributeStride;
 		position[i] = make_float3(vertex[0], vertex[1], vertex[2]);
 		uv[i] = make_float2(vertex[3], vertex[4]);
 	}

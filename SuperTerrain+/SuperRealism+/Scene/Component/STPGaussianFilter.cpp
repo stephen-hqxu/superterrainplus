@@ -161,41 +161,38 @@ void STPGaussianFilter::filter(
 	//clear old intermediate cache because convolutional filter reads data from neighbour pixels
 	this->IntermediateCache.clearScreenBuffer(this->BorderColor);
 
-	const STPScreen::STPProgramExecution filter_executor = [&input, &depth, &output, &intermediate_cache = this->IntermediateCache, output_blending]
-		(STPScreen::STPScreenDrawCall draw_call) -> void {
-		GLuint filter_pass;
-		/* ----------------------------- horizontal pass -------------------------------- */
-		//for horizontal pass, read input from user and store output to the first buffer
-		input.bind(0u);
-		depth.bind(1u);
-		intermediate_cache.capture();
+	const STPScreen::STPScreenProgramExecutor perform_gaussian = this->GaussianQuad.drawScreenFromExecutor();
+	GLuint filter_pass;
+	/* ----------------------------- horizontal pass -------------------------------- */
+	//for horizontal pass, read input from user and store output to the first buffer
+	input.bind(0u);
+	depth.bind(1u);
+	this->IntermediateCache.capture();
 
-		//enable horizontal filter subroutine
-		filter_pass = 0u;
-		glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
+	//enable horizontal filter subroutine
+	filter_pass = 0u;
+	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
 
-		draw_call();
+	perform_gaussian();
 
-		/* ------------------------------ vertical pass --------------------------------- */
-		//for vertical pass, read input from the first buffer and output to the user-specified framebuffer
-		intermediate_cache.ScreenColor.bind(0u);
-		output.bind(GL_FRAMEBUFFER);
+	/* ------------------------------ vertical pass --------------------------------- */
+	//for vertical pass, read input from the first buffer and output to the user-specified framebuffer
+	this->IntermediateCache.ScreenColor.bind(0u);
+	output.bind(GL_FRAMEBUFFER);
 
-		//enable vertical filter subroutine
-		filter_pass = 1u;
-		glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
+	//enable vertical filter subroutine
+	filter_pass = 1u;
+	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
 
-		if (output_blending) {
-			glEnable(GL_BLEND);
+	if (output_blending) {
+		glEnable(GL_BLEND);
 
-			draw_call();
+		perform_gaussian();
 
-			glDisable(GL_BLEND);
-		} else {
-			draw_call();
-		}
-	};
-	this->GaussianQuad.drawScreen(filter_executor);
+		glDisable(GL_BLEND);
+	} else {
+		perform_gaussian();
+	}
 }
 
 #define FILTER_KERNEL_NAME(VAR) STPGaussianFilter::STPFilterKernel<STPGaussianFilter::STPFilterVariant::VAR>

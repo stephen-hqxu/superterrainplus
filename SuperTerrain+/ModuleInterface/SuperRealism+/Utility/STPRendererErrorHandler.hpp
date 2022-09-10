@@ -8,7 +8,11 @@
 #ifdef STP_HAS_OPTIX
 #ifndef _STP_RENDERER_ERROR_HANDLER_HPP_
 #define _STP_RENDERER_ERROR_HANDLER_HPP_
+
+#pragma warning(push)
+#pragma warning(disable: 4996)//use strcat_s instead of strcat for security reason, which is not my fault but OptiX's...
 #include <optix_stubs.h>
+#pragma warning(pop)
 //well OptiX is based on CUDA, so we just boil it down to CUDA error.
 #include <SuperTerrain+/Exception/STPCUDAError.h>
 

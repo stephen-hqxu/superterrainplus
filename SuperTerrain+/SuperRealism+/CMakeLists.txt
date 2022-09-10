@@ -1,4 +1,5 @@
 set(STP_REALISM_ENGINE_SOURCE
+STPAsyncAccelBuilder.cpp
 STPCamera.cpp
 STPDebugCallback.cpp
 STPExtendedScenePipeline.cpp

@@ -4,7 +4,8 @@
 
 #ifndef __CUDACC_RTC__
 //CUDA
-#include <cuda_runtime.h>
+#include <texture_types.h>
+#include <surface_types.h>
 #endif
 //OptiX
 #include <optix_types.h>
@@ -53,12 +54,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 		OptixTraversableHandle Handle;
 
-		//ray generation
-		struct STPLaunchedRayData {
-		public:
-
-		};
-
 		//closest hit
 		struct STPPrimitiveHitData {
 		public:
@@ -66,19 +61,14 @@ namespace SuperTerrainPlus::STPRealism {
 			//stride of vertex buffer
 			constexpr static unsigned int AttributeStride = 5u;
 
-			//Primitive geometry data.
-			//Each primitive is located by their instance ID.
-			//Index and vertex both use the same index.
-			const uint3** PrimitiveIndex;
 			//For vertex, it is required to have the following attribute structure, and tightly packed:
 			//vec3: position, vec2 UV.
-			const float** PrimitiveVertex;
-
-		};
-
-		//miss
-		struct STPEnvironmentHitData {
-		public:
+			const float* const* const* PrimitiveVertex;
+			//Primitive geometry data.
+			//Each object is assigned with an object ID, which can be used as an index to the instance array.
+			//Each instance contains a number of primitives, each is located by their instance ID.
+			//Index and vertex both use the same index.
+			const uint3* const* const* PrimitiveIndex;
 
 		};
 

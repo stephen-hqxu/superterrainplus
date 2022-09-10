@@ -9,33 +9,30 @@
 #include <optix_stack_size.h>
 #include <optix_function_table_definition.h>
 
-#pragma warning(push)
-#pragma warning(disable: 4996)//use strcat_s instead of strcat for security reason, which is not my fault but OptiX's...
 //Error
 #include <SuperRealism+/Utility/STPRendererErrorHandler.hpp>
-#pragma warning(pop)
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperRealism+/Utility/STPLogHandler.hpp>
-//Engine
+//Runtime Compiler
 #include <SuperTerrain+/GPGPU/STPDeviceRuntimeBinary.h>
-#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 //Shader
 #include <SuperRealism+/Shader/RayTracing/STPScreenSpaceRayIntersection.cuh>
 
-//System
+//Container
 #include <string>
 #include <array>
 #include <tuple>
 
 using std::array;
+using std::vector;
 using std::tuple;
 using std::string;
 using std::string_view;
+
 using std::to_string;
-using std::make_unique;
-using std::remove_pointer_t;
-using std::unique_ptr;
+
+using SuperTerrainPlus::STPUniqueResource;
 
 using namespace SuperTerrainPlus::STPRealism;
 
@@ -57,6 +54,7 @@ inline static void loadExtendedShaderOption(unsigned int arch, SuperTerrainPlus:
 		["-I " + string(SuperTerrainPlus::STPCoreInfo::CUDAInclude)];
 }
 
+#define STP_OPTIX_SBT_HEADER_MEMBER __align__(OPTIX_SBT_RECORD_ALIGNMENT) unsigned char Header[OPTIX_SBT_RECORD_HEADER_SIZE]
 /**
  * @brief The base shader binding record for packing.
  * @tparam T The data section of the shader record.
@@ -65,10 +63,30 @@ template<class T>
 struct STPSbtRecord {
 public:
 
-	__align__(OPTIX_SBT_RECORD_ALIGNMENT) char Header[OPTIX_SBT_RECORD_HEADER_SIZE];
-	T Data;
+	using DataType = T;
+
+	STP_OPTIX_SBT_HEADER_MEMBER;
+	DataType Data;
+
+	/**
+	 * @brief Check to make sure the data field has no extra padding,
+	 * to ensure `Header* + (Header Size) = Data*`.
+	 * @return True if it satisfies the alignment requirement.
+	*/
+	inline constexpr static bool checkDataOffset() {
+		return offsetof(STPSbtRecord, Data) == OPTIX_SBT_RECORD_HEADER_SIZE;
+	}
 
 };
+//A specialisation denoting no data member.
+template<>
+struct STPSbtRecord<void> {
+public:
+
+	STP_OPTIX_SBT_HEADER_MEMBER;
+
+};
+#undef STP_OPTIX_SBT_HEADER_MEMBER
 
 /**
  * @brief STPModuleDestroyer destroys OptiX module.
@@ -81,7 +99,7 @@ public:
 	}
 
 };
-using STPSmartModule = unique_ptr<remove_pointer_t<OptixModule>, STPModuleDestroyer>;
+using STPSmartModule = STPUniqueResource<OptixModule, nullptr, STPModuleDestroyer>;
 /**
  * @brief STPProgramGroupDestroyer destroys OptiX program group.
 */
@@ -93,7 +111,7 @@ public:
 	}
 
 };
-using STPSmartProgramGroup = unique_ptr<remove_pointer_t<OptixProgramGroup>, STPProgramGroupDestroyer>;
+using STPSmartProgramGroup = STPUniqueResource<OptixProgramGroup, nullptr, STPProgramGroupDestroyer>;
 /**
  * @brief STPPipelineDestroyer destroys OptiX pipeline.
 */
@@ -105,11 +123,43 @@ public:
 	}
 
 };
-using STPSmartPipeline = unique_ptr<remove_pointer_t<OptixPipeline>, STPPipelineDestroyer>;
+using STPSmartPipeline = STPUniqueResource<OptixPipeline, nullptr, STPPipelineDestroyer>;
 
 void STPExtendedScenePipeline::STPDeviceContextDestroyer::operator()(OptixDeviceContext context) const {
 	STP_CHECK_OPTIX(optixDeviceContextDestroy(context));
 }
+
+class STPExtendedScenePipeline::STPMemoryManager {
+private:
+
+	const STPExtendedScenePipeline& Master;
+
+	//A separate stream from the renderer, so that rendering and AS build happens asynchronously.
+	//Due to use of double buffering, rendering can still go through using front buffer while building in back buffer.
+	STPSmartDeviceObject::STPStream ASBuildStream;
+	//Record all traceable objects that requested for geometry update.
+	//Once updates are finished, this record will be cleared.
+	vector<STPExtendedSceneObject::STPTraceable::STPGeometryUpdateInformation> PendingGeometryUpdate;
+
+public:
+
+	/**
+	 * @brief Initialise a STPMemoryManager instance.
+	 * @param master The pointer to the master extended scene pipeline.
+	*/
+	STPMemoryManager(const STPExtendedScenePipeline& master);
+
+	STPMemoryManager(const STPMemoryManager&) = delete;
+
+	STPMemoryManager(STPMemoryManager&&) = delete;
+
+	STPMemoryManager& operator=(const STPMemoryManager&) = delete;
+
+	STPMemoryManager& operator=(STPMemoryManager&&) = delete;
+
+	~STPMemoryManager() = default;
+
+};
 
 class STPExtendedScenePipeline::STPScreenSpaceRayIntersection {
 private:
@@ -117,11 +167,14 @@ private:
 	constexpr static auto SSRIShaderFilename =
 		STPFile::generateFilename(STPRealismInfo::ShaderPath, "/RayTracing/STPScreenSpaceRayIntersection", ".cu");
 	//shader record type
-	typedef STPSbtRecord<STPScreenSpaceRayIntersectionData::STPLaunchedRayData> STPLaunchedRayRecord;
+	typedef STPSbtRecord<void> STPLaunchedRayRecord;
 	typedef STPSbtRecord<STPScreenSpaceRayIntersectionData::STPPrimitiveHitData> STPPrimitiveHitRecord;
-	typedef STPSbtRecord<STPScreenSpaceRayIntersectionData::STPEnvironmentHitData> STPEnvironmentHitRecord;
+	typedef STPSbtRecord<void> STPEnvironmentHitRecord;
 
-	STPExtendedScenePipeline& Master;
+	static_assert(STPPrimitiveHitRecord::checkDataOffset(),
+		"SSRI shader binding table data has disallowed padding after the header.");
+
+	const STPExtendedScenePipeline& Master;
 
 	//the full pipeline containing the shader for ray intersection testing
 	STPSmartPipeline IntersectionPipeline;
@@ -138,10 +191,10 @@ public:
 
 	/**
 	 * @brief Initialise the STPScreenSpaceRayIntersection instance.
-	 * @param master The pointer to the master extended scene pipeline
+	 * @param master The pointer to the master extended scene pipeline.
 	 * @param arch Specifies the CUDA device architecture for code generation.
 	*/
-	STPScreenSpaceRayIntersection(STPExtendedScenePipeline& master, unsigned int arch) : Master(master), IntersectionShader{ } {
+	STPScreenSpaceRayIntersection(const STPExtendedScenePipeline& master, unsigned int arch) : Master(master), IntersectionShader{ } {
 		/* ----------------------------------- compile into PTX --------------------------------- */
 		STPDeviceRuntimeBinary::STPSourceInformation ssri_info;
 		loadExtendedShaderOption(arch, ssri_info);
@@ -170,7 +223,8 @@ public:
 
 			ssri_pipeline_option.numPayloadValues = 6;
 			ssri_pipeline_option.pipelineLaunchParamsVariableName = ssri_expr.at("SSRIData").c_str();
-			ssri_pipeline_option.usesPrimitiveTypeFlags = OPTIX_PRIMITIVE_TYPE_FLAGS_TRIANGLE;
+			ssri_pipeline_option.usesPrimitiveTypeFlags =
+				static_cast<decltype(OptixPipelineCompileOptions::usesPrimitiveTypeFlags)>(OPTIX_PRIMITIVE_TYPE_FLAGS_TRIANGLE);
 
 			const auto [ssri_ptx, ssri_ptxSize] = STPDeviceRuntimeBinary::readPTX(ssri_program);
 
@@ -210,7 +264,7 @@ public:
 			STP_CHECK_OPTIX(optixProgramGroupCreate(this->Master.Context.get(), ssri_pg_desc, 3u, &ssri_pg_option,
 				log, &logSize, ssri_program_group.data()));
 		}
-		const array<STPSmartProgramGroup, 3ull> ssri_pg_manager = {
+		const array<STPSmartProgramGroup, ssri_program_group.size()> ssri_pg_manager = {
 			STPSmartProgramGroup(ssri_program_group[0]),
 			STPSmartProgramGroup(ssri_program_group[1]),
 			STPSmartProgramGroup(ssri_program_group[2])
@@ -225,8 +279,8 @@ public:
 			ssri_pipeline_link_option.maxTraceDepth = 1u;
 			ssri_pipeline_link_option.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 
-			STP_CHECK_OPTIX(optixPipelineCreate(this->Master.Context.get(), &ssri_pipeline_option,
-				&ssri_pipeline_link_option, ssri_program_group.data(), 3u, log, &logSize, &ssri_pipeline));
+			STP_CHECK_OPTIX(optixPipelineCreate(this->Master.Context.get(), &ssri_pipeline_option, &ssri_pipeline_link_option,
+				ssri_program_group.data(), static_cast<unsigned int>(ssri_program_group.size()), log, &logSize, &ssri_pipeline));
 			//store the pipeline, all previously used data can be deleted, and will be done automatically
 			this->IntersectionPipeline = STPSmartPipeline(ssri_pipeline);
 
@@ -281,6 +335,19 @@ public:
 	STPScreenSpaceRayIntersection& operator=(STPScreenSpaceRayIntersection&&) = delete;
 
 	~STPScreenSpaceRayIntersection() = default;
+
+	/**
+	 * @brief Update the pointers to array of primitive data.
+	 * @param geometry The geometry object array.
+	 * @param index The index object array.
+	*/
+	void updatePrimitiveData(const float* const* const* geometry, const uint3* const* const* index) {
+		const STPPrimitiveHitRecord::DataType primitiveData = { geometry, index };
+		STPPrimitiveHitRecord* const primitiveSbt = std::get<1>(this->IntersectionRecord).get();
+
+		STP_CHECK_CUDA(cudaMemcpyAsync(primitiveSbt + OPTIX_SBT_RECORD_HEADER_SIZE, &primitiveData, sizeof(primitiveData),
+			cudaMemcpyHostToDevice, this->Master.RendererStream.get()));
+	}
 
 };
 

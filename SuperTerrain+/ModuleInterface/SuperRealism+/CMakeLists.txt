@@ -65,6 +65,7 @@ Utility/Camera/STPCamera.h
 Utility/Camera/STPOrthographicCamera.h
 Utility/Camera/STPPerspectiveCamera.h
 # /Utility
+Utility/STPAsyncAccelBuilder.h
 Utility/STPDebugCallback.h
 Utility/STPIndirectCommand.hpp
 Utility/STPLogHandler.hpp

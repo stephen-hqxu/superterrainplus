@@ -132,6 +132,19 @@ void STPScreen::STPScreenVertexBuffer::bind() const {
 	this->ScreenRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
 }
 
+STPScreen::STPScreenProgramExecutor::STPScreenProgramExecutor(const STPScreen& screen) {
+	screen.ScreenVertex->bind();
+	screen.OffScreenRenderer.use();
+}
+
+STPScreen::STPScreenProgramExecutor::~STPScreenProgramExecutor() {
+	STPProgramManager::unuse();
+}
+
+void STPScreen::STPScreenProgramExecutor::operator()() const {
+	glDrawArraysIndirect(GL_TRIANGLE_FAN, nullptr);
+}
+
 void STPScreen::initScreenRenderer(const STPShaderManager& screen_fs, const STPScreenInitialiser& screen_init) {
 	if (screen_fs.Type != GL_FRAGMENT_SHADER) {
 		throw STPException::STPInvalidArgument("The shader initialised for off-screen rendering must be a fragment shader");
@@ -148,24 +161,11 @@ void STPScreen::initScreenRenderer(const STPShaderManager& screen_fs, const STPS
 		.finalise();
 }
 
-inline static void drawScreenCall() {
-	glDrawArraysIndirect(GL_TRIANGLE_FAN, nullptr);
-}
-
 void STPScreen::drawScreen() const {
-	this->ScreenVertex->bind();
-	this->OffScreenRenderer.use();
-
-	drawScreenCall();
-
-	STPProgramManager::unuse();
+	const STPScreenProgramExecutor executor = this->drawScreenFromExecutor();
+	executor();
 }
 
-void STPScreen::drawScreen(const STPProgramExecution& execution) const {
-	this->ScreenVertex->bind();
-	this->OffScreenRenderer.use();
-
-	execution(&drawScreenCall);
-
-	STPProgramManager::unuse();
+STPScreen::STPScreenProgramExecutor STPScreen::drawScreenFromExecutor() const {
+	return STPScreenProgramExecutor(*this);
 }

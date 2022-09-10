@@ -209,15 +209,38 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		//The OpenGL API call to draw the screen quad
-		typedef void (*STPScreenDrawCall)(void);
 		/**
-		 * @brief STPProgramExecution is a smart guard over a function that uses the screen drawing program.
+		 * @brief STPScreenProgramExecutor is a smart guard over a function that uses the screen drawing program.
 		 * It allows the function to issue multiple draw call from the same program without re-using the program repetitively.
-		 * At the end of execution states are cleared up automatically.
-		 * @param draw_call The function to issue draw command.
+		 * At the end of execution states are cleared up automatically to avoid state leakage.
 		*/
-		typedef std::function<void(STPScreenDrawCall)> STPProgramExecution;
+		struct STPScreenProgramExecutor {
+		public:
+
+			/**
+			 * @brief Start a screen program rendering execution.
+			 * The screen draw program is made active automatically and will be deactivated when the current instance is destroyed.
+			 * Changing any indirect buffer, vertex array and program state while a program executor is active will lead to undefined behaviour.
+			 * @param screen The screen program to be rendered.
+			*/
+			STPScreenProgramExecutor(const STPScreen&);
+
+			STPScreenProgramExecutor(const STPScreenProgramExecutor&) = delete;
+
+			STPScreenProgramExecutor(STPScreenProgramExecutor&&) = delete;
+
+			STPScreenProgramExecutor& operator=(const STPScreenProgramExecutor&) = delete;
+
+			STPScreenProgramExecutor& operator=(STPScreenProgramExecutor&&) = delete;
+
+			~STPScreenProgramExecutor();
+
+			/**
+			 * @brief Draw the screen.
+			*/
+			void operator()() const;
+
+		};
 
 		STPProgramManager OffScreenRenderer;
 
@@ -253,11 +276,12 @@ namespace SuperTerrainPlus::STPRealism {
 		void drawScreen() const;
 
 		/**
-		 * @brief Draw the screen from a function.
-		 * Buffer and program states are bound before invoking the function, and cleared up automatically at the end.
-		 * @param execution The function that contains the drawing sequence.
+		 * @brief Draw the screen using a screen draw executor.
+		 * Buffer and program states are bound upon the executor is returned, and cleared up automatically at the end.
+		 * This allows issuing multiple draw commands without reactivating the states repetitively.
+		 * @return A screen draw executor.
 		*/
-		void drawScreen(const STPProgramExecution&) const;
+		[[nodiscard]] STPScreenProgramExecutor drawScreenFromExecutor() const;
 
 	};
 

@@ -112,7 +112,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @brief Check if the current environment object is visible based on its current visibility value.
 			 * @return True if the object has visibility greater than zero, false otherwise.
 			*/
-			bool isEnvironmentVisible() const {
+			bool isEnvironmentVisible() const noexcept {
 				return this->EnvironmentVisibility > 0.0f;
 			}
 

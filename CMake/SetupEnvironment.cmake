@@ -4,7 +4,7 @@ find_package(glm REQUIRED CONFIG)
 find_package(OpenGL REQUIRED)
 find_package(SQLite3 3.30 REQUIRED)
 find_package(CUDAToolkit 11.3 REQUIRED)
-find_package(OptiX 7 REQUIRED)
+find_package(OptiX 7.3 REQUIRED)
 
 # setup default compiler options
 set(CMAKE_CXX_STANDARD 17) # -std=c++17

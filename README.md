@@ -11,7 +11,7 @@
 <p align="center">
 	<img src="https://img.shields.io/badge/C%2B%2B_17-00599C?style=flat&logo=c%2B%2B&logoColor=white" />
 	<img src="https://img.shields.io/badge/CUDA_11.3-76B900?style=flat&logo=nvidia&logoColor=white" />
-	<img src="https://img.shields.io/badge/OptiX_7-76B900?style=flat&logo=nvidia&logoColor=white" />
+	<img src="https://img.shields.io/badge/OptiX_7.3-76B900?style=flat&logo=nvidia&logoColor=white" />
 	<img src="https://img.shields.io/badge/OpenGL_4.6-FFFFFF?style=flat&logo=opengl" />
 	<img src="https://img.shields.io/badge/CMake_3.18-064F8C?style=flat&logo=cmake&logoColor=white" />
 </p>
@@ -87,7 +87,10 @@ Procedural technique is one of the most popular topics in computer graphics and 
   - [x] Fresnel effect
   - [ ] Caustics
   - [ ] Underwater crepuscular rays
-- [ ] Real-time rasterisation-ray tracing hybrid global illumination
+- [ ] Real-time rasterisation-ray tracing hybrid rendering of...
+  - [ ] Reflection
+  - [ ] Refraction
+  - [ ] Caustics
 - [ ] Procedural weather effect
 
 ### Optimisation technique
@@ -164,9 +167,11 @@ Note that `::` denotes a CMake dependent option. Pattern *A::B* default to *valu
 
 - GPU
 
-![Nvidia GPU Requirement](https://img.shields.io/badge/NVIDIA-GTX_1660-76B900?style=flat&logo=nvidia&logoColor=white)
+*SuperTerrain+* is currently exclusive to Nvidia GPUs. Ray tracing is powered by Nvidia OptiX; unlike DXR or VKR, it does not require a RTX board to run, but we still recommend using such graphics card for the best performance.
 
-> *SuperTerrain+* currently relies heavily on CUDA and GL extensions exclusive to Nvidia GPUs.
+| Legacy | Ray Tracing |
+| ------ | ----------- |
+| ![Nvidia GPU Requirement Legacy](https://img.shields.io/badge/NVIDIA-GTX_1660-76B900?style=flat&logo=nvidia&logoColor=white) | ![Nvidia GPU Requirement Ray Tracing](https://img.shields.io/badge/NVIDIA-RTX_2060-76B900?style=flat&logo=nvidia&logoColor=white) |
 
 - OS
 
@@ -174,6 +179,8 @@ Note that `::` denotes a CMake dependent option. Pattern *A::B* default to *valu
 ![OS Windows](https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white)
 
 #### OpenGL extension requirement
+
+This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview) or [online extension database](https://opengl.gpuinfo.org/).
 
 - OpenGL 4.6 core profile
 - [GL_ARB_bindless_texture](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_bindless_texture.txt)
@@ -189,8 +196,6 @@ The following extensions are not required but will be made used by the engine au
 - ~~[GL_NV_primitive_shading_rate](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_primitive_shading_rate.txt)~~
 - [GL_NV_representative_fragment_test](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_representative_fragment_test.txt)
 - ~~[GL_NV_shading_rate_image](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shading_rate_image.txt)~~
-
-> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview) or [online extension database](https://opengl.gpuinfo.org/).
 
 ### :gear: Build Instruction
 

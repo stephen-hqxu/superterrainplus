@@ -764,7 +764,7 @@ public:
 
 private:
 
-	STPWorldPipeline& Pipeline;
+	cudaStream_t PipelineStream;
 	const STPEnvironment::STPChunkSetting& ChunkSetting;
 
 	array<STPMemoryBlock, 2ull> MemoryBuffer;
@@ -861,7 +861,7 @@ public:
 	 * @param pipeline The pointer to the dependent world pipeline.
 	*/
 	STPMemoryManager(STPWorldPipeline& pipeline) :
-		Pipeline(pipeline), ChunkSetting(this->Pipeline.ChunkSetting),
+		PipelineStream(pipeline.BufferStream.get()), ChunkSetting(pipeline.ChunkSetting),
 		MemoryBuffer{ *this, *this }, isBackBufferMapped(false),
 		Worker(this->calcChunkCacheSize()),
 		FrontBuffer(&this->MemoryBuffer[0]), BackBuffer(&this->MemoryBuffer[1]) {
@@ -875,18 +875,17 @@ public:
 		this->MapClearBuffer =
 			STPSmartDeviceMemory::makePitchedDevice<unsigned char[]>(clearBuffer_size.x, clearBuffer_size.y);
 
-		const cudaStream_t stream_main = this->Pipeline.BufferStream.get();
 		//clear the `clear` buffer
 		STP_CHECK_CUDA(cudaMemset2DAsync(this->MapClearBuffer.get(), this->MapClearBuffer.Pitch, 0x80u,
-			clearBuffer_size.x, clearBuffer_size.y, stream_main));
+			clearBuffer_size.x, clearBuffer_size.y, this->PipelineStream));
 
 		//initialise pixel value in the texture rather than leaving them as undefined.
 		for (auto& block : this->MemoryBuffer) {
-			const auto& mapped = block.mapTerrainMap(stream_main);
+			const auto& mapped = block.mapTerrainMap(this->PipelineStream);
 
 			//clear every chunk in parallel
 			//make sure workers do not start until main stream has mapped the texture
-			this->Worker.workersWaitMain(stream_main);
+			this->Worker.workersWaitMain(this->PipelineStream);
 			for (unsigned int y = 0u; y < setting.RenderedChunk.y; y++) {
 				for (unsigned int x = 0u; x < setting.RenderedChunk.x; x++) {
 					const uvec2 localMapOffset = uvec2(x, y) * setting.MapSize;
@@ -898,11 +897,11 @@ public:
 				}
 			}
 			//also ensure main stream does not unmap the texture while workers are working hard
-			this->Worker.mainWaitsWorkers(stream_main);
-			block.unmapTerrainmap(stream_main);
+			this->Worker.mainWaitsWorkers(this->PipelineStream);
+			block.unmapTerrainmap(this->PipelineStream);
 		}
 		//clean up
-		STP_CHECK_CUDA(cudaStreamSynchronize(stream_main));
+		STP_CHECK_CUDA(cudaStreamSynchronize(this->PipelineStream));
 		this->correctResourceMappingFlag();
 
 		this->ComputingChunk.reserve(chunkCount);
@@ -934,7 +933,7 @@ public:
 		if (this->isBackBufferMapped) {
 			return;
 		}
-		this->MappedBackBuffer = this->BackBuffer->mapTerrainMap(this->Pipeline.BufferStream.get());
+		this->MappedBackBuffer = this->BackBuffer->mapTerrainMap(this->PipelineStream);
 		this->isBackBufferMapped = true;
 	}
 
@@ -947,7 +946,7 @@ public:
 		if (!this->isBackBufferMapped) {
 			return;
 		}
-		this->BackBuffer->unmapTerrainmap(this->Pipeline.BufferStream.get());
+		this->BackBuffer->unmapTerrainmap(this->PipelineStream);
 		this->isBackBufferMapped = false;
 	}
 
@@ -976,15 +975,14 @@ public:
 		const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
 		const uvec2 mapDim = chunk_setting.MapSize;
 
-		cudaStream_t stream_main = this->Pipeline.BufferStream.get();
 		//map the front buffer as read-only
 		STPMemoryBlock* frontBuffer_w = const_cast<STPMemoryBlock*>(this->FrontBuffer);
-		const auto frontBuffer_ptr = frontBuffer_w->mapTerrainMap(stream_main);
+		const auto frontBuffer_ptr = frontBuffer_w->mapTerrainMap(this->PipelineStream);
 
 		const auto& front_local_dict = this->FrontBuffer->LocalChunkDictionary;
 		//here we perform an optimisation: reuse chunk that has been rendered previously from the front buffer
 		//make sure memory is available before any worker can begin
-		this->Worker.workersWaitMain(stream_main);
+		this->Worker.workersWaitMain(this->PipelineStream);
 		for (auto& [chunkPos, loaded] : this->BackBuffer->LocalChunkRecord) {
 			const cudaStream_t stream_worker = this->Worker.nextWorker();
 			//checking the new back buffer chunk, is there any old chunk has the same world coordinate as the new chunk?
@@ -1033,9 +1031,9 @@ public:
 			}
 		}
 		//make sure workers on the memory are finished before releasing
-		this->Worker.mainWaitsWorkers(stream_main);
+		this->Worker.mainWaitsWorkers(this->PipelineStream);
 		//unmap the front buffer
-		frontBuffer_w->unmapTerrainmap(stream_main);
+		frontBuffer_w->unmapTerrainmap(this->PipelineStream);
 
 		//record indices of chunks that need to be computed
 		const auto& backBuf_rec = this->BackBuffer->LocalChunkRecord;
