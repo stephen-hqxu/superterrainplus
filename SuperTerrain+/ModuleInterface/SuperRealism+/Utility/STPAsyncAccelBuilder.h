@@ -12,13 +12,13 @@
 
 //System
 #include <utility>
-#include <atomic>
 
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
 	 * @brief STPAsyncAccelBuilder is a simple utility for asynchronous acceleration structure building for ray tracing
-	 * with a built-in support for internal buffering.
+	 * with a built-in support for internal double buffering.
+	 * Multiple instances of such builder can be used together to construct a multi-level hierarchy.
 	*/
 	class STP_REALISM_API STPAsyncAccelBuilder {
 	private:
@@ -31,16 +31,54 @@ namespace SuperTerrainPlus::STPRealism {
 		const STPAccelStructBuffer* FrontBuffer;
 		STPAccelStructBuffer* BackBuffer;
 
-		//Status flags for acceleration structure build operation.
-		struct STPBuildStatus {
+	public:
+
+		/**
+		 * @brief Holds parameter set for acceleration structure build operation.
+		*/
+		struct STPBuildInformation {
 		public:
 
-			//Indicate if there is a build operation in progress, and has the last finished build operation swapped.
-			std::atomic_bool IsBackBufferBusy, HasPendingSwap;
+			//The device context where the build happens.
+			OptixDeviceContext Context;
+			//The stream where the build and memory operation happens.
+			cudaStream_t Stream;
+			//Accel options.
+			const OptixAccelBuildOptions* AccelOptions;
+			//An array of OptixBuildInput objects.
+			const OptixBuildInput* BuildInputs;
+			//Must be >= 1 for GAS, and == 1 for IAS.
+			unsigned int numBuildInputs;
+			//A temporary buffer.
+			//The memory of temporary buffer should be managed by the user,
+			//to allow maximum effectiveness and efficiency when building multiple level of AS by sharing the temporary buffer in the same stream.
+			CUdeviceptr TempBuffer;
+			//In bytes, the total size of the temporary buffer.
+			size_t TempBufferSize;
+			//In bytes, the total size of the output buffer.
+			//This memory is managed internally using the double buffering mechanism.
+			size_t OutputBufferSize;
+			//Types of requested properties and output buffers.
+			const OptixAccelEmitDesc* EmittedProperties = nullptr;
+			//Number of post-build properties to populate (may be zero).
+			unsigned int numEmittedProperties = 0u;
 
-		} AccelStatusFlag;
+		};
 
-	public:
+		/**
+		 * @brief Holds parameter set for acceleration structure compact operation.
+		*/
+		struct STPCompactInformation {
+		public:
+
+			//The device context where the compact happens.
+			OptixDeviceContext Context;
+			//The stream where the build and memory operation happens.
+			cudaStream_t Stream;
+			//The size of output buffer in byte, should be queried from emitted properties during AS build.
+			size_t OutputBufferSize;
+
+		};
 
 		/**
 		 * @brief Initialise an instance of asynchronous AS builder.
@@ -60,38 +98,37 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Start a build operation in the back buffer.
-		 * Build operation will not happen if there is a pending build going on in the back buffer.
-		 * @param context The device context where the build happens.
-		 * @param stream The stream where the build and memory operation happens.
+		 * It only submits build event to the supplied stream and does not do any synchronisation.
+		 * @param buildInfo Information about the build.
 		 * @param memPool The memory pool from which memory is coming from and returned to.
-		 * @param accelOptions Accel options.
-		 * @param buildInputs An array of OptixBuildInput objects.
-		 * @param numBuildInputs Must be >= 1 for GAS, and == 1 for IAS.
-		 * @param tempBuffer A temporary buffer.
-		 * The memory of temporary buffer should be managed by the user,
-		 * to allow maximum effectiveness and efficiency when building multiple level of AS by sharing the temporary buffer in the same stream.
-		 * @param tempBufferSize In bytes, the total size of the temporary buffer.
-		 * @param outputBufferSize In bytes, the total size of the output buffer.
-		 * This memory is managed internally using the double buffering mechanism.
-		 * @param emittedProperties Types of requested properties and output buffers.
-		 * @param numEmittedProperties number of post-build properties to populate (may be zero).
-		 * @return A status indicating if build requested has been submitted.
+		 * @return The traversable handle returned from the build query, whose memory is managed automatically.
+		 * This is also the handle in the back buffer.
 		*/
-		bool build(OptixDeviceContext, cudaStream_t, cudaMemPool_t, const OptixAccelBuildOptions&,
-			const OptixBuildInput*, unsigned int, CUdeviceptr, size_t, size_t, const OptixAccelEmitDesc* = nullptr, unsigned int = 0u);
+		OptixTraversableHandle build(const STPBuildInformation&, cudaMemPool_t);
+
+		/**
+		 * @brief Start a compact operation in the back buffer.
+		 * It will operate on the back buffer; since it does not do any implicit synchronisation,
+		 * it is strongly advised to put build and compact operation of the same AS in the same stream.
+		 * For the best performance as advised by OptiX programming guide, it is a good idea to perform build and compact in batch,
+		 * such as making these operations of same-level AS parallel.
+		 * @param compactInfo Information about the compaction.
+		 * @param memPool The memory pool from which memory is coming from and returned to.
+		 * @return The traversable handle returned from the compact query, this will replaced the old handle in the back buffer.
+		*/
+		OptixTraversableHandle compact(const STPCompactInformation&, cudaMemPool_t);
 
 		/**
 		 * @brief Swap the front and back acceleration structure memory.
-		 * Swap will happen only when back buffer is not busy, and there is a recently finished and un-swapped buffer.
-		 * @return A status flag indicating if swap operation is done.
+		 * This function does NOT check if the recent build event has finished.
 		*/
-		bool swapHandle();
+		void swapHandle() noexcept;
 
 		/**
 		 * @brief Get the traversable handle of the acceleration structure in the front buffer.
 		 * @return The traversable handle. If front buffer is not available, null is returned.
 		*/
-		OptixTraversableHandle getTraversableHandle() const;
+		OptixTraversableHandle getTraversableHandle() const noexcept;
 
 	};
 

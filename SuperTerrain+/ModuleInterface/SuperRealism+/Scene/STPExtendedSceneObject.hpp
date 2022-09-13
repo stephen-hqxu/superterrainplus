@@ -2,6 +2,8 @@
 #ifndef _STP_EXTENDED_SCENE_OBJECT_HPP_
 #define _STP_EXTENDED_SCENE_OBJECT_HPP_
 
+#include <SuperTerrain+/Utility/STPThreadPool.h>
+
 //OptiX
 #include <optix_types.h>
 #include <vector_types.h>
@@ -43,13 +45,15 @@ namespace SuperTerrainPlus::STPRealism {
 				STPTraceable* SourceTraceable;
 				//The new IAS containing a traversable handle pointing to the newly updated child AS.
 				OptixInstance Instance;
-				//- The new geometry from which is traversable handle is built from.
-				//- Obviously, this pointer should be accessible from device.
-				//- A handle may contain many geometries and instances, each instance should be assigned with an instance ID
-				//  using which to locate each instance; each instance contains a lot of vertex data.
-				//- Currently only fixed vertex format is supported, first 3 floats are used as position and followed by 2 floats of texture coordinate;
-				//  texture coordinate is required to be in range of [0.0f, 1.0f].
-				//- A geometry that is not used to build the traversable handle as provided will result in UB.
+				/**
+				 * @brief - The new geometry from which is traversable handle is built from.
+				 * - Obviously, this pointer should be accessible from device.
+				 * - A handle may contain many geometries and instances, each instance should be assigned with an instance ID
+				 *   using which to locate each instance; each instance contains a lot of vertex data.
+				 * - Currently only fixed vertex format is supported, first 3 floats are used as position and followed by 2 floats of texture coordinate;
+				 *   texture coordinate is required to be in range of [0.0f, 1.0f].
+				 * - A geometry that is not used to build the traversable handle as provided will result in UB.
+				*/
 				const float* const* PrimitiveGeometry;
 				//The new geometry index, holds the same requirement as the primitive geometry.
 				const uint3* const* PrimitiveIndex;
@@ -58,7 +62,7 @@ namespace SuperTerrainPlus::STPRealism {
 			/**
 			 * @brief Notify the rendering pipeline about an update to the geometry for this traceable object.
 			 * The master rendering pipeline will then update the memory with the new information,
-			 * this operation takes time so it is fully asynchronous.
+			 * this operation takes time so it is fully asynchronous thus it is safe to be called from a thread other than the main rendering thread.
 			 * The object is responsible for managing the memory for all memories passed.
 			 * Until swapBuffer() is called, all data in the memory are not allowed to be changed, doing so will result in race condition;
 			 * this function should not be called again before this time either, such notification will be ignored.
@@ -66,11 +70,31 @@ namespace SuperTerrainPlus::STPRealism {
 			*/
 			typedef std::function<void(const STPGeometryUpdateInformation&)> STPGeometryUpdateNotifier;
 
+			/**
+			 * @brief Information from the rendering pipeline.
+			*/
+			struct STPSceneInformation {
+			public:
+
+				//The device context from the master scene pipeline.
+				OptixDeviceContext DeviceContext = nullptr;
+
+				/**
+				 * @brief This thread pool is shared with the rendering pipeline.
+				 * The renderer holds the ownership of this, so it guarantees all pending works are finished before it is destroyed.
+				 * This thread pool is intended to be used by the traceable object to issue asynchronous GAS build command.
+				 * The thread pool is null if the current object is not attached to any valid scene pipeline.
+				*/
+				STPThreadPool* GeometryUpdateWorker = nullptr;
+				//Call the function to notify the dependent scene pipeline for the geometry update.
+				//This function is thread safe.
+				STPGeometryUpdateNotifier NotifyGeometryUpdate;
+
+			};
+
 		protected:
 
-			//Call the function to notify the dependent scene pipeline for the geometry update.
-			//This function is not thread safe.
-			STPGeometryUpdateNotifier NotifyGeometryUpdate;
+			STPSceneInformation SceneInformation;
 
 		public:
 
@@ -84,12 +108,12 @@ namespace SuperTerrainPlus::STPRealism {
 			virtual ~STPTraceable() = default;
 
 			/**
-			 * @brief Set the geometry update notifier from the master rendering pipeline.
-			 * This function is supposed to be called by the scene pipeline upon object is added to rendering queue.
-			 * @param notifier The notifier from the rendering pipeline.
+			 * @brief Set the information regarding the rendering pipeline.
+			 * This function is intended to be called by the scene pipeline upon object is added to the scene graph.
+			 * @param scene_info The information about the scene pipeline.
 			*/
-			void setGeometryUpdateNotifier(STPGeometryUpdateNotifier notifier) noexcept {
-				this->NotifyGeometryUpdate = notifier;
+			void setSceneInformation(STPSceneInformation scene_info) noexcept {
+				this->SceneInformation = scene_info;
 			}
 
 			/**
@@ -98,7 +122,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * Of course, violation of that will give you UB.
 			 * The previous, old front buffer can be safely recycled by the application.
 			*/
-			virtual void swapBuffer() = 0;
+			virtual void swapBuffer() noexcept = 0;
 
 		};
 

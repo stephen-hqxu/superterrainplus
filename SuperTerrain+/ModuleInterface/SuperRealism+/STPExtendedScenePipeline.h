@@ -7,7 +7,6 @@
 //Object
 #include "./Scene/STPExtendedSceneObject.hpp"
 //Memory
-#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceObject.h>
 
 //GLM
@@ -16,9 +15,9 @@
 //OptiX
 #include <optix_types.h>
 
-#include <memory>
-//Container
 #include <vector>
+#include <memory>
+#include <mutex>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -32,6 +31,19 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @see STPScenePipeline
 	*/
 	class STP_REALISM_API STPExtendedScenePipeline {
+	public:
+
+		/**
+		 * @brief STPSceneObjectCapacity controls declared array length for holding scene objects internally.
+		 * This limit is set by user and one should not add objects more than this limit.
+		*/
+		struct STPSceneObjectCapacity {
+		public:
+
+			size_t TraceableObject;
+
+		};
+
 	private:
 
 		/**
@@ -42,12 +54,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 			//All traceable object nodes.
 			std::vector<STPExtendedSceneObject::STPTraceable*> TraceableObjectDatabase;
-			//All stuff below correspond to each traceable object lives in the scene graph.
-			//Such that they all have the same length and same index.
-			//And of course, they are all dynamically sized.
-			STPSmartDeviceMemory::STPStreamedDeviceMemory<OptixInstance[]> TraceableInstanceDatabase;
-			STPSmartDeviceMemory::STPStreamedDeviceMemory<const float* const*[]> TraceablePrimitiveGeometry;
-			STPSmartDeviceMemory::STPStreamedDeviceMemory<const uint3* const*[]> TraceablePrimitiveIndex;
 
 		};
 
@@ -65,8 +71,14 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//The master stream for the ray tracing rendering and all sorts of GPU operations.
 		STPSmartDeviceObject::STPStream RendererStream;
-		//The renderer doesn't need to allocate a lot of memory, so keep release threshold as default zero.
-		STPSmartDeviceObject::STPMemPool RendererMemoryPool;
+		//An event placed at the end of the main rendering command.
+		STPSmartDeviceObject::STPEvent RendererEvent;
+		//A lock to ensure memory used by renderer is not currently updated, and vice versa.
+		//This should be used together with renderer event to ensure both host and device side synchronisation.
+		mutable std::mutex RendererMemoryLock;
+
+		STPSceneObjectCapacity SceneMemoryCurrent;
+		const STPSceneObjectCapacity SceneMemoryLimit;
 
 		STPSceneGraph SceneComponent;
 
@@ -86,7 +98,21 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
-		STPExtendedScenePipeline();
+		/**
+		 * @brief Initialiser for the extended scene pipeline.
+		*/
+		struct STPScenePipelineInitialiser {
+		public:
+
+			//Defines the maximum memory to be allocated for each array to hold those objects.
+			STPSceneObjectCapacity ObjectCapacity;
+			//Specify the target device architecture for device code generation.
+			//The device architecture *<value>* should have the same format as argument supplied to NVRTC compiler "-arch=sm_<value>"
+			unsigned int TargetDeviceArchitecture;
+
+		};
+
+		STPExtendedScenePipeline(const STPScenePipelineInitialiser&);
 
 		STPExtendedScenePipeline(const STPExtendedScenePipeline&) = delete;
 

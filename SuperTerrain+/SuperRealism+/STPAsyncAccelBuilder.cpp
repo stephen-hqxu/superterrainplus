@@ -6,20 +6,18 @@
 #include <optix.h>
 #include <SuperRealism+/Utility/STPRendererErrorHandler.hpp>
 
-using std::memory_order;
-
 using namespace SuperTerrainPlus::STPRealism;
 
 STPAsyncAccelBuilder::STPAsyncAccelBuilder() :
-	AccelStruct{ }, FrontBuffer(AccelStruct), BackBuffer(AccelStruct + 1), AccelStatusFlag { false, false } {
+	AccelStruct{ }, FrontBuffer(AccelStruct), BackBuffer(AccelStruct + 1) {
 
 }
 
-bool STPAsyncAccelBuilder::build(OptixDeviceContext context, cudaStream_t stream, cudaMemPool_t memPool,
-	const OptixAccelBuildOptions& accelOptions, const OptixBuildInput* buildInputs, unsigned int numBuildInputs,
-	CUdeviceptr tempBuffer, size_t tempBufferSize, size_t outputBufferSize, const OptixAccelEmitDesc* emittedProperties,
-	unsigned int numEmittedProperties) {
-	if (accelOptions.operation == OPTIX_BUILD_OPERATION_UPDATE) {
+OptixTraversableHandle STPAsyncAccelBuilder::build(const STPBuildInformation& buildInfo, cudaMemPool_t memPool) {
+	const auto [context, stream, accelOptions, buildInputs, numBuildInputs, tempBuffer, tempBufferSize,
+		outputBufferSize, emittedProperties, numEmittedProperties] = buildInfo;
+
+	if (accelOptions->operation == OPTIX_BUILD_OPERATION_UPDATE) {
 		//In the future if we want to add support for update, since the update operation needs to be done in-place,
 		//we don't need to allocate a memory and can do it directly on the front buffer.
 		//The drawback is this operation needs to be synchronous,
@@ -28,46 +26,43 @@ bool STPAsyncAccelBuilder::build(OptixDeviceContext context, cudaStream_t stream
 		//But update is much faster than build so we are fine.
 		throw STPException::STPUnsupportedFunctionality("The acceleration structure builder utility currently does not work with update operation");
 	}
-	if (this->AccelStatusFlag.IsBackBufferBusy.load(memory_order::memory_order_acquire)) {
-		return false;
-	}
-
 	//allocate memory for back buffer
 	auto& [back_mem, back_handle] = *this->BackBuffer;
 	back_mem = STPSmartDeviceMemory::makeStreamedDevice<unsigned char[]>(memPool, stream, outputBufferSize);
+	
 	//build
-	this->AccelStatusFlag.IsBackBufferBusy.store(true, memory_order::memory_order_release);
-	STP_CHECK_OPTIX(optixAccelBuild(context, stream, &accelOptions, buildInputs, numBuildInputs, tempBuffer,
+	STP_CHECK_OPTIX(optixAccelBuild(context, stream, accelOptions, buildInputs, numBuildInputs, tempBuffer,
 		tempBufferSize, reinterpret_cast<CUdeviceptr>(back_mem.get()), outputBufferSize, &back_handle,
 		emittedProperties, numEmittedProperties));
-
-	//get a callback to notify us when build has finished
-	//this is called from CUDA thread so we want to use atomic
-	static auto notifyBuildComplete = [](void* data) -> void {
-		STPBuildStatus& status = *reinterpret_cast<STPBuildStatus*>(data);
-		status.IsBackBufferBusy.store(false, memory_order::memory_order_release);
-		status.HasPendingSwap.store(true, memory_order::memory_order_release);
-	};
-	STP_CHECK_CUDA(cudaLaunchHostFunc(stream, notifyBuildComplete, &this->AccelStatusFlag));
-
-	return true;
+	return back_handle;
 }
 
-bool STPAsyncAccelBuilder::swapHandle() {
-	if (this->AccelStatusFlag.IsBackBufferBusy.load(memory_order::memory_order_acquire)
-		|| !this->AccelStatusFlag.HasPendingSwap.load(memory_order::memory_order_acquire)) {
-		return false;
-	}
+OptixTraversableHandle STPAsyncAccelBuilder::compact(const STPCompactInformation& compactInfo, cudaMemPool_t memPool) {
+	const auto [context, stream, outputBufferSize] = compactInfo;
 
+	auto& [back_mem, back_handle] = *this->BackBuffer;
+	//allocate spare memory
+	OptixTraversableHandle compactHandle;
+	STPSmartDeviceMemory::STPStreamedDeviceMemory<unsigned char[]> compactMem =
+		STPSmartDeviceMemory::makeStreamedDevice<unsigned char[]>(memPool, stream, outputBufferSize);
+
+	//compact
+	STP_CHECK_OPTIX(optixAccelCompact(context, stream, back_handle, reinterpret_cast<CUdeviceptr>(compactMem.get()), outputBufferSize, &compactHandle));
+	//since everything happens in the same stream, the old back buffer will be freed after compaction is done
+	back_mem = std::move(compactMem);
+	back_handle = compactHandle;
+
+	return back_handle;
+}
+
+void STPAsyncAccelBuilder::swapHandle() noexcept {
 	std::swap(const_cast<STPAccelStructBuffer*&>(this->FrontBuffer), this->BackBuffer);
-	this->AccelStatusFlag.HasPendingSwap.store(false, memory_order::memory_order_release);
 	//return back buffer back to its originated memory pool and reset everything
 	auto& [back_mem, back_handle] = *this->BackBuffer;
 	back_mem.reset();
-	back_handle = 0ull;
-	return true;
+	back_handle = OptixTraversableHandle();
 }
 
-OptixTraversableHandle STPAsyncAccelBuilder::getTraversableHandle() const {
+OptixTraversableHandle STPAsyncAccelBuilder::getTraversableHandle() const noexcept {
 	return this->FrontBuffer->second;
 }
