@@ -25,8 +25,10 @@ However, currently clang-format is still imperfect and cannot fully replicate my
 
 ### Naming convention
 
-- All files, namespaces, structures and classes should have their names prefixed with *STP*, the first character of each word in the name should be capitalised; no symbol other than alphabetical characters should be allowed in their names.
-- Name of member variables should follow the same naming convention as structures and classes but without the *STP* prefix.
+- All files, namespaces, structures and classes should have their names prefixed with *STP*, followed by a Pascal-style name.
+- Name of member variables should follow the same naming convention as above but without the *STP* prefix.
+- Name of functions should use Camel-style.
+- Name of local variable does not matter, but it is recommended to use either Camel-style or Snake-style.
 - All member functions and member variables from within the class should always be called with `this->`. Hence no prefix of *m* or something similar should be added.
 - Include guards should be given a name pattern of `_{FILENAME}_{EXTENSION}_` and capitalised everything. Some examples are:
 
@@ -66,5 +68,12 @@ return value;
 ```
 
 - When working with `switch`, avoid using `break` when it is unnecessary, such as using `return` in all `case`s.
+- Always wrap the body with brace, even when there is only one line.
+
+### Variable usable
+
+- I can safely claim that over 90 precents of integer variables used in this project are unsigned, hence avoid using a signed type if it is not necessary, to avoid superfluous bugs due to overlooked integer promotion. Occasionally you may want to represent something like *an invalid state* with -1, which should be replaced by a max value of the corresponding unsigned type like `std::numeric_limits<unsigned int>::max()`.
+- Always suffix a numeric variable based on their type, like *123u* for unsigned integer and *3.14f* for float. This is also to avoid unintentional integer promotion and generation of double-precision instruction.
+- If applicable, always declare a member function and local variable as `const`; for member variable, do it strategically to allow effective use of copy assignment.
 
 ---

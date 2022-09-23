@@ -85,7 +85,7 @@ __global__ void __raygen__launchScreenSpaceRay() {
 
 	const float2 texCoord = make_float2(idx);
 	//recover fragment values from texture, using un-normalised UV
-	const auto stencil = surf2Dread<unsigned char>(SSRIData.SSStencil, texCoord.x, texCoord.y);
+	const auto stencil = surf2Dread<unsigned char>(SSRIData.SSStencil, texCoord.x * sizeof(unsigned char), texCoord.y);
 	const auto ray_depth = tex2D<float>(SSRIData.SSRayDepth, texCoord.x, texCoord.y);
 	const auto ray_dir =
 		make_float3(tex2D<float4>(SSRIData.SSRayDirection, texCoord.x, texCoord.y)) * 2.0f - 1.0f;
@@ -109,15 +109,15 @@ __global__ void __raygen__launchScreenSpaceRay() {
 		return;
 	}
 	//store stencil result
-	surf2Dwrite(stencil_result | data.PrimitiveID, SSRIData.SSStencil, texCoord.x, texCoord.y);
+	surf2Dwrite(static_cast<unsigned char>(stencil_result | data.PrimitiveID), SSRIData.SSStencil, texCoord.x * sizeof(unsigned char), texCoord.y);
 
 	if (data.PrimitiveID == STPScreenSpaceRayIntersectionData::EnvironmentRayID) {
 		//environment ray has no vertex data
 		return;
 	}
 	const uint2 pixel_uv = make_uint2(data.UV * cuda::std::numeric_limits<unsigned short>::max());
-	surf2Dwrite(make_float4(data.Position, 1.0f), SSRIData.GPosition, texCoord.x, texCoord.y);
-	surf2Dwrite(make_ushort2(pixel_uv.x, pixel_uv.y), SSRIData.GTextureCoordinate, texCoord.x, texCoord.y);
+	surf2Dwrite(make_float4(data.Position, 1.0f), SSRIData.GPosition, texCoord.x * sizeof(float4), texCoord.y);
+	surf2Dwrite(make_ushort2(pixel_uv.x, pixel_uv.y), SSRIData.GTextureCoordinate, texCoord.x * sizeof(ushort2), texCoord.y);
 }
 
 __global__ void __closesthit__recordPrimitiveIntersection() {
@@ -139,7 +139,7 @@ __global__ void __closesthit__recordPrimitiveIntersection() {
 	//vertex interpolation
 	STPSSRIPayload prd;
 	const float2 bary = optixGetTriangleBarycentrics();
-	prd.PrimitiveID = instanceID;
+	prd.PrimitiveID = objectID;
 	//remember to perform space conversion for position
 	prd.Position = optixTransformPointFromObjectToWorldSpace(
 		STPFragmentUtility::barycentricInterpolation(bary, position[0], position[1], position[2]));

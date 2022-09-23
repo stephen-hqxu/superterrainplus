@@ -19,7 +19,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		AmbientOcclusion = 0x3u,
 
 		//The total number of type listed in the enum
-		TypeCount = 0x04u
+		TypeCount
 	};
 
 }

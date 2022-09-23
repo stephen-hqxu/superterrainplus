@@ -1,10 +1,11 @@
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceObject.h>
 
+//GL-CUDA
+#include <glad/glad.h>
+#include <cuda_gl_interop.h>
+
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
-
-using std::unique_ptr;
-using std::is_same_v;
 
 using namespace SuperTerrainPlus;
 
@@ -73,4 +74,22 @@ STPSmartDeviceObject::STPSurface STPSmartDeviceObject::makeSurface(const cudaRes
 	cudaSurfaceObject_t surface;
 	STP_CHECK_CUDA(cudaCreateSurfaceObject(&surface, &resource_desc));
 	return STPSurface(surface);
+}
+
+/* STPGraphicsResource */
+
+void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPGraphicsResourceUnregisterer::operator()(cudaGraphicsResource_t resource) const {
+	STP_CHECK_CUDA(cudaGraphicsUnregisterResource(resource));
+}
+
+STPSmartDeviceObject::STPGraphicsResource STPSmartDeviceObject::makeGLBuffer(STPOpenGL::STPuint buffer, unsigned int flags) {
+	cudaGraphicsResource_t resource;
+	STP_CHECK_CUDA(cudaGraphicsGLRegisterBuffer(&resource, buffer, flags));
+	return STPGraphicsResource(resource);
+}
+
+STPSmartDeviceObject::STPGraphicsResource STPSmartDeviceObject::makeGLImage(STPOpenGL::STPuint image, STPOpenGL::STPenum target, unsigned int flags) {
+	cudaGraphicsResource_t resource;
+	STP_CHECK_CUDA(cudaGraphicsGLRegisterImage(&resource, image, target, flags));
+	return STPGraphicsResource(resource);
 }

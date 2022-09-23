@@ -33,24 +33,15 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/* ---------------------------- Input/Output ------------------------ */
 		//All screen space texture should have the same dimension as the rendering resolution.
-		//A stencil buffer to indicate which pixel should have ray launched from.
-		//This stencil buffer also outputs result flags for ray intersection test,
-		//for example which object does the ray hits, or if ray missed everything.
-		cudaSurfaceObject_t SSStencil;//R8UI
+		cudaSurfaceObject_t SSStencil;
 		/* -------------------------------- Input ----------------------------*/
-		//Stores the screen space depth from the rendering scene,
-		//the specific ray origin can be recovered by performing depth reconstruction.
-		cudaTextureObject_t SSRayDepth;//R32F
-		//Stores screen space ray direction, which specifies a 3-component unit vector towards which ray is launched.
-		//The last component is for padding and unused.
-		cudaTextureObject_t SSRayDirection;//RGBA16, range converted from [0, 1] to [-1, 1] after texture fetch.
+		cudaTextureObject_t SSRayDepth;
+		//range converted from [0, 1] to [-1, 1] after texture fetch.
+		cudaTextureObject_t SSRayDirection;
 		/* ------------------------------- Output --------------------------- */
 		//Please note that all outputs are undefined if the ray misses the geometry, as indicated by stencil buffer.
-		//Record the 3-component vector of position of intersection in world space.
-		//The last component is for padding hence unused.
-		cudaSurfaceObject_t GPosition;//RGBA32F
-		//The 2-component vector of normalised texture coordinate of the intersecting geometry.
-		cudaSurfaceObject_t GTextureCoordinate;//RG16
+		cudaSurfaceObject_t GPosition;
+		cudaSurfaceObject_t GTextureCoordinate;
 
 		OptixTraversableHandle Handle;
 

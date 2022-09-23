@@ -5,6 +5,8 @@
 #include <SuperTerrain+/STPCoreDefine.h>
 #include "../STPNullablePrimitive.h"
 
+#include <SuperTerrain+/STPOpenGL.h>
+
 //CUDA
 #include <cuda_runtime.h>
 
@@ -68,6 +70,16 @@ namespace SuperTerrainPlus {
 
 			};
 
+			/**
+			 * @brief Unregister CUDA graphics resource.
+			*/
+			struct STP_API STPGraphicsResourceUnregisterer {
+			public:
+
+				void operator()(cudaGraphicsResource_t) const;
+
+			};
+
 		}
 
 		//STPStream is a smartly managed CUDA stream object.
@@ -80,6 +92,8 @@ namespace SuperTerrainPlus {
 		using STPTexture = STPUniqueResource<cudaTextureObject_t, 0ull, STPSmartDeviceObjectImpl::STPTextureDestroyer>;
 		//STPSurface is a smartly managed CUDA surface object.
 		using STPSurface = STPUniqueResource<cudaSurfaceObject_t, 0ull, STPSmartDeviceObjectImpl::STPSurfaceDestroyer>;
+		//STPGraphicsResource is a smartly managed CUDA graphics resource.
+		using STPGraphicsResource = STPUniqueResource<cudaGraphicsResource_t, nullptr, STPSmartDeviceObjectImpl::STPGraphicsResourceUnregisterer>;
 
 		/**
 		 * @brief Create a new CUDA stream.
@@ -125,6 +139,23 @@ namespace SuperTerrainPlus {
 		 * @return A managed CUDA surface object.
 		*/
 		STP_API STPSurface makeSurface(const cudaResourceDesc&);
+
+		/**
+		 * @brief Create a new CUDA graphics resource from GL buffer object.
+		 * @param buffer Name of the buffer to be registered.
+		 * @param flags Register flags.
+		 * @return A managed CUDA graphics resource object.
+		*/
+		STP_API STPGraphicsResource makeGLBuffer(STPOpenGL::STPuint, unsigned int);
+
+		/**
+		 * @brief Create a new CUDA graphics resource from GL texture or renderbuffer object.
+		 * @param image Name of the texture of renderbuffer object to be registered.
+		 * @param target Identifies the type of object specified by `image`.
+		 * @param flags Register flags.
+		 * @return A managed CUDA graphics resource object.
+		*/
+		STP_API STPGraphicsResource makeGLImage(STPOpenGL::STPuint, STPOpenGL::STPenum, unsigned int);
 
 	}
 

@@ -173,6 +173,17 @@ namespace SuperTerrainPlus::STPRealism {
 		void textureSubImage(STPOpenGL::STPint, glm::ivec3, glm::uvec3, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
 
 		/**
+		 * @brief Return a texture image.
+		 * @param level Specifies the level-of-detail number of the desired image.
+		 * Level 0 is the base image level. Level n is the nth mipmap reduction image.
+		 * @param format Specifies a pixel format for the returned data.
+		 * @param type Specifies a pixel type for the returned data.
+		 * @param bufSize Specifies the size of the buffer pixels.
+		 * @param pixel Returns the texture image. Should be a pointer to an array of the type specified by type.
+		*/
+		void getTextureImage(STPOpenGL::STPint, STPOpenGL::STPenum, STPOpenGL::STPenum, size_t, void*) const;
+
+		/**
 		 * @brief Fills all a texture image with a constant value
 		 * @param level The level of texture containing the region to be cleared.
 		 * @param format The format of the data whose address in memory is given by data.

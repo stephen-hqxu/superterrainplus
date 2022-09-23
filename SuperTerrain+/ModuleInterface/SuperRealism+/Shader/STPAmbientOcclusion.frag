@@ -114,9 +114,8 @@ float computeOcclusion(vec3 position_view, vec3 normal_view){
 			cos_elev = cos(elevation),
 			sin_elev = sin(elevation);
 		const mat2 elevRotation = mat2(
-			//remember GL uses column-major matrix
-			cos_elev, sin_elev,
-			-sin_elev, cos_elev
+			cos_elev, -sin_elev,
+			sin_elev, cos_elev
 		);
 
 		//compute normalised 2D direction by rotating the current direction about a random angle.

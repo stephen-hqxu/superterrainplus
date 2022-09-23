@@ -119,7 +119,7 @@ __global__ void generateTextureSplatmap
 	}
 	//write whatever region to the splatmap
 	//out-of-boundary write will be caught by CUDA (safely) and will crash the program with error
-	surf2Dwrite(static_cast<unsigned char>(region), splatmap_surf, SamplingPosition.x, SamplingPosition.y, cudaBoundaryModeTrap);
+	surf2Dwrite(static_cast<unsigned char>(region), splatmap_surf, SamplingPosition.x * sizeof(unsigned char), SamplingPosition.y, cudaBoundaryModeTrap);
 }
 
 __device__ float generateNoise(unsigned int x, unsigned int y, float2 offset) {

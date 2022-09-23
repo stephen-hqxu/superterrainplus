@@ -85,7 +85,6 @@ void main(){
 mat2 doRotation(float theta){
 	const float sinT = sin(theta),
 		cosT = cos(theta);
-	//as a reminder, GL uses column-major matrix
 	return mat2(
 		cosT, sinT,
 		-sinT, cosT
