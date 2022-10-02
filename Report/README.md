@@ -1,6 +1,6 @@
 # Academic Material
 
-This directory contains a collection of the academic reports when the project was first done as a school project.
+This directory contains a collection of the academic reports when the project was first done as a school project. This project has awarded an upper-mid first class classification and can therefore be used as an academic reference for learning purposes.
 
 The LaTeX source are provided which mainly serve as backups; presentation slides and compiled documents are too large to be committed into the repository. Instead, they are shared separately and can be found [Here](https://drive.google.com/drive/folders/1wYjwEhqgnwUqL2VtZIMXad3Inyycnejq?usp=sharing).
 

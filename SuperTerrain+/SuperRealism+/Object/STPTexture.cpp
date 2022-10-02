@@ -139,7 +139,7 @@ TEXTURE_SUBIMAGE(THREE) {
 }
 
 void STPTexture::getTextureImage(STPOpenGL::STPint level, STPOpenGL::STPenum format, STPOpenGL::STPenum type, size_t bufSize, void* pixel) const {
-	glGetTextureImage(this->Texture.get(), level, format, type, bufSize, pixel);
+	glGetTextureImage(this->Texture.get(), level, format, type, static_cast<GLsizei>(bufSize), pixel);
 }
 
 void STPTexture::clearTextureImage(STPOpenGL::STPint level, STPOpenGL::STPenum format, STPOpenGL::STPenum type, const void* data) {

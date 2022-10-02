@@ -58,9 +58,7 @@ OptixTraversableHandle STPAsyncAccelBuilder::compact(const STPCompactInformation
 void STPAsyncAccelBuilder::swapHandle() noexcept {
 	std::swap(const_cast<STPAccelStructBuffer*&>(this->FrontBuffer), this->BackBuffer);
 	//return back buffer back to its originated memory pool and reset everything
-	auto& [back_mem, back_handle] = *this->BackBuffer;
-	back_mem.reset();
-	back_handle = OptixTraversableHandle();
+	*this->BackBuffer = STPAccelStructBuffer { };
 }
 
 OptixTraversableHandle STPAsyncAccelBuilder::getTraversableHandle() const noexcept {

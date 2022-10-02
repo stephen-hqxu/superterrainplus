@@ -69,6 +69,7 @@ __host__ void STPRandomTextureGenerator::generate(cudaArray_t output, uvec3 dime
 		range = (max - min);
 	generateRandomTextureKERNEL<<<dim3(Dimgridsize.x, Dimgridsize.y, Dimgridsize.z),
 		dim3(Dimblocksize.x, Dimblocksize.y, Dimblocksize.z)>>>(noise_buffer.get(), dimension, seed, base, range);
+	STP_CHECK_CUDA(cudaDeviceSynchronize());
 	STP_CHECK_CUDA(cudaGetLastError());
 }
 

@@ -26,22 +26,28 @@ namespace SuperTerrainPlus::STPRealism {
 		//All the rest of bits and values can be used as primitive identifier.
 		//The resulting stencil value should be a logical or between mask and ID.
 		static constexpr unsigned char RayVisibilityMask = 1u << 7u,
-			EnvironmentRayID = 0u;
+			EnvironmentRayID = RayVisibilityMask - 1u;
 
 		//Used for depth reconstruction from NDC to world space.
 		float4x4 InvProjectionView;
 
-		/* ---------------------------- Input/Output ------------------------ */
-		//All screen space texture should have the same dimension as the rendering resolution.
-		cudaSurfaceObject_t SSStencil;
-		/* -------------------------------- Input ----------------------------*/
-		cudaTextureObject_t SSRayDepth;
-		//range converted from [0, 1] to [-1, 1] after texture fetch.
-		cudaTextureObject_t SSRayDirection;
-		/* ------------------------------- Output --------------------------- */
-		//Please note that all outputs are undefined if the ray misses the geometry, as indicated by stencil buffer.
-		cudaSurfaceObject_t GPosition;
-		cudaSurfaceObject_t GTextureCoordinate;
+		//texture and surface objects used during SSRI
+		struct STPTextureData {
+		public:
+
+			/* ---------------------------- Input/Output ------------------------ */
+			//All screen space texture should have the same dimension as the rendering resolution.
+			unsigned char* SSStencil;
+			/* -------------------------------- Input ----------------------------*/
+			cudaTextureObject_t SSRayDepth;
+			//range converted from [0, 1] to [-1, 1] after texture fetch.
+			cudaTextureObject_t SSRayDirection;
+			/* ------------------------------- Output --------------------------- */
+			//Please note that all outputs are undefined if the ray misses the geometry, as indicated by stencil buffer.
+			cudaSurfaceObject_t GPosition;
+			cudaSurfaceObject_t GTextureCoordinate;
+
+		} SSTexture;
 
 		OptixTraversableHandle Handle;
 

@@ -124,6 +124,14 @@ namespace SuperTerrainPlus::STPRealism {
 			*/
 			virtual void swapBuffer() noexcept = 0;
 
+			/**
+			 * @brief Get the depth of the traversable graph used by this object.
+			 * This function should return a compile-time constant value, otherwise UB.
+			 * If there exists multiple structure of traversable graph, pick the largest depth among all of them.
+			 * @return The traversable graph depth used by this object.
+			*/
+			virtual unsigned int traversableDepth() noexcept = 0;
+
 		};
 
 	}

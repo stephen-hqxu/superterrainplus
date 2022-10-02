@@ -83,12 +83,13 @@ __global__ void __raygen__launchScreenSpaceRay() {
 	const uint2 idx = make_uint2(optixGetLaunchIndex()),
 		dim = make_uint2(optixGetLaunchDimensions());
 
+	const auto& textureData = SSRIData.SSTexture;
 	const float2 texCoord = make_float2(idx);
+	const unsigned int texIndex = texCoord.x + texCoord.y * dim.x;
 	//recover fragment values from texture, using un-normalised UV
-	const auto stencil = surf2Dread<unsigned char>(SSRIData.SSStencil, texCoord.x * sizeof(unsigned char), texCoord.y);
-	const auto ray_depth = tex2D<float>(SSRIData.SSRayDepth, texCoord.x, texCoord.y);
-	const auto ray_dir =
-		make_float3(tex2D<float4>(SSRIData.SSRayDirection, texCoord.x, texCoord.y)) * 2.0f - 1.0f;
+	const auto stencil = textureData.SSStencil[texIndex];
+	const auto ray_depth = tex2D<float>(textureData.SSRayDepth, texCoord.x, texCoord.y);
+	const auto ray_dir = make_float3(tex2D<float4>(textureData.SSRayDirection, texCoord.x, texCoord.y)) * 2.0f - 1.0f;
 	//calculate ray origin using normalised UV
 	const float2 uv = STPFragmentUtility::calcTextureCoordinate(idx, dim);
 	const float3 ray_ori = STPFragmentUtility::reconstructDepthToWorld(SSRIData.InvProjectionView, ray_depth, uv);
@@ -109,26 +110,26 @@ __global__ void __raygen__launchScreenSpaceRay() {
 		return;
 	}
 	//store stencil result
-	surf2Dwrite(static_cast<unsigned char>(stencil_result | data.PrimitiveID), SSRIData.SSStencil, texCoord.x * sizeof(unsigned char), texCoord.y);
+	textureData.SSStencil[texIndex] = static_cast<unsigned char>(stencil_result | data.PrimitiveID);
 
 	if (data.PrimitiveID == STPScreenSpaceRayIntersectionData::EnvironmentRayID) {
 		//environment ray has no vertex data
 		return;
 	}
 	const uint2 pixel_uv = make_uint2(data.UV * cuda::std::numeric_limits<unsigned short>::max());
-	surf2Dwrite(make_float4(data.Position, 1.0f), SSRIData.GPosition, texCoord.x * sizeof(float4), texCoord.y);
-	surf2Dwrite(make_ushort2(pixel_uv.x, pixel_uv.y), SSRIData.GTextureCoordinate, texCoord.x * sizeof(ushort2), texCoord.y);
+	surf2Dwrite(make_float4(data.Position, 1.0f), textureData.GPosition, texCoord.x * sizeof(float4), texCoord.y);
+	surf2Dwrite(make_ushort2(pixel_uv.x, pixel_uv.y), textureData.GTextureCoordinate, texCoord.x * sizeof(ushort2), texCoord.y);
 }
 
 __global__ void __closesthit__recordPrimitiveIntersection() {
-	const auto* const data = reinterpret_cast<const STPScreenSpaceRayIntersectionData::STPPrimitiveHitData*>(optixGetSbtDataPointer()); 
+	const auto& data = *reinterpret_cast<const STPScreenSpaceRayIntersectionData::STPPrimitiveHitData*>(optixGetSbtDataPointer()); 
 	//read primitive vertex data
 	const auto [objectID, instanceID] = STPInstanceIDCoder::decode(optixGetInstanceId());
-	const uint3& attributeIdx = data->PrimitiveIndex[objectID][instanceID][optixGetPrimitiveIndex()];
+	const uint3& attributeIdx = data.PrimitiveIndex[objectID][instanceID][optixGetPrimitiveIndex()];
 	//grab data of each vertex
 	float3 position[3];
 	float2 uv[3];
-	const float* const baseVertex = data->PrimitiveVertex[objectID][instanceID];
+	const float* const baseVertex = data.PrimitiveVertex[objectID][instanceID];
 	for (unsigned int i = 0u; i < 3u; i++) {
 		const float* const vertex =
 			baseVertex + getByIndex(attributeIdx, i) * STPScreenSpaceRayIntersectionData::STPPrimitiveHitData::AttributeStride;

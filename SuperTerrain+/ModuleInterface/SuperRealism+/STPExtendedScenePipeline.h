@@ -13,13 +13,16 @@
 
 //GLM
 #include <glm/vec2.hpp>
+#include <glm/mat4x4.hpp>
 
 //OptiX
+#include <cuda.h>
 #include <optix_types.h>
 
 #include <vector>
+#include <set>
+#include <ostream>
 #include <memory>
-#include <mutex>
 #include <type_traits>
 
 namespace SuperTerrainPlus::STPRealism {
@@ -119,20 +122,24 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief STPShaderMemory is a memory shared between user and the renderer.
 		 * User may provide memory input accessible by the shader, and receive output from it.
 		*/
-		struct STPShaderMemory {
+		class STP_REALISM_API STPShaderMemory {
 		private:
 
 			friend class STPExtendedScenePipeline;
 
-			STPShaderMemoryInternal* const Internal;
+			STPShaderMemoryInternal* Internal;
+
+			//A helper function to access the internal of the memory
+			STPShaderMemoryInternal* operator->() const;
 
 		public:
 
 			/**
 			 * @brief Initialise a shader memory.
 			 * @param internal The internal part of the shader memory.
+			 * If not provided, it will be initialised to null pointer.
 			*/
-			STPShaderMemory(STPShaderMemoryInternal*);
+			STPShaderMemory(STPShaderMemoryInternal* = nullptr);
 
 			~STPShaderMemory() = default;
 
@@ -146,13 +153,13 @@ namespace SuperTerrainPlus::STPRealism {
 			 * One exception is changing rendering resolution, since most types of shader memory has texture size based on rendering resolution,
 			 * such that user should be aware of reallocation when rendering resolution is changed.
 			*/
-			STPTexture& texture();
+			STPTexture& texture() noexcept;
 
 			/**
 			 * @brief Get the type of shader memory.
 			 * @return The type of shader memory.
 			*/
-			STPShaderMemoryType type() const;
+			STPShaderMemoryType type() const noexcept;
 
 		};
 
@@ -166,6 +173,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 			//All traceable object nodes.
 			std::vector<STPExtendedSceneObject::STPTraceable*> TraceableObjectDatabase;
+			//Record all traversable depths.
+			std::multiset<unsigned int> TraceableTraversableDepth;
 
 		};
 
@@ -179,15 +188,10 @@ namespace SuperTerrainPlus::STPRealism {
 
 		};
 		//For simplicity of management, each instance of scene pipeline holds a context
-		STPUniqueResource<OptixDeviceContext, nullptr, STPDeviceContextDestroyer> Context;
+		const STPUniqueResource<OptixDeviceContext, nullptr, STPDeviceContextDestroyer> Context;
 
 		//The master stream for the ray tracing rendering and all sorts of GPU operations.
 		STPSmartDeviceObject::STPStream RendererStream;
-		//An event placed at the end of the main rendering command.
-		STPSmartDeviceObject::STPEvent RendererEvent;
-		//A lock to ensure memory used by renderer is not currently updated, and vice versa.
-		//This should be used together with renderer event to ensure both host and device side synchronisation.
-		mutable std::mutex RendererMemoryLock;
 
 		STPSceneObjectCapacity SceneMemoryCurrent;
 		const STPSceneObjectCapacity SceneMemoryLimit;
@@ -219,15 +223,73 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STPScenePipelineInitialiser {
 		public:
 
-			//Defines the maximum memory to be allocated for each array to hold those objects.
-			STPSceneObjectCapacity ObjectCapacity;
+			//Specifies the CUDA device context to be used for creating OptiX context.
+			CUcontext DeviceContext;
+			//The log level indicates the severity of the message to be returned to the log stream.
+			int LogLevel;
+			//Specifies if a debug context should be created.
+			//This will turn on device validation and all exception handling, which can greatly aid debugging but slow everything down.
+			//Only use this for development purposes, remember to turn it off when you are done.
+			bool UseDebugContext;
 			//Specify the target device architecture for device code generation.
 			//The device architecture *<value>* should have the same format as argument supplied to NVRTC compiler "-arch=sm_<value>"
 			unsigned int TargetDeviceArchitecture;
 
+			//Defines the maximum memory to be allocated for each array to hold those objects.
+			STPSceneObjectCapacity ObjectCapacity;
+
 		};
 
-		STPExtendedScenePipeline(const STPScenePipelineInitialiser&);
+		/**
+		 * @brief STPValidatedInformation is a simple pre-validator for ray tracing launch information.
+		 * @tparam Desc The type of information to be validated.
+		*/
+		template<class Desc>
+		class STPValidatedInformation {
+		public:
+
+			const Desc Description;
+
+		private:
+
+			friend class STPExtendedScenePipeline;
+
+			/**
+			 * @brief Creates a new validated information, the provided descriptor will be validated upon construction.
+			 * The descriptor will be copied into the current validator instance and no changes can be made.
+			 * However, the memory resides in the underlying pointer should be maintained by the application.
+			 * @param descriptor The descriptor object to be validated.
+			*/
+			STPValidatedInformation(Desc);
+
+		public:
+
+			~STPValidatedInformation() = default;
+
+		};
+
+		/**
+		 * @brief STPSSRIDescription provides launch information for tracing screen space ray intersection.
+		*/
+		struct STP_REALISM_API STPSSRIDescription {
+		public:
+
+			STPShaderMemory Stencil, RayDepth, RayDirection, Position, UV;
+
+			/**
+			 * @brief Create a validated STPSSRIDescription object.
+			 * @return The validated STPSSRIDescription object.
+			*/
+			STPValidatedInformation<STPSSRIDescription> validate() const;
+
+		};
+
+		/**
+		 * @brief Initialise an extended scene pipeline.
+		 * @param scene_init The scene initialiser.
+		 * @param msg_stream A stream to receive log messages from the device context.
+		*/
+		STPExtendedScenePipeline(const STPScenePipelineInitialiser&, std::ostream&);
 
 		STPExtendedScenePipeline(const STPExtendedScenePipeline&) = delete;
 
@@ -238,6 +300,16 @@ namespace SuperTerrainPlus::STPRealism {
 		STPExtendedScenePipeline& operator=(STPExtendedScenePipeline&&) = delete;
 
 		~STPExtendedScenePipeline();
+
+		/**
+		 * @brief Check and update acceleration structure for each scene object.
+		 * It should always be called unconditionally since most objects process state changes asynchronously
+		 * so AS update may not reflect back to the user immediately;
+		 * the renderer will receive notification from each object if an update is ready rather efficiently internally.
+		 * User is also recommended to put all related object update code together and call this function way before rendering happens,
+		 * to minimise rendering delay and possibly frame freezing due to update.
+		*/
+		void updateAccelerationStructure();
 
 		/**
 		 * @brief Add an extended scene object to the extended scene pipeline.
@@ -255,6 +327,12 @@ namespace SuperTerrainPlus::STPRealism {
 		void setResolution(glm::uvec2);
 
 		/**
+		 * @brief Set the inverse projection view matrix of the viewer.
+		 * @param inv_pv The pointer to the inverse PV matrix.
+		*/
+		void setInverseProjectionView(const glm::mat4&);
+
+		/**
 		 * @brief Create a shader memory.
 		 * This shader memory is managed by the current scene pipeline.
 		 * @param type Specifies the type of shader memory.
@@ -269,6 +347,15 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param sm The shader memory to be destroyed.
 		*/
 		void destroyShaderMemory(STPShaderMemory);
+
+		/**
+		 * @brief Initiate screen space ray intersection shader to find the closest hit of a ray from the viewer to the scene.
+		 * @param stencil_in The stencil buffer input.
+		 * This can either be a stencil-only format, or a packed depth-stencil texture.
+		 * The stencil will be copied to the internal memory and no change is made.
+		 * @param ssri_info Provide a validated SSRI shader memory for additional rendering information.
+		*/
+		void traceIntersection(const STPTexture&, const STPValidatedInformation<STPSSRIDescription>&);
 	
 	};
 

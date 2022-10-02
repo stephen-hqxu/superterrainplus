@@ -17,7 +17,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//Requires runtime check to make sure user is not using an old version that supports less than this number.
 		constexpr static unsigned char UserIDAvailableBit = 28u;
 		//The number of bits used by object ID.
-		constexpr static unsigned char ObjectIDBit = 14u;
+		constexpr static unsigned char ObjectIDBit = 7u;
 		//The number of bits used by instance ID.
 		constexpr static unsigned char InstanceIDBit = UserIDAvailableBit - ObjectIDBit;
 

@@ -25,6 +25,7 @@ However, currently clang-format is still imperfect and cannot fully replicate my
 
 ### Naming convention
 
+- Please use UK spelling.
 - All files, namespaces, structures and classes should have their names prefixed with *STP*, followed by a Pascal-style name.
 - Name of member variables should follow the same naming convention as above but without the *STP* prefix.
 - Name of functions should use Camel-style.

@@ -1,5 +1,4 @@
 #include <SuperRealism+/STPExtendedScenePipeline.h>
-#include <SuperTerrain+/STPCoreInfo.h>
 #include <SuperRealism+/STPRealismInfo.h>
 
 //CUDA
@@ -13,6 +12,7 @@
 #include <SuperRealism+/Utility/STPRendererErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperRealism+/Utility/STPLogHandler.hpp>
@@ -20,11 +20,11 @@
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 #include <SuperTerrain+/GPGPU/STPDeviceRuntimeBinary.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
-#include <SuperRealism+/Utility/STPAsyncAccelBuilder.h>
 //GL Object
 #include <SuperRealism+/Object/STPBuffer.h>
 //Shader
 #include <SuperRealism+/Shader/RayTracing/STPScreenSpaceRayIntersection.cuh>
+#include <SuperRealism+/Shader/RayTracing/STPInstanceIDCoder.cuh>
 
 //CUDA-GL
 #include <glad/glad.h>
@@ -36,15 +36,17 @@
 #include <list>
 #include <tuple>
 #include <optional>
-#include <variant>
 //Thread
-#include <shared_mutex>
+#include <mutex>
 
 #include <algorithm>
 #include <cassert>
+#include <cstring>
+#include <cstddef>
 
 //GLM
 #include <glm/common.hpp>
+#include <glm/ext/matrix_transform.hpp>
 
 using std::array;
 using std::list;
@@ -53,28 +55,29 @@ using std::tuple;
 using std::string;
 using std::string_view;
 using std::optional;
-using std::variant;
 
-using std::shared_mutex;
+using std::ostream;
+
+using std::mutex;
 using std::unique_lock;
-using std::shared_lock;
-using std::future;
 
 using std::make_pair;
 using std::make_optional;
+using std::make_unique;
 using std::to_string;
 using std::for_each;
 
 using glm::uvec2;
 using glm::uvec3;
 using glm::ivec3;
+using glm::mat4;
 
 using SuperTerrainPlus::STPUniqueResource;
 
 using namespace SuperTerrainPlus::STPRealism;
 
 //The preallocation size for log passed into OptiX compiler
-constexpr static size_t mDefaultLogSize = size_t(1024);
+constexpr static size_t mDefaultLogSize = size_t { 1024 };
 
 inline static void loadExtendedShaderOption(unsigned int arch, SuperTerrainPlus::STPDeviceRuntimeBinary::STPSourceInformation& info) {
 	//For performance consideration, always build with optimisation turned on;
@@ -87,8 +90,24 @@ inline static void loadExtendedShaderOption(unsigned int arch, SuperTerrainPlus:
 		["-default-device"]
 		//include directory
 		["-I " + string(STPRealismInfo::OptiXInclude)]
-		["-I " + string(STPRealismInfo::OptiXSDK)]
-		["-I " + string(SuperTerrainPlus::STPCoreInfo::CUDAInclude)];
+		["-I " + string(STPRealismInfo::OptiXSDK)];
+}
+
+inline static void deviceContextDebugCallback(unsigned int level, const char* tag, const char* message, void* cbdata) {
+	static constexpr auto getLevelStr = [](unsigned int level) constexpr -> const char* {
+		switch (level) {
+		case 1u: return "FATAL";
+		case 2u: return "ERROR";
+		case 3u: return "WARNING";
+		case 4u: return "PRINT";
+		default: return "UNKNOWN";
+		}
+	};
+
+	using std::endl;
+	ostream& stream = *reinterpret_cast<ostream*>(cbdata);
+	stream << "Level " << level << '(' << getLevelStr(level) << ")::" << tag << ':' << endl;
+	stream << message << endl;
 }
 
 #define STP_OPTIX_SBT_HEADER_MEMBER __align__(OPTIX_SBT_RECORD_ALIGNMENT) unsigned char Header[OPTIX_SBT_RECORD_HEADER_SIZE]
@@ -373,10 +392,13 @@ public:
 
 	/**
 	 * @brief Map the memory so CUDA can safely use it.
+	 * @tparam Mem_t Specifies the type of output of mapped memory.
+	 * Currently only supports: a pointer type, STPSmartDeviceObject::STPTexture and STPSmartDeviceObject::STPSurface
 	 * @param stream Specifies a CUDA stream.
 	 * @return The mapped data, the exact type depends on the type of shader memory.
 	*/
-	variant<void*, STPSmartDeviceObject::STPTexture, STPSmartDeviceObject::STPSurface> mapMemory(cudaStream_t stream) {
+	template<class Mem_t>
+	Mem_t mapMemory(cudaStream_t stream) {
 		if (this->TextureCache && ((this->TextureDesc.CopyDirection & STPShaderMemoryDescription::Input) != 0u)) {
 			//copy from texture to cache
 			this->copyFromTexture(this->Texture);
@@ -385,34 +407,41 @@ public:
 		cudaGraphicsResource_t res = this->TextureResource.get();
 		STP_CHECK_CUDA(cudaGraphicsMapResources(1, &res, stream));
 
+		using std::is_same_v;
+		using std::is_pointer_v;
 		//get mapped data
-		if (this->TextureCache) {
+		if constexpr (is_pointer_v<Mem_t>) {
+			assert(this->TextureCache);
 			//get mapped pointer from cache buffer
 			void* mem;
 			size_t memSize;
 			STP_CHECK_CUDA(cudaGraphicsResourceGetMappedPointer(&mem, &memSize, res));
 			assert(memSize == this->calcBufferSize());
-			return mem;
-		}
+			return reinterpret_cast<Mem_t>(mem);
 
-		//get mapped array from texture
-		cudaResourceDesc memDesc = { };
-		cudaArray_t mem;
-		STP_CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&mem, res, 0u, 0u));
-		memDesc.res.array.array = mem;
-		memDesc.resType = cudaResourceTypeArray;
+			//usually an `else` after return is redundant, but since the return types are not the same, we want the compiler to discard unused branch.
+		} else {
+			//get mapped array from texture
+			cudaResourceDesc memDesc = { };
+			cudaArray_t mem;
+			STP_CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&mem, res, 0u, 0u));
+			memDesc.res.array.array = mem;
+			memDesc.resType = cudaResourceTypeArray;
 
-		if ((this->TextureDesc.CopyDirection & STPShaderMemoryDescription::Output) == 0u) {
-			//for output or IO type memory, always use surface
-			return STPSmartDeviceObject::makeSurface(memDesc);
+			if constexpr (is_same_v<Mem_t, STPSmartDeviceObject::STPSurface>) {
+				assert((this->TextureDesc.CopyDirection & STPShaderMemoryDescription::Output) == 0u);
+				//for output or IO type memory, always use surface
+				return STPSmartDeviceObject::makeSurface(memDesc);
+			} else {
+				//for input type memory, a texture suffices
+				cudaTextureDesc texDesc = { };
+				texDesc.addressMode[0] = cudaAddressModeClamp;
+				texDesc.addressMode[1] = cudaAddressModeClamp;
+				texDesc.addressMode[2] = cudaAddressModeClamp;
+				texDesc.readMode = this->TextureDesc.NormalisedRead ? cudaReadModeNormalizedFloat : cudaReadModeElementType;
+				return STPSmartDeviceObject::makeTexture(memDesc, texDesc);
+			}
 		}
-		//for input type memory, a texture suffices
-		cudaTextureDesc texDesc = { };
-		texDesc.addressMode[0] = cudaAddressModeClamp;
-		texDesc.addressMode[1] = cudaAddressModeClamp;
-		texDesc.addressMode[2] = cudaAddressModeClamp;
-		texDesc.readMode = this->TextureDesc.NormalisedRead ? cudaReadModeNormalizedFloat : cudaReadModeElementType;
-		return STPSmartDeviceObject::makeTexture(memDesc, texDesc);
 	}
 
 	/**
@@ -454,9 +483,10 @@ private:
 	STPSmartDeviceMemory::STPDeviceMemory<const float* const*[]> PrimitiveGeometry;
 	STPSmartDeviceMemory::STPDeviceMemory<const uint3* const*[]> PrimitiveIndex;
 
-	//A separate stream from the renderer, so that rendering and AS build happens asynchronously.
-	//Due to use of double buffering, rendering can still go through using front buffer while building in back buffer.
+	//A separate stream from the renderer, so that rendering and build task can overlap.
 	STPSmartDeviceObject::STPStream ASBuildStream;
+	//Record the event after the build operation, to make sure rendering does not start before TLAS build has finished.
+	STPSmartDeviceObject::STPEvent ASBuildEvent;
 	//The renderer doesn't need to allocate a lot of memory, so keep release threshold as default zero.
 	STPSmartDeviceObject::STPMemPool BuildMemoryPool;
 	
@@ -464,10 +494,10 @@ private:
 	//Record all traceable objects that requested for geometry update.
 	//Once updates are finished, this record will be cleared.
 	STPUpdateList PendingGeometryUpdate;
-	mutable shared_mutex UpdateListLock;
+	mutable mutex UpdateListLock;
 
-	STPAsyncAccelBuilder RootASBuilder;
-	future<void> RootASBuildResult;
+	STPSmartDeviceMemory::STPStreamedDeviceMemory<unsigned char[]> RootASMemory;
+	OptixTraversableHandle RootASHandle;
 
 public:
 
@@ -489,7 +519,8 @@ public:
 	 * @param master The pointer to the master extended scene pipeline.
 	*/
 	STPMemoryManager(const STPExtendedScenePipeline& master) :
-		Master(master), ASBuildStream(STPSmartDeviceObject::makeStream(cudaStreamNonBlocking)), BuildWorker(3u) {
+		Master(master), ASBuildStream(STPSmartDeviceObject::makeStream(cudaStreamNonBlocking)),
+		ASBuildEvent(STPSmartDeviceObject::makeEvent(cudaEventDisableTiming)), RootASHandle{ }, BuildWorker(3u) {
 		cudaMemPoolProps props = { };
 		props.allocType = cudaMemAllocationTypePinned;
 		props.handleTypes = cudaMemHandleTypeNone;
@@ -525,14 +556,6 @@ public:
 	}
 
 	/**
-	 * @brief Get the traversable handle.
-	 * @return The traversable handle.
-	*/
-	inline OptixTraversableHandle getHandle() const noexcept {
-		return this->RootASBuilder.getTraversableHandle();
-	}
-
-	/**
 	 * @brief Get the pointers to the primitive data array.
 	 * @return The geometry vertex and index respectively, and they are all on device memory.
 	*/
@@ -543,104 +566,82 @@ public:
 	/**
 	 * @brief Check if there is update available to the root level AS.
 	 * If so, initiate an asynchronous build event; otherwise return.
-	 * Rendering can go on as usual since build happens on a separate memory.
+	 * This function does no synchronisation, but rendering should not begin until build has finished.
+	 * @return The new AS handle to the root, if an update is initiated; otherwise nothing.
+	 * This handle must not be used until build operation has finished.
 	*/
-	void checkRootASUpdate() {
-		if (this->RootASBuildResult.valid()) {
-			if (this->RootASBuildResult.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
-				//there is already a build operation going on
-				return;
-			}
-			this->RootASBuildResult.get();
-		}
-		//no operation in progress
+	optional<OptixTraversableHandle> checkRootASUpdate() {
+		STPUpdateList updatingObject;
+		//check do we need to update
 		{
-			shared_lock read_update_lock(this->UpdateListLock);
+			unique_lock check_update_lock(this->UpdateListLock);
 			if (this->PendingGeometryUpdate.empty()) {
 				//no update is needed
-				return;
+				return std::nullopt;
 			}
+			//move all pending updates to our internal memory
+			updatingObject.splice(updatingObject.begin(), this->PendingGeometryUpdate);
 		}
+		//some commonly used data
+		const size_t total_instance_count = this->Master.SceneMemoryCurrent.TraceableObject;
+		const cudaStream_t build_stream = this->ASBuildStream.get();
+		const cudaMemPool_t build_memPool = this->BuildMemoryPool.get();
+		const OptixDeviceContext context = this->Master.Context.get();
 
-		//okay now start a new thread because there are pending updates
-		auto tlasBuilder = [this](size_t total_instance_count) -> void {
-			//some commonly used data
-			const cudaStream_t build_stream = this->ASBuildStream.get();
-			const cudaMemPool_t build_memPool = this->BuildMemoryPool.get();
-			const OptixDeviceContext context = this->Master.Context.get();
+		//update object data, we assume there is no rendering task using the object data and AS in progress
+		//it is end-user's responsibility to call glFinish at the end of every frame, and ray tracing launches are initiated after checking for AS update
+		OptixInstance* const instance_cache = this->InstanceCache.get();
+		for_each(updatingObject.cbegin(), updatingObject.cend(),
+			[instance_cache, prim_geometry = this->PrimitiveGeometry.get(), prim_index = this->PrimitiveIndex.get(), build_stream](const auto& update_info) {
+			const auto& [traceable, update_instance, update_geometry, update_index] = update_info;
+			//object ID is the same as index to the array of our objects
+			const STPExtendedSceneObject::STPObjectID objID = traceable->TraceableObjectID;
 
-			STPUpdateList updatingObject;
-			{
-				//There is a chance more pending updates are added because we released the lock after checking for emptiness.
-				//That's fine, because if the list is not empty, adding more items is still non-empty.
-				unique_lock splice_update_lock(this->UpdateListLock);
-				//move all pending updates to our internal memory
-				updatingObject.splice(updatingObject.begin(), this->PendingGeometryUpdate);
-			}
+			//copy new instance data to device code
+			STP_CHECK_CUDA(cudaMemcpyAsync(instance_cache + objID, &update_instance, sizeof(OptixInstance), cudaMemcpyHostToDevice, build_stream));
+			//update geometry data
+			STP_CHECK_CUDA(cudaMemcpyAsync(prim_geometry + objID, update_geometry, sizeof(void*), cudaMemcpyHostToDevice, build_stream));
+			STP_CHECK_CUDA(cudaMemcpyAsync(prim_index + objID, update_index, sizeof(void*), cudaMemcpyHostToDevice, build_stream));
+			//swap object buffer, the swapped buffer should not be used until the build event has finished.
+			traceable->swapBuffer();
+		});
+		//prepare build information
+		OptixAccelBuildOptions tlas_options = { };
+		tlas_options.buildFlags = OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
+		tlas_options.operation = OPTIX_BUILD_OPERATION_BUILD;
+		OptixBuildInput tlas_inputs = { };
+		tlas_inputs.type = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+		tlas_inputs.instanceArray.instances = reinterpret_cast<CUdeviceptr>(instance_cache);
+		tlas_inputs.instanceArray.numInstances = static_cast<unsigned int>(total_instance_count);
 
-			//update new instance data to the device cache
-			OptixInstance* const instance_cache = this->InstanceCache.get();
-			for_each(updatingObject.cbegin(), updatingObject.cend(), [instance_cache, build_stream](const auto& update_info) {
-				//object ID is the same as index to the array of our objects
-				const STPExtendedSceneObject::STPObjectID objID = update_info.SourceTraceable->TraceableObjectID;
-				STP_CHECK_CUDA(cudaMemcpyAsync(instance_cache + objID, &update_info.Instance, sizeof(OptixInstance), cudaMemcpyHostToDevice, build_stream));
-			});
-			//prepare build information
-			OptixAccelBuildOptions tlas_options = { };
-			tlas_options.buildFlags = OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
-			tlas_options.operation = OPTIX_BUILD_OPERATION_BUILD;
-			OptixBuildInput tlas_inputs = { };
-			tlas_inputs.type = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
-			tlas_inputs.instanceArray.instances = reinterpret_cast<CUdeviceptr>(instance_cache);
-			tlas_inputs.instanceArray.numInstances = static_cast<unsigned int>(total_instance_count);
+		//allocation for memory
+		OptixAccelBufferSizes tlas_size = { };
+		STP_CHECK_OPTIX(optixAccelComputeMemoryUsage(context, &tlas_options, &tlas_inputs, 1u, &tlas_size));
+		//output, just return the old memory back to the pool, don't care about reusing
+		this->RootASMemory = STPSmartDeviceMemory::makeStreamedDevice<unsigned char[]>(build_memPool, build_stream, tlas_size.outputSizeInBytes);
+		//temp
+		const STPSmartDeviceMemory::STPStreamedDeviceMemory<unsigned char[]> tlas_temp_mem =
+			STPSmartDeviceMemory::makeStreamedDevice<unsigned char[]>(build_memPool, build_stream, tlas_size.tempSizeInBytes);
 
-			//allocation for temporary memory
-			OptixAccelBufferSizes tlas_size = { };
-			STP_CHECK_OPTIX(optixAccelComputeMemoryUsage(context, &tlas_options, &tlas_inputs, 1u, &tlas_size));
-			STPSmartDeviceMemory::STPStreamedDeviceMemory<unsigned char[]> tlas_temp_mem =
-				STPSmartDeviceMemory::makeStreamedDevice<unsigned char[]>(build_memPool, build_stream, tlas_size.tempSizeInBytes);
+		//build TLAS
+		STP_CHECK_OPTIX(optixAccelBuild(context, build_stream, &tlas_options, &tlas_inputs, 1u,
+			reinterpret_cast<CUdeviceptr>(tlas_temp_mem.get()), tlas_size.tempSizeInBytes,
+			reinterpret_cast<CUdeviceptr>(this->RootASMemory.get()), tlas_size.outputSizeInBytes,
+			&this->RootASHandle, nullptr, 0u));
+		//compact? idk, don't see it's worthy
 
-			//build TLAS
-			STPAsyncAccelBuilder::STPBuildInformation tlas_build_info = { };
-			tlas_build_info.Context = context;
-			tlas_build_info.Stream = build_stream;
-			tlas_build_info.AccelOptions = &tlas_options;
-			tlas_build_info.BuildInputs = &tlas_inputs;
-			tlas_build_info.numBuildInputs = 1u;
-			tlas_build_info.TempBuffer = reinterpret_cast<CUdeviceptr>(tlas_temp_mem.get());
-			tlas_build_info.TempBufferSize = tlas_size.tempSizeInBytes;
-			tlas_build_info.OutputBufferSize = tlas_size.outputSizeInBytes;
-			this->RootASBuilder.build(tlas_build_info, build_memPool);
-			//now temporary buffer is done, free it after build (stream ordered)
-			tlas_temp_mem.reset();
+		//record build event
+		STP_CHECK_CUDA(cudaEventRecord(this->ASBuildEvent.get(), build_stream));
 
-			STP_CHECK_CUDA(cudaStreamSynchronize(build_stream));
-			//and now back buffer is all ready, time to swap
-			//Need to ensure two things:
-			// 1) There is no rendering task using this AS handle and memory, in progress and
-			// 2) No rendering task should be initiated until swap buffer operation is done.
-			unique_lock renderer_wait_lock(this->Master.RendererMemoryLock);
-			STP_CHECK_CUDA(cudaEventSynchronize(this->Master.RendererEvent.get()));
-			
-			const auto prim_geometry = this->PrimitiveGeometry.get();
-			const auto prim_index = this->PrimitiveIndex.get();
-			//use render stream because all subsequent operations need to be visible to the renderer at the end
-			const cudaStream_t render_stream = this->Master.RendererStream.get();
-			for_each(updatingObject.cbegin(), updatingObject.cend(), [prim_geometry, prim_index, render_stream](const auto& update_info) {
-				STPExtendedSceneObject::STPTraceable& traceable = *update_info.SourceTraceable;
-				const STPExtendedSceneObject::STPObjectID objID = traceable.TraceableObjectID;
+		return this->RootASHandle;
+	}
 
-				//update geometry data
-				STP_CHECK_CUDA(cudaMemcpyAsync(prim_geometry + objID, update_info.PrimitiveGeometry, sizeof(void*), cudaMemcpyHostToDevice, render_stream));
-				STP_CHECK_CUDA(cudaMemcpyAsync(prim_index + objID, update_info.PrimitiveIndex, sizeof(void*), cudaMemcpyHostToDevice, render_stream));
-				//swap object buffer
-				traceable.swapBuffer();
-			});
-			this->RootASBuilder.swapHandle();
-		};
-		//move this to the parameter outside the thread because this variable might be changed by the main thread (the thread this function is called)
-		//if there is a new object added, while this variable is not guarded by a lock.
-		this->RootASBuildResult = this->BuildWorker.enqueue_future(tlasBuilder, this->Master.SceneMemoryCurrent.TraceableObject);
+	/**
+	 * @brief Make a stream wait for an event recorded with build tasks.
+	 * @param stream The stream to be waiting for AS build.
+	*/
+	inline void waitForASBuild(cudaStream_t stream) const {
+		STP_CHECK_CUDA(cudaStreamWaitEvent(stream, this->ASBuildEvent.get()));
 	}
 
 };
@@ -659,9 +660,13 @@ private:
 		"SSRI shader binding table data has disallowed padding after the header.");
 
 	const STPExtendedScenePipeline& Master;
+	const OptixDeviceContext MasterContext;
+	const cudaStream_t MasterStream;
 
 	//the full pipeline containing the shader for ray intersection testing
 	STPSmartPipeline IntersectionPipeline;
+	array<unsigned int, 3ull> IntersectionStackSize;
+
 		//ray generation
 	tuple<STPSmartDeviceMemory::STPDeviceMemory<STPLaunchedRayRecord>,
 		//closest hit
@@ -671,6 +676,16 @@ private:
 	//the shader binding table for the intersection pipeline
 	OptixShaderBindingTable IntersectionShader;
 
+	const STPSmartDeviceMemory::STPDeviceMemory<STPScreenSpaceRayIntersectionData> IntersectionGlobalData;
+
+	/**
+	 * @brief Get a char pointer to the global data.
+	 * @return A pointer to char of global data.
+	*/
+	inline unsigned char* getRawGlobalData() noexcept {
+		return reinterpret_cast<unsigned char*>(this->IntersectionGlobalData.get());
+	}
+
 public:
 
 	/**
@@ -678,7 +693,10 @@ public:
 	 * @param master The pointer to the master extended scene pipeline.
 	 * @param arch Specifies the CUDA device architecture for code generation.
 	*/
-	STPScreenSpaceRayIntersection(const STPExtendedScenePipeline& master, unsigned int arch) : Master(master), IntersectionShader{ } {
+	STPScreenSpaceRayIntersection(const STPExtendedScenePipeline& master, unsigned int arch) :
+		Master(master), MasterContext(this->Master.Context.get()),
+		MasterStream(this->Master.RendererStream.get()), IntersectionShader{ },
+		IntersectionGlobalData(STPSmartDeviceMemory::makeDevice<STPScreenSpaceRayIntersectionData>()) {
 		/* ----------------------------------- compile into PTX --------------------------------- */
 		STPDeviceRuntimeBinary::STPSourceInformation ssri_info;
 		loadExtendedShaderOption(arch, ssri_info);
@@ -713,14 +731,14 @@ public:
 
 			const auto [ssri_ptx, ssri_ptxSize] = STPDeviceRuntimeBinary::readPTX(ssri_program);
 
-			STP_CHECK_OPTIX(optixModuleCreateFromPTX(this->Master.Context.get(), &ssri_module_option,
+			STP_CHECK_OPTIX(optixModuleCreateFromPTX(this->MasterContext, &ssri_module_option,
 				&ssri_pipeline_option, ssri_ptx.get(), ssri_ptxSize, log, &logSize, &ssri_module));
 			//We don't really care if the actual log size is larger than the default allocated size,
 			//overflown log will be abandoned.
 		}
 		const STPSmartModule ssri_module_manager(ssri_module);
 		//logging
-		STPLogHandler::ActiveLogHandler->handle(string_view(log, glm::min(logSize, mDefaultLogSize)));
+		STPLogHandler::ActiveLogHandler->handle(string_view(log, glm::min<size_t>(logSize, mDefaultLogSize)));
 		//reset initial log size counter
 		logSize = mDefaultLogSize;
 
@@ -746,7 +764,7 @@ public:
 			ssri_pg_desc[2].miss.module = ssri_module;
 			ssri_pg_desc[2].miss.entryFunctionName = ssri_expr.at("__miss__recordEnvironmentIntersection").c_str();
 
-			STP_CHECK_OPTIX(optixProgramGroupCreate(this->Master.Context.get(), ssri_pg_desc, 3u, &ssri_pg_option,
+			STP_CHECK_OPTIX(optixProgramGroupCreate(this->MasterContext, ssri_pg_desc, 3u, &ssri_pg_option,
 				log, &logSize, ssri_program_group.data()));
 		}
 		const array<STPSmartProgramGroup, ssri_program_group.size()> ssri_pg_manager = {
@@ -754,7 +772,7 @@ public:
 			STPSmartProgramGroup(ssri_program_group[1]),
 			STPSmartProgramGroup(ssri_program_group[2])
 		};
-		STPLogHandler::ActiveLogHandler->handle(string_view(log, glm::min(logSize, mDefaultLogSize)));
+		STPLogHandler::ActiveLogHandler->handle(string_view(log, glm::min<size_t>(logSize, mDefaultLogSize)));
 		logSize = mDefaultLogSize;
 
 		OptixPipeline ssri_pipeline;
@@ -764,7 +782,7 @@ public:
 			ssri_pipeline_link_option.maxTraceDepth = 1u;
 			ssri_pipeline_link_option.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 
-			STP_CHECK_OPTIX(optixPipelineCreate(this->Master.Context.get(), &ssri_pipeline_option, &ssri_pipeline_link_option,
+			STP_CHECK_OPTIX(optixPipelineCreate(this->MasterContext, &ssri_pipeline_option, &ssri_pipeline_link_option,
 				ssri_program_group.data(), static_cast<unsigned int>(ssri_program_group.size()), log, &logSize, &ssri_pipeline));
 			//store the pipeline, all previously used data can be deleted, and will be done automatically
 			this->IntersectionPipeline = STPSmartPipeline(ssri_pipeline);
@@ -774,13 +792,10 @@ public:
 			for (const auto& pg : ssri_program_group) {
 				STP_CHECK_OPTIX(optixUtilAccumulateStackSizes(pg, &ssri_stack));
 			}
-			unsigned int traversal_stack, state_stack, continuation_stack;
+			auto& [traversal_stack, state_stack, continuation_stack] = this->IntersectionStackSize;
 			STP_CHECK_OPTIX(optixUtilComputeStackSizes(&ssri_stack, 1u, 0u, 0u, &traversal_stack, &state_stack, &continuation_stack));
-			//our traversable structure for each scene object: GAS -> IAS with transform
-			//then for each scene object, we need another IAS to merge all other IASs into one handle.
-			STP_CHECK_OPTIX(optixPipelineSetStackSize(ssri_pipeline, traversal_stack, state_stack, continuation_stack, 3u));
 		}
-		STPLogHandler::ActiveLogHandler->handle(string_view(log, glm::min(logSize, mDefaultLogSize)));
+		STPLogHandler::ActiveLogHandler->handle(string_view(log, glm::min<size_t>(logSize, mDefaultLogSize)));
 
 		/* ---------------------------- allocate shader binding table -------------------------------- */
 		{
@@ -812,6 +827,15 @@ public:
 			this->IntersectionShader.missRecordCount = 1u;
 			this->IntersectionShader.missRecordStrideInBytes = sizeof(STPEnvironmentHitRecord);
 		}
+
+		/* ----------------------------------- global launch data ------------------------------------ */
+		STPScreenSpaceRayIntersectionData ssri_data = { };
+		constexpr mat4 init_invpv = glm::identity<mat4>();
+		static_assert(sizeof(mat4) == sizeof(STPScreenSpaceRayIntersectionData::InvProjectionView),
+			"Matrix type used in SSRI shader is incompatible with GLM matrix");
+		memcpy(&ssri_data.InvProjectionView, &init_invpv, sizeof(mat4));
+
+		STP_CHECK_CUDA(cudaMemcpy(this->IntersectionGlobalData.get(), &ssri_data, sizeof(STPScreenSpaceRayIntersectionData), cudaMemcpyHostToDevice));
 	}
 
 	STPScreenSpaceRayIntersection(const STPScreenSpaceRayIntersection&) = delete;
@@ -824,30 +848,136 @@ public:
 
 	~STPScreenSpaceRayIntersection() = default;
 
+	/**
+	 * @brief Update the stack size for intersection tracer pipeline.
+	 * @param traversableDepth The maximum possible traversable graph depth for all traceable objects.
+	*/
+	inline void updateStackSize(unsigned int traversableDepth) {
+		const auto [traversal_stack, state_stack, continuation_stack] = this->IntersectionStackSize;
+		//add one to the total depth because we have a top level IAS enclosing all other AS's.
+		STP_CHECK_OPTIX(optixPipelineSetStackSize(this->IntersectionPipeline.get(), traversal_stack, state_stack, continuation_stack, traversableDepth + 1u));
+	}
+
+	/**
+	 * @brief Update the internal record of traversable handle.
+	 * @param handle The new handle to be used.
+	*/
+	inline void updateTraversableHandle(OptixTraversableHandle handle) {
+		STP_CHECK_CUDA(cudaMemcpyAsync(this->getRawGlobalData() + offsetof(STPScreenSpaceRayIntersectionData, Handle), &handle,
+			sizeof(OptixTraversableHandle), cudaMemcpyHostToDevice, this->MasterStream));
+	}
+
+	/**
+	 * @brief Update the inverse projection view matrix.
+	 * @param inv_pv The pointer to the new inverse projection view matrix.
+	*/
+	inline void updateInvPV(const mat4& inv_pv) {
+		STP_CHECK_CUDA(cudaMemcpyAsync(this->getRawGlobalData() + offsetof(STPScreenSpaceRayIntersectionData, InvProjectionView), &inv_pv,
+			sizeof(mat4), cudaMemcpyHostToDevice, this->MasterStream));
+	}
+
+	/**
+	 * @brief Launch the intersection program.
+	 * @param textureData The texture data to be used during rendering.
+	*/
+	inline void launchIntersection(const STPScreenSpaceRayIntersectionData::STPTextureData& textureData) {
+		//update texture data
+		STP_CHECK_CUDA(cudaMemcpyAsync(this->getRawGlobalData() + offsetof(STPScreenSpaceRayIntersectionData, SSTexture), &textureData,
+			sizeof(STPScreenSpaceRayIntersectionData::STPTextureData), cudaMemcpyHostToDevice, this->MasterStream));
+
+		//mAgIc!
+		const uvec2 resolution = this->Master.RenderResolution;
+		STP_CHECK_OPTIX(optixLaunch(this->IntersectionPipeline.get(), this->MasterStream,
+			reinterpret_cast<CUdeviceptr>(this->IntersectionGlobalData.get()), sizeof(STPScreenSpaceRayIntersectionData), &this->IntersectionShader,
+			resolution.x, resolution.y, 1u
+		));
+	}
+
 };
 
 STPExtendedScenePipeline::STPShaderMemory::STPShaderMemory(STPShaderMemoryInternal* internal) : Internal(internal) {
 	
 }
 
-STPTexture& STPExtendedScenePipeline::STPShaderMemory::texture() {
+inline STPExtendedScenePipeline::STPShaderMemoryInternal* STPExtendedScenePipeline::STPShaderMemory::operator->() const {
+	return this->Internal;
+}
+
+STPTexture& STPExtendedScenePipeline::STPShaderMemory::texture() noexcept {
 	return this->Internal->Texture;
 }
 
-STPExtendedScenePipeline::STPShaderMemoryType STPExtendedScenePipeline::STPShaderMemory::type() const {
+STPExtendedScenePipeline::STPShaderMemoryType STPExtendedScenePipeline::STPShaderMemory::type() const noexcept {
 	return this->Internal->TextureType;
 }
 
+template<class Desc>
+STPExtendedScenePipeline::STPValidatedInformation<Desc>::STPValidatedInformation(Desc descriptor) : Description(descriptor) {
+
+}
+
+STPExtendedScenePipeline::STPValidatedInformation<STPExtendedScenePipeline::STPSSRIDescription>
+	STPExtendedScenePipeline::STPSSRIDescription::validate() const {
+	if (this->Stencil.type() != STPShaderMemoryType::ScreenSpaceStencil
+		|| this->RayDepth.type() != STPShaderMemoryType::ScreenSpaceRayDepth
+		|| this->RayDirection.type() != STPShaderMemoryType::ScreenSpaceRayDirection
+		|| this->Position.type() != STPShaderMemoryType::GeometryPosition
+		|| this->UV.type() != STPShaderMemoryType::GeometryUV) {
+		throw STPException::STPMemoryError("One or more specified shader memory have incompatible type with SSRI shader");
+	}
+	return STPValidatedInformation(*this);
+}
+
+inline static OptixDeviceContext createDeviceContext(const STPExtendedScenePipeline::STPScenePipelineInitialiser& init, ostream& stream) {
+	OptixDeviceContextOptions ctx_option = { };
+	ctx_option.logCallbackFunction = &deviceContextDebugCallback;
+	ctx_option.logCallbackData = &stream;
+	ctx_option.logCallbackLevel = init.LogLevel;
+	ctx_option.validationMode = init.UseDebugContext ? OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL : OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_OFF;
+
+	OptixDeviceContext dev_ctx;
+	STP_CHECK_OPTIX(optixDeviceContextCreate(init.DeviceContext, &ctx_option, &dev_ctx));
+	return dev_ctx;
+}
+
+STPExtendedScenePipeline::STPExtendedScenePipeline(const STPScenePipelineInitialiser& scene_init, ostream& msg_stream) :
+	Context(createDeviceContext(scene_init, msg_stream)),
+	RendererStream(STPSmartDeviceObject::makeStream(cudaStreamNonBlocking)), SceneMemoryCurrent{ }, SceneMemoryLimit(scene_init.ObjectCapacity),
+	SceneMemory(make_unique<STPMemoryManager>(*this)), IntersectionTracer(make_unique<STPScreenSpaceRayIntersection>(*this, scene_init.TargetDeviceArchitecture)),
+	RenderResolution(uvec2(0u)) {
+	//context check
+	const OptixDeviceContext dev_ctx = this->Context.get();
+	unsigned int maxInstanceID;
+	STP_CHECK_OPTIX(optixDeviceContextGetProperty(dev_ctx, OPTIX_DEVICE_PROPERTY_LIMIT_MAX_INSTANCE_ID, &maxInstanceID, sizeof(unsigned int)));
+	if (maxInstanceID < STPInstanceIDCoder::UserIDMask) {
+		throw STPException::STPUnsupportedFunctionality("The current OptiX rendering device does not support enough bits for IAS user ID");
+	}
+}
+
 STPExtendedScenePipeline::~STPExtendedScenePipeline() {
+	this->SceneMemory->waitForASBuild(this->RendererStream.get());
 	STP_CHECK_CUDA(cudaStreamSynchronize(this->RendererStream.get()));
 
 	//kill all object dependencies
 	//pending works on each object will still be running on the thread pool, and thread pool won't be dead until all tasks are finished.
-	auto& [object] = this->SceneComponent;
+	auto& object = this->SceneComponent.TraceableObjectDatabase;
 	for_each(object.begin(), object.end(), [](auto traceable) {
 		traceable->TraceableObjectID = STPExtendedSceneObject::EmptyObjectID;
 		traceable->setSceneInformation(STPExtendedSceneObject::STPTraceable::STPSceneInformation { });
 	});
+}
+
+void STPExtendedScenePipeline::updateAccelerationStructure() {
+	const optional<OptixTraversableHandle> maybe_handle = this->SceneMemory->checkRootASUpdate();
+	if (!maybe_handle) {
+		//no update is needed
+		return;
+	}
+
+	const OptixTraversableHandle handle = *maybe_handle;
+	//send the new handle to each shader
+	//the build operation may still be in progress, hence we should not launch the shader before any synchronisation happens.
+	this->IntersectionTracer->updateTraversableHandle(handle);
 }
 
 void STPExtendedScenePipeline::add(STPExtendedSceneObject::STPTraceable& object) {
@@ -855,9 +985,13 @@ void STPExtendedScenePipeline::add(STPExtendedSceneObject::STPTraceable& object)
 	if (curr_traceable >= this->SceneMemoryLimit.TraceableObject) {
 		throw STPException::STPMemoryError("The number of traceable object has reached the limit");
 	}
-
+	auto& [object_db, object_depth] = this->SceneComponent;
+	//record the old maximum traversable depth
+	const unsigned int traversableDepth_old = object_depth.empty() ? 0u : *object_depth.crbegin();
+	
 	//add new object an associate it with dependency of the current scene pipeline
-	this->SceneComponent.TraceableObjectDatabase.emplace_back(&object);
+	object_db.emplace_back(&object);
+	object_depth.emplace(object.traversableDepth());
 	//the old size is the index of the newly inserted object
 	object.TraceableObjectID = static_cast<STPExtendedSceneObject::STPObjectID>(curr_traceable);
 	object.setSceneInformation(STPExtendedSceneObject::STPTraceable::STPSceneInformation {
@@ -866,7 +1000,14 @@ void STPExtendedScenePipeline::add(STPExtendedSceneObject::STPTraceable& object)
 		this->SceneMemory->ObjectUpdateNotifier
 	});
 
-	curr_traceable = this->SceneComponent.TraceableObjectDatabase.size();
+	//check if the max depth has changed
+	const unsigned int traversableDepth_new = *object_depth.crbegin();
+	if (traversableDepth_new > traversableDepth_old) {
+		//need to increase stack size
+		this->IntersectionTracer->updateStackSize(traversableDepth_new);
+	}
+
+	curr_traceable = object_db.size();
 }
 
 void STPExtendedScenePipeline::setResolution(uvec2 resolution) {
@@ -879,6 +1020,10 @@ void STPExtendedScenePipeline::setResolution(uvec2 resolution) {
 	for_each(smStorage.begin(), smStorage.end(), [resolution](auto& internal) { internal.setResolution(resolution); });
 }
 
+void STPExtendedScenePipeline::setInverseProjectionView(const mat4& inv_pv) {
+	this->IntersectionTracer->updateInvPV(inv_pv);
+}
+
 STPExtendedScenePipeline::STPShaderMemory STPExtendedScenePipeline::createShaderMemory(STPShaderMemoryType type) {
 	return &this->SceneMemory->ShaderMemoryStorage.emplace_back(type, this->RenderResolution);
 }
@@ -886,5 +1031,38 @@ STPExtendedScenePipeline::STPShaderMemory STPExtendedScenePipeline::createShader
 void STPExtendedScenePipeline::destroyShaderMemory(STPShaderMemory sm) {
 	auto& smStorage = this->SceneMemory->ShaderMemoryStorage;
 	smStorage.erase(std::find_if(smStorage.cbegin(), smStorage.cend(),
-		[sm_ptr = static_cast<const STPShaderMemoryInternal*>(sm.Internal)](const auto& internal) { return &internal == sm_ptr; }));
+		[sm_ptr = const_cast<const STPShaderMemoryInternal*>(sm.Internal)](const auto& internal) { return &internal == sm_ptr; }));
+}
+
+void STPExtendedScenePipeline::traceIntersection(const STPTexture& stencil_in, const STPValidatedInformation<STPSSRIDescription>& ssri_info) {
+	const cudaStream_t stream = this->RendererStream.get();
+	const auto [stencil, ray_depth, ray_direction, position, tex_coord] = ssri_info.Description;
+	//copy input stencil into the internal cache
+	stencil->copyFromTexture(stencil_in);
+	//map all of them and create texture and surface
+	{
+		const auto stencil_mem = stencil->mapMemory<unsigned char*>(stream);
+		const auto ray_depth_mem = ray_depth->mapMemory<STPSmartDeviceObject::STPTexture>(stream);
+		const auto ray_direction_mem = ray_direction->mapMemory<STPSmartDeviceObject::STPTexture>(stream);
+		const auto position_mem = position->mapMemory<STPSmartDeviceObject::STPSurface>(stream);
+		const auto tex_coord_mem = tex_coord->mapMemory<STPSmartDeviceObject::STPSurface>(stream);
+
+		const STPScreenSpaceRayIntersectionData::STPTextureData texture_mem = {
+			stencil_mem, ray_depth_mem.get(), ray_direction_mem.get(), position_mem.get(), tex_coord_mem.get()
+		};
+
+		//initiate intersection tracer
+		this->SceneMemory->waitForASBuild(stream);
+		this->IntersectionTracer->launchIntersection(texture_mem);
+
+		//clean up, memory will be freed automatically
+		STP_CHECK_CUDA(cudaStreamSynchronize(stream));
+	}
+	stencil->unmapMemory(stream);
+	ray_depth->unmapMemory(stream);
+	ray_direction->unmapMemory(stream);
+	position->unmapMemory(stream);
+	tex_coord->unmapMemory(stream);
+
+	STPShaderMemoryInternal::finish();
 }
