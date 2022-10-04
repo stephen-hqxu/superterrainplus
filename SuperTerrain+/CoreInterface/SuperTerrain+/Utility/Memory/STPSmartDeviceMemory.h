@@ -25,6 +25,15 @@ namespace SuperTerrainPlus {
 			template<typename T>
 			using NoArray = std::remove_all_extents_t<T>;
 
+			//Delete pinned host memory using cudaFreeHost();
+			template<typename T>
+			struct STPPinnedMemoryDeleter {
+			public:
+
+				void operator()(T*) const;
+
+			};
+
 			//Delete device memory using cudaFree();
 			template<typename T>
 			struct STPDeviceMemoryDeleter {
@@ -52,6 +61,15 @@ namespace SuperTerrainPlus {
 			};
 
 		}
+
+		//STPPinnedMemory is a pinned host memory version of std::unique_ptr.
+		//The deleter utilises cudaFreeHost()
+		template<typename T>
+		using STPPinnedMemory =
+			std::unique_ptr<
+				STPSmartDeviceMemoryImpl::NoArray<T>,
+				STPSmartDeviceMemoryImpl::STPPinnedMemoryDeleter<STPSmartDeviceMemoryImpl::NoArray<T>>
+			>;
 
 		//STPDeviceMemory is a normal device memory version of std::unique_ptr.
 		//The deleter utilises cudaFree()
@@ -103,6 +121,15 @@ namespace SuperTerrainPlus {
 		};
 
 		//Some helper functions
+
+		/**
+		 * @brief Create a STPPinnedMemory which is a smart pointer to page-locked memory with default pinned memory allocator.
+		 * @tparam T The type of the pointer.
+		 * @param size THe number of element of T to be allocated.
+		 * @return The smart pointer to the memory allocated.
+		*/
+		template<typename T>
+		STPPinnedMemory<T> makePinned(size_t = 1ull);
 
 		/**
 		 * @brief Create a STPDeviceMemory which is a smart pointer to device memory with default device deleter

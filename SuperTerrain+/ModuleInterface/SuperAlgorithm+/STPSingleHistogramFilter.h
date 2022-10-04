@@ -14,14 +14,18 @@
 namespace SuperTerrainPlus::STPAlgorithm {
 
 	/**
-	 * @brief STPSingleHistogramFilter is an analysis tool for biomemap.
-	 * It generates histogram for every pixel on the biomemap within a given radius.
+	 * @brief STPSingleHistogramFilter is an analysis tool for discrete format texture such as the biomemap.
+	 * It generates histogram for every pixel on the texture within a given radius.
 	 * The bin or bucket size of the histogram will always be one, which denotes by the biomemap format "Sample".
 	 * An example use case is biome-edge interpolation, and space-partitioning biomes within a given radius to calculate a "factor" for linear interpolation.
-	 * STPSingleHistogramFilter optimises for efficient CPU computation, such that all memory provided to the histogram filter should be available on host side.
+	 * 
+	 * STPSingleHistogramFilter optimises for efficient multi-thread CPU computation,
+	 * with careful manual tuning and algorithm design, the single histogram filter achieves a asymptotic runtime of constant with respect to the radius of the filter kernel.
+	 * Strictly speaking, the worst case runtime complexity is `O(N + r)` where *N* is the total number of pixel on the texture and *r* is the radius of kernel.
+	 * In reality, *r* is negligibly small compared to *N*.
+	 * 
 	 * The filter also contains an internal adaptive memory pool that serves as a cache during computation, the first few executions will be slower due to the first-time allocation,
 	 * but once reused for repetitive filter calls little to no memory allocation should happen and performance will go to summit.
-	 * so memory can be reused and no re-allocation is required.
 	*/
 	class STP_ALGORITHM_HOST_API STPSingleHistogramFilter {
 	private:

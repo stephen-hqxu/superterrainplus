@@ -80,5 +80,4 @@ void STPSplatmapGenerator::splat(cudaTextureObject_t biomemap_tex, cudaTextureOb
 		Dimgridsize.x, Dimgridsize.y, Dimgridsize.z,
 		Dimblocksize.x, Dimblocksize.y, 1u,
 		0u, stream, nullptr, config));
-	STP_CHECK_CUDA(cudaGetLastError());
 }

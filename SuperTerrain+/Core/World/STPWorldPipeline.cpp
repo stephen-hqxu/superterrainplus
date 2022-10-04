@@ -322,7 +322,7 @@ private:
 				//container will guaranteed to exists since heightmap pass has already created it
 				if (curr_neighbour.chunkState() == STPChunk::STPChunkState::Empty) {
 					//compute biomemap
-					this->GeneratorWorker.enqueue_void(biomemap_computer, this->cacheUniqueChunk({ &curr_neighbour }), this->calcOffset(neighbourPos));
+					this->GeneratorWorker.enqueueDetached(biomemap_computer, this->cacheUniqueChunk({ &curr_neighbour }), this->calcOffset(neighbourPos));
 					//try to compute all biomemap, and when biomemap is computing, we don't need to wait
 					canContinue = false;
 				}
@@ -353,11 +353,11 @@ private:
 		switch (rec_depth) {
 		case BIOMEMAP_PASS:
 			//generate heightmap
-			this->GeneratorWorker.enqueue_void(heightmap_computer, visitor_entry, chunkCoord);
+			this->GeneratorWorker.enqueueDetached(heightmap_computer, visitor_entry, chunkCoord);
 			break;
 		case HEIGHTMAP_PASS:
 			//perform erosion on heightmap
-			this->GeneratorWorker.enqueue_void(erosion_computer, visitor_entry);
+			this->GeneratorWorker.enqueueDetached(erosion_computer, visitor_entry);
 			{
 				//trigger a chunk reload as some chunks have been added to render buffer already after neighbours are updated
 				for_each(neighbour_position.cbegin(), neighbour_position.cend(), 
@@ -1269,7 +1269,7 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 	}
 
 	//group mapped data together and start loading chunk
-	this->MapLoader = this->PipelineWorker.enqueue_future(asyncChunkLoader, std::cref(backBuffer_ptr));
+	this->MapLoader = this->PipelineWorker.enqueue(asyncChunkLoader, std::cref(backBuffer_ptr));
 	return STPWorldLoadStatus::BackBufferBusy;
 }
 

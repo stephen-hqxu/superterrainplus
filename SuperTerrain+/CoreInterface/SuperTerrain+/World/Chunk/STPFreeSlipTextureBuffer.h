@@ -7,7 +7,6 @@
 #include <optional>
 //Data Structure
 #include <vector>
-#include "../../Utility/Memory/STPMemoryPool.h"
 //CUDA
 #include <cuda_runtime.h>
 //Free-Slip Data
@@ -30,8 +29,6 @@ namespace SuperTerrainPlus {
 		STPFreeSlipInformation TextureInfo;
 
 		//Memory Pool
-		//Host memory pool is thread safe and can (and should!) be shared with other texture buffer objects
-		mutable STPPinnedMemoryPool HostMemPool;
 		cudaMemPool_t DeviceMemPool;
 
 	};
@@ -92,31 +89,6 @@ namespace SuperTerrainPlus {
 
 	private:
 
-		/**
-		 * @brief STPHostCallbackDeleter is a deleter to return host memory to memory pool using CUDA stream callback function
-		*/
-		struct STPHostCallbackDeleter {
-		private:
-
-			//Stream the callback function will be enqueued
-			//Host memory will be returned to
-			std::optional<std::pair<cudaStream_t, STPPinnedMemoryPool*>> Data;
-
-		public:
-
-			STPHostCallbackDeleter() = default;
-
-			/**
-			 * @brief Init STPHostCallbackDeleter with data
-			 * @param stream Stream that the free operation will be called in
-			 * @param memPool The host memory pool that the memory will be returned to
-			*/
-			STPHostCallbackDeleter(cudaStream_t, STPPinnedMemoryPool*);
-
-			void operator()(T*) const;
-
-		};
-
 		const STPFreeSlipTextureAttribute& Attr;
 		const STPFreeSlipTextureData Data;
 
@@ -125,7 +97,7 @@ namespace SuperTerrainPlus {
 		//The previously integrated texture location
 		std::optional<STPFreeSlipLocation> Integration;
 		//Pointer to merged free-slip texture in device memory.
-		std::unique_ptr<T[], STPHostCallbackDeleter> HostIntegration;
+		STPSmartDeviceMemory::STPPinnedMemory<T[]> HostIntegration;
 		STPSmartDeviceMemory::STPStreamedDeviceMemory<T[]> DeviceIntegration;
 
 		/**

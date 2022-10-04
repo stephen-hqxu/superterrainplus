@@ -15,7 +15,6 @@ Exception/STPBadNumericRange.h
 Exception/STPCompilationError.h
 Exception/STPCUDAError.h
 Exception/STPDatabaseError.h
-Exception/STPDeadThreadPool.h
 Exception/STPGLError.h
 Exception/STPInvalidArgument.h
 Exception/STPInvalidEnvironment.h
@@ -36,7 +35,6 @@ Utility/Algebra/STPMatrix4x4d.inl
 Utility/Algebra/STPVector4d.h
 Utility/Algebra/STPVector4d.inl
 # /Utility/Memory
-Utility/Memory/STPMemoryPool.h
 Utility/Memory/STPObjectPool.h
 Utility/Memory/STPObjectPool.inl
 Utility/Memory/STPSmartDeviceMemory.h

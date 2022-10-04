@@ -3,7 +3,6 @@
 #include <SuperTerrain+/Exception/STPCompilationError.h>
 #include <SuperTerrain+/Exception/STPCUDAError.h>
 #include <SuperTerrain+/Exception/STPDatabaseError.h>
-#include <SuperTerrain+/Exception/STPDeadThreadPool.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
 #include <SuperTerrain+/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
@@ -47,12 +46,6 @@ STPCUDAError::STPCUDAError(const char* msg) : runtime_error(msg) {
 //STPDatabaseError.h
 
 STPDatabaseError::STPDatabaseError(const char* msg) : runtime_error(msg) {
-
-}
-
-//STPDeadThreadPool.h
-
-STPDeadThreadPool::STPDeadThreadPool(const char* msg) : runtime_error(msg) {
 
 }
 

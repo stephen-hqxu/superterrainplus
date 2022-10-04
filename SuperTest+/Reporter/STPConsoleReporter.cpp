@@ -132,10 +132,10 @@ private:
 	 * @param assertion The assertion to be emitted
 	*/
 	inline void emitStats(const Counts& assertion) {
-		m_stream << m_colour->guardColour(Colour::Cyan) << assertion.total() << " Total |"
+		m_stream << m_colour->guardColour(Colour::Cyan) << "| " << assertion.total() << " Total |"
 			<< m_colour->guardColour(Colour::ResultSuccess) << "| " << assertion.passed << " Passed |"
 			<< m_colour->guardColour(Colour::ResultExpectedFailure) << "| " << assertion.failedButOk << " Warned |"
-			<< m_colour->guardColour(Colour::ResultError) << "| " << assertion.failed << " Failed"
+			<< m_colour->guardColour(Colour::ResultError) << "| " << assertion.failed << " Failed |"
 			<< endl;
 	}
 

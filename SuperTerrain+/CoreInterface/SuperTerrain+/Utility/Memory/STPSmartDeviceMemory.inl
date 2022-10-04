@@ -4,6 +4,11 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 template<typename T>
+inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPPinnedMemoryDeleter<T>::operator()(T* ptr) const {
+	STP_CHECK_CUDA(cudaFreeHost(ptr));
+}
+
+template<typename T>
 inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPDeviceMemoryDeleter<T>::operator()(T* ptr) const {
 	STP_CHECK_CUDA(cudaFree(ptr));
 }
@@ -34,6 +39,14 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPit
 
 #define TYPE_SANITISE using U = STPSmartDeviceMemoryImpl::NoArray<T>; \
 U* cache
+
+template<typename T>
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPPinnedMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makePinned(size_t size) {
+	TYPE_SANITISE;
+
+	STP_CHECK_CUDA(cudaMallocHost(&cache, sizeof(U) * size));
+	return STPSmartDeviceMemory::STPPinnedMemory<T>(cache);
+}
 
 template<typename T>
 inline SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeDevice(size_t size) {

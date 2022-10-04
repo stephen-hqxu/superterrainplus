@@ -5,6 +5,8 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
+//Matcher
+#include <catch2/matchers/catch_matchers_string.hpp>
 
 //CUDA
 #include "STPTestInformation.h"
@@ -15,45 +17,64 @@
 //SuperTerrain+/SuperTerrain+/Utility
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
-#include <SuperTerrain+/Utility/Memory/STPMemoryPool.h>
 #include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 //SuperTerrain+/SuperTerrain+/Exception
 #include <SuperTerrain+/Exception/STPCUDAError.h>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPDeadThreadPool.h>
 
-
+#include <stdexcept>
 #include <algorithm>
+#include <atomic>
 #include <optional>
+#include <utility>
+
+using Catch::Matchers::ContainsSubstring;
 
 using namespace SuperTerrainPlus;
 
+using std::atomic;
 using std::optional;
 using std::unique_ptr;
 using std::make_unique;
-using std::mutex;
-using std::condition_variable;
-using std::unique_lock;
 using std::future;
-using std::async;
 
 class ThreadPoolTester {
+private:
+
+	static void sleep() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(10ull));
+	}
+
 protected:
 
-	mutable mutex Lock;
-	mutable condition_variable Signal;
+	static constexpr size_t WorkBatchSize = 4ull;
 
 	//use optional so we can control the life-time of the thread pool for easy testing
 	optional<STPThreadPool> Pool;
 
-	static void sleep(size_t time) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(time));
+	static unsigned int busyWork(unsigned int value) {
+		ThreadPoolTester::sleep();
+		return value;
 	}
 
-	static unsigned int busyWork(unsigned int value) {
-		ThreadPoolTester::sleep(10ull);
-		return value;
+	static void busyWorkNoReturn(atomic<bool>& flag) {
+		ThreadPoolTester::sleep();
+		flag = !flag;
+	}
+
+	[[noreturn]] static void brokenWork(unsigned int value) {
+		ThreadPoolTester::busyWork(value);
+		throw std::runtime_error("This test case is intended to fail");
+	}
+
+	void submitManyWorks(atomic<unsigned int>& counter) {
+		for (size_t work = 0ull; work < WorkBatchSize; work++) {
+			this->Pool->enqueueDetached([&counter](unsigned int value) {
+				ThreadPoolTester::busyWork(value);
+				counter++;
+			}, static_cast<unsigned int>(work));
+		}
 	}
 
 public:
@@ -62,26 +83,11 @@ public:
 
 	}
 
-	void waitUntilSignaled() const {
-		{
-			unique_lock<mutex> cond_lock(this->Lock);
-			this->Signal.wait(cond_lock);
-		}
-	}
-
-	void sendSignal() const {
-		this->Signal.notify_one();
-	}
-
-	void killPool() {
-		this->Pool.reset();//this line will not return until the previous worker has finished
-	}
-
 };
 
 SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded workload", "[Utility][STPThreadPool]") {
 
-	GIVEN("A invalid thread pool with zero worker") {
+	GIVEN("An invalid thread pool with zero worker") {
 
 		THEN("Thread pool should throw an error") {
 			REQUIRE_THROWS_AS(STPThreadPool(0u), STPException::STPBadNumericRange);
@@ -91,50 +97,74 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded worklo
 
 	GIVEN("A valid thread pool object") {
 
-		THEN("New thread pool should be ready to go") {
-			REQUIRE(this->Pool->isRunning());
-			REQUIRE(this->Pool->size() == 0ull);
-		}
+		WHEN("Some works need to be done") {
 
-		WHEN("Some works needs to be done") {
-			const unsigned int work = GENERATE(take(3u, random(0u, 6666u)));
-			std::future<unsigned int> result;
+			AND_WHEN("The work returns a value") {
+				const unsigned int Work = GENERATE(take(3u, random(0u, 6666u)));
+				future<unsigned int> Result;
+				REQUIRE_NOTHROW([&pool = *this->Pool, &Result, Work]() {
+					Result = pool.enqueue(&ThreadPoolTester::busyWork, Work);
+				}());
 
-			THEN("Thread pool should be working on the task") {
-				REQUIRE_NOTHROW([&pool = *(this->Pool), &result, work]() {
-					result = pool.enqueue_future(&ThreadPoolTester::busyWork, work);
-					}());
+				THEN("Work is done successfully and the result can be retrieved") {
+					REQUIRE(Result.get() == Work);
+				}
 
-				AND_THEN("Work can be done successfully") {
-					//get the work done
-					REQUIRE(result.get() == work);
+			}
 
-					//thread pool should be idling
-					REQUIRE(this->Pool->size() == 0ull);
+			AND_WHEN("The work does not return a value") {
+				atomic<bool> Flag = false;
+				future<void> Result;
+				REQUIRE_NOTHROW([&pool = *this->Pool, &Result, &Flag]() {
+					Result = pool.enqueue(&ThreadPoolTester::busyWorkNoReturn, std::ref(Flag));
+				}());
+
+				THEN("Work is done successfully even if it does not return any value") {
+					Result.get();
+					REQUIRE(Flag);
 				}
 			}
 
+			AND_WHEN("The work is detached from the main thread") {
+				atomic<bool> Flag = false;
+				REQUIRE_NOTHROW([&pool = *this->Pool, &Flag]() {
+					pool.enqueueDetached(&ThreadPoolTester::busyWorkNoReturn, std::ref(Flag));
+				}());
+
+				THEN("Work is done successfully with explicit thread pool synchronisation") {
+					this->Pool->waitAll();
+					REQUIRE(Flag);
+				}
+
+			}
+
 		}
 
-		WHEN("Insert more works to a thread pool that has been signalled to be killed") {
-			using std::bind;
-			//send a busy worker
-			this->Pool->enqueue_void(bind(&ThreadPoolTester::waitUntilSignaled, this));
-			//send a thread to kill the thread pool
-			future<void> killer = async(bind(&ThreadPoolTester::killPool, this));
-			
-			//destructor of the thread pool will not return until all waiting works are finished
-			//wait for the thread to reach the "deadlock" state
-			ThreadPoolTester::sleep(25ull);
+		WHEN("The work to be done throws an exception") {
 
-			THEN("Thread pool should not allow more works to be inserted") {
-				CHECK_THROWS_AS(this->Pool->enqueue_void(&ThreadPoolTester::busyWork, 0u), STPException::STPDeadThreadPool);
+			THEN("The thread pool captures the exception successfully without crashing itself") {
+				future<void> Result;
+				REQUIRE_NOTHROW([&pool = *this->Pool, &Result]() {
+					Result = pool.enqueue(&ThreadPoolTester::brokenWork, 12345u);
+				}());
 
-				//clear up
-				this->sendSignal();
-				killer.get();
+				REQUIRE_THROWS_WITH(Result.get(), ContainsSubstring("intended to fail"));
 			}
-			
+
+		}
+
+		WHEN("The thread pool is destroyed while working") {
+
+			THEN("The thread pool should be destroyed only when all tasks are done") {
+				atomic<unsigned int> Counter = 0u;
+				this->submitManyWorks(Counter);
+
+				//kill the pool while the tasks are being done
+				this->Pool.reset();
+				//the destructor of the pool should not return until everything has been done
+				REQUIRE(Counter == ThreadPoolTester::WorkBatchSize);
+			}
+
 		}
 	}
 }
@@ -161,40 +191,6 @@ SCENARIO("STPDeviceErrorHandler reports CUDA API error", "[Utility][STPDeviceErr
 					CHECK_THROWS_AS(STP_CHECK_CUDA(cudaError::cudaErrorInvalidValue), STPException::STPCUDAError);
 					CHECK_THROWS_AS(STP_CHECK_CUDA(CUresult::CUDA_ERROR_INVALID_VALUE), STPException::STPCUDAError);
 					CHECK_THROWS_AS(STP_CHECK_CUDA(nvrtcResult::NVRTC_ERROR_OUT_OF_MEMORY), STPException::STPCUDAError);
-				}
-
-			}
-
-		}
-
-	}
-
-}
-
-#define REQUEST_MEMORY static_cast<unsigned long long*>(this->request(sizeof(unsigned long long)))
-
-TEMPLATE_TEST_CASE_METHOD_SIG(STPMemoryPool, "STPMemoryPool reuses memory whenever possible", "[Utility][STPMemoryPool]",
-	((STPMemoryPoolType T), T), STPMemoryPoolType::Regular, STPMemoryPoolType::Pinned) {
-
-	GIVEN("A fresh memory pool") {
-
-		WHEN("Memory needs to be requested and released") {
-			const unsigned long long Data = GENERATE(take(3u, random(0ull, 66666666ull)));
-			unsigned long long* Mem = REQUEST_MEMORY;
-			//write something
-			Mem[0] = Data;
-			this->release(Mem);
-			
-			THEN("When re-requesting memory it should be reused") {
-				Mem = REQUEST_MEMORY;
-				REQUIRE(Mem[0] == Data);
-				this->release(Mem);
-			}
-
-			AND_WHEN("Requesting a memory with size of zero") {
-				
-				THEN("Error should be thrown to notify that memory size should be positive") {
-					REQUIRE_THROWS_AS(this->request(0ull), STPException::STPBadNumericRange);
 				}
 
 			}

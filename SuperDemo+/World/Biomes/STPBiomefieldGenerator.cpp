@@ -125,7 +125,6 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 		Dimgridsize.x, Dimgridsize.y, 1u,
 		Dimblocksize.x, Dimblocksize.y, 1u,
 		0u, stream, nullptr, config));
-	STP_CHECK_CUDA(cudaGetLastError());
 
 	//free histogram device memory
 	//STPBin is a POD-type so can be freed with no problem

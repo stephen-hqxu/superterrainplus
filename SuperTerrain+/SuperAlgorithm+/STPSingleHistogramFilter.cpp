@@ -794,7 +794,7 @@ public:
 			histogram_output->HistogramStartOffset.resize(offset_total);
 			uvec2 base(0u);
 			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
-				workgroup[w] = filter_worker.enqueue_future(STPSHFKernel::copyToOutput,
+				workgroup[w] = filter_worker.enqueue(STPSHFKernel::copyToOutput,
 					histogram_output, cref(memoryBlock[w].first), w, base);
 
 				//get the base index for the next worker, so each worker only copies buffer belongs to them to
@@ -828,7 +828,7 @@ public:
 				width_step = total_width / STPSHFKernel::Parallelism;
 			uvec2 w_range(width_start, width_start + width_step);
 			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
-				workgroup[w] = this->FilterWorker.enqueue_future(STPSHFKernel::filterVertical, cref(sample_map),
+				workgroup[w] = this->FilterWorker.enqueue(STPSHFKernel::filterVertical, cref(sample_map),
 					freeslip_info.FreeSlipRange.x, freeslip_info.Dimension.y, central_starting_coordinate.y, w_range,
 					ref(memoryBlock[w]), radius);
 				//increment
@@ -850,7 +850,7 @@ public:
 			const unsigned int height_step = dimension.y / STPSHFKernel::Parallelism;
 			uvec2 h_range(0u, height_step);
 			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
-				workgroup[w] = this->FilterWorker.enqueue_future(STPSHFKernel::filterHorizontal,
+				workgroup[w] = this->FilterWorker.enqueue(STPSHFKernel::filterHorizontal,
 					histogram_output, cref(dimension), h_range, ref(memoryBlock[w]), radius);
 				//increment range
 				h_range.x = h_range.y;

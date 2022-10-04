@@ -9,7 +9,6 @@ STPHeightfieldKernel.cu
 STPRainDrop.cu
 # /Utility
 Utility/STPFile.cpp
-Utility/STPMemoryPool.cpp
 Utility/STPSmartDeviceObject.cpp
 Utility/STPThreadPool.cpp
 # /World/Diversity

@@ -16,7 +16,7 @@
 	<img src="https://img.shields.io/badge/CMake_3.18-064F8C?style=flat&logo=cmake&logoColor=white" />
 </p>
 
-Procedural technique is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
+Procedural content generation is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
 
 *SuperTerrain+* is a procedural terrain engine and real-time renderer started as my personal project in July, 2020 and later become my undergraduate dissertation project; now I mainly use it as a playground for exploring this area further and improving my programming proficiency; more importantly, for fun.
 
@@ -45,9 +45,9 @@ Procedural technique is one of the most popular topics in computer graphics and 
 ### Procedural geometry generation
 
 - [ ] Volumetric cloud
-- [ ] Rule-based geometry placement
+- [ ] Procedural object placement
 - [ ] Procedural animated grassland generation
-- [ ] Procedural parameter-based tree generation
+- [ ] Procedural tree generation
 - [ ] Procedural rock generation
 
 ### Real-time photorealistic rendering
@@ -87,11 +87,16 @@ Procedural technique is one of the most popular topics in computer graphics and 
   - [x] Fresnel effect
   - [ ] Caustics
   - [ ] Underwater crepuscular rays
-- [ ] Real-time rasterisation-ray tracing hybrid rendering of...
-  - [ ] Reflection
-  - [ ] Refraction
-  - [ ] Caustics
 - [ ] Procedural weather effect
+
+#### Real-time rasterisation-ray tracing hybrid rendering
+
+- [ ] Reflection
+- [ ] Refraction
+- [ ] Shadow
+- [ ] Ambient occlusion
+- [ ] Global illumination
+- [ ] Caustics
 
 ### Optimisation technique
 

@@ -219,7 +219,6 @@ protected:
 				8u, 4u, 1u,
 				0u, 0, args, nullptr
 			));
-			STP_CHECK_CUDA(cudaGetLastError());
 		}
 		{
 			//scale
