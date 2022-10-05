@@ -18,7 +18,7 @@
 
 Procedural content generation is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
 
-*SuperTerrain+* is a procedural terrain engine and real-time renderer started as my personal project in July, 2020 and later become my undergraduate dissertation project; now I mainly use it as a playground for exploring this area further and improving my programming proficiency; more importantly, for fun.
+*SuperTerrain+* is a built-from-scratch procedural terrain engine and real-time renderer started as my personal project in July, 2020 and later become my undergraduate dissertation project; now I mainly use it as a playground for exploring this area further and improving my programming proficiency; more importantly, for fun.
 
 *SuperTerrain+* provides a low-overhead, extendible and flexible interface, demonstrates application of modern programming and rendering techniques; with the help of extensive in-source documentations, this is also a great place for learning.
 
@@ -268,13 +268,18 @@ For redistributed / adapted / derived open source projects, see *3rd-Party* dire
 
 - [README Template](https://github.com/othneildrew/Best-README-Template)
 
+### Utility
+
+- [Simple C++ lexer](https://gist.github.com/arrieta/1a309138689e09375b90b3b1aa768e20)
+- [C++ thread pool implementation](https://github.com/bshoshany/thread-pool)
+- [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
+
 ### Terrain generation
 
 - [Particle based hydraulic erosion](https://github.com/SebLague/Hydraulic-Erosion/tree/Coding-Adventure-E01)
 - [Minecraft biome generator](https://github.com/KaptainWutax/BiomeUtils)
 - [Linear time Gaussian filter](http://blog.ivank.net/fastest-gaussian-blur.html) by *Ivan Kutskir*
 - [Stratified sampling technique](https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-17-efficient-soft-edged-shadows-using) from *GPU Gems 2*
-- [Simple C++ lexer](https://gist.github.com/arrieta/1a309138689e09375b90b3b1aa768e20)
 
 ### Geometry generation
 
@@ -284,7 +289,6 @@ For redistributed / adapted / derived open source projects, see *3rd-Party* dire
 ### Photorealistic rendering
 
 - [Normal map blending](https://blog.selfshadow.com/publications/blending-in-detail/)
-- [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
 - [Simulating the Colors of the Sky](https://www.scratchapixel.com/lessons/procedural-generation-virtual-worlds/simulating-sky) from *Scratchapixel*
 - [Physically-based atmospheric scattering](https://github.com/wwwtyro/glsl-atmosphere/)
 - [A Primer On Efficient Rendering Algorithms & Clustered Shading](http://www.aortiz.me/2018/12/21/CG.html) by *Ángel Ortiz*

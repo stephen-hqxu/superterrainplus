@@ -497,10 +497,6 @@ STPTextureDatabase::STPDatabaseView::STPMapRecord STPTextureDatabase::STPDatabas
 }
 
 STPTextureDatabase::STPDatabaseView::STPTextureTypeRecord STPTextureDatabase::STPDatabaseView::getValidMapType(unsigned int hint) const {
-	if (hint > static_cast<std::underlying_type_t<STPTextureType>>(STPTextureType::TypeCount)) {
-		throw STPException::STPBadNumericRange("Hint is larger than the number of possible type");
-	}
-
 	static constexpr string_view GetAllType = 
 		"SELECT DISTINCT Type FROM ValidMap ORDER BY Type ASC;";
 	STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl->createStmt(GetAllType);

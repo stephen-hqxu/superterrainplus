@@ -10,7 +10,6 @@
 
 //Exception
 #include <SuperTerrain+/Exception/STPDatabaseError.h>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 #include <algorithm>
 
@@ -330,90 +329,78 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 				using std::get;
 				const auto BatchVisitor = this->visit();
 
-				AND_WHEN("The query parameters contain errors") {
-
-					THEN("Query should fail and error is reported") {
-						REQUIRE_THROWS_AS(BatchVisitor.getValidMapType(666u), STPException::STPBadNumericRange);
+				THEN("Batched result sets are verified to be correct") {
+					{
+						//get all altitude rules
+						const auto AltRec = BatchVisitor.getAltitudes();
+						CHECK(AltRec.size() == 4ull);
+						//check for ordering
+						const auto [sample, node] = AltRec[2];
+						CHECK(sample == 66u);
+						CHECK(node.UpperBound == 0.6f);
+						CHECK(node.Reference.DatabaseKey == Tex[4]);
 					}
+					{
+						//get all gradient rules
+						const auto GraRec = BatchVisitor.getGradients();
+						CHECK(GraRec.size() == 2ull);
+						//pick some data for checking
+						const auto [sample, node] = GraRec[0];
+						CHECK(sample == 66u);
+						//gradients are only sorted by sample, the rest of the order will be the same as how we inserted
+						CHECK(node.Reference.DatabaseKey == Tex[2]);
+						CHECK(node.LowerBound == 0.0f);
+					}
+					{
+						//get samples that have been added with rules
+						const auto SampleRec = BatchVisitor.getValidSample(2u);
+						CHECK(SampleRec.size() == 2ull);
+						const auto [sample, alt_count, gra_count] = SampleRec[1];
+						CHECK(sample == 66u);
+						CHECK(alt_count == 2ull);
+						CHECK(gra_count == 2ull);
+						//edge case checking
+						CHECK(get<2>(SampleRec[0]) == 0ull);
+					}
+					{
+						//get group that has any map being used by any valid texture
+						const auto GroupRec = BatchVisitor.getValidMapGroup();
+						CHECK(GroupRec.size() == 3ull);
+						const auto& [id, data_count, desc] = GroupRec[0];
+						CHECK(id == MapGroup[2]);
+						CHECK(data_count == 3ull);
+						CHECK((desc == x2_rgb));
+					}
+					{
+						//get textures that are referenced by any rule
+						const auto TexRec = BatchVisitor.getValidTexture();
+						CHECK(TexRec.size() == 3ull);
+						CHECK(TexRec[0].first == Tex[2]);
+						CHECK((TexRec[0].second == small_scale));
 
-				}
+						CHECK(TexRec[1].first == Tex[3]);
+						CHECK((TexRec[1].second == big_scale));
 
-				AND_WHEN("Query is valid") {
-
-					THEN("Batched result sets are verified to be correct") {
-						{
-							//get all altitude rules
-							const auto AltRec = BatchVisitor.getAltitudes();
-							CHECK(AltRec.size() == 4ull);
-							//check for ordering
-							const auto [sample, node] = AltRec[2];
-							CHECK(sample == 66u);
-							CHECK(node.UpperBound == 0.6f);
-							CHECK(node.Reference.DatabaseKey == Tex[4]);
-						}
-						{
-							//get all gradient rules
-							const auto GraRec = BatchVisitor.getGradients();
-							CHECK(GraRec.size() == 2ull);
-							//pick some data for checking
-							const auto [sample, node] = GraRec[0];
-							CHECK(sample == 66u);
-							//gradients are only sorted by sample, the rest of the order will be the same as how we inserted
-							CHECK(node.Reference.DatabaseKey == Tex[2]);
-							CHECK(node.LowerBound == 0.0f);
-						}
-						{
-							//get samples that have been added with rules
-							const auto SampleRec = BatchVisitor.getValidSample(2u);
-							CHECK(SampleRec.size() == 2ull);
-							const auto [sample, alt_count, gra_count] = SampleRec[1];
-							CHECK(sample == 66u);
-							CHECK(alt_count == 2ull);
-							CHECK(gra_count == 2ull);
-							//edge case checking
-							CHECK(get<2>(SampleRec[0]) == 0ull);
-						}
-						{
-							//get group that has any map being used by any valid texture
-							const auto GroupRec = BatchVisitor.getValidMapGroup();
-							CHECK(GroupRec.size() == 3ull);
-							const auto& [id, data_count, desc] = GroupRec[0];
-							CHECK(id == MapGroup[2]);
-							CHECK(data_count == 3ull);
-							CHECK((desc == x2_rgb));
-						}
-						{
-							//get textures that are referenced by any rule
-							const auto TexRec = BatchVisitor.getValidTexture();
-							CHECK(TexRec.size() == 3ull);
-							CHECK(TexRec[0].first == Tex[2]);
-							CHECK((TexRec[0].second == small_scale));
-
-							CHECK(TexRec[1].first == Tex[3]);
-							CHECK((TexRec[1].second == big_scale));
-
-							CHECK(TexRec[2].first == Tex[4]);
-							CHECK((TexRec[2].second == small_scale));
-						}
-						{
-							//get maps that are used by valid texture
-							const auto MapRec = BatchVisitor.getValidMap();
-							CHECK(MapRec.size() == 6ull);
-							const auto [group, tex, type, data] = MapRec[3];
-							const unsigned char* data_uc = reinterpret_cast<const unsigned char*>(data);
-							CHECK(group == MapGroup[3]);
-							CHECK(tex == Tex[4]);
-							CHECK(type == STPTextureType::Albedo);
-							CHECK(std::equal(data_uc, data_uc + sizeof(TexSoilColor), TexSoilColor));
-						}
-						{
-							//get types that are used by any rule
-							const auto TypeRec = BatchVisitor.getValidMapType(3u);
-							CHECK(TypeRec.size() == 3ull);
-							CHECK(TypeRec[1] == STPTextureType::Normal);
-							CHECK(TypeRec[2] == STPTextureType::Roughness);
-						}
-
+						CHECK(TexRec[2].first == Tex[4]);
+						CHECK((TexRec[2].second == small_scale));
+					}
+					{
+						//get maps that are used by valid texture
+						const auto MapRec = BatchVisitor.getValidMap();
+						CHECK(MapRec.size() == 6ull);
+						const auto [group, tex, type, data] = MapRec[3];
+						const unsigned char* data_uc = reinterpret_cast<const unsigned char*>(data);
+						CHECK(group == MapGroup[3]);
+						CHECK(tex == Tex[4]);
+						CHECK(type == STPTextureType::Albedo);
+						CHECK(std::equal(data_uc, data_uc + sizeof(TexSoilColor), TexSoilColor));
+					}
+					{
+						//get types that are used by any rule
+						const auto TypeRec = BatchVisitor.getValidMapType(3u);
+						CHECK(TypeRec.size() == 3ull);
+						CHECK(TypeRec[1] == STPTextureType::Normal);
+						CHECK(TypeRec[2] == STPTextureType::Roughness);
 					}
 
 				}

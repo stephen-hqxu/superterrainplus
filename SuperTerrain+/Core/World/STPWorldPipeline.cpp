@@ -556,7 +556,7 @@ public:
 	*/
 	inline void mainWaitsWorkers(cudaStream_t main) const {
 		//record the status of all worker streams.
-		for (int worker = 0; worker < this->MemoryWorker.size(); worker++) {
+		for (size_t worker = 0u; worker < this->MemoryWorker.size(); worker++) {
 			STP_CHECK_CUDA(cudaEventRecord(this->MemoryWorkerSync[worker].get(), this->MemoryWorker[worker].get()));
 		}
 		//main stream should not continue until all workers are done

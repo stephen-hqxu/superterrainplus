@@ -96,7 +96,7 @@ namespace SuperTerrainPlus {
 	 * @tparam Del The deleter function to this type of resource.
 	*/
 	template<class Pri, Pri Null, class Del>
-	using STPUniqueResource = std::unique_ptr<Pri, typename STPNullablePrimitive<Pri, Null>::STPNullableDeleter<Del>>;
+	using STPUniqueResource = std::unique_ptr<Pri, typename STPNullablePrimitive<Pri, Null>::template STPNullableDeleter<Del>>;
 
 }
 #include "STPNullablePrimitive.inl"

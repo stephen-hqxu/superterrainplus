@@ -857,8 +857,8 @@ void STPScenePipeline::add(STPSceneLight& light) {
 		const STPSceneShaderCapacity& current_usage = this->SceneMemoryCurrent,
 			limit_usage = this->SceneMemoryLimit;
 		
-		if (light.Type == LT::Ambient && current_usage.AmbientLight >= limit_usage.AmbientLight
-			|| light.Type == LT::Directional && current_usage.DirectionalLight >= limit_usage.DirectionalLight) {
+		if ((light.Type == LT::Ambient && current_usage.AmbientLight >= limit_usage.AmbientLight)
+			|| (light.Type == LT::Directional && current_usage.DirectionalLight >= limit_usage.DirectionalLight)) {
 			throw STPException::STPMemoryError("The number of this type of light has reached the limit");
 		}
 	}

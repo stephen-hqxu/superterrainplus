@@ -302,6 +302,9 @@ private:
 					STPShaderMemoryDescription::Output
 				};
 				break;
+			default:
+				throw STPException::STPInvalidArgument("The type of shader memory is not valid");
+				break;
 			}
 		}
 
