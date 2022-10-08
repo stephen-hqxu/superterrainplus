@@ -25,7 +25,6 @@ using glm::value_ptr;
 using glm::clamp;
 using glm::rotate;
 
-using glm::uvec3;
 using glm::vec3;
 using glm::dvec3;
 using glm::mat3;
@@ -178,7 +177,7 @@ STPSun::STPBundledData<STPLightSpectrum> STPSun::generateSunSpectrum(unsigned in
 		make_from_tuple<STPLightSpectrum>(spectrum_creator),
 		make_from_tuple<STPLightSpectrum>(spectrum_creator)
 	);
-	auto& [sky_spec, sun_spec] = spectrum;
+	const auto& [sky_spec, sun_spec] = spectrum;
 
 	//bind output
 	sky_spec.spectrum().bindImage(0u, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA16F);

@@ -68,8 +68,6 @@ using std::to_string;
 using std::for_each;
 
 using glm::uvec2;
-using glm::uvec3;
-using glm::ivec3;
 using glm::mat4;
 
 using SuperTerrainPlus::STPUniqueResource;
@@ -365,7 +363,7 @@ public:
 		
 		//create new texture
 		STPTexture texture(GL_TEXTURE_2D);
-		texture.textureStorage<STPTexture::STPDimension::TWO>(1, this->TextureDesc.TextureInternal, uvec3(this->TextureResolution, 1u));
+		texture.textureStorage2D(1, this->TextureDesc.TextureInternal, this->TextureResolution);
 
 		using std::move;
 		if (this->TextureDesc.RequireTextureCache) {
@@ -390,7 +388,7 @@ public:
 		this->TextureCache->bind(GL_PIXEL_PACK_BUFFER);
 		//prepare for pixel transfer
 		glPixelStorei(GL_PACK_ALIGNMENT, this->TextureDesc.CacheAlignment);
-		source.getTextureImage(0, this->TextureDesc.TextureFormat, this->TextureDesc.TexturePixel, this->calcBufferSize(), 0);
+		source.getTextureImage(0, this->TextureDesc.TextureFormat, this->TextureDesc.TexturePixel, static_cast<STPOpenGL::STPsizei>(this->calcBufferSize()), 0);
 	}
 
 	/**
@@ -459,7 +457,7 @@ public:
 			//copy from cache to texture
 			this->TextureCache->bind(GL_PIXEL_UNPACK_BUFFER);
 			glPixelStorei(GL_UNPACK_ALIGNMENT, this->TextureDesc.CacheAlignment);
-			this->Texture.textureSubImage<STPTexture::STPDimension::TWO>(0, ivec3(0), uvec3(this->TextureResolution, 1u),
+			this->Texture.textureSubImage2D(0, STPGLVector::STPintVec2(0), this->TextureResolution,
 				this->TextureDesc.TextureFormat, this->TextureDesc.TexturePixel, 0);
 		}
 	}

@@ -208,7 +208,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 		.uniform(glProgramUniform3uiv, "RegionScaleRegistry", static_cast<GLsizei>(region_count), value_ptr(scale_factors[0]));
 
 	/* --------------------------------- shader noise texture preparation ------------------------------ */
-	this->NoiseSample.textureStorage<STPTexture::STPDimension::THREE>(1, GL_R8, this->RandomTextureDimension);
+	this->NoiseSample.textureStorage3D(1, GL_R8, this->RandomTextureDimension);
 	this->NoiseSample.wrap(GL_REPEAT);
 	this->NoiseSample.filter(GL_NEAREST, GL_LINEAR);
 

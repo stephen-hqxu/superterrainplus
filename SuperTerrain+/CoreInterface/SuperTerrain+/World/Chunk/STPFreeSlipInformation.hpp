@@ -2,9 +2,6 @@
 #ifndef _STP_FREESLIP_INFORMATION_HPP_
 #define _STP_FREESLIP_INFORMATION_HPP_
 
-//CUDA vector
-#include <vector_types.h>
-
 //GLM
 #include <glm/vec2.hpp>
 

@@ -5,8 +5,9 @@
 //Biome
 #include "../STPBiomeDefine.h"
 
-//Compatibility
+#ifndef __CUDACC_RTC__
 #include <SuperTerrain+/STPOpenGL.h>
+#endif
 
 namespace SuperTerrainPlus::STPDiversity {
 
@@ -21,32 +22,6 @@ namespace SuperTerrainPlus::STPDiversity {
 		typedef unsigned int STPMapGroupID;
 		//To uniquely identify a texture view group.
 		typedef unsigned int STPViewGroupID;
-
-		/**
-		 * @brief STPTextureView allows specifying view of a texture.
-		*/
-		struct STPTextureView {
-		public:
-
-			//Control the UV scaling factor of a texture.
-			//The primary scale will be used when the viewer is very closed, 
-			//the scale is reduced to secondary when the viewer is further, then tertiary.
-			unsigned int PrimaryScale, SecondaryScale, TertiaryScale;
-
-		};
-
-		/**
-		 * @brief STPTextureDataLocation defines the location of a specific texture data in an array of layered texture
-		*/
-		struct STPTextureDataLocation {
-		public:
-
-			//The index to the layered texture.
-			unsigned int GroupIndex;
-			//The index to the texture in a layer.
-			unsigned int LayerIndex;
-
-		};
 
 		/**
 		 * @brief A base node for different types of structural regions
@@ -126,32 +101,11 @@ namespace SuperTerrainPlus::STPDiversity {
 			//An array that contains terrain splat configuration for each sample.
 			const STPTextureInformation::STPSplatRegistry* SplatRegistry;
 
-			//An array containing all altitude splating rules.
+			//An array containing all altitude splatting rules.
 			const STPTextureInformation::STPAltitudeNode* AltitudeRegistry;
-			//An array containing all gradient splating rules.
+			//An array containing all gradient splatting rules.
 			const STPTextureInformation::STPGradientNode* GradientRegistry;
 
-		};
-
-		/**
-		 * @brief STPSplatTextureDatabase contains arrays of all splat texture for terrain texture splatting in the renderer.
-		*/
-		struct STPSplatTextureDatabase {
-
-			//An array of OpenGL texture buffer objects in the form of texture 2D array.
-			const STPOpenGL::STPuint* TextureBufferObject;
-			size_t TextureBufferCount;
-			//An array of struct of indices to locate a specific type of texture for a region in the texture buffer array.
-			const STPTextureDataLocation* LocationRegistry;
-			size_t LocationRegistryCount;
-			//An array of indices to locate a region in the location registry.
-			const unsigned int* LocationRegistryDictionary;
-			size_t LocationRegistryDictionaryCount;
-
-			//An array of texture views for each texture in the splat region.
-			const STPTextureView* TextureViewRegistry;
-			//The total number of splat region used on a splatmap.
-			size_t SplatRegionCount;
 		};
 
 		/**
@@ -179,6 +133,56 @@ namespace SuperTerrainPlus::STPDiversity {
 			unsigned int LocalCount;
 
 		};
+
+//those structures are used by the renderer only, and contains typedef's not recognised by NVRTC
+#ifndef __CUDACC_RTC__
+		/**
+		 * @brief STPTextureView allows specifying view of a texture.
+		*/
+		struct STPTextureView {
+		public:
+
+			//Control the UV scaling factor of a texture.
+			//The primary scale will be used when the viewer is very closed, 
+			//the scale is reduced to secondary when the viewer is further, then tertiary.
+			unsigned int PrimaryScale, SecondaryScale, TertiaryScale;
+
+		};
+
+		/**
+		 * @brief STPTextureDataLocation defines the location of a specific texture data in an array of layered texture
+		*/
+		struct STPTextureDataLocation {
+		public:
+
+			//The index to the layered texture.
+			unsigned int GroupIndex;
+			//The index to the texture in a layer.
+			unsigned int LayerIndex;
+
+		};
+
+		/**
+		 * @brief STPSplatTextureDatabase contains arrays of all splat texture for terrain texture splatting in the renderer.
+		*/
+		struct STPSplatTextureDatabase {
+
+			//An array of OpenGL texture buffer objects in the form of texture 2D array.
+			const STPOpenGL::STPuint* TextureBufferObject;
+			size_t TextureBufferCount;
+			//An array of structure of indices to locate a specific type of texture for a region in the texture buffer array.
+			const STPTextureDataLocation* LocationRegistry;
+			size_t LocationRegistryCount;
+			//An array of indices to locate a region in the location registry.
+			const unsigned int* LocationRegistryDictionary;
+			size_t LocationRegistryDictionaryCount;
+
+			//An array of texture views for each texture in the splat region.
+			const STPTextureView* TextureViewRegistry;
+			//The total number of splat region used on a splatmap.
+			size_t SplatRegionCount;
+		};
+#endif//__CUDACC_RTC__
 
 	}
 }

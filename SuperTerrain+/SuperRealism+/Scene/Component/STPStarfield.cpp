@@ -9,8 +9,6 @@
 
 #include <glad/glad.h>
 
-using glm::uvec3;
-
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto StarfieldShaderFilename =

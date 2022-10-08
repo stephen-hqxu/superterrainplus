@@ -9,9 +9,6 @@
 #include "STPTexture.h"
 #include "STPRenderBuffer.h"
 
-//GLM
-#include <glm/vec4.hpp>
-
 #include <vector>
 
 namespace SuperTerrainPlus::STPRealism {
@@ -89,7 +86,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Attach a renderbuffer as a logical buffer of a framebuffer object.
 		 * @param attachment Specifies the attachment point of the framebuffer.
 		 * @param renderbuffer The pointer to the managed render buffer object which 
-		 * specifies the name of an existing renderbuffer object of type renderbuffertarget to attach.
+		 * specifies the name of an existing renderbuffer object of type renderbuffer target to attach.
 		*/
 		void attach(STPOpenGL::STPenum, const STPRenderBuffer&);
 
@@ -106,33 +103,34 @@ namespace SuperTerrainPlus::STPRealism {
 		void detachRenderBuffer(STPOpenGL::STPenum);
 
 		/**
-		 * @brief Specify which color buffers are to be drawn into.
+		 * @brief Specify which colour buffers are to be drawn into.
 		 * @param buf The buffer for the framebuffer.
 		*/
 		void drawBuffer(STPOpenGL::STPenum);
 
 		/**
-		 * @brief Specifies a list of color buffers to be drawn into.
-		 * @param bufs Points to an array of symbolic constants specifying the buffers into which fragment colors or data values will be written.
+		 * @brief Specifies a list of colour buffers to be drawn into.
+		 * @param bufs Points to an array of symbolic constants specifying the buffers into which fragment colour or data values will be written.
 		*/
 		void drawBuffers(const std::vector<STPOpenGL::STPenum>&);
 
 		/**
-		 * @brief Select a color buffer source for pixels.
-		 * @param mode Specifies a color buffer.
+		 * @brief Select a colour buffer source for pixels.
+		 * @param mode Specifies a colour buffer.
 		*/
 		void readBuffer(STPOpenGL::STPenum);
 
 		/**
-		 * @brief Clear individual color buffers of a framebuffer.
-		 * @tparam Vec The type of color vector.
+		 * @brief Clear individual colour buffers of a framebuffer.
+		 * @tparam Vec The type of colour vector.
 		 * Must be one of the following: uvec4, ivec4 and vec4.
 		 * The vector type must corresponds the type of texture attached or it results in undefined behaviour.
 		 * @param drawbuffer Specify a particular draw buffer to clear.
-		 * @param color A four-element typed vector specifying the R, G, B and A color to clear that draw buffer to.
+		 * @param colour A four-element typed vector specifying the R, G, B and A colour to clear that draw buffer to.
 		*/
-		template<typename Vec>
-		void clearColor(STPOpenGL::STPint, const Vec&);
+		void clearColor(STPOpenGL::STPint, const STPGLVector::STPfloatVec4&);
+		void clearColor(STPOpenGL::STPint, const STPGLVector::STPintVec4&);
+		void clearColor(STPOpenGL::STPint, const STPGLVector::STPuintVec4&);
 
 		/**
 		 * @brief Clear depth buffer of a framebuffer.
@@ -161,7 +159,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param mask The bitwise OR of the flags indicating which buffers are to be copied.
 		 * @param filter Specifies the interpolation to be applied if the image is stretched.
 		*/
-		void blitFrom(const STPFrameBuffer&, const glm::ivec4&, const glm::ivec4&, STPOpenGL::STPbitfield, STPOpenGL::STPenum);
+		void blitFrom(const STPFrameBuffer&, const STPGLVector::STPintVec4&, const STPGLVector::STPintVec4&, STPOpenGL::STPbitfield, STPOpenGL::STPenum);
 
 	};
 

@@ -29,8 +29,6 @@ using std::make_unique;
 
 using glm::uvec2;
 using glm::vec2;
-using glm::ivec3;
-using glm::uvec3;
 using glm::vec3;
 using glm::vec4;
 using glm::normalize;
@@ -165,10 +163,9 @@ AO_KERNEL_VEC(SSAO) {
 	});
 
 	//submit data to texture
-	const uvec3 rotVecTexDim = uvec3(rotVecDim, 1u);
 	//the 2D random vector should be normalised because it represents a rotation direction.
-	texture.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RG16_SNORM, rotVecTexDim);
-	texture.textureSubImage<STPTexture::STPDimension::TWO>(0, ivec3(0), rotVecTexDim, GL_RG, GL_FLOAT, RotVec.get());
+	texture.textureStorage2D(1, GL_RG16_SNORM, rotVecDim);
+	texture.textureSubImage2D(0, STPGLVector::STPintVec2(0), rotVecDim, GL_RG, GL_FLOAT, RotVec.get());
 }
 
 AO_KERNEL_OPT(SSAO) {
@@ -237,9 +234,8 @@ AO_KERNEL_VEC(HBAO) {
 	});
 
 	//send to texture
-	const uvec3 randVecTexDim = uvec3(randVecDim, 1u);
-	texture.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGB16_SNORM, randVecTexDim);
-	texture.textureSubImage<STPTexture::STPDimension::TWO>(0, ivec3(0), randVecTexDim, GL_RGB, GL_FLOAT, randVec.get());
+	texture.textureStorage2D(1, GL_RGB16_SNORM, randVecDim);
+	texture.textureSubImage2D(0, STPGLVector::STPintVec2(0), randVecDim, GL_RGB, GL_FLOAT, randVec.get());
 }
 
 AO_KERNEL_UNI(HBAO) {

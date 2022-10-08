@@ -21,7 +21,6 @@ using std::array;
 using std::shared_ptr;
 
 using glm::uvec2;
-using glm::uvec3;
 using glm::vec4;
 
 using namespace SuperTerrainPlus::STPRealism;
@@ -55,7 +54,7 @@ STPTexture STPScreen::STPSimpleScreenFrameBuffer::updateScreenFrameBuffer(
 	//create new texture
 	STPTexture new_screen_color(GL_TEXTURE_2D);
 	//allocate memory
-	new_screen_color.textureStorage<STPTexture::STPDimension::TWO>(1, internal, uvec3(dimension, 1u));
+	new_screen_color.textureStorage2D(1, internal, dimension);
 
 	//attach new texture to framebuffer
 	this->ScreenColorContainer.attach(GL_COLOR_ATTACHMENT0, new_screen_color, 0);

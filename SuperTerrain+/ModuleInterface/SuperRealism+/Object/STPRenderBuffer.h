@@ -5,9 +5,7 @@
 #include <SuperRealism+/STPRealismDefine.h>
 //GL Object Management
 #include "STPNullableObject.hpp"
-
-//GLM
-#include <glm/vec2.hpp>
+#include "STPGLVector.hpp"
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -68,7 +66,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param internal Specifies the internal format to use for the renderbuffer object's image.
 		 * @param dimension The width and height of the renderbuffer, in pixels.
 		*/
-		void renderbufferStorage(STPOpenGL::STPenum, glm::uvec2);
+		void renderbufferStorage(STPOpenGL::STPenum, STPGLVector::STPsizeiVec2);
 
 		/**
 		 * @brief Establish data storage, format, dimensions and sample count of a renderbuffer object's image.
@@ -76,7 +74,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param internal Specifies the internal format to use for the renderbuffer object's image.
 		 * @param dimension The width and height of the renderbuffer, in pixels.
 		*/
-		void renderbufferStorageMultisample(STPOpenGL::STPint, STPOpenGL::STPenum, glm::uvec2);
+		void renderbufferStorageMultisample(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec2);
 
 	};
 

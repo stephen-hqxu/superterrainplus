@@ -24,14 +24,16 @@ static bool EngineInit = false;
 
 //Compatibility checking
 static_assert(conjunction_v<
-	is_same<STPOpenGL::STPenum, GLenum>, 
-	is_same<STPOpenGL::STPuint, GLuint>, 
+	is_same<STPOpenGL::STPuint, GLuint>,
 	is_same<STPOpenGL::STPint, GLint>,
+	is_same<STPOpenGL::STPsizei, GLsizei>,
+	is_same<STPOpenGL::STPenum, GLenum>,
 	is_same<STPOpenGL::STPbitfield, GLbitfield>,
 	is_same<STPOpenGL::STPboolean, GLboolean>,
-	is_same<STPOpenGL::STPuint64, GLuint64>,
 	is_same<STPOpenGL::STPfloat, GLfloat>,
-	is_same<STPOpenGL::STPintptr, GLintptr>
+	is_same<STPOpenGL::STPuint64, GLuint64>,
+	is_same<STPOpenGL::STPintptr, GLintptr>,
+	is_same<STPOpenGL::STPsizeiptr, GLsizeiptr>
 >, "OpenGL specification is no longer compatible with SuperTerrain+, please contact the maintainer.");
 
 bool STPEngineInitialiser::initGLcurrent() {

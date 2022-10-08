@@ -21,7 +21,6 @@
 #include <glm/gtc/constants.hpp>
 
 using glm::uvec2;
-using glm::uvec3;
 using glm::vec3;
 using glm::vec4;
 

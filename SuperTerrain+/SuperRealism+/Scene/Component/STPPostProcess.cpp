@@ -18,9 +18,7 @@ using std::underlying_type_t;
 
 using glm::vec2;
 using glm::uvec2;
-using glm::uvec3;
 using glm::vec3;
-using glm::ivec4;
 using glm::vec4;
 
 using namespace SuperTerrainPlus::STPRealism;

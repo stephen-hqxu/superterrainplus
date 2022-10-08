@@ -5,9 +5,6 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-using glm::uvec4;
-using glm::ivec4;
-using glm::vec4;
 using glm::value_ptr;
 
 using namespace SuperTerrainPlus::STPRealism;
@@ -47,7 +44,7 @@ void STPFrameBuffer::attach(STPOpenGL::STPenum attachment, const STPTexture& tex
 }
 
 void STPFrameBuffer::attach(STPOpenGL::STPenum attachment, const STPRenderBuffer& renderbuffer) {
-	//currently OpenGL only accepts GL_RENDERBUFFER for *renderbuffertarget* argument
+	//currently OpenGL only accepts GL_RENDERBUFFER for *renderbuffer target* argument
 	glNamedFramebufferRenderbuffer(this->FrameBuffer.get(), attachment, GL_RENDERBUFFER, *renderbuffer);
 }
 
@@ -71,18 +68,16 @@ void STPFrameBuffer::readBuffer(STPOpenGL::STPenum mode) {
 	glNamedFramebufferReadBuffer(this->FrameBuffer.get(), mode);
 }
 
-#define CLEAR_COLOR(VEC) template<> STP_REALISM_API void STPFrameBuffer::clearColor<VEC>(STPOpenGL::STPint drawbuffer, const VEC& color)
-
-CLEAR_COLOR(uvec4) {
-	glClearNamedFramebufferuiv(this->FrameBuffer.get(), GL_COLOR, drawbuffer, value_ptr(color));
+void STPFrameBuffer::clearColor(STPOpenGL::STPint drawbuffer, const STPGLVector::STPfloatVec4& colour) {
+	glClearNamedFramebufferfv(this->FrameBuffer.get(), GL_COLOR, drawbuffer, value_ptr(colour));
 }
 
-CLEAR_COLOR(ivec4) {
-	glClearNamedFramebufferiv(this->FrameBuffer.get(), GL_COLOR, drawbuffer, value_ptr(color));
+void STPFrameBuffer::clearColor(STPOpenGL::STPint drawbuffer, const STPGLVector::STPintVec4& colour) {
+	glClearNamedFramebufferiv(this->FrameBuffer.get(), GL_COLOR, drawbuffer, value_ptr(colour));
 }
 
-CLEAR_COLOR(vec4) {
-	glClearNamedFramebufferfv(this->FrameBuffer.get(), GL_COLOR, drawbuffer, value_ptr(color));
+void STPFrameBuffer::clearColor(STPOpenGL::STPint drawbuffer, const STPGLVector::STPuintVec4& colour) {
+	glClearNamedFramebufferuiv(this->FrameBuffer.get(), GL_COLOR, drawbuffer, value_ptr(colour));
 }
 
 void STPFrameBuffer::clearDepth(STPOpenGL::STPfloat value) {
@@ -100,8 +95,8 @@ void STPFrameBuffer::clearDepthStencil(STPOpenGL::STPfloat depth, STPOpenGL::STP
 	glClearNamedFramebufferfi(this->FrameBuffer.get(), GL_DEPTH_STENCIL, 0, depth, stencil);
 }
 
-void STPFrameBuffer::blitFrom(const STPFrameBuffer& readFramebuffer, const ivec4& srcRec, const ivec4& dstRec, 
-	STPOpenGL::STPbitfield mask, STPOpenGL::STPenum filter) {
+void STPFrameBuffer::blitFrom(const STPFrameBuffer& readFramebuffer, const STPGLVector::STPintVec4& srcRec,
+	const STPGLVector::STPintVec4& dstRec, STPOpenGL::STPbitfield mask, STPOpenGL::STPenum filter) {
 	glBlitNamedFramebuffer(*readFramebuffer, this->FrameBuffer.get(), srcRec.x, srcRec.y, srcRec.z, srcRec.w, 
 		dstRec.x, dstRec.y, dstRec.z, dstRec.w, mask, filter);
 }

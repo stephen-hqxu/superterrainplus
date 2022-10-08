@@ -6,9 +6,6 @@
 //GLM
 #include <glm/gtc/type_ptr.hpp>
 
-using glm::ivec4;
-using glm::uvec4;
-using glm::vec4;
 using glm::value_ptr;
 
 using namespace SuperTerrainPlus::STPRealism;
@@ -35,30 +32,30 @@ SuperTerrainPlus::STPOpenGL::STPuint STPSampler::operator*() const {
 	return this->Sampler.get();
 }
 
-void STPSampler::filter(STPOpenGL::STPenum min, STPOpenGL::STPenum mag) {
+void STPSampler::filter(STPOpenGL::STPint min, STPOpenGL::STPint mag) {
 	glSamplerParameteri(this->Sampler.get(), GL_TEXTURE_MIN_FILTER, min);
 	glSamplerParameteri(this->Sampler.get(), GL_TEXTURE_MAG_FILTER, mag);
 }
 
-void STPSampler::wrap(STPOpenGL::STPenum s, STPOpenGL::STPenum t, STPOpenGL::STPenum r) {
+void STPSampler::wrap(STPOpenGL::STPint s, STPOpenGL::STPint t, STPOpenGL::STPint r) {
 	glSamplerParameteri(this->Sampler.get(), GL_TEXTURE_WRAP_S, s);
 	glSamplerParameteri(this->Sampler.get(), GL_TEXTURE_WRAP_T, t);
 	glSamplerParameteri(this->Sampler.get(), GL_TEXTURE_WRAP_R, r);
 }
 
-void STPSampler::wrap(STPOpenGL::STPenum str) {
+void STPSampler::wrap(STPOpenGL::STPint str) {
 	this->wrap(str, str, str);
 }
 
-void STPSampler::borderColor(vec4 color) {
+void STPSampler::borderColor(STPGLVector::STPfloatVec4 color) {
 	glSamplerParameterfv(this->Sampler.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
 }
 
-void STPSampler::borderColor(ivec4 color) {
+void STPSampler::borderColor(STPGLVector::STPintVec4 color) {
 	glSamplerParameterIiv(this->Sampler.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
 }
 
-void STPSampler::borderColor(uvec4 color) {
+void STPSampler::borderColor(STPGLVector::STPuintVec4 color) {
 	glSamplerParameterIuiv(this->Sampler.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
 }
 

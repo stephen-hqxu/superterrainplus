@@ -68,17 +68,17 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		STPOpenGL::STPuint operator*() const;
 
-		void filter(STPOpenGL::STPenum, STPOpenGL::STPenum) override;
+		void filter(STPOpenGL::STPint, STPOpenGL::STPint) override;
 
-		void wrap(STPOpenGL::STPenum, STPOpenGL::STPenum, STPOpenGL::STPenum) override;
+		void wrap(STPOpenGL::STPint, STPOpenGL::STPint, STPOpenGL::STPint) override;
 
-		void wrap(STPOpenGL::STPenum) override;
+		void wrap(STPOpenGL::STPint) override;
 
-		void borderColor(glm::vec4) override;
+		void borderColor(STPGLVector::STPfloatVec4) override;
 
-		void borderColor(glm::ivec4) override;
+		void borderColor(STPGLVector::STPintVec4) override;
 
-		void borderColor(glm::uvec4) override;
+		void borderColor(STPGLVector::STPuintVec4) override;
 
 		void anisotropy(STPOpenGL::STPfloat) override;
 

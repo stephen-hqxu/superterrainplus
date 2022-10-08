@@ -19,8 +19,6 @@
 using std::unique_ptr;
 using std::make_unique;
 
-using glm::uvec3;
-using glm::ivec3;
 using glm::vec4;
 using glm::value_ptr;
 
@@ -86,9 +84,8 @@ STPWater::STPWater(const STPHeightfieldTerrain& terrain, const STPBiomeWaterLeve
 	//now we can use biome ID as an index to the water level dictionary, and look up the water level
 
 	//setup water level lookup table
-	const uvec3 table_size = uvec3(biomeCount, 1u, 1u);
-	this->WaterLevelTable.textureStorage<STPTexture::STPDimension::ONE>(1, GL_R16, table_size);
-	this->WaterLevelTable.textureSubImage<STPTexture::STPDimension::ONE>(0, ivec3(0), table_size, GL_RED, GL_FLOAT, waterLevelDict.get());
+	this->WaterLevelTable.textureStorage1D(1, GL_R16, biomeCount);
+	this->WaterLevelTable.textureSubImage1D(0, 0, biomeCount, GL_RED, GL_FLOAT, waterLevelDict.get());
 
 	this->WaterLevelTable.filter(GL_NEAREST, GL_NEAREST);
 	//we use clamp to border so if a biome ID that is greater than the size of the table will give a valid value
