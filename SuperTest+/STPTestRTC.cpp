@@ -141,8 +141,8 @@ protected:
 	static STPDeviceRuntimeProgram::STPSmartModule testLink(const STPDeviceRuntimeBinary::STPCompilationOutput::STPCompiledBinary& binary) {
 		//log
 		constexpr static unsigned int logSize = 1024u;
-		char linker_info[logSize], linker_error[logSize];
-		char module_info[logSize], module_error[logSize];
+		char linker_info[logSize] = { }, linker_error[logSize] = { };
+		char module_info[logSize] = { }, module_error[logSize] = { };
 
 		STPDeviceRuntimeProgram::STPLinkerInformation link_info;
 		link_info.LinkerOption

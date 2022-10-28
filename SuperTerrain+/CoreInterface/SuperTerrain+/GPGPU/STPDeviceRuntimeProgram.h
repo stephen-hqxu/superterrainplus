@@ -25,9 +25,7 @@ namespace SuperTerrainPlus {
 		*/
 		enum class STPBinaryType : unsigned char {
 			//The compiler should output PTX code.
-			PTX = 0x00u,
-			//The compiler should output CUBIN binary.
-			CUBIN = 0xFFu
+			PTX = 0x00u
 		};
 
 		/**

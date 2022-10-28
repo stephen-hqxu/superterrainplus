@@ -553,7 +553,7 @@ public:
 	STPMemoryManager& operator=(STPMemoryManager&&) = delete;
 
 	~STPMemoryManager() {
-		STP_CHECK_CUDA(cudaStreamSynchronize(this->ASBuildStream.get()));
+		this->syncWithASBuild();
 	}
 
 	/**
@@ -651,7 +651,7 @@ public:
 	 * @brief Make the current thread wait for AS build task to finish.
 	*/
 	inline void syncWithASBuild() const {
-		STP_CHECK_CUDA(cudaEventSynchronize(this->ASBuildEvent.get()));
+		STP_CHECK_CUDA(cudaStreamSynchronize(this->ASBuildStream.get()));
 	}
 
 };
@@ -697,6 +697,11 @@ private:
 	}
 
 public:
+
+	//Each primitive is assigned with a unique ID to identify them from the output texture during shading.
+	//The environment ray is a special type of *primitive* indicating a missed ray, so it is reserved.
+	//Each primitive should take one and only one ID from the rest of the available IDs.
+	static constexpr size_t MaxPrimitiveRayID = STPScreenSpaceRayIntersectionData::EnvironmentRayID - 1u;
 
 	/**
 	 * @brief Initialise the STPScreenSpaceRayIntersection instance.
@@ -955,6 +960,12 @@ STPExtendedScenePipeline::STPExtendedScenePipeline(const STPScenePipelineInitial
 	RendererStream(STPSmartDeviceObject::makeStream(cudaStreamNonBlocking)), SceneMemoryCurrent{ }, SceneMemoryLimit(scene_init.ObjectCapacity),
 	SceneMemory(make_unique<STPMemoryManager>(*this)), IntersectionTracer(make_unique<STPScreenSpaceRayIntersection>(*this, scene_init.TargetDeviceArchitecture)),
 	RenderResolution(uvec2(0u)) {
+	//traceable object max count check, which should be less than the bit width of standard stencil buffer
+	const auto [object_max] = this->SceneMemoryLimit;
+	if (object_max > STPScreenSpaceRayIntersection::MaxPrimitiveRayID) {
+		throw STPException::STPUnsupportedFunctionality("The extended scene memory limit should not exceed the allowance defined by each shader");
+	}
+
 	//context check
 	const OptixDeviceContext dev_ctx = this->Context.get();
 	unsigned int maxInstanceID;

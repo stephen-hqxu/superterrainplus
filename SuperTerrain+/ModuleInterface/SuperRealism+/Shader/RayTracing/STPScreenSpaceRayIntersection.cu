@@ -1,7 +1,6 @@
 #include "STPScreenSpaceRayIntersection.cuh"
 
 #include "STPFragmentUtility.cuh"
-#include "STPInstanceIDCoder.cuh"
 
 //OptiX
 #include <optix.h>

@@ -60,7 +60,8 @@ try { \
 STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk,
 	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : SimplexPermutation(simplex_setting),
 	Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk) {
-	const auto commonSourceInfo = [capabilityOption = string("-arch=sm_") + to_string(STPEngineInitialiser::architecture(0))]() {
+	using namespace std::string_literals;
+	const auto commonSourceInfo = [capabilityOption = "-arch=sm_"s + to_string(STPEngineInitialiser::architecture(0))]() {
 		STPDeviceRuntimeBinary::STPSourceInformation info;
 		//setup compiler options
 		info.Option
@@ -70,7 +71,6 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 #ifndef NDEBUG
 			["-G"]
 #endif
-			["-maxrregcount=80"]
 			//set include paths
 			["-I " + string(STPCoreInfo::CoreInclude)]
 			["-I " + string(STPAlgorithm::STPAlgorithmDeviceInfo::DeviceInclude)];
@@ -152,7 +152,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 	using BinT = STPDeviceRuntimeProgram::STPBinaryType;
 	const STPDeviceRuntimeProgram::STPLinkerInformation::STPDataJitOption common_data_option;
 	STPDeviceRuntimeProgram::STPLinkerInformation linkInfo;
-	STPCompilerLog log;
+	STPCompilerLog log = { };
 
 	linkInfo.LinkerOption
 #ifndef NDEBUG

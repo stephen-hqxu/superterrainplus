@@ -12,6 +12,7 @@
 
 #include "STPGeometryAttributeFormat.hpp"
 #include "STPVectorUtility.cuh"
+#include "STPInstanceIDCoder.cuh"
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -25,7 +26,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//Stencil identifiers for rays.
 		//All the rest of bits and values can be used as primitive identifier.
 		//The resulting stencil value should be a logical or between mask and ID.
-		static constexpr unsigned char RayVisibilityMask = 1u << 7u,
+		static constexpr unsigned char RayVisibilityMask = 1u << STPInstanceIDCoder::ObjectIDBit,
 			EnvironmentRayID = RayVisibilityMask - 1u;
 
 		//Used for depth reconstruction from NDC to world space.

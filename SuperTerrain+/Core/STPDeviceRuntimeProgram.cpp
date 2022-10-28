@@ -51,10 +51,6 @@ STPDeviceRuntimeProgram::STPSmartModule STPDeviceRuntimeProgram::link(STPLinkerI
 			program_data = STPDeviceRuntimeBinary::readPTX(program);
 			bin_input = CU_JIT_INPUT_PTX;
 			break;
-		case STPBinaryType::CUBIN:
-			program_data = STPDeviceRuntimeBinary::readCUBIN(program);
-			bin_input = CU_JIT_INPUT_CUBIN;
-			break;
 		}
 
 		//add to the linker

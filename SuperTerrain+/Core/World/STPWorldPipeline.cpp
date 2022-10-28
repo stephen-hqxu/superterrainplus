@@ -533,8 +533,6 @@ public:
 		//wait for all worker streams to finish
 		for_each(this->MemoryWorker.cbegin(), this->MemoryWorker.cend(),
 			[](const auto& stream) { STP_CHECK_CUDA(cudaStreamSynchronize(stream.get())); });
-		for_each(this->MemoryWorkerSync.cbegin(), this->MemoryWorkerSync.cend(),
-			[](const auto& event) { STP_CHECK_CUDA(cudaEventSynchronize(event.get())); });
 	}
 
 	/**
@@ -766,7 +764,7 @@ public:
 
 private:
 
-	cudaStream_t PipelineStream;
+	const cudaStream_t PipelineStream;
 	const STPEnvironment::STPChunkSetting& ChunkSetting;
 
 	array<STPMemoryBlock, 2ull> MemoryBuffer;

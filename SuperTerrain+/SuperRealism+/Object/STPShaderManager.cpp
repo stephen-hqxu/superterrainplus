@@ -34,7 +34,7 @@ using namespace SuperTerrainPlus::STPRealism;
 STPLogHandler::STPLogHandlerSolution STPLogHandler::DefaultLogHandler;
 STPLogHandler::STPLogHandlerSolution* STPLogHandler::ActiveLogHandler = &STPLogHandler::DefaultLogHandler;
 
-constexpr static array<string_view, 8ull> mShaderIncludeRegistry = {
+constexpr static array<string_view, 9ull> mShaderIncludeRegistry = {
 	"/Common/STPAnimatedWave.glsl",
 	"/Common/STPAtmosphericScattering.glsl",
 	"/Common/STPCameraInformation.glsl",
@@ -42,6 +42,7 @@ constexpr static array<string_view, 8ull> mShaderIncludeRegistry = {
 	"/Common/STPLightSpaceInformation.glsl",
 	"/Common/STPMaterialRegistry.glsl",
 	"/Common/STPNullPointer.glsl",
+	"/Common/STPRayTracedIntersectionData.glsl",
 	"/Common/STPSeparableShaderPredefine.glsl"
 };
 
