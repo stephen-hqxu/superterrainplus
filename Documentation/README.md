@@ -12,4 +12,5 @@ All historical release notes are exported and can be found in [Changelog](https:
 
 **STPRealism**
 
+- [GL global buffer binding index reservation](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/gl-global-buffer-usage.md)
 - [Reversed depth buffer](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/reversed-depth-buffer.md)

@@ -10,7 +10,7 @@
 //OptiX
 #include <optix_types.h>
 
-//Maths
+#include "STPGeometryAttributeFormat.hpp"
 #include "STPVectorUtility.cuh"
 
 namespace SuperTerrainPlus::STPRealism {
@@ -55,17 +55,13 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STPPrimitiveHitData {
 		public:
 
-			//stride of vertex buffer
-			constexpr static unsigned int AttributeStride = 5u;
-
-			//For vertex, it is required to have the following attribute structure, and tightly packed:
-			//vec3: position, vec2 UV.
-			const float* const* const* PrimitiveVertex;
+			//For vertex, it is required to have the following attribute structure, and tightly packed.
+			const STPGeometryAttributeFormat::STPVertexFormat* const* const* PrimitiveVertex;
 			//Primitive geometry data.
 			//Each object is assigned with an object ID, which can be used as an index to the instance array.
 			//Each instance contains a number of primitives, each is located by their instance ID.
 			//Index and vertex both use the same index.
-			const uint3* const* const* PrimitiveIndex;
+			const STPGeometryAttributeFormat::STPIndexFormat* const* const* PrimitiveIndex;
 
 		};
 

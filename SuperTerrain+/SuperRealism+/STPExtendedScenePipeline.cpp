@@ -81,7 +81,7 @@ inline static void loadExtendedShaderOption(unsigned int arch, SuperTerrainPlus:
 	//For performance consideration, always build with optimisation turned on;
 	//we are not going to debug runtime compiled binary anyway.
 	info.Option
-		["-arch=sm_" + to_string(arch)]
+		["-arch=compute_" + to_string(arch)]
 		["-std=c++17"]
 		["-rdc=true"]
 		["--use_fast_math"]
@@ -481,8 +481,8 @@ private:
 	//Such that they all have the same length and same index.
 	//These pointers remain unchanged once they are allocated to avoid any headache of updating and synchronisation.
 	STPSmartDeviceMemory::STPDeviceMemory<OptixInstance[]> InstanceCache;
-	STPSmartDeviceMemory::STPDeviceMemory<const float* const*[]> PrimitiveGeometry;
-	STPSmartDeviceMemory::STPDeviceMemory<const uint3* const*[]> PrimitiveIndex;
+	STPSmartDeviceMemory::STPDeviceMemory<const STPGeometryAttributeFormat::STPVertexFormat* const*[]> PrimitiveGeometry;
+	STPSmartDeviceMemory::STPDeviceMemory<const STPGeometryAttributeFormat::STPIndexFormat* const*[]> PrimitiveIndex;
 
 	//A separate stream from the renderer, so that rendering and build task can overlap.
 	STPSmartDeviceObject::STPStream ASBuildStream;
@@ -532,8 +532,8 @@ public:
 		//allocate memory for scene objects
 		const auto [lim_traceable] = this->Master.SceneMemoryLimit;
 		this->InstanceCache = STPSmartDeviceMemory::makeDevice<OptixInstance[]>(lim_traceable);
-		this->PrimitiveGeometry = STPSmartDeviceMemory::makeDevice<const float* const*[]>(lim_traceable);
-		this->PrimitiveIndex = STPSmartDeviceMemory::makeDevice<const uint3* const*[]>(lim_traceable);
+		this->PrimitiveGeometry = STPSmartDeviceMemory::makeDevice<const STPGeometryAttributeFormat::STPVertexFormat* const*[]>(lim_traceable);
+		this->PrimitiveIndex = STPSmartDeviceMemory::makeDevice<const STPGeometryAttributeFormat::STPIndexFormat* const*[]>(lim_traceable);
 		//zero init all memory so we don't need to do anything when adding an new object to the scene.
 		//Pointers can be remained NULL, because we are not using any of them so that's fine.
 		//OptixInstance is a bit interesting:
@@ -560,7 +560,9 @@ public:
 	 * @brief Get the pointers to the primitive data array.
 	 * @return The geometry vertex and index respectively, and they are all on device memory.
 	*/
-	inline pair<const float* const* const*, const uint3* const* const*> getPrimitiveData() const noexcept {
+	inline pair<const STPGeometryAttributeFormat::STPVertexFormat* const* const*,
+		const STPGeometryAttributeFormat::STPIndexFormat* const* const*>
+		getPrimitiveData() const noexcept {
 		return make_pair(this->PrimitiveGeometry.get(), this->PrimitiveIndex.get());
 	}
 
@@ -645,6 +647,13 @@ public:
 		STP_CHECK_CUDA(cudaStreamWaitEvent(stream, this->ASBuildEvent.get()));
 	}
 
+	/**
+	 * @brief Make the current thread wait for AS build task to finish.
+	*/
+	inline void syncWithASBuild() const {
+		STP_CHECK_CUDA(cudaEventSynchronize(this->ASBuildEvent.get()));
+	}
+
 };
 
 class STPExtendedScenePipeline::STPScreenSpaceRayIntersection {
@@ -724,7 +733,7 @@ public:
 			ssri_module_option.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 			ssri_module_option.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 
-			ssri_pipeline_option.numPayloadValues = 6;
+			ssri_pipeline_option.numPayloadValues = 4;
 			ssri_pipeline_option.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
 			ssri_pipeline_option.pipelineLaunchParamsVariableName = ssri_expr.at("SSRIData").c_str();
 			ssri_pipeline_option.usesPrimitiveTypeFlags =
@@ -956,7 +965,7 @@ STPExtendedScenePipeline::STPExtendedScenePipeline(const STPScenePipelineInitial
 }
 
 STPExtendedScenePipeline::~STPExtendedScenePipeline() {
-	this->SceneMemory->waitForASBuild(this->RendererStream.get());
+	this->SceneMemory->syncWithASBuild();
 	STP_CHECK_CUDA(cudaStreamSynchronize(this->RendererStream.get()));
 
 	//kill all object dependencies

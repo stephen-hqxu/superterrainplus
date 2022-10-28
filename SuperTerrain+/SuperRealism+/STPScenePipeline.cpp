@@ -937,20 +937,6 @@ void STPScenePipeline::setClearColor(vec4 color) {
 	}
 }
 
-bool STPScenePipeline::setRepresentativeFragmentTest(bool val) {
-	if (!GLAD_GL_NV_representative_fragment_test) {
-		//does not support
-		return false;
-	}
-
-	if (val) {
-		glEnable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
-	} else {
-		glDisable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
-	}
-	return glIsEnabled(GL_REPRESENTATIVE_FRAGMENT_TEST_NV) == GL_TRUE;
-}
-
 void STPScenePipeline::setResolution(uvec2 resolution) {
 	if (resolution == uvec2(0u)) {
 		throw STPException::STPBadNumericRange("The rendering resolution must be both non-zero positive integers");

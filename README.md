@@ -180,6 +180,8 @@ Note that `::` denotes a CMake dependent option. Pattern *A::B* default to *valu
 
 - OS
 
+The project is mainly developed with *Visual Studio 2019* on Windows 10, and occasionally tested on some Linux systems with *GCC*. The codebase does not rely on any OS-specific API or feature, it should be portable if you are using other environment. Please note that I am not a Mac user and don't personally own a Mac device, hence the project is untested on MacOS.
+
 ![OS Linux](https://img.shields.io/badge/Linux-FCC624?style=flat&logo=linux&logoColor=black)
 ![OS Windows](https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white)
 

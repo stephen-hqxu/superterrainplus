@@ -3,10 +3,10 @@
 #define _STP_EXTENDED_SCENE_OBJECT_HPP_
 
 #include <SuperTerrain+/Utility/STPThreadPool.h>
+#include "../Shader/RayTracing/STPGeometryAttributeFormat.hpp"
 
 //OptiX
 #include <optix_types.h>
-#include <vector_types.h>
 
 //System
 #include <functional>
@@ -50,13 +50,11 @@ namespace SuperTerrainPlus::STPRealism {
 				 * - Obviously, this pointer should be accessible from device.
 				 * - A handle may contain many geometries and instances, each instance should be assigned with an instance ID
 				 *   using which to locate each instance; each instance contains a lot of vertex data.
-				 * - Currently only fixed vertex format is supported, first 3 floats are used as position and followed by 2 floats of texture coordinate;
-				 *   texture coordinate is required to be in range of [0.0f, 1.0f].
 				 * - A geometry that is not used to build the traversable handle as provided will result in UB.
 				*/
-				const float* const* PrimitiveGeometry;
+				const STPGeometryAttributeFormat::STPVertexFormat* const* PrimitiveGeometry;
 				//The new geometry index, holds the same requirement as the primitive geometry.
-				const uint3* const* PrimitiveIndex;
+				const STPGeometryAttributeFormat::STPIndexFormat* const* PrimitiveIndex;
 
 			};
 			/**

@@ -450,9 +450,6 @@ namespace STPStart {
 			//scene pipeline setup
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
 			this->RenderPipeline->setExtinctionArea(engine.at("Sky").at("extinction_band").to<float>());
-			if (this->RenderPipeline->setRepresentativeFragmentTest(true)) {
-				cout << "GL_NV_representative_fragment_test is available for the current GL renderer and has been enabled." << endl;
-			}
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
