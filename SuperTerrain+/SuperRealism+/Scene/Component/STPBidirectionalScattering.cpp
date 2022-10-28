@@ -45,9 +45,9 @@ STPBidirectionalScattering::STPBidirectionalScattering(const STPScreen::STPScree
 	setSampler(this->MaterialSampler, uvec4(0u));
 
 	/* ---------------------------------------- setup uniform ---------------------------------------------- */
-	this->BSDFQuad.OffScreenRenderer.uniform(glProgramUniform1i, "ObjectDepth", 0)
-		.uniform(glProgramUniform1i, "ObjectNormal", 1)
-		.uniform(glProgramUniform1i, "ObjectMaterial", 2);
+	this->BSDFQuad.OffScreenRenderer.uniform(glProgramUniform1i, "ObjectMaterial", 0)
+		.uniform(glProgramUniform1i, "ObjectDepth", 1)
+		.uniform(glProgramUniform1i, "ObjectNormal", 2);
 }
 
 void STPBidirectionalScattering::setScattering(const STPEnvironment::STPBidirectionalScatteringSetting& scattering_setting) {
@@ -89,13 +89,13 @@ void STPBidirectionalScattering::copyScene(const STPTexture& color, const STPTex
 }
 
 void STPBidirectionalScattering::scatter(const STPTexture& depth, const STPTexture& normal, const STPTexture& material) const {
-	depth.bind(0);
-	normal.bind(1);
-	material.bind(2);
+	material.bind(0);
+	depth.bind(1);
+	normal.bind(2);
 	const STPSampler::STPSamplerUnitStateManager depth_normal_material_sampler_mgr[3] = {
-		this->RawSceneDepthCopier.ScreenColorSampler.bindManaged(0),
-		this->NormalSampler.bindManaged(1),
-		this->MaterialSampler.bindManaged(2)
+		this->MaterialSampler.bindManaged(0),
+		this->RawSceneDepthCopier.ScreenColorSampler.bindManaged(1),
+		this->NormalSampler.bindManaged(2)
 	};
 
 	this->BSDFQuad.drawScreen();
