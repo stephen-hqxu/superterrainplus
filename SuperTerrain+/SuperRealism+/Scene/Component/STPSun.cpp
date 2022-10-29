@@ -25,7 +25,6 @@ using glm::value_ptr;
 using glm::clamp;
 using glm::rotate;
 
-using glm::uvec3;
 using glm::vec3;
 using glm::dvec3;
 using glm::mat3;
@@ -35,21 +34,19 @@ using std::make_from_tuple;
 using std::make_pair;
 using std::make_tuple;
 
-using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static auto SkyShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSun", ".frag");
-constexpr static auto SpectrumShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPSunSpectrum", ".comp");
+constexpr static auto SkyShaderFilename = SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPSun", ".frag");
+constexpr static auto SpectrumShaderFilename = SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPSunSpectrum", ".comp");
 
 STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundledData<vec3>& spectrum_domain,
-	const STPSkyboxInitialiser& sun_init) : SunSetting(sun_setting), SunDirectionCache(0.0) {
-	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
+	const STPSkybox::STPSkyboxInitialiser& sun_init) :
+	SunSetting(sun_setting), DayStart(1.0 * this->SunSetting.DayStart / (1.0 * this->SunSetting.DayLength) + this->SunSetting.YearStart),
+	Day(0.0), SunDirectionCache(vec3(0.0f)) {
 	//validate the setting
-	if (!sun.validate()) {
+	if (!this->SunSetting.validate()) {
 		throw STPException::STPInvalidEnvironment("Sun setting provided is invalid");
 	}
-	//calculate starting LST
-	this->Day = 1.0 * sun.DayStart / (1.0 * sun.DayLength) + sun.YearStart;
 
 	//setup sky renderer
 	STPShaderManager sky_shader(GL_FRAGMENT_SHADER);
@@ -60,12 +57,12 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 	sky_shader(sky_source);
 
 	//initialise skybox renderer
-	this->initSkyboxRenderer(sky_shader, sun_init);
+	this->SunBox.initSkyboxRenderer(sky_shader, sun_init);
 
 	//uniform setup
-	this->SunPositionLocation = this->SkyboxRenderer.uniformLocation("SunPosition");
+	this->SunPositionLocation = this->SunBox.SkyboxRenderer.uniformLocation("SunPosition");
 	//calculate initial sun direction
-	this->advanceTime(0.0);
+	this->updateAnimationTimer(0.0);
 
 	/* ---------------------------------------- sun spectrum emulator ----------------------------------- */
 	//setup spectrum emulator
@@ -108,16 +105,11 @@ const vec3& STPSun::sunDirection() const {
 	return this->SunDirectionCache;
 }
 
-void STPSun::advanceTime(double delta_second) {
+void STPSun::updateAnimationTimer(double second) {
 	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
 
-	//offset the timer
-	//increment day count
-	this->Day += delta_second / (1.0 * sun.DayLength);
-	//wrap the day around if it is the next year
-	if (this->Day >= 1.0 * sun.YearLength) {
-		this->Day -= static_cast<double>(sun.YearLength);
-	}
+	//calculate new day count and wrap the day around within a year
+	this->Day = glm::mod(this->DayStart + second / (1.0 * sun.DayLength), 1.0 * sun.YearLength);
 
 	//the old direction cache is no longer accurate, needs to recalculate
 	static constexpr double TWO_PI = glm::pi<double>() * 2.0;
@@ -163,7 +155,7 @@ void STPSun::advanceTime(double delta_second) {
 	)));
 
 	//update sun position in the shader
-	this->SkyboxRenderer.uniform(glProgramUniform3fv, this->SunPositionLocation, 1, value_ptr(this->SunDirectionCache));
+	this->SunBox.SkyboxRenderer.uniform(glProgramUniform3fv, this->SunPositionLocation, 1, value_ptr(this->SunDirectionCache));
 }
 
 void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
@@ -172,7 +164,7 @@ void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_sett
 		throw STPException::STPInvalidEnvironment("Atmosphere setting is invalid");
 	}
 
-	STPSun::updateAtmosphere(this->SkyboxRenderer, atmo_setting);
+	STPSun::updateAtmosphere(this->SunBox.SkyboxRenderer, atmo_setting);
 	STPSun::updateAtmosphere(this->SpectrumEmulator, atmo_setting);
 }
 
@@ -185,7 +177,7 @@ STPSun::STPBundledData<STPLightSpectrum> STPSun::generateSunSpectrum(unsigned in
 		make_from_tuple<STPLightSpectrum>(spectrum_creator),
 		make_from_tuple<STPLightSpectrum>(spectrum_creator)
 	);
-	auto& [sky_spec, sun_spec] = spectrum;
+	const auto& [sky_spec, sun_spec] = spectrum;
 
 	//bind output
 	sky_spec.spectrum().bindImage(0u, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA16F);
@@ -217,5 +209,5 @@ float STPSun::spectrumCoordinate() const {
 }
 
 void STPSun::render() const {
-	this->drawSkybox();
+	this->SunBox.drawSkybox();
 }

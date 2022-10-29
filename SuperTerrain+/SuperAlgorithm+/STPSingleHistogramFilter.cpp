@@ -1,15 +1,16 @@
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 
+//CUDA
+#include <cuda_runtime.h>
+
 //Error
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 //Threading
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 //Memory
 #include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
 
-//CUDA
-#include <cuda_runtime.h>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -51,12 +52,12 @@ public:
 	T* allocate(size_t size) const {
 		T* mem;
 		//note that the allocator-provided size is the number of object, not byte
-		STPcudaCheckErr(cudaMallocHost(&mem, size * sizeof(T)));
+		STP_CHECK_CUDA(cudaMallocHost(&mem, size * sizeof(T)));
 		return mem;
 	}
 
 	void deallocate(T* mem, size_t) const {
-		STPcudaCheckErr(cudaFreeHost(mem));
+		STP_CHECK_CUDA(cudaFreeHost(mem));
 	}
 
 };
@@ -531,13 +532,14 @@ private:
 	/**
 	 * @brief Copy the content in accumulator to the histogram buffer.
 	 * Caller should make sure Output buffer has been preallocated, the size equals to the sum of all thread buffers.
-	 * @param target The target histogram buffer.
-	 * @param acc The accumulator to be copied.
-	 * @param normalise True to normalise the histogram in accumulator before copying.
+	 * @tparam Normalise True to normalise the histogram in accumulator before copying.
 	 * After normalisation, STPBin.Data should use Weight rather than Quantity,
 	 * and the sum of weight of all bins in the accumulator is 1.0f.
+	 * @param target The target histogram buffer.
+	 * @param acc The accumulator to be copied.
 	*/
-	static void copyToBuffer(STPDefaultHistogramBuffer& target, STPAccumulator& acc, bool normalise) {
+	template<bool Normalise>
+	static void copyToBuffer(STPDefaultHistogramBuffer& target, STPAccumulator& acc) {
 		const auto [acc_beg, acc_end] = acc();
 		target.HistogramStartOffset.emplace_back(static_cast<unsigned int>(target.Bin.size()));
 
@@ -546,7 +548,7 @@ private:
 		target.Bin.resize(target.Bin.size() + bin_size);
 		auto target_dest_begin = target.Bin.end() - bin_size;
 		//copy bin
-		if (normalise) {
+		if constexpr (Normalise) {
 			//sum everything in the accumulator
 			const float sum = static_cast<float>(std::accumulate(acc_beg, acc_end, 0u,
 				[](auto init, const STPSingleHistogram::STPBin& bin) { return init + bin.Data.Quantity; }));
@@ -596,7 +598,7 @@ private:
 				acc.inc(sample_map[ti + j * freeslip_rangeX], 1u);
 			}
 			//copy the first pixel to buffer
-			STPSHFKernel::copyToBuffer(target, acc, false);
+			STPSHFKernel::copyToBuffer<false>(target, acc);
 			//generate histogram
 			for (unsigned int j = 1u; j < dimensionY; j++) {
 				//load one pixel to the bottom while unloading one pixel from the top
@@ -604,7 +606,7 @@ private:
 				acc.dec(sample_map[ui], 1u);
 
 				//copy the accumulator to buffer
-				STPSHFKernel::copyToBuffer(target, acc, false);
+				STPSHFKernel::copyToBuffer<false>(target, acc);
 
 				//advance to the next central pixel
 				di += freeslip_rangeX;
@@ -691,7 +693,7 @@ private:
 			}
 			//copy the first pixel radius to buffer
 			//we can start normalising data on the go, the accumulator is complete for this pixel
-			STPSHFKernel::copyToBuffer(target, acc, true);
+			STPSHFKernel::copyToBuffer<true>(target, acc);
 			//generate histogram, starting from the second pixel, we only loop through the central texture
 			for (unsigned int j = 1u; j < dimension.x; j++) {
 				//load one pixel to the right while unloading one pixel from the left
@@ -718,7 +720,7 @@ private:
 				}
 
 				//copy accumulator to buffer
-				STPSHFKernel::copyToBuffer(target, acc, true);
+				STPSHFKernel::copyToBuffer<true>(target, acc);
 
 				//advance to the next central pixel
 				ri += dimension.y;
@@ -792,7 +794,7 @@ public:
 			histogram_output->HistogramStartOffset.resize(offset_total);
 			uvec2 base(0u);
 			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
-				workgroup[w] = filter_worker.enqueue_future(STPSHFKernel::copyToOutput,
+				workgroup[w] = filter_worker.enqueue(STPSHFKernel::copyToOutput,
 					histogram_output, cref(memoryBlock[w].first), w, base);
 
 				//get the base index for the next worker, so each worker only copies buffer belongs to them to
@@ -826,7 +828,7 @@ public:
 				width_step = total_width / STPSHFKernel::Parallelism;
 			uvec2 w_range(width_start, width_start + width_step);
 			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
-				workgroup[w] = this->FilterWorker.enqueue_future(STPSHFKernel::filterVertical, cref(sample_map),
+				workgroup[w] = this->FilterWorker.enqueue(STPSHFKernel::filterVertical, cref(sample_map),
 					freeslip_info.FreeSlipRange.x, freeslip_info.Dimension.y, central_starting_coordinate.y, w_range,
 					ref(memoryBlock[w]), radius);
 				//increment
@@ -848,7 +850,7 @@ public:
 			const unsigned int height_step = dimension.y / STPSHFKernel::Parallelism;
 			uvec2 h_range(0u, height_step);
 			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
-				workgroup[w] = this->FilterWorker.enqueue_future(STPSHFKernel::filterHorizontal,
+				workgroup[w] = this->FilterWorker.enqueue(STPSHFKernel::filterHorizontal,
 					histogram_output, cref(dimension), h_range, ref(memoryBlock[w]), radius);
 				//increment range
 				h_range.x = h_range.y;

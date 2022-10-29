@@ -18,23 +18,20 @@
 
 using std::unique_ptr;
 using std::make_unique;
-using std::chrono::steady_clock;
-using std::chrono::duration;
 
-using glm::uvec3;
-using glm::ivec3;
 using glm::vec4;
 using glm::value_ptr;
 
-using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPRealism;
 
 //Water shader shares a majority part with the terrain shader.
-constexpr static auto WaterShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPHeightfieldTerrain", ".tesc", ".tese");
-constexpr static auto WaterFragmentShaderFilename = STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPWater", ".frag");
+constexpr static auto WaterShaderFilename = SuperTerrainPlus::STPFile::generateFilename(
+	STPRealismInfo::ShaderPath, "/STPHeightfieldTerrain", ".tesc", ".tese");
+constexpr static auto WaterFragmentShaderFilename = SuperTerrainPlus::STPFile::generateFilename(
+	STPRealismInfo::ShaderPath, "/STPWater", ".frag");
 constexpr static size_t WaterShaderCount = 3ull;
 
-STPWater::STPWater(const STPHeightfieldTerrain<false>& terrain, const STPBiomeWaterLevel& water_level) :
+STPWater::STPWater(const STPHeightfieldTerrain& terrain, const STPBiomeWaterLevel& water_level) :
 	TerrainObject(terrain), WaterLevelTable(GL_TEXTURE_1D) {
 	/* ----------------------------- setup water shader -------------------------------- */
 	STPShaderManager water_shader[WaterShaderCount] = {
@@ -87,9 +84,8 @@ STPWater::STPWater(const STPHeightfieldTerrain<false>& terrain, const STPBiomeWa
 	//now we can use biome ID as an index to the water level dictionary, and look up the water level
 
 	//setup water level lookup table
-	const uvec3 table_size = uvec3(biomeCount, 1u, 1u);
-	this->WaterLevelTable.textureStorage<STPTexture::STPDimension::ONE>(1, GL_R16, table_size);
-	this->WaterLevelTable.textureSubImage<STPTexture::STPDimension::ONE>(0, ivec3(0), table_size, GL_RED, GL_FLOAT, waterLevelDict.get());
+	this->WaterLevelTable.textureStorage1D(1, GL_R16, biomeCount);
+	this->WaterLevelTable.textureSubImage1D(0, 0, biomeCount, GL_RED, GL_FLOAT, waterLevelDict.get());
 
 	this->WaterLevelTable.filter(GL_NEAREST, GL_NEAREST);
 	//we use clamp to border so if a biome ID that is greater than the size of the table will give a valid value
@@ -107,10 +103,6 @@ STPWater::STPWater(const STPHeightfieldTerrain<false>& terrain, const STPBiomeWa
 	this->WaveTimeLocation = this->WaterAnimator.uniformLocation("WaveTime");
 	//set default material
 	this->setWaterMaterial(0u);
-}
-
-inline void STPWater::updateWaveTime(double time) const {
-	this->WaterAnimator.uniform(glProgramUniform1f, this->WaveTimeLocation, static_cast<float>(time));
 }
 
 void STPWater::setWater(const STPEnvironment::STPWaterSetting& water_setting) {
@@ -149,11 +141,6 @@ void STPWater::setWater(const STPEnvironment::STPWaterSetting& water_setting) {
 		.uniform(glProgramUniform1f, "WaterWave.octSpd", wave_setting.OctaveSpeed)
 		.uniform(glProgramUniform1f, "WaterWave.Drag", wave_setting.WaveDrag);
 
-	//initialise wave timer
-	this->WaveTimeStart = steady_clock::now();
-	//reset the timer to zero
-	this->updateWaveTime(0.0);
-
 	//Some side note here.
 	//Why not do something like STPSun that warp the timer around after each wave period?
 	//This has an advantage; if we let the program keep running without warping, time counter may overflow.
@@ -167,11 +154,11 @@ void STPWater::setWaterMaterial(STPMaterialLibrary::STPMaterialID water_material
 	this->WaterAnimator.uniform(glProgramUniform1ui, "WaterMaterialID", water_material);
 }
 
-void STPWater::render() const {
-	//update wave timing logic
-	const duration<double> elapsed = steady_clock::now() - this->WaveTimeStart;
-	this->updateWaveTime(elapsed.count());
+void STPWater::updateAnimationTimer(double second) {
+	this->WaterAnimator.uniform(glProgramUniform1f, this->WaveTimeLocation, static_cast<float>(second));
+}
 
+void STPWater::render() const {
 	STPWorldPipeline& world_gen = this->TerrainObject.TerrainGenerator;
 	//prepare for texture
 	glBindTextureUnit(0, world_gen[STPWorldPipeline::STPTerrainMapType::Biomemap]);

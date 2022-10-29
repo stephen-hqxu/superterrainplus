@@ -2,68 +2,77 @@
 
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
+#include <algorithm>
+
+using std::thread;
+using std::unique_lock;
+using std::function;
+
+using std::make_unique;
+
 using namespace SuperTerrainPlus;
 
-STPThreadPool::STPThreadPool(unsigned int count) {
-	if (count == 0u) {
+STPThreadPool::STPThreadPool(size_t count) : IsPoolRunning(false), IsPoolWaiting(false), PendingTask(0u),
+	Worker(make_unique<thread[]>(count)), WorkerCount(count) {
+	if (this->WorkerCount == 0u) {
 		throw STPException::STPBadNumericRange("The number of worker in a thread pool must be greater than 0");
 	}
 
-	//start the thread pool
-	this->running = true;
-
-	//adding non-stopping threads
-	for (unsigned int i = 0u; i < count; i++) {
-		this->worker.emplace_back([this] {
-			while (true) {//threads will spin forever
+	//start the thread pool with forever-spinning threads
+	this->IsPoolRunning = true;
+	std::generate_n(this->Worker.get(), this->WorkerCount, [this]() {
+		return thread([this]() {
+			while (true) {
 				//next task for execution
-				std::function<void()> next_task;
+				function<void()> task;
 
-				{
-					//get the next task from the queue
-					std::unique_lock<std::shared_mutex> lock(this->task_queue_locker);
-					//proceeds only if we have new task or the thread has stopped (then we call to exit)
-					this->condition.wait(lock, [this] {
-						//predicate is checked outside the lock, so this is thread safe!
-						return !(this->running && this->task.empty());
-						});
-					if (!this->running && this->task.empty()) {
-						//end the thread
-						return;
-					}
-					
-					//transfer the function reference then delete from the queue
-					next_task = std::move(this->task.front());
-					this->task.pop();
+				//wait for new task
+				unique_lock grab_task_lock(this->TaskQueueLock);
+				this->NewTaskNotifier.wait(grab_task_lock, [this]() { return !(this->IsPoolRunning && this->TaskQueue.empty()); });
+				//end the thread if the pool is dead
+				if (!this->IsPoolRunning) {
+					return;
 				}
-				//execution
-				next_task();
+
+				//grab the next task
+				task = std::move(this->TaskQueue.front());
+				this->TaskQueue.pop();
+
+				grab_task_lock.unlock();
+				//run the task
+				task();
+				grab_task_lock.lock();
+
+				this->PendingTask--;
+				//notify if someone is waiting for the pool to finish all its tasks
+				//lock the mutex while notifying to avoid spurious wake up on the waiting thread
+				if (this->IsPoolWaiting) {
+					this->TaskDoneNotifier.notify_one();
+				}
+
+				//grab_task_lock.unlock();
 			}
-			
-			});
-	}
+		});
+	});
 }
 
 STPThreadPool::~STPThreadPool() {
+	//before dying we need to finish everything
+	this->waitAll();
+
 	//mark the pool as stopped, and signal to all threads to stop
-	{
-		std::unique_lock<std::shared_mutex> lock(this->task_queue_locker);
-		this->running = false;
-	}
+	this->IsPoolRunning = false;
 
-	this->condition.notify_all();
-	//join all threads
-	for (std::thread& one_worker : this->worker) {
-		one_worker.join();
-	}
+	this->NewTaskNotifier.notify_all();
+	//wait for all of them to finish
+	std::for_each_n(this->Worker.get(), this->WorkerCount, [](auto& th) { th.join(); });
 }
 
-size_t STPThreadPool::size() const {
-	std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
-	return this->task.size();
-}
+void STPThreadPool::waitAll() {
+	this->IsPoolWaiting = true;
 
-bool STPThreadPool::isRunning() const {
-	std::shared_lock<std::shared_mutex> lock(this->task_queue_locker);
-	return this->running;
+	unique_lock status_check_lock(this->TaskQueueLock);
+	this->TaskDoneNotifier.wait(status_check_lock, [&pending_task = this->PendingTask]() { return pending_task == 0u; });
+
+	this->IsPoolWaiting = false;
 }

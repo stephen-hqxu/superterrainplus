@@ -3,7 +3,7 @@
 //Simulator
 #include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
 
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
 #include <type_traits>
@@ -27,9 +27,9 @@ using glm::uvec2;
 using glm::vec2;
 using glm::vec3;
 
-inline STPSmartStream STPHeightfieldGenerator::STPStreamCreator::operator()() const {
+inline STPSmartDeviceObject::STPStream STPHeightfieldGenerator::STPStreamCreator::operator()() const {
 	//we want the stream to not be blocked by default stream
-	return STPSmartStream(cudaStreamNonBlocking);
+	return STPSmartDeviceObject::makeStream(cudaStreamNonBlocking);
 }
 
 STPHeightfieldGenerator::STPRNGCreator::STPRNGCreator(const STPEnvironment::STPHeightfieldSetting& heightfield_setting) :
@@ -63,7 +63,7 @@ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkS
 	//allocating space
 	//heightfield settings
 	this->Heightfield_Setting_d = STPSmartDeviceMemory::makeDevice<STPEnvironment::STPHeightfieldSetting>();
-	STPcudaCheckErr(cudaMemcpy(this->Heightfield_Setting_d.get(), &this->Heightfield_Setting_h,
+	STP_CHECK_CUDA(cudaMemcpy(this->Heightfield_Setting_d.get(), &this->Heightfield_Setting_h,
 		sizeof(STPEnvironment::STPHeightfieldSetting), cudaMemcpyHostToDevice));
 
 	//create memory pool
@@ -72,17 +72,12 @@ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkS
 	pool_props.location.id = 0;
 	pool_props.location.type = cudaMemLocationTypeDevice;
 	pool_props.handleTypes = cudaMemHandleTypeNone;
-	STPcudaCheckErr(cudaMemPoolCreate(&this->MapCacheDevice, &pool_props));
+	this->MapCacheDevice = STPSmartDeviceObject::makeMemPool(pool_props);
 	//TODO: smartly determine the average memory pool size
 	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short)) * info.FreeSlipRange.x * info.FreeSlipRange.y
 		* hint_level_of_concurrency;
-	STPcudaCheckErr(cudaMemPoolSetAttribute(this->MapCacheDevice, cudaMemPoolAttrReleaseThreshold, &release_thres));
-	this->TextureBufferAttr.DeviceMemPool = this->MapCacheDevice;
-}
-
-STPHeightfieldGenerator::~STPHeightfieldGenerator() {
-	STPcudaCheckErr(cudaMemPoolDestroy(this->MapCacheDevice));
-	//device ptrs are deleted with custom deleter
+	STP_CHECK_CUDA(cudaMemPoolSetAttribute(this->MapCacheDevice.get(), cudaMemPoolAttrReleaseThreshold, &release_thres));
+	this->TextureBufferAttr.DeviceMemPool = this->MapCacheDevice.get();
 }
 
 void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperation operation) const {
@@ -99,12 +94,12 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 		isFlagged(operation, STPHeightfieldGenerator::Erosion),
 		isFlagged(operation, STPHeightfieldGenerator::RenderingBufferGeneration)
 	};
-	STPcudaCheckErr(cudaSetDevice(0));
+	STP_CHECK_CUDA(cudaSetDevice(0));
 
 	//creating stream so CPU thread can calculate all chunks altogether
 	//if exception is thrown during exception, stream will be the last object to be deleted, automatically
-	STPSmartStream smart_stream = this->StreamPool.requestObject();
-	cudaStream_t stream = *smart_stream;
+	STPSmartDeviceObject::STPStream smart_stream = this->StreamPool.requestObject();
+	cudaStream_t stream = smart_stream.get();
 	optional<STPSmartDeviceMemory::STPDeviceMemory<STPcurandRNG[]>> rng_buffer;
 	//limit the scope for std::optional to control the destructor call
 	{
@@ -171,7 +166,7 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 	}
 
 	//waiting for finish before release the data back to the pool
-	STPcudaCheckErr(cudaStreamSynchronize(stream));
+	STP_CHECK_CUDA(cudaStreamSynchronize(stream));
 	if (rng_buffer.has_value()) {
 		//if we have previously grabbed a RNG from the pool, return it
 		this->RNGPool.returnObject(move(*rng_buffer));

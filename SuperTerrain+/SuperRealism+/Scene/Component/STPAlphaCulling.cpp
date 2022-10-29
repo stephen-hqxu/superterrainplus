@@ -10,20 +10,20 @@
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto AlphaCullingFilename =
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAlphaCulling", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPAlphaCulling", ".frag");
 
-STPAlphaCulling::STPAlphaCulling(STPCullComparator comp, float limit, const STPScreenInitialiser& screen_init) {
+STPAlphaCulling::STPAlphaCulling(STPCullComparator comp, float limit, const STPScreen::STPScreenInitialiser& screen_init) {
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 	
 	Macro("ALPHA_COMPARATOR", STPAlphaCulling::comparatorString(comp));
 	
 	this->prepareAlphaShader(Macro, screen_init);
 
-	this->OffScreenRenderer.uniform(glProgramUniform1f, "Lim", limit);
+	this->CullingQuad.OffScreenRenderer.uniform(glProgramUniform1f, "Lim", limit);
 }
 
 STPAlphaCulling::STPAlphaCulling(STPCullComparator comp1, float limit1, 
-	STPCullConnector conn, STPCullComparator comp2, float limit2, const STPScreenInitialiser& screen_init) {
+	STPCullConnector conn, STPCullComparator comp2, float limit2, const STPScreen::STPScreenInitialiser& screen_init) {
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 	Macro("USE_DUAL_EXPRESSIONS", 1)
@@ -33,7 +33,7 @@ STPAlphaCulling::STPAlphaCulling(STPCullComparator comp1, float limit1,
 
 	this->prepareAlphaShader(Macro, screen_init);
 
-	this->OffScreenRenderer.uniform(glProgramUniform1f, "LimA", limit1)
+	this->CullingQuad.OffScreenRenderer.uniform(glProgramUniform1f, "LimA", limit1)
 		.uniform(glProgramUniform1f, "LimB", limit2);
 }
 
@@ -57,7 +57,8 @@ inline const char* STPAlphaCulling::connectorString(STPCullConnector conn) {
 	}
 }
 
-inline void STPAlphaCulling::prepareAlphaShader(const STPShaderManager::STPShaderSource::STPMacroValueDictionary& macro, const STPScreenInitialiser& screen_init) {
+inline void STPAlphaCulling::prepareAlphaShader(const STPShaderManager::STPShaderSource::STPMacroValueDictionary& macro,
+	const STPScreen::STPScreenInitialiser& screen_init) {
 	//setup alpha culling shading program
 	const char* const culling_shader_file = AlphaCullingFilename.data();
 	STPShaderManager::STPShaderSource cull_source(culling_shader_file, STPFile::read(culling_shader_file));
@@ -66,22 +67,13 @@ inline void STPAlphaCulling::prepareAlphaShader(const STPShaderManager::STPShade
 	//build the program
 	STPShaderManager cull_shader(GL_FRAGMENT_SHADER);
 	cull_shader(cull_source);
-	this->initScreenRenderer(cull_shader, screen_init);
+	this->CullingQuad.initScreenRenderer(cull_shader, screen_init);
 
 	//sampler
-	this->OffScreenRenderer.uniform(glProgramUniform1i, "ColorInput", 0);
+	this->CullingQuad.OffScreenRenderer.uniform(glProgramUniform1i, "ColorInput", 0);
 }
 
 void STPAlphaCulling::cull(const STPTexture& input) const {
-	//prepare for rendering
-	this->ScreenVertex->bind();
-	this->OffScreenRenderer.use();
-
 	input.bind(0);
-
-	//draw
-	this->drawScreen();
-
-	//finish up
-	STPProgramManager::unuse();
+	this->CullingQuad.drawScreen();
 }

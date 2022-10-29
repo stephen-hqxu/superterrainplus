@@ -8,7 +8,6 @@
 #include <glad/glad.h>
 
 using glm::uvec2;
-using glm::uvec3;
 using glm::vec3;
 using glm::vec4;
 
@@ -50,11 +49,11 @@ void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::S
 	/* ------------------------------ depth texture setup ------------------------- */
 	STPTexture shadow_map(shadow_target);
 	//shadow map is a square texture
-	const uvec3 dimension = uvec3(uvec2(this->ShadowMapResolution), this->lightSpaceDimension());
+	const uvec2 dimension = uvec2(this->ShadowMapResolution);
 	if (this->ShadowMapFormat == STPShadowMapFormat::Scalar) {
-		shadow_map.textureStorage<STPTexture::STPDimension::TWO>(level, shadow_internal, dimension);
+		shadow_map.textureStorage2D(level, shadow_internal, dimension);
 	} else {
-		shadow_map.textureStorage<STPTexture::STPDimension::THREE>(level, shadow_internal, dimension);
+		shadow_map.textureStorage3D(level, shadow_internal, STPGLVector::STPsizeiVec3(dimension, this->lightSpaceDimension()));
 	}
 
 	/* ---------------------------- depth texture parameter ------------------------ */

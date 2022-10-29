@@ -1,14 +1,15 @@
 //Catch2
 #include <catch2/catch_session.hpp>
 
-//Setup Engine
-#include <SuperTerrain+/STPEngineInitialiser.h>
-#include <SuperTerrain+/Exception/STPCUDAError.h>
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
-
 //Test Engine
 #include <cuda.h>
 #include "STPTestInformation.h"
+
+//Setup Engine
+#include <SuperTerrain+/STPEngineInitialiser.h>
+#include <SuperTerrain+/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
+
 
 #include <iostream>
 
@@ -32,9 +33,9 @@ int main(int argc, char* argv[]) {
 		terminate();
 	}
 	//get device memory pool
-	STPcudaCheckErr(cudaDeviceGetDefaultMemPool(&STPTestInformation::TestDeviceMemoryPool, SelectedDevice));
+	STP_CHECK_CUDA(cudaDeviceGetDefaultMemPool(&STPTestInformation::TestDeviceMemoryPool, SelectedDevice));
 	cuuint64_t memLimit = 1024ull * 1024ull;//1 MB
-	STPcudaCheckErr(cudaMemPoolSetAttribute(STPTestInformation::TestDeviceMemoryPool, cudaMemPoolAttrReleaseThreshold, &memLimit));
+	STP_CHECK_CUDA(cudaMemPoolSetAttribute(STPTestInformation::TestDeviceMemoryPool, cudaMemPoolAttrReleaseThreshold, &memLimit));
 
 	//run catch
 	const int result = Catch::Session().run(argc, argv);

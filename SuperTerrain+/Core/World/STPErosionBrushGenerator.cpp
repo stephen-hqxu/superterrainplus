@@ -2,7 +2,7 @@
 
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //Container
 #include <vector>
@@ -59,9 +59,9 @@ STPErosionBrushGenerator::STPErosionBrushGenerator(unsigned int freeslip_rangeX,
 	this->ErosionBrushWeight_d = STPSmartDeviceMemory::makeDevice<float[]>(weightCache.size());
 
 	//copy
-	STPcudaCheckErr(cudaMemcpy(this->ErosionBrushIndex_d.get(), indexCache.data(),
+	STP_CHECK_CUDA(cudaMemcpy(this->ErosionBrushIndex_d.get(), indexCache.data(),
 		sizeof(int) * indexCache.size(), cudaMemcpyHostToDevice));
-	STPcudaCheckErr(cudaMemcpy(this->ErosionBrushWeight_d.get(), weightCache.data(),
+	STP_CHECK_CUDA(cudaMemcpy(this->ErosionBrushWeight_d.get(), weightCache.data(),
 		sizeof(float) * weightCache.size(), cudaMemcpyHostToDevice));
 
 	//store data

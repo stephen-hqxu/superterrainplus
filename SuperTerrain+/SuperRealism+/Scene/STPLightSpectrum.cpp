@@ -12,10 +12,7 @@
 
 #include <type_traits>
 
-using glm::uvec2;
 using glm::u8vec3;
-using glm::ivec3;
-using glm::uvec3;
 using glm::vec3;
 
 using glm::value_ptr;
@@ -29,7 +26,7 @@ STPLightSpectrum::STPLightSpectrum(unsigned int length, STPOpenGL::STPenum forma
 	}
 
 	//setup output texture
-	this->Spectrum.textureStorage<STPTexture::STPDimension::ONE>(1, format, uvec3(this->SpectrumLength, uvec2(1u)));
+	this->Spectrum.textureStorage1D(1, format, this->SpectrumLength);
 
 	this->Spectrum.filter(GL_NEAREST, GL_LINEAR);
 	this->Spectrum.wrap(GL_CLAMP_TO_EDGE);
@@ -63,7 +60,7 @@ void STPLightSpectrum::setData(const STPColourArray<T>& color) {
 		type = GL_UNSIGNED_BYTE;
 	}
 
-	this->Spectrum.textureSubImage<STPTexture::STPDimension::ONE>(0, ivec3(0), uvec3(color.size(), uvec2(1u)), format, type, color.data());
+	this->Spectrum.textureSubImage1D(0, 0, static_cast<STPOpenGL::STPsizei>(color.size()), format, type, color.data());
 }
 
 //Explicit Instantiation

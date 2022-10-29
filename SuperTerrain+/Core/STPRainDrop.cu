@@ -130,7 +130,7 @@ __device__ void STPRainDrop::operator()(float* map, const STPEnvironment::STPRai
 
 			//add the sediment to the four nodes of the current cell using bilinear interpolation
 			//deposition is not distributed over a radius (like erosion) so that it can fill small pits :)
-#ifdef _DEBUG
+#ifndef NDEBUG
 			//The current erosion algorithm is imperfect, race condition occurs when multiple raindrop collides into each other at the same time.
 			//Although the chance might be small when the heightmap is large, but we still need to prevent it somehow.
 			//This can be prevented by using atomic operation, however it is exceptionally slow in debug build.
@@ -158,7 +158,7 @@ __device__ void STPRainDrop::operator()(float* map, const STPEnvironment::STPRai
 				const float weightederodeAmout = erodeAmout * brushWeights[brushPointIndex];
 				const float deltaSediment = (map[erodeIndex] < weightederodeAmout) ? map[erodeIndex] : weightederodeAmout;
 				//erode the map
-#ifdef _DEBUG
+#ifndef NDEBUG
 				map[erodeIndex] -= deltaSediment;
 #else
 				atomicAdd(map + erodeIndex, -deltaSediment);

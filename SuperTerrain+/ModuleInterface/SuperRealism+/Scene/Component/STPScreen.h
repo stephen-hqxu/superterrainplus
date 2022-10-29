@@ -18,6 +18,7 @@
 
 //System
 #include <memory>
+#include <functional>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -115,20 +116,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 			~STPSimpleScreenBindlessFrameBuffer() = default;
 
+			//@see STPSimpleScreenFrameBuffer::setScreenBuffer
 			void setScreenBuffer(STPTexture*, const glm::uvec2&, STPOpenGL::STPenum) override;
-
-			/**
-			 * @brief Get the bindless handle to the screen colour texture.
-			 * @return The bindless handle.
-			 * The handle will be changed if the screen resolution has been changed.
-			*/
-			STPOpenGL::STPuint64 getColorHandle() const;
-
-			/**
-			 * @brief Bind the colour sampler to a texture unit.
-			 * @param unit Specifies the texture unit to be bound.
-			*/
-			void bindColorSampler(STPOpenGL::STPuint) const;
 
 		};
 
@@ -214,29 +203,46 @@ namespace SuperTerrainPlus::STPRealism {
 
 		};
 
-	protected:
+	private:
 
 		std::shared_ptr<const STPScreenVertexBuffer> ScreenVertex;
 
-		STPProgramManager OffScreenRenderer;
-
-		/**
-		 * @brief Initialise the off-screen renderer.
-		 * All old states in the previous screen renderer, if any, is lost and the program is recompiled.
-		 * It is a undefined behaviour if any member variables are used before this function is called for the first time
-		 * since object initialisation.
-		 * @param screen_fs The pointer to the fragment shader used by the pipeline.
-		 * @param screen_init The pointer to the screen initialiser.
-		*/
-		void initScreenRenderer(const STPShaderManager&, const STPScreenInitialiser&);
-
-		/**
-		 * @brief Draw the screen.
-		 * Buffer and program is not bound and used automatically.
-		*/
-		void drawScreen() const;
-
 	public:
+
+		/**
+		 * @brief STPScreenProgramExecutor is a smart guard over a function that uses the screen drawing program.
+		 * It allows the function to issue multiple draw call from the same program without re-using the program repetitively.
+		 * At the end of execution states are cleared up automatically to avoid state leakage.
+		*/
+		struct STPScreenProgramExecutor {
+		public:
+
+			/**
+			 * @brief Start a screen program rendering execution.
+			 * The screen draw program is made active automatically and will be deactivated when the current instance is destroyed.
+			 * Changing any indirect buffer, vertex array and program state while a program executor is active will lead to undefined behaviour.
+			 * @param screen The screen program to be rendered.
+			*/
+			STPScreenProgramExecutor(const STPScreen&);
+
+			STPScreenProgramExecutor(const STPScreenProgramExecutor&) = delete;
+
+			STPScreenProgramExecutor(STPScreenProgramExecutor&&) = delete;
+
+			STPScreenProgramExecutor& operator=(const STPScreenProgramExecutor&) = delete;
+
+			STPScreenProgramExecutor& operator=(STPScreenProgramExecutor&&) = delete;
+
+			~STPScreenProgramExecutor();
+
+			/**
+			 * @brief Draw the screen.
+			*/
+			void operator()() const;
+
+		};
+
+		STPProgramManager OffScreenRenderer;
 
 		/**
 		 * @brief Initialise a screen renderer helper instance.
@@ -251,7 +257,31 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPScreen& operator=(STPScreen&&) noexcept = default;
 
-		virtual ~STPScreen() = default;
+		~STPScreen() = default;
+
+		/**
+		 * @brief Initialise the off-screen renderer.
+		 * All old states in the previous screen renderer, if any, is lost and the program is recompiled.
+		 * It is a undefined behaviour if any member variables are used before this function is called for the first time
+		 * since object initialisation.
+		 * @param screen_fs The pointer to the fragment shader used by the pipeline.
+		 * @param screen_init The pointer to the screen initialiser.
+		*/
+		void initScreenRenderer(const STPShaderManager&, const STPScreenInitialiser&);
+
+		/**
+		 * @brief Draw the screen.
+		 * Buffer and program are bound and used automatically.
+		*/
+		void drawScreen() const;
+
+		/**
+		 * @brief Draw the screen using a screen draw executor.
+		 * Buffer and program states are bound upon the executor is returned, and cleared up automatically at the end.
+		 * This allows issuing multiple draw commands without reactivating the states repetitively.
+		 * @return A screen draw executor.
+		*/
+		[[nodiscard]] STPScreenProgramExecutor drawScreenFromExecutor() const;
 
 	};
 

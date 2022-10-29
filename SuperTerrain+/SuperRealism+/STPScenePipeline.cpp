@@ -39,10 +39,8 @@
 using glm::uvec2;
 using glm::vec2;
 using glm::dvec2;
-using glm::uvec3;
 using glm::vec3;
 using glm::ivec4;
-using glm::uvec4;
 using glm::vec4;
 using glm::mat3;
 using glm::dmat3;
@@ -288,7 +286,7 @@ private:
 
 	//this shader is used to do some additional operations during depth rendering
 	constexpr static auto ShadowDepthPassShaderFilename =
-		STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPShadowDepthPass", ".frag");
+		STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPShadowDepthPass", ".frag");
 
 	//shadow map texture properties
 	GLsizei ShadowLevel = 1;
@@ -371,7 +369,7 @@ public:
 	 * It is a undefined behaviour if any of the light is not shadow casting.
 	 * @param ori_vp The current size of the viewport.
 	*/
-	void renderToShadow(const vector<STPSceneObject::STPOpaqueObject<true>*>& shadow_object, const vector<STPSceneLight*>& shadow_light, const ivec4& ori_vp) {
+	void renderToShadow(const vector<STPSceneObject::STPOpaqueObject*>& shadow_object, const vector<STPSceneLight*>& shadow_light, const ivec4& ori_vp) {
 		size_t current_light_space_start = 0ull;
 		for (size_t i = 0ull; i < shadow_light.size(); i++) {
 			auto* const shadowable_light = shadow_light[i];
@@ -420,7 +418,7 @@ public:
 
 };
 
-class STPScenePipeline::STPGeometryBufferResolution : private STPScreen {
+class STPScenePipeline::STPGeometryBufferResolution {
 private:
 
 	//The dependent scene pipeline.
@@ -428,6 +426,8 @@ private:
 
 	typedef std::array<STPBindlessTexture, 5ull> STPGeometryBufferHandle;
 	typedef std::array<GLuint64, 5ull> STPGeometryBufferRawHandle;
+
+	STPScreen DeferredQuad;
 
 	STPSampler GSampler, DepthSampler;
 	//G-buffer components
@@ -448,10 +448,10 @@ private:
 	STPTexture ClearEnvironmentTexture;
 	STPFrameBuffer ExtinctionCullingContainer;
 	//Temporarily stores all environment colours before blended with the scene
-	STPSimpleScreenFrameBuffer ExtinctionEnvironmentCache;
+	STPScreen::STPSimpleScreenFrameBuffer ExtinctionEnvironmentCache;
 
 	constexpr static auto DeferredShaderFilename =
-		STPFile::generateFilename(SuperRealismPlus_ShaderPath, "/STPDeferredShading", ".frag");
+		STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPDeferredShading", ".frag");
 
 	/**
 	 * @brief Draw a texture onto a screen.
@@ -477,7 +477,7 @@ public:
 	 * @param lighting_init The pointer to the lighting shader initialiser
 	*/
 	STPGeometryBufferResolution(const STPScenePipeline& pipeline, const STPShadingEquation& shading_equa,
-		const STPShadowMapFilterFunction& shadow_filter, const STPScreenInitialiser& lighting_init) :
+		const STPShadowMapFilterFunction& shadow_filter, const STPScreen::STPScreenInitialiser& lighting_init) :
 		Pipeline(pipeline),
 		GAlbedo(GL_TEXTURE_2D), GNormal(GL_TEXTURE_2D), GRoughness(GL_TEXTURE_2D), GAmbient(GL_TEXTURE_2D),
 		//alpha culling, set to discard pixels that are not in the extinction zone
@@ -513,7 +513,7 @@ public:
 		//compile shader
 		STPShaderManager deffered_shader(GL_FRAGMENT_SHADER);
 		deffered_shader(deferred_source);
-		this->initScreenRenderer(deffered_shader, lighting_init);
+		this->DeferredQuad.initScreenRenderer(deffered_shader, lighting_init);
 
 		/* ------------------------------- setup G-buffer sampler ------------------------------------- */
 		auto setGBufferSampler = [](STPSampler& sampler) -> void {
@@ -532,22 +532,22 @@ public:
 
 		/* --------------------------------- initial buffer setup -------------------------------------- */
 		//global shadow setting
-		this->OffScreenRenderer
+		this->DeferredQuad.OffScreenRenderer
 			.uniform(glProgramUniform2fv, "Filter.Db", 1, value_ptr(shadow_filter.DepthBias))
 			.uniform(glProgramUniform2fv, "Filter.Nb", 1, value_ptr(shadow_filter.NormalBias))
 			.uniform(glProgramUniform1f, "Filter.FarBias", shadow_filter.BiasFarMultiplier);
 		if (cascadeLayerBlend) {
-			this->OffScreenRenderer.uniform(glProgramUniform1f, "Filter.Br", shadow_filter.CascadeBlendArea);
+			this->DeferredQuad.OffScreenRenderer.uniform(glProgramUniform1f, "Filter.Br", shadow_filter.CascadeBlendArea);
 		}
 		//send specialised filter kernel parameters based on type
-		shadow_filter(this->OffScreenRenderer);
-		shading_equa(this->OffScreenRenderer);
+		shadow_filter(this->DeferredQuad.OffScreenRenderer);
+		shading_equa(this->DeferredQuad.OffScreenRenderer);
 
 		//no colour will be written to the extinction buffer
 		this->ExtinctionCullingContainer.readBuffer(GL_NONE);
 		this->ExtinctionCullingContainer.drawBuffer(GL_NONE);
 		//pure colour texture
-		this->ClearEnvironmentTexture.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGBA8, uvec3(1u));
+		this->ClearEnvironmentTexture.textureStorage2D(1, GL_RGBA8, STPGLVector::STPsizeiVec2(1));
 		this->ClearEnvironmentTexture.clearTextureImage(0, GL_RGBA, GL_FLOAT, value_ptr(ConstantBlackColour));
 		this->ClearEnvironmentTexture.filter(GL_NEAREST, GL_NEAREST);
 		this->ClearEnvironmentTexture.wrap(GL_REPEAT);
@@ -593,7 +593,7 @@ public:
 			break;
 		}
 
-		this->OffScreenRenderer.uniform(glProgramUniformui64NV, list_name.str().c_str(), light_data_addr)
+		this->DeferredQuad.OffScreenRenderer.uniform(glProgramUniformui64NV, list_name.str().c_str(), light_data_addr)
 			//because we can safely assume this light has yet added to the scene, which mean after addition of this light,
 			//the memory usage will be incremented by 1.
 			.uniform(glProgramUniform1ui, count_name, static_cast<unsigned int>(current_count) + 1u);
@@ -606,18 +606,17 @@ public:
 	 * The old texture memory stored in the scene pipeline may not yet been updated at the time this function is called,
 	 * so don't use that.
 	 * @param dimension The buffer resolution, which should be the size of the viewport.
-	 * The resolution should have the last component as one.
 	*/
-	void setResolution(const STPSharedTexture& texture, const uvec3& dimension) {
+	void setResolution(const STPSharedTexture& texture, const uvec2& dimension) {
 		//create a set of new buffers
 		STPTexture albedo(GL_TEXTURE_2D), normal(GL_TEXTURE_2D), roughness(GL_TEXTURE_2D), ao(GL_TEXTURE_2D);
 		optional<STPTexture> material;
 		const auto& [depth_stencil] = texture;
 		//reallocation of memory
-		albedo.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGB8, dimension);
-		normal.textureStorage<STPTexture::STPDimension::TWO>(1, GL_RGB16_SNORM, dimension);
-		roughness.textureStorage<STPTexture::STPDimension::TWO>(1, GL_R8, dimension);
-		ao.textureStorage<STPTexture::STPDimension::TWO>(1, GL_R8, dimension);
+		albedo.textureStorage2D(1, GL_RGB8, dimension);
+		normal.textureStorage2D(1, GL_RGB16_SNORM, dimension);
+		roughness.textureStorage2D(1, GL_R8, dimension);
+		ao.textureStorage2D(1, GL_R8, dimension);
 		//we don't need position buffer but instead of perform depth reconstruction
 		//so make sure the depth buffer is solid enough to construct precise world position
 
@@ -630,7 +629,7 @@ public:
 		//setup optional rendering targets
 		if (this->Pipeline.hasMaterialLibrary) {
 			material.emplace(GL_TEXTURE_2D);
-			material->textureStorage<STPTexture::STPDimension::TWO>(1, GL_R8UI, dimension);
+			material->textureStorage2D(1, GL_R8UI, dimension);
 			this->GeometryContainer.attach(GL_COLOR_ATTACHMENT4, *material, 0);
 		}
 
@@ -661,7 +660,7 @@ public:
 		STPGeometryBufferRawHandle raw_handle;
 		std::transform(this->GHandle->cbegin(), this->GHandle->cend(), raw_handle.begin(),
 			[](const auto& handle) { return *handle; });
-		this->OffScreenRenderer.uniform(
+		this->DeferredQuad.OffScreenRenderer.uniform(
 			glProgramUniformHandleui64vARB, "GBuffer", static_cast<GLsizei>(raw_handle.size()), raw_handle.data());
 
 		using std::move;
@@ -744,14 +743,7 @@ public:
 	 * @brief Perform resolution of geometry buffer and perform lighting calculation.
 	*/
 	inline void resolve() {
-		//prepare for rendering the screen
-		this->ScreenVertex->bind();
-		this->OffScreenRenderer.use();
-
-		this->drawScreen();
-
-		//clear up
-		STPProgramManager::unuse();
+		this->DeferredQuad.drawScreen();
 	}
 
 	/**
@@ -768,7 +760,7 @@ public:
 	 * @param value The float value to be set.
 	*/
 	inline void setFloat(const char* name, float value) {
-		this->OffScreenRenderer.uniform(glProgramUniform1f, name, value);
+		this->DeferredQuad.OffScreenRenderer.uniform(glProgramUniform1f, name, value);
 	}
 
 };
@@ -837,20 +829,8 @@ const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryLimit
 	return this->SceneMemoryLimit;
 }
 
-void STPScenePipeline::add(STPSceneObject::STPOpaqueObject<false>& opaque) {
+void STPScenePipeline::add(STPSceneObject::STPOpaqueObject& opaque) {
 	this->SceneComponent.OpaqueObjectDatabase.emplace_back(&opaque);
-}
-
-void STPScenePipeline::add(STPSceneObject::STPOpaqueObject<false>& opaque, STPSceneObject::STPOpaqueObject<true>& opaque_shadow) {
-	STPScenePipeline::STPSceneGraph& scene_graph = this->SceneComponent;
-
-	this->add(opaque);
-	scene_graph.ShadowOpaqueObject.emplace_back(&opaque_shadow);
-
-	//now configure this shadow-casting object with each depth configuration
-	for_each(scene_graph.UniqueLightSpaceSize.cbegin(), scene_graph.UniqueLightSpaceSize.cend(),
-		[&opaque_shadow, depth_shader = this->getDepthShader()]
-		(const auto depth_config) { opaque_shadow.addDepthConfiguration(depth_config, depth_shader); });
 }
 
 void STPScenePipeline::add(STPSceneObject::STPTransparentObject& transparent) {
@@ -874,8 +854,8 @@ void STPScenePipeline::add(STPSceneLight& light) {
 		const STPSceneShaderCapacity& current_usage = this->SceneMemoryCurrent,
 			limit_usage = this->SceneMemoryLimit;
 		
-		if (light.Type == LT::Ambient && current_usage.AmbientLight >= limit_usage.AmbientLight
-			|| light.Type == LT::Directional && current_usage.DirectionalLight >= limit_usage.DirectionalLight) {
+		if ((light.Type == LT::Ambient && current_usage.AmbientLight >= limit_usage.AmbientLight)
+			|| (light.Type == LT::Directional && current_usage.DirectionalLight >= limit_usage.DirectionalLight)) {
 			throw STPException::STPMemoryError("The number of this type of light has reached the limit");
 		}
 	}
@@ -936,6 +916,17 @@ void STPScenePipeline::add(STPPostProcess& post_process) {
 	this->SceneComponent.PostProcessObject = &post_process;
 }
 
+void STPScenePipeline::addShadow(STPSceneObject::STPOpaqueObject& opaque_shadow) {
+	STPScenePipeline::STPSceneGraph& scene_graph = this->SceneComponent;
+
+	scene_graph.ShadowOpaqueObject.emplace_back(&opaque_shadow);
+
+	//now configure this shadow-casting object with each depth configuration
+	for_each(scene_graph.UniqueLightSpaceSize.cbegin(), scene_graph.UniqueLightSpaceSize.cend(),
+		[&opaque_shadow, depth_shader = this->getDepthShader()]
+		(const auto depth_config) { opaque_shadow.addDepthConfiguration(depth_config, depth_shader); });
+}
+
 void STPScenePipeline::setClearColor(vec4 color) {
 	glClearColor(color.r, color.g, color.b, color.a);
 	//update member variable
@@ -946,37 +937,22 @@ void STPScenePipeline::setClearColor(vec4 color) {
 	}
 }
 
-bool STPScenePipeline::setRepresentativeFragmentTest(bool val) {
-	if (!GLAD_GL_NV_representative_fragment_test) {
-		//does not support
-		return false;
-	}
-
-	if (val) {
-		glEnable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
-	} else {
-		glDisable(GL_REPRESENTATIVE_FRAGMENT_TEST_NV);
-	}
-	return glIsEnabled(GL_REPRESENTATIVE_FRAGMENT_TEST_NV) == GL_TRUE;
-}
-
 void STPScenePipeline::setResolution(uvec2 resolution) {
 	if (resolution == uvec2(0u)) {
 		throw STPException::STPBadNumericRange("The rendering resolution must be both non-zero positive integers");
 	}
-	const uvec3 dimension = uvec3(resolution, 1u);
 
 	//create a new scene shared buffer
 	STPSharedTexture scene_texture;
 	auto& [depth_stencil] = scene_texture;
 	//allocation new memory, we need to allocate some floating-point pixels for (potentially) HDR rendering.
-	depth_stencil.textureStorage<STPTexture::STPDimension::TWO>(1, GL_DEPTH32F_STENCIL8, dimension);
+	depth_stencil.textureStorage2D(1, GL_DEPTH32F_STENCIL8, resolution);
 
 	//we pass the new buffer first before replacing the existing buffer in the scene pipeline
 	//to make sure all children replace the new shared buffer and avoid UB
 	//resize children rendering components
 	STPFrameBuffer::unbind(GL_FRAMEBUFFER);
-	this->GeometryLightPass->setResolution(scene_texture, dimension);
+	this->GeometryLightPass->setResolution(scene_texture, resolution);
 	
 	//update scene component (if needed)
 	STPSceneGraph& scene = this->SceneComponent;
@@ -1018,7 +994,7 @@ inline void STPScenePipeline::drawEnvironment(const Env& env, const vec4& vp) co
 	glBlendFunc(GL_CONSTANT_COLOR, GL_ONE);
 	for_each(env.cbegin(), env.cend(), [alpha_mean_factor = 1.0f / static_cast<float>(env.size())](const auto rendering_env) {
 		const float env_vis = rendering_env->EnvironmentVisibility;
-		if (env_vis <= 0.0f) {
+		if (!rendering_env->isEnvironmentVisible()) {
 			//invisible, skip rendering
 			return;
 		}

@@ -1,6 +1,6 @@
 #include "STPBiomefieldGenerator.h"
 //Error
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 //Biome
 #include "STPBiomeRegistry.h"
 
@@ -23,21 +23,17 @@ STPBiomefieldGenerator::STPBiomefieldGenerator(const STPCommonCompiler& program,
 	this->initGenerator();
 
 	//create a CUDA memory pool
-	CUmemPoolProps pool_props = { };
-	pool_props.allocType = CU_MEM_ALLOCATION_TYPE_PINNED;
-	pool_props.handleTypes = CU_MEM_HANDLE_TYPE_NONE;
-	pool_props.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+	cudaMemPoolProps pool_props = { };
+	pool_props.allocType = cudaMemAllocationTypePinned;
+	pool_props.handleTypes = cudaMemHandleTypeNone;
+	pool_props.location.type = cudaMemLocationTypeDevice;
 	pool_props.location.id = 0;
-	STPcudaCheckErr(cuMemPoolCreate(&this->HistogramCacheDevice, &pool_props));
+	this->HistogramCacheDevice = STPSmartDeviceObject::makeMemPool(pool_props);
 	//it's pretty hard to predict
 	constexpr size_t avg_bin_per_pixel = 2ull, deg_para = 5ull;
 	cuuint64_t release_thres = this->MapSize.x * this->MapSize.y * (sizeof(unsigned int)
 		+ sizeof(SuperTerrainPlus::STPAlgorithm::STPSingleHistogram::STPBin) * avg_bin_per_pixel) * deg_para;
-	cuMemPoolSetAttribute(this->HistogramCacheDevice, CU_MEMPOOL_ATTR_RELEASE_THRESHOLD, &release_thres);
-}
-
-STPBiomefieldGenerator::~STPBiomefieldGenerator() {
-	STPcudaCheckErr(cuMemPoolDestroy(this->HistogramCacheDevice));
+	cudaMemPoolSetAttribute(this->HistogramCacheDevice.get(), cudaMemPoolAttrReleaseThreshold, &release_thres);
 }
 
 void STPBiomefieldGenerator::initGenerator() {
@@ -46,21 +42,21 @@ void STPBiomefieldGenerator::initGenerator() {
 	CUdeviceptr biome_prop;
 	size_t biome_propSize;
 	//get names and start copying
-	const auto& name = this->KernelProgram.getLoweredNameDictionary("STPMultiHeightGenerator");
-	STPcudaCheckErr(cuModuleGetFunction(&this->GeneratorEntry, program, name.at("generateMultiBiomeHeightmap")));
-	STPcudaCheckErr(cuModuleGetGlobal(&biome_prop, &biome_propSize, program, name.at("BiomeTable")));
+	const auto& name = this->KernelProgram.getBiomefieldName();
+	STP_CHECK_CUDA(cuModuleGetFunction(&this->GeneratorEntry, program, name.at("generateMultiBiomeHeightmap").c_str()));
+	STP_CHECK_CUDA(cuModuleGetGlobal(&biome_prop, &biome_propSize, program, name.at("BiomeTable").c_str()));
 
 	//copy biome properties
 	//currently we have two biomes
 	STPBiomeProperty* biomeTable_buffer;
-	STPcudaCheckErr(cuMemAllocHost(reinterpret_cast<void**>(&biomeTable_buffer), biome_propSize));
+	STP_CHECK_CUDA(cuMemAllocHost(reinterpret_cast<void**>(&biomeTable_buffer), biome_propSize));
 	//copy to host buffer
 	biomeTable_buffer[0] = static_cast<STPBiomeProperty>(STPBiomeRegistry::Ocean);
 	biomeTable_buffer[1] = static_cast<STPBiomeProperty>(STPBiomeRegistry::Plains);
 	//copy everything to device
-	STPcudaCheckErr(cuMemcpyHtoD(biome_prop, biomeTable_buffer, biome_propSize));
+	STP_CHECK_CUDA(cuMemcpyHtoD(biome_prop, biomeTable_buffer, biome_propSize));
 
-	STPcudaCheckErr(cuMemFreeHost(biomeTable_buffer));
+	STP_CHECK_CUDA(cuMemFreeHost(biomeTable_buffer));
 }
 
 using namespace SuperTerrainPlus::STPAlgorithm;
@@ -73,7 +69,7 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	STPFreeSlipSampleTextureBuffer& biomemap_buffer, const STPFreeSlipInformation& freeslip_info, vec2 offset, cudaStream_t stream) const {
 	int Mingridsize, blocksize;
 	//smart launch configuration
-	STPcudaCheckErr(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->GeneratorEntry, nullptr, 0ull, 0));
+	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->GeneratorEntry, nullptr, 0ull, 0));
 	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
 		//under-sampled heightmap, and super-sample it back with interpolation
 		Dimgridsize = (this->MapSize + Dimblocksize - 1u) / Dimblocksize;
@@ -97,14 +93,14 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	const size_t bin_size = histogram_h.HistogramStartOffset[num_pixel_biomemap] * sizeof(STPSingleHistogram::STPBin),
 		offset_size = (num_pixel_biomemap + 1u) * sizeof(unsigned int);
 	//the number of bin is the last element in the offset array
-	STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_d.Bin, bin_size, this->HistogramCacheDevice, stream));
-	STPcudaCheckErr(cudaMallocFromPoolAsync(&histogram_d.HistogramStartOffset, offset_size, this->HistogramCacheDevice, stream));
+	STP_CHECK_CUDA(cudaMallocFromPoolAsync(&histogram_d.Bin, bin_size, this->HistogramCacheDevice.get(), stream));
+	STP_CHECK_CUDA(cudaMallocFromPoolAsync(&histogram_d.HistogramStartOffset, offset_size, this->HistogramCacheDevice.get(), stream));
 	//and copy
-	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.Bin, histogram_h.Bin, bin_size, cudaMemcpyHostToDevice, stream));
-	STPcudaCheckErr(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset, offset_size,
+	STP_CHECK_CUDA(cudaMemcpyAsync(histogram_d.Bin, histogram_h.Bin, bin_size, cudaMemcpyHostToDevice, stream));
+	STP_CHECK_CUDA(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset, offset_size,
 		cudaMemcpyHostToDevice, stream));
 	//returning the buffer back to the pool, make sure all copies are done
-	STPcudaCheckErr(cudaStreamSynchronize(stream));
+	STP_CHECK_CUDA(cudaStreamSynchronize(stream));
 	this->BufferPool.returnObject(move(histogram_buffer));
 
 	//launch kernel
@@ -125,15 +121,14 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 		CU_LAUNCH_PARAM_BUFFER_SIZE, &buffer_size,
 		CU_LAUNCH_PARAM_END
 	};
-	STPcudaCheckErr(cuLaunchKernel(this->GeneratorEntry,
+	STP_CHECK_CUDA(cuLaunchKernel(this->GeneratorEntry,
 		Dimgridsize.x, Dimgridsize.y, 1u,
 		Dimblocksize.x, Dimblocksize.y, 1u,
 		0u, stream, nullptr, config));
-	STPcudaCheckErr(cudaGetLastError());
 
 	//free histogram device memory
 	//STPBin is a POD-type so can be freed with no problem
 	//histogram_d will be recycled after, the pointer will reside in the stream
-	STPcudaCheckErr(cudaFreeAsync(histogram_d.Bin, stream));
-	STPcudaCheckErr(cudaFreeAsync(histogram_d.HistogramStartOffset, stream));
+	STP_CHECK_CUDA(cudaFreeAsync(histogram_d.Bin, stream));
+	STP_CHECK_CUDA(cudaFreeAsync(histogram_d.HistogramStartOffset, stream));
 }

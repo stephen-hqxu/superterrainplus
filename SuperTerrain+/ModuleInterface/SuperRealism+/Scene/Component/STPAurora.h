@@ -5,11 +5,9 @@
 #include <SuperRealism+/STPRealismDefine.h>
 #include "../../Environment/STPAuroraSetting.h"
 //Renderer
-#include "../STPSceneObject.h"
+#include "../STPSceneObject.hpp"
 #include "STPSkybox.h"
 #include "../Light/STPLightSpectrum.h"
-
-#include <chrono>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -17,21 +15,15 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPAurora procedurally generates and simulates northern light effect using procedural noise technique.
 	 * It utilises triangular noise to generate a sharp-fin like pattern and distorts the noise to create aurora striping and tailing effects.
 	*/
-	class STP_REALISM_API STPAurora : private STPSkybox, public STPSceneObject::STPEnvironmentObject {
+	class STP_REALISM_API STPAurora : public STPSceneObject::STPEnvironmentObject, public STPSceneObject::STPAnimatedObject {
 	private:
 
-		//Aurora Borealis animation
-		std::chrono::time_point<std::chrono::steady_clock> AuroraTimeStart;
+		STPSkybox AuroraBox;
+
 		//aurora colour effects
 		const STPLightSpectrum AuroraSpectrum;
 
 		STPOpenGL::STPuint AuroraTimeLocation;
-
-		/**
-		 * @brief Update the current aurora animation time.
-		 * @param time The current time.
-		*/
-		void updateAuroraTime(double) const;
 
 	public:
 
@@ -41,7 +33,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * The colour is picked based on the aurora's height, from 0.0 to 1.0.
 		 * @param aurora_init The initialiser for the aurora environment renderer.
 		*/
-		STPAurora(STPLightSpectrum&&, const STPSkyboxInitialiser&);
+		STPAurora(STPLightSpectrum&&, const STPSkybox::STPSkyboxInitialiser&);
 
 		STPAurora(const STPAurora&) = delete;
 
@@ -58,6 +50,8 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param aurora_setting The new setting.
 		*/
 		void setAurora(const STPEnvironment::STPAuroraSetting&);
+
+		void updateAnimationTimer(double) override;
 
 		void render() const override;
 

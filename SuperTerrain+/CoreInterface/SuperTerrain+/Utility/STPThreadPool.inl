@@ -1,47 +1,40 @@
-//An inlined header for the thread pool template
-
+//TEMPLATE DEFINITION FOR SOME THREAD POOL FUNCTIONS
 //DO NOT INCLUDE THIS FILE SEPARARELY, IT'S AUTOMATICALLY MANAGED
 #ifdef _STP_THREAD_POOL_H_
-template<class F, class ...Args>
-std::future<typename std::invoke_result<F, Args...>::type> SuperTerrainPlus::STPThreadPool::enqueue_future(F&& function, Args && ... args) {
-	if (!this->isRunning()) {
-		//thread-safely test if it's running, or throw exception
-		throw STPException::STPDeadThreadPool("thread pool is not running");
-	}
-	//get the return type of the function
-	using return_type = typename std::invoke_result<F, Args...>::type;
-	//create future shared state
-	auto new_task = std::make_shared<std::packaged_task<return_type()>>(
-		//packaged_task is similar to future but needs to be started explicitly
-		std::bind(std::forward<F>(function), std::forward<Args>(args)...));
-	std::future<return_type> func_return = new_task->get_future();
 
-	//start sending work
-	{
-		std::unique_lock<std::shared_mutex> lock(this->task_queue_locker);
-		this->task.emplace([new_task]() -> void {
-			(*new_task)();
-			});
-	}
+#include <memory>
+#include <utility>
+#include <exception>
 
-	this->condition.notify_one();
-	return func_return;
+template<class Func, class... Args, typename Ret>
+std::future<Ret> SuperTerrainPlus::STPThreadPool::enqueue(Func&& function, Args&&... args) {
+	std::shared_ptr<std::promise<Ret>> new_task_promise = std::make_shared<std::promise<Ret>>();
+	this->enqueueDetached([new_task = std::bind(std::forward<Func>(function), std::forward<Args>(args)...), new_task_promise]() {
+		try {
+			if constexpr (std::is_void_v<Ret>) {
+				std::invoke(new_task);
+				new_task_promise->set_value();
+			} else {
+				new_task_promise->set_value(std::invoke(new_task));
+			}
+		} catch (...) {
+			new_task_promise->set_exception(std::current_exception());
+		}
+	});
+
+	return new_task_promise->get_future();
 }
 
-template<class F, class ...Args>
-void SuperTerrainPlus::STPThreadPool::enqueue_void(F&& function, Args&& ... args) {
-	if (!this->isRunning()) {
-		//thread-safely test if it's running, or throw exception
-		throw STPException::STPDeadThreadPool("thread pool is not running");
-	}
-	auto new_task = std::bind(std::forward<F>(function), std::forward<Args>(args)...);
-
-	//start sending work
+template<class Func, class... Args>
+void SuperTerrainPlus::STPThreadPool::enqueueDetached(Func&& function, Args&&... args) {
+	auto new_task = std::bind(std::forward<Func>(function), std::forward<Args>(args)...);
+	//enqueue new work
 	{
-		std::unique_lock<std::shared_mutex> lock(this->task_queue_locker);
-		this->task.emplace(new_task);
+		std::unique_lock new_task_lock(this->TaskQueueLock);
+		this->TaskQueue.emplace(std::move(new_task));
 	}
-
-	this->condition.notify_one();
+	//signal a new task
+	this->PendingTask++;
+	this->NewTaskNotifier.notify_one();
 }
 #endif

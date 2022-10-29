@@ -4,9 +4,7 @@
 
 //GL Compatibility
 #include <SuperTerrain+/STPOpenGL.h>
-
-//GLM
-#include <glm/vec4.hpp>
+#include "STPGLVector.hpp"
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -28,7 +26,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param min The filter mode for minification.
 		 * @param mag The filter mode for magnification.
 		*/
-		virtual void filter(STPOpenGL::STPenum, STPOpenGL::STPenum) = 0;
+		virtual void filter(STPOpenGL::STPint, STPOpenGL::STPint) = 0;
 
 		/**
 		 * @brief Set the texture wrap mode.
@@ -36,23 +34,23 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param t The texture warp mode for Y direction.
 		 * @param r The texture warp mode for Z direction.
 		*/
-		virtual void wrap(STPOpenGL::STPenum, STPOpenGL::STPenum, STPOpenGL::STPenum) = 0;
+		virtual void wrap(STPOpenGL::STPint, STPOpenGL::STPint, STPOpenGL::STPint) = 0;
 
 		/**
 		 * @brief Set the same texture wrap mode for all directions.
 		 * @param str The texture warp mode for XYZ direction.
 		*/
-		virtual void wrap(STPOpenGL::STPenum) = 0;
+		virtual void wrap(STPOpenGL::STPint) = 0;
 
 		/**
 		 * @brief Set the border colour when texture is wrapped using border mode.
 		 * @param colour The border colour.
 		*/
-		virtual void borderColor(glm::vec4) = 0;
+		virtual void borderColor(STPGLVector::STPfloatVec4) = 0;
 		//Border colour using integer format.
-		virtual void borderColor(glm::ivec4) = 0;
+		virtual void borderColor(STPGLVector::STPintVec4) = 0;
 		//Border colour using unsigned integer format.
-		virtual void borderColor(glm::uvec4) = 0;
+		virtual void borderColor(STPGLVector::STPuintVec4) = 0;
 
 		/**
 		 * @brief Set the anisotropy filtering mode for the texture.

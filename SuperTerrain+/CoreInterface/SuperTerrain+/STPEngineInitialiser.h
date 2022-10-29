@@ -40,6 +40,14 @@ namespace SuperTerrainPlus {
 		*/
 		STP_API bool hasInit();
 
+		/**
+		 * @brief Get the 2-digit GPU architecture representation.
+		 * @param device Specifies the device ID to be retrieved.
+		 * @return The 2-digit GPU architecture.
+		 * For example, compute capability of 7.5 will return 75.
+		*/
+		STP_API int architecture(int);
+
 	}
 
 }

@@ -16,7 +16,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * The alpha test does not write any colour to the output if the equation fails,
 	 * it is mainly used to modify stencil buffer based on alpha value.
 	*/
-	class STP_REALISM_API STPAlphaCulling : private STPScreen {
+	class STP_REALISM_API STPAlphaCulling {
 	public:
 
 		/**
@@ -41,6 +41,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 	private:
 
+		STPScreen CullingQuad;
+
 		/**
 		 * @brief Get the string representing a culling comparator.
 		 * @param comp The comparator.
@@ -60,7 +62,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param macro The pointer to the predefined macros.
 		 * @param screen_init The screen initialiser.
 		*/
-		void prepareAlphaShader(const STPShaderManager::STPShaderSource::STPMacroValueDictionary&, const STPScreenInitialiser&);
+		void prepareAlphaShader(const STPShaderManager::STPShaderSource::STPMacroValueDictionary&, const STPScreen::STPScreenInitialiser&);
 
 	public:
 
@@ -71,7 +73,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param limit The new limit to the alpha equation.
 		 * @param screen_init The screen initialiser for off-screen rendering.
 		*/
-		STPAlphaCulling(STPCullComparator, float, const STPScreenInitialiser&);
+		STPAlphaCulling(STPCullComparator, float, const STPScreen::STPScreenInitialiser&);
 
 		/**
 		 * @brief Initialise a new alpha culler with dual culling expressions.
@@ -83,7 +85,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param limit2 The limit value for the second sub-expression.
 		 * @param screen_init The screen initialiser for off-screen rendering.
 		*/
-		STPAlphaCulling(STPCullComparator, float, STPCullConnector, STPCullComparator, float, const STPScreenInitialiser&);
+		STPAlphaCulling(STPCullComparator, float, STPCullConnector, STPCullComparator, float, const STPScreen::STPScreenInitialiser&);
 
 		STPAlphaCulling(const STPAlphaCulling&) = delete;
 

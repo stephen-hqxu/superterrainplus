@@ -1,6 +1,6 @@
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureFactory.h>
 
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
@@ -15,15 +15,11 @@ using namespace SuperTerrainPlus::STPDiversity;
 using std::unique_ptr;
 using std::make_unique;
 using std::make_pair;
-using std::make_tuple;
 using std::move;
-
+using std::numeric_limits;
 using std::vector;
 
 using glm::uvec2;
-
-#define TEXTYPE_TYPE std::underlying_type_t<STPTextureType>
-#define TEXTYPE_VALUE(TYPE) static_cast<TEXTYPE_TYPE>(TYPE)
 
 STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& database_view, const STPEnvironment::STPChunkSetting& terrain_chunk) :
 	MapDimension(terrain_chunk.MapSize), RenderedChunk(terrain_chunk.RenderedChunk), RenderedChunkCount(terrain_chunk.RenderedChunk.x * terrain_chunk.RenderedChunk.y),
@@ -32,7 +28,6 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 	//temporary cache
 	STPIDConverter<STPTextureInformation::STPTextureID> textureID_converter;
 	STPIDConverter<STPTextureType> textureType_converter;
-	STPIDConverter<STPTextureInformation::STPMapGroupID> map_groupID_converter;
 
 	typedef STPTextureDatabase::STPDatabaseView DbView;
 	//get all the data
@@ -51,27 +46,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 
 	//we build the data structure that holds all texture in groups first
 	{
-		//this is the total number of layered texture we will have
-		this->Texture.resize(group_rec.size());
-		this->TextureOwnership.reserve(group_rec.size());
-		glCreateTextures(GL_TEXTURE_2D_ARRAY, static_cast<GLsizei>(this->Texture.size()), this->Texture.data());
-		//loop through all groups
-		//we can also iterate through the GL texture array at the same time since they have the same dimension
-		map_groupID_converter.reserve(group_rec.size());
-		for (auto [group_it, gl_texture_it, group_index] = make_tuple(group_rec.cbegin(), this->Texture.cbegin(), 0u);
-			group_it != group_rec.cend() && gl_texture_it != this->Texture.cend(); group_it++, gl_texture_it++, group_index++) {
-			const auto& [group_id, member_count, group_props] = *group_it;
-
-			//allocate memory for each layer
-			glTextureStorage3D(*gl_texture_it, group_props.MipMapLevel, group_props.InteralFormat, group_props.Dimension.x, group_props.Dimension.y, static_cast<GLsizei>(member_count));
-			//build texture ownership table, so we can lookup texture buffer using group ID later
-			this->TextureOwnership.try_emplace(group_id, *gl_texture_it);
-
-			//build group ID converter
-			map_groupID_converter.emplace(group_id, group_index);
-		}
-
-		//now we build the texture ID to index converter
+		//we build the texture ID to index converter
 		//loop through all texture collection
 		textureID_converter.reserve(texture_rec.size());
 		this->TextureViewRecord.reserve(texture_rec.size());
@@ -89,35 +64,56 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			textureType_converter.emplace(*type_it, type_index);
 		}
 
-		//each texture ID contains some number of type as stride, if type is not use we set the index to 
+		//this is the total number of layered texture we will have
+		this->Texture.resize(group_rec.size());
+		this->TextureOwnership.reserve(group_rec.size());
+		glCreateTextures(GL_TEXTURE_2D_ARRAY, static_cast<GLsizei>(this->Texture.size()), this->Texture.data());
+		//each texture ID contains some number of type as stride, if type is not use we set the index to
 		this->TextureRegion.reserve(texture_map_rec.size());
 		this->TextureRegionLookup.resize(database_view.Database.textureSize() * UsedTypeCount, STPTextureFactory::UnusedType);
+		
 		//loop through all texture data
 		STPTextureInformation::STPMapGroupID prev_group = std::numeric_limits<STPTextureInformation::STPMapGroupID>::max();
-		unsigned int layer_idx = 0u;
+		//group index wraps to 0 when incremented
+		unsigned int layer_idx = 0u, group_idx = numeric_limits<unsigned int>::max();
+		const STPTextureDatabase::STPMapGroupDescription* desc = nullptr;
+		GLuint gl_texture = 0u;
 		for (const auto [group_id, texture_id, type, img] : texture_map_rec) {
 			//we know texture data has group index sorted in ascending order, the same as the group array
 			//texture data is basically an "expanded" group array, they aligned in the same order
 			if (prev_group != group_id) {
-				//we meet a new group, reset or update counter
+				//we meet a new group
 				prev_group = group_id;
+				group_idx++;
 				layer_idx = 0u;
-			}
-			const unsigned int group_idx = map_groupID_converter.at(group_id),
-				texture_idx = textureID_converter.at(texture_id);
-			const TEXTYPE_TYPE type_idx = static_cast<TEXTYPE_TYPE>(textureType_converter.at(type));
-			const STPTextureDatabase::STPMapGroupDescription& desc = std::get<2>(group_rec[group_idx]);
-			const uvec2 dimension = desc.Dimension;
 
+				//update group data
+				const auto& [group_rec_id, member_count, group_props] = group_rec[group_idx];
+				assert(group_rec_id == group_id && "Group ID from group record should be the same as that from texture map record.");
+				desc = &group_props;
+				gl_texture = this->Texture[group_idx];
+				//allocate memory for each layer
+				glTextureStorage3D(gl_texture, desc->MipMapLevel, desc->InteralFormat, desc->Dimension.x,
+					desc->Dimension.y, static_cast<GLsizei>(member_count));
+				//build texture ownership table, so we can lookup texture buffer using group ID later
+				this->TextureOwnership.try_emplace(group_id, gl_texture);
+			}
+
+			const unsigned int texture_idx = textureID_converter.at(texture_id);
+			const auto type_idx = static_cast<STPTextureType_t>(textureType_converter.at(type));
 			//populate memory for each layer
-			glTextureSubImage3D(this->Texture[group_idx], 0, 0, 0, layer_idx, dimension.x, dimension.y, 1, desc.ChannelFormat, desc.PixelFormat, img);
+			glTextureSubImage3D(gl_texture, 0, 0, 0, layer_idx, desc->Dimension.x, desc->Dimension.y, 1,
+				desc->ChannelFormat, desc->PixelFormat, img);
 
 			//build data for renderer
 			STPTextureInformation::STPTextureDataLocation& data_loc = this->TextureRegion.emplace_back(STPTextureInformation::STPTextureDataLocation());
 			data_loc.GroupIndex = group_idx;
-			data_loc.LayerIndex = layer_idx++;
+			data_loc.LayerIndex = layer_idx;
 			this->TextureRegionLookup[texture_idx * UsedTypeCount + type_idx] =
 				static_cast<unsigned int>(this->TextureRegion.size()) - 1u;
+
+			//advance to the next layer in this group
+			layer_idx++;
 		}
 	}
 
@@ -132,7 +128,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 		//index counter
 		unsigned int alt_acc = 0u, gra_acc = 0u;
 		for (auto sample_it = sample_rec.cbegin(); sample_it != sample_rec.cend(); sample_it++) {
-			//our sample is sorted in asc order, and all splat tables are "expanded" version of sorted samples
+			//our sample is sorted in ascending order, and all splat tables are "expanded" version of sorted samples
 			const auto [sample_id, alt_count, gra_count] = *sample_it;
 
 			//build lookup table
@@ -162,7 +158,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 }
 
 STPTextureFactory::~STPTextureFactory() {
-	//delete all gl texture
+	//delete all GL texture
 	glDeleteTextures(static_cast<GLsizei>(this->Texture.size()), this->Texture.data());
 }
 
@@ -194,7 +190,7 @@ template<typename T>
 STPSmartDeviceMemory::STPDeviceMemory<T[]> STPTextureFactory::copyToDevice(const std::vector<T>& data) {
 	STPSmartDeviceMemory::STPDeviceMemory<T[]> device = STPSmartDeviceMemory::makeDevice<T[]>(data.size());
 	//copy to device
-	STPcudaCheckErr(cudaMemcpy(device.get(), data.data(), sizeof(T) * data.size(), cudaMemcpyHostToDevice));
+	STP_CHECK_CUDA(cudaMemcpy(device.get(), data.data(), sizeof(T) * data.size(), cudaMemcpyHostToDevice));
 
 	return device;
 }
@@ -211,9 +207,9 @@ void STPTextureFactory::operator()(cudaTextureObject_t biomemap_tex, cudaTexture
 	}
 
 	//prepare the request
-	STPcudaCheckErr(cudaMemcpyAsync(this->LocalChunkInfo.get(), requesting_local.data(), 
+	STP_CHECK_CUDA(cudaMemcpyAsync(this->LocalChunkInfo.get(), requesting_local.data(), 
 		requesting_local.size() * sizeof(STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation), cudaMemcpyHostToDevice, stream));
-	//the LocalChunkID array is overallocated, so we also need to send the size of actual data to device
+	//the LocalChunkID array is over-allocated, so we also need to send the size of actual data to device
 
 	//launch
 	this->splat(biomemap_tex, heightmap_tex, splatmap_surf, STPTextureInformation::STPSplatGeneratorInformation{

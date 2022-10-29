@@ -16,10 +16,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		//A texture that defines how spread out a specular highlight is from the projection centre.
 		Roughness = 0x02u,
 		//A texture that defines how a texture reacts to light during rendering
-		AmbientOcclusion = 0x3u,
-
-		//The total number of type listed in the enum
-		TypeCount = 0x04u
+		AmbientOcclusion = 0x3u
 	};
 
 }

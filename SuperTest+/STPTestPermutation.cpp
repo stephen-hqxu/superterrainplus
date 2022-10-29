@@ -14,7 +14,7 @@
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
 #include <cuda_runtime.h>
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //System
 #include <memory>
@@ -60,8 +60,8 @@ protected:
 		this->HostPerm = make_unique<unsigned char[]>(512);
 		this->HostGrad2D = make_unique<float[]>(table_d.Gradient2DSize * 2);
 		//copy
-		STPcudaCheckErr(cudaMemcpy(this->HostPerm.get(), table_d.Permutation, sizeof(unsigned char) * 512, cudaMemcpyDeviceToHost));
-		STPcudaCheckErr(cudaMemcpy(this->HostGrad2D.get(), table_d.Gradient2D, sizeof(float) * table_d.Gradient2DSize * 2, cudaMemcpyDeviceToHost));
+		STP_CHECK_CUDA(cudaMemcpy(this->HostPerm.get(), table_d.Permutation, sizeof(unsigned char) * 512, cudaMemcpyDeviceToHost));
+		STP_CHECK_CUDA(cudaMemcpy(this->HostGrad2D.get(), table_d.Gradient2D, sizeof(float) * table_d.Gradient2DSize * 2, cudaMemcpyDeviceToHost));
 	}
 
 public:

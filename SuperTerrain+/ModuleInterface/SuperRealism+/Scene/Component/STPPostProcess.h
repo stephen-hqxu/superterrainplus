@@ -17,7 +17,7 @@ namespace SuperTerrainPlus::STPRealism {
 	/**
 	 * @brief STPPostProcess captures rendering buffer, process the buffer and display the final image.
 	*/
-	class STP_REALISM_API STPPostProcess : private STPScreen {
+	class STP_REALISM_API STPPostProcess {
 	public:
 
 		/**
@@ -89,10 +89,12 @@ namespace SuperTerrainPlus::STPRealism {
 
 	private:
 
+		STPScreen PostProcessQuad;
+
 		//The post process capturing unit
 		STPSampler ImageSampler;
 
-		STPSimpleScreenFrameBuffer PostProcessResultContainer;
+		STPScreen::STPSimpleScreenFrameBuffer PostProcessResultContainer;
 
 	public:
 
@@ -101,7 +103,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param tone_mapping A pointer to a base tone mapping curve with specific tone mapping function chosen and parameters loaded.
 		 * @param post_process_init The pointer to the post process initialiser.
 		*/
-		STPPostProcess(const STPToneMappingCurve&, const STPScreenInitialiser&);
+		STPPostProcess(const STPToneMappingCurve&, const STPScreen::STPScreenInitialiser&);
 
 		STPPostProcess(const STPPostProcess&) = delete;
 

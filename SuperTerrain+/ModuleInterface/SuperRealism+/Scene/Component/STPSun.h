@@ -8,7 +8,7 @@
 #include "../../Environment/STPAtmosphereSetting.h"
 //Renderer
 #include "../Light/STPLightSpectrum.h"
-#include "../STPSceneObject.h"
+#include "../STPSceneObject.hpp"
 #include "STPSkybox.h"
 
 //GLM
@@ -23,7 +23,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * It also allows, optionally, day-night cycle and switches light intensity.
 	 * Atmospheric scattering produced by the sun is also simulated by rendering the sun as an environmental light source.
 	*/
-	class STP_REALISM_API STPSun : private STPSkybox, public STPSceneObject::STPEnvironmentObject {
+	class STP_REALISM_API STPSun : public STPSceneObject::STPEnvironmentObject, public STPSceneObject::STPAnimatedObject {
 	public:
 
 		//A pair of two equivalent types.
@@ -32,8 +32,12 @@ namespace SuperTerrainPlus::STPRealism {
 
 	private:
 
+		STPSkybox SunBox;
+
 		const STPEnvironment::STPSunSetting SunSetting;
 
+		//The day start calculated from day and year start offset.
+		const double DayStart;
 		//The number of day elapsed
 		//The integer part is the number of day, the fractional part is the local solar time.
 		//The time according to the position of the sun in the sky relative to one specific location on the ground, in seconds.
@@ -73,7 +77,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Sun direction in between will be interpolated.
 		 * @param sun_init The initialiser for sun and sky renderer.
 		*/
-		STPSun(const STPEnvironment::STPSunSetting&, const STPBundledData<glm::vec3>&, const STPSkyboxInitialiser&);
+		STPSun(const STPEnvironment::STPSunSetting&, const STPBundledData<glm::vec3>&, const STPSkybox::STPSkyboxInitialiser&);
 
 		STPSun(const STPSun&) = delete;
 
@@ -91,11 +95,7 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		const glm::vec3& sunDirection() const;
 
-		/**
-		 * @brief Bring the timer forward by a delta amount and update the sun position.
-		 * @param delta_second The number of second added to the current local solar time.
-		*/
-		void advanceTime(double);
+		void updateAnimationTimer(double) override;
 
 		/**
 		 * @brief Update the renderer with new atmosphere setting.

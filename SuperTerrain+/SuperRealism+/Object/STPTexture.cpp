@@ -5,11 +5,6 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-using glm::ivec3;
-using glm::uvec3;
-using glm::ivec4;
-using glm::uvec4;
-using glm::vec4;
 using glm::value_ptr;
 
 using namespace SuperTerrainPlus::STPRealism;
@@ -58,30 +53,30 @@ void STPTexture::generateMipmap() {
 	glGenerateTextureMipmap(this->Texture.get());
 }
 
-void STPTexture::filter(STPOpenGL::STPenum min, STPOpenGL::STPenum mag) {
+void STPTexture::filter(STPOpenGL::STPint min, STPOpenGL::STPint mag) {
 	glTextureParameteri(this->Texture.get(), GL_TEXTURE_MIN_FILTER, min);
 	glTextureParameteri(this->Texture.get(), GL_TEXTURE_MAG_FILTER, mag);
 }
 
-void STPTexture::wrap(STPOpenGL::STPenum s, STPOpenGL::STPenum t, STPOpenGL::STPenum r) {
+void STPTexture::wrap(STPOpenGL::STPint s, STPOpenGL::STPint t, STPOpenGL::STPint r) {
 	glTextureParameteri(this->Texture.get(), GL_TEXTURE_WRAP_S, s);
 	glTextureParameteri(this->Texture.get(), GL_TEXTURE_WRAP_T, t);
 	glTextureParameteri(this->Texture.get(), GL_TEXTURE_WRAP_R, r);
 }
 
-void STPTexture::wrap(STPOpenGL::STPenum str) {
+void STPTexture::wrap(STPOpenGL::STPint str) {
 	this->wrap(str, str, str);
 }
 
-void STPTexture::borderColor(vec4 color) {
+void STPTexture::borderColor(STPGLVector::STPfloatVec4 color) {
 	glTextureParameterfv(this->Texture.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
 }
 
-void STPTexture::borderColor(ivec4 color) {
+void STPTexture::borderColor(STPGLVector::STPintVec4 color) {
 	glTextureParameterIiv(this->Texture.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
 }
 
-void STPTexture::borderColor(uvec4 color) {
+void STPTexture::borderColor(STPGLVector::STPuintVec4 color) {
 	glTextureParameterIuiv(this->Texture.get(), GL_TEXTURE_BORDER_COLOR, value_ptr(color));
 }
 
@@ -97,45 +92,45 @@ void STPTexture::compareMode(STPOpenGL::STPint mode) {
 	glTextureParameteri(this->Texture.get(), GL_TEXTURE_COMPARE_MODE, mode);
 }
 
-#define TEXTURE_STORAGE(DIM) \
-template<> STP_REALISM_API void STPTexture::textureStorage<STPTexture::STPDimension::DIM>(STPOpenGL::STPint level, STPOpenGL::STPenum internal, uvec3 dimension)
-
-TEXTURE_STORAGE(ONE) {
-	glTextureStorage1D(this->Texture.get(), level, internal, dimension.x);
+void STPTexture::textureStorage1D(STPOpenGL::STPsizei level, STPOpenGL::STPenum internal, STPOpenGL::STPsizei dimension) {
+	glTextureStorage1D(this->Texture.get(), level, internal, dimension);
 }
-TEXTURE_STORAGE(TWO) {
+
+void STPTexture::textureStorage2D(STPOpenGL::STPsizei level, STPOpenGL::STPenum internal, STPGLVector::STPsizeiVec2 dimension) {
 	glTextureStorage2D(this->Texture.get(), level, internal, dimension.x, dimension.y);
 }
-TEXTURE_STORAGE(THREE) {
+
+void STPTexture::textureStorage3D(STPOpenGL::STPsizei level, STPOpenGL::STPenum internal, STPGLVector::STPsizeiVec3 dimension) {
 	glTextureStorage3D(this->Texture.get(), level, internal, dimension.x, dimension.y, dimension.z);
 }
 
-#define TEXTURE_STORAGE_MS(DIM) \
-template<> STP_REALISM_API void STPTexture::textureStorageMultisample<STPTexture::STPDimension::DIM> \
-(STPOpenGL::STPint samples, STPOpenGL::STPenum internal, uvec3 dimension, STPOpenGL::STPboolean fixed)
-
-//TEXTURE_STORAGE_MS(ONE) can be ignored because OpenGL has no support for 1D multisampling texture
-
-TEXTURE_STORAGE_MS(TWO) {
+void STPTexture::textureStorageMultisample2D(STPOpenGL::STPsizei samples, STPOpenGL::STPenum internal,
+	STPGLVector::STPsizeiVec2 dimension, STPOpenGL::STPboolean fixed) {
 	glTextureStorage2DMultisample(this->Texture.get(), samples, internal, dimension.x, dimension.y, fixed);
 }
 
-TEXTURE_STORAGE_MS(THREE) {
+void STPTexture::textureStorageMultisample3D(STPOpenGL::STPsizei samples, STPOpenGL::STPenum internal,
+	STPGLVector::STPsizeiVec3 dimension, STPOpenGL::STPboolean fixed) {
 	glTextureStorage3DMultisample(this->Texture.get(), samples, internal, dimension.x, dimension.y, dimension.z, fixed);
 }
 
-#define TEXTURE_SUBIMAGE(DIM) \
-template<> STP_REALISM_API void STPTexture::textureSubImage<STPTexture::STPDimension::DIM> \
-(STPOpenGL::STPint level, ivec3 offset, uvec3 dimension, STPOpenGL::STPenum format, STPOpenGL::STPenum type, const void* pixel)
-
-TEXTURE_SUBIMAGE(ONE) {
-	glTextureSubImage1D(this->Texture.get(), level, offset.x, dimension.x, format, type, pixel);
+void STPTexture::textureSubImage1D(STPOpenGL::STPint level, STPOpenGL::STPint offset, STPOpenGL::STPsizei dimension,
+	STPOpenGL::STPenum format, STPOpenGL::STPenum type, const void* pixel) {
+	glTextureSubImage1D(this->Texture.get(), level, offset, dimension, format, type, pixel);
 }
-TEXTURE_SUBIMAGE(TWO) {
+
+void STPTexture::textureSubImage2D(STPOpenGL::STPint level, STPGLVector::STPintVec2 offset, STPGLVector::STPsizeiVec2 dimension,
+	STPOpenGL::STPenum format, STPOpenGL::STPenum type, const void* pixel) {
 	glTextureSubImage2D(this->Texture.get(), level, offset.x, offset.y, dimension.x, dimension.y, format, type, pixel);
 }
-TEXTURE_SUBIMAGE(THREE) {
+
+void STPTexture::textureSubImage3D(STPOpenGL::STPint level, STPGLVector::STPintVec3 offset,
+	STPGLVector::STPsizeiVec3 dimension, STPOpenGL::STPenum format, STPOpenGL::STPenum type, const void* pixel) {
 	glTextureSubImage3D(this->Texture.get(), level, offset.x, offset.y, offset.z, dimension.x, dimension.y, dimension.z, format, type, pixel);
+}
+
+void STPTexture::getTextureImage(STPOpenGL::STPint level, STPOpenGL::STPenum format, STPOpenGL::STPenum type, STPOpenGL::STPsizei bufSize, void* pixel) const {
+	glGetTextureImage(this->Texture.get(), level, format, type, static_cast<GLsizei>(bufSize), pixel);
 }
 
 void STPTexture::clearTextureImage(STPOpenGL::STPint level, STPOpenGL::STPenum format, STPOpenGL::STPenum type, const void* data) {

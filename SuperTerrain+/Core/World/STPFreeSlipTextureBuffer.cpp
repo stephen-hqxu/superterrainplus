@@ -1,7 +1,7 @@
 #include <SuperTerrain+/World/Chunk/STPFreeSlipTextureBuffer.h>
 
 //Error
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
@@ -16,30 +16,6 @@ using std::make_pair;
 using std::unique_ptr;
 
 using glm::uvec2;
-
-template<typename T>
-STPFreeSlipTextureBuffer<T>::STPHostCallbackDeleter::STPHostCallbackDeleter(
-	cudaStream_t stream, STPPinnedMemoryPool* memPool) :
-	Data(make_pair(stream, memPool)) {
-
-}
-
-template<typename T>
-void STPFreeSlipTextureBuffer<T>::STPHostCallbackDeleter::operator()(T* ptr) const {
-	if (!this->Data) {
-		//nothing needs to be done if there's no data to free
-		throw STPException::STPMemoryError("Memory free destination is not specified");
-	}
-
-	auto [stream, pool] = *this->Data;
-	//deallocation
-	//host memory will always be allocated
-	//we need to wait for the stream because we don't want the host memory to be released right now as unfinished works may be still using it.
-	//all pointers we provide are guaranteed to be valid until the stream has synced.
-	STPcudaCheckErr(cudaStreamSynchronize(stream));
-	pool->release(ptr);
-	//if texture is in host the pointer is the same as PinnedMemoryBuffer
-}
 
 template<typename T>
 STPFreeSlipTextureBuffer<T>::STPFreeSlipTextureBuffer(STPFreeSlipTexture& texture,
@@ -62,7 +38,8 @@ STPFreeSlipTextureBuffer<T>::~STPFreeSlipTextureBuffer() {
 	}
 	//else we need to destroy allocation
 	this->destroyAllocation();
-	
+	//make sure all works are done before pinned memory is automatically destroyed
+	STP_CHECK_CUDA(cudaStreamSynchronize(this->Data.Stream));
 }
 
 template<typename T>
@@ -76,7 +53,7 @@ void STPFreeSlipTextureBuffer<T>::destroyAllocation() {
 		//we need to copy the large buffer back to each chunk
 		if (*this->Integration == STPFreeSlipLocation::DeviceMemory) {
 			//copy device memory to pinned memory we have allocated previously
-			STPcudaCheckErr(cudaMemcpyAsync(this->HostIntegration.get(), this->DeviceIntegration.get(), freeslip_size,
+			STP_CHECK_CUDA(cudaMemcpyAsync(this->HostIntegration.get(), this->DeviceIntegration.get(), freeslip_size,
 				cudaMemcpyDeviceToHost, this->Data.Stream));
 		}
 
@@ -84,9 +61,6 @@ void STPFreeSlipTextureBuffer<T>::destroyAllocation() {
 		this->copyFreeslipBuffer<false>();
 	}
 	//we don't need to copy the texture back to the original buffer if it's read only
-
-	//deallocation
-	//all memory will be freed by a streamed smart pointer
 }
 
 template<typename T>
@@ -107,9 +81,9 @@ inline void STPFreeSlipTextureBuffer<T>::copyFreeslipBuffer() {
 
 		//no free-slip logic, a simple linear memory copy can be used
 		if constexpr (Pack) {
-			STPcudaCheckErr(cudaMemcpyAsync(host_accumulator, this->Buffer.front(), pixel_size, cudaMemcpyHostToHost, this->Data.Stream));
+			STP_CHECK_CUDA(cudaMemcpyAsync(host_accumulator, this->Buffer.front(), pixel_size, cudaMemcpyHostToHost, this->Data.Stream));
 		} else {
-			STPcudaCheckErr(cudaMemcpyAsync(this->Buffer.front(), host_accumulator, pixel_size, cudaMemcpyHostToHost, this->Data.Stream));
+			STP_CHECK_CUDA(cudaMemcpyAsync(this->Buffer.front(), host_accumulator, pixel_size, cudaMemcpyHostToHost, this->Data.Stream));
 		}
 		return;
 	}
@@ -124,10 +98,10 @@ inline void STPFreeSlipTextureBuffer<T>::copyFreeslipBuffer() {
 		const unsigned int offset = info.Dimension.x * (i % freeslip_chunk_row) + pixel_per_row_chunk * (i / freeslip_chunk_row);
 
 		if constexpr (Pack) {
-			STPcudaCheckErr(cudaMemcpy2DAsync(host_accumulator + offset, freeslip_row_size, this->Buffer[i],
+			STP_CHECK_CUDA(cudaMemcpy2DAsync(host_accumulator + offset, freeslip_row_size, this->Buffer[i],
 				map_row_size, map_row_size, info.Dimension.y, cudaMemcpyHostToHost, this->Data.Stream));
 		} else {
-			STPcudaCheckErr(cudaMemcpy2DAsync(this->Buffer[i], map_row_size, host_accumulator + offset,
+			STP_CHECK_CUDA(cudaMemcpy2DAsync(this->Buffer[i], map_row_size, host_accumulator + offset,
 				freeslip_row_size, map_row_size, info.Dimension.y, cudaMemcpyHostToHost, this->Data.Stream));
 		}
 	}
@@ -154,14 +128,10 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 	}
 
 	T* texture;
-	const size_t freeslip_count = this->Buffer.size() * this->calcChunkPixel(),
-		freeslip_size = sizeof(T) * freeslip_count;
+	const size_t freeslip_count = this->Buffer.size() * this->calcChunkPixel();
 	//we need host memory anyway
 	//pinned memory will be needed anyway
-	this->HostIntegration = unique_ptr<T[], STPHostCallbackDeleter>(
-		static_cast<T*>(this->Attr.HostMemPool.request(freeslip_size)),
-		STPHostCallbackDeleter(this->Data.Stream, &this->Attr.HostMemPool)
-	);
+	this->HostIntegration = STPSmartDeviceMemory::makePinned<T[]>(freeslip_count);
 	if (this->Data.Mode != STPFreeSlipTextureData::STPMemoryMode::WriteOnly) {
 		this->copyFreeslipBuffer<true>();
 	}
@@ -178,7 +148,7 @@ T* STPFreeSlipTextureBuffer<T>::operator()(STPFreeSlipLocation location) {
 		this->DeviceIntegration = STPSmartDeviceMemory::makeStreamedDevice<T[]>(this->Attr.DeviceMemPool, this->Data.Stream, freeslip_count);
 		//copy
 		if (this->Data.Mode != STPFreeSlipTextureData::STPMemoryMode::WriteOnly) {
-			STPcudaCheckErr(cudaMemcpyAsync(this->DeviceIntegration.get(), this->HostIntegration.get(), freeslip_size,
+			STP_CHECK_CUDA(cudaMemcpyAsync(this->DeviceIntegration.get(), this->HostIntegration.get(), freeslip_count * sizeof(T),
 				cudaMemcpyHostToDevice, this->Data.Stream));
 		}
 		//no copy is needed if we only write to the buffer

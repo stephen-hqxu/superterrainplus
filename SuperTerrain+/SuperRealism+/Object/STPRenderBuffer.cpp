@@ -3,8 +3,6 @@
 //GLAD
 #include <glad/glad.h>
 
-using glm::uvec2;
-
 using namespace SuperTerrainPlus::STPRealism;
 
 inline static GLuint createRenderBuffer() {
@@ -33,10 +31,10 @@ void STPRenderBuffer::unbind() {
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
-void STPRenderBuffer::renderbufferStorage(STPOpenGL::STPenum internal, uvec2 dimension) {
+void STPRenderBuffer::renderbufferStorage(STPOpenGL::STPenum internal, STPGLVector::STPsizeiVec2 dimension) {
 	glNamedRenderbufferStorage(this->RenderBuffer.get(), internal, dimension.x, dimension.y);
 }
 
-void STPRenderBuffer::renderbufferStorageMultisample(STPOpenGL::STPint samples, STPOpenGL::STPenum internal, uvec2 dimension) {
+void STPRenderBuffer::renderbufferStorageMultisample(STPOpenGL::STPsizei samples, STPOpenGL::STPenum internal, STPGLVector::STPsizeiVec2 dimension) {
 	glNamedRenderbufferStorageMultisample(this->RenderBuffer.get(), samples, internal, dimension.x, dimension.y);
 }

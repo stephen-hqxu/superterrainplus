@@ -17,30 +17,23 @@ using glm::vec2;
 using glm::mat2;
 using glm::value_ptr;
 
-using std::chrono::steady_clock;
-using std::chrono::duration;
-
 using namespace SuperTerrainPlus::STPRealism;
 
 static constexpr auto AuroraShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPAurora", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPAurora", ".frag");
 
-STPAurora::STPAurora(STPLightSpectrum&& aurora_spectrum, const STPSkyboxInitialiser& aurora_init) : AuroraSpectrum(std::move(aurora_spectrum)) {
+STPAurora::STPAurora(STPLightSpectrum&& aurora_spectrum, const STPSkybox::STPSkyboxInitialiser& aurora_init) : AuroraSpectrum(std::move(aurora_spectrum)) {
 	const char* const aurora_source_file = AuroraShaderFilename.data();
 	const STPShaderManager::STPShaderSource aurora_source(aurora_source_file, STPFile::read(aurora_source_file));
 
 	STPShaderManager aurora_fs(GL_FRAGMENT_SHADER);
 	aurora_fs(aurora_source);
 
-	this->initSkyboxRenderer(aurora_fs, aurora_init);
+	this->AuroraBox.initSkyboxRenderer(aurora_fs, aurora_init);
 
 	/* ----------------------------------- uniform time --------------------------------------- */
-	this->AuroraTimeLocation = this->SkyboxRenderer.uniformLocation("AuroraTime");
-	this->SkyboxRenderer.uniform(glProgramUniformHandleui64ARB, "AuroraColorSpectrum", this->AuroraSpectrum.spectrumHandle());
-}
-
-void STPAurora::updateAuroraTime(double time) const {
-	this->SkyboxRenderer.uniform(glProgramUniform1f, this->AuroraTimeLocation, static_cast<float>(time));
+	this->AuroraTimeLocation = this->AuroraBox.SkyboxRenderer.uniformLocation("AuroraTime");
+	this->AuroraBox.SkyboxRenderer.uniform(glProgramUniformHandleui64ARB, "AuroraColorSpectrum", this->AuroraSpectrum.spectrumHandle());
 }
 
 void STPAurora::setAurora(const STPEnvironment::STPAuroraSetting& aurora_setting) {
@@ -63,7 +56,7 @@ void STPAurora::setAurora(const STPEnvironment::STPAuroraSetting& aurora_setting
 	);
 
 	//main aurora settings
-	this->SkyboxRenderer.uniform(glProgramUniform1f, "Aurora.Flat", aurora_setting.AuroraSphereFlatness)
+	this->AuroraBox.SkyboxRenderer.uniform(glProgramUniform1f, "Aurora.Flat", aurora_setting.AuroraSphereFlatness)
 		.uniform(glProgramUniform1f, "Aurora.stepSz", aurora_setting.StepSize)
 		.uniform(glProgramUniform1f, "Aurora.projRot", aurora_setting.AuroraPlaneProjectionBias)
 		.uniform(glProgramUniform2fv, "Aurora.Fade", 1, value_ptr(fade))
@@ -85,16 +78,12 @@ void STPAurora::setAurora(const STPEnvironment::STPAuroraSetting& aurora_setting
 		.uniform(glProgramUniform1f, "TriNoise.C", tri_noise.Contrast)
 		.uniform(glProgramUniform1f, "TriNoise.maxInt", tri_noise.MaximumIntensity)
 		.uniform(glProgramUniform1ui, "TriNoise.Oct", tri_noise.Octave);
+}
 
-	//timer reset
-	this->updateAuroraTime(0.0);
-	this->AuroraTimeStart = steady_clock::now();
+void STPAurora::updateAnimationTimer(double second) {
+	this->AuroraBox.SkyboxRenderer.uniform(glProgramUniform1f, this->AuroraTimeLocation, static_cast<float>(second));
 }
 
 void STPAurora::render() const {
-	//aurora animation
-	const duration<double> elapsed = steady_clock::now() - this->AuroraTimeStart;
-	this->updateAuroraTime(elapsed.count());
-
-	this->drawSkybox();
+	this->AuroraBox.drawSkybox();
 }

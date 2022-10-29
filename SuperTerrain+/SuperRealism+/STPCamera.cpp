@@ -124,19 +124,12 @@ void STPCamera::move(const STPMoveDirection direction, double delta) {
 
 void STPCamera::rotate(const dvec2& offset) {
 	static constexpr double YAW_LIM = radians(360.0), PITCH_LIM = radians(89.0);
-	static constexpr auto modulof = [](double val, double bound) constexpr -> double {
-		//a floating point modulo function
-		if (val >= bound || val <= -bound) {
-			return val - bound;
-		}
-		return val;
-	};
 
 	//using sensitivity to scale the offset
 	const dvec2 rotateAmount = offset * this->Camera.RotationSensitivity;
 	this->Camera.Yaw += rotateAmount.x;
-	//modulo the angle
-	this->Camera.Yaw = modulof(this->Camera.Yaw, YAW_LIM);
+	//modulo the angle (floor modulo)
+	this->Camera.Yaw = glm::mod(this->Camera.Yaw, YAW_LIM);
 	//same for the pitch
 	this->Camera.Pitch += rotateAmount.y;
 	//does not allow pitch to go over vertical (so flip the camera over)

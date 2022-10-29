@@ -15,7 +15,6 @@ Exception/STPBadNumericRange.h
 Exception/STPCompilationError.h
 Exception/STPCUDAError.h
 Exception/STPDatabaseError.h
-Exception/STPDeadThreadPool.h
 Exception/STPGLError.h
 Exception/STPInvalidArgument.h
 Exception/STPInvalidEnvironment.h
@@ -24,9 +23,10 @@ Exception/STPMemoryError.h
 Exception/STPSerialisationError.h
 Exception/STPUnsupportedFunctionality.h
 # /GPGPU
+GPGPU/STPDeviceRuntimeBinary.h
+GPGPU/STPDeviceRuntimeProgram.h
 GPGPU/STPHeightfieldKernel.cuh
 GPGPU/STPRainDrop.cuh
-GPGPU/STPRuntimeCompilable.h
 # /Utility/Algebra
 Utility/Algebra/STPAlgebraCommon.h
 Utility/Algebra/STPAlgebraCommon.inl
@@ -35,17 +35,17 @@ Utility/Algebra/STPMatrix4x4d.inl
 Utility/Algebra/STPVector4d.h
 Utility/Algebra/STPVector4d.inl
 # /Utility/Memory
-Utility/Memory/STPMemoryPool.h
 Utility/Memory/STPObjectPool.h
 Utility/Memory/STPObjectPool.inl
 Utility/Memory/STPSmartDeviceMemory.h
 Utility/Memory/STPSmartDeviceMemory.inl
-Utility/Memory/STPSmartEvent.h
-Utility/Memory/STPSmartStream.h
+Utility/Memory/STPSmartDeviceObject.h
 # /Utility
-Utility/STPDeviceErrorHandler.h
+Utility/STPDatabaseErrorHandler.hpp
+Utility/STPDeviceErrorHandler.hpp
 Utility/STPFile.h
 Utility/STPFile.inl
+Utility/STPGenericErrorHandlerBlueprint.hpp
 Utility/STPHashCombine.h
 Utility/STPHashCombine.inl
 Utility/STPNullablePrimitive.h
@@ -80,3 +80,6 @@ World/STPWorldPipeline.h
 # prefix main engine header path
 list(TRANSFORM STP_MAIN_ENGINE_INTERFACE PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 set(STP_MAIN_ENGINE_INTERFACE ${STP_MAIN_ENGINE_INTERFACE} PARENT_SCOPE)
+
+# config file for the main engine
+setupConfigTemplate(${STP_MAIN_ENGINE} STPCoreInfo.h.in Include/STPCoreInfo.h STPCoreInfo.h)

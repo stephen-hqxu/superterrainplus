@@ -57,6 +57,7 @@
 
 using std::optional;
 using std::string;
+using std::string_view;
 using std::make_pair;
 using std::make_unique;
 using std::make_optional;
@@ -100,7 +101,7 @@ namespace STPStart {
 		optional<SuperTerrainPlus::STPRealism::STPSun> SunRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPStarfield> StarfieldRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPAurora> AuroraRenderer;
-		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain<true>> TerrainRenderer;
+		optional<SuperTerrainPlus::STPRealism::STPHeightfieldTerrain> TerrainRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPWater> WaterRenderer;
 		optional<SuperTerrainPlus::STPRealism::STPAmbientOcclusion> AOEffect;
 		optional<SuperTerrainPlus::STPRealism::STPBidirectionalScattering> BSDFEffect;
@@ -153,7 +154,6 @@ namespace STPStart {
 				config.ChunkSetting = STPTerrainParaLoader::getChunkSetting(this->engineINI.at("Generators"));
 				STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
 
-				const auto& chunk_setting = config.ChunkSetting;
 				config.HeightfieldSetting = STPTerrainParaLoader::getGeneratorSetting(this->engineINI.at("2DTerrainINF"));
 
 				if (!config.validate()) {
@@ -361,16 +361,17 @@ namespace STPStart {
 					STPTerrainParaLoader::getRenderingSetting(this->engineINI.at("2DTerrainINF"));
 				TerrainAltitude = mesh_setting.Altitude;
 
-				const STPHeightfieldTerrain<true>::STPTerrainShaderOption terrain_opt = {
+				const STPHeightfieldTerrain::STPTerrainShaderOption terrain_opt = {
 					this->ViewPosition,
 					uvec3(128u, 128u, 6u),
-					STPHeightfieldTerrain<true>::STPNormalBlendingAlgorithm::BasisTransform
+					STPHeightfieldTerrain::STPNormalBlendingAlgorithm::BasisTransform
 				};
 				STPEnvironment::STPTessellationSetting DepthTessSetting = mesh_setting.TessSetting;
 				DepthTessSetting.MaxTessLevel *= 0.5f;
 
 				this->TerrainRenderer.emplace(this->WorldManager->getPipeline(), terrain_opt);
-				this->RenderPipeline->add(*this->TerrainRenderer, *this->TerrainRenderer);
+				this->RenderPipeline->add(*this->TerrainRenderer);
+				this->RenderPipeline->addShadow(*this->TerrainRenderer);
 				//initial setup
 				this->TerrainRenderer->setMesh(mesh_setting);
 				this->TerrainRenderer->setDepthMeshQuality(DepthTessSetting);
@@ -449,9 +450,6 @@ namespace STPStart {
 			//scene pipeline setup
 			this->RenderPipeline->setClearColor(vec4(vec3(44.0f, 110.0f, 209.0f) / 255.0f, 1.0f));
 			this->RenderPipeline->setExtinctionArea(engine.at("Sky").at("extinction_band").to<float>());
-			if (this->RenderPipeline->setRepresentativeFragmentTest(true)) {
-				cout << "GL_NV_representative_fragment_test is available for the current GL renderer and has been enabled." << endl;
-			}
 		}
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
@@ -466,13 +464,14 @@ namespace STPStart {
 
 		/**
 		 * @brief Main rendering functions, called every frame.
-		 * @param delta The time difference from the last frame.
+		 * @param abs_second The current frame time in second.
+		 * @param delta_second The time elapsed since the last frame.
 		*/
-		inline void render(double delta) {
+		inline void render(double abs_second, double delta_second) {
 			//Update light after that many second, to avoid doing expensive update every frame.
 			constexpr static double LightUpdateFrequency = 0.1;
 			//update timer
-			this->FrametimeRemainer += delta;
+			this->FrametimeRemainer += delta_second;
 			const double timeGain = glm::floor(this->FrametimeRemainer / LightUpdateFrequency);
 
 			//prepare terrain texture first (async), because this is a slow operation
@@ -488,7 +487,7 @@ namespace STPStart {
 
 				//change the sun position
 				this->SunRenderer->EnvironmentVisibility = sun_visibility;
-				this->SunRenderer->advanceTime(update_delta);
+				this->SunRenderer->updateAnimationTimer(abs_second);
 				const vec3 sunDir = this->SunRenderer->sunDirection();
 				const float nightLum = 1.0f - glm::smoothstep(-0.03f, 0.03f, sunDir.y);
 
@@ -503,6 +502,16 @@ namespace STPStart {
 				this->Nightlight->setSpectrumCoordinate(nightLum);
 				this->StarfieldRenderer->EnvironmentVisibility = nightLum;
 				this->AuroraRenderer->EnvironmentVisibility = nightLum;
+			}
+
+			//update animation timer
+			this->WaterRenderer->updateAnimationTimer(abs_second);
+			//update night animation, if they are visible
+			if (this->StarfieldRenderer->isEnvironmentVisible()) {
+				this->StarfieldRenderer->updateAnimationTimer(abs_second);
+			}
+			if (this->AuroraRenderer->isEnvironmentVisible()) {
+				this->AuroraRenderer->updateAnimationTimer(abs_second);
 			}
 
 			//render, all async operations are sync automatically
@@ -530,7 +539,7 @@ namespace STPStart {
 	class STPLogConsolePrinter : public SuperTerrainPlus::STPRealism::STPLogHandler::STPLogHandlerSolution {
 	public:
 
-		void handle(string&& log) override {
+		void handle(string_view log) override {
 			if (!log.empty()) {
 				cout << log << endl;
 			}
@@ -541,7 +550,10 @@ namespace STPStart {
 	static optional<STPMasterRenderer> MasterEngine;
 	static STPLogConsolePrinter RendererLogHandler;
 	//Camera
+#pragma warning(push)
+#pragma warning(disable: 4324)//padding due to alignment of AVX
 	static optional<SuperTerrainPlus::STPRealism::STPPerspectiveCamera> MainCamera;
+#pragma warning(pop)
 
 	/* ------------------------------ callback functions ----------------------------------- */
 	constexpr static uvec2 InitialCanvasSize = uvec2(1600u, 900u);
@@ -614,7 +626,7 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_FALSE);//not necessary for forward compatibility
 		glfwWindowHint(GLFW_CONTEXT_ROBUSTNESS, GLFW_LOSE_CONTEXT_ON_RESET);
 		glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_RELEASE_BEHAVIOR_FLUSH);
-#ifdef _DEBUG
+#ifndef NDEBUG
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #else
 		glfwWindowHint(GLFW_CONTEXT_NO_ERROR, GLFW_TRUE);
@@ -777,7 +789,7 @@ int main() {
 		//draw
 		STPStart::process_event(deltaTime);
 		try {
-			STPStart::MasterEngine->render(deltaTime);
+			STPStart::MasterEngine->render(currentTime, deltaTime);
 		} catch (const std::exception& e) {
 			cerr << e.what() << endl;
 			STPStart::clearup();

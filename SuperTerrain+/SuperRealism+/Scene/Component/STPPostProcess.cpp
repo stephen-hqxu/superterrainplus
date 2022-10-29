@@ -18,21 +18,19 @@ using std::underlying_type_t;
 
 using glm::vec2;
 using glm::uvec2;
-using glm::uvec3;
 using glm::vec3;
-using glm::ivec4;
 using glm::vec4;
 
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto PostProcessShaderFilename = 
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPPostProcess", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPPostProcess", ".frag");
 
 STPPostProcess::STPToneMappingCurve::STPToneMappingCurve(STPToneMappingFunction function) : Function(function) {
 
 }
 
-STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const STPScreenInitialiser& post_process_init) {
+STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const STPScreen::STPScreenInitialiser& post_process_init) {
 	//setup post process shader
 	const char* const source_file = PostProcessShaderFilename.data();
 	STPShaderManager::STPShaderSource post_source(source_file, STPFile::read(source_file));
@@ -46,7 +44,7 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const ST
 	
 	STPShaderManager post_shader(GL_FRAGMENT_SHADER);
 	post_shader(post_source);
-	this->initScreenRenderer(post_shader, post_process_init);
+	this->PostProcessQuad.initScreenRenderer(post_shader, post_process_init);
 
 	/* -------------------------------- setup sampler ---------------------------------- */
 	this->ImageSampler.filter(GL_NEAREST, GL_NEAREST);
@@ -54,9 +52,9 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const ST
 	this->ImageSampler.borderColor(vec4(vec3(0.0f), 1.0f));
 
 	/* -------------------------------- setup uniform ---------------------------------- */
-	this->OffScreenRenderer.uniform(glProgramUniform1i, "ScreenBuffer", 0);
+	this->PostProcessQuad.OffScreenRenderer.uniform(glProgramUniform1i, "ScreenBuffer", 0);
 	//prepare for tone mapping function definition
-	tone_mapping(this->OffScreenRenderer);
+	tone_mapping(this->PostProcessQuad.OffScreenRenderer);
 }
 
 const STPTexture& STPPostProcess::operator*() const {
@@ -65,7 +63,7 @@ const STPTexture& STPPostProcess::operator*() const {
 
 #define SET_EFFECT(EFF, NAME) template<> \
 	STP_REALISM_API void STPPostProcess::setEffect<STPPostProcess::STPPostEffect::EFF>(float val) { \
-		this->OffScreenRenderer.uniform(glProgramUniform1f, NAME, val); \
+		this->PostProcessQuad.OffScreenRenderer.uniform(glProgramUniform1f, NAME, val); \
 }
 
 SET_EFFECT(Gamma, "Gamma")
@@ -81,16 +79,9 @@ void STPPostProcess::capture() const {
 void STPPostProcess::process() const {
 	//prepare to render
 	this->PostProcessResultContainer.ScreenColor.bind(0);
-	this->ImageSampler.bind(0);
+	const STPSampler::STPSamplerUnitStateManager color_sampler_mgr = this->ImageSampler.bindManaged(0);
 
-	this->ScreenVertex->bind();
-	this->OffScreenRenderer.use();
-
-	this->drawScreen();
-
-	STPProgramManager::unuse();
-	//must unbind sampler otherwise it will affect texture in other renderer.
-	STPSampler::unbind(0);
+	this->PostProcessQuad.drawScreen();
 }
 
 #define TONE_MAPPING_NAME(FUNC) STPPostProcess::STPToneMappingDefinition<STPPostProcess::STPToneMappingFunction::FUNC>

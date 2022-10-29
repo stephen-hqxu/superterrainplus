@@ -12,7 +12,7 @@
 #include <SuperTerrain+/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 //Error
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //Shared Test Data
 #include "STPTestInformation.h"
@@ -68,7 +68,7 @@ protected:
 	T Texture[SmallSize];
 	vector<T*> TextureBuffer;
 
-	inline static STPFreeSlipTextureAttribute SmallAttribute{ SmallInfo, STPPinnedMemoryPool(), 0 };
+	inline static STPFreeSlipTextureAttribute SmallAttribute{ SmallInfo, 0 };
 
 	static T getRandomData() {
 		static std::mt19937_64 Generator(GENERATE(take(1, random(0ull, 6666666666ull))));
@@ -95,8 +95,8 @@ protected:
 			//if it's a device memory, we need to copy it to host before we can use it
 			this->MergedDevice = this->CurrentMergedTexture;
 			this->MergedHost = make_unique<T[]>(FBT::SmallSize);
-			STPcudaCheckErr(cudaMemcpyAsync(this->MergedHost.get(), this->MergedDevice, FBT::SmallSize * sizeof(T), cudaMemcpyDeviceToHost, 0));
-			STPcudaCheckErr(cudaStreamSynchronize(0));
+			STP_CHECK_CUDA(cudaMemcpyAsync(this->MergedHost.get(), this->MergedDevice, FBT::SmallSize * sizeof(T), cudaMemcpyDeviceToHost, 0));
+			STP_CHECK_CUDA(cudaStreamSynchronize(0));
 
 			//reassign pointer so later assertions can use it on host side
 			this->CurrentMergedTexture = MergedHost.get();
@@ -117,7 +117,7 @@ protected:
 
 	inline void updateDeviceBuffer() {
 		if (this->CurrentLocation == MemoryLocation::DeviceMemory) {
-			STPcudaCheckErr(cudaMemcpyAsync(this->MergedDevice, this->CurrentMergedTexture, FreeSlipBufferTester<T>::SmallSize * sizeof(T), cudaMemcpyHostToDevice, 0));
+			STP_CHECK_CUDA(cudaMemcpyAsync(this->MergedDevice, this->CurrentMergedTexture, FreeSlipBufferTester<T>::SmallSize * sizeof(T), cudaMemcpyHostToDevice, 0));
 		}
 		//there is no device buffer in host memory mode
 	}
@@ -155,7 +155,7 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 	using CurrentTester = ::FreeSlipBufferTester<TestType>;
 
 	WHEN("Some wrong numbers are provided to the texture buffer") {
-		STPFreeSlipTextureAttribute ZeroPixel = { CurrentTester::SmallInfo, STPPinnedMemoryPool(), 0 };
+		STPFreeSlipTextureAttribute ZeroPixel = { CurrentTester::SmallInfo, 0 };
 		typename CurrentTester::TestData DefaultData = { CurrentTester::TestMemoryMode::ReadOnly, 0 };
 
 		AND_WHEN("The number of free-slip texture does not logically match the free-slip setting") {

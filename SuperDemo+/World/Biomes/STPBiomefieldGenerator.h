@@ -11,6 +11,8 @@
 //Pool
 #include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
 
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceObject.h>
+
 #include <glm/vec2.hpp>
 //GLM
 #include <glm/vec2.hpp>
@@ -34,7 +36,7 @@ namespace STPDemo {
 		const STPCommonCompiler& KernelProgram;
 		//The entry global function to generate the heightmap
 		CUfunction GeneratorEntry;
-		CUmemoryPool HistogramCacheDevice;
+		SuperTerrainPlus::STPSmartDeviceObject::STPMemPool HistogramCacheDevice;
 
 		const unsigned int InterpolationRadius;
 
@@ -77,7 +79,7 @@ namespace STPDemo {
 
 		STPBiomefieldGenerator& operator=(STPBiomefieldGenerator&&) = delete;
 
-		~STPBiomefieldGenerator();
+		~STPBiomefieldGenerator() = default;
 
 		void operator()(SuperTerrainPlus::STPFreeSlipFloatTextureBuffer&, 
 			SuperTerrainPlus::STPFreeSlipSampleTextureBuffer&, 

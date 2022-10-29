@@ -1,11 +1,16 @@
 //TEMPLATE DEFINITION FOR SMART DEVICE MEMORY
 #ifdef _STP_SMART_DEVICE_MEMORY_H_
 
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.h>
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
+
+template<typename T>
+inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPPinnedMemoryDeleter<T>::operator()(T* ptr) const {
+	STP_CHECK_CUDA(cudaFreeHost(ptr));
+}
 
 template<typename T>
 inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPDeviceMemoryDeleter<T>::operator()(T* ptr) const {
-	STPcudaCheckErr(cudaFree(ptr));
+	STP_CHECK_CUDA(cudaFree(ptr));
 }
 
 template<typename T>
@@ -17,7 +22,7 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPStre
 template<typename T>
 inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<T>::operator()
 	(T* ptr) const {
-	STPcudaCheckErr(cudaFreeAsync(ptr, *this->Stream));
+	STP_CHECK_CUDA(cudaFreeAsync(ptr, *this->Stream));
 }
 
 template<typename T>
@@ -36,11 +41,19 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPit
 U* cache
 
 template<typename T>
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPPinnedMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makePinned(size_t size) {
+	TYPE_SANITISE;
+
+	STP_CHECK_CUDA(cudaMallocHost(&cache, sizeof(U) * size));
+	return STPSmartDeviceMemory::STPPinnedMemory<T>(cache);
+}
+
+template<typename T>
 inline SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeDevice(size_t size) {
 	TYPE_SANITISE;
 
 	//remember size denotes the number of element
-	STPcudaCheckErr(cudaMalloc(&cache, sizeof(U) * size));
+	STP_CHECK_CUDA(cudaMalloc(&cache, sizeof(U) * size));
 	//if any exception is thrown during malloc, it will not proceed
 	//exception thrown at malloc will prevent any memory to be allocated, so we don't need to free it.
 	return STPDeviceMemory<T>(cache);
@@ -52,7 +65,7 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemory<T> SuperT
 	TYPE_SANITISE;
 
 	//allocate using the pool
-	STPcudaCheckErr(cudaMallocFromPoolAsync(&cache, sizeof(U) * size, memPool, stream));
+	STP_CHECK_CUDA(cudaMallocFromPoolAsync(&cache, sizeof(U) * size, memPool, stream));
 	//init the streamed deleter
 	return STPStreamedDeviceMemory<T>(cache, STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<U>(stream));
 }
@@ -63,7 +76,7 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T> SuperTe
 	TYPE_SANITISE;
 
 	size_t pitch;
-	STPcudaCheckErr(cudaMallocPitch(&cache, &pitch, sizeof(U) * width, height));
+	STP_CHECK_CUDA(cudaMallocPitch(&cache, &pitch, sizeof(U) * width, height));
 	return STPPitchedDeviceMemory<T>(cache, pitch);
 }
 

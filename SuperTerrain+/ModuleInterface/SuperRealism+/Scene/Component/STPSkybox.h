@@ -107,25 +107,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 		std::shared_ptr<const STPSkyboxVertexBuffer> SkyboxVertex;
 
-	protected:
+	public:
 
 		mutable STPProgramManager SkyboxRenderer;
-
-		/**
-		 * @brief Initialise the skybox renderer.
-		 * All previous initialisation states are abandoned.
-		 * @param skybox_fs The fragment shader for the skybox rendering.
-		 * @param skybox_init The pointer to the skybox initialiser.
-		*/
-		void initSkyboxRenderer(const STPShaderManager&, const STPSkyboxInitialiser&);
-
-		/**
-		 * @brief Draw the skybox using the skybox rendering program.
-		 * All buffers and program are bound automatically.
-		*/
-		void drawSkybox() const;
-
-	public:
 
 		/**
 		 * @brief Initialise a skybox renderer instance.
@@ -140,7 +124,21 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPSkybox& operator=(STPSkybox&&) noexcept = default;
 
-		virtual ~STPSkybox() = default;
+		~STPSkybox() = default;
+
+		/**
+		 * @brief Initialise the skybox renderer.
+		 * All previous initialisation states are abandoned.
+		 * @param skybox_fs The fragment shader for the skybox rendering.
+		 * @param skybox_init The pointer to the skybox initialiser.
+		*/
+		void initSkyboxRenderer(const STPShaderManager&, const STPSkyboxInitialiser&);
+
+		/**
+		 * @brief Draw the skybox using the skybox rendering program.
+		 * All buffers and program are bound automatically.
+		*/
+		void drawSkybox() const;
 
 	};
 }

@@ -8,27 +8,12 @@
 
 #include "STPImageParameter.hpp"
 
-//GLM
-#include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
-
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
 	 * @brief STPTexture is a thin wrapper to GL texture objects and smartly handle its lifetime.
 	*/
 	class STP_REALISM_API STPTexture : public STPImageParameter {
-	public:
-
-		/**
-		 * @brief Specify the dimension of a vector.
-		*/
-		enum class STPDimension : unsigned char {
-			ONE = 0x01u,
-			TWO = 0x02u,
-			THREE = 0x03u
-		};
-
 	private:
 
 		/**
@@ -111,17 +96,17 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void generateMipmap();
 
-		void filter(STPOpenGL::STPenum, STPOpenGL::STPenum) override;
+		void filter(STPOpenGL::STPint, STPOpenGL::STPint) override;
 
-		void wrap(STPOpenGL::STPenum, STPOpenGL::STPenum, STPOpenGL::STPenum) override;
+		void wrap(STPOpenGL::STPint, STPOpenGL::STPint, STPOpenGL::STPint) override;
 
-		void wrap(STPOpenGL::STPenum) override;
+		void wrap(STPOpenGL::STPint) override;
 
-		void borderColor(glm::vec4) override;
+		void borderColor(STPGLVector::STPfloatVec4) override;
 
-		void borderColor(glm::ivec4) override;
+		void borderColor(STPGLVector::STPintVec4) override;
 
-		void borderColor(glm::uvec4) override;
+		void borderColor(STPGLVector::STPuintVec4) override;
 
 		void anisotropy(STPOpenGL::STPfloat) override;
 
@@ -139,8 +124,9 @@ namespace SuperTerrainPlus::STPRealism {
 		 * For 2D or 1D array texture, z component is ignored.
 		 * Used component should not be zero.
 		*/
-		template<STPDimension Dim>
-		void textureStorage(STPOpenGL::STPint, STPOpenGL::STPenum, glm::uvec3);
+		void textureStorage1D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPOpenGL::STPsizei);
+		void textureStorage2D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec2);
+		void textureStorage3D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec3);
 
 		/**
 		 * @brief Specify storage for a multisample texture.
@@ -153,8 +139,8 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param fixed Specifies whether the image will use identical sample locations and the same number of samples for all texels in the image, 
 		 * and the sample locations will not depend on the internal format or size of the image. 
 		*/
-		template<STPDimension Dim>
-		void textureStorageMultisample(STPOpenGL::STPint, STPOpenGL::STPenum, glm::uvec3, STPOpenGL::STPboolean);
+		void textureStorageMultisample2D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec2, STPOpenGL::STPboolean);
+		void textureStorageMultisample3D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec3, STPOpenGL::STPboolean);
 
 		/**
 		 * @brief Specify a three-dimensional texture subimage.
@@ -169,8 +155,20 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param type Specifies the data type of the pixel data.
 		 * @param pixel Specifies a pointer to the image data in memory.
 		*/
-		template<STPDimension Dim>
-		void textureSubImage(STPOpenGL::STPint, glm::ivec3, glm::uvec3, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
+		void textureSubImage1D(STPOpenGL::STPint, STPOpenGL::STPint, STPOpenGL::STPsizei, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
+		void textureSubImage2D(STPOpenGL::STPint, STPGLVector::STPintVec2, STPGLVector::STPsizeiVec2, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
+		void textureSubImage3D(STPOpenGL::STPint, STPGLVector::STPintVec3, STPGLVector::STPsizeiVec3, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
+
+		/**
+		 * @brief Return a texture image.
+		 * @param level Specifies the level-of-detail number of the desired image.
+		 * Level 0 is the base image level. Level n is the nth mipmap reduction image.
+		 * @param format Specifies a pixel format for the returned data.
+		 * @param type Specifies a pixel type for the returned data.
+		 * @param bufSize Specifies the size of the buffer pixels.
+		 * @param pixel Returns the texture image. Should be a pointer to an array of the type specified by type.
+		*/
+		void getTextureImage(STPOpenGL::STPint, STPOpenGL::STPenum, STPOpenGL::STPenum, STPOpenGL::STPsizei, void*) const;
 
 		/**
 		 * @brief Fills all a texture image with a constant value

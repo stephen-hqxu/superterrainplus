@@ -3,21 +3,22 @@
 [![GitHub Releases](https://img.shields.io/github/v/release/stephen-hqxu/superterrainplus?include_prereleases&label=Release)](https://github.com/stephen-hqxu/superterrainplus/releases)
 [![GitHub License](https://img.shields.io/github/license/stephen-hqxu/superterrainplus?label=License)](https://github.com/stephen-hqxu/superterrainplus/blob/master/LICENSE)
 [![3rd-Party License](https://img.shields.io/badge/License-3rd--party-green)](https://github.com/stephen-hqxu/superterrainplus/blob/master/3rd-Party)
-[![Project Roadmap](https://img.shields.io/badge/Project-Roadmap-cd853f)](https://github.com/stephen-hqxu/superterrainplus/projects)
+[![Project Roadmap](https://img.shields.io/badge/Project-Roadmap-cd853f)](https://github.com/stephen-hqxu/superterrainplus/projects?type=classic)
 [![Documentation](https://img.shields.io/badge/-Documentation-fa8072)](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/README.md)
 
 ## :eyes: Overview
 
 <p align="center">
 	<img src="https://img.shields.io/badge/C%2B%2B_17-00599C?style=flat&logo=c%2B%2B&logoColor=white" />
-	<img src="https://img.shields.io/badge/NVIDIA-CUDA_11.3-76B900?style=flat&logo=nvidia&logoColor=white" />
+	<img src="https://img.shields.io/badge/CUDA_11.3-76B900?style=flat&logo=nvidia&logoColor=white" />
+	<img src="https://img.shields.io/badge/OptiX_7.3-76B900?style=flat&logo=nvidia&logoColor=white" />
 	<img src="https://img.shields.io/badge/OpenGL_4.6-FFFFFF?style=flat&logo=opengl" />
 	<img src="https://img.shields.io/badge/CMake_3.18-064F8C?style=flat&logo=cmake&logoColor=white" />
 </p>
 
-Procedural technique is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
+Procedural content generation is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
 
-*SuperTerrain+* is a procedural terrain engine and real-time renderer started as my personal project in July, 2020 and later become my undergraduate dissertation project; now I mainly use it as a playground for exploring this area further and improving my programming proficiency; more importantly, for fun.
+*SuperTerrain+* is a built-from-scratch procedural terrain engine and real-time renderer started as my personal project in July, 2020 and later become my undergraduate dissertation project; now I mainly use it as a playground for exploring this area further and improving my programming proficiency; more importantly, for fun.
 
 *SuperTerrain+* provides a low-overhead, extendible and flexible interface, demonstrates application of modern programming and rendering techniques; with the help of extensive in-source documentations, this is also a great place for learning.
 
@@ -44,9 +45,9 @@ Procedural technique is one of the most popular topics in computer graphics and 
 ### Procedural geometry generation
 
 - [ ] Volumetric cloud
-- [ ] Rule-based geometry placement
+- [ ] Procedural object placement
 - [ ] Procedural animated grassland generation
-- [ ] Procedural parameter-based tree generation
+- [ ] Procedural tree generation
 - [ ] Procedural rock generation
 
 ### Real-time photorealistic rendering
@@ -87,7 +88,15 @@ Procedural technique is one of the most popular topics in computer graphics and 
   - [ ] Caustics
   - [ ] Underwater crepuscular rays
 - [ ] Procedural weather effect
-- [ ] Real-time global illumination
+
+#### Real-time rasterisation-ray tracing hybrid rendering
+
+- [ ] Reflection
+- [ ] Refraction
+- [ ] Shadow
+- [ ] Ambient occlusion
+- [ ] Global illumination
+- [ ] Caustics
 
 ### Optimisation technique
 
@@ -163,16 +172,22 @@ Note that `::` denotes a CMake dependent option. Pattern *A::B* default to *valu
 
 - GPU
 
-![Nvidia GPU Requirement](https://img.shields.io/badge/NVIDIA-GTX_1660-76B900?style=flat&logo=nvidia&logoColor=white)
+*SuperTerrain+* is currently exclusive to Nvidia GPUs. Ray tracing is powered by Nvidia OptiX; unlike DXR or VKR, it does not require a RTX board to run, but we still recommend using such graphics card for the best performance.
 
-> *SuperTerrain+* currently relies heavily on CUDA and GL extensions exclusive to Nvidia GPUs.
+| Legacy | Ray Tracing |
+| ------ | ----------- |
+| ![Nvidia GPU Requirement Legacy](https://img.shields.io/badge/NVIDIA-GTX_1660-76B900?style=flat&logo=nvidia&logoColor=white) | ![Nvidia GPU Requirement Ray Tracing](https://img.shields.io/badge/NVIDIA-RTX_2060-76B900?style=flat&logo=nvidia&logoColor=white) |
 
 - OS
+
+The project is mainly developed with *Visual Studio 2019* on Windows 10, and occasionally tested on some Linux systems with *GCC*. The codebase does not rely on any OS-specific API or feature, it should be portable if you are using other environment. Please note that I am not a Mac user and don't personally own a Mac device, hence the project is untested on MacOS.
 
 ![OS Linux](https://img.shields.io/badge/Linux-FCC624?style=flat&logo=linux&logoColor=black)
 ![OS Windows](https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white)
 
 #### OpenGL extension requirement
+
+This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview) or [online extension database](https://opengl.gpuinfo.org/).
 
 - OpenGL 4.6 core profile
 - [GL_ARB_bindless_texture](https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_bindless_texture.txt)
@@ -188,8 +203,6 @@ The following extensions are not required but will be made used by the engine au
 - ~~[GL_NV_primitive_shading_rate](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_primitive_shading_rate.txt)~~
 - [GL_NV_representative_fragment_test](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_representative_fragment_test.txt)
 - ~~[GL_NV_shading_rate_image](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shading_rate_image.txt)~~
-
-> This is usually not a problem if your GPU meets the minimum system requirement and have a relatively recent driver installed. If you are unsure, we recommend checking with [OpenGL Extensions Viewer](https://www.realtech-vr.com/home/glview) or [online extension database](https://opengl.gpuinfo.org/).
 
 ### :gear: Build Instruction
 
@@ -257,13 +270,18 @@ For redistributed / adapted / derived open source projects, see *3rd-Party* dire
 
 - [README Template](https://github.com/othneildrew/Best-README-Template)
 
+### Utility
+
+- [Simple C++ lexer](https://gist.github.com/arrieta/1a309138689e09375b90b3b1aa768e20)
+- [C++ thread pool implementation](https://github.com/bshoshany/thread-pool)
+- [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
+
 ### Terrain generation
 
 - [Particle based hydraulic erosion](https://github.com/SebLague/Hydraulic-Erosion/tree/Coding-Adventure-E01)
 - [Minecraft biome generator](https://github.com/KaptainWutax/BiomeUtils)
 - [Linear time Gaussian filter](http://blog.ivank.net/fastest-gaussian-blur.html) by *Ivan Kutskir*
 - [Stratified sampling technique](https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-17-efficient-soft-edged-shadows-using) from *GPU Gems 2*
-- [Simple C++ lexer](https://gist.github.com/arrieta/1a309138689e09375b90b3b1aa768e20)
 
 ### Geometry generation
 
@@ -273,7 +291,6 @@ For redistributed / adapted / derived open source projects, see *3rd-Party* dire
 ### Photorealistic rendering
 
 - [Normal map blending](https://blog.selfshadow.com/publications/blending-in-detail/)
-- [High-level OpenGL function wrapper](https://github.com/cginternals/globjects)
 - [Simulating the Colors of the Sky](https://www.scratchapixel.com/lessons/procedural-generation-virtual-worlds/simulating-sky) from *Scratchapixel*
 - [Physically-based atmospheric scattering](https://github.com/wwwtyro/glsl-atmosphere/)
 - [A Primer On Efficient Rendering Algorithms & Clustered Shading](http://www.aortiz.me/2018/12/21/CG.html) by *Ángel Ortiz*

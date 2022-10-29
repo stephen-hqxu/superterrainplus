@@ -1,28 +1,10 @@
-# import GLM and OpenGL
+# import installed libraries
 find_package(glm REQUIRED CONFIG)
+# import system libraries
 find_package(OpenGL REQUIRED)
-
-# minimum supported version for each library
-set(STP_CUDA_MIN_VERSION 11.3)
-set(STP_SQLITE_MIN_VERSION 3.30)
-
-#setup SQLite3
-include(FindSQLite3)
-if(NOT SQLite3_FOUND)
-	message(FATAL_ERROR "SQLite3 is not found")
-endif()
-if(SQLite3_VERSION VERSION_LESS STP_SQLITE_MIN_VERSION)
-	message(FATAL_ERROR "SQLite3 version is incompatible")
-endif()
-
-# setup CUDA
-include(FindCUDAToolkit)
-if(NOT CUDAToolkit_FOUND)
-	message(FATAL_ERROR "CUDA compiler is not found")
-endif()
-if(CUDAToolkit_VERSION VERSION_LESS STP_CUDA_MIN_VERSION)
-	message(FATAL_ERROR "CUDA version is incompatible")
-endif()
+find_package(SQLite3 3.30 REQUIRED)
+find_package(CUDAToolkit 11.3 REQUIRED)
+find_package(OptiX 7.3 REQUIRED)
 
 # setup default compiler options
 set(CMAKE_CXX_STANDARD 17) # -std=c++17

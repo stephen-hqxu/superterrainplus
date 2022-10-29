@@ -30,7 +30,11 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static array<string_view, 8ull> mShaderIncludeRegistry = {
+//Definition for STPLogHandler
+STPLogHandler::STPLogHandlerSolution STPLogHandler::DefaultLogHandler;
+STPLogHandler::STPLogHandlerSolution* STPLogHandler::ActiveLogHandler = &STPLogHandler::DefaultLogHandler;
+
+constexpr static array<string_view, 9ull> mShaderIncludeRegistry = {
 	"/Common/STPAnimatedWave.glsl",
 	"/Common/STPAtmosphericScattering.glsl",
 	"/Common/STPCameraInformation.glsl",
@@ -38,6 +42,7 @@ constexpr static array<string_view, 8ull> mShaderIncludeRegistry = {
 	"/Common/STPLightSpaceInformation.glsl",
 	"/Common/STPMaterialRegistry.glsl",
 	"/Common/STPNullPointer.glsl",
+	"/Common/STPRayTracedIntersectionData.glsl",
 	"/Common/STPSeparableShaderPredefine.glsl"
 };
 
@@ -133,7 +138,7 @@ void STPShaderManager::initialise() {
 		using namespace SuperTerrainPlus;
 
 		ostringstream filename;
-		filename << SuperRealismPlus_ShaderPath << path;
+		filename << STPRealismInfo::ShaderPath << path;
 		includeImpl(path.data(), path.length(), STPFile::read(filename.str().c_str()));
 	}
 }
@@ -209,7 +214,7 @@ void STPShaderManager::operator()(const STPShaderSource& source) {
 	}
 
 	//write log
-	STPLogHandler::ActiveLogHandler->handle(std::move(log));
+	STPLogHandler::ActiveLogHandler->handle(log);
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint STPShaderManager::operator*() const {

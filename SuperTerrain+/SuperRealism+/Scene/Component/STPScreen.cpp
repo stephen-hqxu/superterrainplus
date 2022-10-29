@@ -21,13 +21,12 @@ using std::array;
 using std::shared_ptr;
 
 using glm::uvec2;
-using glm::uvec3;
 using glm::vec4;
 
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto ScreenShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPScreen", ".vert");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPScreen", ".vert");
 
 constexpr static array<signed char, 16ull> QuadVertex = {
 	//Position		//TexCoord
@@ -55,7 +54,7 @@ STPTexture STPScreen::STPSimpleScreenFrameBuffer::updateScreenFrameBuffer(
 	//create new texture
 	STPTexture new_screen_color(GL_TEXTURE_2D);
 	//allocate memory
-	new_screen_color.textureStorage<STPTexture::STPDimension::TWO>(1, internal, uvec3(dimension, 1u));
+	new_screen_color.textureStorage2D(1, internal, dimension);
 
 	//attach new texture to framebuffer
 	this->ScreenColorContainer.attach(GL_COLOR_ATTACHMENT0, new_screen_color, 0);
@@ -99,14 +98,6 @@ void STPScreen::STPSimpleScreenBindlessFrameBuffer::setScreenBuffer(
 	this->ScreenColor = move(new_screen_color);
 }
 
-SuperTerrainPlus::STPOpenGL::STPuint64 STPScreen::STPSimpleScreenBindlessFrameBuffer::getColorHandle() const {
-	return *this->ScreenColorHandle;
-}
-
-void STPScreen::STPSimpleScreenBindlessFrameBuffer::bindColorSampler(STPOpenGL::STPuint unit) const {
-	return this->ScreenColorSampler.bind(unit);
-}
-
 STPScreen::STPScreenVertexShader::STPScreenVertexShader() : ScreenVertexShader(GL_VERTEX_SHADER) {
 	//read source
 	const char* const screen_source_file = ScreenShaderFilename.data();
@@ -140,6 +131,19 @@ void STPScreen::STPScreenVertexBuffer::bind() const {
 	this->ScreenRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
 }
 
+STPScreen::STPScreenProgramExecutor::STPScreenProgramExecutor(const STPScreen& screen) {
+	screen.ScreenVertex->bind();
+	screen.OffScreenRenderer.use();
+}
+
+STPScreen::STPScreenProgramExecutor::~STPScreenProgramExecutor() {
+	STPProgramManager::unuse();
+}
+
+void STPScreen::STPScreenProgramExecutor::operator()() const {
+	glDrawArraysIndirect(GL_TRIANGLE_FAN, nullptr);
+}
+
 void STPScreen::initScreenRenderer(const STPShaderManager& screen_fs, const STPScreenInitialiser& screen_init) {
 	if (screen_fs.Type != GL_FRAGMENT_SHADER) {
 		throw STPException::STPInvalidArgument("The shader initialised for off-screen rendering must be a fragment shader");
@@ -157,5 +161,10 @@ void STPScreen::initScreenRenderer(const STPShaderManager& screen_fs, const STPS
 }
 
 void STPScreen::drawScreen() const {
-	glDrawArraysIndirect(GL_TRIANGLE_FAN, nullptr);
+	const STPScreenProgramExecutor executor = this->drawScreenFromExecutor();
+	executor();
+}
+
+STPScreen::STPScreenProgramExecutor STPScreen::drawScreenFromExecutor() const {
+	return STPScreenProgramExecutor(*this);
 }

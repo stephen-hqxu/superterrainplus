@@ -13,9 +13,9 @@
 
 #include <sstream>
 
-using std::string;
 using std::unique_ptr;
 using std::stringstream;
+using std::string_view;
 
 using std::endl;
 using std::make_unique;
@@ -99,12 +99,12 @@ void STPProgramManager::finalise() {
 	GLint logLength;
 	glGetProgramiv(this->Program.get(), GL_INFO_LOG_LENGTH, &logLength);
 
-	string log;
+	unique_ptr<char[]> log;
 	//get any log
 	if (logLength > 0) {
 		//shader compilation has log
-		log.resize(logLength);
-		glGetProgramInfoLog(this->Program.get(), logLength, NULL, log.data());
+		log = make_unique<char[]>(logLength);
+		glGetProgramInfoLog(this->Program.get(), logLength, NULL, log.get());
 	}
 
 	auto handle_error = [pro = this->Program.get(), &log](GLenum status_request) -> void {
@@ -116,7 +116,7 @@ void STPProgramManager::finalise() {
 
 		if (!valid) {
 			//error for this stage
-			throw STPException::STPGLError(log.c_str());
+			throw STPException::STPGLError(log.get());
 		}
 	};
 
@@ -125,7 +125,7 @@ void STPProgramManager::finalise() {
 	//validation checks if the program can be used as a GL application
 	handle_error(GL_VALIDATE_STATUS);
 
-	STPLogHandler::ActiveLogHandler->handle(std::move(log));
+	STPLogHandler::ActiveLogHandler->handle(string_view(log.get(), logLength));
 
 	//check the status of the program
 	this->isComputeProgram = this->AttachedShader.count(GL_COMPUTE_SHADER) > 0u;

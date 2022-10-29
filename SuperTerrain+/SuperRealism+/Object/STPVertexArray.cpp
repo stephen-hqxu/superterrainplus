@@ -36,7 +36,7 @@ STPVertexArray::STPVertexAttributeBuilder& STPVertexArray::STPVertexAttributeBui
 }
 
 STPVertexArray::STPVertexAttributeBuilder& STPVertexArray::STPVertexAttributeBuilder::vertexBuffer(const STPBuffer& buffer, STPOpenGL::STPintptr offset) {
-	glVertexArrayVertexBuffer(this->VertexArray, this->BindingIndex, *buffer, offset, this->RelativeOffset);
+	glVertexArrayVertexBuffer(this->VertexArray, this->BindingIndex, *buffer, offset, static_cast<GLsizei>(this->RelativeOffset));
 
 	return *this;
 }

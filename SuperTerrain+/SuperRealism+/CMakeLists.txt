@@ -1,6 +1,8 @@
 set(STP_REALISM_ENGINE_SOURCE
+STPAsyncAccelBuilder.cpp
 STPCamera.cpp
 STPDebugCallback.cpp
+STPExtendedScenePipeline.cpp
 STPOrthographicCamera.cpp
 STPPerspectiveCamera.cpp
 STPPlaneGeometry.cpp
@@ -40,7 +42,6 @@ Scene/STPLightShadow.cpp
 Scene/STPLightSpectrum.cpp
 Scene/STPMaterialLibrary.cpp
 Scene/STPSceneLight.cpp
-Scene/STPSceneObject.cpp
 )
 
 #shading and rendering library

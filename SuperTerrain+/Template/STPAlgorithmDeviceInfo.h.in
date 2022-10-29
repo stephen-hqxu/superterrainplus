@@ -2,22 +2,19 @@
 #ifndef _STP_ALGORITHM_DEVICE_INFO_H_
 #define _STP_ALGORITHM_DEVICE_INFO_H_
 
-#include <string_view>
-
-namespace SuperTerrainPlus {
+namespace SuperTerrainPlus::STPAlgorithm {
 	
 	/**
-	 * @brief Denotes the SuperTerrain+ include path
+	 * @brief STPAlgorithmDeviceInfo contains file information for the algorithm device library to be used by runtime compilers.
 	*/
-	constexpr static std::string_view SuperTerrainPlus_CoreInclude = "@SuperTerrain+CoreInclude@";
-	/**
-	 * @brief Denotes the SuperAlgorithm+ static library output path
-	*/
-	constexpr static std::string_view SuperAlgorithmPlus_DeviceLibrary = "$<TARGET_FILE:@STP_ALGORITHM_DEVICE_ENGINE@>";
-	/**
-	 * @brief Denotes the SuperAlgorithm+ include path
-	*/
-	constexpr static std::string_view SuperAlgorithmPlus_DeviceInclude = "@SuperAlgorithm+DeviceInclude@";
+	namespace STPAlgorithmDeviceInfo {
+		
+		//SuperAlgorithm+Device static library output path
+		constexpr static char DeviceLibrary[] = "$<TARGET_FILE:@STP_ALGORITHM_DEVICE_ENGINE@>";
+		//SuperAlgorithm+Device include path
+		constexpr static char DeviceInclude[] = "@SuperAlgorithm+DeviceInclude@";
+		
+	}
 
 }
 #endif//_STP_ALGORITHM_DEVICE_INFO_H_

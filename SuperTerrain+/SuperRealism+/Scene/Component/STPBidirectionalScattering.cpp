@@ -13,7 +13,6 @@
 
 using glm::uvec2;
 using glm::vec2;
-using glm::uvec3;
 using glm::vec3;
 using glm::uvec4;
 using glm::vec4;
@@ -21,16 +20,16 @@ using glm::vec4;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto BSDFShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPBidirectionalScattering", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPBidirectionalScattering", ".frag");
 
-STPBidirectionalScattering::STPBidirectionalScattering(const STPScreenInitialiser& screen_init) : BufferDimension(uvec2(0u)) {
+STPBidirectionalScattering::STPBidirectionalScattering(const STPScreen::STPScreenInitialiser& screen_init) : BufferDimension(uvec2(0u)) {
 	/* --------------------------------------- build shader ----------------------------------------------- */
 	const char* const scattering_shader_file = BSDFShaderFilename.data();
 	STPShaderManager::STPShaderSource scattering_source(scattering_shader_file , STPFile::read(scattering_shader_file));
 
 	STPShaderManager scattering_shader(GL_FRAGMENT_SHADER);
 	scattering_shader(scattering_source);
-	this->initScreenRenderer(scattering_shader, screen_init);
+	this->BSDFQuad.initScreenRenderer(scattering_shader, screen_init);
 
 	/* -------------------------------------- setup sampler ---------------------------------------------- */
 	auto setSampler = [](STPSampler& sampler, const auto& border) -> void {
@@ -46,7 +45,7 @@ STPBidirectionalScattering::STPBidirectionalScattering(const STPScreenInitialise
 	setSampler(this->MaterialSampler, uvec4(0u));
 
 	/* ---------------------------------------- setup uniform ---------------------------------------------- */
-	this->OffScreenRenderer.uniform(glProgramUniform1i, "ObjectDepth", 0)
+	this->BSDFQuad.OffScreenRenderer.uniform(glProgramUniform1i, "ObjectDepth", 0)
 		.uniform(glProgramUniform1i, "ObjectNormal", 1)
 		.uniform(glProgramUniform1i, "ObjectMaterial", 2);
 }
@@ -56,7 +55,7 @@ void STPBidirectionalScattering::setScattering(const STPEnvironment::STPBidirect
 		throw STPException::STPInvalidEnvironment("Setting for bidirectional scattering fails to be validated");
 	}
 
-	this->OffScreenRenderer.uniform(glProgramUniform1f, "MaxDistance", scattering_setting.MaxRayDistance)
+	this->BSDFQuad.OffScreenRenderer.uniform(glProgramUniform1f, "MaxDistance", scattering_setting.MaxRayDistance)
 		.uniform(glProgramUniform1f, "DepthBias", scattering_setting.DepthBias)
 		.uniform(glProgramUniform1ui, "StepResolution", scattering_setting.RayResolution)
 		.uniform(glProgramUniform1ui, "StepSize", scattering_setting.RayStep);
@@ -70,8 +69,8 @@ void STPBidirectionalScattering::setCopyBuffer(uvec2 dimension) {
 	//update buffer dimension
 	this->BufferDimension = dimension;
 	//send new handle
-	this->OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, "SceneColor", this->RawSceneColorCopier.getColorHandle())
-		.uniform(glProgramUniformHandleui64ARB, "SceneDepth", this->RawSceneDepthCopier.getColorHandle());
+	this->BSDFQuad.OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, "SceneColor", *this->RawSceneColorCopier.ScreenColorHandle)
+		.uniform(glProgramUniformHandleui64ARB, "SceneDepth", *this->RawSceneDepthCopier.ScreenColorHandle);
 }
 
 void STPBidirectionalScattering::copyScene(const STPTexture& color, const STPTexture& depth) {
@@ -93,19 +92,11 @@ void STPBidirectionalScattering::scatter(const STPTexture& depth, const STPTextu
 	depth.bind(0);
 	normal.bind(1);
 	material.bind(2);
+	const STPSampler::STPSamplerUnitStateManager depth_normal_material_sampler_mgr[3] = {
+		this->RawSceneDepthCopier.ScreenColorSampler.bindManaged(0),
+		this->NormalSampler.bindManaged(1),
+		this->MaterialSampler.bindManaged(2)
+	};
 
-	this->RawSceneDepthCopier.bindColorSampler(0);
-	this->NormalSampler.bind(1);
-	this->MaterialSampler.bind(2);
-
-	this->ScreenVertex->bind();
-	this->OffScreenRenderer.use();
-
-	this->drawScreen();
-
-	//clear up
-	STPSampler::unbind(0);
-	STPSampler::unbind(1);
-	STPSampler::unbind(2);
-	STPProgramManager::unuse();
+	this->BSDFQuad.drawScreen();
 }

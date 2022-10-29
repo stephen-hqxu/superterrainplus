@@ -1,17 +1,15 @@
 set(STP_MAIN_ENGINE_SOURCE
+STPDeviceRuntimeBinary.cpp
+STPDeviceRuntimeProgram.cpp
 STPEngineInitialiser.cpp
 STPEnvironment.cpp
 STPException.cpp
-STPRuntimeCompilable.cpp
 
 STPHeightfieldKernel.cu
 STPRainDrop.cu
 # /Utility
-Utility/STPDeviceErrorHandler.cpp
 Utility/STPFile.cpp
-Utility/STPMemoryPool.cpp
-Utility/STPSmartEvent.cpp
-Utility/STPSmartStream.cpp
+Utility/STPSmartDeviceObject.cpp
 Utility/STPThreadPool.cpp
 # /World/Diversity
 World/Diversity/STPBiomeFactory.cpp

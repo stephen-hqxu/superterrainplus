@@ -17,12 +17,14 @@ namespace SuperTerrainPlus::STPRealism {
 	 * performs bidirectional reflectance and transmission calculations for transparent objects.
 	 * It supports rendering of various transparency effect like reflection and refraction.
 	*/
-	class STP_REALISM_API STPBidirectionalScattering : private STPScreen {
+	class STP_REALISM_API STPBidirectionalScattering {
 	private:
+
+		STPScreen BSDFQuad;
 
 		STPSampler NormalSampler, MaterialSampler;
 		//This framebuffer is used for copying data from the scene into the internal memory.
-		STPSimpleScreenBindlessFrameBuffer RawSceneColorCopier, RawSceneDepthCopier;
+		STPScreen::STPSimpleScreenBindlessFrameBuffer RawSceneColorCopier, RawSceneDepthCopier;
 
 		//Record the dimension of the current buffer.
 		glm::uvec2 BufferDimension;
@@ -33,7 +35,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Initialise a bidirectional scattering renderer.
 		 * @param screen_init The pointer to the off-screen renderer initialiser.
 		*/
-		STPBidirectionalScattering(const STPScreenInitialiser&);
+		STPBidirectionalScattering(const STPScreen::STPScreenInitialiser&);
 
 		STPBidirectionalScattering(const STPBidirectionalScattering&) = delete;
 

@@ -21,7 +21,6 @@
 #include <glm/gtc/constants.hpp>
 
 using glm::uvec2;
-using glm::uvec3;
 using glm::vec3;
 using glm::vec4;
 
@@ -32,7 +31,7 @@ using std::transform;
 using namespace SuperTerrainPlus::STPRealism;
 
 static constexpr auto FilterShaderFilename = 
-	SuperTerrainPlus::STPFile::generateFilename(SuperTerrainPlus::SuperRealismPlus_ShaderPath, "/STPGaussianFilterKernel", ".frag");
+	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPGaussianFilterKernel", ".frag");
 
 /**
  * @brief Calculate the filter kernel extent length based on the radius.
@@ -112,7 +111,7 @@ void STPGaussianFilter::STPFilterExecution::operator()(STPProgramManager& progra
 		.uniform(glProgramUniform1ui, "KernelRadius", this->Radius);
 }
 
-STPGaussianFilter::STPGaussianFilter(const STPFilterExecution& execution, const STPScreenInitialiser& filter_init) :
+STPGaussianFilter::STPGaussianFilter(const STPFilterExecution& execution, const STPScreen::STPScreenInitialiser& filter_init) :
 	BorderColor(vec4(vec3(0.0f), 1.0f)) {
 	//setup filter compute shader
 	const char* const filter_source_file = FilterShaderFilename.data();
@@ -127,10 +126,10 @@ STPGaussianFilter::STPGaussianFilter(const STPFilterExecution& execution, const 
 
 	STPShaderManager filter_shader(GL_FRAGMENT_SHADER);
 	filter_shader(filter_source);
-	this->initScreenRenderer(filter_shader, filter_init);
+	this->GaussianQuad.initScreenRenderer(filter_shader, filter_init);
 
 	//uniform
-	execution(this->OffScreenRenderer);
+	execution(this->GaussianQuad.OffScreenRenderer);
 
 	/* ------------------------------------- sampler for input data ---------------------------------- */
 	this->InputImageSampler.wrap(GL_CLAMP_TO_BORDER);
@@ -154,13 +153,14 @@ void STPGaussianFilter::filter(
 	const STPTexture& depth, const STPTexture& input, STPFrameBuffer& output, bool output_blending) const {
 	//only the input texture data requires sampler
 	//output is an image object
-	this->InputImageSampler.bind(0u);
-	this->InputDepthSampler.bind(1u);
+	const STPSampler::STPSamplerUnitStateManager input_sampler_mgr[2] = {
+		this->InputImageSampler.bindManaged(0u),
+		this->InputDepthSampler.bindManaged(1u)
+	};
 	//clear old intermediate cache because convolutional filter reads data from neighbour pixels
 	this->IntermediateCache.clearScreenBuffer(this->BorderColor);
 
-	this->ScreenVertex->bind();
-	this->OffScreenRenderer.use();
+	const STPScreen::STPScreenProgramExecutor perform_gaussian = this->GaussianQuad.drawScreenFromExecutor();
 	GLuint filter_pass;
 	/* ----------------------------- horizontal pass -------------------------------- */
 	//for horizontal pass, read input from user and store output to the first buffer
@@ -172,7 +172,7 @@ void STPGaussianFilter::filter(
 	filter_pass = 0u;
 	glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &filter_pass);
 
-	this->drawScreen();
+	perform_gaussian();
 
 	/* ------------------------------ vertical pass --------------------------------- */
 	//for vertical pass, read input from the first buffer and output to the user-specified framebuffer
@@ -186,18 +186,12 @@ void STPGaussianFilter::filter(
 	if (output_blending) {
 		glEnable(GL_BLEND);
 
-		this->drawScreen();
+		perform_gaussian();
 
 		glDisable(GL_BLEND);
 	} else {
-		this->drawScreen();
+		perform_gaussian();
 	}
-
-	/* ------------------------------------------------------------------------------ */
-	//clear up
-	STPProgramManager::unuse();
-	STPSampler::unbind(0u);
-	STPSampler::unbind(1u);
 }
 
 #define FILTER_KERNEL_NAME(VAR) STPGaussianFilter::STPFilterKernel<STPGaussianFilter::STPFilterVariant::VAR>

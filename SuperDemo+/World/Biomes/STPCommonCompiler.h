@@ -3,7 +3,7 @@
 #define _STP_COMMON_COMPILER_H_
 
 //Runtime Compiler
-#include <SuperTerrain+/GPGPU/STPRuntimeCompilable.h>
+#include <SuperTerrain+/GPGPU/STPDeviceRuntimeProgram.h>
 
 //Setting
 #include <SuperTerrain+/Environment/STPChunkSetting.h>
@@ -22,72 +22,19 @@ namespace STPDemo {
 	 * @brief STPCommonCompiler is a even-higher-level wrapper to runtime compilable framework which provides default compiler settings that can be 
 	 * shared across different translation units.
 	*/
-	class STPCommonCompiler final : private SuperTerrainPlus::STPRuntimeCompilable {
+	class STPCommonCompiler {
 	private:
 
-		//compiler option to select compute capability
-		//need to store the string because compiler options are passed as character pointer, and we need to use the options later
-		const std::string CapabilityOption;
-		//Contains compiler options (only) for source codes, external headers and named expr are not set
-		STPRuntimeCompilable::STPSourceInformation SourceInfo;
-		//Contains linker options
-		STPRuntimeCompilable::STPLinkerInformation LinkInfo;
+		//The complete program after linking
+		SuperTerrainPlus::STPDeviceRuntimeProgram::STPSmartModule GeneratorProgram;
+		//Lowered name for each object file
+		SuperTerrainPlus::STPDeviceRuntimeBinary::STPLoweredName BiomefieldName, SplatmapName;
 
 		//all parameters for the noise generator, stored on host, passing value to device
 		SuperTerrainPlus::STPAlgorithm::STPPermutationGenerator SimplexPermutation;
 
 		//The chunk setting of each map used by each generator.
 		const glm::uvec2 Dimension, RenderingRange;
-
-		/**
-		 * @brief Compile source codes that contain shared data.
-		*/
-		void setupCommonGenerator();
-
-		/**
-		 * @brief Compile source codes for biomefield generator
-		*/
-		void setupBiomefieldGenerator();
-
-		/**
-		 * @brief Compile source codes for splatmap generator.
-		*/
-		void setupSplatmapGenerator();
-
-		/**
-		 * @brief Finish the program by linking all source codes into a complete program.
-		 * Any linking error will cause the program to terminate with error message printed to standard error stream.
-		*/
-		void finalise();
-
-		/**
-		 * @brief STPCompilerLog contains allocated memory for compiler and linker logs
-		*/
-		struct STPCompilerLog {
-		public:
-
-			constexpr static unsigned int LogSize = 1024u;
-
-			//Various of logs
-			char linker_info_log[LogSize], linker_error_log[LogSize];
-			char module_info_log[LogSize], module_error_log[LogSize];
-
-		};
-
-		/**
-		 * @brief Get common compiler options.
-		 * Include directories are set to algorithm device library and core engine
-		 * @return A copy of source information with default compiler options set, such that the returned source info does not affect the default settings.
-		*/
-		STPRuntimeCompilable::STPSourceInformation getCompilerOptions() const;
-
-		/**
-		 * @brief Get the common linker options.
-		 * It also initialises linker message and error report.
-		 * @param log The memory to allocated memory for returning linker logs.
-		 * @return A copy of linker information with default options set
-		*/
-		STPRuntimeCompilable::STPLinkerInformation getLinkerOptions(STPCompilerLog&) const;
 
 	public:
 
@@ -114,13 +61,10 @@ namespace STPDemo {
 		 * @return The module to the program
 		*/
 		CUmodule getProgram() const;
-
-		/**
-		 * @brief Get the dictionary which contains all lowered name for a particular source.
-		 * @param name The name of the source code.
-		 * @return The pointer to the source lowered name dictionary
-		*/
-		const STPRuntimeCompilable::STPLoweredName& getLoweredNameDictionary(const std::string&) const;
+		
+		//Get the lowered names for each program.
+		const SuperTerrainPlus::STPDeviceRuntimeBinary::STPLoweredName& getBiomefieldName() const;
+		const SuperTerrainPlus::STPDeviceRuntimeBinary::STPLoweredName& getSplatmapName() const;
 
 	};
 

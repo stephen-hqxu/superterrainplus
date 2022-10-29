@@ -6,12 +6,9 @@
 //Setting
 #include "../../Environment/STPStarfieldSetting.h"
 //Environment Renderer
-#include "../STPSceneObject.h"
+#include "../STPSceneObject.hpp"
 #include "STPSkybox.h"
 #include "../Light/STPLightSpectrum.h"
-
-//Timer
-#include <chrono>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -20,7 +17,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * It utilises simple grid division algorithm and assign a random likelihood value for each grid,
 	 * and generates stars with soft falloff from the centre of the grid.
 	*/
-	class STP_REALISM_API STPStarfield : private STPSkybox, public STPSceneObject::STPEnvironmentObject {
+	class STP_REALISM_API STPStarfield : public STPSceneObject::STPEnvironmentObject, public STPSceneObject::STPAnimatedObject {
 	public:
 
 		/**
@@ -40,20 +37,13 @@ namespace SuperTerrainPlus::STPRealism {
 
 	private:
 
-		//controls the animation of stars
-		std::chrono::time_point<std::chrono::steady_clock> ShineTimeStart;
+		STPSkybox StarfieldBox;
 
 		//and a colourful starfield
 		const STPLightSpectrum StarlightSpectrum;
 
 		//Recorded uniform locations
 		STPOpenGL::STPint ShineTimeLocation;
-
-		/**
-		 * @brief Update the current star shining timer in shader.
-		 * @param time The current time.
-		*/
-		void updateShineTime(double) const;
 
 	public:
 
@@ -62,7 +52,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param starfield_model Specifies the starfield generation model to control the behaviour.
 		 * @param starfield_init The initialiser for the starfield renderer.
 		*/
-		STPStarfield(const STPStarfieldModel&, const STPSkyboxInitialiser&);
+		STPStarfield(const STPStarfieldModel&, const STPSkybox::STPSkyboxInitialiser&);
 
 		STPStarfield(const STPStarfield&) = delete;
 
@@ -80,6 +70,8 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param rng_seed Specifies a seed used for an internal hash function.
 		*/
 		void setStarfield(const STPEnvironment::STPStarfieldSetting&, unsigned int);
+
+		void updateAnimationTimer(double) override;
 
 		void render() const override;
 
