@@ -10,6 +10,7 @@
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 
 using glm::uvec2;
 using glm::vec2;
@@ -20,7 +21,7 @@ using glm::vec4;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto BSDFShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPBidirectionalScattering", ".frag");
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPBidirectionalScattering", ".frag");
 
 STPBidirectionalScattering::STPBidirectionalScattering(const STPScreen::STPScreenInitialiser& screen_init) : BufferDimension(uvec2(0u)) {
 	/* --------------------------------------- build shader ----------------------------------------------- */

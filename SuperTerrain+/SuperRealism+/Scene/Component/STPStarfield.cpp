@@ -6,13 +6,14 @@
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 
 #include <glad/glad.h>
 
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto StarfieldShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPStarfield", ".frag");
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPStarfield", ".frag");
 
 STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSkybox::STPSkyboxInitialiser& starfield_init) :
 	StarlightSpectrum(std::move(*starfield_model.StarlightSpectrum)) {

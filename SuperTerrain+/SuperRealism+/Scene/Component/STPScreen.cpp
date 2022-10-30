@@ -10,6 +10,7 @@
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -26,7 +27,7 @@ using glm::vec4;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto ScreenShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPScreen", ".vert");
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPScreen", ".vert");
 
 constexpr static array<signed char, 16ull> QuadVertex = {
 	//Position		//TexCoord

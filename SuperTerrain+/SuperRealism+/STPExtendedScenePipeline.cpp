@@ -15,6 +15,7 @@
 #include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 #include <SuperRealism+/Utility/STPLogHandler.hpp>
 //Engine
 #include <SuperTerrain+/Utility/STPThreadPool.h>
@@ -78,8 +79,12 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static size_t mDefaultLogSize = size_t { 1024 };
 
 inline static void loadExtendedShaderOption(unsigned int arch, SuperTerrainPlus::STPDeviceRuntimeBinary::STPSourceInformation& info) {
+	using SuperTerrainPlus::STPStringUtility::concatCharArray;
 	//For performance consideration, always build with optimisation turned on;
 	//we are not going to debug runtime compiled binary anyway.
+	constexpr static auto optixIncludeOption = concatCharArray("-I ", STPRealismInfo::OptiXInclude);
+	constexpr static auto optixSDKOption = concatCharArray("-I ", STPRealismInfo::OptiXSDK);
+
 	info.Option
 		["-arch=compute_" + to_string(arch)]
 		["-std=c++17"]
@@ -87,8 +92,8 @@ inline static void loadExtendedShaderOption(unsigned int arch, SuperTerrainPlus:
 		["--use_fast_math"]
 		["-default-device"]
 		//include directory
-		["-I " + string(STPRealismInfo::OptiXInclude)]
-		["-I " + string(STPRealismInfo::OptiXSDK)];
+		[optixIncludeOption.data()]
+		[optixSDKOption.data()];
 }
 
 inline static void deviceContextDebugCallback(unsigned int level, const char* tag, const char* message, void* cbdata) {
@@ -660,7 +665,7 @@ class STPExtendedScenePipeline::STPScreenSpaceRayIntersection {
 private:
 
 	constexpr static auto SSRIShaderFilename =
-		STPFile::generateFilename(STPRealismInfo::ShaderPath, "/RayTracing/STPScreenSpaceRayIntersection", ".cu");
+		STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/RayTracing/STPScreenSpaceRayIntersection", ".cu");
 	//shader record type
 	typedef STPSbtRecord<void> STPLaunchedRayRecord;
 	typedef STPSbtRecord<STPScreenSpaceRayIntersectionData::STPPrimitiveHitData> STPPrimitiveHitRecord;

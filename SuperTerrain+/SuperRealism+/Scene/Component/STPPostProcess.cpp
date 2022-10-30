@@ -3,6 +3,7 @@
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -24,7 +25,7 @@ using glm::vec4;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto PostProcessShaderFilename = 
-	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPPostProcess", ".frag");
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPPostProcess", ".frag");
 
 STPPostProcess::STPToneMappingCurve::STPToneMappingCurve(STPToneMappingFunction function) : Function(function) {
 

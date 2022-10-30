@@ -7,6 +7,7 @@
 #include <SuperTerrain+/Exception/STPInvalidArgument.h>
 
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -20,7 +21,7 @@ using std::shared_ptr;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto SkyboxShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPSkybox", ".vert");
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPSkybox", ".vert");
 
 constexpr static array<signed char, 24ull> BoxVertex = { 
 	-1, -1, -1, //origin

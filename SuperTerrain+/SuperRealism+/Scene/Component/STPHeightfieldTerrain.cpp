@@ -9,6 +9,7 @@
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 //Indirect
 #include <SuperRealism+/Utility/STPIndirectCommand.hpp>
 
@@ -42,10 +43,10 @@ using glm::value_ptr;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static auto HeightfieldTerrainShaderFilename = SuperTerrainPlus::STPFile::generateFilename(
+constexpr static auto HeightfieldTerrainShaderFilename = SuperTerrainPlus::STPStringUtility::generateFilename(
 	STPRealismInfo::ShaderPath, "/STPHeightfieldTerrain", ".vert", ".tesc", ".tese", ".frag");
 //geometry shader is only used in shadow pass
-constexpr static auto HeightfieldTerrainShadowShaderFilename = SuperTerrainPlus::STPFile::generateFilename(
+constexpr static auto HeightfieldTerrainShadowShaderFilename = SuperTerrainPlus::STPStringUtility::generateFilename(
 	STPRealismInfo::ShaderPath, "/STPHeightfieldTerrain", ".geom");
 
 constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {

@@ -6,11 +6,10 @@
 //IO
 #include <fstream>
 #include <sstream>
-#include <streambuf>
 
 using std::string;
 using std::ifstream;
-using std::stringstream;
+using std::ostringstream;
 using std::istreambuf_iterator;
 
 using namespace SuperTerrainPlus;
@@ -21,7 +20,7 @@ string STPFile::read(const char* filename) {
 	ifstream fileIO(filename, ios::in);
 	if (!fileIO.good()) {
 		//cannot open the file
-		stringstream msg;
+		ostringstream msg;
 		msg << "File \'" << filename << "\' cannot be opened" << std::endl;
 		throw STPException::STPSerialisationError(msg.str().c_str());
 	}

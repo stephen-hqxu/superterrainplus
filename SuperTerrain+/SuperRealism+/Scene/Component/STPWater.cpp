@@ -5,6 +5,7 @@
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 
 #include <SuperRealism+/Object/STPShaderManager.h>
 
@@ -25,10 +26,10 @@ using glm::value_ptr;
 using namespace SuperTerrainPlus::STPRealism;
 
 //Water shader shares a majority part with the terrain shader.
-constexpr static auto WaterShaderFilename = SuperTerrainPlus::STPFile::generateFilename(
+constexpr static auto WaterShaderFilename = SuperTerrainPlus::STPStringUtility::generateFilename(
 	STPRealismInfo::ShaderPath, "/STPHeightfieldTerrain", ".tesc", ".tese");
-constexpr static auto WaterFragmentShaderFilename = SuperTerrainPlus::STPFile::generateFilename(
-	STPRealismInfo::ShaderPath, "/STPWater", ".frag");
+constexpr static auto WaterFragmentShaderFilename =
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPWater", ".frag");
 constexpr static size_t WaterShaderCount = 3ull;
 
 STPWater::STPWater(const STPHeightfieldTerrain& terrain, const STPBiomeWaterLevel& water_level) :

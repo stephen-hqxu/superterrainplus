@@ -6,6 +6,7 @@
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 
 //GLM
 #include <glm/trigonometric.hpp>
@@ -36,8 +37,10 @@ using std::make_tuple;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-constexpr static auto SkyShaderFilename = SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPSun", ".frag");
-constexpr static auto SpectrumShaderFilename = SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPSunSpectrum", ".comp");
+constexpr static auto SkyShaderFilename =
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPSun", ".frag");
+constexpr static auto SpectrumShaderFilename =
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPSunSpectrum", ".comp");
 
 STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundledData<vec3>& spectrum_domain,
 	const STPSkybox::STPSkyboxInitialiser& sun_init) :

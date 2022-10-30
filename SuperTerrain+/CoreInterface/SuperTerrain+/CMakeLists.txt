@@ -44,12 +44,13 @@ Utility/Memory/STPSmartDeviceObject.h
 Utility/STPDatabaseErrorHandler.hpp
 Utility/STPDeviceErrorHandler.hpp
 Utility/STPFile.h
-Utility/STPFile.inl
 Utility/STPGenericErrorHandlerBlueprint.hpp
 Utility/STPHashCombine.h
 Utility/STPHashCombine.inl
 Utility/STPNullablePrimitive.h
 Utility/STPNullablePrimitive.inl
+Utility/STPStringUtility.h
+Utility/STPStringUtility.inl
 Utility/STPThreadPool.h
 Utility/STPThreadPool.inl
 # /World/Chunk

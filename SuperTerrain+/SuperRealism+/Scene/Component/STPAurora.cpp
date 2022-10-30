@@ -5,6 +5,7 @@
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 
 #include <glad/glad.h>
 
@@ -20,7 +21,7 @@ using glm::value_ptr;
 using namespace SuperTerrainPlus::STPRealism;
 
 static constexpr auto AuroraShaderFilename =
-	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPAurora", ".frag");
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPAurora", ".frag");
 
 STPAurora::STPAurora(STPLightSpectrum&& aurora_spectrum, const STPSkybox::STPSkyboxInitialiser& aurora_init) : AuroraSpectrum(std::move(aurora_spectrum)) {
 	const char* const aurora_source_file = AuroraShaderFilename.data();

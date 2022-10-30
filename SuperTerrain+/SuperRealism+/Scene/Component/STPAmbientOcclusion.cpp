@@ -7,6 +7,7 @@
 
 //File Reader
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -37,7 +38,7 @@ using glm::value_ptr;
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto SSAOShaderFilename = 
-	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPAmbientOcclusion", ".frag");
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPAmbientOcclusion", ".frag");
 
 STPAmbientOcclusion::STPOcclusionKernelInstance::STPOcclusionKernelInstance
 	(const STPEnvironment::STPOcclusionKernelSetting& kernel_setting, STPOcclusionAlgorithm algorithm) : Occluder(algorithm), Kernel(kernel_setting) {

@@ -16,6 +16,7 @@
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 //Hash
 #include <SuperTerrain+/Utility/STPHashCombine.h>
 
@@ -286,7 +287,7 @@ private:
 
 	//this shader is used to do some additional operations during depth rendering
 	constexpr static auto ShadowDepthPassShaderFilename =
-		STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPShadowDepthPass", ".frag");
+		STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPShadowDepthPass", ".frag");
 
 	//shadow map texture properties
 	GLsizei ShadowLevel = 1;
@@ -451,7 +452,7 @@ private:
 	STPScreen::STPSimpleScreenFrameBuffer ExtinctionEnvironmentCache;
 
 	constexpr static auto DeferredShaderFilename =
-		STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPDeferredShading", ".frag");
+		STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPDeferredShading", ".frag");
 
 	/**
 	 * @brief Draw a texture onto a screen.

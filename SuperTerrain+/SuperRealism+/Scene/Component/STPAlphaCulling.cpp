@@ -3,6 +3,7 @@
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -10,7 +11,7 @@
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto AlphaCullingFilename =
-	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPAlphaCulling", ".frag");
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPAlphaCulling", ".frag");
 
 STPAlphaCulling::STPAlphaCulling(STPCullComparator comp, float limit, const STPScreen::STPScreenInitialiser& screen_init) {
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;

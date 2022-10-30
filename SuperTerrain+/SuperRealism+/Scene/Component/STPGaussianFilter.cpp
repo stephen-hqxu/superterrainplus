@@ -6,6 +6,7 @@
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 
 //System
 #include <memory>
@@ -31,7 +32,7 @@ using std::transform;
 using namespace SuperTerrainPlus::STPRealism;
 
 static constexpr auto FilterShaderFilename = 
-	SuperTerrainPlus::STPFile::generateFilename(STPRealismInfo::ShaderPath, "/STPGaussianFilterKernel", ".frag");
+	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPGaussianFilterKernel", ".frag");
 
 /**
  * @brief Calculate the filter kernel extent length based on the radius.
