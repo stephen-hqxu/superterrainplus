@@ -14,7 +14,7 @@ struct TriNoiseSetting{
 	mat2 octRot;
 	float Spd;
 	float C, maxInt;
-	unsigned int Oct;
+	uint Oct;
 };
 
 struct AuroraSetting{
@@ -23,7 +23,7 @@ struct AuroraSetting{
 	//y: fading end, altitude below which aurora has zero intensity
 	vec2 Fade;
 	float LumMul;
-	unsigned int Iter;
+	uint Iter;
 };
 
 //Input

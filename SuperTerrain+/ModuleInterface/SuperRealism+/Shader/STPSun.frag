@@ -8,7 +8,7 @@ layout(early_fragment_tests) in;
 //Input
 in vec3 FragRayDirection;
 //Output
-layout (location = 0) out vec4 FragColor;
+layout(location = 0) out vec4 FragColor;
 
 uniform AtmosphereSetting Atmo;
 //position of the sun

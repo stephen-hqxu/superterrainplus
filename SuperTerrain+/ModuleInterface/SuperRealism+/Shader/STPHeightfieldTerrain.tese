@@ -7,7 +7,7 @@
 #include </Common/STPCameraInformation.glsl>
 
 //patches input
-layout (triangles, fractional_odd_spacing, ccw) in;
+layout(triangles, fractional_odd_spacing, ccw) in;
 
 #define STP_WATER 0
 
@@ -34,13 +34,13 @@ out VertexTES{
 
 uniform float WaveHeight;
 uniform WaveFunction WaterWave;
-uniform unsigned int WaveGeometryIteration;
+uniform uint WaveGeometryIteration;
 uniform float WaveTime;
 #else
-layout (binding = 0) uniform sampler2D Heightfield;
+layout(binding = 0) uniform sampler2D Heightfield;
 
 uniform float Altitude;
-uniform unsigned int TerrainRenderPass;
+uniform uint TerrainRenderPass;
 #endif//STP_WATER
 
 //Functions
@@ -60,7 +60,7 @@ void main(){
 	tes_out.texCoord = toCartesian2D(tes_in[0].texCoord, tes_in[1].texCoord, tes_in[2].texCoord);
 	//our plane is always pointing upwards
 	//displace the terrain, moving the vertices upward
-	gl_Position.y += textureLod(Heightfield, tes_out.texCoord, 0).r * Altitude;
+	gl_Position.y += textureLod(Heightfield, tes_out.texCoord, 0.0f).r * Altitude;
 #endif
 	
 	tes_out.position_world = gl_Position.xyz;

@@ -4,9 +4,6 @@
 
 layout(early_fragment_tests) in;
 
-//depth reconstruction to view space
-#define EMIT_DEPTH_RECON_VIEW_IMPL
-#define EMIT_VIEW_TO_NDC_IMPL
 #include </Common/STPCameraInformation.glsl>
 
 /* ------------------- algorithm control ---------------------- */
@@ -18,7 +15,7 @@ layout(early_fragment_tests) in;
 uniform vec3 KernelSample[AO_KERNEL_SAMPLE_SIZE];
 #elif AO_ALGORITHM == 1
 #define TWO_PI 6.283185307179586476925286766559
-uniform unsigned int DirectionStep, RayStep;
+uniform uint DirectionStep, RayStep;
 #endif
 
 uniform float KernelRadius;
@@ -28,13 +25,13 @@ uniform float SampleDepthBias;
 //Input
 in vec2 FragTexCoord;
 //Output
-layout (location = 0) out float OcclusionFactorOutput;
+layout(location = 0) out float OcclusionFactorOutput;
 
 //Geometry buffer
-layout (binding = 0) uniform sampler2D GeoDepth;
-layout (binding = 1) uniform sampler2D GeoNormal;
+layout(binding = 0) uniform sampler2D GeoDepth;
+layout(binding = 1) uniform sampler2D GeoNormal;
 //Noise
-layout (bindless_sampler) uniform sampler2D RandomRotationVector;
+layout(bindless_sampler) uniform sampler2D RandomRotationVector;
 //tile the noise texture over screen based on screen dimension to
 //make tweaking the effect easier
 uniform vec2 RotationVectorScale;
@@ -45,9 +42,9 @@ float computeOcclusion(vec3, vec3);
 
 void main(){
 	//get inputs
-	const vec3 position_view = fragDepthReconstruction(textureLod(GeoDepth, FragTexCoord, 0).r, FragTexCoord),
+	const vec3 position_view = fragDepthReconstructionView(textureLod(GeoDepth, FragTexCoord, 0.0f).r, FragTexCoord),
 		//our normal in the G-Buffer is in world space, we need to convert it to view space
-		normal_view = normalize(Camera.ViewNormal * textureLod(GeoNormal, FragTexCoord, 0).rgb);
+		normal_view = normalize(Camera.ViewNormal * textureLod(GeoNormal, FragTexCoord, 0.0f).rgb);
 
 	//compute occlusion and write to output
 	OcclusionFactorOutput = computeOcclusion(position_view, normal_view);
@@ -58,7 +55,7 @@ void main(){
 vec3 viewSnapToGeometry(mat4x2 proj_xy, vec3 viewPos){
 	const vec2 position_ndc = fragViewToNDC(proj_xy, viewPos);
 	//get the geometry depth at this coordinate and return
-	return fragDepthReconstruction(textureLod(GeoDepth, position_ndc, 0).r, position_ndc);
+	return fragDepthReconstructionView(textureLod(GeoDepth, position_ndc, 0.0f).r, position_ndc);
 }
 
 float computeOcclusion(vec3 position_view, vec3 normal_view){
@@ -70,7 +67,7 @@ float computeOcclusion(vec3 position_view, vec3 normal_view){
 #if AO_ALGORITHM == 0
 	/* ========================================== Screen-Space Ambient Occlusion ========================================= */
 	//the random vector rotates normal around z-axis so the z component is zero
-	const vec3 randomVec = normalize(vec3(textureLod(RandomRotationVector, FragTexCoord * RotationVectorScale, 0).rg, 0.0f)),
+	const vec3 randomVec = normalize(vec3(textureLod(RandomRotationVector, FragTexCoord * RotationVectorScale, 0.0f).rg, 0.0f)),
 		//create TBN change of basis matrix: from tangent-space to view-space
 		tangent = normalize(randomVec - normal_view * dot(randomVec, normal_view)),
 		bitangent = cross(normal_view, tangent);
@@ -96,7 +93,7 @@ float computeOcclusion(vec3 position_view, vec3 normal_view){
 	/* ============================================== Horizon-Based Ambient Occlusion =========================================== */
 	//the first two components of the random vector is a rotation on screen-space (2D) while third component is just a random number
 	//to determine the starting point of ray marching.
-	const vec3 randomVec = textureLod(RandomRotationVector, FragTexCoord * RotationVectorScale, 0).rgb;
+	const vec3 randomVec = textureLod(RandomRotationVector, FragTexCoord * RotationVectorScale, 0.0f).rgb;
 	//extract data
 	const vec2 randomRotation = normalize(randomVec.xy);
 	const float randomRayStart = randomVec.z;
@@ -109,7 +106,7 @@ float computeOcclusion(vec3 position_view, vec3 normal_view){
 		negInvR2 = -1.0f / (KernelRadius * KernelRadius);
 
 	//scan through the hemisphere above the horizon
-	for(unsigned int d = 0u; d < DirectionStep; d++){
+	for(uint d = 0u; d < DirectionStep; d++){
 		const float elevation = delta * d,
 			cos_elev = cos(elevation),
 			sin_elev = sin(elevation);
@@ -124,7 +121,7 @@ float computeOcclusion(vec3 position_view, vec3 normal_view){
 		//jitter starting sample within the first step
 		float rayLength = randomRayStart * stepSize;
 		//for the current ray direction, ray march to the object
-		for(unsigned int r = 0u; r < RayStep; r++){
+		for(uint r = 0u; r < RayStep; r++){
 			//proceed to the next sampling point on the ray
 			//We are scanning through the horizon which is parallel to the view plane, such that z-component is zero,
 			//and advances to the next sampling point along the ray direction.

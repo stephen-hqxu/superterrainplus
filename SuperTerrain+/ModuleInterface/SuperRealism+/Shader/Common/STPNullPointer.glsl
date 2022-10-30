@@ -3,7 +3,7 @@
 
 //Check if a pointer is null.
 //To use pointer in a shading language, certain extensions are required.
-bool isNull(void* restrict ptr) {
+bool isNull(const void* const ptr) {
 	return unpackPtr(ptr) == uvec2(0u);
 }
 

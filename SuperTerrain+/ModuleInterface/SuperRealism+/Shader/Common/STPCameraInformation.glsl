@@ -29,27 +29,23 @@ layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 } Camera;
 
 /* --------------------------------------------------------------------- */
-//Define this macro to use implementation to reconstruct depth to position
-#if defined(EMIT_DEPTH_RECON_WORLD_IMPL) || defined(EMIT_DEPTH_RECON_VIEW_IMPL)
-#ifdef EMIT_DEPTH_RECON_WORLD_IMPL
-#define DEPTH_CONVERSION_MAT Camera.InvProjectionView
-#elif defined(EMIT_DEPTH_RECON_VIEW_IMPL)
-#define DEPTH_CONVERSION_MAT Camera.InvProjection
-#endif
-
 //Reconstruct fragment world/view position from fragment depth using camera matrix
 //depth should have range [0, 1]
 //fragment texture coordinate should also be in [0, 1] range
-vec3 fragDepthReconstruction(float frag_depth, vec2 frag_coord) {
-	const vec4 position_scaled = DEPTH_CONVERSION_MAT * STP_DEPTH_BUFFER_TO_NDC(frag_coord, frag_depth);
+vec3 fragDepthReconstructionGeneric(mat4 inv_transform, float frag_depth, vec2 frag_coord) {
+	const vec4 position_scaled = inv_transform * STP_DEPTH_BUFFER_TO_NDC(frag_coord, frag_depth);
 	//perform perspective division to un-scale the projection
 	return position_scaled.xyz / position_scaled.w;
 }
 
-#undef DEPTH_CONVERSION_MAT
-#endif//EMIT_DEPTH_RECON_WORLD_IMPL || EMIT_DEPTH_RECON_VIEW_IMPL
+vec3 fragDepthReconstructionWorld(float frag_depth, vec2 frag_coord) {
+	return fragDepthReconstructionGeneric(Camera.InvProjectionView, frag_depth, frag_coord);
+}
 
-#ifdef EMIT_VIEW_TO_NDC_IMPL
+vec3 fragDepthReconstructionView(float frag_depth, vec2 frag_coord) {
+	return fragDepthReconstructionGeneric(Camera.InvProjection, frag_depth, frag_coord);
+}
+
 //convert a view position to 2D normalised device coordinate
 vec2 fragViewToNDC(mat4x2 projection_xy, vec3 position_view) {
 	//convert from view to clip space first
@@ -58,9 +54,7 @@ vec2 fragViewToNDC(mat4x2 projection_xy, vec3 position_view) {
 	//range convert from [-1, 1] to [0, 1]
 	return (position_clip / (Camera.useOrtho ? 1.0f : -position_view.z)) * 0.5f + 0.5f;
 }
-#endif//EMIT_VIEW_TO_NDC_IMPL
 
-#ifdef EMIT_LINEARISE_DEPTH_IMPL
 float lineariseDepth(float depth) {
 	//depth remains in the range [0, 1] in reversed, so convert it to [1, 0]
 	//both exchanging far and near values and flipping the depth range works
@@ -69,7 +63,5 @@ float lineariseDepth(float depth) {
 	return Camera.LinearDepthFactor.x / (Camera.Far - (1.0f - depth) * Camera.LinearDepthFactor.y);
 	//linear depth is positive
 }
-#endif//EMIT_LINEARISE_DEPTH_IMPL
 #endif//__cplusplus
-
 #endif//_STP_CAMERA_INFORMATION_GLSL_

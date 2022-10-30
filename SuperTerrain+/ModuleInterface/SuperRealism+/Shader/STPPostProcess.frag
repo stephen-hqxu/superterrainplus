@@ -26,7 +26,7 @@ in vec2 FragTexCoord;
 //Output
 out vec4 FragColor;
 
-layout (binding = 0) uniform sampler2D ScreenBuffer;
+layout(binding = 0) uniform sampler2D ScreenBuffer;
 
 uniform float Gamma;
 
@@ -39,7 +39,7 @@ vec3 toneMapping(vec3);
 #endif//TONE_MAPPING
 
 void main(){
-	vec3 ScreenColor = textureLod(ScreenBuffer, FragTexCoord, 0).rgb;
+	vec3 ScreenColor = textureLod(ScreenBuffer, FragTexCoord, 0.0f).rgb;
 
 	//Tone Mapping
 #if TONE_MAPPING

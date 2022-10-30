@@ -10,7 +10,7 @@
 #define TWO_PI 6.283185307179586476925286766559
 
 //patches output
-layout (vertices = 3) out;
+layout(vertices = 3) out;
 
 //Water plane tessellation shader shares a majority part with the terrain shader.
 //Select to use the water shader routine.
@@ -40,24 +40,24 @@ out VertexTCS{
 
 #if STP_WATER
 //The texture should remain the same as the terrain on which the water is rendered.
-layout (binding = 0) uniform usampler2D Biomemap;
-layout (binding = 1) uniform sampler2D Heightmap;
+layout(binding = 0) uniform usampler2D Biomemap;
+layout(binding = 1) uniform sampler2D Heightmap;
 //Water level acts as a lookup table, given biomeID as index, obtain the height of the water.
 //This lookup table should use nearest filtering and clamp to border.
-layout (bindless_sampler) uniform sampler1D WaterLevel;
+layout(bindless_sampler) uniform sampler1D WaterLevel;
 
 uniform TessellationSetting WaterTess;
 uniform float MinLevel;
 
 //Water plane culling test
-uniform unsigned int SampleCount;
+uniform uint SampleCount;
 uniform float SampleRadiusMul;
 uniform float Altitude;
 #else
 //There are two terrain tessellation settings, one for regular rendering, the other low quality one is for depth rendering.
 uniform TessellationSetting Tess[2];
 //0: regular rendering; 1: depth pass
-uniform unsigned int TerrainRenderPass;
+uniform uint TerrainRenderPass;
 #endif//STP_WATER
 
 //Calculate the level-of-detail for the mesh
@@ -93,7 +93,7 @@ void main(){
 		triCentriod /= 3.0f;
 
 		//calculate the starting and ending sample for the current invocation
-		const unsigned int invocSampleCount = SampleCount / 3u,
+		const uint invocSampleCount = SampleCount / 3u,
 			invocStart = gl_InvocationID * invocSampleCount,
 			//make sure the last invocation grabs all the remaining samples
 			invocEnd = gl_InvocationID == 2u ? SampleCount : (gl_InvocationID + 1u) * invocSampleCount;
@@ -107,8 +107,8 @@ void main(){
 			const vec2 samplePos = SampleRadiusMul * vec2(cos(currentAngle), sin(currentAngle)) + triCentriod;
 
 			//get the water level at the current texture coordinate
-			const uint biome = textureLod(Biomemap, samplePos, 0).r;
-			const float sampleLevel = textureLod(WaterLevel, 1.0f * biome / (1.0f * textureSize(WaterLevel, 0)), 0).r;
+			const uint biome = textureLod(Biomemap, samplePos, 0.0f).r;
+			const float sampleLevel = textureLod(WaterLevel, 1.0f * biome / (1.0f * textureSize(WaterLevel, 0)), 0.0f).r;
 
 			//find the max water level among all samples
 			//Here we assume all samples only lie within a single watery biome, or alternatively,
@@ -116,7 +116,7 @@ void main(){
 			//TODO: develop about a better water plane placement algorithm in the future to handle this case.
 			patchLevel = max(patchLevel, sampleLevel);
 			//if we found any sample goes above min level or the terrain, water plane should not be culled
-			WaterCulled[gl_InvocationID] &= uint8_t(sampleLevel < max(MinLevel, textureLod(Heightmap, samplePos, 0).r));
+			WaterCulled[gl_InvocationID] &= uint8_t(sampleLevel < max(MinLevel, textureLod(Heightmap, samplePos, 0.0f).r));
 		}
 
 		//Invocation communication, find out if the water plane should be culled, 

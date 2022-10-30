@@ -12,7 +12,7 @@ struct StarfieldSetting{
 	float spdShine;
 	float LumMul;
 	float MinAlt;
-	unsigned int Oct;
+	uint Oct;
 };
 
 //Input
@@ -22,7 +22,7 @@ layout(location = 0) out vec4 FragColor;
 
 layout(bindless_sampler) uniform sampler1D StarColorSpectrum;
 
-uniform unsigned int RandomSeed;
+uniform uint RandomSeed;
 uniform StarfieldSetting Star;
 //control star shining
 uniform float ShineTime;

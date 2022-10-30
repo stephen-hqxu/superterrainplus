@@ -7,7 +7,7 @@ layout(location = 1) out vec3 gFragNormal;
 layout(location = 2) out float gFragRoughness;
 layout(location = 3) out float gFragAO;
 //The following G-Buffers are optional, and will be omitted by GL automatically if there is no attachment
-layout(location = 4) out unsigned int gFragMaterial;
+layout(location = 4) out uint gFragMaterial;
 //depth is written by fragment shader automatically
 
 //It is better to keep the normal vector normalised, however it will be normalised by GL anyway

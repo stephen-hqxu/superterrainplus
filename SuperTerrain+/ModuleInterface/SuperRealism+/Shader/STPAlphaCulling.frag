@@ -21,7 +21,7 @@ uniform float Lim;
 layout(binding = 0) uniform sampler2D ColorInput;
 
 void main(){
-	const float alpha = textureLod(ColorInput, FragTexCoord, 0).a;
+	const float alpha = textureLod(ColorInput, FragTexCoord, 0.0f).a;
 
 #if USE_DUAL_EXPRESSIONS
 	if((alpha ALPHA_COMPARATOR_A LimA) ALPHA_CONNECTOR (alpha ALPHA_COMPARATOR_B LimB)){

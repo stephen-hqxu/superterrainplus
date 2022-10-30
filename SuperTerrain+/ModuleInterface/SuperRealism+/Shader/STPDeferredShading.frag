@@ -25,10 +25,10 @@ layout(location = 0) out vec4 FragColor;
 
 struct DirectionalShadow{
 	layout(bindless_sampler) SHADOW_MAP_FORMAT CascadedShadowMap;
-	unsigned int LightSpaceDim;
+	uint LightSpaceDim;
 	//divisor size is light space size minus 1
-	readonly mat4* restrict LightMatrix;
-	readonly float* restrict Divisor;
+	const mat4* LightMatrix;
+	const float* Divisor;
 };
 
 struct ShadowMapFilter{
@@ -70,19 +70,19 @@ struct AmbientLight{
 	layout(bindless_sampler) sampler1D AmbSpec;
 	//ambient light never casts shadow
 };
-uniform AmbientLight* AmbientLightList[AMBIENT_LIGHT_CAPACITY];
+uniform const AmbientLight* AmbientLightList[AMBIENT_LIGHT_CAPACITY];
 
 struct DirectionalLight{
 	vec3 Dir;
 	float SpecCoord;
 	float Kd, Ks;
 	layout(bindless_sampler) sampler1D DirSpec;
-	readonly DirectionalShadow* restrict DirShadow;
+	const DirectionalShadow* DirShadow;
 };
-uniform DirectionalLight* DirectionalLightList[DIRECTIONAL_LIGHT_CAPACITY];
+uniform const DirectionalLight* DirectionalLightList[DIRECTIONAL_LIGHT_CAPACITY];
 
 //Record the actual size available in each light list
-uniform unsigned int AmbCount = 0u, 
+uniform uint AmbCount = 0u, 
 	DirCount = 0u;
 
 //Shading model selection
@@ -96,8 +96,6 @@ struct ShadingDescription{
 uniform ShadingDescription ShadingModel;
 
 /* ------------------------------------------------------------------------------------------------ */
-//enable depth reconstruction to world space
-#define EMIT_DEPTH_RECON_WORLD_IMPL
 #include </Common/STPCameraInformation.glsl>
 
 //Geometry Buffer
@@ -112,15 +110,15 @@ layout(bindless_sampler) uniform sampler2D GBuffer[5];
 uniform float ExtinctionBand;
 
 //Calculate light colour for the current fragment position
-vec3 calcAmbientLight(float, AmbientLight* restrict);
-vec3 calcDirectionalLight(vec3, vec3, vec3, float, DirectionalLight* restrict);
+vec3 calcAmbientLight(float, const AmbientLight*);
+vec3 calcDirectionalLight(vec3, vec3, vec3, float, const DirectionalLight*);
 //This function returns the light intensity multiplier in the range [0.0, 1.0], with 0.0 means no light and 1.0 means full light.
-float sampleShadow(vec3, float, DirectionalShadow* restrict);
+float sampleShadow(vec3, float, const DirectionalShadow*);
 
 void main(){
 	const float fragment_depth = textureLod(G_DEPTH, FragTexCoord, 0.0f).r;
 	//recover world position
-	const vec3 position_world = fragDepthReconstruction(fragment_depth, FragTexCoord),
+	const vec3 position_world = fragDepthReconstructionWorld(fragment_depth, FragTexCoord),
 		normal_world = normalize(textureLod(G_NORMAL, FragTexCoord, 0.0f).rgb);
 	//get material data from the G-buffer
 	const vec3 Albedo = textureLod(G_ALBEDO, FragTexCoord, 0.0f).rgb;
@@ -156,14 +154,14 @@ void main(){
 	FragColor = vec4(Albedo * LightColor, extinctionFactor);
 }
 
-vec3 calcAmbientLight(float ambient_strength, AmbientLight* restrict amb_light){
+vec3 calcAmbientLight(float ambient_strength, const AmbientLight* amb_light){
 	const vec3 indirect_color = textureLod(amb_light->AmbSpec, amb_light->SpecCoord, 0.0f).rgb;
 	const float ambient = ambient_strength * amb_light->Ka;
 
 	return indirect_color * ambient;
 }
 
-vec3 calcDirectionalLight(vec3 position_world, vec3 view_direction, vec3 normal, float shininess, DirectionalLight* restrict dir_light){
+vec3 calcDirectionalLight(vec3 position_world, vec3 view_direction, vec3 normal, float shininess, const DirectionalLight* dir_light){
 	const vec3 direct_color = textureLod(dir_light->DirSpec, dir_light->SpecCoord, 0.0f).rgb;
 
 	//diffuse
@@ -232,7 +230,7 @@ float filterShadow(SHADOW_MAP_FORMAT shadow_map, vec2 projection_coord, float fr
 #endif
 }
 
-vec3 determineShadowCoord(vec4 worldPos, mat4* restrict light_space){
+vec3 determineShadowCoord(vec4 worldPos, const mat4* light_space){
 	//convert world position to light clip space
 	const vec4 fraglightPos = *light_space * worldPos;
 	//perform perspective division and transform to [0, 1] range
@@ -242,13 +240,13 @@ vec3 determineShadowCoord(vec4 worldPos, mat4* restrict light_space){
 	return fragShadowCoord;
 }
 
-vec2 determineLayerFarBias(uint layer, uint cascadeCount, float* restrict div, float original_bias){
+vec2 determineLayerFarBias(uint layer, uint cascadeCount, const float* div, float original_bias){
 	const float layerFar = (layer == cascadeCount) ? Camera.Far : div[layer];
 	//scale the bias depends on how far the frustum plane is
 	return vec2(layerFar, original_bias / (layerFar * Filter.FarBias));
 }
 
-float sampleShadow(vec3 world_position, float rawBias, DirectionalShadow* restrict dir_shadow) {
+float sampleShadow(vec3 world_position, float rawBias, const DirectionalShadow* dir_shadow) {
 	//as we are dealing with directional light, w component is always 1.0
 	const vec4 fragworldPos = vec4(world_position, 1.0f);
 	//The shadow map is always a square

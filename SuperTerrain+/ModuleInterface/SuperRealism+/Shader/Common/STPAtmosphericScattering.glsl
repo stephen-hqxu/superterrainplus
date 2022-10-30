@@ -7,7 +7,7 @@ struct AtmosphereSetting {
 	float vAlt;
 	vec3 kRlh;
 	float kMie, shRlh, shMie, g;
-	unsigned int priStep, secStep;
+	uint priStep, secStep;
 };
 
 struct AtmosphereComposition {
@@ -54,7 +54,7 @@ AtmosphereComposition atmosphere(AtmosphereSetting atmo, vec3 sun_pos, vec3 ray_
 		pMie = 0.1193662073 * (1.0f - g_2) * mu_2_p1 / (pow(1.0f + g_2 - 2.0f * mu * atmo.g, 1.5f) * (2.0f + g_2));
 
 	//Primary ray sampling
-	for (unsigned int i = 0u; i < atmo.priStep; i++) {
+	for (uint i = 0u; i < atmo.priStep; i++) {
 		//Calculate primary ray sampling position
 		const vec3 priPos = ray_origin + ray_dir * (priTime + priStepSize * 0.5f);
 		//Calculate sample height
@@ -77,7 +77,7 @@ AtmosphereComposition atmosphere(AtmosphereSetting atmo, vec3 sun_pos, vec3 ray_
 		float secOdRlh = 0.0f, secOdMie = 0.0f;
 
 		//Secondary ray sampling
-		for (unsigned int j = 0u; j < atmo.secStep; j++) {
+		for (uint j = 0u; j < atmo.secStep; j++) {
 			//Calculate secondary ray sampling position
 			const vec3 secPos = priPos + sun_pos * (secTime + secStepSize * 0.5f);
 			//Calculate sample height

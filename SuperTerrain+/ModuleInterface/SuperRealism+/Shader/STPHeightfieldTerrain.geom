@@ -10,8 +10,8 @@
 //Define how many times the GS should run for this shadow pass
 #define HEIGHTFIELD_SHADOW_PASS_INVOCATION -1
 
-layout (triangles, invocations = HEIGHTFIELD_SHADOW_PASS_INVOCATION) in;
-layout (triangle_strip, max_vertices = 3) out;
+layout(triangles, invocations = HEIGHTFIELD_SHADOW_PASS_INVOCATION) in;
+layout(triangle_strip, max_vertices = 3) out;
 
 //Input, which is useless. Keep it here just for interface matching
 in VertexTES{

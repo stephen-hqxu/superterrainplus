@@ -4,7 +4,7 @@
 #include </Common/STPCameraInformation.glsl>
 
 //The position should be a unit cube
-layout (location = 0) in vec3 Position;
+layout(location = 0) in vec3 Position;
 
 //Output
 //A normalized ray direction on the skybox

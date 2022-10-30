@@ -29,9 +29,9 @@
 #define UNREGISTERED_TYPE 0
 
 struct TextureRegionSmoothSetting{
-	unsigned int Kr;
+	uint Kr;
 	float Ks;
-	unsigned int Ns;
+	uint Ns;
 };
 
 struct TextureRegionScaleSetting{
@@ -54,11 +54,11 @@ struct TerrainTextureData{
 };
 
 //Rule-based texturing system
-layout (bindless_sampler) uniform sampler2DArray RegionTexture[GROUP_COUNT];
+layout(bindless_sampler) uniform sampler2DArray RegionTexture[GROUP_COUNT];
 //Each pointer is pointing to a location to texture region.
 //The pointer might be null to indicate this region has no texture.
 //For the location data, x: array index, y: layer index
-uniform uvec2* RegionRegistry[REGISTRY_COUNT];
+uniform const uvec2* RegionRegistry[REGISTRY_COUNT];
 //each texture region will have one and only one scale setting
 uniform uvec3 RegionScaleRegistry[SPLAT_REGION_COUNT];
 
@@ -81,9 +81,9 @@ in VertexTES{
 //Output
 #include </Common/STPGeometryBufferWriter.glsl>
 
-layout (binding = 0) uniform sampler2D Heightmap;
-layout (binding = 1) uniform usampler2D Splatmap;
-layout (bindless_sampler) uniform sampler3D Noisemap;
+layout(binding = 0) uniform sampler2D Heightmap;
+layout(binding = 1) uniform usampler2D Splatmap;
+layout(bindless_sampler) uniform sampler3D Noisemap;
 
 //The number of visible chunk in x,z direction
 uniform uvec2 VisibleChunk;
@@ -171,14 +171,14 @@ void main(){
 }
 
 //dx_dy is the derivative used for sampling texture, the first two components store dx while the last two store dy.
-vec3 getRegionTexture(vec2 texture_uv, vec3 replacement, unsigned int region, unsigned int type, vec4 dx_dy){
+vec3 getRegionTexture(vec2 texture_uv, vec3 replacement, uint region, uint type, vec4 dx_dy){
 	const uint regionLoc = region * TYPE_STRIDE + type;
 	//invalid region
 	if(regionLoc >= REGISTRY_COUNT){
 		return replacement;
 	}
 
-	uvec2* restrict const textureLoc = RegionRegistry[regionLoc];
+	const uvec2* const textureLoc = RegionRegistry[regionLoc];
 	if(isNull(textureLoc)){
 		//this region has no texture data
 		return replacement;
@@ -189,7 +189,7 @@ vec3 getRegionTexture(vec2 texture_uv, vec3 replacement, unsigned int region, un
 	return textureGrad(selected_sampler, vec3(texture_uv, textureLoc->y), dx_dy.st, dx_dy.pq).rgb;
 }
 
-void sampleTerrainTexture(in out TerrainTextureData data, vec2 sampling_uv, unsigned int region, float weight, vec4 dx_dy){
+void sampleTerrainTexture(in out TerrainTextureData data, vec2 sampling_uv, uint region, float weight, vec4 dx_dy){
 #if ALBEDO != UNREGISTERED_TYPE
 	data.TerrainColor += getRegionTexture(sampling_uv, DEFAULT_ALBEDO, region, ALBEDO, dx_dy) * weight;
 #endif
@@ -224,7 +224,7 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 				//then we jittered each sampling points from the cell centre
 				//however we need to make sure samples are not jittered out of its cell
 				stratified_domain = clamp(domain + Kr_inv * 
-					textureLod(Noisemap, vec3(world_uv * SmoothSetting.Ns, (1.0f * i + j * SmoothSetting.Kr) * Kr_2_inv), 0).r, 0.0f, 1.0f);
+					textureLod(Noisemap, vec3(world_uv * SmoothSetting.Ns, (1.0f * i + j * SmoothSetting.Kr) * Kr_2_inv), 0.0f).r, 0.0f, 1.0f);
 			
 			//then we map a squared domain into a disk domain.
 			const float sq_domain_x = TWO_PI * stratified_domain.x;
@@ -236,7 +236,7 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 			//now apply the sampling points to the actual texture
 			const vec2 uv_offset = SmoothSetting.Ks * disk_domain / vec2(textureSize(Heightmap, 0).xy),
 				sampling_uv = fs_in.texCoord + uv_offset;
-			const uint region = textureLod(Splatmap, sampling_uv, 0).r;
+			const uint region = textureLod(Splatmap, sampling_uv, 0.0f).r;
 
 			//accumulate region count
 			if(region < SPLAT_REGION_COUNT){
@@ -355,7 +355,7 @@ vec3 calcTerrainNormal(){
 	//convolve a 3x3 kernel with Sobel operator
 	for(int a = 0; a < cell.length(); a++){
 		const vec2 uv_offset = unit_uv * ConvolutionKernelOffset[a];
-		cell[a] = textureLod(Heightmap, fs_in.texCoord + uv_offset, 0).r;
+		cell[a] = textureLod(Heightmap, fs_in.texCoord + uv_offset, 0.0f).r;
 	}
 
 	//apply filter, using GL-style normalmap

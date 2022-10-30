@@ -15,7 +15,7 @@ in VertexTES{
 uniform float WaveHeight;
 uniform WaveFunction WaterWave;
 //note that this is different from the iteration used in evaluation shader.
-uniform unsigned int WaveNormalIteration;
+uniform uint WaveNormalIteration;
 uniform float WaveTime;
 //controls the distance between each sample
 uniform float Epsilon;
@@ -24,7 +24,7 @@ uniform float Epsilon;
 #include </Common/STPCameraInformation.glsl>
 
 uniform vec3 Tint;
-uniform unsigned int WaterMaterialID;
+uniform uint WaterMaterialID;
 
 //compute the surface normal of the water at the current fragment
 vec3 calcWaterNormal(vec2);

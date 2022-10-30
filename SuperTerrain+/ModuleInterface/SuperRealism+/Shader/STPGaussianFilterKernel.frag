@@ -27,7 +27,6 @@ uniform float StandardDeviation;
 uniform float InvTwoVarSqr;
 uniform float Sharpness;
 
-#define EMIT_LINEARISE_DEPTH_IMPL
 #include </Common/STPCameraInformation.glsl>
 #endif
 
@@ -41,12 +40,12 @@ void main(){
 }
 
 float getImageValueOffset(vec2 uv_offset){
-	return textureLod(ImgInput, FragTexCoord + uv_offset, 0).r;
+	return textureLod(ImgInput, FragTexCoord + uv_offset, 0.0f).r;
 }
 
 #if GUASSIAN_KERNEL_VARIANT == 1
 float getImageDepthOffset(vec2 uv_offset){
-	return lineariseDepth(textureLod(ImgDepth, FragTexCoord + uv_offset, 0).r);
+	return lineariseDepth(textureLod(ImgDepth, FragTexCoord + uv_offset, 0.0f).r);
 }
 
 float getFilteredImageDepthOffset(float depth_centre, vec2 uv_offset){

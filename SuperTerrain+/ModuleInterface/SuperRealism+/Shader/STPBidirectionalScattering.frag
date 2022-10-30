@@ -2,9 +2,6 @@
 #extension GL_ARB_shading_language_include : require
 #extension GL_ARB_bindless_texture : require
 
-#define EMIT_DEPTH_RECON_VIEW_IMPL
-#define EMIT_VIEW_TO_NDC_IMPL
-#define EMIT_LINEARISE_DEPTH_IMPL
 #include </Common/STPCameraInformation.glsl>
 #include </Common/STPMaterialRegistry.glsl>
 
@@ -13,20 +10,20 @@ layout(early_fragment_tests) in;
 //Input
 in vec2 FragTexCoord;
 //Output
-layout (location = 0) out vec4 FragColor;
+layout(location = 0) out vec4 FragColor;
 
 uniform float MaxDistance;
 uniform float DepthBias;
-uniform unsigned int StepResolution, StepSize;
+uniform uint StepResolution, StepSize;
 
 //The buffer here should contain the *scene* without the object where BSDF is applied
-layout (bindless_sampler) uniform sampler2D SceneDepth;
-layout (bindless_sampler) uniform sampler2D SceneColor;
+layout(bindless_sampler) uniform sampler2D SceneDepth;
+layout(bindless_sampler) uniform sampler2D SceneColor;
 //currently our BSDF only applies to mirror surface so roughness is not needed
 //The buffer here should contain the *object* to be rendered with BSDF
-layout (binding = 0) uniform sampler2D ObjectDepth;
-layout (binding = 1) uniform sampler2D ObjectNormal;
-layout (binding = 2) uniform usampler2D ObjectMaterial;
+layout(binding = 0) uniform sampler2D ObjectDepth;
+layout(binding = 1) uniform sampler2D ObjectNormal;
+layout(binding = 2) uniform usampler2D ObjectMaterial;
 
 //find the closest hit on the geometry, returns the colour value at that point.
 vec3 findClosestHitColor(vec3, vec3, mat4x2);
@@ -35,12 +32,12 @@ float getLinearDepthAt(vec2);
 
 void main(){
 	//find the material for the current fragment
-	const unsigned int object_mat_id = textureLod(ObjectMaterial, FragTexCoord, 0.0f).r;
+	const uint object_mat_id = textureLod(ObjectMaterial, FragTexCoord, 0.0f).r;
 	const STPMaterialProperty object_mat = Material[object_mat_id];
 	const float object_depth = textureLod(ObjectDepth, FragTexCoord, 0.0f).r;
 	
 	//get the raw inputs
-	const vec3 position_view = fragDepthReconstruction(object_depth, FragTexCoord),
+	const vec3 position_view = fragDepthReconstructionView(object_depth, FragTexCoord),
 		normal_view = normalize(Camera.ViewNormal * textureLod(ObjectNormal, FragTexCoord, 0.0f).rgb),
 		//calculate reflection vector from input
 		incident_direction = normalize(position_view),

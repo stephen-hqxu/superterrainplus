@@ -11,12 +11,12 @@ struct TileGeometry{
 	vec2 Pos, TexCoord;
 };
 struct TileElement{
-	unsigned int Idx[3];
+	uint Idx[3];
 };
 
 //Output
-uniform writeonly TileGeometry* restrict TileBuffer;
-uniform writeonly TileElement* restrict TileIndex;
+uniform TileGeometry* TileBuffer;
+uniform TileElement* TileIndex;
 
 //Some information about tile plane
 uniform uvec2 TotalTile;
@@ -60,8 +60,8 @@ layout(index = 0) subroutine(PlaneGeometryGenerator) void generateVertex(uvec2 l
 	if(local_offset.x >= TotalVertex.x || local_offset.y >= TotalVertex.y){
 		return;
 	}
-	const unsigned int output_index = local_offset.x + local_offset.y * TotalVertex.x;
-	TileGeometry* restrict const OutputBuffer = TileBuffer + output_index;
+	const uint output_index = local_offset.x + local_offset.y * TotalVertex.x;
+	TileGeometry* const OutputBuffer = TileBuffer + output_index;
 
 	const dvec2 d_local_offset = dvec2(local_offset),
 		local_plane_position = d_local_offset + BaseTilePosition,
@@ -80,12 +80,12 @@ layout(index = 1) subroutine(PlaneGeometryGenerator) void generateIndex(uvec2 lo
 	if(local_offset.x >= TotalTile.x * 2u || local_offset.y >= TotalTile.y){
 		return;
 	}
-	const unsigned int output_index = local_offset.x + local_offset.y * (TotalTile.x * 2u);
-	TileElement* restrict const OutputIndex = TileIndex + output_index;
+	const uint output_index = local_offset.x + local_offset.y * (TotalTile.x * 2u);
+	TileElement* const OutputIndex = TileIndex + output_index;
 
 	//we need to determine which face within a tile the current thread is responsible for
 	//basically we can do an odd-even test.
-	const unsigned int tile_face_index = output_index % 2u,
+	const uint tile_face_index = output_index % 2u,
 		row_vertex_count = TotalTile.x + 1u;
 	const uvec2 local_face_offset[3] = PlaneIndexOffset[tile_face_index];
 
