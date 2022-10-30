@@ -3,7 +3,7 @@ find_package(glm REQUIRED CONFIG)
 # import system libraries
 find_package(OpenGL REQUIRED)
 find_package(SQLite3 3.30 REQUIRED)
-find_package(CUDAToolkit 11.3 REQUIRED)
+find_package(CUDAToolkit 11.7 REQUIRED)
 find_package(OptiX 7.3 REQUIRED)
 
 # setup default compiler options
@@ -18,6 +18,10 @@ if(MSVC)
 	if(STP_ENABLE_WARNING)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 	endif()
+	# MSVC legacy lambda breaks sometimes if we define a super complex lambda (like super nesting)
+	# so we want the standard-conforming lambda
+	# TODO: this can be removed when the project is ported to C++ 20
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:lambda")
 
 	if(STP_USE_AVX2)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")

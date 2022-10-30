@@ -70,6 +70,10 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 			["-rdc=true"]
 #ifndef NDEBUG
 			["-G"]
+#else		
+			//use NVVM for aggressive optimisation
+			["-dlto"]
+			["-extra-device-vectorization"]
 #endif
 			//set include paths
 			["-I " + string(STPCoreInfo::CoreInclude)]
@@ -149,10 +153,13 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 	}
 	/* -------------------------------------- link -------------------------------------- */
 	//setup linker options
-	using BinT = STPDeviceRuntimeProgram::STPBinaryType;
-	const STPDeviceRuntimeProgram::STPLinkerInformation::STPDataJitOption common_data_option;
+	STPDeviceRuntimeProgram::STPLinkerInformation::STPDataJitOption common_data_option;
 	STPDeviceRuntimeProgram::STPLinkerInformation linkInfo;
 	STPCompilerLog log = { };
+
+#ifdef NDEBUG
+	common_data_option(CU_JIT_LTO, (void*)1);
+#endif
 
 	linkInfo.LinkerOption
 #ifndef NDEBUG
@@ -177,9 +184,16 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize)
 		(CU_JIT_ERROR_LOG_BUFFER, log.module_error_log)
 		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize);
-	linkInfo.DataOption.emplace_back(&bin_common, BinT::PTX, common_data_option);
-	linkInfo.DataOption.emplace_back(&bin_biome, BinT::PTX, common_data_option);
-	linkInfo.DataOption.emplace_back(&bin_splat, BinT::PTX, common_data_option);
+
+	constexpr static STPDeviceRuntimeProgram::STPBinaryType binaryType =
+#ifndef NDEBUG
+	STPDeviceRuntimeProgram::STPBinaryType::PTX;
+#else
+	STPDeviceRuntimeProgram::STPBinaryType::NVVM;
+#endif
+	linkInfo.DataOption.emplace_back(&bin_common, binaryType, common_data_option);
+	linkInfo.DataOption.emplace_back(&bin_biome, binaryType, common_data_option);
+	linkInfo.DataOption.emplace_back(&bin_splat, binaryType, common_data_option);
 
 	linkInfo.ArchiveOption.emplace_back(STPAlgorithm::STPAlgorithmDeviceInfo::DeviceLibrary, common_data_option);
 

@@ -3,12 +3,14 @@
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 #include <algorithm>
+#include <utility>
 
 using std::thread;
 using std::unique_lock;
 using std::function;
 
 using std::make_unique;
+using std::as_const;
 
 using namespace SuperTerrainPlus;
 
@@ -28,7 +30,10 @@ STPThreadPool::STPThreadPool(size_t count) : IsPoolRunning(false), IsPoolWaiting
 
 				//wait for new task
 				unique_lock grab_task_lock(this->TaskQueueLock);
-				this->NewTaskNotifier.wait(grab_task_lock, [this]() { return !(this->IsPoolRunning && this->TaskQueue.empty()); });
+				this->NewTaskNotifier.wait(grab_task_lock,
+					[&running = as_const(this->IsPoolRunning), &task_queue = as_const(this->TaskQueue)]() {
+						return !(running && task_queue.empty());
+					});
 				//end the thread if the pool is dead
 				if (!this->IsPoolRunning) {
 					return;
@@ -72,7 +77,7 @@ void STPThreadPool::waitAll() {
 	this->IsPoolWaiting = true;
 
 	unique_lock status_check_lock(this->TaskQueueLock);
-	this->TaskDoneNotifier.wait(status_check_lock, [&pending_task = this->PendingTask]() { return pending_task == 0u; });
+	this->TaskDoneNotifier.wait(status_check_lock, [&pending_task = as_const(this->PendingTask)]() { return pending_task == 0u; });
 
 	this->IsPoolWaiting = false;
 }

@@ -1,5 +1,7 @@
 #include <SuperRealism+/Utility/STPRandomTextureGenerator.cuh>
 
+#include <curand_kernel.h>
+
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
@@ -80,7 +82,7 @@ __host__ void STPRandomTextureGenerator::generate(cudaArray_t output, uvec3 dime
 #include <device_launch_parameters.h>
 
 //TODO: You can pick your RNG here.
-typedef curandStateMRG32k3a_t STPTextureRNG;
+typedef curandStatePhilox4_32_10_t STPTextureRNG;
 
 template<typename T>
 __global__ void generateRandomTextureKERNEL(cudaSurfaceObject_t surface, uvec3 dimension, unsigned long long seed, T base, T range) {

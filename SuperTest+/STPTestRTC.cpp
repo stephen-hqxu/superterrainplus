@@ -74,7 +74,7 @@ protected:
 
 	static STPDeviceRuntimeBinary::STPCompilationOutput testCompilation(bool test_enable, bool attach_header) {
 		using namespace std::string_literals;
-		const string Capability = "-arch=sm_"s + std::to_string(STPEngineInitialiser::architecture(0));
+		const string Capability = "-arch=compute_"s + std::to_string(STPEngineInitialiser::architecture(0));
 		//settings
 		STPDeviceRuntimeBinary::STPSourceInformation src_info;
 		src_info.Option

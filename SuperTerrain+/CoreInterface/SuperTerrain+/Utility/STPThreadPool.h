@@ -18,7 +18,7 @@
 namespace SuperTerrainPlus {
 
 	/**
-	 * @brief STPThreadPool is a simple implementation of thread pool that makes thread constantly working and garbing
+	 * @brief STPThreadPool is a simple implementation of thread pool that makes thread constantly working and grabbing
 	 * new job when possible
 	*/
 	class STP_API STPThreadPool {

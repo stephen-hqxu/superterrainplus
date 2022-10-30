@@ -127,6 +127,13 @@ namespace SuperTerrainPlus {
 			const STPExternalHeaderSource& = STPExternalHeaderSource());
 
 		/**
+		 * @brief Read NVVM code from the underlying compiled program.
+		 * @param program The program.
+		 * @return NVVM code associated with the given program.
+		*/
+		STP_API STPProgramData readNVVM(nvrtcProgram);
+
+		/**
 		 * @brief Read PTX code from the underlying compiled program.
 		 * @param program The program.
 		 * @return PTX code associated with the given program.

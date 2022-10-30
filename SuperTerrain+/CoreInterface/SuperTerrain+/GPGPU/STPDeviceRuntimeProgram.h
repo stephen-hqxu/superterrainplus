@@ -25,7 +25,9 @@ namespace SuperTerrainPlus {
 		*/
 		enum class STPBinaryType : unsigned char {
 			//The compiler should output PTX code.
-			PTX = 0x00u
+			PTX = 0x00u,
+			//The compiler should output NVVM code.
+			NVVM = 0xFFu
 		};
 
 		/**

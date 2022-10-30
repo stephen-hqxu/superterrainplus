@@ -110,6 +110,17 @@ STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compile(
 	return output;
 }
 
+STPDeviceRuntimeBinary::STPProgramData STPDeviceRuntimeBinary::readNVVM(nvrtcProgram program) {
+	STPProgramData data;
+	auto& [nvvm, nvvmSize] = data;
+
+	STP_CHECK_CUDA(nvrtcGetNVVMSize(program, &nvvmSize));
+	nvvm = make_unique<char[]>(nvvmSize);
+	STP_CHECK_CUDA(nvrtcGetNVVM(program, nvvm.get()));
+
+	return data;
+}
+
 STPDeviceRuntimeBinary::STPProgramData STPDeviceRuntimeBinary::readPTX(nvrtcProgram program) {
 	STPProgramData data;
 	auto& [ptx, ptxSize] = data;

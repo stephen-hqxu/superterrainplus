@@ -51,6 +51,10 @@ STPDeviceRuntimeProgram::STPSmartModule STPDeviceRuntimeProgram::link(STPLinkerI
 			program_data = STPDeviceRuntimeBinary::readPTX(program);
 			bin_input = CU_JIT_INPUT_PTX;
 			break;
+		case STPBinaryType::NVVM:
+			program_data = STPDeviceRuntimeBinary::readNVVM(program);
+			bin_input = CU_JIT_INPUT_NVVM;
+			break;
 		}
 
 		//add to the linker
