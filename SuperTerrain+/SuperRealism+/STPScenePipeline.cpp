@@ -371,8 +371,8 @@ public:
 	 * @param ori_vp The current size of the viewport.
 	*/
 	void renderToShadow(const vector<STPSceneObject::STPOpaqueObject*>& shadow_object, const vector<STPSceneLight*>& shadow_light, const ivec4& ori_vp) {
-		size_t current_light_space_start = 0ull;
-		for (size_t i = 0ull; i < shadow_light.size(); i++) {
+		size_t current_light_space_start = 0u;
+		for (size_t i = 0u; i < shadow_light.size(); i++) {
 			auto* const shadowable_light = shadow_light[i];
 			STPLightShadow& shadow_instance = *shadowable_light->getLightShadow();
 
@@ -425,8 +425,8 @@ private:
 	//The dependent scene pipeline.
 	const STPScenePipeline& Pipeline;
 
-	typedef std::array<STPBindlessTexture, 5ull> STPGeometryBufferHandle;
-	typedef std::array<GLuint64, 5ull> STPGeometryBufferRawHandle;
+	typedef std::array<STPBindlessTexture, 5u> STPGeometryBufferHandle;
+	typedef std::array<GLuint64, 5u> STPGeometryBufferRawHandle;
 
 	STPScreen DeferredQuad;
 
@@ -576,7 +576,7 @@ public:
 
 		ostringstream list_name;
 		const char* count_name = nullptr;
-		size_t current_count = 0ull;
+		size_t current_count = 0u;
 		const GLuint64EXT light_data_addr = light.lightDataAddress();
 		//put the light into the correct bin based on its type
 		switch (light.Type) {

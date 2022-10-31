@@ -26,7 +26,7 @@ using namespace SuperTerrainPlus::STPAlgorithm;
 //The initial table contains numbers from 0 to max of unsigned char in order,
 //this table will be shuffled into a random permutation in runtime.
 constexpr static auto InitialTable = []() constexpr {
-	array<unsigned char, numeric_limits<unsigned char>::max() + 1ull> Table = { };
+	array<unsigned char, numeric_limits<unsigned char>::max() + 1u> Table = { };
 
 	for (unsigned short i = numeric_limits<unsigned char>::min(); i < Table.size(); i++) {
 		Table[i] = static_cast<unsigned char>(i);
@@ -49,7 +49,7 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	//I was thinking about unified memory but we don't need the memory on host after the init process
 	//so using pure device memory will be faster to access than unified one
 	//allocation
-	array<unsigned char, InitialTable.size() * 2ull> PermutationHost;
+	array<unsigned char, InitialTable.size() * 2u> PermutationHost;
 	//pointing to the beginning of the second half of the permutation
 	auto PermutationHostHalfBegin = PermutationHost.begin() + InitialTable.size();
 

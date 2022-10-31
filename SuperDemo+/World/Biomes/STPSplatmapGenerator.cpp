@@ -52,7 +52,7 @@ void STPSplatmapGenerator::splat(cudaTextureObject_t biomemap_tex, cudaTextureOb
 	cudaSurfaceObject_t splatmap_surf, const STPTI::STPSplatGeneratorInformation& info, cudaStream_t stream) const {
 	int Mingridsize, blocksize;
 	//smart launch config
-	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->SplatmapEntry, nullptr, 0ull, 0));
+	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->SplatmapEntry, nullptr, 0u, 0));
 	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u);
 	const uvec3 Dimgridsize = uvec3((this->MapDimension + Dimblocksize - 1u) / Dimblocksize, info.LocalCount);
 

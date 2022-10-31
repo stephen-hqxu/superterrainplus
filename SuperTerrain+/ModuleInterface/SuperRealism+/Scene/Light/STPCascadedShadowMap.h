@@ -57,7 +57,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//Eight vertices define the corners of a view frustum.
 		template<class T>
-		using STPFrustumCorner = std::array<T, 8ull>;
+		using STPFrustumCorner = std::array<T, 8u>;
 
 		//CSM handles directional light rather than positional.
 		glm::vec3 LightDirection;

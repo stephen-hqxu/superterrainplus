@@ -58,7 +58,7 @@ public:
 	 * @brief Initialise an implementation of INI reader.
 	 * @param str The pointer to the INI string.
 	*/
-	STPINIReaderImpl(const string_view& str) : Str(str), Line(0ull), Sequence(this->Str.data()) {
+	STPINIReaderImpl(const string_view& str) : Str(str), Line(0u), Sequence(this->Str.data()) {
 
 	}
 

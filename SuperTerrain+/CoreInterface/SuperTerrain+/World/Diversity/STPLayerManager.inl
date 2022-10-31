@@ -20,7 +20,7 @@ SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity::STPLay
 	}
 
 	//create cache
-	if constexpr (C != 0ull) {
+	if constexpr (C != 0u) {
 		//user is allowed to use no cache, but that's totally at their own risk
 		//assign the new cache, it might be nullptr if user didn't ask to create a cache
 		newLayer->Cache = std::make_unique<STPLayerCache>(C);

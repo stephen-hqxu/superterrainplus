@@ -76,7 +76,7 @@ using SuperTerrainPlus::STPUniqueResource;
 using namespace SuperTerrainPlus::STPRealism;
 
 //The preallocation size for log passed into OptiX compiler
-constexpr static size_t mDefaultLogSize = size_t { 1024 };
+constexpr static size_t mDefaultLogSize = 1024u;
 
 inline static void loadExtendedShaderOption(unsigned int arch, SuperTerrainPlus::STPDeviceRuntimeBinary::STPSourceInformation& info) {
 	using SuperTerrainPlus::STPStringUtility::concatCharArray;
@@ -680,7 +680,7 @@ private:
 
 	//the full pipeline containing the shader for ray intersection testing
 	STPSmartPipeline IntersectionPipeline;
-	array<unsigned int, 3ull> IntersectionStackSize;
+	array<unsigned int, 3u> IntersectionStackSize;
 
 		//ray generation
 	tuple<STPSmartDeviceMemory::STPDeviceMemory<STPLaunchedRayRecord>,
@@ -762,7 +762,7 @@ public:
 		//reset initial log size counter
 		logSize = mDefaultLogSize;
 
-		array<OptixProgramGroup, 3ull> ssri_program_group;
+		array<OptixProgramGroup, 3u> ssri_program_group = { };
 		/* --------------------------------- create program group --------------------------------- */
 		{
 			const OptixProgramGroupOptions ssri_pg_option = { };

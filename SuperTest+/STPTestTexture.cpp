@@ -42,13 +42,13 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 		WHEN("The database is freshly created") {
 
 			THEN("Database should have zero size") {
-				REQUIRE(this->mapGroupSize() == 0ull);
-				REQUIRE(this->viewGroupSize() == 0ull);
-				REQUIRE(this->mapSize() == 0ull);
-				REQUIRE(this->textureSize() == 0ull);
+				REQUIRE(this->mapGroupSize() == 0u);
+				REQUIRE(this->viewGroupSize() == 0u);
+				REQUIRE(this->mapSize() == 0u);
+				REQUIRE(this->textureSize() == 0u);
 				//internal components in the database
-				REQUIRE(Splat.altitudeSize() == 0ull);
-				REQUIRE(Splat.gradientSize() == 0ull);
+				REQUIRE(Splat.altitudeSize() == 0u);
+				REQUIRE(Splat.gradientSize() == 0u);
 			}
 
 			THEN("Deletion of members have no effect (by design) on the database") {
@@ -86,9 +86,9 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 			const auto DummyTex = this->addTexture(DummyViewGroup);
 
 			THEN("Container can inserted by verifying the number of each member in the database") {
-				REQUIRE(this->textureSize() == 1ull);
-				REQUIRE(this->mapGroupSize() == 1ull);
-				REQUIRE(this->viewGroupSize() == 1ull);
+				REQUIRE(this->textureSize() == 1u);
+				REQUIRE(this->mapGroupSize() == 1u);
+				REQUIRE(this->viewGroupSize() == 1u);
 
 				AND_THEN("Container and container info can be retrieved and the same data is returned") {
 					//group desc
@@ -103,16 +103,16 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 							this->removeMapGroup(DummyMapGroup);
 							this->removeViewGroup(DummyViewGroup);
 
-							REQUIRE(this->textureSize() == 0ull);
-							REQUIRE(this->mapGroupSize() == 0ull);
-							REQUIRE(this->viewGroupSize() == 0ull);
+							REQUIRE(this->textureSize() == 0u);
+							REQUIRE(this->mapGroupSize() == 0u);
+							REQUIRE(this->viewGroupSize() == 0u);
 							break;
 						case 1u://remove dependent container
 							this->removeViewGroup(DummyViewGroup);
 
-							REQUIRE(this->textureSize() == 0ull);
-							REQUIRE(this->mapGroupSize() == 1ull);
-							REQUIRE(this->viewGroupSize() == 0ull);
+							REQUIRE(this->textureSize() == 0u);
+							REQUIRE(this->mapGroupSize() == 1u);
+							REQUIRE(this->viewGroupSize() == 0u);
 							break;
 						default:
 							break;
@@ -161,8 +161,8 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 								REQUIRE_THROWS_AS(Splat.addAltitude(0u, 0.2f, 666666u), STPException::STPDatabaseError);
 								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.2f, 0.8f, 0.0f, 1.0f, 666666u), STPException::STPDatabaseError);
 
-								REQUIRE(Splat.altitudeSize() == 0ull);
-								REQUIRE(Splat.gradientSize() == 0ull);
+								REQUIRE(Splat.altitudeSize() == 0u);
+								REQUIRE(Splat.gradientSize() == 0u);
 							}
 
 						}
@@ -173,7 +173,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.2f, 0.8f, 0.8f, 0.3f, DummyTex), STPException::STPDatabaseError);
 								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.9f, 0.1f, 0.0f, 1.0f, DummyTex), STPException::STPDatabaseError);
 
-								REQUIRE(Splat.gradientSize() == 0ull);
+								REQUIRE(Splat.gradientSize() == 0u);
 							}
 
 						}
@@ -184,14 +184,14 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 								REQUIRE_NOTHROW(Splat.addAltitude(0u, 0.2f, DummyTex));
 								REQUIRE_NOTHROW(Splat.addGradient(0u, 0.2f, 0.8f, 0.0f, 1.0f, DummyTex));
 
-								REQUIRE(Splat.altitudeSize() == 1ull);
-								REQUIRE(Splat.gradientSize() == 1ull);
+								REQUIRE(Splat.altitudeSize() == 1u);
+								REQUIRE(Splat.gradientSize() == 1u);
 
 								AND_THEN("Splat rule should be removed if depended texture is erased from the database") {
 									this->removeTexture(DummyTex);
 
-									REQUIRE(Splat.altitudeSize() == 0ull);
-									REQUIRE(Splat.gradientSize() == 0ull);
+									REQUIRE(Splat.altitudeSize() == 0u);
+									REQUIRE(Splat.gradientSize() == 0u);
 
 								}
 							}
@@ -316,13 +316,13 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 			));
 
 			AND_THEN("The number of data in the database should be consistent with what have been added") {
-				REQUIRE(this->mapGroupSize() == 5ull);
-				REQUIRE(this->viewGroupSize() == 2ull);
-				REQUIRE(this->mapSize() == 7ull);
-				REQUIRE(this->textureSize() == 5ull);
+				REQUIRE(this->mapGroupSize() == 5u);
+				REQUIRE(this->viewGroupSize() == 2u);
+				REQUIRE(this->mapSize() == 7u);
+				REQUIRE(this->textureSize() == 5u);
 				//internal components in the database
-				REQUIRE(Splat.altitudeSize() == 4ull);
-				REQUIRE(Splat.gradientSize() == 2ull);
+				REQUIRE(Splat.altitudeSize() == 4u);
+				REQUIRE(Splat.gradientSize() == 2u);
 			}
 
 			WHEN("The database results are queried in batches") {
@@ -333,7 +333,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get all altitude rules
 						const auto AltRec = BatchVisitor.getAltitudes();
-						CHECK(AltRec.size() == 4ull);
+						CHECK(AltRec.size() == 4u);
 						//check for ordering
 						const auto [sample, node] = AltRec[2];
 						CHECK(sample == 66u);
@@ -343,7 +343,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get all gradient rules
 						const auto GraRec = BatchVisitor.getGradients();
-						CHECK(GraRec.size() == 2ull);
+						CHECK(GraRec.size() == 2u);
 						//pick some data for checking
 						const auto [sample, node] = GraRec[0];
 						CHECK(sample == 66u);
@@ -354,27 +354,27 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get samples that have been added with rules
 						const auto SampleRec = BatchVisitor.getValidSample(2u);
-						CHECK(SampleRec.size() == 2ull);
+						CHECK(SampleRec.size() == 2u);
 						const auto [sample, alt_count, gra_count] = SampleRec[1];
 						CHECK(sample == 66u);
-						CHECK(alt_count == 2ull);
-						CHECK(gra_count == 2ull);
+						CHECK(alt_count == 2u);
+						CHECK(gra_count == 2u);
 						//edge case checking
-						CHECK(get<2>(SampleRec[0]) == 0ull);
+						CHECK(get<2>(SampleRec[0]) == 0u);
 					}
 					{
 						//get group that has any map being used by any valid texture
 						const auto GroupRec = BatchVisitor.getValidMapGroup();
-						CHECK(GroupRec.size() == 3ull);
+						CHECK(GroupRec.size() == 3u);
 						const auto& [id, data_count, desc] = GroupRec[0];
 						CHECK(id == MapGroup[2]);
-						CHECK(data_count == 3ull);
+						CHECK(data_count == 3u);
 						CHECK((desc == x2_rgb));
 					}
 					{
 						//get textures that are referenced by any rule
 						const auto TexRec = BatchVisitor.getValidTexture();
-						CHECK(TexRec.size() == 3ull);
+						CHECK(TexRec.size() == 3u);
 						CHECK(TexRec[0].first == Tex[2]);
 						CHECK((TexRec[0].second == small_scale));
 
@@ -387,7 +387,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get maps that are used by valid texture
 						const auto MapRec = BatchVisitor.getValidMap();
-						CHECK(MapRec.size() == 6ull);
+						CHECK(MapRec.size() == 6u);
 						const auto [group, tex, type, data] = MapRec[3];
 						const unsigned char* data_uc = reinterpret_cast<const unsigned char*>(data);
 						CHECK(group == MapGroup[3]);
@@ -398,7 +398,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get types that are used by any rule
 						const auto TypeRec = BatchVisitor.getValidMapType(3u);
-						CHECK(TypeRec.size() == 3ull);
+						CHECK(TypeRec.size() == 3u);
 						CHECK(TypeRec[1] == STPTextureType::Normal);
 						CHECK(TypeRec[2] == STPTextureType::Roughness);
 					}

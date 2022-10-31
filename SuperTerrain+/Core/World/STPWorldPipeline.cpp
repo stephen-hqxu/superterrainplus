@@ -85,7 +85,7 @@ public:
 
 	inline size_t operator()(const ivec2& position) const {
 		//combine hash
-		return STPHashCombine::combine(0ull, position.x, position.y);
+		return STPHashCombine::combine(0u, position.x, position.y);
 	}
 
 };
@@ -196,7 +196,7 @@ private:
 		//generate heightmap
 		STPHeightfieldGenerator::STPMapStorage maps;
 		maps.Biomemap.reserve(neighbour_chunk.size());
-		maps.Heightmap32F.reserve(1ull);
+		maps.Heightmap32F.reserve(1u);
 		for (auto& chk : neighbour_chunk) {
 			maps.Biomemap.push_back(chk.biomemap());
 		}
@@ -594,7 +594,7 @@ class STPWorldPipeline::STPMemoryManager {
 public:
 
 	//The number of map data in a memory unit.
-	constexpr static size_t MemoryUnitCapacity = 3ull;
+	constexpr static size_t MemoryUnitCapacity = 3u;
 	//Channel size in byte (not bit) for each map.
 	constexpr static size_t MemoryFormat[3] = {
 		sizeof(Sample),
@@ -767,7 +767,7 @@ private:
 	const cudaStream_t PipelineStream;
 	const STPEnvironment::STPChunkSetting& ChunkSetting;
 
-	array<STPMemoryBlock, 2ull> MemoryBuffer;
+	array<STPMemoryBlock, 2u> MemoryBuffer;
 	//clear buffer is just a memory filled with the same value as clear value.
 	STPSmartDeviceMemory::STPPitchedDeviceMemory<unsigned char[]> MapClearBuffer;
 	//Store the CUDA array after mapping the back buffer
@@ -776,7 +776,7 @@ private:
 
 	//Record indices of chunks that need to have splatmap computed for the current task.
 	unordered_set<unsigned int> ComputingChunk;
-	constexpr static array<ivec2, 9ull> NeighbourCoordinateOffset = {
+	constexpr static array<ivec2, 9u> NeighbourCoordinateOffset = {
 		ivec2(-1, -1),
 		ivec2( 0, -1),
 		ivec2(+1, -1),

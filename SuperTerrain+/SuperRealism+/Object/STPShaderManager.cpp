@@ -34,7 +34,7 @@ using namespace SuperTerrainPlus::STPRealism;
 STPLogHandler::STPLogHandlerSolution STPLogHandler::DefaultLogHandler;
 STPLogHandler::STPLogHandlerSolution* STPLogHandler::ActiveLogHandler = &STPLogHandler::DefaultLogHandler;
 
-constexpr static array<string_view, 9ull> mShaderIncludeRegistry = {
+constexpr static array<string_view, 9u> mShaderIncludeRegistry = {
 	"/Common/STPAnimatedWave.glsl",
 	"/Common/STPAtmosphericScattering.glsl",
 	"/Common/STPCameraInformation.glsl",
@@ -84,7 +84,7 @@ unsigned int STPShaderManager::STPShaderSource::define(const STPMacroValueDictio
 	while (std::getline(original_src, line)) {
 		//remove leading white space at the beginning of the define directive
 		if (string_view lineView(ltrim(line));
-			lineView.rfind(DefineIdentifier, 0ull) == 0ull) {
+			lineView.rfind(DefineIdentifier, 0u) == 0u) {
 			//remove #define and all white space between #define and the macro name
 			lineView = ltrim(lineView.substr(DefineIdentifier.length()));
 
@@ -190,7 +190,7 @@ void STPShaderManager::operator()(const STPShaderSource& source) {
 	if (logLength > 0) {
 		//shader compilation has log
 		log.resize(logLength);
-		glGetShaderInfoLog(this->Shader.get(), logLength, NULL, log.data());
+		glGetShaderInfoLog(this->Shader.get(), logLength, nullptr, log.data());
 
 		const string& name = source.getName();
 		if (!name.empty()) {
@@ -198,7 +198,7 @@ void STPShaderManager::operator()(const STPShaderSource& source) {
 			identifier << name << endl;
 
 			//print a horizontal bar
-			for (size_t i = 0ull; i < name.length(); i++) {
+			for (size_t i = 0u; i < name.length(); i++) {
 				identifier << '-';
 			}
 			identifier << endl;

@@ -37,15 +37,15 @@ private:
 	 * If text does not exceed the line limit, it will simply emit the text
 	 * @return The last line of the wrap
 	*/
-	string_view emitWrapped(string_view text, size_t reserve = 0ull) const {
+	string_view emitWrapped(string_view text, size_t reserve = 0u) const {
 		while (text.size() > CATCH_CONFIG_CONSOLE_WIDTH - reserve) {
 			//we do not wish to break a single word into half, instead of wrap it when it's a space
 			//find the last space in the emit string
 			const size_t emitStart = text.rfind(' ', CATCH_CONFIG_CONSOLE_WIDTH - reserve);
 			if (emitStart == string_view::npos) {
 				//the entire width of text has no space, simply break the text
-				const size_t breakLength = CATCH_CONFIG_CONSOLE_WIDTH - reserve - 1ull;
-				const string emit = string(text.substr(0ull, breakLength)) + '-';
+				const size_t breakLength = CATCH_CONFIG_CONSOLE_WIDTH - reserve - 1u;
+				const string emit = string(text.substr(0u, breakLength)) + '-';
 				//prune the original string
 				text.remove_prefix(breakLength);
 				
@@ -53,7 +53,7 @@ private:
 				m_stream << emit << endl;
 				continue;
 			}
-			const string_view emit = text.substr(0ull, emitStart + 1ull);
+			const string_view emit = text.substr(0u, emitStart + 1u);
 			//prune
 			text.remove_prefix(emit.size());
 
@@ -72,7 +72,7 @@ private:
 	void emitCentreString(const string_view& text) const {
 		auto centreStr = [&stream = m_stream](const string_view& text) -> void {
 			auto emit_border = [&stream](size_t border_size) -> void {
-				for (size_t i = 0ull; i < border_size / 2ull; i++) {
+				for (size_t i = 0u; i < border_size / 2u; i++) {
 					stream << ' ';
 				}
 			};
@@ -110,7 +110,7 @@ private:
 	*/
 	inline void emitRightString(size_t border_size, const string_view& text, Colour::Code colour) {
 		const size_t emit_length = CATCH_CONFIG_CONSOLE_WIDTH - border_size - text.size();
-		for (size_t i = 0ull; i < emit_length; i++) {
+		for (size_t i = 0u; i < emit_length; i++) {
 			m_stream << ' ';
 		}
 		m_stream << m_colour->guardColour(colour) << text << endl;
@@ -148,7 +148,7 @@ private:
 		const auto& sec_stats = section->stats;
 		//reserve some spaces some the status tag at the end
 		const string indented_sec = string(depth * 2u, '-') + "> " + sec_stats.sectionInfo.name;
-		const string_view sec_name = this->emitWrapped(STPConsoleReporter::getView(indented_sec), 6ull);
+		const string_view sec_name = this->emitWrapped(STPConsoleReporter::getView(indented_sec), 6u);
 
 		//print the current section
 		m_stream << sec_name;

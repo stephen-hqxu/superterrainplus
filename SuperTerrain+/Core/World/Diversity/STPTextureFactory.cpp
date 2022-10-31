@@ -197,7 +197,7 @@ STPSmartDeviceMemory::STPDeviceMemory<T[]> STPTextureFactory::copyToDevice(const
 
 void STPTextureFactory::operator()(cudaTextureObject_t biomemap_tex, cudaTextureObject_t heightmap_tex, cudaSurfaceObject_t splatmap_surf, 
 	const STPRequestingChunkInfo& requesting_local, cudaStream_t stream) const {
-	if (requesting_local.size() == 0ull) {
+	if (requesting_local.size() == 0u) {
 		//nothing needs to be done
 		return;
 	}

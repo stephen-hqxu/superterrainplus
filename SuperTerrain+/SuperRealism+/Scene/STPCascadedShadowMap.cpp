@@ -53,7 +53,7 @@ STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLig
 	if (distance_mul < 1.0f) {
 		throw STPException::STPBadNumericRange("A less-than-one shadow distance is not able to cover the view frustum");
 	}
-	if (div.size() == 0ull) {
+	if (div.size() == 0u) {
 		throw STPException::STPBadNumericRange("There is no shadow level being defined");
 	}
 	if (band_radius < 0.0f) {
@@ -67,7 +67,7 @@ STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLig
 		shadowBufferMat_size = sizeof(mat4) * lightSpaceDim,
 		shadowBufferMat_offset = sizeof(STPPackedCSMBufferHeader),
 		shadowBufferDiv_offset = shadowBufferMat_offset + shadowBufferMat_size,
-		shadowBuffer_size = shadowBufferDiv_offset + sizeof(float) * (lightSpaceDim - 1ull);
+		shadowBuffer_size = shadowBufferDiv_offset + sizeof(float) * (lightSpaceDim - 1u);
 
 	//allocate memory shadow data buffer for cascaded shadow map
 	this->ShadowData.bufferStorage(shadowBuffer_size, 
@@ -288,7 +288,7 @@ bool STPCascadedShadowMap::updateLightSpace() {
 }
 
 inline size_t STPCascadedShadowMap::lightSpaceDimension() const {
-	return this->LightFrustum.Division.size() + 1ull;
+	return this->LightFrustum.Division.size() + 1u;
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPCascadedShadowMap::lightSpaceMatrixAddress() const {

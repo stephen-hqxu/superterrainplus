@@ -192,8 +192,8 @@ namespace STPStart {
 			}
 			glEnable(GL_DEBUG_OUTPUT);
 			STPDebugCallback::registerAsyncCallback(cout);
-			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
-			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE);
+			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
+			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, nullptr, GL_FALSE);
 
 			//setup vertex shader for off-screen rendering that can be shared
 			const STPScreen::STPScreenVertexShader ScreenVertexShader;
@@ -214,7 +214,7 @@ namespace STPStart {
 			//setup scene pipeline
 			//-------------------------------------------------------------------------
 			{
-				STPScenePipeline::STPScenePipelineInitialiser scene_init;
+				STPScenePipeline::STPScenePipelineInitialiser scene_init = { };
 
 				//initialisation
 				STPScenePipeline::STPShadingModelDescription<STPScenePipeline::STPShadingModel::BlinnPhong> scene_shadinig_model;
@@ -232,8 +232,8 @@ namespace STPStart {
 				scene_shadow_function.KernelDistance = 2.45f;
 
 				STPScenePipeline::STPSceneShaderCapacity& scene_cap = scene_init.ShaderCapacity;
-				scene_cap.AmbientLight = 2ull;
-				scene_cap.DirectionalLight = 1ull;
+				scene_cap.AmbientLight = 2u;
+				scene_cap.DirectionalLight = 1u;
 
 				//setup material library
 				auto waterMaterial = STPMaterialLibrary::DefaultMaterial;
@@ -775,7 +775,7 @@ int main() {
 	}
 
 	//rendering loop
-	double currentTime, lastTime = 0.0, deltaTime, FPS = engineINI.at("").at("FPS").to<double>();
+	double currentTime = 0.0, lastTime = 0.0, deltaTime = 0.0, FPS = engineINI.at("").at("FPS").to<double>();
 	cout << "Start..." << endl;
 	while (!glfwWindowShouldClose(STPStart::GLCanvas)) {
 		//frame time logic

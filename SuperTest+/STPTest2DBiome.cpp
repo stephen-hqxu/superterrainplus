@@ -28,7 +28,7 @@ using glm::uvec3;
 class LayerCacheTester : protected STPLayerCache {
 protected:
 
-	constexpr static size_t CacheSize = 32ull;
+	constexpr static size_t CacheSize = 32u;
 
 public:
 
@@ -44,13 +44,13 @@ SCENARIO_METHOD(LayerCacheTester, "STPLayerCache is used to cache data", "[Diver
 		using namespace SuperTerrainPlus;
 
 		THEN("Layer cache should not be created") {
-			const size_t WrongSize = GENERATE(take(3, filter([](size_t i) { return i % 2ull == 1ull; }, random(0ull, 131313131ull))));
+			const size_t WrongSize = GENERATE(take(3, filter([](size_t i) { return i % 2u == 1u; }, random(0u, 131313131u))));
 			//simple test
 			REQUIRE_THROWS_AS(STPLayerCache(WrongSize), STPException::STPBadNumericRange);
 		}
 
 		//edge case
-		REQUIRE_THROWS_AS(STPLayerCache(0ull), STPException::STPBadNumericRange);
+		REQUIRE_THROWS_AS(STPLayerCache(0u), STPException::STPBadNumericRange);
 	}
 
 	GIVEN("A valid layer cache") {
@@ -163,7 +163,7 @@ public:
 SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG", "[Diversity][STPLayer][!mayfail]") {
 
 	GIVEN("A random seed to be mixed with another seed") {
-		const auto SeedSalt = GENERATE(take(3, chunk(2, random(-123456789876, 66666666666))));
+		const auto SeedSalt = GENERATE(take(3, chunk(2, random(-123456789876ll, 66666666666ll))));
 		const Seed OldSeed = static_cast<unsigned long long>(SeedSalt[0]);
 
 		WHEN("Another seed needs to be generated from the original seed") {
@@ -243,7 +243,7 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 	GIVEN("A new layer manager") {
 
 		THEN("The new layer manager should be empty") {
-			REQUIRE(this->getLayerCount() == 0ull);
+			REQUIRE(this->getLayerCount() == 0u);
 		}
 
 		AND_GIVEN("Some random numbers as seeds") {
@@ -255,7 +255,7 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 			WHEN("Insert one layer with the unsupported cache size") {
 
 				THEN("Layer manager does not allow such layer to be inserted") {
-					REQUIRE_THROWS_AS((this->insert<RootLayer, 3ull>(RandomSeed, Salt)), STPException::STPBadNumericRange);
+					REQUIRE_THROWS_AS((this->insert<RootLayer, 3u>(RandomSeed, Salt)), STPException::STPBadNumericRange);
 				}
 
 			}
@@ -266,11 +266,11 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 
 				THEN("The orphan layer properties should be validated") {
 					//property test
-					REQUIRE(this->getLayerCount() == 1ull);
+					REQUIRE(this->getLayerCount() == 1u);
 
-					REQUIRE(FirstLayer->cacheSize() == 0ull);
+					REQUIRE(FirstLayer->cacheSize() == 0u);
 					REQUIRE_FALSE(FirstLayer->hasAscendant());
-					REQUIRE(FirstLayer->getAscendantCount() == 0ull);
+					REQUIRE(FirstLayer->getAscendantCount() == 0u);
 					REQUIRE(FirstLayer->getAscendant() == nullptr);
 					REQUIRE_FALSE(FirstLayer->isMerging());
 				}
@@ -291,14 +291,14 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 				}
 
 				AND_WHEN("Insert one more cached layer so the chain is linear") {
-					auto SecondLayer = this->insert<NormalLayer, 32ull>(RandomSeed, Salt, FirstLayer);
+					auto SecondLayer = this->insert<NormalLayer, 32u>(RandomSeed, Salt, FirstLayer);
 
 					THEN("The properties of the new layer should be validated") {
-						REQUIRE(this->getLayerCount() == 2ull);
+						REQUIRE(this->getLayerCount() == 2u);
 
-						REQUIRE(SecondLayer->cacheSize() == 32ull);
+						REQUIRE(SecondLayer->cacheSize() == 32u);
 						REQUIRE(SecondLayer->hasAscendant());
-						REQUIRE(SecondLayer->getAscendantCount() == 1ull);
+						REQUIRE(SecondLayer->getAscendantCount() == 1u);
 						REQUIRE(SecondLayer->getAscendant() == FirstLayer);
 						REQUIRE_FALSE(SecondLayer->isMerging());
 					}
@@ -319,15 +319,15 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 					}
 
 					AND_WHEN("Insert more layers to form a tree structure") {
-						auto BranchLayer1 = this->insert<NormalLayer, 32ull>(RandomSeed, Salt, SecondLayer);
+						auto BranchLayer1 = this->insert<NormalLayer, 32u>(RandomSeed, Salt, SecondLayer);
 						auto BranchLayer2 = this->insert<NormalLayer>(RandomSeed, Salt, SecondLayer);
-						auto MergeLayer = this->insert<MergingLayer, 32ull>(RandomSeed, Salt, BranchLayer1, BranchLayer2);
+						auto MergeLayer = this->insert<MergingLayer, 32u>(RandomSeed, Salt, BranchLayer1, BranchLayer2);
 
 						THEN("The properties of all tree layers are validated") {
-							REQUIRE(this->getLayerCount() == 5ull);
+							REQUIRE(this->getLayerCount() == 5u);
 
 							REQUIRE(MergeLayer->isMerging());
-							REQUIRE(MergeLayer->getAscendantCount() == 2ull);
+							REQUIRE(MergeLayer->getAscendantCount() == 2u);
 							REQUIRE((MergeLayer->getAscendant(0) == BranchLayer1 && MergeLayer->getAscendant(1) == BranchLayer2));
 						}
 
@@ -366,11 +366,11 @@ protected:
 		STPLayerManager Mgr;
 		STPLayer* Layer, *BranchLayer1, *BranchLayer2;
 		
-		Layer = Mgr.insert<RootLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt);
+		Layer = Mgr.insert<RootLayer, 32u>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt);
 		Layer = Mgr.insert<NormalLayer>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
 
-		BranchLayer1 = Mgr.insert<NormalLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
-		BranchLayer2 = Mgr.insert<NormalLayer, 32ull>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		BranchLayer1 = Mgr.insert<NormalLayer, 32u>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		BranchLayer2 = Mgr.insert<NormalLayer, 32u>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
 
 		Layer = Mgr.insert<MergingLayer>(BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, BranchLayer1, BranchLayer2);
 

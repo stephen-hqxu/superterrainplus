@@ -43,7 +43,7 @@ using glm::uvec2;
 class STPWorldManager::STPWorldSplattingAgent {
 private:
 
-	constexpr static size_t TextureCount = 16ull;
+	constexpr static size_t TextureCount = 16u;
 	//All loaded texture data
 	STPTextureStorage LoadedData[STPWorldSplattingAgent::TextureCount];
 	//List of all texture name
@@ -77,7 +77,7 @@ private:
 	*/
 	static STPTextureType getType(const string_view& filename) {
 		//find the string representation of the type
-		const size_t type_start = filename.find('_') + 1ull,
+		const size_t type_start = filename.find('_') + 1u,
 			type_end = filename.find('.');
 		const string_view typeStr = filename.substr(type_start, type_end - type_start);
 
@@ -127,7 +127,7 @@ public:
 		});
 
 		//create group
-		STPTextureDatabase::STPMapGroupDescription tex_desc;
+		STPTextureDatabase::STPMapGroupDescription tex_desc = { };
 		tex_desc.Dimension = uvec2(1024u);
 		tex_desc.MipMapLevel = 7u;
 		tex_desc.PixelFormat = GL_UNSIGNED_BYTE;
@@ -149,7 +149,7 @@ public:
 			//grab the texture ID using the texture name
 			const string_view currTexFile(STPWorldSplattingAgent::Filename[i]);
 			//our filename always follows this pattern: (texture name)_(type).(suffix), we can search using that
-			const STPTextureInformation::STPTextureID currTexID = textureName.at(currTexFile.substr(0ull, currTexFile.find_first_of('_'))).first;
+			const STPTextureInformation::STPTextureID currTexID = textureName.at(currTexFile.substr(0u, currTexFile.find_first_of('_'))).first;
 
 			STPTextureType texType = STPWorldSplattingAgent::getType(currTexFile);
 			STPTextureInformation::STPMapGroupID texGroup = 0u;
@@ -187,7 +187,7 @@ public:
 	*/
 	void setTextureParameter(const STPTextureFactory& factory, float anisotropy_filter) const {
 		//get the TBO based on group ID, currently we only have one group
-		const array<GLuint, 3ull> all_tbo = {
+		const array<GLuint, 3u> all_tbo = {
 			factory[this->x1024_srgb], factory[this->x1024_rgb], factory[this->x1024_r]
 		};
 
@@ -238,7 +238,7 @@ void STPWorldManager::linkProgram(float anisotropy) {
 		//TODO: correctly calculate the thread occupancy
 		5u);
 	//create the world pipeline
-	STPWorldPipeline::STPPipelineSetup pipeStage;
+	STPWorldPipeline::STPPipelineSetup pipeStage = { };
 	pipeStage.BiomemapGenerator = this->BiomeFactory.get();
 	pipeStage.HeightfieldGenerator = &(*this->ChunkGenerator);
 	pipeStage.SplatmapGenerator = this->TextureFactory.get();

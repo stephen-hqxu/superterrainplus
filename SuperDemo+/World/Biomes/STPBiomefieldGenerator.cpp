@@ -30,7 +30,7 @@ STPBiomefieldGenerator::STPBiomefieldGenerator(const STPCommonCompiler& program,
 	pool_props.location.id = 0;
 	this->HistogramCacheDevice = STPSmartDeviceObject::makeMemPool(pool_props);
 	//it's pretty hard to predict
-	constexpr size_t avg_bin_per_pixel = 2ull, deg_para = 5ull;
+	constexpr size_t avg_bin_per_pixel = 2u, deg_para = 5u;
 	cuuint64_t release_thres = this->MapSize.x * this->MapSize.y * (sizeof(unsigned int)
 		+ sizeof(SuperTerrainPlus::STPAlgorithm::STPSingleHistogram::STPBin) * avg_bin_per_pixel) * deg_para;
 	cudaMemPoolSetAttribute(this->HistogramCacheDevice.get(), cudaMemPoolAttrReleaseThreshold, &release_thres);
@@ -69,7 +69,7 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 	STPFreeSlipSampleTextureBuffer& biomemap_buffer, const STPFreeSlipInformation& freeslip_info, vec2 offset, cudaStream_t stream) const {
 	int Mingridsize, blocksize;
 	//smart launch configuration
-	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->GeneratorEntry, nullptr, 0ull, 0));
+	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->GeneratorEntry, nullptr, 0u, 0));
 	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
 		//under-sampled heightmap, and super-sample it back with interpolation
 		Dimgridsize = (this->MapSize + Dimblocksize - 1u) / Dimblocksize;

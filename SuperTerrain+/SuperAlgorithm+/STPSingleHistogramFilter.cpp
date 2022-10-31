@@ -134,7 +134,7 @@ private:
 	inline void insert_back_realloc_check(size_t count) {
 		if (this->cend() + count > this->Last) {
 			//not enough room, reallocation
-			this->expand((this->size() + count) * 2ull);
+			this->expand((this->size() + count) * 2u);
 		}
 	}
 
@@ -176,7 +176,7 @@ public:
 		//check if we have free capacity
 		if (this->End == this->Last) {
 			//no more free room, expand, capacity is clamped in the function
-			this->expand(this->capacity() * 2ull);
+			this->expand(this->capacity() * 2u);
 		}
 
 		T& item = *this->end();
@@ -216,12 +216,12 @@ public:
 	STPArrayList_it erase(STPArrayList_it it) {
 		//we don't need to call the destructor since T is always trivially destructible
 
-		if (it < this->cend() - 1ull) {
+		if (it < this->cend() - 1) {
 			//it's not the last element, we need to move the memory forward
 			//there's nothing to move if it's the last element, plus it may trigger undefined behaviour because end pointer should not be dereferenced
 			//move_start is out of the range of [first, last) so we are good to use
 			//no need to use std::move because T is known to be a PoD
-			std::copy(const_cast<STPArrayList_cit>(it) + 1ull, this->cend(), it);
+			std::copy(const_cast<STPArrayList_cit>(it) + 1, this->cend(), it);
 		}
 		
 		//correct the internal iterator
@@ -277,7 +277,7 @@ public:
 	 * True denotes size equals zero
 	*/
 	inline bool empty() const {
-		return this->size() == 0ull;
+		return this->size() == 0u;
 	}
 
 	/**
@@ -775,8 +775,8 @@ public:
 
 		auto sync_then_copy_to_output = [&filter_worker = this->FilterWorker,
 			histogram_output, &workgroup, &memoryBlock]() -> void {
-			size_t bin_total = 0ull,
-				offset_total = 0ull;
+			size_t bin_total = 0u,
+				offset_total = 0u;
 
 			//sync working threads and get the total length of all buffers
 			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {

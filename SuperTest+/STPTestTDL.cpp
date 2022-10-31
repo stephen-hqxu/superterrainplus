@@ -46,16 +46,16 @@ SCENARIO("TDL interpreter parses a TDL script", "[AlgorithmHost][Texture][STPTex
 					REQUIRE_NOTHROW([&Parser, &TexVar, &Database]() { TexVar = (*Parser)(Database); }());
 
 					//verify correctness of texture
-					CHECK(TexVar.size() == 4ull);
+					CHECK(TexVar.size() == 4u);
 					CHECK(Database.textureSize() == TexVar.size());
-					CHECK(SplatBuilder.altitudeSize() == 6ull);
-					CHECK(SplatBuilder.gradientSize() == 3ull);
+					CHECK(SplatBuilder.altitudeSize() == 6u);
+					CHECK(SplatBuilder.gradientSize() == 3u);
 					//verify rules
 					const auto alt = View.getAltitudes();
 					const auto gra = View.getGradients();
 					const auto sample = View.getValidSample();
 					//pick some random samples for testing
-					CHECK(sample.size() == 3ull);
+					CHECK(sample.size() == 3u);
 					{
 						const auto [id, alt_count, gra_count] = sample.at(1);
 						CHECK(id == 101u);

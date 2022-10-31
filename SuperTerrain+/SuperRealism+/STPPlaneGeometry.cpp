@@ -38,9 +38,9 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 	const unsigned int vertexCount = vertex_dimension.x * vertex_dimension.y,
 		tileCount = tile_dimension.x * tile_dimension.y;
 	//each tile has two triangle faces, each triangle has 3 vertices
-	this->IndexCount = 6ull * tileCount;
+	this->IndexCount = 6u * tileCount;
 	//each vertex has a 2-component float as position and 2-component float as texture coordinate
-	buffer.bufferStorage(4ull * sizeof(float) * vertexCount, GL_NONE);
+	buffer.bufferStorage(4u * sizeof(float) * vertexCount, GL_NONE);
 	index.bufferStorage(sizeof(unsigned int) * this->IndexCount, GL_NONE);
 	STPBindlessBuffer buffer_addr(buffer, GL_WRITE_ONLY), 
 		index_addr(index, GL_WRITE_ONLY);

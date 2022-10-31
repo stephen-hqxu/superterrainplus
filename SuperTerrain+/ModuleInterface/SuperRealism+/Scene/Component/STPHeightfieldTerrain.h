@@ -76,7 +76,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//The main terrain generator
 		STPWorldPipeline& TerrainGenerator;
-		STPSceneObject::STPDepthRenderGroup::STPLightSpaceDatabase<1ull> TerrainDepthRenderer;
+		STPSceneObject::STPDepthRenderGroup::STPLightSpaceDatabase<1u> TerrainDepthRenderer;
 
 		//A buffer representing the terrain plane.
 		std::optional<STPPlaneGeometry> TerrainMesh;

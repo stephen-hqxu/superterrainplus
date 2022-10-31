@@ -51,7 +51,7 @@ Seed STPLayer::genLocalSeed(int x, int z) const {
 
 size_t STPLayer::cacheSize() const {
 	//check for nullptr
-	return this->Cache ? this->Cache->getCapacity() : 0ull ;
+	return this->Cache ? this->Cache->getCapacity() : 0u ;
 }
 
 STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) const {

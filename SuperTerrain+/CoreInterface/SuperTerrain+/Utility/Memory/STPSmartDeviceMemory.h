@@ -129,7 +129,7 @@ namespace SuperTerrainPlus {
 		 * @return The smart pointer to the memory allocated.
 		*/
 		template<typename T>
-		STPPinnedMemory<T> makePinned(size_t = 1ull);
+		STPPinnedMemory<T> makePinned(size_t = 1u);
 
 		/**
 		 * @brief Create a STPDeviceMemory which is a smart pointer to device memory with default device deleter
@@ -138,7 +138,7 @@ namespace SuperTerrainPlus {
 		 * @return The smart pointer to the memory allocated
 		*/
 		template<typename T>
-		STPDeviceMemory<T> makeDevice(size_t = 1ull);
+		STPDeviceMemory<T> makeDevice(size_t = 1u);
 
 		/**
 		 * @brief Create a STPStreamedDeviceMemory which is a smart pointer to device memory with stream-ordered device deleter
@@ -149,7 +149,7 @@ namespace SuperTerrainPlus {
 		 * @return The streamed smart pointer to the memory allocated
 		*/
 		template<typename T>
-		STPStreamedDeviceMemory<T> makeStreamedDevice(cudaMemPool_t, cudaStream_t, size_t = 1ull);
+		STPStreamedDeviceMemory<T> makeStreamedDevice(cudaMemPool_t, cudaStream_t, size_t = 1u);
 
 		/**
 		 * @brief Create a STPPitchedDeviceMemory which is a smart pointer to pitched device memory with regular device deleter.

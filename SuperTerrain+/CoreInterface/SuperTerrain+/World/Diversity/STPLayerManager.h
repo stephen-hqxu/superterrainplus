@@ -53,7 +53,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param args All other arguments for the created layer to be used in their constructor.
 		 * @return A pointer new layer instance with the type of the specified child layer. The pointer is owned by the current manager and will be freed automatically.
 		*/
-		template <class L, size_t C = 0ull, class... Arg>
+		template <class L, size_t C = 0u, class... Arg>
 		STPLayer* insert(Arg&&...);
 
 		/**

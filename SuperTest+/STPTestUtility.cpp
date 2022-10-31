@@ -48,7 +48,7 @@ private:
 
 protected:
 
-	static constexpr size_t WorkBatchSize = 4ull;
+	static constexpr size_t WorkBatchSize = 4u;
 
 	//use optional so we can control the life-time of the thread pool for easy testing
 	optional<STPThreadPool> Pool;
@@ -69,7 +69,7 @@ protected:
 	}
 
 	void submitManyWorks(atomic<unsigned int>& counter) {
-		for (size_t work = 0ull; work < WorkBatchSize; work++) {
+		for (size_t work = 0u; work < WorkBatchSize; work++) {
 			this->Pool->enqueueDetached([&counter](unsigned int value) {
 				ThreadPoolTester::busyWork(value);
 				counter++;
@@ -282,7 +282,7 @@ SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Util
 			auto PitchedDeviceData = STPSmartDeviceMemory::makePitchedDevice<unsigned int[]>(4, 2);
 
 			THEN("Smart device memory can be used like normal memory") {
-				constexpr static size_t DataSize = sizeof(unsigned int) * 8ull;
+				constexpr static size_t DataSize = sizeof(unsigned int) * 8u;
 				auto compareData = [Data](auto i) {
 					return i == Data;
 				};

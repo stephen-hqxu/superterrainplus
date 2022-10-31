@@ -26,7 +26,7 @@ inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::ST
 }
 
 template<typename T>
-inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPitchedDeviceMemory() : Pitch(0ull) {
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPitchedDeviceMemory() : Pitch(0u) {
 
 }
 

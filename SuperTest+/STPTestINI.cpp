@@ -71,10 +71,10 @@ SCENARIO("INI reader can parsed all values correctly", "[AlgorithmHost][INI][STP
 					const auto& DietSec = Storage.at("Diet");
 					const auto& MakeSoundSec = Storage.at("Make Sound");
 
-					REQUIRE(Storage.size() == 3ull);
-					REQUIRE(NamelessSec.size() == 3ull);
-					REQUIRE(DietSec.size() == 4ull);
-					REQUIRE(MakeSoundSec.size() == 6ull);
+					REQUIRE(Storage.size() == 3u);
+					REQUIRE(NamelessSec.size() == 3u);
+					REQUIRE(DietSec.size() == 4u);
+					REQUIRE(MakeSoundSec.size() == 6u);
 
 					CHECK(NamelessSec.at("day") == "Monday");
 					CHECK(NamelessSec.at("weather") == "sunny");

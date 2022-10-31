@@ -29,7 +29,7 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static auto ScreenShaderFilename =
 	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPScreen", ".vert");
 
-constexpr static array<signed char, 16ull> QuadVertex = {
+constexpr static array<signed char, 16u> QuadVertex = {
 	//Position		//TexCoord
 	-1, +1,			0, 1,
 	-1, -1,			0, 0,

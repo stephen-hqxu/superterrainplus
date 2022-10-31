@@ -23,7 +23,7 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static auto SkyboxShaderFilename =
 	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPSkybox", ".vert");
 
-constexpr static array<signed char, 24ull> BoxVertex = { 
+constexpr static array<signed char, 24u> BoxVertex = { 
 	-1, -1, -1, //origin
 	+1, -1, -1, //x=1
 	+1, -1, +1, //x=z=1
@@ -33,7 +33,7 @@ constexpr static array<signed char, 24ull> BoxVertex = {
 	+1, +1, +1, //x=y=z=1
 	-1, +1, +1  //y=z=1
 };
-constexpr static array<unsigned char, 36ull> BoxIndex = {
+constexpr static array<unsigned char, 36u> BoxIndex = {
 	0, 1, 2,
 	0, 2, 3,
 

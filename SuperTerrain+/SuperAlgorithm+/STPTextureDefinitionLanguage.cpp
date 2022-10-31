@@ -110,7 +110,7 @@ public:
 		 * @param beg The beginning iterator of this token.
 		 * @param count The number of character this token contains.
 		*/
-		STPToken(STPType type, const char* beg, size_t count = 1ull) : Type(type), Lexeme(beg, count) {
+		STPToken(STPType type, const char* beg, size_t count = 1u) : Type(type), Lexeme(beg, count) {
 
 		}
 
@@ -133,8 +133,8 @@ private:
 	const string_view Source;
 	//The input parsing string sequence in a string stream
 	const char* Sequence;
-	size_t Line = 1ull;
-	size_t Ch = 1ull;
+	size_t Line = 1u;
+	size_t Ch = 1u;
 
 	/**
 	 * @brief Peek at the first character in the string sequence.
@@ -207,7 +207,7 @@ private:
 				if (space == '\n') {
 					//record newline
 					this->Line++;
-					this->Ch = 1ull;
+					this->Ch = 1u;
 				}
 				//white space and newline and tab characters are all ignored
 				this->pop();
@@ -523,7 +523,7 @@ void STPTextureDefinitionLanguage::processGroup(STPTDLLexer& lexer) {
 
 		//assign texture with group index
 		std::for_each(texture_in_group.cbegin(), texture_in_group.cend(), 
-		[&texture_table = this->DeclaredTexture, view_group_index = this->DeclaredViewGroup.size() - 1ull](const auto& name) {
+		[&texture_table = this->DeclaredTexture, view_group_index = this->DeclaredViewGroup.size() - 1u](const auto& name) {
 			//assign all texture to be added with the group just parsed
 			texture_table[name] = view_group_index;
 		});
