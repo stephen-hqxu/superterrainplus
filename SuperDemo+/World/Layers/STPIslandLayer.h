@@ -20,11 +20,11 @@ namespace STPDemo {
 
 		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
 			//get the local RNG
-			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
+			const STPLayer::STPLocalSampler rng = this->createLocalSampler(local_seed);
 
 			//if we are surrounded by ocean, we have 1/2 of chance to generate a plain
 			return STPBiomeRegistry::applyAll(STPBiomeRegistry::isShallowOcean, center, north, east, south, west)
-				&& rng.nextVal(2) == 0 ? STPBiomeRegistry::Plains.ID : center;
+				&& rng.nextValue(2) == 0 ? STPBiomeRegistry::Plains.ID : center;
 		}
 	};
 }

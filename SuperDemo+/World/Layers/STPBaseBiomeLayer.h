@@ -58,10 +58,8 @@ namespace STPDemo {
 		}
 
 		Sample sample(int x, int y, int z) override {
-			//set the local seed
-			const Seed local_seed = this->genLocalSeed(x, z);
 			//get the local RNG
-			STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
+			STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 			//get the climate for this local coordinate
 			const Sample climate = this->getAscendant()->retrieve(x, y, z);
 
@@ -73,19 +71,19 @@ namespace STPDemo {
 			//interpretation, compared to vanilla Minecraft, special climate has been removed, every biomes have the equal chance of spawning
 			if (climate == STPBiomeRegistry::Plains.ID) {
 				//dry and hot biome
-				return this->DryBiomes[rng.nextVal(static_cast<Sample>(this->DryBiomes.size()))];
+				return this->DryBiomes[rng.nextValue(static_cast<Sample>(this->DryBiomes.size()))];
 			}
 			if (climate == STPBiomeRegistry::Desert.ID) {
 				//temperate biome
-				return this->TemperateBiomes[rng.nextVal(static_cast<Sample>(this->TemperateBiomes.size()))];
+				return this->TemperateBiomes[rng.nextValue(static_cast<Sample>(this->TemperateBiomes.size()))];
 			}
 			if (climate == STPBiomeRegistry::Mountain.ID) {
 				//cool biome
-				return this->CoolBiomes[rng.nextVal(static_cast<Sample>(this->CoolBiomes.size()))];
+				return this->CoolBiomes[rng.nextValue(static_cast<Sample>(this->CoolBiomes.size()))];
 			}
 			if (climate == STPBiomeRegistry::Forest.ID) {
 				//snowy and cold biome
-				return this->SnowyBiomes[rng.nextVal(static_cast<Sample>(this->SnowyBiomes.size()))];
+				return this->SnowyBiomes[rng.nextValue(static_cast<Sample>(this->SnowyBiomes.size()))];
 			}
 
 			//this usually won't happen, but just in case

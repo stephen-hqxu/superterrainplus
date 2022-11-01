@@ -28,7 +28,7 @@ namespace STPDemo {
 		//The scaling type for this layer
 		const STPScaleType Type;
 
-		Sample sample(Sample center, Sample e, Sample s, Sample se, const STPLayer::STPLocalRNG& rng) {
+		Sample sample(Sample center, Sample e, Sample s, Sample se, const STPLayer::STPLocalSampler& rng) {
 			//choose randomly between each cell
 			const Sample ret = rng.choose(center, e, s, se);
 
@@ -75,10 +75,8 @@ namespace STPDemo {
 			//get the sample of the neighbour cell
 			const Sample i = this->getAscendant()->retrieve(x >> 1, y, z >> 1);
 			const int xb = x & 1, zb = z & 1;
-			//reset local seed
-			const Seed local_seed = this->genLocalSeed(x & -2, z & -2);
 			//get local RNG
-			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
+			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x & -2, z & -2);
 
 			if (xb == 0 && zb == 0) {
 				//if the zoomed cell is exactly the current cell, return current value

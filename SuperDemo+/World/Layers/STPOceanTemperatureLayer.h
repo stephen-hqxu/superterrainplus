@@ -25,14 +25,12 @@ namespace STPDemo {
 			}
 
 			Sample sample(int x, int, int z) override {
-				//set local seed
-				const Seed local_seed = this->genLocalSeed(x, z);
 				//get local RNG
-				const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
+				const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 
 				//the RNG will overwrite land portion and mix them later in transition layer
 				//given 1/3 chance for each temp
-				const Sample i = rng.nextVal(3);
+				const Sample i = rng.nextValue(3);
 				switch (i) {
 				case 0u: return STPBiomeRegistry::FrozenOcean.ID;
 					break;

@@ -25,10 +25,8 @@ namespace STPDemo {
 		}
 
 		Sample sample(int x, int y, int z) override {
-			//generate local seed 
-			const Seed local_seed = this->genLocalSeed(x, z);
 			//get the local RNG
-			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
+			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 			//get the parent samples
 			const Sample land_val = this->getAscendant(0)->retrieve(x, y, z);
 			const Sample noise_val = this->getAscendant(1)->retrieve(x, y, z);
@@ -37,7 +35,7 @@ namespace STPDemo {
 			const Sample is_hill = (noise_val - 2) % STPHillsLayer::HILLS_CHANCE;
 
 			//1/3 chance to have a hill
-			if (rng.nextVal(3) == 0 || is_hill == 0) {
+			if (rng.nextValue(3) == 0 || is_hill == 0) {
 				Sample l = land_val;
 				//convert biomes to their respective hill biome
 				if (land_val == STPBiomeRegistry::Desert.ID) {
@@ -53,7 +51,7 @@ namespace STPDemo {
 					l = STPBiomeRegistry::SnowyMountain.ID;
 				}
 				else if (land_val == STPBiomeRegistry::Plains.ID) {
-					l = rng.nextVal(3) == 0 ? STPBiomeRegistry::ForestHills.ID : STPBiomeRegistry::Forest.ID;
+					l = rng.nextValue(3) == 0 ? STPBiomeRegistry::ForestHills.ID : STPBiomeRegistry::Forest.ID;
 				}
 				else if (land_val == STPBiomeRegistry::Forest.ID) {
 					l = STPBiomeRegistry::ForestHills.ID;
@@ -88,10 +86,10 @@ namespace STPDemo {
 				}
 
 				//now let's add some island at the centre of some ocean, given 1/3 chance of spawning
-				if (STPBiomeRegistry::isOcean(land_val) && !STPBiomeRegistry::isShallowOcean(land_val) && rng.nextVal(3) == 0) {
+				if (STPBiomeRegistry::isOcean(land_val) && !STPBiomeRegistry::isShallowOcean(land_val) && rng.nextValue(3) == 0) {
 					//filter out deep ocean
 					//giving 1/2 chance of each biome, feel free to add some more...
-					l = rng.nextVal(2) == 0 ? STPBiomeRegistry::Plains.ID : STPBiomeRegistry::Forest.ID;
+					l = rng.nextValue(2) == 0 ? STPBiomeRegistry::Plains.ID : STPBiomeRegistry::Forest.ID;
 				}
 
 				//make sure the hill is strictly at the centre of the biome, not on the edge

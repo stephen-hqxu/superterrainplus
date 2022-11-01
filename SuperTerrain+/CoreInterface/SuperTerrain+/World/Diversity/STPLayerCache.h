@@ -29,41 +29,11 @@ namespace SuperTerrainPlus::STPDiversity {
 	private:
 
 		//Store the key value for a coordinate
-		std::unique_ptr<unsigned long long[]> Key;
+		const std::unique_ptr<unsigned long long[]> Key;
 		//Store the sample number for a layer for a coordinate
-		std::unique_ptr<Sample[]> Value;
+		const std::unique_ptr<Sample[]> Value;
 		//Mask is used to round the key value such that it will be suitable for looking up value in the hash table
-		unsigned long long Mask;
-
-		/**
-		 * @brief Check if the number is power of 2
-		 * @param val The value to check
-		 * @return True if the number is power of 2
-		*/
-		static bool isPow2(unsigned long long) noexcept;
-
-		/**
-		 * @brief Get the mask value by evaluating power of 2 and minus one
-		 * @param bits The power to raise
-		 * @return The mask value
-		*/
-		static unsigned long long getMask(unsigned long long) noexcept;
-
-		/**
-		 * @brief Hash the coordinate and generate a unique hash value
-		 * @param x The x world coordinate
-		 * @param y The y world coordinate
-		 * @param z The z world coordinate
-		 * @return The unique hash value for this coordinate
-		*/
-		static unsigned long long uniqueHash(int, int, int) noexcept;
-
-		/**
-		 * @brief An algorithm to convert key value to a raw index value in order to locate the sample value in the hash table
-		 * @param key The value of the key
-		 * @return The raw index value, it's not the same as index, do remember to limit the range of the index using mask
-		*/
-		static unsigned long long mixKey(unsigned long long) noexcept;
+		const unsigned long long Mask;
 
 	public:
 
@@ -117,7 +87,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @brief Retrieve the size of the cache
 		 * @return The size of the cache
 		*/
-		unsigned long long getCapacity() const noexcept;
+		unsigned long long capacity() const noexcept;
 	};
 }
 #endif//_STP_LAYER_CACHE_H_

@@ -4,12 +4,12 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPDiversity;
 
-STPLayer::STPLocalRNG::STPLocalRNG(Seed layer_seed, Seed local_seed) noexcept :
+STPLayer::STPLocalSampler::STPLocalSampler(Seed layer_seed, Seed local_seed) noexcept :
 	LayerSeed(layer_seed), LocalSeed(local_seed) {
 
 }
 
-Sample STPLayer::STPLocalRNG::nextVal(Sample range) const noexcept {
+Sample STPLayer::STPLocalSampler::nextValue(Sample range) const noexcept {
 	//TODO: feel free to use your own algorithm to generate a random number
 	//Please do not use standard library rng, it will trash the performance
 	
@@ -21,26 +21,26 @@ Sample STPLayer::STPLocalRNG::nextVal(Sample range) const noexcept {
 	return val;
 }
 
-Sample STPLayer::STPLocalRNG::choose(Sample var1, Sample var2) const noexcept {
-	return this->nextVal(2) == 0 ? var1 : var2;
+Sample STPLayer::STPLocalSampler::choose(Sample var1, Sample var2) const noexcept {
+	return this->nextValue(2u) == 0u ? var1 : var2;
 }
 
-Sample STPLayer::STPLocalRNG::choose(Sample var1, Sample var2, Sample var3, Sample var4) const noexcept {
-	const Sample i = this->nextVal(4);
-	return i == 0 ? var1 : i == 1 ? var2 : i == 2 ? var3 : var4;
+Sample STPLayer::STPLocalSampler::choose(Sample var1, Sample var2, Sample var3, Sample var4) const noexcept {
+	const Sample i = this->nextValue(4u);
+	return i == 0u ? var1 : i == 1u ? var2 : i == 2u ? var3 : var4;
 }
 
 STPLayer::STPLayer(size_t ascendant_count, size_t cache_size, Seed global_seed, Seed salt) :
 	AscendantCount(ascendant_count),
 	Ascendant(this->AscendantCount == 0u ? nullptr : make_unique<STPLayer*[]>(this->AscendantCount)), Salt(salt),
-	LayerSeed(STPLayer::genLayerSeed(global_seed, salt)) {
+	LayerSeed(STPLayer::seedLayer(global_seed, salt)) {
 	//create a cache
 	if (cache_size > 0u) {
 		this->Cache.emplace(cache_size);
 	}
 }
 
-Seed STPLayer::genLayerSeed(Seed global_seed, Seed salt) noexcept {
+Seed STPLayer::seedLayer(Seed global_seed, Seed salt) noexcept {
 	Seed midSalt = STPLayer::mixSeed(salt, salt);
 	midSalt = STPLayer::mixSeed(midSalt, midSalt);
 	midSalt = STPLayer::mixSeed(midSalt, midSalt);
@@ -50,7 +50,7 @@ Seed STPLayer::genLayerSeed(Seed global_seed, Seed salt) noexcept {
 	return layer_seed;
 }
 
-Seed STPLayer::genLocalSeed(int x, int z) const noexcept {
+Seed STPLayer::seedLocal(int x, int z) const noexcept {
 	Seed local_seed = STPLayer::mixSeed(this->LayerSeed, x);
 	local_seed = STPLayer::mixSeed(local_seed, z);
 	local_seed = STPLayer::mixSeed(local_seed, x);
@@ -64,11 +64,15 @@ STPLayer::STPLayer(size_t cache_size, Seed global_seed, Seed salt) : STPLayer(0u
 
 size_t STPLayer::cacheSize() const noexcept {
 	//check for nullptr
-	return this->Cache ? this->Cache->getCapacity() : 0u ;
+	return this->Cache ? this->Cache->capacity() : 0u ;
 }
 
-STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) const noexcept {
-	return STPLayer::STPLocalRNG(this->LayerSeed, local_seed);
+STPLayer::STPLocalSampler STPLayer::createLocalSampler(Seed local_seed) const noexcept {
+	return STPLayer::STPLocalSampler(this->LayerSeed, local_seed);
+}
+
+STPLayer::STPLocalSampler STPLayer::createLocalSampler(int x, int z) const noexcept {
+	return this->createLocalSampler(this->seedLocal(x, z));
 }
 
 Seed STPLayer::mixSeed(Seed s, long long fac) noexcept {

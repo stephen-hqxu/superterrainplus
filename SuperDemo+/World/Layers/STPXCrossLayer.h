@@ -34,7 +34,7 @@ namespace STPDemo {
 				asc->retrieve(x + 1, y, z + 1),
 				asc->retrieve(x - 1, y, z + 1),
 				asc->retrieve(x - 1, y, z - 1),
-				this->genLocalSeed(x, z)
+				this->seedLocal(x, z)
 			);
 		}
 

@@ -57,7 +57,7 @@ SCENARIO_METHOD(LayerCacheTester, "STPLayerCache is used to cache data", "[Diver
 	GIVEN("A valid layer cache") {
 
 		THEN("Cache size can be retrieved") {
-			REQUIRE(this->getCapacity() == LayerCacheTester::CacheSize);
+			REQUIRE(this->capacity() == LayerCacheTester::CacheSize);
 		}
 
 		WHEN("Using cache to store and read value back") {
@@ -139,7 +139,7 @@ class RandomLayer : public STPLayer {
 private:
 
 	Sample sample(int x, int, int z) {
-		return static_cast<Sample>(this->genLocalSeed(x, z));
+		return static_cast<Sample>(this->seedLocal(x, z));
 	}
 
 protected:
@@ -213,18 +213,18 @@ SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG",
 		}
 
 		WHEN("Asking for a local random number generator from the layer") {
-			const Seed LocalSeed = this->genLocalSeed(Coord.x, Coord.y);
+			const Seed LocalSeed = this->seedLocal(Coord.x, Coord.y);
 
 			THEN("The RNG loaded with the same local seed should produce the same sequence of output") {
 				constexpr static unsigned int BucketSize = 16u;
 				constexpr static Sample Bound = std::numeric_limits<Sample>::max();
 
-				const STPLayer::STPLocalRNG RNG1 = this->getRNG(LocalSeed),
-					RNG2 = this->getRNG(LocalSeed);
+				const STPLayer::STPLocalSampler RNG1 = this->createLocalSampler(LocalSeed),
+					RNG2 = this->createLocalSampler(LocalSeed);
 
 				bool equalNextval = true, equalChoose = true;
 				for (unsigned int i = 0u; i < BucketSize && (equalNextval || equalChoose); i++) {
-					equalNextval &= RNG1.nextVal(Bound) == RNG2.nextVal(Bound);
+					equalNextval &= RNG1.nextValue(Bound) == RNG2.nextValue(Bound);
 					equalChoose &= RNG1.choose(0u, 1u, 2u, 3u) == RNG2.choose(0u, 1u, 2u, 3u);
 				}
 				CHECK(equalNextval);

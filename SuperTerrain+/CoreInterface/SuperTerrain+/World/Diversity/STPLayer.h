@@ -20,13 +20,11 @@ namespace SuperTerrainPlus::STPDiversity {
 	public:
 
 		/**
-		 * @brief STPLocalRNG is a random number generator for each local seed (a seed that is deterministic on world coordinate)
+		 * @brief STPLocalSampler is a random number generator for using a local seed.
+		 * Since local seed is specific to a coordinate in a layer, the local sampler guarantees to return the same sequence for
+		 * the same coordinate on the same layer.
 		*/
-		struct STP_API STPLocalRNG final {
-		protected:
-
-			friend class STPLayer;
-
+		class STP_API STPLocalSampler {
 		private:
 
 			//Layer seed for a particular layer implementation
@@ -34,39 +32,39 @@ namespace SuperTerrainPlus::STPDiversity {
 			//local seed varies from world coordinate, but the same coordinate will always yield the same local seed
 			mutable Seed LocalSeed;
 
-			/**
-			 * @brief Init RNG for each local coordinate
-			 * @param layer_seed Layer seed that is unique to each layer
-			 * @param local_seed Local seed that is unique to each world coordinate for every layer
-			*/
-			STPLocalRNG(Seed, Seed) noexcept;
-
 		public:
 
-			~STPLocalRNG() = default;
-
 			/**
-			 * @brief Get the next random number in the sequence
-			 * @param range The range from 0u to the specified value
-			 * @return The next sequence
+			 * @brief Init local sampler.
+			 * @param layer_seed Layer seed that is unique to each layer.
+			 * @param local_seed Local seed that is unique to each world coordinate for every layer.
 			*/
-			Sample nextVal(Sample) const noexcept;
+			STPLocalSampler(Seed, Seed) noexcept;
+
+			~STPLocalSampler() = default;
 
 			/**
-			 * @brief Select randomly among two variables
-			 * @param var1 The first variable to choose
-			 * @param var2 The second variable to choose
-			 * @return The chosen value of the variable
+			 * @brief Get the next random number in the sequence.
+			 * @param range The range from 0u to the specified value.
+			 * @return The next sequence.
+			*/
+			Sample nextValue(Sample) const noexcept;
+
+			/**
+			 * @brief Select randomly among two variables.
+			 * @param var1 The first variable to choose.
+			 * @param var2 The second variable to choose.
+			 * @return The chosen value of the variable.
 			*/
 			Sample choose(Sample, Sample) const noexcept;
 
 			/**
-			 * @brief Select randomly among four variables
-			 * @param var1 The first variable to choose
-			 * @param vaw2 The second variable to choose
-			 * @param var3 The third variable to choose
-			 * @param vaw4 The forth variable to choose
-			 * @return The chosen value of the variable
+			 * @brief Select randomly among four variables.
+			 * @param var1 The first variable to choose.
+			 * @param vaw2 The second variable to choose.
+			 * @param var3 The third variable to choose.
+			 * @param vaw4 The forth variable to choose.
+			 * @return The chosen value of the variable.
 			*/
 			Sample choose(Sample, Sample, Sample, Sample) const noexcept;
 
@@ -95,12 +93,12 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPLayer(size_t, size_t, Seed, Seed);
 
 		/**
-		 * @brief Generate a unique seed for this layer
-		 * @param global_seed The seed that is used to generate the entire world
-		 * @param salt A random number that is used to mix the global seed to generate layer seed
-		 * @return The layer seed
+		 * @brief Generate a unique seed for this layer.
+		 * @param global_seed The seed that is used to generate the entire world.
+		 * @param salt A random number that is used to mix the global seed to generate layer seed.
+		 * @return The layer seed.
 		*/
-		static Seed genLayerSeed(Seed, Seed) noexcept;
+		static Seed seedLayer(Seed, Seed) noexcept;
 
 		/**
 		 * @brief Sample the layer, given the world coordinate and return a sample point.
@@ -115,19 +113,28 @@ namespace SuperTerrainPlus::STPDiversity {
 	protected:
 
 		/**
-		 * @brief Generate a unique seed for this coordinate in this layer
-		 * @param x The x coordinate in world
-		 * @param z The z coordinate in world
-		 * @return The local seed associated with the world coordinate
+		 * @brief Generate a unique seed for a coordinate in this layer.
+		 * @param x The x coordinate in world.
+		 * @param z The z coordinate in world.
+		 * @return The local seed associated with the world coordinate.
 		*/
-		Seed genLocalSeed(int, int) const noexcept;
+		Seed seedLocal(int, int) const noexcept;
 
 		/**
-		 * @brief Get the random number generator for the specified local seed
-		 * @param local_seed The local seed from which the RNG is built on.
-		 * @return The generator with the specified local seed. The same local seed will always give the same sequence of random number
+		 * @brief Create a random number generator for the specified local seed.
+		 * @param local_seed The local seed from which the generator is built on.
+		 * @return The generator with the specified local seed. The same local seed will always give the same sequence of random number.
 		*/
-		STPLocalRNG getRNG(Seed) const noexcept;
+		STPLocalSampler createLocalSampler(Seed) const noexcept;
+
+		/**
+		 * @brief Create a random number generator for the specified world coordinate.
+		 * @param x The x coordinate in the world.
+		 * @param z The z coordinate in the world.
+		 * @return A deterministic generator for the specified world coordinate.
+		 * @see createLocalSampler(Seed)
+		*/
+		STPLocalSampler createLocalSampler(int, int) const noexcept;
 
 		/**
 		 * @brief Mix seed with a factor to achieve a degree of randomness to form a new seed. This function guarantees that if two same values are the same,

@@ -19,7 +19,7 @@ namespace STPDemo {
 
 		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) {
 			//set local RNG
-			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
+			const STPLayer::STPLocalSampler rng = this->createLocalSampler(local_seed);
 
 			const bool xMatch = west == east;
 			const bool zMatch = north == south;

@@ -19,15 +19,13 @@ namespace STPDemo {
 		}
 
 		Sample sample(int x, int y, int z) override {
-			//reset local seed
-			const Seed local_seed = this->genLocalSeed(x, z);
 			//get the local generator
-			const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
+			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 
 			//value from the previous layer
 			const Sample val = this->getAscendant()->retrieve(x, y, z);
 			//leaving ocean untouched, given a random noise value for the river generation layer
-			return STPBiomeRegistry::isShallowOcean(val) ? val : rng.nextVal(29999) + 2;
+			return STPBiomeRegistry::isShallowOcean(val) ? val : rng.nextValue(29999) + 2;
 		}
 
 	};

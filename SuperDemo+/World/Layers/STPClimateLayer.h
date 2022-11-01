@@ -40,10 +40,8 @@ namespace STPDemo {
 			Sample sample(int x, int y, int z) override {
 				//get the sample from the previous layer
 				const Sample val = this->getAscendant()->retrieve(x, y, z);
-				//set the local seed
-				const Seed local_seed = this->genLocalSeed(x, z);
 				//get the local RNG
-				const STPLayer::STPLocalRNG rng = this->getRNG(local_seed);
+				const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 
 				if (STPBiomeRegistry::isShallowOcean(val)) {
 					//if it's ocean, we don't touch it
@@ -52,7 +50,7 @@ namespace STPDemo {
 
 				//generate land portion
 				//1/6 chance of getting a forest or mountain
-				const Sample i = rng.nextVal(6);
+				const Sample i = rng.nextValue(6);
 				switch (i) {
 				case 0u: return STPBiomeRegistry::Forest.ID;
 					break;
