@@ -13,7 +13,7 @@ namespace STPDemo {
 	class STPSmoothScaleLayer : public STPCrossLayer {
 	public:
 
-		STPSmoothScaleLayer(Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(global_seed, salt, parent) {
+		STPSmoothScaleLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 

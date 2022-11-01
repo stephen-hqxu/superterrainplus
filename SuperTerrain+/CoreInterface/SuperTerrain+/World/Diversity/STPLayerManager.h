@@ -2,7 +2,6 @@
 #ifndef _STP_LAYER_MANAGER_H_
 #define _STP_LAYER_MANAGER_H_
 
-#include <SuperTerrain+/STPCoreDefine.h>
 //Data Structure
 #include <vector>
 //Layer Node
@@ -14,19 +13,14 @@ namespace SuperTerrainPlus::STPDiversity {
 	 * @brief STPLayerManager is a graph structured class that manages all STPLayers as nodes.
 	 * It makes layer creation and destroy easier.
 	*/
-	class STP_API STPLayerManager {
+	class STPLayerManager {
 	private:
 
 		//An array pointers to every layer.
+		//std::vector default deallocator deletes each layer in reverse direction,
+		//so it is safe for latter layer taking a pointer to the previous layer, which is what our data structure does
 		//STPLayerManager owns the pointer to each layer so vertices can be deleted with ease
-		std::vector<std::unique_ptr<STPLayer, void(*)(STPLayer*)>> Vertex;
-
-		/**
-		 * @brief Delete a internally stored layer
-		 * Since STPLayerManager is friend of STPLayer and STPLayerRecycler is friend of STPLayerManager, such that STPLayerRecycler can access deleter of STPLayer.
-		 * @param layer The pointer to the layer to be deleted
-		*/
-		static void recycleLayer(STPLayer*);
+		std::vector<std::unique_ptr<STPLayer>> Vertex;
 
 	public:
 
@@ -37,24 +31,24 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		STPLayerManager(const STPLayerManager&) = delete;
 
-		STPLayerManager(STPLayerManager&&) = default;
+		STPLayerManager(STPLayerManager&&) noexcept = default;
 
 		STPLayerManager& operator=(const STPLayerManager&) = delete;
 
-		STPLayerManager& operator=(STPLayerManager&&) = default;
+		STPLayerManager& operator=(STPLayerManager&&) noexcept = default;
 
 		~STPLayerManager() = default;
 
 		/**
 		 * @brief Construct a new layer instance and add to the layer chain structure and let the current layer manager manage this layer.
 		 * @tparam L A layer instance
-		 * @tparam C Cache size for this layer, it should be in the power of 2
-		 * @tparam Arg A list of arguments for the child layer class
-		 * @param args All other arguments for the created layer to be used in their constructor.
+		 * @tparam Arg... A list of arguments for the child layer class
+		 * @param cache_size The cache size for this layer.
+		 * @param args... All other arguments for the created layer to be used in their constructor.
 		 * @return A pointer new layer instance with the type of the specified child layer. The pointer is owned by the current manager and will be freed automatically.
 		*/
-		template <class L, size_t C = 0u, class... Arg>
-		STPLayer* insert(Arg&&...);
+		template <class L, class... Arg>
+		STPLayer* insert(size_t, Arg&&...);
 
 		/**
 		 * @brief Get the pointer to layer where the layer structure start.
@@ -62,13 +56,13 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * During biome generation, this is the first layer to be called, and ascendant layers will be called from this layer recursively.
 		 * @return The pointer to the starting layer.
 		*/
-		STPLayer* start();
+		STPLayer* start() const noexcept;
 
 		/**
 		 * @brief Get the number of layer, i.e., the number of vertices presented in this graph, managed by manager.
 		 * @return The number of layer
 		*/
-		size_t getLayerCount() const;
+		size_t getLayerCount() const noexcept;
 
 	};
 

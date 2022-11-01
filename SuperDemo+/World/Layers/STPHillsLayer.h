@@ -19,7 +19,7 @@ namespace STPDemo {
 
 	public:
 
-		STPHillsLayer(Seed global_seed, Seed salt, STPLayer* land, STPLayer* noise) : STPLayer(global_seed, salt, land, noise) {
+		STPHillsLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* land, STPLayer* noise) : STPLayer(cache_size, global_seed, salt, land, noise) {
 			//parent 0: land / biome
 			//parent 1: noise
 		}

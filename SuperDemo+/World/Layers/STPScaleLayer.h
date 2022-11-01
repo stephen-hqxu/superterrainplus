@@ -66,7 +66,8 @@ namespace STPDemo {
 
 	public:
 
-		STPScaleLayer(Seed global_seed, Seed salt, STPScaleType type, STPLayer* parent) : STPLayer(global_seed, salt, parent), Type(type) {
+		STPScaleLayer(size_t cache_size, Seed global_seed, Seed salt, STPScaleType type, STPLayer* parent) :
+			STPLayer(cache_size, global_seed, salt, parent), Type(type) {
 			//parent: undefined
 		}
 

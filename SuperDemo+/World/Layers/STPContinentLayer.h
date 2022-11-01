@@ -14,7 +14,7 @@ namespace STPDemo {
 	class STPContinentLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
-		STPContinentLayer(Seed global_seed, Seed salt) : STPLayer(global_seed, salt) {
+		STPContinentLayer(size_t cache_size, Seed global_seed, Seed salt) : STPLayer(cache_size, global_seed, salt) {
 
 		}
 

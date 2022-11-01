@@ -8,37 +8,20 @@ namespace SuperTerrainPlus {
 
 	/**
 	 * @brief STPEngineInitialiser initialises SuperTerrain+ main engine.
-	 * Making any function call before engine is initialised will result in underfined behaviour
+	 * Making any function call before engine is initialised will result in undefined behaviour
 	*/
 	namespace STPEngineInitialiser {
 
 		//Indicate the process with OpenGL context
-		typedef void* (*STPglProc)(const char* name);
+		typedef void* (*STPGLProc)(const char* name);
 
 		/**
-		 * @brief Initialise OpenGL context with the current process.
-		 * @return True if OpenGL init is successful
+		 * @brief Initialise the engine.
+		 * @param device Specify the device where CUDA works should be carried on.
+		 * @param gl_process Specify the process handle to initialise the GL context.
+		 * If it is a nullptr, it will skip GL context initialisation (so no context is created).
 		*/
-		STP_API bool initGLcurrent();
-
-		/**
-		 * @brief Initialise OpenGL context with explictly specified process
-		 * @param process The process to use
-		 * @return True if OpenGL init is successful
-		*/
-		STP_API bool initGLexplicit(STPglProc);
-
-		/**
-		 * @brief Initialise super terrain plus engine
-		 * @param device Specify which CUDA-enabled GPU will be used for computing
-		*/
-		STP_API void init(int);
-
-		/**
-		 * @brief Check if the engine has been initialised
-		 * @return True if engien has been initialised completely.
-		*/
-		STP_API bool hasInit();
+		STP_API void initialise(int, STPGLProc);
 
 		/**
 		 * @brief Get the 2-digit GPU architecture representation.

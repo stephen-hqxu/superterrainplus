@@ -11,16 +11,14 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Utility/STPDatabaseErrorHandler.hpp>
 
+#include <SuperTerrain+/Exception/STPGLError.h>
+
 #include <type_traits>
 
 using namespace SuperTerrainPlus;
 
 using std::is_same;
 using std::conjunction_v;
-
-//Default state is false, once the engine is initialised it will become true.
-static bool GLInit = false;
-static bool EngineInit = false;
 
 //Compatibility checking
 static_assert(conjunction_v<
@@ -36,23 +34,7 @@ static_assert(conjunction_v<
 	is_same<STPOpenGL::STPsizeiptr, GLsizeiptr>
 >, "OpenGL specification is no longer compatible with SuperTerrain+, please contact the maintainer.");
 
-bool STPEngineInitialiser::initGLcurrent() {
-	if (!gladLoadGL()) {
-		return false;
-	}
-	GLInit = true;
-	return GLInit;
-}
-
-bool STPEngineInitialiser::initGLexplicit(STPglProc process) {
-	if (!gladLoadGLLoader(process)) {
-		return false;
-	}
-	GLInit = true;
-	return GLInit;
-}
-
-void STPEngineInitialiser::init(int device) {
+void STPEngineInitialiser::initialise(int device, STPGLProc gl_process) {
 	//CUDA
 	STP_CHECK_CUDA(cudaSetDevice(device));
 	//init context in case the first call is CUDA driver API
@@ -61,14 +43,18 @@ void STPEngineInitialiser::init(int device) {
 	STP_CHECK_CUDA(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 	STP_CHECK_CUDA(cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte));
 
-	//SQLite3
+	//SQLite
 	STP_CHECK_SQLITE3(sqlite3_initialize());
 
-	EngineInit = true;
-}
+	//GL
+	if (gl_process == nullptr) {
+		//no initialisation to GL context
+		return;
+	}
 
-bool STPEngineInitialiser::hasInit() {
-	return GLInit && EngineInit;
+	if (!gladLoadGLLoader(gl_process)) {
+		throw STPException::STPGLError("Unable to setup GL context");
+	}
 }
 
 int STPEngineInitialiser::architecture(int device) {

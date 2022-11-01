@@ -672,21 +672,15 @@ if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
 
 	/**
 	 * @brief Create glad context, making the current running thread available to OpenGL
-	 * @return True if the context is created successfully
 	*/
-	static bool initSTP() {
+	static void initSTP() {
 		const auto proc_addr = reinterpret_cast<GLADloadproc>(glfwGetProcAddress);
 		//when we are using shared library build in GLAD, the GLAD context is shared to all libraries that are linked to it.
-		if (!SuperTerrainPlus::STPEngineInitialiser::initGLexplicit(proc_addr)) {
-			cerr << "Fail to initialise SuperTerrain+ engine." << endl;
-			return false;
-		}
 		//CUDA context init on device 0 (only one GPU)
-		SuperTerrainPlus::STPEngineInitialiser::init(0);
+		//if it fails, exception is generated
+		SuperTerrainPlus::STPEngineInitialiser::initialise(0, proc_addr);
 		//must init the main engine first because the renderer is depended on that.
 		SuperTerrainPlus::STPRealism::STPRendererInitialiser::init();
-
-		return SuperTerrainPlus::STPEngineInitialiser::hasInit();
 	}
 
 	/**
@@ -724,11 +718,12 @@ int main() {
 
 	//engine setup
 	//because GLFW callback uses camera, so we need to setup camera first
-	if (!(STPStart::initGLFW() && STPStart::initSTP())) {
+	if (!(STPStart::initGLFW())) {
 		//error
 		STPStart::clearup();
 		return -1;
 	}
+	STPStart::initSTP();
 	//welcome
 	cout << File::read("./Resource/welcome.txt") << endl;
 	cout << "OpenGL Version: " << glGetString(GL_VERSION) << endl;

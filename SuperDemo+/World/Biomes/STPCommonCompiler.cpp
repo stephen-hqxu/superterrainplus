@@ -156,13 +156,9 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 	}
 	/* -------------------------------------- link -------------------------------------- */
 	//setup linker options
-	STPDeviceRuntimeProgram::STPLinkerInformation::STPDataJitOption common_data_option;
-	STPDeviceRuntimeProgram::STPLinkerInformation linkInfo;
+	const STPDeviceRuntimeProgram::STPLinkerInformation::STPDataJitOption common_data_option = { };
+	STPDeviceRuntimeProgram::STPLinkerInformation linkInfo = { };
 	STPCompilerLog log = { };
-
-#ifdef NDEBUG
-	common_data_option(CU_JIT_LTO, (void*)1);
-#endif
 
 	linkInfo.LinkerOption
 #ifndef NDEBUG
@@ -171,6 +167,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
 #else
 		(CU_JIT_OPTIMIZATION_LEVEL, (void*)4u)
+		(CU_JIT_LTO, (void*)1)
 #endif
 		(CU_JIT_LOG_VERBOSE, (void*)1)
 		(CU_JIT_INFO_LOG_BUFFER, log.linker_info_log)
@@ -182,6 +179,8 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 	linkInfo.ModuleOption
 #ifndef NDEBUG
 		(CU_JIT_GENERATE_DEBUG_INFO, (void*)1)
+#else
+		(CU_JIT_LTO, (void*)1)
 #endif
 		(CU_JIT_INFO_LOG_BUFFER, log.module_info_log)
 		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize)

@@ -117,7 +117,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * All pointers within are managed by the calling texture factory, and can only be accessed from device.
 		 * @return The splat database with all splat data.
 		*/
-		STPTextureInformation::STPSplatRuleDatabase getSplatDatabase() const;
+		STPTextureInformation::STPSplatRuleDatabase getSplatDatabase() const noexcept;
 	
 	public:
 
@@ -168,7 +168,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * It can then be sent to renderer.
 		 * @return The splat texture database with all splat texture.
 		*/
-		STPTextureInformation::STPSplatTextureDatabase getSplatTexture() const;
+		STPTextureInformation::STPSplatTextureDatabase getSplatTexture() const noexcept;
 
 		/**
 		 * @brief Convert texture type to index that can be used to locate in the texture registry.
@@ -182,7 +182,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @brief Get the number of texture type being used.
 		 * @return The number of used type.
 		*/
-		size_t usedType() const;
+		size_t usedType() const noexcept;
 
 	};
 

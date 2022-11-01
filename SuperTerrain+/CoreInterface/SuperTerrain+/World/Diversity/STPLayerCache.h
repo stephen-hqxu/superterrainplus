@@ -40,14 +40,14 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param val The value to check
 		 * @return True if the number is power of 2
 		*/
-		static bool isPow2(unsigned long long);
+		static bool isPow2(unsigned long long) noexcept;
 
 		/**
 		 * @brief Get the mask value by evaluating power of 2 and minus one
 		 * @param bits The power to raise
 		 * @return The mask value
 		*/
-		static unsigned long long getMask(unsigned long long);
+		static unsigned long long getMask(unsigned long long) noexcept;
 
 		/**
 		 * @brief Hash the coordinate and generate a unique hash value
@@ -56,14 +56,14 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param z The z world coordinate
 		 * @return The unique hash value for this coordinate
 		*/
-		static unsigned long long uniqueHash(int, int, int);
+		static unsigned long long uniqueHash(int, int, int) noexcept;
 
 		/**
 		 * @brief An algorithm to convert key value to a raw index value in order to locate the sample value in the hash table
 		 * @param key The value of the key
 		 * @return The raw index value, it's not the same as index, do remember to limit the range of the index using mask
 		*/
-		static unsigned long long mixKey(unsigned long long);
+		static unsigned long long mixKey(unsigned long long) noexcept;
 
 	public:
 
@@ -117,7 +117,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @brief Retrieve the size of the cache
 		 * @return The size of the cache
 		*/
-		unsigned long long getCapacity() const;
+		unsigned long long getCapacity() const noexcept;
 	};
 }
 #endif//_STP_LAYER_CACHE_H_

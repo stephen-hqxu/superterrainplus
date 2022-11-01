@@ -1,12 +1,15 @@
 #include <SuperTerrain+/World/Diversity/STPLayer.h>
 
+using std::make_unique;
+
 using namespace SuperTerrainPlus::STPDiversity;
 
-STPLayer::STPLocalRNG::STPLocalRNG(Seed layer_seed, Seed local_seed) : LayerSeed(layer_seed), LocalSeed(local_seed) {
+STPLayer::STPLocalRNG::STPLocalRNG(Seed layer_seed, Seed local_seed) noexcept :
+	LayerSeed(layer_seed), LocalSeed(local_seed) {
 
 }
 
-Sample STPLayer::STPLocalRNG::nextVal(Sample range) const {
+Sample STPLayer::STPLocalRNG::nextVal(Sample range) const noexcept {
 	//TODO: feel free to use your own algorithm to generate a random number
 	//Please do not use standard library rng, it will trash the performance
 	
@@ -18,20 +21,26 @@ Sample STPLayer::STPLocalRNG::nextVal(Sample range) const {
 	return val;
 }
 
-STPLayer::STPLayer(Seed global_seed, Seed salt) : Salt(salt), LayerSeed(STPLayer::genLayerSeed(global_seed, salt)) {
-
-}
-
-Sample STPLayer::STPLocalRNG::choose(Sample var1, Sample var2) const {
+Sample STPLayer::STPLocalRNG::choose(Sample var1, Sample var2) const noexcept {
 	return this->nextVal(2) == 0 ? var1 : var2;
 }
 
-Sample STPLayer::STPLocalRNG::choose(Sample var1, Sample var2, Sample var3, Sample var4) const {
+Sample STPLayer::STPLocalRNG::choose(Sample var1, Sample var2, Sample var3, Sample var4) const noexcept {
 	const Sample i = this->nextVal(4);
 	return i == 0 ? var1 : i == 1 ? var2 : i == 2 ? var3 : var4;
 }
 
-Seed STPLayer::genLayerSeed(Seed global_seed, Seed salt) {
+STPLayer::STPLayer(size_t ascendant_count, size_t cache_size, Seed global_seed, Seed salt) :
+	AscendantCount(ascendant_count),
+	Ascendant(this->AscendantCount == 0u ? nullptr : make_unique<STPLayer*[]>(this->AscendantCount)), Salt(salt),
+	LayerSeed(STPLayer::genLayerSeed(global_seed, salt)) {
+	//create a cache
+	if (cache_size > 0u) {
+		this->Cache.emplace(cache_size);
+	}
+}
+
+Seed STPLayer::genLayerSeed(Seed global_seed, Seed salt) noexcept {
 	Seed midSalt = STPLayer::mixSeed(salt, salt);
 	midSalt = STPLayer::mixSeed(midSalt, midSalt);
 	midSalt = STPLayer::mixSeed(midSalt, midSalt);
@@ -41,7 +50,7 @@ Seed STPLayer::genLayerSeed(Seed global_seed, Seed salt) {
 	return layer_seed;
 }
 
-Seed STPLayer::genLocalSeed(int x, int z) const {
+Seed STPLayer::genLocalSeed(int x, int z) const noexcept {
 	Seed local_seed = STPLayer::mixSeed(this->LayerSeed, x);
 	local_seed = STPLayer::mixSeed(local_seed, z);
 	local_seed = STPLayer::mixSeed(local_seed, x);
@@ -49,16 +58,20 @@ Seed STPLayer::genLocalSeed(int x, int z) const {
 	return local_seed;
 }
 
-size_t STPLayer::cacheSize() const {
+STPLayer::STPLayer(size_t cache_size, Seed global_seed, Seed salt) : STPLayer(0u, cache_size, global_seed, salt) {
+	
+}
+
+size_t STPLayer::cacheSize() const noexcept {
 	//check for nullptr
 	return this->Cache ? this->Cache->getCapacity() : 0u ;
 }
 
-STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) const {
+STPLayer::STPLocalRNG STPLayer::getRNG(Seed local_seed) const noexcept {
 	return STPLayer::STPLocalRNG(this->LayerSeed, local_seed);
 }
 
-Seed STPLayer::mixSeed(Seed s, long long fac) {
+Seed STPLayer::mixSeed(Seed s, long long fac) noexcept {
 	//TODO: Mix seed based on any algorithm you like, feel free to change the implementation
 	s *= s * 6364136223846793005ull + 1442695040888963407ull;
 	s += fac;
@@ -89,22 +102,10 @@ Sample STPLayer::retrieve(int x, int y, int z) {
 	return this->sample(x, y, z);
 }
 
-STPLayer* STPLayer::getAscendant(unsigned int index) const {
-	return this->getAscendantCount() != 0 && index < this->getAscendantCount() ? this->Ascendant[index] : nullptr;
+STPLayer* STPLayer::getAscendant(size_t index) const noexcept {
+	return this->AscendantCount != 0u && index < this->AscendantCount ? this->Ascendant[index] : nullptr;
 }
 
-STPLayer* STPLayer::getAscendant() const {
-	return this->getAscendant(0);
-}
-
-size_t STPLayer::getAscendantCount() const {
-	return this->Ascendant.size();
-}
-
-bool STPLayer::isMerging() const {
-	return this->getAscendantCount() > 1;
-}
-
-bool STPLayer::hasAscendant() const {
-	return this->getAscendantCount() != 0;
+bool STPLayer::isMerging() const noexcept {
+	return this->AscendantCount > 1u;
 }

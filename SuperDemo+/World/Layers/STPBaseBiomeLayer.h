@@ -53,7 +53,7 @@ namespace STPDemo {
 
 	public:
 
-		STPBaseBiomeLayer(Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(global_seed, salt, parent) {
+		STPBaseBiomeLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(cache_size, global_seed, salt, parent) {
 			//parent:: climate layer
 		}
 

@@ -14,7 +14,7 @@ namespace STPDemo {
 	class STPNoiseLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
-		STPNoiseLayer(Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(global_seed, salt, parent) {
+		STPNoiseLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(cache_size, global_seed, salt, parent) {
 			//noise layer will overwrite previous interpretation, this is a new chain of layers
 		}
 

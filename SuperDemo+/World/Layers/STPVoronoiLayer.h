@@ -46,8 +46,8 @@ namespace STPDemo {
 
 	public:
 
-		STPVoronoiLayer(Seed global_seed, Seed salt, bool is3D , STPLayer* parent)
-			: STPLayer(global_seed, salt, parent), is3D(is3D), voronoi_seed(std::hash<Seed>{}(global_seed)) {
+		STPVoronoiLayer(size_t cache_size, Seed global_seed, Seed salt, bool is3D , STPLayer* parent)
+			: STPLayer(cache_size, global_seed, salt, parent), is3D(is3D), voronoi_seed(std::hash<Seed>{}(global_seed)) {
 			
 		}
 

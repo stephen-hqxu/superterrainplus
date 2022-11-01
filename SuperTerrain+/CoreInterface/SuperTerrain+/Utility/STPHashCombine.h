@@ -2,9 +2,6 @@
 #ifndef _STP_HASH_COMBINE_H_
 #define _STP_HASH_COMBINE_H_
 
-//System
-#include <type_traits>
-
 namespace SuperTerrainPlus {
 
 	/**
@@ -25,7 +22,7 @@ namespace SuperTerrainPlus {
 			 * @param value The next value to be hashed
 			 */
 			template<typename T>
-			void combineOne(size_t&, const T&);
+			void combineOne(size_t&, const T&) noexcept;
 
 		}
 
@@ -38,7 +35,7 @@ namespace SuperTerrainPlus {
 		 * @return The resultant hash output that has been combined with all values
 		*/
 		template<typename... T>
-		size_t combine(size_t, const T&...);
+		size_t combine(size_t, const T&...) noexcept;
 
 	}
 

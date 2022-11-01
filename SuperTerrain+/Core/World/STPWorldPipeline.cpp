@@ -83,7 +83,7 @@ catch (...) { \
 struct STPHashivec2 {
 public:
 
-	inline size_t operator()(const ivec2& position) const {
+	inline size_t operator()(const ivec2& position) const noexcept {
 		//combine hash
 		return STPHashCombine::combine(0u, position.x, position.y);
 	}

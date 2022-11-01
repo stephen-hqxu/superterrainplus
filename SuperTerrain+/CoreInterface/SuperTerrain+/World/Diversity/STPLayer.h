@@ -3,12 +3,12 @@
 #define _STP_LAYER_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-//System
-#include <vector>
-#include <memory>
-#include <type_traits>
-//Biome define
 #include "STPLayerCache.h"
+
+//System
+#include <memory>
+#include <optional>
+#include <type_traits>
 
 namespace SuperTerrainPlus::STPDiversity {
 
@@ -18,8 +18,6 @@ namespace SuperTerrainPlus::STPDiversity {
 	*/
 	class STP_API STPLayer {
 	public:
-
-		friend class STPLayerManager;
 
 		/**
 		 * @brief STPLocalRNG is a random number generator for each local seed (a seed that is deterministic on world coordinate)
@@ -41,7 +39,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param layer_seed Layer seed that is unique to each layer
 			 * @param local_seed Local seed that is unique to each world coordinate for every layer
 			*/
-			STPLocalRNG(Seed, Seed);
+			STPLocalRNG(Seed, Seed) noexcept;
 
 		public:
 
@@ -52,7 +50,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param range The range from 0u to the specified value
 			 * @return The next sequence
 			*/
-			Sample nextVal(Sample) const;
+			Sample nextVal(Sample) const noexcept;
 
 			/**
 			 * @brief Select randomly among two variables
@@ -60,7 +58,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param var2 The second variable to choose
 			 * @return The chosen value of the variable
 			*/
-			Sample choose(Sample, Sample) const;
+			Sample choose(Sample, Sample) const noexcept;
 
 			/**
 			 * @brief Select randomly among four variables
@@ -70,20 +68,31 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param vaw4 The forth variable to choose
 			 * @return The chosen value of the variable
 			*/
-			Sample choose(Sample, Sample, Sample, Sample) const;
+			Sample choose(Sample, Sample, Sample, Sample) const noexcept;
 
 		};
+
+		//The number of ascendant
+		const size_t AscendantCount;
 
 	private:
 
 		//The ascendant layer will be executed before this layer, like a singly linked list
 		//usually there is only one ascendant, but if there is a merge point in the chain, there will be multiple, depended on the actual implementation
 		//Basically it's {asc*, asc*...}
-		//TODO: Use shared_ptr instead
-		std::vector<STPLayer*> Ascendant;
+		const std::unique_ptr<STPLayer*[]> Ascendant;
 
 		//layer cache for dynamic programming
-		std::unique_ptr<STPLayerCache> Cache;
+		std::optional<STPLayerCache> Cache;
+
+		/**
+		 * @brief Create a layer.
+		 * @param ascendant_count The number of ascendant.
+		 * @param cache_size The size of cache.
+		 * @param global_seed The global seed.
+		 * @param salt The salt.
+		*/
+		STPLayer(size_t, size_t, Seed, Seed);
 
 		/**
 		 * @brief Generate a unique seed for this layer
@@ -91,7 +100,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param salt A random number that is used to mix the global seed to generate layer seed
 		 * @return The layer seed
 		*/
-		static Seed genLayerSeed(Seed, Seed);
+		static Seed genLayerSeed(Seed, Seed) noexcept;
 
 		/**
 		 * @brief Sample the layer, given the world coordinate and return a sample point.
@@ -106,42 +115,19 @@ namespace SuperTerrainPlus::STPDiversity {
 	protected:
 
 		/**
-		 * @brief Create a layer instance with no ascendant.
-		 * @param global_seed The global seed is the seed that used to generate the entire world, a.k.a., world seed.
-		 * @param salt The salt is a random number that used to mix the global to generate local and layer seed, such that each layer should use
-		 * different salt value.
-		*/
-		STPLayer(Seed, Seed);
-
-		/**
-		 * @brief Create a layer instance
-		 * @tparam Asc A list of ascendant, could be only none, could be only one, could be more... Only STPLayer is accepted
-		 * @param global_seed The global seed is the seed that used to generate the entire world, a.k.a., world seed.
-		 * @param salt The salt is a random number that used to mix the global to generate local and layer seed, such that each layer should use
-		 * different salt value
-		 * @param ascendant The next executed layer. If more than one layer is provided, the layer is merging.
-		 * Each ascendant should be dynamically allocated, memory will be freed when the layers are destroyed.
-		*/
-		template <class... Asc>
-		STPLayer(Seed, Seed, Asc*...);
-
-		//Layer deletion is handled by STPLayerManager
-		virtual ~STPLayer() = default;
-
-		/**
 		 * @brief Generate a unique seed for this coordinate in this layer
 		 * @param x The x coordinate in world
 		 * @param z The z coordinate in world
 		 * @return The local seed associated with the world coordinate
 		*/
-		Seed genLocalSeed(int, int) const;
+		Seed genLocalSeed(int, int) const noexcept;
 
 		/**
 		 * @brief Get the random number generator for the specified local seed
 		 * @param local_seed The local seed from which the RNG is built on.
 		 * @return The generator with the specified local seed. The same local seed will always give the same sequence of random number
 		*/
-		STPLocalRNG getRNG(Seed) const;
+		STPLocalRNG getRNG(Seed) const noexcept;
 
 		/**
 		 * @brief Mix seed with a factor to achieve a degree of randomness to form a new seed. This function guarantees that if two same values are the same,
@@ -150,7 +136,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param fac The factor that is used to mix
 		 * @return The mixed seed
 		*/
-		static Seed mixSeed(Seed, long long);
+		static Seed mixSeed(Seed, long long) noexcept;
 
 	public:
 
@@ -158,6 +144,22 @@ namespace SuperTerrainPlus::STPDiversity {
 		const Seed Salt;
 		//Seed for each layer, the same layer under the same world seed and salt will always have the same layer seed
 		const Seed LayerSeed;
+
+		//@see The version of STPLayer that takes a variable number of ascendant
+		STPLayer(size_t, Seed, Seed);
+
+		/**
+		 * @brief Create a layer instance.
+		 * @tparam Asc... A list of ascendant, could be only none, could be only one, could be more... Only STPLayer is accepted.
+		 * @param cache_size Cache size for this layer, it should be in the power of 2. Or 0 size to disable caching.
+		 * @param global_seed The global seed is the seed that used to generate the entire world, a.k.a., world seed.
+		 * @param salt The salt is a random number that used to mix the global to generate local and layer seed, such that each layer should use
+		 * different salt value.
+		 * @param ascendant... The next executed layer. If more than one layer is provided, the layer is merging.
+		 * Each ascendant should be dynamically allocated, memory will be freed when the layers are destroyed.
+		*/
+		template <class... Asc>
+		STPLayer(size_t, Seed, Seed, Asc*...);
 
 		STPLayer(const STPLayer&) = delete;
 
@@ -167,11 +169,14 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		STPLayer& operator=(STPLayer&&) = delete;
 
+		//Layer deletion is handled by STPLayerManager
+		virtual ~STPLayer() = default;
+
 		/**
 		 * @brief Query the cache size on this layer cache
 		 * @return The size of the layer cache for this layer
 		*/
-		size_t cacheSize() const;
+		size_t cacheSize() const noexcept;
 
 		/**
 		 * @brief It will first read from the layer cache with the given world coordinate as key, if the cache exists, retrieve the value directly. Otherwise
@@ -184,39 +189,20 @@ namespace SuperTerrainPlus::STPDiversity {
 		Sample retrieve(int, int, int);
 
 		/**
-		 * @brief Get the parent layer with specified index
-		 * @param index The index of the ascendant to get
+		 * @brief Get the parent layer with specified index.
+		 * @param index The index of the ascendant to get.
+		 * If not provided, it will default to 0, which is the first parent layer.
 		 * @return The ascendant at that index - the parent layers, who will be executed before this layer.
-		 * Return null if index out of bound or no ascendant
-		*/
-		STPLayer* getAscendant(unsigned int) const;
-
-		/**
-		 * @brief Get the first parent layer
-		 * @return The ascendant - the parent layers, who will be executed before this layer.
 		 * There might be more than one ascendant in case there is a merge in the execution chain.
-		 * Return null if there is no ascendant
+		 * Return null if index out of bound or no ascendant.
 		*/
-		STPLayer* getAscendant() const;
-
-		/**
-		 * @brief Get the number of ascendant in this layer, if there are more than one, it's a merging layer
-		 * @return The number of ascendant in this layer
-		*/
-		size_t getAscendantCount() const;
-
+		STPLayer* getAscendant(size_t = 0u) const noexcept;
 
 		/**
 		 * @brief Test if there is more than one parent in this layer
 		 * @return True if yes
 		*/
-		bool isMerging() const;
-
-		/**
-		 * @brief Test if the current layer has any parent
-		 * @return True if any
-		*/
-		bool hasAscendant() const;
+		bool isMerging() const noexcept;
 
 	};
 }

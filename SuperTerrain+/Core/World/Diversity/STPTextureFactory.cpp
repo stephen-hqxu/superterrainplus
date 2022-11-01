@@ -176,7 +176,7 @@ vector<N> STPTextureFactory::convertSplatID
 	return reg;
 }
 
-STPTextureInformation::STPSplatRuleDatabase STPTextureFactory::getSplatDatabase() const {
+STPTextureInformation::STPSplatRuleDatabase STPTextureFactory::getSplatDatabase() const noexcept {
 	return STPTextureInformation::STPSplatRuleDatabase{
 		this->SplatLookup_d.get(),
 		static_cast<unsigned int>(this->SplatLookupCount),
@@ -222,7 +222,7 @@ STPOpenGL::STPuint STPTextureFactory::operator[](STPTextureInformation::STPMapGr
 	return this->TextureOwnership.at(group_id);
 }
 
-STPTextureInformation::STPSplatTextureDatabase STPTextureFactory::getSplatTexture() const {
+STPTextureInformation::STPSplatTextureDatabase STPTextureFactory::getSplatTexture() const noexcept {
 	return STPTextureInformation::STPSplatTextureDatabase{
 		this->Texture.data(),
 		this->Texture.size(),
@@ -251,6 +251,6 @@ STPTextureFactory::STPTextureType_t STPTextureFactory::convertType(STPTextureTyp
 	return static_cast<STPTextureType_t>(type_index);
 }
 
-size_t STPTextureFactory::usedType() const {
+size_t STPTextureFactory::usedType() const noexcept {
 	return this->ValidType.size();
 }

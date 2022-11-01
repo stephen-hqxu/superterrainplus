@@ -14,7 +14,7 @@ namespace STPDemo {
 	class STPRiverErodeLayer : public STPCrossLayer {
 	public:
 
-		STPRiverErodeLayer(Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(global_seed, salt, parent) {
+		STPRiverErodeLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
 			//parent: noise to river layer
 		}
 

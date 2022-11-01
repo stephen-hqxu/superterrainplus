@@ -52,7 +52,10 @@ namespace SuperTerrainPlus::STPDiversity {
 		*/
 		virtual STPLayerManager supply() const = 0;
 
-	protected:
+	public:
+
+		//Specify the dimension of the generated biome map, in 3 dimension
+		const glm::uvec3 BiomeDimension;
 
 		/**
 		 * @brief Init biome factory with internal cache memory pool that can be used for multi-threading, each thread will be automatically allocated one cache
@@ -66,11 +69,6 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param dimension The dimension of the biome map, this will init a 2D biome map generator, with x and z component only
 		*/
 		STPBiomeFactory(glm::uvec2);
-
-	public:
-
-		//Specify the dimension of the generated biome map, in 3 dimension
-		const glm::uvec3 BiomeDimension;
 
 		STPBiomeFactory(const STPBiomeFactory&) = delete;
 

@@ -14,7 +14,7 @@ namespace STPDemo {
 	class STPLandLayer : public STPXCrossLayer {
 	public:
 
-		STPLandLayer(Seed global_seed, Seed salt, STPLayer* parent) : STPXCrossLayer(global_seed, salt, parent) {
+		STPLandLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPXCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 

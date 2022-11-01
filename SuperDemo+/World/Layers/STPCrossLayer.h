@@ -16,11 +16,12 @@ namespace STPDemo {
 
 		/**
 		 * @brief Init STPCrossLayer with one parent only
+		 * @param cache_size Cache size
 		 * @param global_seed World seed
 		 * @param salt Random salt
 		 * @param parent The previous layer
 		*/
-		STPCrossLayer(Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(global_seed, salt, parent) {
+		STPCrossLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(cache_size, global_seed, salt, parent) {
 
 		}
 

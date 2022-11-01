@@ -33,7 +33,7 @@ namespace STPDemo {
 		class STPClimateSingle : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
-			STPClimateSingle(Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(global_seed, salt, parent) {
+			STPClimateSingle(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(cache_size, global_seed, salt, parent) {
 
 			}
 
@@ -73,7 +73,7 @@ namespace STPDemo {
 		class STPClimateModerate : public STPCrossLayer {
 		public:
 
-			STPClimateModerate(Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(global_seed, salt, parent) {
+			STPClimateModerate(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 			}
 
@@ -100,7 +100,7 @@ namespace STPDemo {
 		class STPClimateExtreme : public STPCrossLayer {
 		public:
 
-			STPClimateExtreme(Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(global_seed, salt, parent) {
+			STPClimateExtreme(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 			}
 

@@ -14,7 +14,7 @@ namespace STPDemo {
 	class STPDeepOceanLayer : public STPCrossLayer {
 	public:
 
-		STPDeepOceanLayer(Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(global_seed, salt, parent) {
+		STPDeepOceanLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 

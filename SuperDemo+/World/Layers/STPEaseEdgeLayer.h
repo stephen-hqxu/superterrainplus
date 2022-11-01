@@ -25,7 +25,7 @@ namespace STPDemo {
 
 	public:
 
-		STPEaseEdgeLayer(Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(global_seed, salt, parent) {
+		STPEaseEdgeLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 

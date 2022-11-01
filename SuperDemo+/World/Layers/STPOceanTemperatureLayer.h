@@ -20,7 +20,7 @@ namespace STPDemo {
 		class STPOceanNoise : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
-			STPOceanNoise(Seed global_seed, Seed salt) : STPLayer(global_seed, salt) {
+			STPOceanNoise(size_t cache_size, Seed global_seed, Seed salt) : STPLayer(cache_size, global_seed, salt) {
 
 			}
 
@@ -51,7 +51,7 @@ namespace STPDemo {
 		class STPOceanTemperate : public STPCrossLayer {
 		public:
 
-			STPOceanTemperate(Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(global_seed, salt, parent) {
+			STPOceanTemperate(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
 				//parent: STPOceanExtreme
 			}
 
@@ -83,7 +83,7 @@ namespace STPDemo {
 		class STPOceanExtreme : public STPCrossLayer {
 		public:
 
-			STPOceanExtreme(Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(global_seed, salt, parent) {
+			STPOceanExtreme(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
 				//parent: STPOceanNoise
 			}
 
@@ -116,7 +116,7 @@ namespace STPDemo {
 		class STPOceanTransition : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
-			STPOceanTransition(Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(global_seed, salt, parent) {
+			STPOceanTransition(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(cache_size, global_seed, salt, parent) {
 
 			}
 
@@ -158,7 +158,8 @@ namespace STPDemo {
 		class STPOceanMix : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
-			STPOceanMix(Seed global_seed, Seed salt, STPLayer* land, STPLayer* ocean) : STPLayer(global_seed, salt, land, ocean) {
+			STPOceanMix(size_t cache_size, Seed global_seed, Seed salt, STPLayer* land, STPLayer* ocean) :
+				STPLayer(cache_size, global_seed, salt, land, ocean) {
 				//parent 0: land
 				//parent 1: STPOceanTemperate
 			}

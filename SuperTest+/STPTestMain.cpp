@@ -26,10 +26,9 @@ cudaMemPool_t STPTestInformation::TestDeviceMemoryPool;
 int main(int argc, char* argv[]) {
 	//setup the engine
 	try {
-		STPEngineInitialiser::init(SelectedDevice);
-	}
-	catch (const STPException::STPCUDAError& cuda_err) {
-		cerr << cuda_err.what() << endl;
+		STPEngineInitialiser::initialise(SelectedDevice, nullptr);
+	} catch (const std::exception& err) {
+		cerr << err.what() << endl;
 		terminate();
 	}
 	//get device memory pool

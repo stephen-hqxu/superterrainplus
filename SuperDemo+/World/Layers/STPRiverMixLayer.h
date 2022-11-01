@@ -14,7 +14,8 @@ namespace STPDemo {
 	class STPRiverMixLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
-		STPRiverMixLayer(Seed global_seed, Seed salt, STPLayer* parent_land, STPLayer* parent_river) : STPLayer(global_seed, salt, parent_land, parent_river) {
+		STPRiverMixLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent_land, STPLayer* parent_river) :
+			STPLayer(cache_size, global_seed, salt, parent_land, parent_river) {
 			//parent 0: land
 			//parent 1: river noise
 		}
