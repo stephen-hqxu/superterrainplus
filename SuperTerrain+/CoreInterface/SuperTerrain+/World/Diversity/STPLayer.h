@@ -3,11 +3,10 @@
 #define _STP_LAYER_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-#include "STPLayerCache.h"
+#include "STPBiomeDefine.h"
 
 //System
 #include <memory>
-#include <optional>
 #include <type_traits>
 
 namespace SuperTerrainPlus::STPDiversity {
@@ -80,8 +79,12 @@ namespace SuperTerrainPlus::STPDiversity {
 		//Basically it's {asc*, asc*...}
 		const std::unique_ptr<STPLayer*[]> Ascendant;
 
-		//layer cache for dynamic programming
-		std::optional<STPLayerCache> Cache;
+		/**
+		 * @brief STPLayerCache is a smart caching system that stores computed layer sample and read directly from when available.
+		*/
+		class STPLayerCache;
+		//The cache in this layer
+		std::unique_ptr<STPLayerCache> Cache;
 
 		/**
 		 * @brief Create a layer.
@@ -176,8 +179,7 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		STPLayer& operator=(STPLayer&&) = delete;
 
-		//Layer deletion is handled by STPLayerManager
-		virtual ~STPLayer() = default;
+		virtual ~STPLayer();
 
 		/**
 		 * @brief Query the cache size on this layer cache

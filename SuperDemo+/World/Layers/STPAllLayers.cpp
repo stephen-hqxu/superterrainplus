@@ -48,9 +48,9 @@ STPLayerChainBuilder::STPLayerChainBuilder(uvec2 dimension, Seed global) : STPBi
 
 }
 
-STPLayerManager STPLayerChainBuilder::supply() const {
+STPLayerTree STPLayerChainBuilder::supply() const {
 	//create a new manager, don't worry about deletion because our engine will manage it pretty well
-	STPLayerManager chain;
+	STPLayerTree chain;
 	STPLayer* base;
 
 	//building layer chain

@@ -12,9 +12,6 @@ using glm::dvec3;
 
 using std::unique_ptr;
 using std::make_unique;
-using std::atomic_init;
-using std::atomic_load;
-using std::atomic_store;
 using std::ostream;
 using std::istream;
 using std::ios_base;
@@ -43,7 +40,7 @@ STPChunk::STPMapVisitor<Unique>::STPMapVisitor(STPChunk& chunk) noexcept(!Unique
 
 template<bool Unique>
 template<typename T>
-inline auto* STPChunk::STPMapVisitor<Unique>::getMapSafe(const unique_ptr<T[]>& map) const {
+auto* STPChunk::STPMapVisitor<Unique>::getMapSafe(const unique_ptr<T[]>& map) const noexcept(Unique) {
 	if constexpr (!Unique) {
 		if (this->Chunk->occupied()) {
 			throw STPException::STPMemoryError("Access to chunk map via a shared visitor while a unique visitor is alive is prohibited");
@@ -53,42 +50,42 @@ inline auto* STPChunk::STPMapVisitor<Unique>::getMapSafe(const unique_ptr<T[]>& 
 }
 
 template<bool Unique>
-float* STPChunk::STPMapVisitor<Unique>::heightmap() {
+float* STPChunk::STPMapVisitor<Unique>::heightmap() noexcept(Unique) {
 	return const_cast<float*>(const_cast<const STPMapVisitor<Unique>*>(this)->heightmap());
 }
 
 template<bool Unique>
-inline const float* STPChunk::STPMapVisitor<Unique>::heightmap() const {
+const float* STPChunk::STPMapVisitor<Unique>::heightmap() const noexcept(Unique) {
 	return this->getMapSafe(this->Chunk->Heightmap);
 }
 
 template<bool Unique>
-unsigned short* STPChunk::STPMapVisitor<Unique>::heightmapBuffer() {
+unsigned short* STPChunk::STPMapVisitor<Unique>::heightmapBuffer() noexcept(Unique) {
 	return const_cast<unsigned short*>(const_cast<const STPMapVisitor<Unique>*>(this)->heightmapBuffer());
 }
 
 template<bool Unique>
-inline const unsigned short* STPChunk::STPMapVisitor<Unique>::heightmapBuffer() const {
+const unsigned short* STPChunk::STPMapVisitor<Unique>::heightmapBuffer() const noexcept(Unique) {
 	return this->getMapSafe(this->Chunk->HeightmapRenderingBuffer);
 }
 
 template<bool Unique>
-STPDiversity::Sample* STPChunk::STPMapVisitor<Unique>::biomemap() {
+STPDiversity::Sample* STPChunk::STPMapVisitor<Unique>::biomemap() noexcept(Unique) {
 	return const_cast<STPDiversity::Sample*>(const_cast<const STPMapVisitor<Unique>*>(this)->biomemap());
 }
 
 template<bool Unique>
-inline const STPDiversity::Sample* STPChunk::STPMapVisitor<Unique>::biomemap() const {
+const STPDiversity::Sample* STPChunk::STPMapVisitor<Unique>::biomemap() const noexcept(Unique) {
 	return this->getMapSafe(this->Chunk->Biomemap);
 }
 
 template<bool Unique>
-STPChunk* STPChunk::STPMapVisitor<Unique>::operator->() {
+STPChunk* STPChunk::STPMapVisitor<Unique>::operator->() noexcept {
 	return const_cast<STPChunk*>(const_cast<const STPMapVisitor<Unique>*>(this)->operator->());
 }
 
 template<bool Unique>
-inline const STPChunk* STPChunk::STPMapVisitor<Unique>::operator->() const {
+const STPChunk* STPChunk::STPMapVisitor<Unique>::operator->() const noexcept {
 	if constexpr (Unique) {
 		return this->Chunk.get();
 	} else {
@@ -117,23 +114,23 @@ STPChunk::~STPChunk() {
 	//array deleted by smart ptr
 }
 
-void STPChunk::markOccupancy(bool val) {
-	atomic_store(&this->Occupied, val);
+void STPChunk::markOccupancy(bool val) noexcept {
+	this->Occupied = val;
 }
 
-bool STPChunk::occupied() const {
-	return atomic_load(&this->Occupied);
+bool STPChunk::occupied() const noexcept {
+	return this->Occupied;
 }
 
-STPChunk::STPChunkState STPChunk::chunkState() const {
-	return atomic_load(&this->State);
+STPChunk::STPChunkState STPChunk::chunkState() const noexcept {
+	return this->State;
 }
 
-void STPChunk::markChunkState(STPChunkState state) {
-	atomic_store(&this->State, state);
+void STPChunk::markChunkState(STPChunkState state) noexcept {
+	this->State = state;
 }
 
-ivec2 STPChunk::calcWorldChunkCoordinate(const dvec3& viewPos, const uvec2& chunkSize, double scaling) {
+ivec2 STPChunk::calcWorldChunkCoordinate(const dvec3& viewPos, const uvec2& chunkSize, double scaling) noexcept {
 	//scale the chunk
 	const dvec2 scaled_chunk_size = static_cast<dvec2>(chunkSize) * scaling;
 	//determine which chunk unit the viewer is in, basically we are trying to round down to the chunk size.
@@ -141,17 +138,17 @@ ivec2 STPChunk::calcWorldChunkCoordinate(const dvec3& viewPos, const uvec2& chun
 	return chunk_unit * static_cast<ivec2>(chunkSize);
 }
 
-uvec2 STPChunk::calcLocalChunkCoordinate(unsigned int chunkID, const uvec2& chunkRange) {
+uvec2 STPChunk::calcLocalChunkCoordinate(unsigned int chunkID, const uvec2& chunkRange) noexcept {
 	return uvec2(chunkID % chunkRange.x, chunkID / chunkRange.y);
 }
 
-dvec2 STPChunk::calcChunkMapOffset(const ivec2& chunkCoord, const uvec2& chunkSize, const uvec2& mapSize, const dvec2& mapOffset) {
+dvec2 STPChunk::calcChunkMapOffset(const ivec2& chunkCoord, const uvec2& chunkSize, const uvec2& mapSize, const dvec2& mapOffset) noexcept {
 	//chunk coordinate is a multiple of chunk size
 	const dvec2 chunk_unit = chunkCoord / static_cast<ivec2>(chunkSize);
 	return chunk_unit * static_cast<dvec2>(mapSize) + mapOffset;
 }
 
-ivec2 STPChunk::offsetChunk(const ivec2& chunkCoord, const uvec2& chunkSize, const ivec2& offset) {
+ivec2 STPChunk::offsetChunk(const ivec2& chunkCoord, const uvec2& chunkSize, const ivec2& offset) noexcept {
 	return chunkCoord + static_cast<ivec2>(chunkSize) * offset;
 }
 

@@ -14,7 +14,6 @@ Utility/STPThreadPool.cpp
 # /World/Diversity
 World/Diversity/STPBiomeFactory.cpp
 World/Diversity/STPLayer.cpp
-World/Diversity/STPLayerCache.cpp
 World/Diversity/STPTextureDatabase.cpp
 World/Diversity/STPTextureFactory.cpp
 # /World

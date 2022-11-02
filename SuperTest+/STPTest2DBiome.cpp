@@ -7,8 +7,7 @@
 
 //SuperTerrain+/SuperTerrain+/World/Diversity
 #include<SuperTerrain+/World/Diversity/STPLayer.h>
-#include <SuperTerrain+/World/Diversity/STPLayerCache.h>
-#include <SuperTerrain+/World/Diversity/STPLayerManager.h>
+#include <SuperTerrain+/World/Diversity/STPLayerTree.h>
 #include <SuperTerrain+/World/Diversity/STPBiomeFactory.h>
 
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
@@ -23,70 +22,6 @@ using SuperTerrainPlus::STPDiversity::Seed;
 
 using glm::ivec2;
 using glm::uvec2;
-using glm::ivec3;
-using glm::uvec3;
-
-class LayerCacheTester : protected STPLayerCache {
-protected:
-
-	constexpr static size_t CacheSize = 32u;
-
-public:
-
-	LayerCacheTester() : STPLayerCache(LayerCacheTester::CacheSize) {
-
-	}
-
-};
-
-SCENARIO_METHOD(LayerCacheTester, "STPLayerCache is used to cache data", "[Diversity][STPLayerCache]") {
-
-	GIVEN("A layer cache with wrong cache size") {
-		using namespace SuperTerrainPlus;
-
-		THEN("Layer cache should not be created") {
-			const size_t WrongSize = GENERATE(take(3, filter([](size_t i) { return i % 2u == 1u; }, random(0u, 131313131u))));
-			//simple test
-			REQUIRE_THROWS_AS(STPLayerCache(WrongSize), STPException::STPBadNumericRange);
-		}
-
-		//edge case
-		REQUIRE_THROWS_AS(STPLayerCache(0u), STPException::STPBadNumericRange);
-	}
-
-	GIVEN("A valid layer cache") {
-
-		THEN("Cache size can be retrieved") {
-			REQUIRE(this->capacity() == LayerCacheTester::CacheSize);
-		}
-
-		WHEN("Using cache to store and read value back") {
-			const auto Coordinate = GENERATE(take(3, chunk(3, random(-987654, 1313666))));
-
-			THEN("A new cache should have no entry within") {
-				const STPCacheEntry NewEntry = this->locate(Coordinate[0], Coordinate[1], Coordinate[2]);
-				const STPCacheData NewData = this->read(NewEntry);
-
-				REQUIRE_FALSE(NewData.has_value());
-
-				AND_THEN("Data can be retrieved when it has been cached") {
-					const Sample Written = static_cast<Sample>(Coordinate[0] + Coordinate[1] + Coordinate[2]);
-					this->write(NewEntry, Written);
-					//locate the entry again
-					const STPCacheEntry AgainEntry = this->locate(Coordinate[0], Coordinate[1], Coordinate[2]);
-					const STPCacheData AgainData = this->read(AgainEntry);
-
-					REQUIRE(AgainData.has_value());
-					REQUIRE(*AgainData == Written);
-				}
-
-			}
-
-		}
-
-	}
-
-}
 
 class RootLayer : public STPLayer {
 protected:
@@ -239,7 +174,7 @@ SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG",
 
 #define FAST_SAMPLE(LAYER, COOR) LAYER->retrieve(COOR[0], COOR[1], COOR[2])
 
-SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for biome generation", "[Diversity][STPLayerManager][!mayfail]") {
+SCENARIO_METHOD(STPLayerTree, "STPLayerTree with some testing layers for biome generation", "[Diversity][STPLayerTree][!mayfail]") {
 
 	GIVEN("A new layer manager") {
 
@@ -272,6 +207,7 @@ SCENARIO_METHOD(STPLayerManager, "STPLayerManager with some testing layers for b
 					REQUIRE(FirstLayer->cacheSize() == 0u);
 					REQUIRE(FirstLayer->AscendantCount == 0u);
 					REQUIRE(FirstLayer->getAscendant() == nullptr);
+					REQUIRE(FirstLayer->getAscendant(123u) == nullptr);
 					REQUIRE_FALSE(FirstLayer->isMerging());
 				}
 
@@ -361,23 +297,23 @@ protected:
 	constexpr static Seed RandomSeed = 0ull;
 	constexpr static Seed Salt = 0ull;
 
-	STPLayerManager supply() const override {
-		STPLayerManager Mgr;
+	STPLayerTree supply() const override {
+		STPLayerTree Tree;
 		STPLayer* Layer, *BranchLayer1, *BranchLayer2;
 		
-		Layer = Mgr.insert<RootLayer>(32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt);
-		Layer = Mgr.insert<NormalLayer>(0u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		Layer = Tree.insert<RootLayer>(32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt);
+		Layer = Tree.insert<NormalLayer>(0u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
 
-		BranchLayer1 = Mgr.insert<NormalLayer>(32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
-		BranchLayer2 = Mgr.insert<NormalLayer>(32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		BranchLayer1 = Tree.insert<NormalLayer>(32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		BranchLayer2 = Tree.insert<NormalLayer>(32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
 
-		Layer = Mgr.insert<MergingLayer>(0u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, BranchLayer1, BranchLayer2);
+		Layer = Tree.insert<MergingLayer>(0u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, BranchLayer1, BranchLayer2);
 
-		return Mgr;
+		return Tree;
 	}
 
-	inline Sample getExpected(unsigned int index, const ivec3& offset) const {
-		return static_cast<Sample>(((index % BiomeFactoryTester::Dimension.x) + (index / BiomeFactoryTester::Dimension.y) + offset.x + offset.z + 1) * 2);
+	inline Sample getExpected(unsigned int index, const ivec2& offset) const {
+		return static_cast<Sample>(((index % BiomeFactoryTester::Dimension.x) + (index / BiomeFactoryTester::Dimension.y) + offset.x + offset.y + 1) * 2);
 	}
 
 public:
@@ -386,11 +322,11 @@ public:
 
 	}
 
-	BiomeFactoryTester(uvec3 dimension) : STPBiomeFactory(dimension) {
+	BiomeFactoryTester(uvec2 dimension) : STPBiomeFactory(dimension) {
 
 	}
 
-	void generateMap(Sample* biomemap, const ivec3& offset) {
+	void generateMap(Sample* biomemap, const ivec2& offset) {
 		(*this)(biomemap, offset);
 	}
 
@@ -401,7 +337,7 @@ SCENARIO_METHOD(BiomeFactoryTester, "STPBiomeFactory can be used to produce biom
 	WHEN("Dimension is some invalid values") {
 
 		THEN("Biome factory should reject the values") {
-			REQUIRE_THROWS_AS(BiomeFactoryTester(uvec3(0u, 4u, 8u)), SuperTerrainPlus::STPException::STPBadNumericRange);
+			REQUIRE_THROWS_AS(BiomeFactoryTester(uvec2(0u, 4u)), SuperTerrainPlus::STPException::STPBadNumericRange);
 		}
 
 	}
@@ -409,38 +345,25 @@ SCENARIO_METHOD(BiomeFactoryTester, "STPBiomeFactory can be used to produce biom
 	GIVEN("A complete biome factory with generation pipeline loaded") {
 
 		THEN("Biome dimension should be available in the factory") {
-			//2D biome generation should have the y dimension 1
-			REQUIRE(this->BiomeDimension == uvec3(BiomeFactoryTester::Dimension.x, 1u, BiomeFactoryTester::Dimension.y));
+			REQUIRE(this->BiomeDimension == BiomeFactoryTester::Dimension);
 		}
 
 		AND_GIVEN("A world coordinate for generation") {
-			using std::unique_ptr;
-			using std::make_unique;
-			unique_ptr<Sample[]> BiomeMap = make_unique<Sample[]>(BiomeFactoryTester::PixelCount);
-			unique_ptr<Sample[]> AnotherBiomeMap = make_unique<Sample[]>(BiomeFactoryTester::PixelCount);
-
-			WHEN("Asking the factory to generate a volumetric biomemap") {
-
-				THEN("Biome factory current does not support such texture") {
-					BiomeFactoryTester BrokenFactory(uvec3(2u, 128u, 2u));
-					REQUIRE_THROWS_AS(BrokenFactory.generateMap(BiomeMap.get(), ivec3(-564738, 476329, -659843)), STPException::STPUnsupportedFunctionality);
-				}
-
-			}
+			Sample BiomeMap[BiomeFactoryTester::PixelCount];
+			Sample AnotherBiomeMap[BiomeFactoryTester::PixelCount];
 
 			const auto Coordinate = GENERATE(take(1, chunk(2, random(-666666666, 666666666))));
-			const ivec3 Offset = ivec3(Coordinate[0], GENERATE(values({ 0, 16974382 })), Coordinate[1]);
-			WHEN("Asking the factory to generate a new " << (Offset.y == 0 ? "2" : "3") << "D flat biomemap") {
+			const ivec2 Offset = ivec2(Coordinate[0], Coordinate[1]);
+			WHEN("Asking the factory to generate a new 2D flat biomemap") {
 
 				THEN("Generation should be successful") {
-					REQUIRE_NOTHROW((*this)(BiomeMap.get(), Offset));
+					REQUIRE_NOTHROW((*this)(BiomeMap, Offset));
 					//because our biomemap has memory pool, just to test if the memory has been reused (coverage test will show it)
-					REQUIRE_NOTHROW((*this)(AnotherBiomeMap.get(), Offset));
+					REQUIRE_NOTHROW((*this)(AnotherBiomeMap, Offset));
 
 					AND_THEN("The biomemap should be validated") {
 						//root layer is ((x_offset + y_offset) + x + y + z + 1), normal layer simply uses the value from parent, merging layer adds the values
 						//and in 2D biome generator y is ignore (essentially treated as 0)
-						//3D biome, currently behaves the same as 2D biome because it's not yet implemented
 						const unsigned int Index = GENERATE(take(3, random(0u, 15u)));
 						REQUIRE(BiomeMap[Index] == this->getExpected(Index, Offset));
 						REQUIRE(AnotherBiomeMap[Index] == BiomeMap[Index]);

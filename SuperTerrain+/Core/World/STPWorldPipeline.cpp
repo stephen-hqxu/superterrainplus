@@ -36,7 +36,6 @@ using glm::ivec2;
 using glm::uvec2;
 using glm::vec2;
 using glm::dvec2;
-using glm::ivec3;
 using glm::dvec3;
 
 using std::array;
@@ -104,6 +103,12 @@ public:
 	STPTextureFactory& generateSplatmap;
 
 private:
+
+	//Specifies the type of the current pass in the recursive neighbour checking function.
+	enum class STPRecursiveNeighbourCheckingPass : unsigned char {
+		BiomemapPass = 0x01u,
+		HeightmapPass = 0x02u
+	};
 
 	STPWorldPipeline& Pipeline;
 	const STPEnvironment::STPChunkSetting& ChunkSetting;
@@ -235,26 +240,19 @@ private:
 	 * The first recursion will prepare neighbour biomemap for heightmap generation.
 	 * The second recursion will prepare neighbour heightmap for erosion.
 	 * @param chunkCoord The coordinate to the chunk which should be prepared.
-	 * @param rec_depth Please leave this empty, this is the recursion depth and will be managed properly
+	 * @param Pass Please leave this empty, this is the recursion depth and will be managed properly
 	 * @return If all neighbours are ready to be used, true is returned.
 	 * If any neighbour is not ready (being used by other threads or neighbour is not ready and compute is launched), return false
 	*/
-	const optional<STPChunk::STPSharedMapVisitor> recNeighbourChecking(const ivec2& chunkCoord, unsigned char rec_depth = 2u) {
-		//recursive case:
-		//define what rec_depth means...
-		constexpr static unsigned char BIOMEMAP_PASS = 1u,
-			HEIGHTMAP_PASS = 2u;
-
+	template<STPRecursiveNeighbourCheckingPass Pass = STPRecursiveNeighbourCheckingPass::HeightmapPass>
+	const optional<STPChunk::STPSharedMapVisitor> recNeighbourChecking(const ivec2& chunkCoord) {
 		using std::move;
 		{
 			STPChunk::STPChunkState expected_state = STPChunk::STPChunkState::Empty;
-			switch (rec_depth) {
-			case BIOMEMAP_PASS: expected_state = STPChunk::STPChunkState::HeightmapReady;
-				break;
-			case HEIGHTMAP_PASS: expected_state = STPChunk::STPChunkState::Complete;
-				break;
-			default:
-				break;
+			if constexpr (Pass == STPRecursiveNeighbourCheckingPass::BiomemapPass) {
+				expected_state = STPChunk::STPChunkState::HeightmapReady;
+			} else if constexpr (Pass == STPRecursiveNeighbourCheckingPass::HeightmapPass) {
+				expected_state = STPChunk::STPChunkState::Complete;
 			}
 			if (auto center = this->ChunkCache.find(chunkCoord);
 				center != this->ChunkCache.end() && center->second.chunkState() >= expected_state) {
@@ -273,8 +271,7 @@ private:
 			STPChunk::STPUniqueMapVisitor chunk = move(this->ownUniqueChunk({ chunk_entry }).front());
 
 			//since biomemap is discrete, we need to round the pixel
-			ivec2 rounded_offset = static_cast<ivec2>(glm::round(offset));
-			STORE_EXCEPTION(this->generateBiomemap(chunk.biomemap(), ivec3(rounded_offset.x, 0, rounded_offset.y)))
+			STORE_EXCEPTION(this->generateBiomemap(chunk.biomemap(), static_cast<ivec2>(glm::round(offset))))
 			
 			//computation was successful
 			chunk->markChunkState(STPChunk::STPChunkState::BiomemapReady);
@@ -317,8 +314,7 @@ private:
 				canContinue = false;
 				continue;
 			}
-			switch (rec_depth) {
-			case BIOMEMAP_PASS:
+			if constexpr (Pass == STPRecursiveNeighbourCheckingPass::BiomemapPass) {
 				//container will guaranteed to exists since heightmap pass has already created it
 				if (curr_neighbour.chunkState() == STPChunk::STPChunkState::Empty) {
 					//compute biomemap
@@ -326,16 +322,11 @@ private:
 					//try to compute all biomemap, and when biomemap is computing, we don't need to wait
 					canContinue = false;
 				}
-				break;
-			case HEIGHTMAP_PASS:
+			} else if constexpr (Pass == STPRecursiveNeighbourCheckingPass::HeightmapPass) {
 				//check neighbouring biomemap
-				if (!this->recNeighbourChecking(neighbourPos, rec_depth - 1u)) {
+				if (!this->recNeighbourChecking<STPRecursiveNeighbourCheckingPass::BiomemapPass>(neighbourPos)) {
 					canContinue = false;
 				}
-				break;
-			default:
-				//never gonna happen
-				break;
 			}
 
 			neighbour.emplace_back(&curr_neighbour);
@@ -350,12 +341,10 @@ private:
 		//all chunks are available, obtain unique visitors
 		const STPUniqueChunkCacheEntry visitor_entry = this->cacheUniqueChunk(neighbour);
 		//send the list of neighbour chunks to GPU to perform some operations
-		switch (rec_depth) {
-		case BIOMEMAP_PASS:
+		if constexpr (Pass == STPRecursiveNeighbourCheckingPass::BiomemapPass) {
 			//generate heightmap
 			this->GeneratorWorker.enqueueDetached(heightmap_computer, visitor_entry, chunkCoord);
-			break;
-		case HEIGHTMAP_PASS:
+		} else if constexpr (Pass == STPRecursiveNeighbourCheckingPass::HeightmapPass) {
 			//perform erosion on heightmap
 			this->GeneratorWorker.enqueueDetached(erosion_computer, visitor_entry);
 			{
@@ -363,10 +352,6 @@ private:
 				for_each(neighbour_position.cbegin(), neighbour_position.cend(), 
 					[&pipeline = this->Pipeline](const auto& position) -> void { pipeline.reload(position); });
 			}
-			break;
-		default:
-			//never gonna happen
-			break;
 		}
 
 		//compute has been launched

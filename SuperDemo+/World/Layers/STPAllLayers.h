@@ -13,7 +13,7 @@ namespace STPDemo {
 	class STPLayerChainBuilder : public SuperTerrainPlus::STPDiversity::STPBiomeFactory {
 	private:
 
-		SuperTerrainPlus::STPDiversity::STPLayerManager supply() const override;
+		SuperTerrainPlus::STPDiversity::STPLayerTree supply() const override;
 
 	public:
 

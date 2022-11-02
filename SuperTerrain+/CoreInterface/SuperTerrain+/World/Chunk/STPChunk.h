@@ -73,7 +73,7 @@ namespace SuperTerrainPlus {
 			 * @return THe pointer to the chunk map.
 			*/
 			template<typename T>
-			auto* getMapSafe(const std::unique_ptr<T[]>&) const;
+			auto* getMapSafe(const std::unique_ptr<T[]>&) const noexcept(Unique);
 
 		public:
 
@@ -97,28 +97,28 @@ namespace SuperTerrainPlus {
 
 			//Get each type of map.
 
-			float* heightmap();
+			float* heightmap() noexcept(Unique);
 
-			const float* heightmap() const;
+			const float* heightmap() const noexcept(Unique);
 
-			STPDiversity::Sample* biomemap();
+			STPDiversity::Sample* biomemap() noexcept(Unique);
 
-			const STPDiversity::Sample* biomemap() const;
+			const STPDiversity::Sample* biomemap() const noexcept(Unique);
 
-			unsigned short* heightmapBuffer();
+			unsigned short* heightmapBuffer() noexcept(Unique);
 
-			const unsigned short* heightmapBuffer() const;
+			const unsigned short* heightmapBuffer() const noexcept(Unique);
 
 			/**
 			 * @brief Get the pointer to dependent chunk.
 			 * @return The chunk pointer.
 			*/
-			STPChunk* operator->();
+			STPChunk* operator->() noexcept;
 
 			/**
 			 * @see operator->()
 			*/
-			const STPChunk* operator->() const;
+			const STPChunk* operator->() const noexcept;
 
 		};
 
@@ -146,7 +146,7 @@ namespace SuperTerrainPlus {
 		 * @brief Atomically change the use status of this chunk
 		 * @param val The new occupancy status of this chunk
 		*/
-		void markOccupancy(bool);
+		void markOccupancy(bool) noexcept;
 
 	public:
 
@@ -180,7 +180,7 @@ namespace SuperTerrainPlus {
 		 * @param scaling The scaling applying on the (x, z) directions in world position.
 		 * @return The chunk coordinate in the unit of chunk size in world space.
 		*/
-		static glm::ivec2 calcWorldChunkCoordinate(const glm::dvec3&, const glm::uvec2&, double);
+		static glm::ivec2 calcWorldChunkCoordinate(const glm::dvec3&, const glm::uvec2&, double) noexcept;
 
 		/**
 		 * @brief Convert local chunk index to local chunk coordinate
@@ -189,7 +189,7 @@ namespace SuperTerrainPlus {
 		 * @return The local chunk coordinate, starting from top-left corner as (0,0).
 		 * If chunkID is greater than (chunkRange.x * chunkRange.y - 1u), returned result is undefined.
 		*/
-		static glm::uvec2 calcLocalChunkCoordinate(unsigned int, const glm::uvec2&);
+		static glm::uvec2 calcLocalChunkCoordinate(unsigned int, const glm::uvec2&) noexcept;
 
 		/**
 		 * @brief Calculate the terrain map offset for a particular chunk, such that each successive map can seamlessly connect to the neighbour chunks.
@@ -200,7 +200,7 @@ namespace SuperTerrainPlus {
 		 * @param mapOffset The global offset applied to the map.
 		 * @return The map offset for the current chunk.
 		*/
-		static glm::dvec2 calcChunkMapOffset(const glm::ivec2&, const glm::uvec2&, const glm::uvec2&, const glm::dvec2&);
+		static glm::dvec2 calcChunkMapOffset(const glm::ivec2&, const glm::uvec2&, const glm::uvec2&, const glm::dvec2&) noexcept;
 
 		/**
 		 * @brief Move the chunk by chunk unit.
@@ -209,7 +209,7 @@ namespace SuperTerrainPlus {
 		 * @param offset The chunk position offset.
 		 * @return The offset chunk position in world coordinate.
 		*/
-		static glm::ivec2 offsetChunk(const glm::ivec2&, const glm::uvec2&, const glm::ivec2&);
+		static glm::ivec2 offsetChunk(const glm::ivec2&, const glm::uvec2&, const glm::ivec2&) noexcept;
 
 		/**
 		 * @brief Get an area of chunk coordinates, centred at a give chunk position.
@@ -224,19 +224,19 @@ namespace SuperTerrainPlus {
 		 * @brief Atomically determine if current chunk is used by other threads
 		 * @return True if there are already thread grabbing this chunk
 		*/
-		bool occupied() const;
+		bool occupied() const noexcept;
 
 		/**
 		 * @brief Atomically determine the current state of the chunk
 		 * @return The state code of the chunk
 		*/
-		STPChunkState chunkState() const;
+		STPChunkState chunkState() const noexcept;
 
 		/**
 		 * @brief Atomically change the chunk state.
 		 * @param state The new state of this chunk.
 		*/
-		void markChunkState(STPChunkState);
+		void markChunkState(STPChunkState) noexcept;
 
 	};
 }

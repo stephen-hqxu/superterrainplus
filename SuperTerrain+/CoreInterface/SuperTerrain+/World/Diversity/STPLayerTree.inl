@@ -1,8 +1,8 @@
 //DO NOT INCLUDE THIS HEADER SEPARATELY
-#ifdef _STP_LAYER_MANAGER_H_
+#ifdef _STP_LAYER_TREE_H_
 
 template <class L, class... Arg>
-SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity::STPLayerManager::insert(size_t cache_size, Arg&&... args) {
+SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity::STPLayerTree::insert(size_t cache_size, Arg&&... args) {
 	//make sure only STPLayer is supplied as template, error throws at compile time
 	static_assert(std::is_base_of<STPLayer, L>::value, "Only STPLayer and its children are allowed to instantiate as a new layer");
 	using std::unique_ptr;
@@ -18,12 +18,12 @@ SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity::STPLay
 	return this->Vertex.emplace_back(move(genericLayer)).get();
 }
 
-inline SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity::STPLayerManager::start() const noexcept {
+inline SuperTerrainPlus::STPDiversity::STPLayer* SuperTerrainPlus::STPDiversity::STPLayerTree::start() const noexcept {
 	return this->Vertex.back().get();
 }
 
-inline size_t SuperTerrainPlus::STPDiversity::STPLayerManager::getLayerCount() const noexcept {
+inline size_t SuperTerrainPlus::STPDiversity::STPLayerTree::getLayerCount() const noexcept {
 	return this->Vertex.size();
 }
 
-#endif//_STP_LAYER_MANAGER_H_
+#endif//_STP_LAYER_TREE_H_

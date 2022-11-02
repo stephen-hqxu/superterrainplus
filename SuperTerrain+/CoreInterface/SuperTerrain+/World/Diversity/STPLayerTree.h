@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_LAYER_MANAGER_H_
-#define _STP_LAYER_MANAGER_H_
+#ifndef _STP_LAYER_TREE_H_
+#define _STP_LAYER_TREE_H_
 
 //Data Structure
 #include <vector>
@@ -10,42 +10,42 @@
 namespace SuperTerrainPlus::STPDiversity {
 
 	/**
-	 * @brief STPLayerManager is a graph structured class that manages all STPLayers as nodes.
+	 * @brief STPLayerTree is a tree structured class that manages all STPLayers as nodes.
 	 * It makes layer creation and destroy easier.
 	*/
-	class STPLayerManager {
+	class STPLayerTree {
 	private:
 
 		//An array pointers to every layer.
 		//std::vector default deallocator deletes each layer in reverse direction,
 		//so it is safe for latter layer taking a pointer to the previous layer, which is what our data structure does
-		//STPLayerManager owns the pointer to each layer so vertices can be deleted with ease
+		//STPLayerTree owns the pointer to each layer so vertices can be deleted with ease
 		std::vector<std::unique_ptr<STPLayer>> Vertex;
 
 	public:
 
 		/**
-		 * @brief Init STPLayerManager
+		 * @brief Init STPLayerTree
 		*/
-		STPLayerManager() = default;
+		STPLayerTree() = default;
 
-		STPLayerManager(const STPLayerManager&) = delete;
+		STPLayerTree(const STPLayerTree&) = delete;
 
-		STPLayerManager(STPLayerManager&&) noexcept = default;
+		STPLayerTree(STPLayerTree&&) noexcept = default;
 
-		STPLayerManager& operator=(const STPLayerManager&) = delete;
+		STPLayerTree& operator=(const STPLayerTree&) = delete;
 
-		STPLayerManager& operator=(STPLayerManager&&) noexcept = default;
+		STPLayerTree& operator=(STPLayerTree&&) noexcept = default;
 
-		~STPLayerManager() = default;
+		~STPLayerTree() = default;
 
 		/**
-		 * @brief Construct a new layer instance and add to the layer chain structure and let the current layer manager manage this layer.
+		 * @brief Construct a new layer instance and add to the layer tree structure and let the current layer tree manages this layer.
 		 * @tparam L A layer instance
 		 * @tparam Arg... A list of arguments for the child layer class
 		 * @param cache_size The cache size for this layer.
 		 * @param args... All other arguments for the created layer to be used in their constructor.
-		 * @return A pointer new layer instance with the type of the specified child layer. The pointer is owned by the current manager and will be freed automatically.
+		 * @return A pointer new layer instance with the type of the specified child layer. The pointer is owned by the current tree and will be freed automatically.
 		*/
 		template <class L, class... Arg>
 		STPLayer* insert(size_t, Arg&&...);
@@ -59,7 +59,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPLayer* start() const noexcept;
 
 		/**
-		 * @brief Get the number of layer, i.e., the number of vertices presented in this graph, managed by manager.
+		 * @brief Get the number of layer, i.e., the number of vertices presented in this graph, add to the current tree.
 		 * @return The number of layer
 		*/
 		size_t getLayerCount() const noexcept;
@@ -67,5 +67,5 @@ namespace SuperTerrainPlus::STPDiversity {
 	};
 
 }
-#include "STPLayerManager.inl"
-#endif//_STP_LAYER_MANAGER_H_
+#include "STPLayerTree.inl"
+#endif//_STP_LAYER_TREE_H_
