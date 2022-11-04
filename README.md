@@ -150,7 +150,6 @@ Test library:
 | Option | Note | Default |
 | ------ | ---- | ------- |
 | STP_CUDA_RUNTIME_LIBRARY | Set the global `nvcc` compiler flag `-cudart=` to the value set | Shared |
-| STP_USE_AVX2 | Use AVX2 instruction sets on all vector operations | ON |
 | STP_BUILD_DEMO | Enable SuperDemo+ program build | ON |
 | STP_DEVELOPMENT_BUILD | Enable development mode | OFF |
 | STP_DEVELOPMENT_BUILD::STP_CUDA_VERBOSE_PTX | Append to the global `nvcc` compiler flag with `--ptxas-options=-v` | ON::ON |

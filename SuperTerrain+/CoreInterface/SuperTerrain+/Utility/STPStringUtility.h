@@ -20,7 +20,7 @@ namespace SuperTerrainPlus {
 		 * @return The null-terminated joint string, represented in an std::array of char.
 		*/
 		template<size_t... L>
-		[[nodiscard]] constexpr auto concatCharArray(const char(&... str)[L]) noexcept;
+		constexpr auto concatCharArray(const char(&... str)[L]) noexcept;
 
 		/**
 		 * @brief Generate an array of filename with different extensions.
@@ -31,7 +31,7 @@ namespace SuperTerrainPlus {
 		 * Else, it returns a tuple of full filename with different extensions.
 		*/
 		template<size_t LP, size_t LF, size_t... LE>
-		[[nodiscard]] constexpr auto generateFilename(const char(&)[LP], const char(&)[LF], const char(&... le)[LE]) noexcept;
+		constexpr auto generateFilename(const char(&)[LP], const char(&)[LF], const char(&... le)[LE]) noexcept;
 
 	}
 

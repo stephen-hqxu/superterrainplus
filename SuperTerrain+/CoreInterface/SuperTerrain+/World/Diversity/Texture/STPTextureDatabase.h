@@ -254,12 +254,6 @@ namespace SuperTerrainPlus::STPDiversity {
 
 	private:
 
-		//incremental accumulators for ID
-		inline static unsigned int GeneralIDAccumulator = 10000u;
-		inline static STPTextureInformation::STPTextureID TextureIDAccumulator = 10000u;
-		inline static STPTextureInformation::STPMapGroupID MapGroupIDAccumulator = 10000u;
-		inline static STPTextureInformation::STPViewGroupID ViewGroupIDAccumulator = 10000u;
-
 		//A database which stores all biome texture settings
 		std::unique_ptr<STPTextureDatabaseImpl> Database;
 		//implementations that depend on the database
@@ -305,14 +299,14 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param desc The texture format description, it will be applied to all texture map data in this group.
 		 * @return The unique map group ID of the newly inserted texture.
 		*/
-		STPTextureInformation::STPMapGroupID addMapGroup(const STPMapGroupDescription&);
+		[[nodiscard]] STPTextureInformation::STPMapGroupID addMapGroup(const STPMapGroupDescription&);
 
 		/**
 		 * @brief Insert a new texture view group into the texture database.
 		 * @param desc The texture view description, it will be applied to all texture in this group.
 		 * @return The unique view group ID of the newly inserted texture.
 		*/
-		STPTextureInformation::STPViewGroupID addViewGroup(const STPViewGroupDescription&);
+		[[nodiscard]] STPTextureInformation::STPViewGroupID addViewGroup(const STPViewGroupDescription&);
 
 		/**
 		 * @brief Remove a texture map group from the texture database, all texture maps in this group will be dropped.
@@ -363,7 +357,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * There is no requirement on the format of the name and it is user-defined.
 		 * @return The texture ID that can be used to reference the texture
 		*/
-		STPTextureInformation::STPTextureID addTexture(STPTextureInformation::STPViewGroupID, const std::optional<std::string_view>& = std::nullopt);
+		[[nodiscard]] STPTextureInformation::STPTextureID addTexture(STPTextureInformation::STPViewGroupID, const std::optional<std::string_view>& = std::nullopt);
 
 		/**
 		 * @brief Remove a texture from the texture database. 

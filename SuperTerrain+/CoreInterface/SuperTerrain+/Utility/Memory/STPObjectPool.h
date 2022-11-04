@@ -51,7 +51,7 @@ namespace SuperTerrainPlus {
 		 * @return The requesting object.
 		*/
 		template<typename... Arg>
-		T requestObject(Arg&&...);
+		[[nodiscard]] T requestObject(Arg&&...);
 
 		/**
 		 * @brief Return the object into the object pool.

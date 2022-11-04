@@ -281,7 +281,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * This allows issuing multiple draw commands without reactivating the states repetitively.
 		 * @return A screen draw executor.
 		*/
-		[[nodiscard]] STPScreenProgramExecutor drawScreenFromExecutor() const;
+		STPScreenProgramExecutor drawScreenFromExecutor() const;
 
 	};
 

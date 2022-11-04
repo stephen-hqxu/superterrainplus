@@ -27,8 +27,21 @@ private:
 
 	inline static unsigned int InstanceCounter = 0u;
 
+	/**
+	 * @brief Close the sqlite3 database
+	*/
+	struct STPDbCloser {
+	public:
+
+		inline void operator()(sqlite3* db) const {
+			STP_CHECK_SQLITE3(sqlite3_close_v2(db));
+		}
+
+	};
+	//A smartly managed sqlite3 database object.
+	typedef unique_ptr<sqlite3, STPDbCloser> STPSmartDb;
 	//we use sqlite3 as the database implementation, this is the SQL database connection being setup
-	sqlite3* SQL;
+	STPSmartDb SQL;
 
 	/**
 	 * @brief STPStmtFinaliser finalises sqlite3_stmt
@@ -46,6 +59,8 @@ public:
 
 	//An auto-managed SQL prepare statement
 	typedef unique_ptr<sqlite3_stmt, STPStmtFinaliser> STPSmartStmt;
+
+	inline static unsigned int GeneralIDAccumulator = 10000u;
 
 private:
 
@@ -76,11 +91,13 @@ public:
 	STPTextureDatabaseImpl() {
 		const string filename = "STPTextureDatabase_" + std::to_string(STPTextureDatabaseImpl::InstanceCounter++);
 		//open database connection
-		STP_CHECK_SQLITE3(sqlite3_open_v2(filename.c_str(), &this->SQL,
+		sqlite3* db_connection;
+		STP_CHECK_SQLITE3(sqlite3_open_v2(filename.c_str(), &db_connection,
 			SQLITE_OPEN_MEMORY | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_NOFOLLOW
 				| SQLITE_OPEN_PRIVATECACHE, nullptr));
+		this->SQL = STPSmartDb(db_connection);
 
-		auto configure = [SQL = this->SQL](int opt, int val) -> bool {
+		auto configure = [SQL = db_connection](int opt, int val) -> bool {
 			int report;
 			STP_CHECK_SQLITE3(sqlite3_db_config(SQL, opt, val, &report));
 			//usually it should always be true, unless sqlite is bugged
@@ -104,10 +121,7 @@ public:
 
 	STPTextureDatabaseImpl& operator=(STPTextureDatabaseImpl&&) = delete;
 
-	~STPTextureDatabaseImpl() {
-		//close the database connection
-		STP_CHECK_SQLITE3(sqlite3_close_v2(this->SQL));
-	}
+	~STPTextureDatabaseImpl() = default;
 
 	/**
 	 * @brief Reset stmt back to its initial state
@@ -126,7 +140,7 @@ public:
 		char* err_msg;
 		try {
 			//we don't need callback function since create table does not return anything
-			STP_CHECK_SQLITE3(sqlite3_exec(this->SQL, sql.data(), nullptr, nullptr, &err_msg));
+			STP_CHECK_SQLITE3(sqlite3_exec(this->SQL.get(), sql.data(), nullptr, nullptr, &err_msg));
 		}
 		catch (const STPException::STPDatabaseError& dbe) {
 			//concatenate error message and throw a new one
@@ -145,7 +159,7 @@ public:
 	*/
 	STPSmartStmt createStmt(const string_view& sql, unsigned int flag = 0u) {
 		sqlite3_stmt* newStmt;
-		STP_CHECK_SQLITE3(sqlite3_prepare_v3(this->SQL, sql.data(), static_cast<int>(sql.size()), flag, &newStmt, nullptr));
+		STP_CHECK_SQLITE3(sqlite3_prepare_v3(this->SQL.get(), sql.data(), static_cast<int>(sql.size()), flag, &newStmt, nullptr));
 		return STPSmartStmt(newStmt);
 	}
 
@@ -181,7 +195,7 @@ public:
 		const int err_code = sqlite3_step(stmt);
 		if (err_code != SQLITE_ROW && err_code != SQLITE_DONE) {
 			//error occurs
-			//Exploiting API behaviour: SQLite will throw exception at reset
+			//Exploiting API behaviour: SQLite will return error at reset
 			STPTextureDatabaseImpl::resetStmt(stmt);
 		}
 		return err_code == SQLITE_ROW;
@@ -302,7 +316,7 @@ void STPTextureDatabase::STPTextureSplatBuilder::addAltitude(
 	sqlite3_stmt* const altitude_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddAltitude, AddAltitude);
 
 	//insert new altitude configuration into altitude table
-	STP_CHECK_SQLITE3(sqlite3_bind_int(altitude_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(altitude_stmt, 1, static_cast<int>(STPTextureDatabaseImpl::GeneralIDAccumulator++)));
 	STP_CHECK_SQLITE3(sqlite3_bind_int(altitude_stmt, 2, static_cast<int>(sample)));
 	STP_CHECK_SQLITE3(sqlite3_bind_double(altitude_stmt, 3, static_cast<double>(upperBound)));
 	STP_CHECK_SQLITE3(sqlite3_bind_int(altitude_stmt, 4, static_cast<int>(texture_id)));
@@ -324,7 +338,7 @@ void STPTextureDatabase::STPTextureSplatBuilder::addGradient(Sample sample, floa
 	sqlite3_stmt* const gradient_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddGradient, AddGradient);
 
 	//insert new gradient configuration into gradient table
-	STP_CHECK_SQLITE3(sqlite3_bind_int(gradient_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(gradient_stmt, 1, static_cast<int>(STPTextureDatabaseImpl::GeneralIDAccumulator++)));
 	STP_CHECK_SQLITE3(sqlite3_bind_int(gradient_stmt, 2, static_cast<int>(sample)));
 	STP_CHECK_SQLITE3(sqlite3_bind_double(gradient_stmt, 3, static_cast<double>(minGradient)));
 	STP_CHECK_SQLITE3(sqlite3_bind_double(gradient_stmt, 4, static_cast<double>(maxGradient)));
@@ -571,6 +585,8 @@ const STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::getSplatBu
 }
 
 STPTextureInformation::STPMapGroupID STPTextureDatabase::addMapGroup(const STPMapGroupDescription& desc) {
+	static STPTextureInformation::STPMapGroupID MapGroupIDAccumulator = 10000u;
+
 	if (desc.Dimension.x == 0u || desc.Dimension.y == 0u) {
 		throw STPException::STPBadNumericRange("Dimension of a texture should be positive");
 	}
@@ -582,11 +598,13 @@ STPTextureInformation::STPMapGroupID STPTextureDatabase::addMapGroup(const STPMa
 		"INSERT INTO MapGroup (MGID, MapDescription) VALUES(?, ?);";
 	sqlite3_stmt* const group_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddMapGroup, AddMapGroup);
 
-	this->Database->addIntBlob(group_stmt, static_cast<int>(STPTextureDatabase::MapGroupIDAccumulator), &desc, sizeof(STPMapGroupDescription));
-	return STPTextureDatabase::MapGroupIDAccumulator++;
+	this->Database->addIntBlob(group_stmt, static_cast<int>(MapGroupIDAccumulator), &desc, sizeof(STPMapGroupDescription));
+	return MapGroupIDAccumulator++;
 }
 
 STPTextureInformation::STPViewGroupID STPTextureDatabase::addViewGroup(const STPViewGroupDescription& desc) {
+	static STPTextureInformation::STPViewGroupID ViewGroupIDAccumulator = 10000u;
+
 	const auto& [one, two, three] = desc;
 	if (one == 0u || two == 0u || three == 0u) {
 		throw STPException::STPBadNumericRange("Texture scales must be all positive");
@@ -596,8 +614,8 @@ STPTextureInformation::STPViewGroupID STPTextureDatabase::addViewGroup(const STP
 		"INSERT INTO ViewGroup (VGID, ViewDescription) VALUES(?, ?);";
 	sqlite3_stmt* const group_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddViewGroup, AddViewGroup);
 
-	this->Database->addIntBlob(group_stmt, static_cast<int>(STPTextureDatabase::ViewGroupIDAccumulator), &desc, sizeof(STPViewGroupDescription));
-	return STPTextureDatabase::ViewGroupIDAccumulator++;
+	this->Database->addIntBlob(group_stmt, static_cast<int>(ViewGroupIDAccumulator), &desc, sizeof(STPViewGroupDescription));
+	return ViewGroupIDAccumulator++;
 }
 
 void STPTextureDatabase::removeMapGroup(STPTextureInformation::STPMapGroupID group_id) {
@@ -653,12 +671,14 @@ size_t STPTextureDatabase::viewGroupSize() const {
 
 STPTextureInformation::STPTextureID STPTextureDatabase::addTexture(
 	STPTextureInformation::STPViewGroupID group_id, const optional<std::string_view>& name) {
+	static STPTextureInformation::STPTextureID TextureIDAccumulator = 10000u;
+
 	static constexpr string_view AddTexture =
 		"INSERT INTO Texture (TID, Name, VGID) VALUES(?, ?, ?);";
 	sqlite3_stmt* texture_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddTexture, AddTexture);
 
 	//request a bunch of texture IDs
-	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(STPTextureDatabase::TextureIDAccumulator)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(TextureIDAccumulator)));
 	if (name.has_value()) {
 		STP_CHECK_SQLITE3(sqlite3_bind_text(texture_stmt, 2, name->data(), static_cast<int>(name->length() * sizeof(char)), SQLITE_TRANSIENT));
 	}
@@ -668,7 +688,7 @@ STPTextureInformation::STPTextureID STPTextureDatabase::addTexture(
 	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 3, static_cast<int>(group_id)));
 
 	this->Database->execStmt(texture_stmt);
-	return STPTextureDatabase::TextureIDAccumulator++;
+	return TextureIDAccumulator++;
 }
 
 void STPTextureDatabase::removeTexture(STPTextureInformation::STPTextureID texture_id) {
@@ -686,7 +706,7 @@ void STPTextureDatabase::addMap(STPTextureInformation::STPTextureID texture_id, 
 	sqlite3_stmt* const texture_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddMap, AddMap);
 
 	//set data
-	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(STPTextureDatabase::GeneralIDAccumulator++)));
+	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(STPTextureDatabaseImpl::GeneralIDAccumulator++)));
 	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 2, static_cast<int>(type)));
 	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 3, static_cast<int>(group_id)));
 	//send the pointer as a blob

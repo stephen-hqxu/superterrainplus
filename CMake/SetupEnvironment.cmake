@@ -13,26 +13,21 @@ set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 # compiler and linker warning, and other flags
 if(MSVC)
+	# MSVC legacy lambda breaks sometimes if we define a super complex lambda (like super nesting)
+	# so we want the standard-conforming lambda
+	# TODO: this can be removed when the project is ported to C++ 20
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2 /Zc:lambda")
+	
 	set(STP_MSVC_WARNING "/wd4251 /wd4275") # disable warning about using stl in a dll project
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STP_MSVC_WARNING}")
 	if(STP_ENABLE_WARNING)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 	endif()
-	# MSVC legacy lambda breaks sometimes if we define a super complex lambda (like super nesting)
-	# so we want the standard-conforming lambda
-	# TODO: this can be removed when the project is ported to C++ 20
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:lambda")
-
-	if(STP_USE_AVX2)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
-	endif()
 else()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
+
 	if(STP_ENABLE_WARNING)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
-	endif()
-
-	if(STP_USE_AVX2)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
 	endif()
 endif()
 

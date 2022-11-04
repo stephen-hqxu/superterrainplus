@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 		STPEngineInitialiser::initialise(SelectedDevice, nullptr);
 	} catch (const std::exception& err) {
 		cerr << err.what() << endl;
-		terminate();
+		std::terminate();
 	}
 	//get device memory pool
 	STP_CHECK_CUDA(cudaDeviceGetDefaultMemPool(&STPTestInformation::TestDeviceMemoryPool, SelectedDevice));

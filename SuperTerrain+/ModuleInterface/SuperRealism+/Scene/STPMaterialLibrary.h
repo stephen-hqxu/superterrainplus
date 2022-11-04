@@ -72,7 +72,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The material ID to uniquely identify the material in this library.
 		 * The material ID will always be greater than zero; ID of zero is reserved as default material.
 		*/
-		STPMaterialID add(const STPMaterialProperty&);
+		[[nodiscard]] STPMaterialID add(const STPMaterialProperty&);
 
 		/**
 		 * @brief Get the material registered in the library.

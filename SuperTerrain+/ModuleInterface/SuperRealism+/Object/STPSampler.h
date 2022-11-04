@@ -94,7 +94,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The sampler unit state manager.
 		 * This manager will automatically unbind the sampler from this texture unit, based on std::unique_ptr.
 		*/
-		[[nodiscard]] STPSamplerUnitStateManager bindManaged(STPOpenGL::STPuint) const;
+		STPSamplerUnitStateManager bindManaged(STPOpenGL::STPuint) const;
 
 	};
 
