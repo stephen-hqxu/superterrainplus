@@ -163,7 +163,7 @@ mat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const STPMatr
 
 	//each corner is normalised, so sum them up to get the coordinate of centre
 	const dvec3 centre =
-		static_cast<dvec4>(std::accumulate(corner.cbegin(), corner.cend(), STPVector4d(), std::plus<STPVector4d>()))
+		static_cast<dvec4>(std::reduce(corner.cbegin(), corner.cend(), STPVector4d(), std::plus<STPVector4d>()))
 		/ (1.0 * corner.size());
 	alignas(STPMatrix4x4d) const dmat4 lightView_data =
 		glm::lookAt(centre + static_cast<dvec3>(this->LightDirection), centre, dvec3(0.0, 1.0, 0.0));

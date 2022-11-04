@@ -3,8 +3,7 @@
 #define _STP_BIOME_FACTORY_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-//Biome
-#include "STPLayerTree.h"
+#include "STPLayer.h"
 //Memory Management
 #include "../../Utility/Memory/STPObjectPool.h"
 
@@ -19,15 +18,13 @@ namespace SuperTerrainPlus::STPDiversity {
 	class STP_API STPBiomeFactory {
 	private:
 
-		typedef std::unique_ptr<STPLayerTree> STPLayerTree_t;
-
 		/**
-		 * @brief STPProductionLineCreator creates a production line from the supply chain.
+		 * @brief STPProductionLineCreator creates a production line from the biome layer implementation.
 		*/
 		struct STPProductionLineCreator {
 		private:
 
-			const STPBiomeFactory& Factory;
+			STPBiomeFactory& Factory;
 
 		public:
 
@@ -35,21 +32,26 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @brief Initialise a production line creator.
 			 * @param factory The dependent biome factory.
 			*/
-			STPProductionLineCreator(const STPBiomeFactory&);
+			STPProductionLineCreator(STPBiomeFactory&);
 
-			STPLayerTree_t operator()() const;
+			STPLayer* operator()();
 
 		};
 		//Basically it behaves like a memory pool.
 		//Whenever operator() is called, we search for an empty production line, and use that to generate biome.
 		//If no available production line can be found, ask more production line from the manufacturer.
-		STPObjectPool<STPLayerTree_t, STPProductionLineCreator> LayerProductionLine;
+		STPObjectPool<STPLayer*, STPProductionLineCreator> LayerProductionLine;
 
 		/**
-		 * @brief A layer supplier, which provides the algorithm for layer chain generation.
-		 * @return A new layer production line instance.
+		 * @brief A layer supplier, which provides the algorithm for layer generation and creates a new layer tree structure.
+		 * This function is thread-safe and the call is guarded by a lock.
+		 * @return A pointer to the root of the new layer tree structure.
+		 * This should be pointing to the first layer in the layer tree structure,
+		 * such that all layers can be traversed by visiting all successive the ascendant recursively.
+		 * The memory of the entire layer tree should be managed by the application
+		 * and must guarantee its lifetime should outlive the lifetime of the biome factory.
 		*/
-		virtual STPLayerTree supply() const = 0;
+		virtual STPLayer* supply() = 0;
 
 	public:
 
@@ -75,7 +77,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		virtual ~STPBiomeFactory() = default;
 
 		/**
-		 * @brief Generate a biome map using the biome chain implementation
+		 * @brief Generate a biome map using the biome layer implementation
 		 * @param biomemap The output where biome map will be stored, must be preallocated with enough space
 		 * @param offset The offset of the biome map, that is equivalent to the world coordinate.
 		*/

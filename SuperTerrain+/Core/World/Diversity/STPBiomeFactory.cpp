@@ -9,12 +9,12 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPDiversity;
 
-STPBiomeFactory::STPProductionLineCreator::STPProductionLineCreator(const STPBiomeFactory& factory) : Factory(factory) {
+STPBiomeFactory::STPProductionLineCreator::STPProductionLineCreator(STPBiomeFactory& factory) : Factory(factory) {
 
 }
 
-STPBiomeFactory::STPLayerTree_t STPBiomeFactory::STPProductionLineCreator::operator()() const {
-	return make_unique<STPLayerTree>(this->Factory.supply());
+STPLayer* STPBiomeFactory::STPProductionLineCreator::operator()() {
+	return this->Factory.supply();
 }
 
 STPBiomeFactory::STPBiomeFactory(uvec2 dimension) : LayerProductionLine(*this), BiomeDimension(dimension) {
@@ -25,7 +25,7 @@ STPBiomeFactory::STPBiomeFactory(uvec2 dimension) : LayerProductionLine(*this), 
 
 void STPBiomeFactory::operator()(Sample* biomemap, ivec2 offset) {
 	//request a production line
-	STPLayerTree_t tree = this->LayerProductionLine.requestObject();
+	STPLayer* tree = this->LayerProductionLine.requestObject();
 
 	//y-component is interpreted as z coordinate in world space
 
@@ -35,7 +35,7 @@ void STPBiomeFactory::operator()(Sample* biomemap, ivec2 offset) {
 			//calculate the map index
 			const unsigned int index = x + z * this->BiomeDimension.x;
 			//get the biome at given coordinate
-			biomemap[index] = tree->start()->retrieve(static_cast<int>(x) + offset.x, 0, static_cast<int>(z) + offset.y);
+			biomemap[index] = tree->retrieve(static_cast<int>(x) + offset.x, 0, static_cast<int>(z) + offset.y);
 		}
 	}
 

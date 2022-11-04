@@ -550,7 +550,7 @@ private:
 		//copy bin
 		if constexpr (Normalise) {
 			//sum everything in the accumulator
-			const float sum = static_cast<float>(std::accumulate(acc_beg, acc_end, 0u,
+			const float sum = static_cast<float>(std::reduce(acc_beg, acc_end, 0u,
 				[](auto init, const STPSingleHistogram::STPBin& bin) { return init + bin.Data.Quantity; }));
 			std::transform(acc_beg, acc_end, target_dest_begin, [sum](auto bin) {
 				//we need to make a copy

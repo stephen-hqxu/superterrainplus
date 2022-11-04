@@ -7,7 +7,6 @@
 
 //SuperTerrain+/SuperTerrain+/World/Diversity
 #include<SuperTerrain+/World/Diversity/STPLayer.h>
-#include <SuperTerrain+/World/Diversity/STPLayerTree.h>
 #include <SuperTerrain+/World/Diversity/STPBiomeFactory.h>
 
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
@@ -15,10 +14,17 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+#include <list>
+#include <memory>
+
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
 using SuperTerrainPlus::STPDiversity::Sample;
 using SuperTerrainPlus::STPDiversity::Seed;
+
+using std::list;
+using std::unique_ptr;
+using std::make_unique;
 
 using glm::ivec2;
 using glm::uvec2;
@@ -172,15 +178,13 @@ SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG",
 
 }
 
+#define EMPLACE_LAYER(LAYER_TYPE, ...) emplace_back(make_unique<LAYER_TYPE>(__VA_ARGS__)).get()
 #define FAST_SAMPLE(LAYER, COOR) LAYER->retrieve(COOR[0], COOR[1], COOR[2])
 
-SCENARIO_METHOD(STPLayerTree, "STPLayerTree with some testing layers for biome generation", "[Diversity][STPLayerTree][!mayfail]") {
+SCENARIO("STPLayer connected with some testing layers for biome generation", "[Diversity][STPLayer][!mayfail]") {
 
-	GIVEN("A new layer manager") {
-
-		THEN("The new layer manager should be empty") {
-			REQUIRE(this->getLayerCount() == 0u);
-		}
+	GIVEN("A new layer tree structure") {
+		list<unique_ptr<STPLayer>> LayerTree;
 
 		AND_GIVEN("Some random numbers as seeds") {
 			using std::make_pair;
@@ -188,22 +192,23 @@ SCENARIO_METHOD(STPLayerTree, "STPLayerTree with some testing layers for biome g
 			constexpr Seed RandomSeed = 0ull;
 			constexpr Seed Salt = 0ull;
 
-			WHEN("Insert one layer with the unsupported cache size") {
+			WHEN("Create one layer with the unsupported cache size") {
 
-				THEN("Layer manager does not allow such layer to be inserted") {
-					REQUIRE_THROWS_AS((this->insert<RootLayer>(3u, RandomSeed, Salt)), STPException::STPBadNumericRange);
+				THEN("Layer cannot be created") {
+					REQUIRE_THROWS_AS(
+						[]() {
+							RootLayer root(3u, RandomSeed, Salt);
+						}(),
+						STPException::STPBadNumericRange);
 				}
 
 			}
 
-			WHEN("Insert one simple layer without cache") {
-				auto FirstLayer = this->insert<RootLayer>(0u, RandomSeed, Salt);
+			WHEN("Create one simple layer without cache") {
+				const auto FirstLayer = LayerTree.EMPLACE_LAYER(RootLayer, 0u, RandomSeed, Salt);
 				const auto Coordinate = GENERATE(take(2, chunk(3, random(-13131313, 78987678))));
 
 				THEN("The orphan layer properties should be validated") {
-					//property test
-					REQUIRE(this->getLayerCount() == 1u);
-
 					REQUIRE(FirstLayer->cacheSize() == 0u);
 					REQUIRE(FirstLayer->AscendantCount == 0u);
 					REQUIRE(FirstLayer->getAscendant() == nullptr);
@@ -211,73 +216,55 @@ SCENARIO_METHOD(STPLayerTree, "STPLayerTree with some testing layers for biome g
 					REQUIRE_FALSE(FirstLayer->isMerging());
 				}
 
-				THEN("The only layer should be the starting layer and can be sampled") {
-					//pointer comparison to make sure they are the same layer from the same memory location
-					REQUIRE(this->start() == FirstLayer);
-
+				THEN("The sample should be deterministically random") {
 					const auto LayerSample = FAST_SAMPLE(FirstLayer, Coordinate);
 
-					AND_THEN("The sample should be deterministically random") {
-						//same input always produces the same output
-						REQUIRE(FAST_SAMPLE(FirstLayer, Coordinate) == LayerSample);
-						//different input should produce different output (hash collision may fail it)
-						CHECK_FALSE(FAST_SAMPLE(FirstLayer, -Coordinate) == LayerSample);
-					}
-
+					//same input always produces the same output
+					REQUIRE(FAST_SAMPLE(FirstLayer, Coordinate) == LayerSample);
+					//different input should produce different output (hash collision may fail it)
+					CHECK_FALSE(FAST_SAMPLE(FirstLayer, -Coordinate) == LayerSample);
 				}
 
-				AND_WHEN("Insert one more cached layer so the chain is linear") {
-					auto SecondLayer = this->insert<NormalLayer>(32u, RandomSeed, Salt, FirstLayer);
+				AND_WHEN("Connect a cached layer to the previous one so the chain is linear") {
+					const auto SecondLayer = LayerTree.EMPLACE_LAYER(NormalLayer, 32u, RandomSeed, Salt, FirstLayer);
 
 					THEN("The properties of the new layer should be validated") {
-						REQUIRE(this->getLayerCount() == 2u);
-
 						REQUIRE(SecondLayer->cacheSize() == 32u);
 						REQUIRE(SecondLayer->AscendantCount == 1u);
 						REQUIRE(SecondLayer->getAscendant() == FirstLayer);
 						REQUIRE_FALSE(SecondLayer->isMerging());
 					}
 
-					THEN("The starting layer should be the last layer inserted") {
-						REQUIRE(this->start() == SecondLayer);
-
+					THEN("The output sample value is correct") {
 						const auto LayerSample = FAST_SAMPLE(SecondLayer, Coordinate);
 
-						AND_THEN("The output sample value is correct") {
-							//deterministic
-							REQUIRE(FAST_SAMPLE(SecondLayer, Coordinate) == LayerSample);
-							//random
-							CHECK_FALSE(FAST_SAMPLE(SecondLayer, -Coordinate) == LayerSample);
-							//our bottom layer simply call the sample function from the parent
-							REQUIRE(LayerSample == FAST_SAMPLE(FirstLayer, Coordinate));
-						}
+						//deterministic
+						REQUIRE(FAST_SAMPLE(SecondLayer, Coordinate) == LayerSample);
+						//random
+						CHECK_FALSE(FAST_SAMPLE(SecondLayer, -Coordinate) == LayerSample);
+						//our bottom layer simply call the sample function from the parent
+						REQUIRE(LayerSample == FAST_SAMPLE(FirstLayer, Coordinate));
 					}
 
-					AND_WHEN("Insert more layers to form a tree structure") {
-						auto BranchLayer1 = this->insert<NormalLayer>(32u, RandomSeed, Salt, SecondLayer);
-						auto BranchLayer2 = this->insert<NormalLayer>(0u, RandomSeed, Salt, SecondLayer);
-						auto MergeLayer = this->insert<MergingLayer>(32u, RandomSeed, Salt, BranchLayer1, BranchLayer2);
+					AND_WHEN("Connect more layers to form a bigger tree structure") {
+						const auto BranchLayer1 = LayerTree.EMPLACE_LAYER(NormalLayer, 32u, RandomSeed, Salt, SecondLayer);
+						const auto BranchLayer2 = LayerTree.EMPLACE_LAYER(NormalLayer, 0u, RandomSeed, Salt, SecondLayer);
+						const auto MergeLayer = LayerTree.EMPLACE_LAYER(MergingLayer, 32u, RandomSeed, Salt, BranchLayer1, BranchLayer2);
 
 						THEN("The properties of all tree layers are validated") {
-							REQUIRE(this->getLayerCount() == 5u);
-
 							REQUIRE(MergeLayer->isMerging());
 							REQUIRE(MergeLayer->AscendantCount == 2u);
 							REQUIRE((MergeLayer->getAscendant(0) == BranchLayer1 && MergeLayer->getAscendant(1) == BranchLayer2));
 						}
 
-						THEN("Starting layer should be the last layer inserted, which is a merging layer") {
-							REQUIRE(this->start() == MergeLayer);
-
+						THEN("The output from the tree should be correct") {
 							const auto BranchSample1 = FAST_SAMPLE(BranchLayer1, Coordinate);
 							const auto BranchSample2 = FAST_SAMPLE(BranchLayer2, Coordinate);
 							const auto TreeSample = FAST_SAMPLE(MergeLayer, Coordinate);
 
-							AND_THEN("The output from the tree should be correct") {
-								REQUIRE(FAST_SAMPLE(MergeLayer, Coordinate) == TreeSample);
-								CHECK_FALSE(FAST_SAMPLE(MergeLayer, -Coordinate) == TreeSample);
-								REQUIRE(TreeSample == static_cast<Sample>(BranchSample1 + BranchSample2));
-							}
+							REQUIRE(FAST_SAMPLE(MergeLayer, Coordinate) == TreeSample);
+							CHECK_FALSE(FAST_SAMPLE(MergeLayer, -Coordinate) == TreeSample);
+							REQUIRE(TreeSample == static_cast<Sample>(BranchSample1 + BranchSample2));
 						}
 					}
 				}
@@ -290,6 +277,10 @@ SCENARIO_METHOD(STPLayerTree, "STPLayerTree with some testing layers for biome g
 }
 
 class BiomeFactoryTester : protected STPBiomeFactory {
+private:
+
+	list<list<unique_ptr<STPLayer>>> LayerTree;
+
 protected:
 
 	constexpr static uvec2 Dimension = uvec2(4u);
@@ -297,19 +288,20 @@ protected:
 	constexpr static Seed RandomSeed = 0ull;
 	constexpr static Seed Salt = 0ull;
 
-	STPLayerTree supply() const override {
-		STPLayerTree Tree;
+	STPLayer* supply() override {
+		auto& TreeBranch = this->LayerTree.emplace_back();
+
 		STPLayer* Layer, *BranchLayer1, *BranchLayer2;
 		
-		Layer = Tree.insert<RootLayer>(32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt);
-		Layer = Tree.insert<NormalLayer>(0u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		Layer = TreeBranch.EMPLACE_LAYER(RootLayer, 32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt);
+		Layer = TreeBranch.EMPLACE_LAYER(NormalLayer, 0u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
 
-		BranchLayer1 = Tree.insert<NormalLayer>(32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
-		BranchLayer2 = Tree.insert<NormalLayer>(32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		BranchLayer1 = TreeBranch.EMPLACE_LAYER(NormalLayer, 32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
+		BranchLayer2 = TreeBranch.EMPLACE_LAYER(NormalLayer, 32u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, Layer);
 
-		Layer = Tree.insert<MergingLayer>(0u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, BranchLayer1, BranchLayer2);
+		Layer = TreeBranch.EMPLACE_LAYER(MergingLayer, 0u, BiomeFactoryTester::RandomSeed, BiomeFactoryTester::Salt, BranchLayer1, BranchLayer2);
 
-		return Tree;
+		return Layer;
 	}
 
 	inline Sample getExpected(unsigned int index, const ivec2& offset) const {

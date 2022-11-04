@@ -36,6 +36,8 @@
 #include "STPScaleLayer.h"
 #include "STPSmoothScaleLayer.h"
 
+using std::make_unique;
+
 using glm::uvec2;
 
 using namespace STPDemo;
@@ -48,34 +50,39 @@ STPLayerChainBuilder::STPLayerChainBuilder(uvec2 dimension, Seed global) : STPBi
 
 }
 
-STPLayerTree STPLayerChainBuilder::supply() const {
+#define EMPLACE_LAYER(LAYER, ...) emplace_back(make_unique<LAYER>(__VA_ARGS__)).get()
+
+STPLayer* STPLayerChainBuilder::supply() {
 	//create a new manager, don't worry about deletion because our engine will manage it pretty well
-	STPLayerTree chain;
+	auto& tree = this->LayerStructureStorage.emplace_back();
 	STPLayer* base;
 
 	//building layer chain
 	//we use a hand-typed random salt
 	//base biome
 	//4096
-	base = chain.insert<STPContinentLayer>(Cachesize, this->GlobalSeed, 23457829ull);
+	base = tree.EMPLACE_LAYER(STPContinentLayer, Cachesize, this->GlobalSeed, 23457829ull);
 	//2048
-	base = chain.insert<STPScaleLayer>(Cachesize, this->GlobalSeed, 875944ull, STPScaleLayer::STPScaleType::FUZZY, base);
-	base = chain.insert<STPLandLayer>(Cachesize, this->GlobalSeed, 5748329ull, base);
+	base = tree.EMPLACE_LAYER(STPScaleLayer, Cachesize, this->GlobalSeed, 875944ull, STPScaleLayer::STPScaleType::FUZZY, base);
+	base = tree.EMPLACE_LAYER(STPLandLayer, Cachesize, this->GlobalSeed, 5748329ull, base);
 	//1024
-	base = chain.insert<STPScaleLayer>(Cachesize, this->GlobalSeed, 8947358941ull, STPScaleLayer::STPScaleType::NORMAL, base);
-	base = chain.insert<STPLandLayer>(Cachesize, this->GlobalSeed, 361249673ull, base);
-	base = chain.insert<STPLandLayer>(Cachesize, this->GlobalSeed, 8769575ull, base);
-	base = chain.insert<STPLandLayer>(Cachesize, this->GlobalSeed, 43562783426564ull, base);
-	base = chain.insert<STPIslandLayer>(Cachesize, this->GlobalSeed, 74368ull, base);
+	base = tree.EMPLACE_LAYER(STPScaleLayer, Cachesize, this->GlobalSeed, 8947358941ull, STPScaleLayer::STPScaleType::NORMAL, base);
+	base = tree.EMPLACE_LAYER(STPLandLayer, Cachesize, this->GlobalSeed, 361249673ull, base);
+	base = tree.EMPLACE_LAYER(STPLandLayer, Cachesize, this->GlobalSeed, 8769575ull, base);
+	base = tree.EMPLACE_LAYER(STPLandLayer, Cachesize, this->GlobalSeed, 43562783426564ull, base);
+	base = tree.EMPLACE_LAYER(STPIslandLayer, Cachesize, this->GlobalSeed, 74368ull, base);
 
 	//debug for speedy generation
-	base = chain.insert<STPScaleLayer>(Cachesize, this->GlobalSeed, 1ull, STPScaleLayer::STPScaleType::NORMAL, base);
-	base = chain.insert<STPScaleLayer>(Cachesize, this->GlobalSeed, 2ull, STPScaleLayer::STPScaleType::NORMAL, base);
-	base = chain.insert<STPScaleLayer>(Cachesize, this->GlobalSeed, 3ull, STPScaleLayer::STPScaleType::NORMAL, base);
-	base = chain.insert<STPVoronoiLayer>(Cachesize, this->GlobalSeed, 4ull, false, base);
-	base = chain.insert<STPVoronoiLayer>(Cachesize, this->GlobalSeed, 5ull, false, base);
+	base = tree.EMPLACE_LAYER(STPScaleLayer, Cachesize, this->GlobalSeed, 1ull, STPScaleLayer::STPScaleType::NORMAL, base);
+	base = tree.EMPLACE_LAYER(STPScaleLayer, Cachesize, this->GlobalSeed, 2ull, STPScaleLayer::STPScaleType::NORMAL, base);
+	base = tree.EMPLACE_LAYER(STPScaleLayer, Cachesize, this->GlobalSeed, 3ull, STPScaleLayer::STPScaleType::NORMAL, base);
+	base = tree.EMPLACE_LAYER(STPVoronoiLayer, Cachesize, this->GlobalSeed, 4ull, false, base);
+	base = tree.EMPLACE_LAYER(STPVoronoiLayer, Cachesize, this->GlobalSeed, 5ull, false, base);
 	//the last layer can be uncached because each pixel is only referenced once
-	base = chain.insert<STPVoronoiLayer>(0u, this->GlobalSeed, 6ull, false, base);
+	base = tree.EMPLACE_LAYER(STPVoronoiLayer, 0u, this->GlobalSeed, 6ull, false, base);
 
-	return chain;
+	tree.shrink_to_fit();
+
+	//return the pointer to the root of the layer tree
+	return base;
 }

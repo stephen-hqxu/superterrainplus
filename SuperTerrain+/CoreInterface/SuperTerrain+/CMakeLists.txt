@@ -66,8 +66,6 @@ World/Diversity/STPBiomeDefine.h
 World/Diversity/STPBiomeFactory.h
 World/Diversity/STPLayer.h
 World/Diversity/STPLayer.inl
-World/Diversity/STPLayerTree.h
-World/Diversity/STPLayerTree.inl
 # /World/Diversity/Texture
 World/Diversity/Texture/STPTextureDatabase.h
 World/Diversity/Texture/STPTextureFactory.h

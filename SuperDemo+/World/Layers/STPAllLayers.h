@@ -4,6 +4,11 @@
 
 #include <SuperTerrain+/World/Diversity/STPBiomeFactory.h>
 
+//Storage
+#include <list>
+#include <vector>
+#include <memory>
+
 namespace STPDemo {
 	using SuperTerrainPlus::STPDiversity::Seed;
 
@@ -13,7 +18,10 @@ namespace STPDemo {
 	class STPLayerChainBuilder : public SuperTerrainPlus::STPDiversity::STPBiomeFactory {
 	private:
 
-		SuperTerrainPlus::STPDiversity::STPLayerTree supply() const override;
+		//store all constructed biome layer tree
+		std::list<std::vector<std::unique_ptr<SuperTerrainPlus::STPDiversity::STPLayer>>> LayerStructureStorage;
+
+		SuperTerrainPlus::STPDiversity::STPLayer* supply() override;
 
 	public:
 
