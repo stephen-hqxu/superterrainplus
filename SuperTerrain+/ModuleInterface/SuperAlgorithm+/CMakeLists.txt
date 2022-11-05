@@ -17,8 +17,6 @@ Parser/STPTextureDefinitionLanguage.h
 )
 
 target_sources(${STP_ALGORITHM_DEVICE_ENGINE} PRIVATE
-Device/STPKernelMath.cuh
-Device/STPKernelMath.inl
 Device/STPSimplexNoise.cuh
 Device/STPSingleHistogramWrapper.cuh
 Device/STPSingleHistogramWrapper.inl

@@ -3,7 +3,6 @@
 
 //Device Library
 #include <STPSimplexNoise.cuh>
-#include <STPKernelMath.cuh>
 
 #ifndef __CUDACC_RTC__
 #error __FILE__ can only be compiled in NVRTC

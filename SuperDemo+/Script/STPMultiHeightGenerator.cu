@@ -12,7 +12,7 @@ using SuperTerrainPlus::STPDiversity::Sample;
 __constant__ STPDemo::STPBiomeProperty BiomeTable[2];
 
 /**
- * @brief Use pure simplex noise to sample a point fractally.
+ * @brief Use pure simplex noise to sample a point with fractal.
  * @param coord The coordinate on the texture
  * @param parameter The simplex parameter for this biome
  * @param offset The simplex noise offset in global coordinate
@@ -39,12 +39,11 @@ __global__ void generateMultiBiomeHeightmap(float* height_storage, STPSingleHist
 	}
 	//current working pixel
 	const unsigned int index = x + y * Dimension->x;
-	STPSingleHistogramWrapper interpolator(biomemap_histogram);
 	
 	//grab the current biome setting
 	//we need to always make sure current biome can be referenced by the biomeID given in biome table
 	float height = 0.0f;
-	interpolator(index, [&height, &offset, x, y](Sample biomeID, float weight) {
+	STPSingleHistogramWrapper::iterate(biomemap_histogram, index, [&height, &offset, x, y](Sample biomeID, float weight) {
 		const STPDemo::STPBiomeProperty& current_biome = BiomeTable[biomeID];
 		height += weight * sampleSimplexNoise(make_uint2(x, y), current_biome, offset);
 	});
@@ -56,24 +55,18 @@ __global__ void generateMultiBiomeHeightmap(float* height_storage, STPSingleHist
 }
 
 __device__ float sampleSimplexNoise(uint2 coord, const STPDemo::STPBiomeProperty& parameter, float2 offset) {
-	//get simplex noise generator
-	const STPSimplexNoise simplex(*Permutation);
+	const auto [scale, octave, pers, lacu, depth, variation] = parameter;
+
 	//prepare for the fractal generator
-	STPSimplexNoise::STPFractalSimplexInformation fractal_desc;
-	fractal_desc.Persistence = parameter.Persistence;
-	fractal_desc.Lacunarity = parameter.Lacunarity;
-	fractal_desc.Octave = parameter.Octave;
+	STPSimplexNoise::STPFractalSimplexInformation fractal_desc = { };
+	fractal_desc.Persistence = pers;
+	fractal_desc.Lacunarity = lacu;
+	fractal_desc.Octave = octave;
 	fractal_desc.HalfDimension = *HalfDimension;
 	fractal_desc.Offset = offset;
-	fractal_desc.Scale = parameter.Scale;
-
-	const float3 nosieoutput = simplex.simplex2DFractal(1.0f * coord.x, 1.0f * coord.y, fractal_desc);
+	fractal_desc.Scale = scale;
 	
-	//interpolate and clamp the value within [0,1], was [min,max]
-	float noiseheight = STPKernelMath::Invlerp(nosieoutput.y, nosieoutput.z, nosieoutput.x);
-	//scale the noise
-	noiseheight *= parameter.Variation;
-	noiseheight += parameter.Depth;
-	
-	return noiseheight;
+	//scale the output noise
+	return STPSimplexNoise::simplex2DFractal(*Permutation, 1.0f * coord.x, 1.0f * coord.y, fractal_desc)
+		* variation + depth;
 }

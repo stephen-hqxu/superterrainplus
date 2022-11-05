@@ -10,8 +10,6 @@ set_target_properties(${STP_ALGORITHM_HOST_ENGINE} PROPERTIES DEFINE_SYMBOL SUPE
 
 # device-side static library
 add_library(${STP_ALGORITHM_DEVICE_ENGINE} STATIC
-Device/STPKernelMath.cu
 Device/STPSimplexNoise.cu
-Device/STPSingleHistogramWrapper.cu
 Device/STPTextureSplatRuleWrapper.cu
 )

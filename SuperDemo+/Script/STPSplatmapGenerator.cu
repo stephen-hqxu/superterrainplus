@@ -30,7 +30,7 @@ namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
 
 __constant__ STPTI::STPSplatRuleDatabase SplatDatabase[1];
 
-//A simple 2x2 Sobel kernel
+//A simple 2x2 kernel
 constexpr static unsigned int GradientSize = 4u;
 constexpr static int2 GradientKernel[GradientSize] = {
 	int2{ 0, -1 },//top, 0
@@ -73,7 +73,7 @@ __global__ void generateTextureSplatmap
 	//we need to convert z-coord of thread to chunk local ID
 	const STPTI::STPSplatGeneratorInformation::STPLocalChunkInformation& local_info = splat_info.RequestingLocalInfo[z];
 
-	//coordinates are unnormalised
+	//coordinates are un-normalised
 	const uint2 SamplingPosition = make_uint2(
 		x + Dimension->x * local_info.LocalChunkCoordinateX,
 		y + Dimension->y * local_info.LocalChunkCoordinateY
@@ -107,14 +107,14 @@ __global__ void generateTextureSplatmap
 	const float noise = generateNoise(x, y, make_float2(local_info.ChunkMapOffsetX, local_info.ChunkMapOffsetY));
 	//get information about the current position
 	const Sample biome = tex2D<Sample>(biomemap_tex, SamplingPosition.x, SamplingPosition.y);
-	const float height = STPKernelMath::clamp(tex2D<float>(heightmap_tex, SamplingPosition.x, SamplingPosition.y) + noise, 0.0f, 1.0f);
+	const float height = __saturatef(tex2D<float>(heightmap_tex, SamplingPosition.x, SamplingPosition.y) + noise);
 
-	const STPTextureSplatRuleWrapper splatWrapper(SplatDatabase[0]);
-	//get regions, we define gradient region outweights altitude region if they overlap
-	unsigned int region = splatWrapper.gradientRegion(biome, slopFactor, height);
+	const STPTI::STPSplatRegistry* const registry = STPTextureSplatRuleWrapper::findSplatRegistry(*SplatDatabase, biome);
+	//get regions, we define gradient region outweighs altitude region if they overlap
+	unsigned int region = STPTextureSplatRuleWrapper::gradientRegion(SplatDatabase->GradientRegistry, registry, slopFactor, height);
 	if (region == STPTextureSplatRuleWrapper::NoRegion) {
 		//no gradient region is being defined, switch to altitude region
-		region = splatWrapper.altitudeRegion(biome, height);
+		region = STPTextureSplatRuleWrapper::altitudeRegion(SplatDatabase->AltitudeRegistry, registry, height);
 		//we don't need to check for null altitude region, if there is none, there is none...
 	}
 	//write whatever region to the splatmap
@@ -124,8 +124,7 @@ __global__ void generateTextureSplatmap
 
 __device__ float generateNoise(unsigned int x, unsigned int y, float2 offset) {
 	//use simplex noise to generate fractals
-	const STPSimplexNoise simplex(*Permutation);
-	STPSimplexNoise::STPFractalSimplexInformation fractal_info;
+	STPSimplexNoise::STPFractalSimplexInformation fractal_info = { };
 	fractal_info.Persistence = Per;
 	fractal_info.Lacunarity = Lac;
 	fractal_info.Octave = 3u;
@@ -133,8 +132,5 @@ __device__ float generateNoise(unsigned int x, unsigned int y, float2 offset) {
 	fractal_info.Offset = offset;
 	fractal_info.Scale = NoiseScale;
 
-	const float3 result = simplex.simplex2DFractal(1.0f * x, 1.0f * y, fractal_info);
-
-	//interpolation
-	return STPKernelMath::Invlerp(result.y, result.z, result.x) * NoiseContribution;
+	return STPSimplexNoise::simplex2DFractal(*Permutation, 1.0f * x, 1.0f * y, fractal_info) * NoiseContribution;
 }
