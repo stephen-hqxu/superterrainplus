@@ -3,8 +3,6 @@ STPAsyncAccelBuilder.cpp
 STPCamera.cpp
 STPDebugCallback.cpp
 STPExtendedScenePipeline.cpp
-STPOrthographicCamera.cpp
-STPPerspectiveCamera.cpp
 STPPlaneGeometry.cpp
 STPRealismEnvironment.cpp
 STPRendererInitialiser.cpp

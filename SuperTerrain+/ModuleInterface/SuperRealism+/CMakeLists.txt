@@ -11,8 +11,6 @@ Environment/STPCameraSetting.h
 Environment/STPLightSetting.h
 Environment/STPMeshSetting.h
 Environment/STPOcclusionKernelSetting.h
-Environment/STPOrthographicCameraSetting.h
-Environment/STPPerspectiveCameraSetting.h
 Environment/STPStarfieldSetting.h
 Environment/STPSunSetting.h
 Environment/STPTessellationSetting.h
@@ -61,12 +59,9 @@ Scene/STPExtendedSceneObject.hpp
 Scene/STPMaterialLibrary.h
 Scene/STPSceneLight.h
 Scene/STPSceneObject.hpp
-# /Utility/Camera
-Utility/Camera/STPCamera.h
-Utility/Camera/STPOrthographicCamera.h
-Utility/Camera/STPPerspectiveCamera.h
 # /Utility
 Utility/STPAsyncAccelBuilder.h
+Utility/STPCamera.h
 Utility/STPDebugCallback.h
 Utility/STPIndirectCommand.hpp
 Utility/STPLogHandler.hpp

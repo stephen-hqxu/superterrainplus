@@ -7,9 +7,6 @@
 #include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 
-//Algebra
-#include <SuperTerrain+/Utility/Algebra/STPMatrix4x4d.h>
-
 //Base Off-screen Rendering
 #include <SuperRealism+/Scene/Component/STPScreen.h>
 #include <SuperRealism+/Scene/Component/STPAlphaCulling.h>
@@ -89,180 +86,6 @@ STPScenePipeline::STPSharedTexture::STPSharedTexture() :
 	DepthStencil(GL_TEXTURE_2D) {
 
 }
-
-class STPScenePipeline::STPCameraInformationMemory : private STPCamera::STPStatusChangeCallback {
-private:
-
-	//some flags to indicate buffer update status
-	bool updatePosition, updateView, updateProjection;
-
-	//by using separate flags instead of just flushing the buffer,
-	//we can avoid flushing frequently if camera is updated multiple times before next frame.
-
-	void onMove(const STPCamera&) override {
-		this->updatePosition = true;
-		this->updateView = true;
-	}
-
-	void onRotate(const STPCamera&) override {
-		this->updateView = true;
-	}
-
-	void onReshape(const STPCamera&) override {
-		this->updateProjection = true;
-	}
-
-	/**
-	 * @brief Packed structure for mapped camera buffer following OpenGL std430 alignment rule.
-	*/
-	struct STPPackedCameraBuffer {
-	public:
-
-		vec3 Pos;
-		float _padPos;
-
-		mat4 V;
-		mat3x4 VNorm;
-
-		mat4 P, InvP, PVr, PV, InvPV;
-
-		vec2 LDFac;
-		float Far;
-		//use uint because GL uses 32-bit for boolean
-		unsigned int Ortho;
-
-	};
-
-	static_assert(
-		offsetof(STPPackedCameraBuffer, Pos) == 0
-		&& offsetof(STPPackedCameraBuffer, V) == 16
-		&& offsetof(STPPackedCameraBuffer, VNorm) == 80
-
-		&& offsetof(STPPackedCameraBuffer, P) == 128
-		&& offsetof(STPPackedCameraBuffer, InvP) == 192
-
-		&& offsetof(STPPackedCameraBuffer, PVr) == 256
-		&& offsetof(STPPackedCameraBuffer, PV) == 320
-		&& offsetof(STPPackedCameraBuffer, InvPV) == 384
-
-		&& offsetof(STPPackedCameraBuffer, LDFac) == 448
-		&& offsetof(STPPackedCameraBuffer, Far) == 456
-		&& offsetof(STPPackedCameraBuffer, Ortho) == 460,
-	"The alignment of camera buffer does not obey std430 packing rule");
-
-public:
-
-	//The master camera for the rendering scene.
-	const STPCamera& Camera;
-	STPBuffer Buffer;
-	STPPackedCameraBuffer* MappedBuffer;
-
-	/**
-	 * @brief Init a new camera memory.
-	 * @param camera The pointe to the camera to be managed.
-	*/
-	STPCameraInformationMemory(const STPCamera& camera) : updatePosition(true), updateView(true), updateProjection(true),
-		Camera(camera), MappedBuffer(nullptr) {
-		//set up buffer for camera transformation matrix
-		this->Buffer.bufferStorage(sizeof(STPPackedCameraBuffer), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
-		this->Buffer.bindBase(GL_SHADER_STORAGE_BUFFER, 0u);
-		this->MappedBuffer =
-			reinterpret_cast<STPPackedCameraBuffer*>(this->Buffer.mapBufferRange(0, sizeof(STPPackedCameraBuffer),
-				GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
-		if (!this->MappedBuffer) {
-			throw STPException::STPGLError("Unable to map camera buffer to shader storage buffer");
-		}
-		//buffer has been setup, clear the buffer before use
-		memset(this->MappedBuffer, 0x00u, sizeof(STPPackedCameraBuffer));
-
-		//setup initial values
-		const STPEnvironment::STPCameraSetting& camSet = this->Camera.cameraStatus();
-		const double Cnear = camSet.Near, Cfar = camSet.Far;
-
-		this->MappedBuffer->LDFac = static_cast<vec2>(dvec2(
-			Cfar * Cnear,
-			Cfar - Cnear
-		));
-		this->MappedBuffer->Far = static_cast<float>(Cfar);
-		this->MappedBuffer->Ortho = this->Camera.ProjectionType == STPCamera::STPProjectionCategory::Orthographic
-			? std::numeric_limits<unsigned int>::max()
-			: 0u;
-		//update values
-		this->Buffer.flushMappedBufferRange(0, sizeof(STPPackedCameraBuffer));
-
-		//register camera callback
-		this->Camera.registerListener(this);
-	}
-
-	STPCameraInformationMemory(const STPCameraInformationMemory&) = delete;
-
-	STPCameraInformationMemory(STPCameraInformationMemory&&) = delete;
-
-	STPCameraInformationMemory& operator=(const STPCameraInformationMemory&) = delete;
-
-	STPCameraInformationMemory& operator=(STPCameraInformationMemory&&) = delete;
-	
-	~STPCameraInformationMemory() {
-		//release the shader storage buffer
-		STPBuffer::unbindBase(GL_SHADER_STORAGE_BUFFER, 0u);
-		//remove camera callback
-		this->Camera.removeListener(this);
-	}
-
-	/**
-	 * @brief Update data in scene pipeline buffer.
-	*/
-	void updateBuffer() {
-		STPPackedCameraBuffer* const camBuf = this->MappedBuffer;
-		const bool PV_changed = this->updateView || this->updateProjection;
-		//load up camera matrices
-		const STPMatrix4x4d* cameraView = nullptr, *cameraProjection = nullptr;
-		if (PV_changed) {
-			cameraView = &this->Camera.view();
-			cameraProjection = &this->Camera.projection();
-		}
-
-		//camera matrix is cached to avoid repetitive calculation so it is cheap to call these functions multiple times
-		//only update buffer when necessary
-		if (this->updatePosition || this->updateView) {
-			//position has changed
-			if (this->updatePosition) {
-				camBuf->Pos = this->Camera.cameraStatus().Position;
-				this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, Pos), sizeof(vec3));
-
-				this->updatePosition = false;
-			}
-
-			//if position changes, view must also change
-			//view matrix has changed
-			camBuf->V = static_cast<mat4>(*cameraView);
-			camBuf->VNorm = static_cast<mat3x4>(static_cast<mat4>(cameraView->asMatrix3x3d().inverse().transpose()));
-			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, V), sizeof(mat4) + sizeof(mat3x4));
-
-			this->updateView = false;
-		}
-		if (this->updateProjection) {
-			//projection matrix has changed
-			camBuf->P = static_cast<mat4>(*cameraProjection);
-			camBuf->InvP = static_cast<mat4>(cameraProjection->inverse());
-			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, P), sizeof(mat4) * 2);
-
-			this->updateProjection = false;
-		}
-
-		//update compound matrices
-		if (PV_changed) {
-			const STPMatrix4x4d proj_view = *cameraProjection * (*cameraView);
-
-			//update the precomputed values
-			camBuf->PVr = static_cast<mat4>(*cameraProjection * (cameraView->asMatrix3x3d()));
-			camBuf->PV = static_cast<mat4>(proj_view);
-			camBuf->InvPV = static_cast<mat4>(proj_view.inverse());
-			this->Buffer.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, PV), sizeof(mat4) * 2);
-		}
-	}
-
-};
 
 class STPScenePipeline::STPShadowPipeline {
 public:
@@ -766,11 +589,9 @@ public:
 
 };
 
-STPScenePipeline::STPScenePipeline(const STPCamera& camera, 
-	const STPMaterialLibrary* mat_lib, const STPScenePipelineInitialiser& scene_init) :
+STPScenePipeline::STPScenePipeline(const STPMaterialLibrary* mat_lib, const STPScenePipelineInitialiser& scene_init) :
 	SceneMemoryCurrent{ }, SceneMemoryLimit(scene_init.ShaderCapacity),
 	hasMaterialLibrary(mat_lib),
-	CameraMemory(make_unique<STPCameraInformationMemory>(camera)), 
 	GeometryShadowPass(make_unique<STPShadowPipeline>(*scene_init.ShadowFilter)),
 	GeometryLightPass(make_unique<STPGeometryBufferResolution>(
 		*this, *scene_init.ShadingModel, *scene_init.ShadowFilter, *scene_init.GeometryBufferInitialiser)), 
@@ -813,6 +634,8 @@ STPScenePipeline::STPScenePipeline(const STPCamera& camera,
 }
 
 STPScenePipeline::~STPScenePipeline() {
+	//unbind camera buffer
+	this->setCamera(nullptr);
 	//unbind material buffer
 	STPBuffer::unbindBase(GL_SHADER_STORAGE_BUFFER, 2u);
 }
@@ -820,6 +643,16 @@ STPScenePipeline::~STPScenePipeline() {
 const STPShaderManager* STPScenePipeline::getDepthShader() const {
 	//if depth shader is not applicable, return nullptr
 	return this->GeometryShadowPass->DepthPassShader.has_value() ? &*this->GeometryShadowPass->DepthPassShader : nullptr;
+}
+
+void STPScenePipeline::setCamera(const STPCamera* camera) const {
+	if (!camera) {
+		//unbind
+		STPBuffer::unbindBase(GL_SHADER_STORAGE_BUFFER, 0u);
+		return;
+	}
+	//bind
+	camera->bindCameraBuffer(GL_SHADER_STORAGE_BUFFER, 0u);
 }
 
 const STPScenePipeline::STPSceneShaderCapacity& STPScenePipeline::getMemoryUsage() const {
@@ -1058,8 +891,6 @@ void STPScenePipeline::traverse() {
 		TransparentMask = 1u << 1u,
 		ExtinctionMask = 1u << 2u;
 
-	//before rendering, update scene buffer
-	this->CameraMemory->updateBuffer();
 	//query the viewport size
 	ivec4 viewport_dim;
 	glGetIntegerv(GL_VIEWPORT, value_ptr(viewport_dim));

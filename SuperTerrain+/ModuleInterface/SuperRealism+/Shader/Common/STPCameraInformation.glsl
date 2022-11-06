@@ -22,10 +22,6 @@ layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 	//Camera properties
 	layout(offset = 448) vec2 LinearDepthFactor;
 	layout(offset = 456) float Far;
-	//Of course we can check type of projection by examining the projection matrix, 
-	//for example projection is orthographic if and only if Projection[3][3] == 1.0f.
-	//It is faster to compute the result on host than computing every frame.
-	layout(offset = 460) bool useOrtho;
 } Camera;
 
 /* --------------------------------------------------------------------- */
@@ -52,7 +48,7 @@ vec2 fragViewToNDC(mat4x2 projection_xy, vec3 position_view) {
 	const vec2 position_clip = projection_xy * vec4(position_view, 1.0f);
 	//from clip space to NDC by perspective division
 	//range convert from [-1, 1] to [0, 1]
-	return (position_clip / (Camera.useOrtho ? 1.0f : -position_view.z)) * 0.5f + 0.5f;
+	return (position_clip / -position_view.z) * 0.5f + 0.5f;
 }
 
 float lineariseDepth(float depth) {

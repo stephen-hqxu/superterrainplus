@@ -63,7 +63,7 @@ void main(){
 float compareSampleDepth(float init_depth, float final_depth, float factor, vec2 position_ndc){
 	//use linear interpolation to calculate the current ray depth
 	//perspective correction for perspective projection
-	const float sampleDepth_theoretical = (Camera.useOrtho ? 1.0f : init_depth * final_depth) / mix(init_depth, final_depth, factor),
+	const float sampleDepth_theoretical = init_depth * final_depth / mix(init_depth, final_depth, factor),
 		//and the actual depth on the scene
 		sampleDepth_actual = getLinearDepthAt(position_ndc);
 

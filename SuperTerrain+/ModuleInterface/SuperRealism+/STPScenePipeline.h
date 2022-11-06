@@ -12,7 +12,7 @@
 #include "./Scene/Light/STPShadowMapFilter.hpp"
 #include "./Scene/STPMaterialLibrary.h"
 //Camera
-#include "./Utility/Camera/STPCamera.h"
+#include "./Utility/STPCamera.h"
 
 //Container
 #include <vector>
@@ -227,11 +227,6 @@ namespace SuperTerrainPlus::STPRealism {
 		const bool hasMaterialLibrary;
 
 		/**
-		 * @brief STPCameraInformationMemory stores memory for camera information.
-		*/
-		class STPCameraInformationMemory;
-		std::unique_ptr<STPCameraInformationMemory> CameraMemory;
-		/**
 		 * @brief STPShadowPipeline is a shadow manager that handles all light source that can cast shadow and
 		 * provide pipeline for rendering opaque objects onto a shadow map.
 		*/
@@ -298,8 +293,6 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Initialise an empty scene pipeline.
-		 * @param camera The pointer to the camera.
-		 * The camera must remain valid as long as the current scene pipeline is valid.
 		 * @param mat_lib The pointer to the material library.
 		 * A null pointer can be provided to indicate no user-defined material library is used for this rendering pipeline.
 		 * No rendering component that uses a material library is allowed to be added later, however.
@@ -307,7 +300,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Modification to the data within the material library in runtime is allowed.
 		 * @param scene_init The pointer to scene initialiser.
 		*/
-		STPScenePipeline(const STPCamera&, const STPMaterialLibrary*, const STPScenePipelineInitialiser&);
+		STPScenePipeline(const STPMaterialLibrary*, const STPScenePipelineInitialiser&);
 
 		STPScenePipeline(const STPScenePipeline&) = delete;
 
@@ -318,6 +311,15 @@ namespace SuperTerrainPlus::STPRealism {
 		STPScenePipeline& operator=(STPScenePipeline&&) = delete;
 
 		~STPScenePipeline();
+
+		/**
+		 * @brief Set the active camera used for rendering.
+		 * Traversing the scene without an active camera is undefined behaviour.
+		 * @param camera The pointer to the camera.
+		 * The camera must remain valid as long as the current scene pipeline is valid.
+		 * Provide a nullptr to detach camera from the scene pipeline.
+		*/
+		void setCamera(const STPCamera*) const;
 
 		/**
 		 * @brief Get information about the amount of memory being used by the scene pipeline currently.

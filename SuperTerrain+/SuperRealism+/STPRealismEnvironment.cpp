@@ -5,8 +5,6 @@
 #include <SuperRealism+/Environment/STPLightSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
 #include <SuperRealism+/Environment/STPOcclusionKernelSetting.h>
-#include <SuperRealism+/Environment/STPOrthographicCameraSetting.h>
-#include <SuperRealism+/Environment/STPPerspectiveCameraSetting.h>
 #include <SuperRealism+/Environment/STPStarfieldSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>
 #include <SuperRealism+/Environment/STPTessellationSetting.h>
@@ -16,6 +14,8 @@
 #include <glm/ext/scalar_constants.hpp>
 
 using glm::uvec2;
+using glm::dvec2;
+using glm::dvec3;
 using glm::vec3;
 using glm::radians;
 
@@ -138,9 +138,11 @@ bool STPBidirectionalScatteringSetting::validate() const {
 //STPCameraSetting.h
 
 STPCameraSetting::STPCameraSetting() : 
-	Yaw(radians(-90.0)), Pitch(0.0),
-	MovementSpeed(2.5), RotationSensitivity(0.1),
-	Position(vec3(0.0)), WorldUp(0.0, 1.0, 0.0), 
+	Yaw(radians(-90.0)), Pitch(0.0), FoV(radians(45.0)),
+	MovementSpeed(2.5), RotationSensitivity(0.1), ZoomSensitivity(1.0),
+	ZoomLimit(radians(1.0), radians(90.0)),
+	Position(dvec3(0.0)), WorldUp(0.0, 1.0, 0.0),
+	Aspect(1.0),
 	Near(0.1), Far(1.0) {
 
 }
@@ -149,12 +151,21 @@ bool STPCameraSetting::validate() const {
 	static constexpr auto range = [](double val, double min, double max) constexpr -> double {
 		return val > min && val < max;
 	};
-	static constexpr double PI = glm::pi<double>(), PI_BY_2 = PI * 0.5;
+	static constexpr double PI = glm::pi<double>(),
+		PI_BY_2 = PI * 0.5,
+		TWO_PI = PI * 2.0;
 
 	return range(this->Yaw, -PI, PI)
 		&& range(this->Pitch, -PI_BY_2, PI_BY_2)
+		&& range(this->FoV, 0.0, TWO_PI)
 		&& this->MovementSpeed > 0.0
 		&& this->RotationSensitivity > 0.0
+		&& this->ZoomSensitivity > 0.0
+		&& this->ZoomLimit.x > 0.0
+		&& this->ZoomLimit.y > 0.0
+		&& this->ZoomLimit.y < TWO_PI
+		&& this->ZoomLimit.x <= this->ZoomLimit.y
+		&& this->Aspect > 0.0
 		&& this->Near > 0.0
 		&& this->Far > 0.0
 		&& this->Near < this->Far;
@@ -235,40 +246,6 @@ bool STPOcclusionKernelSetting::validate() const {
 	return this->RotationVectorSize != uvec2(0u)
 		&& this->SampleRadius > 0.0f
 		&& this->Bias > 0.0f;
-}
-
-//STPOrthographicCameraSetting.h
-
-STPOrthographicCameraSetting::STPOrthographicCameraSetting() : 
-	Left(-1.0), Right(1.0), Bottom(-1.0), Top(1.0) {
-
-}
-
-bool STPOrthographicCameraSetting::validate() const {
-	return this->Left < this->Right
-		&& this->Bottom < this->Top;
-}
-
-//STPPerspectiveCameraSetting.h
-
-STPPerspectiveCameraSetting::STPPerspectiveCameraSetting() :
-	ViewAngle(radians(45.0)), ZoomSensitivity(1.0),
-	ZoomLimit(radians(1.0), radians(90.0)),
-	Aspect(1.0) {
-
-}
-
-bool STPPerspectiveCameraSetting::validate() const {
-	static constexpr auto range = [](double val, double min, double max) constexpr -> double {
-		return val > min && val < max;
-	};
-
-	return range(this->ViewAngle, 0.0, glm::pi<double>() * 2.0)
-		&& this->ZoomSensitivity > 0.0
-		&& this->ZoomLimit.x > 0.0
-		&& this->ZoomLimit.y > 0.0
-		&& this->ZoomLimit.x <= this->ZoomLimit.y
-		&& this->Aspect > 0.0;
 }
 
 //STPStarfieldSetting.h

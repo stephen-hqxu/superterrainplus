@@ -4,7 +4,7 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Rendering Utility
-#include "../../Utility/Camera/STPCamera.h"
+#include "../../Utility/STPCamera.h"
 //Base Shadow
 #include "STPLightShadow.h"
 
@@ -25,7 +25,7 @@ namespace SuperTerrainPlus::STPRealism {
 	 * fits the orthographic matrix for each frustum, for each frustum render a shader map as if seen from the directional light.
 	 * Finally render the scene with shadow according to fragment depth value from corrected shadow map.
 	*/
-	class STP_REALISM_API STPCascadedShadowMap : public STPLightShadow, private STPCamera::STPStatusChangeCallback {
+	class STP_REALISM_API STPCascadedShadowMap : public STPLightShadow {
 	public:
 
 		//An array of float that determines the planes position of each camera frustum cut, 
@@ -46,7 +46,7 @@ namespace SuperTerrainPlus::STPRealism {
 			double CascadeBandRadius;
 			//The pointer to the camera where the light frustum will be constructed based on this camera.
 			//This camera must remain valid until the current instance is destroyed.
-			const STPCamera* Focus;
+			STPCamera* Focus;
 			//Specifies the depth multiplier of the light frustum.
 			//A value of 1.0 specifies a minimum light frustum bounded around the camera view frustum.
 			double ShadowDistanceMultiplier;
@@ -62,6 +62,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//CSM handles directional light rather than positional.
 		glm::vec3 LightDirection;
 
+		STPCamera::STPSubscriberBenefit FocusEventData;
 		const STPLightFrustum LightFrustum;
 		//Memory to where light space matrices should be stored
 		glm::mat4* LightSpaceMatrix;
@@ -87,12 +88,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * hold all the light cascade.
 		*/
 		void calcAllLightSpace(glm::mat4*) const;
-
-		void onMove(const STPCamera&) override;
-
-		void onRotate(const STPCamera&) override;
-
-		void onReshape(const STPCamera&) override;
 
 		void updateShadowMapHandle(STPOpenGL::STPuint64) override;
 

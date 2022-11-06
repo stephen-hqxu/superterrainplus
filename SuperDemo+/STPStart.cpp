@@ -11,7 +11,7 @@
 #include <glad/glad.h>
 //SuperRealism+ Engine
 #include <SuperRealism+/STPRendererInitialiser.h>
-#include <SuperRealism+/Utility/Camera/STPPerspectiveCamera.h>
+#include <SuperRealism+/Utility/STPCamera.h>
 #include <SuperRealism+/STPScenePipeline.h>
 #include <SuperRealism+/Scene/STPMaterialLibrary.h>
 #include <SuperRealism+/Scene/Component/STPHeightfieldTerrain.h>
@@ -140,7 +140,7 @@ namespace STPStart {
 		 * @param biome The pointer to biome INI settings.
 		 * @param camera The pointer to the perspective camera for the scene.
 		*/
-		STPMasterRenderer(const STPINIStorageView& engine, const STPINIStorageView& biome, SuperTerrainPlus::STPRealism::STPPerspectiveCamera& camera) :
+		STPMasterRenderer(const STPINIStorageView& engine, const STPINIStorageView& biome, SuperTerrainPlus::STPRealism::STPCamera& camera) :
 			engineINI(engine), biomeINI(biome), 
 			SceneMaterial(1u), ViewPosition(camera.cameraStatus().Position), 
 			CurrentSeed(this->biomeINI.at("simplex").at("seed").to<unsigned long long>()) {
@@ -245,7 +245,8 @@ namespace STPStart {
 				//construct rendering pipeline
 				scene_init.GeometryBufferInitialiser = &screen_renderer_init;
 
-				this->RenderPipeline.emplace(camera, &this->SceneMaterial, scene_init);
+				this->RenderPipeline.emplace(&this->SceneMaterial, scene_init);
+				this->RenderPipeline->setCamera(&camera);
 			}
 			//setup environment and light
 			//-------------------------------------------
@@ -552,7 +553,7 @@ namespace STPStart {
 	//Camera
 #pragma warning(push)
 #pragma warning(disable: 4324)//padding due to alignment of AVX
-	static optional<SuperTerrainPlus::STPRealism::STPPerspectiveCamera> MainCamera;
+	static optional<SuperTerrainPlus::STPRealism::STPCamera> MainCamera;
 #pragma warning(pop)
 
 	/* ------------------------------ callback functions ----------------------------------- */
@@ -564,7 +565,7 @@ namespace STPStart {
 		if (width != 0 && height != 0) {
 			//user has not minimised the window
 			//updating the screen size variable
-			MainCamera->rescale(1.0 * width / (1.0 * height));
+			MainCamera->setAspect(1.0 * width / (1.0 * height));
 			//update main renderer
 			MasterEngine->resize(uvec2(width, height));
 			//adjust viewport
@@ -738,20 +739,21 @@ int main() {
 		STPEnvironment::STPCameraSetting cam;
 		cam.Yaw = radians(90.0);
 		cam.Pitch = 0.0;
+		cam.FoV = radians(60.0);
+
 		cam.MovementSpeed = engineMain.at("movementSpeed").to<double>();
 		cam.RotationSensitivity = engineMain.at("mouseSensitivity").to<double>();
+		cam.ZoomSensitivity = engineMain.at("zoomSensitivity").to<double>();
+
+		cam.ZoomLimit = radians(dvec2(20.0, 140.0));
 		cam.Position = dvec3(30.5, 600.0, -15.5);
 		cam.WorldUp = dvec3(0.0, 1.0, 0.0);
+
+		cam.Aspect = 1.0 * STPStart::InitialCanvasSize.x / (1.0 * STPStart::InitialCanvasSize.y);
 		cam.Near = 1.0;
 		cam.Far = 2500.0;
-		
-		STPEnvironment::STPPerspectiveCameraSetting proj;
-		proj.ViewAngle = radians(60.0);
-		proj.ZoomLimit = radians(dvec2(20.0, 140.0));
-		proj.ZoomSensitivity = engineMain.at("zoomSensitivity").to<double>();
-		proj.Aspect = 1.0 * STPStart::InitialCanvasSize.x / (1.0 * STPStart::InitialCanvasSize.y);
 
-		STPStart::MainCamera.emplace(proj, cam);
+		STPStart::MainCamera.emplace(cam);
 	}
 
 	//setup realism engine logging system
@@ -781,8 +783,11 @@ int main() {
 		} while (deltaTime < (1.0 / FPS));
 		lastTime = currentTime;
 
-		//draw
+		//event update
+		glfwPollEvents();
 		STPStart::process_event(deltaTime);
+		STPStart::MainCamera->flush();
+		//draw
 		try {
 			STPStart::MasterEngine->render(currentTime, deltaTime);
 		} catch (const std::exception& e) {
@@ -791,8 +796,6 @@ int main() {
 			return -1;
 		}
 
-		//event update
-		glfwPollEvents();
 		//make sure the GPU has finished rendering the back buffer before swapping
 		glFinish();
 		//buffer swapping
