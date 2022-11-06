@@ -225,9 +225,9 @@ namespace STPStart {
 				STPScenePipeline::STPShadowMapFilterKernel<STPShadowMapFilter::PCF> scene_shadow_function;
 				scene_init.ShadowFilter = &scene_shadow_function;
 				scene_shadow_function.DepthBias = vec2(0.055f, 0.0055f);
-				scene_shadow_function.NormalBias = vec2(15.5f, 5.5f);
+				scene_shadow_function.NormalBias = vec2(1.22f, 0.6f);
 				scene_shadow_function.BiasFarMultiplier = 0.45f;
-				scene_shadow_function.CascadeBlendArea = 40.5f;
+				scene_shadow_function.CascadeBlendArea = 1.62f;
 				scene_shadow_function.KernelRadius = 4u;
 				scene_shadow_function.KernelDistance = 2.45f;
 
@@ -237,7 +237,7 @@ namespace STPStart {
 
 				//setup material library
 				auto waterMaterial = STPMaterialLibrary::DefaultMaterial;
-				waterMaterial.Opacity = 0.01f;
+				waterMaterial.Opacity = 0.1f;
 				waterMaterial.Reflexivity = 2.5f;
 				waterMaterial.RefractiveIndex = 1.333f;
 				waterMaterialID = this->SceneMaterial.add(waterMaterial);
@@ -259,9 +259,9 @@ namespace STPStart {
 						camFar / 3.5,
 						camFar / 1.5
 					},
-					32.5,
+					1.3,
 					&camera,
-					234.5
+					15.36
 				};
 
 				//sun
@@ -286,7 +286,7 @@ namespace STPStart {
 				//setup light
 				//daylight
 				this->Skylight.emplace(move(sky_spec));
-				this->Sunlight.emplace(make_optional<STPCascadedShadowMap>(2048u, shadow_frustum), move(sun_spec));
+				this->Sunlight.emplace(make_optional<STPCascadedShadowMap>(1024u, shadow_frustum), move(sun_spec));
 				this->RenderPipeline->add(*this->Skylight);
 				this->RenderPipeline->add(*this->Sunlight);
 
@@ -743,15 +743,18 @@ int main() {
 
 		cam.MovementSpeed = engineMain.at("movementSpeed").to<double>();
 		cam.RotationSensitivity = engineMain.at("mouseSensitivity").to<double>();
-		cam.ZoomSensitivity = engineMain.at("zoomSensitivity").to<double>();
-
-		cam.ZoomLimit = radians(dvec2(20.0, 140.0));
-		cam.Position = dvec3(30.5, 600.0, -15.5);
+		cam.Position = dvec3(30.5, 0.0, -15.5);
 		cam.WorldUp = dvec3(0.0, 1.0, 0.0);
 
 		cam.Aspect = 1.0 * STPStart::InitialCanvasSize.x / (1.0 * STPStart::InitialCanvasSize.y);
 		cam.Near = 1.0;
-		cam.Far = 2500.0;
+		cam.Far = 100.0;
+		
+		STPEnvironment::STPPerspectiveCameraSetting proj;
+		proj.ViewAngle = radians(60.0);
+		proj.ZoomLimit = radians(dvec2(20.0, 140.0));
+		proj.ZoomSensitivity = engineMain.at("zoomSensitivity").to<double>();
+		proj.Aspect = 1.0 * STPStart::InitialCanvasSize.x / (1.0 * STPStart::InitialCanvasSize.y);
 
 		STPStart::MainCamera.emplace(cam);
 	}
