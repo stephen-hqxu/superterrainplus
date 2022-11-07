@@ -109,12 +109,13 @@ __global__ void generateTextureSplatmap
 	const Sample biome = tex2D<Sample>(biomemap_tex, SamplingPosition.x, SamplingPosition.y);
 	const float height = __saturatef(tex2D<float>(heightmap_tex, SamplingPosition.x, SamplingPosition.y) + noise);
 
-	const STPTI::STPSplatRegistry* const registry = STPTextureSplatRuleWrapper::findSplatRegistry(*SplatDatabase, biome);
+	const STPTextureSplatRuleWrapper splatWrapper(*SplatDatabase);
+	const STPTI::STPSplatRegistry* const registry = splatWrapper.findSplatRegistry(biome);
 	//get regions, we define gradient region outweighs altitude region if they overlap
-	unsigned int region = STPTextureSplatRuleWrapper::gradientRegion(SplatDatabase->GradientRegistry, registry, slopFactor, height);
+	unsigned int region = splatWrapper.gradientRegion(registry, slopFactor, height);
 	if (region == STPTextureSplatRuleWrapper::NoRegion) {
 		//no gradient region is being defined, switch to altitude region
-		region = STPTextureSplatRuleWrapper::altitudeRegion(SplatDatabase->AltitudeRegistry, registry, height);
+		region = splatWrapper.altitudeRegion(registry, height);
 		//we don't need to check for null altitude region, if there is none, there is none...
 	}
 	//write whatever region to the splatmap

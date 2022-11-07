@@ -12,8 +12,10 @@ namespace SuperTerrainPlus::STPAlgorithm {
 	 * @tparam S The type of the basic string. It currently only supports std::string and std::string_view.
 	*/
 	template<class Str>
-	struct STPINIBasicString : public Str {
+	struct STPINIBasicString {
 	public:
+
+		Str String;
 
 		/**
 		 * @brief Initialise an empty STPINIBasicString instance.

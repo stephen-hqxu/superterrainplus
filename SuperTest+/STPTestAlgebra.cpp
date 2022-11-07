@@ -12,7 +12,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
 
-#include <limits>
 #include <type_traits>
 
 using namespace SuperTerrainPlus;
@@ -26,7 +25,7 @@ using glm::inverse;
 using glm::transpose;
 using glm::dot;
 
-#define COMP_FLOATING_POINT(X, TYPE) Catch::Matchers::WithinRel(X, std::numeric_limits<TYPE>::epsilon() * static_cast<TYPE>(10.0))
+#define COMP_FLOATING_POINT(X, TYPE) Catch::Matchers::WithinULP(X, 3ull)
 #define COMP_FLOAT(X) COMP_FLOATING_POINT(X, float)
 #define COMP_DOUBLE(X) COMP_FLOATING_POINT(X, double)
 

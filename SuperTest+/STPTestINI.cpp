@@ -44,8 +44,8 @@ SCENARIO("INI string utility can convert string to primitive value", "[Algorithm
 				CHECK(STPINIStringView("8888ul").to<unsigned long>() == 8888ul);
 				CHECK(STPINIStringView("123456789ull").to<unsigned long long>() == 123456789ull);
 
-				CHECK_THAT(STPINIStringView("2.718f").to<float>(), WithinAbs(2.718f, 0.001f));
-				CHECK_THAT(STPINIStringView("1.414213562").to<double>(), WithinAbs(1.414213562, 0.000001));
+				CHECK_THAT(STPINIStringView("2.718f").to<float>(), WithinAbs(2.718f, 1e-4f));
+				CHECK_THAT(STPINIStringView("1.414213562").to<double>(), WithinAbs(1.414213562, 1e-10));
 			}
 
 		}
@@ -76,21 +76,21 @@ SCENARIO("INI reader can parsed all values correctly", "[AlgorithmHost][INI][STP
 					REQUIRE(DietSec.size() == 4u);
 					REQUIRE(MakeSoundSec.size() == 6u);
 
-					CHECK(NamelessSec.at("day") == "Monday");
-					CHECK(NamelessSec.at("weather") == "sunny");
-					CHECK(NamelessSec.at("temperature") == "16.5f");
+					CHECK((NamelessSec.at("day").String == "Monday"));
+					CHECK((NamelessSec.at("weather").String == "sunny"));
+					CHECK((NamelessSec.at("temperature").String == "16.5f"));
 
-					CHECK(DietSec.at("cat") == "fish");
-					CHECK(DietSec.at("dog") == "tasty bone");
-					CHECK(DietSec.at("cow") == "grass");
-					CHECK(DietSec.at("pig") == "omnivore");
+					CHECK((DietSec.at("cat").String == "fish"));
+					CHECK((DietSec.at("dog").String == "tasty bone"));
+					CHECK((DietSec.at("cow").String == "grass"));
+					CHECK((DietSec.at("pig").String == "omnivore"));
 
-					CHECK(MakeSoundSec.at("cat") == "meow");
-					CHECK(MakeSoundSec.at("dog") == "bark");
-					CHECK(MakeSoundSec.at("cow") == "moo");
-					CHECK(MakeSoundSec.at("pig") == "oink");
-					CHECK(MakeSoundSec.at("tiger") == "roar");
-					CHECK(MakeSoundSec.at("birds") == "sing");
+					CHECK((MakeSoundSec.at("cat").String == "meow"));
+					CHECK((MakeSoundSec.at("dog").String == "bark"));
+					CHECK((MakeSoundSec.at("cow").String == "moo"));
+					CHECK((MakeSoundSec.at("pig").String == "oink"));
+					CHECK((MakeSoundSec.at("tiger").String == "roar"));
+					CHECK((MakeSoundSec.at("birds").String == "sing"));
 				}
 
 			}

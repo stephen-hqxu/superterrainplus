@@ -1,5 +1,7 @@
 //Catch2
 #include <catch2/catch_test_macros.hpp>
+//Matcher
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 //SuperAlgorithm+Host
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
@@ -8,6 +10,9 @@
 
 //System
 #include <utility>
+#include <limits>
+
+#include <glm/vec2.hpp>
 
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPAlgorithm;
@@ -25,7 +30,7 @@ private:
 
 	constexpr static uvec2 Dimension = uvec2(4u);
 	constexpr static uvec2 Unit = uvec2(3u);
-	constexpr static uvec2 Range = uvec2(12u);
+	constexpr static uvec2 Range = Dimension * Unit;
 
 	constexpr static unsigned int PixelCount = Range.x * Range.y;
 
@@ -76,17 +81,17 @@ protected:
 			EXPECT_PAIR(0u, 0.32f),
 			EXPECT_PAIR(3u, 0.2f),
 			EXPECT_PAIR(1u, 0.12f),
-			EXPECT_PAIR(2u, 0.36f),
-
+			EXPECT_PAIR(2u, 0.36f)
 		};
 		//loop
 		for (int trial = 0; trial < 3; trial++) {
 			const auto& offset = TrialOffset[trial];
 
 			for (auto [i, counter] = make_pair(result.HistogramStartOffset[offset], 0); i < result.HistogramStartOffset[offset + 1u]; i++, counter++) {
-				const auto& currEV = Expected[counter + trial * 4];
-				REQUIRE(result.Bin[i].Item == currEV.first);
-				REQUIRE(result.Bin[i].Data.Weight == currEV.second);
+				const auto [item, weight] = Expected[counter + trial * 4];
+				REQUIRE(result.Bin[i].Item == item);
+				//because our numbers are weights, which are always less than one
+				REQUIRE_THAT(result.Bin[i].Data.Weight, Catch::Matchers::WithinRel(weight, std::numeric_limits<float>::epsilon() * 5.0f));
 			}
 		}
 	}

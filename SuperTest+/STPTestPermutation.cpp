@@ -37,7 +37,7 @@ public:
 	SimplexArg() : STPSimplexNoiseSetting() {
 		this->Seed = 6666ull;
 		this->Distribution = 10u;
-		this->Offset = 6.5;
+		this->Offset = radians(6.5);
 	}
 
 };
@@ -76,7 +76,7 @@ public:
 
 };
 
-//increase epsilon to allow some margin of error
+//it depends on the precision of built-in trig function
 #define FLOAT_EQUAL(X) Catch::Matchers::WithinRel(X, std::numeric_limits<float>::epsilon() * 10.0f)
 #define GET_GRADX(D) glm::cos(radians(D))
 #define GET_GRADY(D) glm::sin(radians(D))
@@ -84,13 +84,13 @@ public:
 CHECK_THAT(this->HostGrad2D[I + 1], FLOAT_EQUAL(GET_GRADY(D)))
 
 SCENARIO_METHOD(PermutationGenTester, "STPPermutationGenerator can a generate deterministically random permutation table", 
-	"[AlgorithmHost][STPPermutationGenerator][!mayfail]") {
+	"[AlgorithmHost][STPPermutationGenerator]") {
 
 	GIVEN("A simplex noise setting with invalid values") {
 		STPSimplexNoiseSetting InvalidArg;
 		InvalidArg.Distribution = 0u;
 
-		THEN("Contruction of permutation generator should be prevented") {
+		THEN("Construction of permutation generator should be prevented") {
 			REQUIRE_THROWS_AS(STPPermutationGenerator(InvalidArg), STPException::STPInvalidEnvironment);
 		}
 
@@ -105,7 +105,6 @@ SCENARIO_METHOD(PermutationGenTester, "STPPermutationGenerator can a generate de
 				REQUIRE(permutation.Gradient2DSize == this->Args.Distribution);
 
 				//pick some gradients and check
-				//floating point comparison is a pain, so it might fail
 				CHECK_GRAD(0, 6.5f);
 				CHECK_GRAD(6, 114.5f);
 				CHECK_GRAD(14, 258.5f);

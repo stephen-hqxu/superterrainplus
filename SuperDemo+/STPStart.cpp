@@ -163,7 +163,7 @@ namespace STPStart {
 
 			//setup world manager
 			try {
-				this->WorldManager.emplace(string(this->biomeINI.at("").at("texture_path_prefix")), config, simplex);
+				this->WorldManager.emplace(string(this->biomeINI.at("").at("texture_path_prefix").String), config, simplex);
 				//the old setting has been moved to the world manager, need to refresh the pointer
 				const auto& chunk_setting = this->WorldManager->getWorldSetting().ChunkSetting;
 

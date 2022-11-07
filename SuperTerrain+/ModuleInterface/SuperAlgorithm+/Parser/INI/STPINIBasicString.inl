@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 template<class Str>
-SuperTerrainPlus::STPAlgorithm::STPINIBasicString<Str>::STPINIBasicString(const Str& str) : Str(str) {
+SuperTerrainPlus::STPAlgorithm::STPINIBasicString<Str>::STPINIBasicString(const Str& str) : String(str) {
 
 }
 
@@ -13,7 +13,7 @@ template<class Str>
 template<typename T>
 inline T SuperTerrainPlus::STPAlgorithm::STPINIBasicString<Str>::to() const {
 	T value = static_cast<T>(0);
-	const auto [ptr, ec] = std::from_chars(this->data(), this->data() + this->length(), value);
+	const auto [ptr, ec] = std::from_chars(this->String.data(), this->String.data() + this->String.length(), value);
 
 	//throw exception according to the specification of std::stoi, std::stol, std::stoll
 	using std::errc;

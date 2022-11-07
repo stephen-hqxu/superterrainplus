@@ -259,7 +259,7 @@ void STPTerrainParaLoader::loadBiomeParameters(const STPINIStorageView& biomeini
 		const STPINISectionView& curr_biome = biomeini.at(name);
 
 		//assigning props
-		biome.Name = curr_biome.at("name");
+		biome.Name = curr_biome.at("name").String;
 		biome.ID = curr_biome.at("id").to<Sample>();
 		biome.Temperature = curr_biome.at("temperature").to<float>();
 		biome.Precipitation = curr_biome.at("precipitation").to<float>();

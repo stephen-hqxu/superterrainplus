@@ -20,7 +20,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Determine how many gradient stretch will have, default is 8, each of them will be 45 degree apart.
 		//Higher value will make the terrain looks more random with less systematic pattern
 		unsigned int Distribution;
-		//Determine the offset of the angle for the gradient table, in degree
+		//Determine the offset of the angle for the gradient table, in radians
 		//This will generally rotate the terrain
 		double Offset;
 

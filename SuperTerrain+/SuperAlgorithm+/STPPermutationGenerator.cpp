@@ -6,7 +6,7 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
-
+#include <glm/ext/scalar_constants.hpp>
 #include <glm/trigonometric.hpp>
 
 #include <array>
@@ -65,15 +65,15 @@ STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimple
 	STP_CHECK_CUDA(cudaMemcpy(this->Permutation, PermutationHost.data(),
 		sizeof(unsigned char) * PermutationHost.size(), cudaMemcpyHostToDevice));
 
-	using glm::radians;
+	constexpr static double TwoPi = 2.0 * glm::pi<double>();
 	//generate the gradient table
 	//we are going to distribute the gradient evenly in a circle
-	const double step = 360.0 / (this->Gradient2DSize * 1.0);//in degree
+	const double step = TwoPi / (this->Gradient2DSize * 1.0);//in radians
 	std::unique_ptr<float[]> Gradient2DHost = std::make_unique<float[]>(this->Gradient2DSize * 2);//2D so we *2
-	for (auto [angle, counter] = make_pair(0.0, 0u); angle < 360.0; angle += step, counter++) {//in degree
+	for (auto [angle, counter] = make_pair(0.0, 0u); angle < TwoPi; angle += step, counter++) {//in degree
 		const double offset_angle = angle + simplex_setting.Offset;
-		Gradient2DHost[counter * 2] = static_cast<float>(glm::cos(radians(offset_angle)));
-		Gradient2DHost[counter * 2 + 1] = static_cast<float>(glm::sin(radians(offset_angle)));
+		Gradient2DHost[counter * 2] = static_cast<float>(glm::cos(offset_angle));
+		Gradient2DHost[counter * 2 + 1] = static_cast<float>(glm::sin(offset_angle));
 	}
 
 	//copy the host gradient to device

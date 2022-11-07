@@ -155,7 +155,6 @@ TEMPLATE_TEST_CASE_METHOD(FreeSlipBufferTester, "STPFreeSlipTextureBuffer can me
 	using CurrentTester = ::FreeSlipBufferTester<TestType>;
 
 	WHEN("Some wrong numbers are provided to the texture buffer") {
-		STPFreeSlipTextureAttribute ZeroPixel = { CurrentTester::SmallInfo, 0 };
 		typename CurrentTester::TestData DefaultData = { CurrentTester::TestMemoryMode::ReadOnly, 0 };
 
 		AND_WHEN("The number of free-slip texture does not logically match the free-slip setting") {

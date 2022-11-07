@@ -216,14 +216,7 @@ public:
 };
 
 template<typename T>
-class ObjectPoolTester : protected STPObjectPool<unique_ptr<T>, ObjectCreator<T>> {
-public:
-
-	ObjectPoolTester() : STPObjectPool() {
-
-	}
-
-};
+using ObjectPoolTester = STPObjectPool<unique_ptr<T>, ObjectCreator<T>>;
 
 TEMPLATE_TEST_CASE_METHOD(ObjectPoolTester, "STPObjectPool reuses object whenever possible", "[Utility][STPObjectPool]",
 	float, unsigned int){

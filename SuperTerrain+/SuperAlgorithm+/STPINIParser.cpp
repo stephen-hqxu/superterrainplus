@@ -237,7 +237,7 @@ STPINIWriter::STPINIWriter(const STPINIStorageView& storage, STPWriterFlag flag)
 	ostringstream output;
 	auto writeSection = [&output, &equalMark](const STPINISectionView& section) -> void {
 		for (const auto& [key, value] : section) {
-			output << key << equalMark << value << endl;
+			output << key << equalMark << value.String << endl;
 		}
 	};
 
