@@ -46,6 +46,7 @@ namespace SuperTerrainPlus {
 			//Splatmap Generator
 			STPDiversity::STPTextureFactory* SplatmapGenerator;
 
+			//The chunk setting will be copied under the world pipeline.
 			const STPEnvironment::STPChunkSetting* ChunkSetting;
 		};
 
@@ -76,7 +77,7 @@ namespace SuperTerrainPlus {
 			Splatmap = 0x02u
 		};
 
-		const STPEnvironment::STPChunkSetting& ChunkSetting;
+		const STPEnvironment::STPChunkSetting ChunkSetting;
 
 	private:
 
@@ -126,7 +127,7 @@ namespace SuperTerrainPlus {
 		 * @brief Initialise world pipeline with pipeline stages loaded.
 		 * @param setup The pointer to pipeline stages and settings.
 		*/
-		STPWorldPipeline(STPPipelineSetup&);
+		STPWorldPipeline(const STPPipelineSetup&);
 
 		STPWorldPipeline(const STPWorldPipeline&) = delete;
 

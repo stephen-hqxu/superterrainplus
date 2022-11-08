@@ -42,17 +42,17 @@ inline STPSmartDeviceMemory::STPDeviceMemory<STPHeightfieldGenerator::STPcurandR
 	return STPHeightfieldKernel::curandInit(this->Seed, this->Length, stream);
 }
 
-STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting& chunk_settings,
-	const STPEnvironment::STPHeightfieldSetting& heightfield_settings, const STPDiversityGenerator& diversity_generator,
-	unsigned int hint_level_of_concurrency) :
-	generateHeightmap(diversity_generator), HeightfieldSettingHost(heightfield_settings),
-	ErosionBrush(chunk_settings.FreeSlipChunk.x * chunk_settings.MapSize.x, this->HeightfieldSettingHost.Erosion.ErosionBrushRadius),
+STPHeightfieldGenerator::STPHeightfieldGenerator(const STPGeneratorSetup& setup) :
+	generateHeightmap(*setup.DiversityGenerator), HeightfieldSettingHost(*setup.HeightfieldSetting),
+	ErosionBrush(setup.ChunkSetting->FreeSlipChunk.x * setup.ChunkSetting->MapSize.x, this->HeightfieldSettingHost.Erosion.ErosionBrushRadius),
 	RNGPool(this->HeightfieldSettingHost) {
-	chunk_settings.validate();
+	const STPEnvironment::STPChunkSetting& chunk_setting = *setup.ChunkSetting;
+
+	chunk_setting.validate();
 	this->HeightfieldSettingHost.validate();
 	STPFreeSlipInformation& info = this->TextureBufferAttr.TextureInfo;
-	info.Dimension = chunk_settings.MapSize;
-	info.FreeSlipChunk = chunk_settings.FreeSlipChunk;
+	info.Dimension = chunk_setting.MapSize;
+	info.FreeSlipChunk = chunk_setting.FreeSlipChunk;
 	info.FreeSlipRange = info.Dimension * info.FreeSlipChunk;
 
 	//allocating space
@@ -70,7 +70,7 @@ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkS
 	this->MapCacheDevice = STPSmartDeviceObject::makeMemPool(pool_props);
 	//TODO: smartly determine the average memory pool size
 	cuuint64_t release_thres = (sizeof(float) + sizeof(unsigned short)) * info.FreeSlipRange.x * info.FreeSlipRange.y
-		* hint_level_of_concurrency;
+		* setup.ConcurrencyLevelHint;
 	STP_CHECK_CUDA(cudaMemPoolSetAttribute(this->MapCacheDevice.get(), cudaMemPoolAttrReleaseThreshold, &release_thres));
 	this->TextureBufferAttr.DeviceMemPool = this->MapCacheDevice.get();
 }

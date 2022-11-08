@@ -206,17 +206,16 @@ public:
 };
 
 STPWorldManager::STPWorldManager(const string& tex_filename_prefix, const STPEnvironment::STPChunkSetting& chunk_setting,
-	const STPEnvironment::STPHeightfieldSetting& heightfield_setting, const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
-	ChunkSetting(chunk_setting), HeightfieldSetting(heightfield_setting),
-	SharedProgram(this->ChunkSetting, simplex_setting), linkStatus(false),
+	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
+	SharedProgram(chunk_setting, simplex_setting), linkStatus(false),
 	Texture(make_unique<STPWorldManager::STPWorldSplattingAgent>(tex_filename_prefix)) {
-	this->ChunkSetting.validate();
-	this->HeightfieldSetting.validate();
+
 }
 
 STPWorldManager::~STPWorldManager() = default;
 
-void STPWorldManager::linkProgram(float anisotropy) {
+void STPWorldManager::linkProgram(float anisotropy, const STPEnvironment::STPChunkSetting& chunk_setting,
+	const STPEnvironment::STPHeightfieldSetting& heightfield_setting) {
 	this->linkStatus = false;
 	//error checking
 	if (!this->BiomeFactory) {
@@ -229,20 +228,21 @@ void STPWorldManager::linkProgram(float anisotropy) {
 	//finish up texture settings
 	this->Texture->setTextureParameter(*this->TextureFactory, anisotropy);
 
-	const STPEnvironment::STPChunkSetting& chunk_settings = this->ChunkSetting;
 	//create generator and storage unit first
-	this->ChunkGenerator.emplace(
-		chunk_settings,
-		this->HeightfieldSetting,
-		*this->DiversityGenerator,
-		//TODO: correctly calculate the thread occupancy
-		5u);
+	STPHeightfieldGenerator::STPGeneratorSetup setup = { };
+	setup.ChunkSetting = &chunk_setting;
+	setup.HeightfieldSetting = &heightfield_setting;
+	setup.DiversityGenerator = this->DiversityGenerator.get();
+	//TODO: correctly calculate the thread occupancy
+	setup.ConcurrencyLevelHint = 5u;
+	this->ChunkGenerator.emplace(setup);
+
 	//create the world pipeline
 	STPWorldPipeline::STPPipelineSetup pipeStage = { };
 	pipeStage.BiomemapGenerator = this->BiomeFactory.get();
 	pipeStage.HeightfieldGenerator = &(*this->ChunkGenerator);
 	pipeStage.SplatmapGenerator = this->TextureFactory.get();
-	pipeStage.ChunkSetting = &chunk_settings;
+	pipeStage.ChunkSetting = &chunk_setting;
 	this->Pipeline.emplace(pipeStage);
 	
 	this->linkStatus = true;

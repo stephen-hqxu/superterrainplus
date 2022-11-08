@@ -111,7 +111,7 @@ namespace SuperTerrainPlus {
 		//multi-biome heightmap generator linked with external
 		const STPDiversityGenerator& generateHeightmap;
 		//heightfield generation parameters
-		const STPEnvironment::STPHeightfieldSetting& HeightfieldSettingHost;
+		const STPEnvironment::STPHeightfieldSetting HeightfieldSettingHost;
 		STPSmartDeviceMemory::STPDeviceMemory<STPEnvironment::STPRainDropSetting> RainDropSettingDevice;
 
 		//generate brush for hydraulic erosion
@@ -129,15 +129,29 @@ namespace SuperTerrainPlus {
 	public:
 
 		/**
-		 * @brief Init the heightfield generator
-		 * @param chunk_settings All parameters for the chunk to be linked with this generator
-		 * @param heightfield_settings All parameters for heightfield generation to be linked with this generator
-		 * @param diversity_generator A generator responsible for generating a multi-biome heightmap
-		 * @param hint_level_of_concurrency The average number of thread that will be used to issue commands to this class.
-		 * It's used to assume the size of memory pool to allocate.
+		 * @brief STPGeneratorSetup contains initialisation parameters for heightfield generator.
 		*/
-		STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting&, const STPEnvironment::STPHeightfieldSetting&,
-			const STPDiversityGenerator&, unsigned int);
+		struct STPGeneratorSetup {
+		public:
+
+			//All parameters for the chunk to be linked with this generator.
+			const STPEnvironment::STPChunkSetting* ChunkSetting;
+			//All parameters for heightfield generation to be linked with this generator.
+			const STPEnvironment::STPHeightfieldSetting* HeightfieldSetting;
+			//A generator responsible for generating a multi-biome heightmap.
+			const STPDiversityGenerator* DiversityGenerator;
+
+			//The average number of thread that will be used to issue commands to this class.
+			//It's used to assume the size of memory pool to allocate.
+			unsigned int ConcurrencyLevelHint;
+
+		};
+
+		/**
+		 * @brief Init the heightfield generator
+		 * @param setup The initialiser for the heightfield generator.
+		*/
+		STPHeightfieldGenerator(const STPGeneratorSetup&);
 
 		~STPHeightfieldGenerator() = default;
 

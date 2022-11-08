@@ -10,6 +10,7 @@
 
 //World Engine
 #include <SuperTerrain+/World/STPWorldPipeline.h>
+#include <SuperTerrain+/World/Chunk/STPHeightfieldGenerator.h>
 
 //System
 #include <optional>
@@ -22,10 +23,6 @@ namespace STPDemo {
 	*/
 	class STPWorldManager {
 	public:
-
-		//settings
-		const SuperTerrainPlus::STPEnvironment::STPChunkSetting ChunkSetting;
-		const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting HeightfieldSetting;
 
 		//A compiler contains all runtime scripts
 		const STPDemo::STPCommonCompiler SharedProgram;
@@ -67,12 +64,10 @@ namespace STPDemo {
 		/**
 		 * @brief Init the world manager.
 		 * @param tex_filename_prefix The prefix for all texture filenames. It will be used as "<prefix>/<texture filename>".
-		 * @param chunk_setting All chunk settings, it will be copied under the object.
-		 * @param heightfield_setting All heightfield settings, also copied.
-		 * @parm simplex_setting Setting for simplex noise generator.
+		 * @param chunk_setting All chunk settings.
+		 * @param simplex_setting Setting for simplex noise generator.
 		*/
 		STPWorldManager(const std::string&, const SuperTerrainPlus::STPEnvironment::STPChunkSetting&,
-			const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting&,
 			const SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&);
 
 		~STPWorldManager();
@@ -115,8 +110,11 @@ namespace STPDemo {
 		/**
 		 * @brief Link all pipeline stages together.
 		 * @param anisotropy The level of anisotropy filtering to be used for textures.
+		 * @param chunk_setting All chunk settings, it will be copied under the object.
+		 * @param heightfield_setting All heightfield settings, also copied.
 		*/
-		void linkProgram(float);
+		void linkProgram(float, const SuperTerrainPlus::STPEnvironment::STPChunkSetting&,
+			const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting&);
 
 		/**
 		 * @brief Get the link status of the current world manager.

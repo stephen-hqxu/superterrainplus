@@ -365,7 +365,7 @@ public:
 	 * @param setup The pointer to all pipeline stages.
 	 * @param pipeline The pointer to the world pipeline registered with the generator manager.
 	*/
-	STPGeneratorManager(STPWorldPipeline::STPPipelineSetup& setup, STPWorldPipeline& pipeline) : 
+	STPGeneratorManager(const STPWorldPipeline::STPPipelineSetup& setup, STPWorldPipeline& pipeline) : 
 		generateBiomemap(*setup.BiomemapGenerator), generateHeightfield(*setup.HeightfieldGenerator), generateSplatmap(*setup.SplatmapGenerator), 
 		Pipeline(pipeline), ChunkSetting(this->Pipeline.ChunkSetting), GeneratorWorker(5u) {
 
@@ -1120,7 +1120,7 @@ public:
 
 };
 
-STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) :
+STPWorldPipeline::STPWorldPipeline(const STPPipelineSetup& setup) :
 	ChunkSetting(*setup.ChunkSetting), BufferStream(STPSmartDeviceObject::makeStream(cudaStreamNonBlocking)),
 	Generator(make_unique<STPGeneratorManager>(setup, *this)), Memory(make_unique<STPMemoryManager>(*this)),
 	LastCentreLocation(ivec2(std::numeric_limits<int>::min())), PipelineWorker(1u) {

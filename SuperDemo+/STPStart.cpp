@@ -155,7 +155,7 @@ namespace STPStart {
 
 			//setup world manager
 			try {
-				this->WorldManager.emplace(string(this->biomeINI.at("").at("texture_path_prefix").String), chunk_setting, heightfield_setting, simplex);
+				this->WorldManager.emplace(string(this->biomeINI.at("").at("texture_path_prefix").String), chunk_setting, simplex);
 
 				this->WorldManager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
 				this->WorldManager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>
@@ -163,7 +163,7 @@ namespace STPStart {
 				this->WorldManager->attachTextureFactory<STPDemo::STPSplatmapGenerator>
 					(this->WorldManager->SharedProgram, this->WorldManager->getTextureDatabase(), chunk_setting);
 
-				this->WorldManager->linkProgram(this->engineINI.at("Global").at("Anisotropy").to<float>());
+				this->WorldManager->linkProgram(this->engineINI.at("Global").at("Anisotropy").to<float>(), chunk_setting, heightfield_setting);
 				if (!this->WorldManager) {
 					//do not proceed if it fails
 					std::terminate();
