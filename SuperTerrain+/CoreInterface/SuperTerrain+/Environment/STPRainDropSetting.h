@@ -3,7 +3,6 @@
 #define _STP_RAIN_DROP_SETTING_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-#include "STPSetting.hpp"
 
 //GLM
 #include <glm/vec2.hpp>
@@ -15,7 +14,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 	 * Copy and move operation on this class is unsafe if device memory has been made available, and only shallow copy is performed.
 	 * To make device memory available across all copies, only call makeAvailable() function on the object that has been copied.
 	*/
-	struct STP_API STPRainDropSetting : public STPSetting {
+	struct STP_API STPRainDropSetting {
 	public:
 
 		//The number of raindrop presented to perform hydraulic erosion
@@ -47,14 +46,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//The smaller radius is, the deeper and more distinct the ravines will be.
 		unsigned int ErosionBrushRadius;
 
-		/**
-		 * @brief Init STPRainDropSettings with default values.
-		*/
-		STPRainDropSetting();
-
-		virtual ~STPRainDropSetting() = default;
-
-		virtual bool validate() const override;
+		void validate() const;
 
 	};
 

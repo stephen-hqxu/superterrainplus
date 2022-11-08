@@ -1,8 +1,6 @@
 #include <SuperRealism+/Scene/Component/STPWater.h>
 #include <SuperRealism+/STPRealismInfo.h>
 
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
-
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperTerrain+/Utility/STPStringUtility.h>
@@ -107,9 +105,7 @@ STPWater::STPWater(const STPHeightfieldTerrain& terrain, const STPBiomeWaterLeve
 }
 
 void STPWater::setWater(const STPEnvironment::STPWaterSetting& water_setting) {
-	if (!water_setting.validate()) {
-		throw STPException::STPInvalidEnvironment("Water setting fails to validate");
-	}
+	water_setting.validate();
 	const auto& wave_setting = water_setting.WaterWave;
 	const auto& tess_setting = water_setting.WaterMeshTess;
 	const auto [it_geo, it_norm] = water_setting.WaterWaveIteration;

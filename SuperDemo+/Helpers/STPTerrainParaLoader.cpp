@@ -21,7 +21,7 @@ using glm::vec3;
 using glm::dvec3;
 
 STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const STPINISectionView& section) {
-	STPEnvironment::STPMeshSetting rendering_options;
+	STPEnvironment::STPMeshSetting rendering_options = { };
 	STPEnvironment::STPTessellationSetting& tess_options = rendering_options.TessSetting;
 	STPEnvironment::STPMeshSetting::STPTextureRegionSmoothSetting& smooth_options = rendering_options.RegionSmoothSetting;
 	STPEnvironment::STPMeshSetting::STPTextureScaleDistanceSetting& scale_options = rendering_options.RegionScaleSetting;
@@ -46,7 +46,7 @@ STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const S
 }
 
 STPEnvironment::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const STPINISectionView& section) {
-	STPEnvironment::STPChunkSetting chunks_options;
+	STPEnvironment::STPChunkSetting chunks_options = { };
 
 	chunks_options.MapSize = uvec2(
 		section.at("heightmap2DSizeX").to<unsigned int>(),
@@ -80,30 +80,31 @@ STPEnvironment::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const STPI
 
 STPEnvironment::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(const STPINISectionView& section) {
 	//get the default settings
-	STPEnvironment::STPHeightfieldSetting launch_options;
+	STPEnvironment::STPHeightfieldSetting launch_options = { };
+	STPEnvironment::STPRainDropSetting& raindrop_options = launch_options.Erosion;
 	
 	//set the parameter one by one, enjoy :)
 	launch_options.Seed = section.at("seed").to<unsigned long long>();
-	launch_options.Inertia = section.at("inertia").to<float>();
-	launch_options.SedimentCapacityFactor = section.at("sediment_capacity_factor").to<float>();
-	launch_options.minSedimentCapacity = section.at("min_sediment_capacity").to<float>();
-	launch_options.initWaterVolume = section.at("init_water_volume").to<float>();
-	launch_options.minWaterVolume = section.at("min_water_volume").to<float>();
-	launch_options.Friction = section.at("friction").to<float>();
-	launch_options.initSpeed = section.at("init_speed").to<float>();
-	launch_options.ErodeSpeed = section.at("erode_speed").to<float>();
-	launch_options.DepositSpeed = section.at("deposit_speed").to<float>();
-	launch_options.EvaporateSpeed = section.at("evaporate_speed").to<float>();
-	launch_options.Gravity = section.at("gravity").to<float>();
-	launch_options.ErosionBrushRadius = section.at("brush_radius").to<unsigned int>();
-	launch_options.RainDropCount = section.at("iteration").to<unsigned int>();
+	raindrop_options.Inertia = section.at("inertia").to<float>();
+	raindrop_options.SedimentCapacityFactor = section.at("sediment_capacity_factor").to<float>();
+	raindrop_options.minSedimentCapacity = section.at("min_sediment_capacity").to<float>();
+	raindrop_options.initWaterVolume = section.at("init_water_volume").to<float>();
+	raindrop_options.minWaterVolume = section.at("min_water_volume").to<float>();
+	raindrop_options.Friction = section.at("friction").to<float>();
+	raindrop_options.initSpeed = section.at("init_speed").to<float>();
+	raindrop_options.ErodeSpeed = section.at("erode_speed").to<float>();
+	raindrop_options.DepositSpeed = section.at("deposit_speed").to<float>();
+	raindrop_options.EvaporateSpeed = section.at("evaporate_speed").to<float>();
+	raindrop_options.Gravity = section.at("gravity").to<float>();
+	raindrop_options.ErosionBrushRadius = section.at("brush_radius").to<unsigned int>();
+	raindrop_options.RainDropCount = section.at("iteration").to<unsigned int>();
 
 	//return the value
 	return launch_options;
 }
 
 STPEnvironment::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplexSetting(const STPINISectionView& section) {
-	auto noise_option = STPEnvironment::STPSimplexNoiseSetting();
+	STPEnvironment::STPSimplexNoiseSetting noise_option = { };
 
 	noise_option.Seed = section.at("seed").to<unsigned long long>();
 	noise_option.Distribution = section.at("distribution").to<unsigned int>();
@@ -113,7 +114,7 @@ STPEnvironment::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplexSetting(c
 }
 
 pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtmosphereSetting> STPTerrainParaLoader::getSkySetting(const STPINISectionView& section) {
-	STPEnvironment::STPSunSetting sun;
+	STPEnvironment::STPSunSetting sun = { };
 	sun.DayLength = section.at("day_length").to<unsigned int>();
 	sun.DayStart = section.at("day_start").to<unsigned int>();
 	sun.YearLength = section.at("year_length").to<unsigned int>();
@@ -121,7 +122,7 @@ pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtmosphereSetting> STPTer
 	sun.Obliquity = section.at("axial_tilt").to<double>();
 	sun.Latitude = section.at("latitude").to<double>();
 
-	STPEnvironment::STPAtmosphereSetting atmo;
+	STPEnvironment::STPAtmosphereSetting atmo = { };
 	atmo.SunIntensity = section.at("sun_intensity").to<float>();
 	atmo.PlanetRadius = section.at("planet_radius").to<float>();
 	atmo.AtmosphereRadius = section.at("atmoshpere_radius").to<float>();
@@ -144,7 +145,8 @@ pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtmosphereSetting> STPTer
 }
 
 STPEnvironment::STPStarfieldSetting STPTerrainParaLoader::getStarfieldSetting(const STPINISectionView& section) {
-	STPEnvironment::STPStarfieldSetting star;
+	STPEnvironment::STPStarfieldSetting star = { };
+
 	star.InitialLikelihood = section.at("init_likelihood").to<float>();
 	star.OctaveLikelihoodMultiplier = section.at("likelihood_mul").to<float>();
 	star.InitialScale = section.at("init_scale").to<float>();
@@ -159,7 +161,7 @@ STPEnvironment::STPStarfieldSetting STPTerrainParaLoader::getStarfieldSetting(co
 }
 
 STPEnvironment::STPAuroraSetting STPTerrainParaLoader::getAuroraSetting(const STPINISectionView& section) {
-	STPEnvironment::STPAuroraSetting aurora;
+	STPEnvironment::STPAuroraSetting aurora = { };
 	auto& tri = aurora.Noise;
 	auto& main_fractal = tri.MainNoise, &distortion_fractal = tri.DistortionNoise;
 
@@ -190,7 +192,7 @@ STPEnvironment::STPAuroraSetting STPTerrainParaLoader::getAuroraSetting(const ST
 }
 
 STPEnvironment::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(const STPINISectionView& section) {
-	STPEnvironment::STPOcclusionKernelSetting ao_kernel;
+	STPEnvironment::STPOcclusionKernelSetting ao_kernel = { };
 
 	ao_kernel.RandomSampleSeed = section.at("sample_seed").to<unsigned long long>();
 	ao_kernel.RotationVectorSize = uvec2(
@@ -204,7 +206,7 @@ STPEnvironment::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(con
 }
 
 STPEnvironment::STPWaterSetting STPTerrainParaLoader::getWaterSetting(const STPINISectionView& section, float altitude) {
-	STPEnvironment::STPWaterSetting water;
+	STPEnvironment::STPWaterSetting water = { };
 	STPEnvironment::STPTessellationSetting& water_tess = water.WaterMeshTess;
 	STPEnvironment::STPWaterSetting::STPWaterWaveSetting& water_wave = water.WaterWave;
 
@@ -242,7 +244,7 @@ STPEnvironment::STPWaterSetting STPTerrainParaLoader::getWaterSetting(const STPI
 }
 
 STPEnvironment::STPBidirectionalScatteringSetting STPTerrainParaLoader::getBSDFSetting(const STPINISectionView& section) {
-	STPEnvironment::STPBidirectionalScatteringSetting bsdf;
+	STPEnvironment::STPBidirectionalScatteringSetting bsdf = { };
 
 	bsdf.MaxRayDistance = section.at("max_ray_distance").to<float>();
 	bsdf.DepthBias = section.at("depth_bias").to<float>();

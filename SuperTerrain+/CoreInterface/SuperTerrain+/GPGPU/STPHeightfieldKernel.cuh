@@ -45,14 +45,14 @@ namespace SuperTerrainPlus {
 		 * @brief Performing hydraulic erosion for the given heightmap terrain.
 		 * @param height_storage The floating point heightmap with global-local free-slip management.
 		 * Heightmap must be available in device memory.
-		 * @param heightfield_settings The settings to use to generate heightmap, must be in device memory space.
+		 * @param raindrop_settings The settings to use to erosion the heightmap, must be in device memory space.
 		 * @param freeslip_info The information about the free-slip erosion.
 		 * @param brush The information about the generated erosion brush.
 		 * @param raindrop_count The number of raindrop to spawn and erode the terrain.
 		 * @param rng The random number generator map sequence, independent for each rain drop.
 		 * @param stream Specify a CUDA stream work will be submitted to.
 		*/
-		__host__ void hydraulicErosion(float*, const STPEnvironment::STPHeightfieldSetting*, const STPFreeSlipInformation&,
+		__host__ void hydraulicErosion(float*, const STPEnvironment::STPRainDropSetting*, const STPFreeSlipInformation&,
 			const STPErosionBrush&, unsigned int, STPcurand_t*, cudaStream_t);
 
 		/**

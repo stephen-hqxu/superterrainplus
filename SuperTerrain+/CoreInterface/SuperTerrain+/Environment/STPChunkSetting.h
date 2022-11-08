@@ -3,7 +3,6 @@
 #define _STP_CHUNK_SETTING_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-#include "STPSetting.hpp"
 //GLM
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
@@ -13,7 +12,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 	/**
 	 * @brief STPChunkSettings stores settings for each generated chunk. It will be mainly used by 2d terrain generator
 	*/
-	struct STP_API STPChunkSetting : public STPSetting {
+	struct STP_API STPChunkSetting {
 	public:
 
 		//Determine the X*Y number of unit planes, greater chunk size will give more chunk details
@@ -34,14 +33,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//When both values are 1, it will effectively disable the neighbour chunk logic
 		glm::uvec2 FreeSlipChunk;
 
-		/**
-		 * @brief Init STPChunksPara with default values
-		*/
-		STPChunkSetting();
-
-		~STPChunkSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 	};
 }
 #endif//_STP_CHUNK_SETTINGS_H_

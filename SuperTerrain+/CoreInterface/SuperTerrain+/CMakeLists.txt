@@ -5,10 +5,8 @@ STPOpenGL.h
 STPSQLite.h
 # /Environment
 Environment/STPChunkSetting.h
-Environment/STPConfiguration.h
 Environment/STPHeightfieldSetting.h
 Environment/STPRainDropSetting.h
-Environment/STPSetting.hpp
 # /Exception
 Exception/STPAsyncGenerationError.h
 Exception/STPBadNumericRange.h

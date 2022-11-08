@@ -1,8 +1,7 @@
 #include <SuperRealism+/Scene/Component/STPAmbientOcclusion.h>
 //Info
 #include <SuperRealism+/STPRealismInfo.h>
-//
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
+//Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 
 //File Reader
@@ -40,11 +39,10 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static auto SSAOShaderFilename = 
 	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPAmbientOcclusion", ".frag");
 
-STPAmbientOcclusion::STPOcclusionKernelInstance::STPOcclusionKernelInstance
-	(const STPEnvironment::STPOcclusionKernelSetting& kernel_setting, STPOcclusionAlgorithm algorithm) : Occluder(algorithm), Kernel(kernel_setting) {
-	if (!this->Kernel.validate()) {
-		throw STPException::STPInvalidEnvironment("Occlusion kernel setting cannot be validated");
-	}
+STPAmbientOcclusion::STPOcclusionKernelInstance::STPOcclusionKernelInstance(
+	const STPEnvironment::STPOcclusionKernelSetting& kernel_setting, STPOcclusionAlgorithm algorithm) :
+	Occluder(algorithm), Kernel(kernel_setting) {
+	this->Kernel.validate();
 }
 
 STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kernel_instance, STPGaussianFilter&& filter,

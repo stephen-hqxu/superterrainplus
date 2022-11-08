@@ -3,7 +3,6 @@
 #include <glad/glad.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 #include <SuperTerrain+/Exception/STPMemoryError.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
 
@@ -82,9 +81,7 @@ STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) :
 	"The alignment of camera buffer does not obey std430 packing rule");
 
 	/* -------------------------- validation -------------------------- */
-	if (!this->Camera.validate()) {
-		throw STPException::STPInvalidEnvironment("Camera setting not validated");
-	}
+	this->Camera.validate();
 	//calculate the initial values for the camera based on the default settings.
 	this->updateViewSpace();
 

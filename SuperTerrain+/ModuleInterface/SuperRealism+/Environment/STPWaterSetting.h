@@ -14,13 +14,13 @@ namespace SuperTerrainPlus::STPEnvironment {
 	/**
 	 * @brief STPWaterSetting contains settings for rendering photorealistic water.
 	*/
-	struct STP_REALISM_API STPWaterSetting : public STPSetting {
+	struct STP_REALISM_API STPWaterSetting {
 	public:
 
 		/**
 		 * @brief STPWaterWaveSetting controls the procedurally generated water wave animation.
 		*/
-		struct STP_REALISM_API STPWaterWaveSetting : public STPSetting {
+		struct STPWaterWaveSetting {
 		public:
 
 			//Specifies the initial water wave parameters.
@@ -30,15 +30,6 @@ namespace SuperTerrainPlus::STPEnvironment {
 			//Specifies the wave drag. Drag controls how fast wave maxima decays as the distance to it increases.
 			//Higher drag creates a more ridged wave.
 			float WaveDrag;
-
-			/**
-			 * @brief Initialise a new STPWaterWaveSetting.
-			*/
-			STPWaterWaveSetting();
-
-			~STPWaterWaveSetting() = default;
-
-			bool validate() const override;
 
 		};
 
@@ -82,14 +73,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Large distance gives smoother normalmap while small one gives stronger.
 		float NormalEpsilon;
 
-		/**
-		 * @brief Initialise a new STPWaterSetting instance.
-		*/
-		STPWaterSetting();
-
-		~STPWaterSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 
 	};
 

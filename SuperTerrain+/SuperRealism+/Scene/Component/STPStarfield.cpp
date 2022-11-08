@@ -2,7 +2,6 @@
 #include <SuperRealism+/STPRealismInfo.h>
 
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
@@ -36,9 +35,7 @@ STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSk
 }
 
 void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starfield_setting, unsigned int rng_seed) {
-	if (!starfield_setting.validate()) {
-		throw STPException::STPInvalidEnvironment("The starfield setting fails to validate");
-	}
+	starfield_setting.validate();
 
 	this->StarfieldBox.SkyboxRenderer.uniform(glProgramUniform1f, "Star.iLklh", starfield_setting.InitialLikelihood)
 		.uniform(glProgramUniform1f, "Star.OctLklhMul", starfield_setting.OctaveLikelihoodMultiplier)

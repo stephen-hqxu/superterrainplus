@@ -4,7 +4,6 @@
 #include <cuda_runtime.h>
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
 #include <glm/ext/scalar_constants.hpp>
 #include <glm/trigonometric.hpp>
@@ -36,9 +35,7 @@ constexpr static auto InitialTable = []() constexpr {
 }();
 
 STPPermutationGenerator::STPPermutationGenerator(const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) {
-	if (!simplex_setting.validate()) {
-		throw STPException::STPInvalidEnvironment("value range from simplex noise setting cannot be validated");
-	}
+	simplex_setting.validate();
 	this->Gradient2DSize = simplex_setting.Distribution;
 
 	//seed the engine

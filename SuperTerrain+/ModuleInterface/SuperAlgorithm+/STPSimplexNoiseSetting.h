@@ -3,16 +3,13 @@
 #define _STP_SIMPLEX_NOISE_SETTING_H_
 
 #include <SuperAlgorithm+/STPAlgorithmDefine.h>
-#include <SuperTerrain+/Environment/STPSetting.hpp>
-//CUDA vector
-#include <vector_functions.h>
 
 namespace SuperTerrainPlus::STPEnvironment {
 
 	/**
 	 * @brief STPSimplexNoiseSettings specifies the simplex noise generator parameter for the simplex noise functions
 	*/
-	struct STP_ALGORITHM_HOST_API STPSimplexNoiseSetting : public STPSetting {
+	struct STP_ALGORITHM_HOST_API STPSimplexNoiseSetting {
 	public:
 
 		//Determine the seed used for the RNG
@@ -24,14 +21,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//This will generally rotate the terrain
 		double Offset;
 
-		/**
-		 * @brief Init the simplex noise settings with default values
-		*/
-		STPSimplexNoiseSetting();
-
-		~STPSimplexNoiseSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 
 	};
 }

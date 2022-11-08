@@ -3,14 +3,13 @@
 #define _STP_AURORA_SETTING_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
-#include <SuperTerrain+/Environment/STPSetting.hpp>
 
 namespace SuperTerrainPlus::STPEnvironment {
 
 	/**
 	 * @brief STPAuroraSetting stores settings for the procedurally generated aurora effect.
 	*/
-	struct STP_REALISM_API STPAuroraSetting : public STPSetting {
+	struct STP_REALISM_API STPAuroraSetting {
 	public:
 
 		/**
@@ -18,13 +17,13 @@ namespace SuperTerrainPlus::STPEnvironment {
 		 * Triangular noise is the main noise function to generate a sky of auroras.
 		 * Fractal triangular noise is done by composing a main noise and a distortion noise together.
 		*/
-		struct STP_REALISM_API STPTriangularNoiseSetting : public STPSetting {
+		struct STP_REALISM_API STPTriangularNoiseSetting {
 		public:
 
 			/**
 			 * @brief STPNoiseFractalSetting specifies parameters for the fractal triangular noise functions.
 			*/
-			struct STP_REALISM_API STPNoiseFractalSetting : public STPSetting {
+			struct STP_REALISM_API STPNoiseFractalSetting {
 			public:
 
 				//The initial amplitude 
@@ -34,11 +33,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 				//The frequency multiplier at each octave.
 				float Lacunarity;
 
-				STPNoiseFractalSetting();
-
-				~STPNoiseFractalSetting() = default;
-
-				bool validate() const override;
+				void validate() const;
 
 			};
 			
@@ -62,11 +57,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 			//Specifies the number of octave.
 			unsigned int Octave;
 
-			STPTriangularNoiseSetting();
-
-			~STPTriangularNoiseSetting() = default;
-
-			bool validate() const override;
+			void validate() const;
 
 		};
 
@@ -92,11 +83,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Greater number of iteration reduces colour banding effect but increases computational time.
 		unsigned int Iteration;
 
-		STPAuroraSetting();
-
-		~STPAuroraSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 
 	};
 }

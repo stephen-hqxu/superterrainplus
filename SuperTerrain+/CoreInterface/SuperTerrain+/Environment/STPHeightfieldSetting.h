@@ -9,23 +9,17 @@ namespace SuperTerrainPlus::STPEnvironment {
 	/**
 	 * @brief STPHeightfieldSettings stores all heightfield parameters for compute launch
 	*/
-	struct STP_API STPHeightfieldSetting : public STPRainDropSetting {
+	struct STP_API STPHeightfieldSetting {
 	public:
 
 		//Heightfield Generator Parameters
 		//the seed used for any random operation during generation
 		unsigned long long Seed;
 
-		//Hydraulic Erosion Parameters are inherited from super class
+		//Hydraulic erosion parameters.
+		STPRainDropSetting Erosion;
 
-		/**
-		 * @brief Init STPHeightfieldSetting with defaults
-		*/
-		STPHeightfieldSetting();
-
-		~STPHeightfieldSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 	};
 
 }

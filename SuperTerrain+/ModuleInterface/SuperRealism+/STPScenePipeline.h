@@ -59,7 +59,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief STPShadingEquation is an adaptive shading model selector for the renderer.
 		*/
-		class STP_REALISM_API STPShadingEquation : public STPEnvironment::STPSetting {
+		class STP_REALISM_API STPShadingEquation {
 		private:
 
 			friend class STPScenePipeline;
@@ -82,6 +82,8 @@ namespace SuperTerrainPlus::STPRealism {
 
 			virtual ~STPShadingEquation() = default;
 
+			virtual bool validate() const = 0;
+
 		};
 
 		/* ---------------------------------- Shadow ------------------------------------ */
@@ -89,7 +91,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief STPShadowMapFilterFunction is an adaptive shadow map filter manager for any shadow map filter.
 		*/
-		class STP_REALISM_API STPShadowMapFilterFunction : public STPEnvironment::STPSetting {
+		class STP_REALISM_API STPShadowMapFilterFunction {
 		private:
 
 			friend class STPScenePipeline;
@@ -132,7 +134,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @brief Check if all values for the filter are valid.
 			 * @return True if all of them are valid.
 			*/
-			virtual bool validate() const override;
+			virtual bool validate() const;
 
 		};
 

@@ -2,9 +2,6 @@
 #include <SuperRealism+/Scene/Light/STPAmbientLight.h>
 #include <SuperRealism+/Scene/Light/STPDirectionalLight.h>
 
-//Error
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
-
 //GLAD
 #include <glad/glad.h>
 
@@ -71,9 +68,7 @@ void STPAmbientLight::setSpectrumCoordinate(float coord) {
 }
 
 void STPAmbientLight::setAmbient(const STPEnvironment::STPLightSetting::STPAmbientLightSetting& ambient) {
-	if (!ambient.validate()) {
-		throw STPException::STPInvalidEnvironment("The ambient setting fails to validate");
-	}
+	ambient.validate();
 
 	this->LightData.bufferSubData(&ambient.AmbientStrength, sizeof(float), offsetof(STPPackedAmbientLightBuffer, Ka));
 }
@@ -125,9 +120,7 @@ void STPDirectionalLight::setSpectrumCoordinate(float coord) {
 }
 
 void STPDirectionalLight::setDirectional(const STPEnvironment::STPLightSetting::STPDirectionalLightSetting& directional) {
-	if (!directional.validate()) {
-		throw STPException::STPInvalidEnvironment("The directional setting fails to validate");
-	}
+	directional.validate();
 
 	const float diff_spec[2] = {
 		directional.DiffuseStrength,

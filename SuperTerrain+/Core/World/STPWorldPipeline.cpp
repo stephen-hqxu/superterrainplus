@@ -1124,7 +1124,7 @@ STPWorldPipeline::STPWorldPipeline(STPPipelineSetup& setup) :
 	ChunkSetting(*setup.ChunkSetting), BufferStream(STPSmartDeviceObject::makeStream(cudaStreamNonBlocking)),
 	Generator(make_unique<STPGeneratorManager>(setup, *this)), Memory(make_unique<STPMemoryManager>(*this)),
 	LastCentreLocation(ivec2(std::numeric_limits<int>::min())), PipelineWorker(1u) {
-	
+	this->ChunkSetting.validate();
 }
 
 STPWorldPipeline::~STPWorldPipeline() {

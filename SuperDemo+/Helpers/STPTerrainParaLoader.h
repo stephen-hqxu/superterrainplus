@@ -6,7 +6,8 @@
 #include <SuperAlgorithm+/Parser/INI/STPINIStorage.hpp>
 
 //Settings
-#include <SuperTerrain+/Environment/STPConfiguration.h>
+#include <SuperTerrain+/Environment/STPChunkSetting.h>
+#include <SuperTerrain+/Environment/STPHeightfieldSetting.h>
 #include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>

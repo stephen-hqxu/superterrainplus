@@ -1,7 +1,6 @@
 #include <SuperRealism+/Scene/Component/STPBidirectionalScattering.h>
 #include <SuperRealism+/STPRealismInfo.h>
 
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
 #include <SuperTerrain+/Exception/STPGLError.h>
 
@@ -52,9 +51,7 @@ STPBidirectionalScattering::STPBidirectionalScattering(const STPScreen::STPScree
 }
 
 void STPBidirectionalScattering::setScattering(const STPEnvironment::STPBidirectionalScatteringSetting& scattering_setting) {
-	if (!scattering_setting.validate()) {
-		throw STPException::STPInvalidEnvironment("Setting for bidirectional scattering fails to be validated");
-	}
+	scattering_setting.validate();
 
 	this->BSDFQuad.OffScreenRenderer.uniform(glProgramUniform1f, "MaxDistance", scattering_setting.MaxRayDistance)
 		.uniform(glProgramUniform1f, "DepthBias", scattering_setting.DepthBias)

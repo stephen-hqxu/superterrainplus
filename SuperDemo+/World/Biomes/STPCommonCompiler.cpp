@@ -38,7 +38,7 @@ using glm::value_ptr;
 struct STPCompilerLog {
 public:
 
-	constexpr static size_t LogSize = 3072;
+	constexpr static size_t LogSize = 3072u;
 
 	//Various of logs
 	char linker_info_log[LogSize], linker_error_log[LogSize];

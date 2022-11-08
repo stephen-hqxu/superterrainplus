@@ -3,8 +3,6 @@
 #define _STP_OCCLUSION_KERNEL_SETTING_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
-//Base Setting
-#include <SuperTerrain+/Environment/STPSetting.hpp>
 
 #include <glm/vec2.hpp>
 
@@ -13,7 +11,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 	/**
 	 * @brief STPOcclusionKernelSetting contains properties that determine how the map is sampled for screen-space ambient occlusion.
 	*/
-	struct STP_REALISM_API STPOcclusionKernelSetting : public STPSetting {
+	struct STP_REALISM_API STPOcclusionKernelSetting {
 	public:
 
 		//The seed used to generate those random samples
@@ -28,11 +26,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//The bias value helps to resolve some acne effects.
 		float Bias;
 
-		STPOcclusionKernelSetting();
-
-		~STPOcclusionKernelSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 
 	};
 

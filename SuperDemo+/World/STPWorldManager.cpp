@@ -205,13 +205,13 @@ public:
 
 };
 
-STPWorldManager::STPWorldManager(const string& tex_filename_prefix, const STPEnvironment::STPConfiguration& settings,
-	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
-	WorldSetting(settings), SharedProgram(this->WorldSetting.ChunkSetting, simplex_setting),
-	linkStatus(false), Texture(make_unique<STPWorldManager::STPWorldSplattingAgent>(tex_filename_prefix)) {
-	if (!this->WorldSetting.validate()) {
-		throw invalid_argument("World settings are not valid.");
-	}
+STPWorldManager::STPWorldManager(const string& tex_filename_prefix, const STPEnvironment::STPChunkSetting& chunk_setting,
+	const STPEnvironment::STPHeightfieldSetting& heightfield_setting, const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
+	ChunkSetting(chunk_setting), HeightfieldSetting(heightfield_setting),
+	SharedProgram(this->ChunkSetting, simplex_setting), linkStatus(false),
+	Texture(make_unique<STPWorldManager::STPWorldSplattingAgent>(tex_filename_prefix)) {
+	this->ChunkSetting.validate();
+	this->HeightfieldSetting.validate();
 }
 
 STPWorldManager::~STPWorldManager() = default;
@@ -229,11 +229,11 @@ void STPWorldManager::linkProgram(float anisotropy) {
 	//finish up texture settings
 	this->Texture->setTextureParameter(*this->TextureFactory, anisotropy);
 
-	const STPEnvironment::STPChunkSetting& chunk_settings = this->WorldSetting.ChunkSetting;
+	const STPEnvironment::STPChunkSetting& chunk_settings = this->ChunkSetting;
 	//create generator and storage unit first
 	this->ChunkGenerator.emplace(
 		chunk_settings,
-		this->WorldSetting.HeightfieldSetting,
+		this->HeightfieldSetting,
 		*this->DiversityGenerator,
 		//TODO: correctly calculate the thread occupancy
 		5u);
@@ -254,10 +254,6 @@ STPWorldManager::operator bool() const {
 
 SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPDatabaseView STPWorldManager::getTextureDatabase() const {
 	return this->Texture->Database.visit();
-}
-
-const STPEnvironment::STPConfiguration& STPWorldManager::getWorldSetting() const {
-	return this->WorldSetting;
 }
 
 STPWorldPipeline& STPWorldManager::getPipeline() {

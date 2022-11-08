@@ -4,7 +4,6 @@
 #include <SuperRealism+/Utility/STPRandomTextureGenerator.cuh>
 
 //Error
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //IO
@@ -252,9 +251,7 @@ inline void STPHeightfieldTerrain::updateTerrainModel() {
 }
 
 void STPHeightfieldTerrain::setMesh(const STPEnvironment::STPMeshSetting& mesh_setting) {
-	if (!mesh_setting.validate()) {
-		throw STPException::STPInvalidEnvironment("Mesh setting is not validated");
-	}
+	mesh_setting.validate();
 	const auto& tess_setting = mesh_setting.TessSetting;
 	const auto& smooth_setting = mesh_setting.RegionSmoothSetting;
 	const auto& scale_setting = mesh_setting.RegionScaleSetting;

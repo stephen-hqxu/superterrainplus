@@ -3,15 +3,13 @@
 #define _STP_SUN_SETTING_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
-//Base Environment
-#include <SuperTerrain+/Environment/STPSetting.hpp>
 
 namespace SuperTerrainPlus::STPEnvironment {
 
 	/**
 	 * @brief STPSunSetting stores all settings for STPSun, the main light source of the world.
 	*/
-	struct STP_REALISM_API STPSunSetting : public STPSetting {
+	struct STP_REALISM_API STPSunSetting {
 	public:
 
 		//The length of a day in second.
@@ -31,14 +29,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Remember to convert it into radians.
 		double Latitude;
 
-		/**
-		 * @brief Init STPSunSetting with default settings.
-		*/
-		STPSunSetting();
-
-		~STPSunSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 
 	};
 

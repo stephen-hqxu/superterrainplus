@@ -3,14 +3,13 @@
 #define _STP_BIDIRECTIONAL_SCATTERING_SETTING_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
-#include <SuperTerrain+/Environment/STPSetting.hpp>
 
 namespace SuperTerrainPlus::STPEnvironment {
 
 	/**
 	 * @brief STPBidirectionalScatteringSetting specifies settings for BSDF rendering function.
 	*/
-	struct STP_REALISM_API STPBidirectionalScatteringSetting : public STPSetting {
+	struct STP_REALISM_API STPBidirectionalScatteringSetting {
 	public:
 
 		//Specifies the maximum distance the light ray would travel before hitting a valid object.
@@ -26,14 +25,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Ray step specifies the number of iteration to precisely search for an intersection point.
 		unsigned int RayResolution, RayStep;
 
-		/**
-		 * @brief Initialise a new setting.
-		*/
-		STPBidirectionalScatteringSetting();
-
-		~STPBidirectionalScatteringSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 
 	};
 

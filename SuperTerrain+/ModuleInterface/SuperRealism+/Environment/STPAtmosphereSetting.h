@@ -3,8 +3,6 @@
 #define _STP_ATMOSPHERE_SETTING_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
-//Base
-#include <SuperTerrain+/Environment/STPSetting.hpp>
 
 //GLM
 #include <glm/vec3.hpp>
@@ -12,16 +10,16 @@
 namespace SuperTerrainPlus::STPEnvironment {
 
 	/**
-	 * @brief STPAtmosphereSetting stores configurations for sky rendering and atmoshpere scattering.
+	 * @brief STPAtmosphereSetting stores configurations for sky rendering and atmosphere scattering.
 	*/
-	struct STP_REALISM_API STPAtmosphereSetting : public STPSetting {
+	struct STP_REALISM_API STPAtmosphereSetting {
 	public:
 
 		//Intensity of the sun
 		float SunIntensity;
 		//The radius of the planet
 		float PlanetRadius;
-		//The radius of atmoshpere
+		//The radius of atmosphere
 		float AtmosphereRadius;
 		//The view position starting altitude.
 		float ViewAltitude;
@@ -40,11 +38,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Control the precision of scattering
 		unsigned int PrimaryRayStep, SecondaryRayStep;
 
-		STPAtmosphereSetting();
-
-		~STPAtmosphereSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 
 	};
 

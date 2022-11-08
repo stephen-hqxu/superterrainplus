@@ -3,14 +3,13 @@
 #define _STP_STARFIELD_SETTING_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
-#include <SuperTerrain+/Environment/STPSetting.hpp>
 
 namespace SuperTerrainPlus::STPEnvironment {
 
 	/**
 	 * @brief STPStarfieldSetting contains settings for rendering a procedural starfield.
 	*/
-	struct STP_REALISM_API STPStarfieldSetting : public STPSetting {
+	struct STP_REALISM_API STPStarfieldSetting {
 	public:
 
 		//Control how likely star will appear at each position.
@@ -33,14 +32,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//More octave gives a larger number of star but also degrades the performance.
 		unsigned int Octave;
 
-		/**
-		 * @brief Default-initialise a starfield setting instance.
-		*/
-		STPStarfieldSetting();
-
-		~STPStarfieldSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 
 	};
 }

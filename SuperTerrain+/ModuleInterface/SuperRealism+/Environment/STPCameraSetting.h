@@ -3,8 +3,6 @@
 #define _STP_CAMERA_SETTING_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
-//Base Setting
-#include <SuperTerrain+/Environment/STPSetting.hpp>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -15,7 +13,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 	/**
 	 * @brief STPCameraSetting stores parameters for the camera.
 	*/
-	struct STP_REALISM_API STPCameraSetting : public STPSetting {
+	struct STP_REALISM_API STPCameraSetting {
 	public:
 
 		//Euler's angles to define the rotation of the camera, expressed in radians.
@@ -35,14 +33,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Define the depth of the view frustum.
 		double Near, Far;
 
-		/**
-		 * @brief Init STPCameraSetting with default values.
-		*/
-		STPCameraSetting();
-
-		~STPCameraSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 
 	};
 

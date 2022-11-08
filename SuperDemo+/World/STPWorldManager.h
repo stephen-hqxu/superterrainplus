@@ -3,7 +3,8 @@
 #define _STP_WORLD_MANAGER_H_
 
 //World
-#include <SuperTerrain+/Environment/STPConfiguration.h>
+#include <SuperTerrain+/Environment/STPChunkSetting.h>
+#include <SuperTerrain+/Environment/STPHeightfieldSetting.h>
 //Compiler
 #include "./Biomes/STPCommonCompiler.h"
 
@@ -20,12 +21,11 @@ namespace STPDemo {
 	 * @brief STPWorldManager is a high-level binding that allows user to generate and render any infinite procedural world within minimal efforts.
 	*/
 	class STPWorldManager {
-	private:
+	public:
 
 		//settings
-		SuperTerrainPlus::STPEnvironment::STPConfiguration WorldSetting;
-
-	public:
+		const SuperTerrainPlus::STPEnvironment::STPChunkSetting ChunkSetting;
+		const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting HeightfieldSetting;
 
 		//A compiler contains all runtime scripts
 		const STPDemo::STPCommonCompiler SharedProgram;
@@ -67,10 +67,12 @@ namespace STPDemo {
 		/**
 		 * @brief Init the world manager.
 		 * @param tex_filename_prefix The prefix for all texture filenames. It will be used as "<prefix>/<texture filename>".
-		 * @param settings All world settings, it will be copied under the object.
+		 * @param chunk_setting All chunk settings, it will be copied under the object.
+		 * @param heightfield_setting All heightfield settings, also copied.
 		 * @parm simplex_setting Setting for simplex noise generator.
 		*/
-		STPWorldManager(const std::string&, const SuperTerrainPlus::STPEnvironment::STPConfiguration&,
+		STPWorldManager(const std::string&, const SuperTerrainPlus::STPEnvironment::STPChunkSetting&,
+			const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting&,
 			const SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting&);
 
 		~STPWorldManager();
@@ -127,12 +129,6 @@ namespace STPDemo {
 		 * @return The view to the texture database.
 		*/
 		SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPDatabaseView getTextureDatabase() const;
-
-		/**
-		 * @brief Get the world settings 
-		 * @return The world settings managed by the current world manager. If world manager is not linked, nullptr is returned.
-		*/
-		const SuperTerrainPlus::STPEnvironment::STPConfiguration& getWorldSetting() const;
 
 		/**
 		 * @brief Get the world pipeline

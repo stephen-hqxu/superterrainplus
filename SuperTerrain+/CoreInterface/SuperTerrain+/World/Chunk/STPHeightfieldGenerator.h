@@ -111,8 +111,8 @@ namespace SuperTerrainPlus {
 		//multi-biome heightmap generator linked with external
 		const STPDiversityGenerator& generateHeightmap;
 		//heightfield generation parameters
-		const STPEnvironment::STPHeightfieldSetting& Heightfield_Setting_h;
-		STPSmartDeviceMemory::STPDeviceMemory<STPEnvironment::STPHeightfieldSetting> Heightfield_Setting_d;
+		const STPEnvironment::STPHeightfieldSetting& HeightfieldSettingHost;
+		STPSmartDeviceMemory::STPDeviceMemory<STPEnvironment::STPRainDropSetting> RainDropSettingDevice;
 
 		//generate brush for hydraulic erosion
 		const STPErosionBrushGenerator ErosionBrush;

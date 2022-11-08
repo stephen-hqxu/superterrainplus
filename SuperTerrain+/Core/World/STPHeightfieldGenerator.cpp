@@ -4,7 +4,6 @@
 #include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 
 #include <type_traits>
 #include <memory>
@@ -34,7 +33,7 @@ inline STPSmartDeviceObject::STPStream STPHeightfieldGenerator::STPStreamCreator
 
 STPHeightfieldGenerator::STPRNGCreator::STPRNGCreator(const STPEnvironment::STPHeightfieldSetting& heightfield_setting) :
 	Seed(heightfield_setting.Seed),
-	Length(heightfield_setting.RainDropCount) {
+	Length(heightfield_setting.Erosion.RainDropCount) {
 
 }
 
@@ -46,15 +45,11 @@ inline STPSmartDeviceMemory::STPDeviceMemory<STPHeightfieldGenerator::STPcurandR
 STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkSetting& chunk_settings,
 	const STPEnvironment::STPHeightfieldSetting& heightfield_settings, const STPDiversityGenerator& diversity_generator,
 	unsigned int hint_level_of_concurrency) :
-	generateHeightmap(diversity_generator), Heightfield_Setting_h(heightfield_settings),
-	ErosionBrush(chunk_settings.FreeSlipChunk.x * chunk_settings.MapSize.x, this->Heightfield_Setting_h.ErosionBrushRadius),
-	RNGPool(this->Heightfield_Setting_h) {
-	if (!chunk_settings.validate()) {
-		throw STPException::STPInvalidEnvironment("Values from STPChunkSetting are not validated");
-	}
-	if (!heightfield_settings.validate()) {
-		throw STPException::STPInvalidEnvironment("Values from STPHeightfieldSetting are not validated");
-	}
+	generateHeightmap(diversity_generator), HeightfieldSettingHost(heightfield_settings),
+	ErosionBrush(chunk_settings.FreeSlipChunk.x * chunk_settings.MapSize.x, this->HeightfieldSettingHost.Erosion.ErosionBrushRadius),
+	RNGPool(this->HeightfieldSettingHost) {
+	chunk_settings.validate();
+	this->HeightfieldSettingHost.validate();
 	STPFreeSlipInformation& info = this->TextureBufferAttr.TextureInfo;
 	info.Dimension = chunk_settings.MapSize;
 	info.FreeSlipChunk = chunk_settings.FreeSlipChunk;
@@ -62,9 +57,9 @@ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPEnvironment::STPChunkS
 
 	//allocating space
 	//heightfield settings
-	this->Heightfield_Setting_d = STPSmartDeviceMemory::makeDevice<STPEnvironment::STPHeightfieldSetting>();
-	STP_CHECK_CUDA(cudaMemcpy(this->Heightfield_Setting_d.get(), &this->Heightfield_Setting_h,
-		sizeof(STPEnvironment::STPHeightfieldSetting), cudaMemcpyHostToDevice));
+	this->RainDropSettingDevice = STPSmartDeviceMemory::makeDevice<STPEnvironment::STPRainDropSetting>();
+	STP_CHECK_CUDA(cudaMemcpy(this->RainDropSettingDevice.get(), &this->HeightfieldSettingHost.Erosion,
+		sizeof(STPEnvironment::STPRainDropSetting), cudaMemcpyHostToDevice));
 
 	//create memory pool
 	cudaMemPoolProps pool_props = { };
@@ -140,8 +135,8 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 			rng_buffer.emplace(this->RNGPool.requestObject(stream));
 			STPHeightfieldKernel::hydraulicErosion(
 				(*heightmap_buffer)(STPFreeSlipFloatTextureBuffer::STPFreeSlipLocation::DeviceMemory),
-				this->Heightfield_Setting_d.get(), this->TextureBufferAttr.TextureInfo, this->ErosionBrush.getBrush(),
-				this->Heightfield_Setting_h.RainDropCount, rng_buffer->get(), stream);
+				this->RainDropSettingDevice.get(), this->TextureBufferAttr.TextureInfo, this->ErosionBrush.getBrush(),
+				this->HeightfieldSettingHost.Erosion.RainDropCount, rng_buffer->get(), stream);
 		}
 
 		//Flag: RenderingBufferGeneration

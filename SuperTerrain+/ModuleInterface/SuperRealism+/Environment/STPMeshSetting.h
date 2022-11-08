@@ -4,7 +4,6 @@
 
 #include <SuperRealism+/STPRealismDefine.h>
 //Base Setting
-#include <SuperTerrain+/Environment/STPSetting.hpp>
 #include "STPTessellationSetting.h"
 
 namespace SuperTerrainPlus::STPEnvironment {
@@ -12,14 +11,14 @@ namespace SuperTerrainPlus::STPEnvironment {
 	/**
 	 * @brief STPMeshSettings stores parameters for rendering terrain mesh
 	*/
-	struct STP_REALISM_API STPMeshSetting : public STPSetting {
+	struct STP_REALISM_API STPMeshSetting {
 	public:
 
 		/**
 		 * @brief STPTextureRegionSmoothSetting controls parameters for terrain texture splatting region smoothing algorithms.
 		 * The algorithm blends colours from different regions.
 		*/
-		struct STP_REALISM_API STPTextureRegionSmoothSetting : public STPSetting {
+		struct STP_REALISM_API STPTextureRegionSmoothSetting {
 		public:
 
 			//Control the convolution radius for the box blur filter.
@@ -31,21 +30,14 @@ namespace SuperTerrainPlus::STPEnvironment {
 			//Lower value gives smoother noise.
 			unsigned int NoiseScale;
 
-			/**
-			 * @brief Init STPTextureRegionSmoothSetting with default settings.
-			*/
-			STPTextureRegionSmoothSetting();
-
-			~STPTextureRegionSmoothSetting() = default;
-
-			bool validate() const override;
+			void validate() const;
 
 		};
 
 		/**
 		 * @brief STPTextureScaleDistanceSetting specifies how the system should use the multi-scale texture blending.
 		*/
-		struct STPTextureScaleDistanceSetting : public STPSetting {
+		struct STPTextureScaleDistanceSetting {
 		public:
 
 			//The i-th far specifies the minimum distance from camera to texel to enable N-th texture scale, otherwise (i+1)-th scale is used.
@@ -55,14 +47,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 			//any other i-th distance makes the texture being blended with texture scaled by the (i-1)-th.
 			float PrimaryFar, SecondaryFar, TertiaryFar;
 
-			/**
-			 * @brief Init STPTextureScaleDistance.
-			*/
-			STPTextureScaleDistanceSetting();
-
-			~STPTextureScaleDistanceSetting() = default;
-
-			bool validate() const override;
+			void validate() const;
 
 		};
 
@@ -84,14 +69,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		STPTextureScaleDistanceSetting RegionScaleSetting;
 		STPTextureRegionSmoothSetting RegionSmoothSetting;
 
-		/**
-		 * @brief Init STPMeshSettings with defaults
-		*/
-		STPMeshSetting();
-
-		~STPMeshSetting() = default;
-
-		bool validate() const override;
+		void validate() const;
 
 	};
 

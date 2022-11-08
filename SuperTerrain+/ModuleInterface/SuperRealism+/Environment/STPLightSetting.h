@@ -3,8 +3,6 @@
 #define _STP_LIGHT_SETTING_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
-//Base Setting
-#include <SuperTerrain+/Environment/STPSetting.hpp>
 
 namespace SuperTerrainPlus::STPEnvironment {
 
@@ -16,38 +14,24 @@ namespace SuperTerrainPlus::STPEnvironment {
 		/**
 		 * @brief STPAmbientLightSetting contains settings for ambient light.
 		*/
-		struct STP_REALISM_API STPAmbientLightSetting : public STPSetting {
+		struct STP_REALISM_API STPAmbientLightSetting {
 		public:
 
 			float AmbientStrength;
 
-			/**
-			 * @brief Init a new STPAmbientLightSetting with default settings loaded.
-			*/
-			STPAmbientLightSetting();
-
-			~STPAmbientLightSetting() = default;
-
-			bool validate() const override;
+			void validate() const;
 
 		};
 
 		/**
 		 * @brief STPDirectionalLightSetting contains settings for directional light.
 		*/
-		struct STP_REALISM_API STPDirectionalLightSetting : public STPSetting {
+		struct STP_REALISM_API STPDirectionalLightSetting {
 		public:
 
 			float DiffuseStrength, SpecularStrength;
 
-			/**
-			 * @brief Init a new STPDirectionalLightSetting with default settings.
-			*/
-			STPDirectionalLightSetting();
-
-			~STPDirectionalLightSetting() = default;
-
-			bool validate() const override;
+			void validate() const;
 
 		};
 

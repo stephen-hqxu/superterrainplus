@@ -1,9 +1,6 @@
 #include <SuperRealism+/Scene/Component/STPAurora.h>
 #include <SuperRealism+/STPRealismInfo.h>
 
-//Error
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
-
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperTerrain+/Utility/STPStringUtility.h>
 
@@ -38,9 +35,7 @@ STPAurora::STPAurora(STPLightSpectrum&& aurora_spectrum, const STPSkybox::STPSky
 }
 
 void STPAurora::setAurora(const STPEnvironment::STPAuroraSetting& aurora_setting) {
-	if (!aurora_setting.validate()) {
-		throw STPException::STPInvalidEnvironment("The settings for the aurora renderer is invalid");
-	}
+	aurora_setting.validate();
 
 	//extract sub-settings
 	const auto& tri_noise = aurora_setting.Noise;

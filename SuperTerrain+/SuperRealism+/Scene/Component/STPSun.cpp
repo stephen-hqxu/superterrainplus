@@ -2,8 +2,6 @@
 //Shader Dir
 #include <SuperRealism+/STPRealismInfo.h>
 
-//Error
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperTerrain+/Utility/STPStringUtility.h>
@@ -47,9 +45,7 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 	SunSetting(sun_setting), DayStart(1.0 * this->SunSetting.DayStart / (1.0 * this->SunSetting.DayLength) + this->SunSetting.YearStart),
 	Day(0.0), SunDirectionCache(vec3(0.0f)) {
 	//validate the setting
-	if (!this->SunSetting.validate()) {
-		throw STPException::STPInvalidEnvironment("Sun setting provided is invalid");
-	}
+	this->SunSetting.validate();
 
 	//setup sky renderer
 	STPShaderManager sky_shader(GL_FRAGMENT_SHADER);
@@ -163,9 +159,7 @@ void STPSun::updateAnimationTimer(double second) {
 
 void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_setting) {
 	//validate
-	if (!atmo_setting.validate()) {
-		throw STPException::STPInvalidEnvironment("Atmosphere setting is invalid");
-	}
+	atmo_setting.validate();
 
 	STPSun::updateAtmosphere(this->SunBox.SkyboxRenderer, atmo_setting);
 	STPSun::updateAtmosphere(this->SpectrumEmulator, atmo_setting);

@@ -148,24 +148,14 @@ namespace STPStart {
 			using namespace STPDemo;
 
 			//loading terrain parameters
-			STPEnvironment::STPConfiguration config;
 			const STPEnvironment::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI.at("simplex"));
-			{
-				config.ChunkSetting = STPTerrainParaLoader::getChunkSetting(this->engineINI.at("Generators"));
-				STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
-
-				config.HeightfieldSetting = STPTerrainParaLoader::getGeneratorSetting(this->engineINI.at("2DTerrainINF"));
-
-				if (!config.validate()) {
-					throw STPException::STPInvalidEnvironment("Configurations are not validated");
-				}
-			}
+			const STPEnvironment::STPChunkSetting chunk_setting = STPTerrainParaLoader::getChunkSetting(this->engineINI.at("Generators"));
+			STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
+			const STPEnvironment::STPHeightfieldSetting heightfield_setting = STPTerrainParaLoader::getGeneratorSetting(this->engineINI.at("2DTerrainINF"));
 
 			//setup world manager
 			try {
-				this->WorldManager.emplace(string(this->biomeINI.at("").at("texture_path_prefix").String), config, simplex);
-				//the old setting has been moved to the world manager, need to refresh the pointer
-				const auto& chunk_setting = this->WorldManager->getWorldSetting().ChunkSetting;
+				this->WorldManager.emplace(string(this->biomeINI.at("").at("texture_path_prefix").String), chunk_setting, heightfield_setting, simplex);
 
 				this->WorldManager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
 				this->WorldManager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>
@@ -435,9 +425,9 @@ namespace STPStart {
 			}
 
 			//light property setup
-			STPEnvironment::STPLightSetting::STPAmbientLightSetting light_ambient;
+			STPEnvironment::STPLightSetting::STPAmbientLightSetting light_ambient = { };
 			light_ambient.AmbientStrength = 0.5f;
-			STPEnvironment::STPLightSetting::STPDirectionalLightSetting light_directional;
+			STPEnvironment::STPLightSetting::STPDirectionalLightSetting light_directional = { };
 			light_directional.DiffuseStrength = 1.6f;
 			light_directional.SpecularStrength = 6.5f;
 			this->Skylight->setAmbient(light_ambient);
@@ -736,7 +726,7 @@ int main() {
 		const STPINISectionView& engineMain = engineINI.at("");
 
 		using namespace SuperTerrainPlus;
-		STPEnvironment::STPCameraSetting cam;
+		STPEnvironment::STPCameraSetting cam = { };
 		cam.Yaw = radians(90.0);
 		cam.Pitch = 0.0;
 		cam.FoV = radians(60.0);
