@@ -144,10 +144,9 @@ void main(){
 	}
 	
 	//extinction calculation, making the transition to camera far clipping plane smooth instead of having a strong cut
-	const float cameraDistance = distance(Camera.Position, position_world),
-		extinctionStart = Camera.Far * ExtinctionBand,
+	const float viewDistanceDepth = distance(Camera.Position, position_world) * Camera.InvFar,
 		//linearly interpolate within the extinction band, 0 means no extinction while 1 means the geometry is fully extinct
-		extinctionFactor = smoothstep(extinctionStart, Camera.Far, cameraDistance);
+		extinctionFactor = smoothstep(ExtinctionBand, 1.0f, viewDistanceDepth);
 
 	//because the light calculation only calculates light colour, 
 	//we need to burn the geometry colour into the final colour

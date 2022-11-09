@@ -107,8 +107,7 @@ public:
 	STPWorldSplattingAgent(const string& prefix) {
 		array<pair<unsigned int, const char*>, STPWorldSplattingAgent::TextureCount> IndexedFilename;
 		//load up indices
-		unsigned int index = 0u;
-		generate(IndexedFilename.begin(), IndexedFilename.end(), [&index]() {
+		generate(IndexedFilename.begin(), IndexedFilename.end(), [index = 0u]() mutable {
 			const unsigned int i = index++;
 			return make_pair(i, STPWorldSplattingAgent::Filename[i]);
 		});

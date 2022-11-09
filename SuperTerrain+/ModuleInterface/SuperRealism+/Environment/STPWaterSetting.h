@@ -51,7 +51,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Controls the animation of water wave.
 		STPWaterWaveSetting WaterWave;
 
-		//The height multiplier to the water wave.
+		//The height multiplier to the water wave, relative to the water altitude.
 		float WaveHeight;
 
 		//Controls the number of iteration when procedurally generating water wave.

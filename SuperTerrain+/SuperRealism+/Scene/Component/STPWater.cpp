@@ -110,6 +110,7 @@ void STPWater::setWater(const STPEnvironment::STPWaterSetting& water_setting) {
 	const auto& tess_setting = water_setting.WaterMeshTess;
 	const auto [it_geo, it_norm] = water_setting.WaterWaveIteration;
 
+	const float absWaveHeight = water_setting.WaveHeight * water_setting.Altitude;
 	//water plane tessellation settings
 	this->WaterAnimator.uniform(glProgramUniform1f, "WaterTess.MaxLod", tess_setting.MaxTessLevel)
 		.uniform(glProgramUniform1f, "WaterTess.MinLod", tess_setting.MinTessLevel)
@@ -121,7 +122,7 @@ void STPWater::setWater(const STPEnvironment::STPWaterSetting& water_setting) {
 		.uniform(glProgramUniform1f, "SampleRadiusMul", water_setting.CullTestRadius)
 		.uniform(glProgramUniform1f, "Altitude", water_setting.Altitude)
 		//water wave animate function
-		.uniform(glProgramUniform1f, "WaveHeight", water_setting.WaveHeight)
+		.uniform(glProgramUniform1f, "WaveHeight", absWaveHeight)
 		.uniform(glProgramUniform1ui, "WaveGeometryIteration", it_geo)
 		.uniform(glProgramUniform1ui, "WaveNormalIteration", it_norm)
 		//water shading

@@ -22,6 +22,7 @@ layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 	//Camera properties
 	layout(offset = 448) vec2 LinearDepthFactor;
 	layout(offset = 456) float Far;
+	layout(offset = 460) float InvFar;//1.0f / Far
 } Camera;
 
 /* --------------------------------------------------------------------- */

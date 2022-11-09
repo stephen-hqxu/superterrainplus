@@ -242,14 +242,13 @@ namespace STPStart {
 			//-------------------------------------------
 			{
 				//sun shadow setting
-				const double camFar = camera.cameraStatus().Far;
 				const STPCascadedShadowMap::STPLightFrustum shadow_frustum = {
 					{
-						camFar / 16.0,
-						camFar / 3.5,
-						camFar / 1.5
+						1.0 / 16.0,
+						1.0 / 3.5,
+						1.0 / 1.5
 					},
-					32.5,
+					0.013,
 					&camera,
 					234.5
 				};

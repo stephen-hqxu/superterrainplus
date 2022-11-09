@@ -45,7 +45,7 @@ public:
 	mat4 P, InvP, PVr, PV, InvPV;
 
 	vec2 LDFac;
-	float Far;
+	float Far, InvFar;
 
 };
 
@@ -54,10 +54,7 @@ bool STPCamera::STPSubscriberBenefit::any() const noexcept {
 }
 
 void STPCamera::STPSubscriberBenefit::unset() noexcept {
-	this->Moved = false;
-	this->Rotated = false;
-	this->Zoomed = false;
-	this->AspectChanged = false;
+	*this = STPSubscriberBenefit { };
 }
 
 STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) : 
@@ -77,7 +74,8 @@ STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) :
 		&& offsetof(STPPackedCameraBuffer, InvPV) == 384
 
 		&& offsetof(STPPackedCameraBuffer, LDFac) == 448
-		&& offsetof(STPPackedCameraBuffer, Far) == 456,
+		&& offsetof(STPPackedCameraBuffer, Far) == 456
+		&& offsetof(STPPackedCameraBuffer, InvFar) == 460,
 	"The alignment of camera buffer does not obey std430 packing rule");
 
 	/* -------------------------- validation -------------------------- */
@@ -102,6 +100,7 @@ STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) :
 		Cfar = this->Camera.Far;
 	this->MappedBuffer->LDFac = static_cast<vec2>(dvec2(Cfar * Cnear, Cfar - Cnear));
 	this->MappedBuffer->Far = static_cast<float>(Cfar);
+	this->MappedBuffer->InvFar = static_cast<float>(1.0 / Cfar);
 	//update values
 	this->CameraInformation.flushMappedBufferRange(0, sizeof(STPPackedCameraBuffer));
 }

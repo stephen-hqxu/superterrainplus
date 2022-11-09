@@ -162,7 +162,7 @@ void main(){
 				viewPos = Camera.Position.xz;
 
 			//perform linear interpolation to the distance
-			vertexDistance[i] = clamp((distance(vertexPos, viewPos) - lodControl.MinDis) / (lodControl.MaxDis - lodControl.MinDis), 0.0f, 1.0f);
+			vertexDistance[i] = clamp((Camera.InvFar * distance(vertexPos, viewPos) - lodControl.MinDis) / (lodControl.MaxDis - lodControl.MinDis), 0.0f, 1.0f);
 		}
 		//each invocation (3 in total) is responsible for an outer level
 		gl_TessLevelOuter[gl_InvocationID] = calcLoD(lodControl, vertexDistance[0], vertexDistance[1]);

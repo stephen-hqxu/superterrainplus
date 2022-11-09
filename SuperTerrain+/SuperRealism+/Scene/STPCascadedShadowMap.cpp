@@ -47,8 +47,26 @@ public:
 
 };
 
+/**
+ * @brief Convert the distance in the light frustum from relative distance regarding the far plane to absolute distance.
+ * Remember to call this function to refresh the light frustum if `far` of camera changes.
+ * @param frustum The frustum containing the relative distance.
+ * @return The frustum with absolute distance.
+*/
+static STPCascadedShadowMap::STPLightFrustum transformFrustum(STPCascadedShadowMap::STPLightFrustum frustum) {
+	auto& [div, band, focus, distance] = frustum;
+	const double view_far = focus->cameraStatus().Far;
+
+	//transform all relative distance to absolute with respect to the far frustum plane
+	std::transform(div.cbegin(), div.cend(), div.begin(), [view_far](const double div_far) { return div_far * view_far; });
+	band *= view_far;
+
+	div.shrink_to_fit();
+	return frustum;
+}
+
 STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLightFrustum& light_frustum) :
-	STPLightShadow(resolution, STPShadowMapFormat::Array), LightDirection(vec3(0.0f)), FocusEventData { }, LightFrustum(light_frustum) {
+	STPLightShadow(resolution, STPShadowMapFormat::Array), LightDirection(vec3(0.0f)), FocusEventData { }, LightFrustum(transformFrustum(light_frustum)) {
 	const auto& [div, band_radius, focus_camera, distance_mul] = this->LightFrustum;
 	if (distance_mul < 1.0f) {
 		throw STPException::STPBadNumericRange("A less-than-one shadow distance is not able to cover the view frustum");

@@ -39,9 +39,11 @@ namespace SuperTerrainPlus::STPRealism {
 		public:
 			
 			//Specifies each level of shadow plane.
+			//Each far distance should be relative to the far plane of the view frustum.
 			STPCascadePlane Division;
 			//Specifies a bias value to each sub-frusta.
-			//This expands each sub-frusta near and far outward by this amount to allow capturing some contents outside the current view.
+			//This expands each sub-frusta near and far outward by this amount multiplies the far plane of view frustum,
+			//to allow capturing some contents outside the current view.
 			//This value is useful when performing cross-cascade blending, such as doing shadow filtering
 			double CascadeBandRadius;
 			//The pointer to the camera where the light frustum will be constructed based on this camera.
@@ -49,6 +51,8 @@ namespace SuperTerrainPlus::STPRealism {
 			STPCamera* Focus;
 			//Specifies the depth multiplier of the light frustum.
 			//A value of 1.0 specifies a minimum light frustum bounded around the camera view frustum.
+			//Increase/Decrease to extend/shrink the shadow frustum range, so objects outside the viewing range can also cast shadow visible to the camera.
+			//This value should be tuned based on the scale of the scene.
 			double ShadowDistanceMultiplier;
 
 		};
@@ -63,6 +67,7 @@ namespace SuperTerrainPlus::STPRealism {
 		glm::vec3 LightDirection;
 
 		STPCamera::STPSubscriberBenefit FocusEventData;
+		//This light frustum should use absolute view distance.
 		const STPLightFrustum LightFrustum;
 		//Memory to where light space matrices should be stored
 		glm::mat4* LightSpaceMatrix;

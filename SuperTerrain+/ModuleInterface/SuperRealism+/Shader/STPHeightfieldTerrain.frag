@@ -116,6 +116,8 @@ vec3 calcTerrainNormal();
 //Blend a main normalmap with detail normalmap
 vec3 blendNormal(vec3, vec3);
 
+const vec2 HeightmapTexelUnit = 1.0f / vec2(textureSize(Heightmap, 0).xy);
+
 void main(){
 	const vec3 MeshNormal = calcTerrainNormal();
 	//this function make sure the UV is stable when the rendered chunk shifts
@@ -234,7 +236,7 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 			);
 			
 			//now apply the sampling points to the actual texture
-			const vec2 uv_offset = SmoothSetting.Ks * disk_domain / vec2(textureSize(Heightmap, 0).xy),
+			const vec2 uv_offset = SmoothSetting.Ks * disk_domain * HeightmapTexelUnit,
 				sampling_uv = fs_in.texCoord + uv_offset;
 			const uint region = textureLod(Splatmap, sampling_uv, 0.0f).r;
 
@@ -265,7 +267,7 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 	TerrainTexture.TerrainAmbientOcclusion = 0.0f;
 #endif
 	
-	const float texelDistance = distance(Camera.Position, fs_in.position_world);
+	const float texelDistanceFactor = distance(Camera.Position, fs_in.position_world) * Camera.InvFar;
 	//for each region, calculate their weights which is used as a blending factor to the final texture data
 	for(uint region = 0u; region < SPLAT_REGION_COUNT; region++){
 		const uint regionCount = RegionBin[region];
@@ -290,19 +292,19 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 		float blendFactor = 0.0f;
 		//determine uv for the current region
 		//the current implementation only allows a two different scale blended together
-		if(texelDistance < ScaleSetting.Prim){
+		if(texelDistanceFactor < ScaleSetting.Prim){
 			//use the primary scale only
 			scaleIdx[0] = 0u;
 		}
-		else if(texelDistance < ScaleSetting.Seco){
+		else if(texelDistanceFactor < ScaleSetting.Seco){
 			//blend between primary and secondary
-			blendFactor = smoothstep(ScaleSetting.Prim, ScaleSetting.Seco, texelDistance);
+			blendFactor = smoothstep(ScaleSetting.Prim, ScaleSetting.Seco, texelDistanceFactor);
 			scaleIdx[0] = 0u;
 			scaleIdx[1] = 1u;
 		}
-		else if(texelDistance < ScaleSetting.Tert){
+		else if(texelDistanceFactor < ScaleSetting.Tert){
 			//blend between secondary and tertiary
-			blendFactor = smoothstep(ScaleSetting.Seco, ScaleSetting.Tert, texelDistance);
+			blendFactor = smoothstep(ScaleSetting.Seco, ScaleSetting.Tert, texelDistanceFactor);
 			scaleIdx[0] = 1u;
 			scaleIdx[1] = 2u;
 		}
@@ -349,12 +351,10 @@ TerrainTextureData getSmoothTexture(vec2 world_uv){
 vec3 calcTerrainNormal(){
 	//calculate terrain normal from the heightfield
 	//the uv increment for each pixel on the heightfield
-	const vec2 unit_uv = 1.0f / vec2(textureSize(Heightmap, 0).xy);
-
 	float cell[ConvolutionKernelOffset.length()];
 	//convolve a 3x3 kernel with Sobel operator
 	for(int a = 0; a < cell.length(); a++){
-		const vec2 uv_offset = unit_uv * ConvolutionKernelOffset[a];
+		const vec2 uv_offset = HeightmapTexelUnit * ConvolutionKernelOffset[a];
 		cell[a] = textureLod(Heightmap, fs_in.texCoord + uv_offset, 0.0f).r;
 	}
 

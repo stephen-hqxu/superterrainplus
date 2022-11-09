@@ -13,13 +13,13 @@ namespace SuperTerrainPlus::STPEnvironment {
 	struct STP_REALISM_API STPTessellationSetting {
 	public:
 
-		//Determine the maximum tessellation level when the distance falls beyond FurthestTessDistance
+		//Determine the maximum tessellation level when the distance falls beyond FurthestTessDistance.
 		float MaxTessLevel;
-		//Determine the minimum tessellation level when the distance falls below NearestTessDistance
+		//Determine the minimum tessellation level when the distance falls below NearestTessDistance.
 		float MinTessLevel;
-		//Determine the maximum tessellation distance where tess level beyond will be clamped to MaxTessLevel
+		//Determine the maximum tessellation distance ratio relative to max viewing distance where tess level beyond will be clamped to MaxTessLevel.
 		float FurthestTessDistance;
-		//Determine the minimum tessellation distance where tess level below will be clamped to MinTessLevel
+		//Determine the minimum tessellation distance ratio relative to max viewing distance where tess level below will be clamped to MinTessLevel.
 		float NearestTessDistance;
 
 		void validate() const;

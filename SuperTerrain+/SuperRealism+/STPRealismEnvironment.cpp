@@ -154,9 +154,13 @@ void STPMeshSetting::STPTextureRegionSmoothSetting::validate() const {
 }
 
 void STPMeshSetting::STPTextureScaleDistanceSetting::validate() const {
-	if (this->PrimaryFar > 0.0f
-		&& this->SecondaryFar > 0.0f
-		&& this->TertiaryFar > 0.0f
+	constexpr static auto isNormalised = [](float val) constexpr -> bool {
+		return val > 0.0f && val <= 1.0f;
+	};
+
+	if (isNormalised(this->PrimaryFar)
+		&& isNormalised(this->SecondaryFar)
+		&& isNormalised(this->TertiaryFar)
 		&& this->PrimaryFar <= this->SecondaryFar
 		&& this->SecondaryFar <= this->TertiaryFar) {
 		return;
@@ -229,10 +233,14 @@ void STPSunSetting::validate() const {
 //STPTessellationSetting.h
 
 void STPTessellationSetting::validate() const {
+	static constexpr auto isNormalised = [](float val) constexpr -> bool {
+		return val >= 0.0f && val <= 1.0f;
+	};
+
 	if (this->MaxTessLevel >= 0.0f
 		&& this->MinTessLevel >= 0.0f
-		&& this->FurthestTessDistance >= 0.0f
-		&& this->NearestTessDistance >= 0.0f
+		&& isNormalised(this->FurthestTessDistance)
+		&& isNormalised(this->NearestTessDistance)
 		//range check
 		&& this->MaxTessLevel >= this->MinTessLevel
 		&& this->FurthestTessDistance >= this->NearestTessDistance) {
@@ -253,6 +261,7 @@ void STPWaterSetting::validate() const {
 		&& this->CullTestRadius > 0.0f
 		&& this->Altitude > 0.0f
 		&& this->WaveHeight > 0.0f
+		&& this->WaveHeight <= 1.0f
 		&& this->WaterWaveIteration.Geometry != 0u
 		&& this->WaterWaveIteration.Normal != 0u
 		&& this->NormalEpsilon > 0.0f) {

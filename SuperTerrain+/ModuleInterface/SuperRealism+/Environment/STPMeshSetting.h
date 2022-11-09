@@ -37,10 +37,11 @@ namespace SuperTerrainPlus::STPEnvironment {
 		/**
 		 * @brief STPTextureScaleDistanceSetting specifies how the system should use the multi-scale texture blending.
 		*/
-		struct STPTextureScaleDistanceSetting {
+		struct STP_REALISM_API STPTextureScaleDistanceSetting {
 		public:
 
-			//The i-th far specifies the minimum distance from camera to texel to enable N-th texture scale, otherwise (i+1)-th scale is used.
+			//The i-th far specifies the minimum distance factor from viewer to texel to enable N-th texture scale, otherwise (i+1)-th scale is used.
+			//This distance factor is a multiple to the maximum viewing distance.
 			//If none of the distance is satisfied, the N-th scale is used where N is the number scale settings in total.
 			//Except for the first distance which will always use the first scale, 
 			//and the texel distances outside the last far distance which will always use the last scale,
