@@ -18,7 +18,6 @@ World/Diversity/STPTextureDatabase.cpp
 World/Diversity/STPTextureFactory.cpp
 # /World
 World/STPChunk.cpp
-World/STPErosionBrushGenerator.cpp
 World/STPFreeSlipTextureBuffer.cpp
 World/STPHeightfieldGenerator.cpp
 World/STPWorldPipeline.cpp

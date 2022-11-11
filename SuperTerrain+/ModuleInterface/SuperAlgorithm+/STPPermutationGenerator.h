@@ -4,55 +4,48 @@
 
 #include <SuperAlgorithm+/STPAlgorithmDefine.h>
 #include "STPSimplexNoiseSetting.h"
-//System
-#include <random>
-//Permutation Table
-#include "STPPermutation.hpp"
 //Device Memory Management
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
+//Permutation Table
+#include "STPPermutation.hpp"
 
 namespace SuperTerrainPlus::STPAlgorithm {
 
 	/**
-	 * @brief Generate a random permutaion and gradient table for simplex noise generator
+	 * @brief Generate a random permutation and gradient table for simplex noise function.
 	*/
-	class STP_ALGORITHM_HOST_API STPPermutationGenerator : private STPPermutation {
-	private:
-
-		//TODO Choose your prefered rng here!!!
-		typedef std::mt19937_64 STPPermutationRNG;
-
-		//Manage the memory smartly and only pass the pointer to the STPPermutation
-		STPSmartDeviceMemory::STPDeviceMemory<unsigned char[]> ManagedPermutation;
-		STPSmartDeviceMemory::STPDeviceMemory<float[]> ManagedGradient2D;
-
-	public:
+	namespace STPPermutationGenerator {
 
 		/**
-		 * @brief Init thhe permutation generator
-		 * @param simplex_setting Arguments to specify the generator behaviour
+		 * @brief Contain the memory to the generated permutation table,
+		 * and a shallow copy to the memory to allow device access.
 		*/
-		STPPermutationGenerator(const STPEnvironment::STPSimplexNoiseSetting&);
+		struct STPPermutationResult {
+		public:
 
-		//Copy permutation generator, deep copy for generated gradient and permutation will be performed.
-		STPPermutationGenerator(const STPPermutationGenerator&) = delete;
+			//The original memory region where the permutations are stored.
+			//This memory should be retained as long as the permutation table is used.
+			struct {
+			public:
 
-		STPPermutationGenerator(STPPermutationGenerator&&) = delete;
+				STPSmartDeviceMemory::STPDeviceMemory<unsigned char[]> Permutation;
+				STPSmartDeviceMemory::STPDeviceMemory<float[]> Gradient2D;
 
-		//Copy the permutation to the destination class, deep copy for generated gradient and permutation will be performed.
-		STPPermutationGenerator& operator=(const STPPermutationGenerator&) = delete;
+			} DeviceMemory;
 
-		STPPermutationGenerator& operator=(STPPermutationGenerator&&) = delete;
+			//The shallow copy of the permutation device memory.
+			STPPermutation PermutationTable;
 
-		~STPPermutationGenerator() = default;
+		};
 
 		/**
-		 * @brief Get the generated permutation table.
-		 * The table returned is bounded to the current generator, if generator is destroyed result will become undefined.
-		 * @return Pointer to the permutation table.
+		 * @brief Generate a new permutation table.
+		 * @param simplex_setting Arguments to specify the generator behaviour.
+		 * @return The result of generation, should be retained by the user.
 		*/
-		const STPPermutation& operator*() const;
+		STP_ALGORITHM_HOST_API STPPermutationResult generate(const STPEnvironment::STPSimplexNoiseSetting&);
 
-	};
+	}
+
 }
 #endif//_STP_PERMUTATION_GENERATOR_H_

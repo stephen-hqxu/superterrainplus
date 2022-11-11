@@ -977,9 +977,9 @@ public:
 			if (equal_pos_it != front_local_dict.cend()) {
 				//found, check if the previous cache is complete
 				const unsigned int front_buffer_chunkIdx = equal_pos_it->second;
-				const bool front_status = this->FrontBuffer->LocalChunkRecord[front_buffer_chunkIdx].second;
 
-				if (front_status) {
+				if (const bool front_status = this->FrontBuffer->LocalChunkRecord[front_buffer_chunkIdx].second;
+					front_status) {
 					//if the previous front buffer chunk is complete, copy to the back buffer
 					{
 						const uvec2 src_offset = this->calcLocalMapOffset(front_buffer_chunkIdx),

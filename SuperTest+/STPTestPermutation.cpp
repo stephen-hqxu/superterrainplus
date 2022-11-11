@@ -50,12 +50,12 @@ public:
 
 protected:
 
-	SimplexArg Args;
-	STPPermutationGenerator Gen;
+	const SimplexArg Args;
+	const STPPermutationGenerator::STPPermutationResult Result;
 
 	void copyTable() {
 		//copy device table back to host
-		const auto& table_d = *this->Gen;
+		const auto& table_d = this->Result.PermutationTable;
 		//allocation
 		this->HostPerm = make_unique<unsigned char[]>(512);
 		this->HostGrad2D = make_unique<float[]>(table_d.Gradient2DSize * 2);
@@ -66,11 +66,11 @@ protected:
 
 public:
 
-	PermutationGenTester() : Args(), Gen(dynamic_cast<STPSimplexNoiseSetting&>(Args)) {
+	PermutationGenTester() : Args(), Result(STPPermutationGenerator::generate(this->Args)) {
 		this->copyTable();
 	}
 
-	PermutationGenTester(const SimplexArg args) : Args(args), Gen(dynamic_cast<STPSimplexNoiseSetting&>(Args)) {
+	PermutationGenTester(const SimplexArg args) : Args(args), Result(STPPermutationGenerator::generate(this->Args)) {
 		this->copyTable();
 	}
 
@@ -91,7 +91,7 @@ SCENARIO_METHOD(PermutationGenTester, "STPPermutationGenerator can a generate de
 		InvalidArg.Distribution = 0u;
 
 		THEN("Construction of permutation generator should be prevented") {
-			REQUIRE_THROWS_AS(STPPermutationGenerator(InvalidArg), STPException::STPInvalidEnvironment);
+			REQUIRE_THROWS_AS(STPPermutationGenerator::generate(InvalidArg), STPException::STPInvalidEnvironment);
 		}
 
 	}
@@ -99,7 +99,7 @@ SCENARIO_METHOD(PermutationGenTester, "STPPermutationGenerator can a generate de
 	GIVEN("A correct simplex noise setting") {
 
 		WHEN("Permutation is retrieved from generation") {
-			const auto& permutation = *this->Gen;
+			const auto& permutation = this->Result.PermutationTable;
 
 			THEN("Correctness of the gradient table should be verified") {
 				REQUIRE(permutation.Gradient2DSize == this->Args.Distribution);

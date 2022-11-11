@@ -55,7 +55,6 @@ Utility/STPThreadPool.inl
 World/Chunk/STPChunk.h
 World/Chunk/STPDiversityGenerator.hpp
 World/Chunk/STPErosionBrush.hpp
-World/Chunk/STPErosionBrushGenerator.h
 World/Chunk/STPFreeSlipInformation.hpp
 World/Chunk/STPFreeSlipTextureBuffer.h
 World/Chunk/STPHeightfieldGenerator.h

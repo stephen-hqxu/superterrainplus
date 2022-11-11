@@ -58,7 +58,7 @@ try { \
 }
 
 STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk,
-	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : SimplexPermutation(simplex_setting),
+	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : SimplexPermutation(STPAlgorithm::STPPermutationGenerator::generate(simplex_setting)),
 	Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk) {
 	const auto commonSourceInfo = [capabilityOption = "-arch=sm_" + to_string(STPEngineInitialiser::architecture(0))]() {
 		using SuperTerrainPlus::STPStringUtility::concatCharArray;
@@ -224,7 +224,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		STP_CHECK_CUDA(cuMemcpyHtoD(half_dimension, value_ptr(halfDim), half_dimensionSize));
 		STP_CHECK_CUDA(cuMemcpyHtoD(rendered_dimension, value_ptr(RenderedDim), rendered_dimensionSize));
 		//note that we are copying permutation to device, the underlying pointers are managed by this class
-		STP_CHECK_CUDA(cuMemcpyHtoD(perm, &(*this->SimplexPermutation), permSize));
+		STP_CHECK_CUDA(cuMemcpyHtoD(perm, &(this->SimplexPermutation.PermutationTable), permSize));
 	} catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
 		cerr << error.what() << std::endl;
 		cerr << log.linker_error_log << endl;

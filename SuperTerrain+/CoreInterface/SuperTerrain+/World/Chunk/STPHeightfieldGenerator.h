@@ -3,15 +3,10 @@
 #define _STP_HEIGHTFIELD_GENERATOR_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-//System
-#include <vector>
-//CUDA
-#include <curand_kernel.h>
-
 //Engine
 #include "STPDiversityGenerator.hpp"
-#include "STPErosionBrushGenerator.h"
 #include "STPFreeSlipTextureBuffer.h"
+#include "STPErosionBrush.hpp"
 #include "../../Utility/Memory/STPSmartDeviceObject.h"
 #include "../../Utility/Memory/STPSmartDeviceMemory.h"
 #include "../../Utility/Memory/STPObjectPool.h"
@@ -19,8 +14,13 @@
 #include "../../Environment/STPHeightfieldSetting.h"
 #include "../../Environment/STPChunkSetting.h"
 
+//CUDA
+#include <curand_kernel.h>
 //GLM
 #include <glm/vec2.hpp>
+
+//System
+#include <vector>
 
 namespace SuperTerrainPlus {
 
@@ -114,8 +114,17 @@ namespace SuperTerrainPlus {
 		const STPEnvironment::STPHeightfieldSetting HeightfieldSettingHost;
 		STPSmartDeviceMemory::STPDeviceMemory<STPEnvironment::STPRainDropSetting> RainDropSettingDevice;
 
-		//generate brush for hydraulic erosion
-		const STPErosionBrushGenerator ErosionBrush;
+		//generated erosion brush
+		const struct STPErosionBrushMemory {
+		public:
+
+			STPSmartDeviceMemory::STPDeviceMemory<int[]> Index;
+			STPSmartDeviceMemory::STPDeviceMemory<float[]> Weight;
+
+			//shallow copy of the erosion brush data so they can be used from the device
+			STPErosionBrush ErosionBrushRawData;
+
+		} ErosionBrush;
 
 		//free-slip index table generator
 		STPFreeSlipTextureAttribute TextureBufferAttr;

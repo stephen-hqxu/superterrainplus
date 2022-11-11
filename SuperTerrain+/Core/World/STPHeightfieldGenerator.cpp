@@ -1,30 +1,22 @@
 #include <SuperTerrain+/World/Chunk/STPHeightfieldGenerator.h>
 
 //Simulator
-#include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
-
-#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
-
-#include <type_traits>
-#include <memory>
-//CUDA Kernel
 #include <SuperTerrain+/GPGPU/STPHeightfieldKernel.cuh>
 
-using namespace SuperTerrainPlus;
+#include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
+#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+
+#include <algorithm>
+#include <cassert>
+
+//GLM
+#include <glm/exponential.hpp>
 
 using std::vector;
 using std::optional;
 using std::move;
-using std::make_unique;
 
-//GLM
-#include <glm/vec3.hpp>
-#include <glm/geometric.hpp>
-
-using glm::ivec2;
-using glm::uvec2;
-using glm::vec2;
-using glm::vec3;
+using namespace SuperTerrainPlus;
 
 inline STPSmartDeviceObject::STPStream STPHeightfieldGenerator::STPStreamCreator::operator()() const {
 	//we want the stream to not be blocked by default stream
@@ -42,9 +34,79 @@ inline STPSmartDeviceMemory::STPDeviceMemory<STPHeightfieldGenerator::STPcurandR
 	return STPHeightfieldKernel::curandInit(this->Seed, this->Length, stream);
 }
 
+/**
+ * @brief Generate the erosion brush.
+ * @tparam T The erosion brush memory
+ * @param freeslip_rangeX  The number of element on the free-slip heightmap in the free-slip chunk range in X direction,
+ * i.e., the X dimension of the free-slip map.
+ * @param erosion_radius The radius of erosion.
+ * @return The memory containing generated erosion brush.
+*/
+template<class T>
+static T generateErosionBrush(unsigned int freeslip_rangeX, unsigned int erosion_radius) {
+	if (erosion_radius == 0u) {
+		//radius must be greater than 0
+		throw STPException::STPBadNumericRange("Erosion brush radius must be a positive integer");
+	}
+	if (freeslip_rangeX == 0u) {
+		//none of the component should be zero
+		throw STPException::STPBadNumericRange("Free-slip range row count should be positive");
+	}
+	/* -------------------------------------- Generate Erosion Brush ------------------------------- */
+	const int radius = static_cast<int>(erosion_radius),
+		radiusSqr = radius * radius;
+	double weightSum = 0.0;
+	//temporary cache for generation
+	vector<int> indexCache;
+	vector<float> weightCache;
+
+	indexCache.reserve(radiusSqr);
+	weightCache.reserve(radiusSqr);
+	//calculate the brushing weight
+	for (int brushY = -radius; brushY <= radius; brushY++) {
+		for (int brushX = -radius; brushX <= radius; brushX++) {
+			if (double sqrDst = static_cast<double>(brushX * brushX + brushY * brushY);
+				sqrDst < radiusSqr) {
+				//The brush lies within the erosion range
+				const double currentbrushWeight = 1.0 - glm::sqrt(sqrDst) / radius;
+				weightSum += currentbrushWeight;
+				//store
+				indexCache.emplace_back(brushY * static_cast<int>(freeslip_rangeX) + brushX);
+				weightCache.emplace_back(static_cast<float>(currentbrushWeight));
+			}
+		}
+	}
+	//normalise the brush weight
+	std::transform(weightCache.cbegin(), weightCache.cend(), weightCache.begin(),
+		[weightFactor = 1.0 / weightSum](const float weight) { return static_cast<float>(weight * weightFactor); });
+
+	assert(indexCache.size() == weightCache.size());
+	/* ------------------------------------ Populate Device Memory ---------------------------------------------- */
+	T memory;
+	auto& [index_d, weight_d, brush_raw] = memory;
+	index_d = STPSmartDeviceMemory::makeDevice<int[]>(indexCache.size());
+	weight_d = STPSmartDeviceMemory::makeDevice<float[]>(weightCache.size());
+
+	//copy
+	STP_CHECK_CUDA(cudaMemcpy(index_d.get(), indexCache.data(),
+		sizeof(int) * indexCache.size(), cudaMemcpyHostToDevice));
+	STP_CHECK_CUDA(cudaMemcpy(weight_d.get(), weightCache.data(),
+		sizeof(float) * weightCache.size(), cudaMemcpyHostToDevice));
+
+	//store raw data
+	brush_raw = STPErosionBrush {
+		index_d.get(),
+		weight_d.get(),
+		static_cast<unsigned int>(indexCache.size())
+	};
+
+	return memory;
+}
+
 STPHeightfieldGenerator::STPHeightfieldGenerator(const STPGeneratorSetup& setup) :
 	generateHeightmap(*setup.DiversityGenerator), HeightfieldSettingHost(*setup.HeightfieldSetting),
-	ErosionBrush(setup.ChunkSetting->FreeSlipChunk.x * setup.ChunkSetting->MapSize.x, this->HeightfieldSettingHost.Erosion.ErosionBrushRadius),
+	ErosionBrush(generateErosionBrush<STPErosionBrushMemory>(setup.ChunkSetting->FreeSlipChunk.x * setup.ChunkSetting->MapSize.x,
+		this->HeightfieldSettingHost.Erosion.ErosionBrushRadius)),
 	RNGPool(this->HeightfieldSettingHost) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = *setup.ChunkSetting;
 
@@ -95,7 +157,7 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 	//if exception is thrown during exception, stream will be the last object to be deleted, automatically
 	STPSmartDeviceObject::STPStream smart_stream = this->StreamPool.requestObject();
 	cudaStream_t stream = smart_stream.get();
-	optional<STPSmartDeviceMemory::STPDeviceMemory<STPcurandRNG[]>> rng_buffer;
+	STPSmartDeviceMemory::STPDeviceMemory<STPcurandRNG[]> rng_buffer;
 	//limit the scope for std::optional to control the destructor call
 	{
 		//heightmap
@@ -132,11 +194,11 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 
 		//Flag: Erosion
 		if (flag[1]) {
-			rng_buffer.emplace(this->RNGPool.requestObject(stream));
+			rng_buffer = move(this->RNGPool.requestObject(stream));
 			STPHeightfieldKernel::hydraulicErosion(
 				(*heightmap_buffer)(STPFreeSlipFloatTextureBuffer::STPFreeSlipLocation::DeviceMemory),
-				this->RainDropSettingDevice.get(), this->TextureBufferAttr.TextureInfo, this->ErosionBrush.getBrush(),
-				this->HeightfieldSettingHost.Erosion.RainDropCount, rng_buffer->get(), stream);
+				this->RainDropSettingDevice.get(), this->TextureBufferAttr.TextureInfo, this->ErosionBrush.ErosionBrushRawData,
+				this->HeightfieldSettingHost.Erosion.RainDropCount, rng_buffer.get(), stream);
 		}
 
 		//Flag: RenderingBufferGeneration
@@ -162,9 +224,9 @@ void STPHeightfieldGenerator::operator()(STPMapStorage& args, STPGeneratorOperat
 
 	//waiting for finish before release the data back to the pool
 	STP_CHECK_CUDA(cudaStreamSynchronize(stream));
-	if (rng_buffer.has_value()) {
+	if (rng_buffer) {
 		//if we have previously grabbed a RNG from the pool, return it
-		this->RNGPool.returnObject(move(*rng_buffer));
+		this->RNGPool.returnObject(move(rng_buffer));
 	}
 	this->StreamPool.returnObject(move(smart_stream));
 }

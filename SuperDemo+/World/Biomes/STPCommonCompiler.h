@@ -31,7 +31,7 @@ namespace STPDemo {
 		SuperTerrainPlus::STPDeviceRuntimeBinary::STPLoweredName BiomefieldName, SplatmapName;
 
 		//all parameters for the noise generator, stored on host, passing value to device
-		SuperTerrainPlus::STPAlgorithm::STPPermutationGenerator SimplexPermutation;
+		const SuperTerrainPlus::STPAlgorithm::STPPermutationGenerator::STPPermutationResult SimplexPermutation;
 
 		//The chunk setting of each map used by each generator.
 		const glm::uvec2 Dimension, RenderingRange;
