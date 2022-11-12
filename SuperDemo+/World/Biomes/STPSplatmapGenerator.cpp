@@ -5,6 +5,9 @@
 #include <SuperTerrain+/Exception/STPCUDAError.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
+//GL
+#include <glad/glad.h>
+
 //GLM
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
@@ -25,9 +28,19 @@ using glm::value_ptr;
 
 STPSplatmapGenerator::STPSplatmapGenerator(const STPCommonCompiler& program,
 	const STPTextureDatabase::STPDatabaseView& database_view,
-	const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting) :
+	const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting, float anisotropy) :
 	//bias is a scaling value, we need to calculate the reciprocal.
-	STPTextureFactory(database_view, chunk_setting), KernelProgram(program) {
+	STPTextureFactory(database_view, chunk_setting, [anisotropy](auto tbo) {
+		glTextureParameteri(tbo, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTextureParameteri(tbo, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTextureParameteri(tbo, GL_TEXTURE_WRAP_R, GL_REPEAT);
+		glTextureParameteri(tbo, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTextureParameteri(tbo, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTextureParameterf(tbo, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
+
+		glGenerateTextureMipmap(tbo);	
+	}),
+	KernelProgram(program) {
 	//compile source code
 	this->initGenerator();
 }

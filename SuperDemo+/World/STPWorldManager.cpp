@@ -179,29 +179,6 @@ public:
 
 	~STPWorldSplattingAgent() = default;
 
-	/**
-	 * @brief Set the texture parameter for a all texture groups.
-	 * @param factory The pointer to the texture factory where texture parameters will be set.
-	 * @param anisotropy_filter The level of anisotropy filtering to be used for each texture.
-	*/
-	void setTextureParameter(const STPTextureFactory& factory, float anisotropy_filter) const {
-		//get the TBO based on group ID, currently we only have one group
-		const array<GLuint, 3u> all_tbo = {
-			factory[this->x1024_srgb], factory[this->x1024_rgb], factory[this->x1024_r]
-		};
-
-		for (const auto tbo : all_tbo) {
-			glTextureParameteri(tbo, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glTextureParameteri(tbo, GL_TEXTURE_WRAP_T, GL_REPEAT);
-			glTextureParameteri(tbo, GL_TEXTURE_WRAP_R, GL_REPEAT);
-			glTextureParameteri(tbo, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-			glTextureParameteri(tbo, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTextureParameterf(tbo, GL_TEXTURE_MAX_ANISOTROPY, anisotropy_filter);
-
-			glGenerateTextureMipmap(tbo);
-		}
-	}
-
 };
 
 STPWorldManager::STPWorldManager(const string& tex_filename_prefix, const STPEnvironment::STPChunkSetting& chunk_setting,
@@ -213,7 +190,7 @@ STPWorldManager::STPWorldManager(const string& tex_filename_prefix, const STPEnv
 
 STPWorldManager::~STPWorldManager() = default;
 
-void STPWorldManager::linkProgram(float anisotropy, const STPEnvironment::STPChunkSetting& chunk_setting,
+void STPWorldManager::linkProgram(const STPEnvironment::STPChunkSetting& chunk_setting,
 	const STPEnvironment::STPHeightfieldSetting& heightfield_setting) {
 	this->linkStatus = false;
 	//error checking
@@ -223,9 +200,6 @@ void STPWorldManager::linkProgram(float anisotropy, const STPEnvironment::STPChu
 	if (!this->TextureFactory) {
 		throw invalid_argument("Texture factory not attached.");
 	}
-
-	//finish up texture settings
-	this->Texture->setTextureParameter(*this->TextureFactory, anisotropy);
 
 	//create generator and storage unit first
 	STPHeightfieldGenerator::STPGeneratorSetup setup = { };

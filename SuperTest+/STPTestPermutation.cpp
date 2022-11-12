@@ -51,11 +51,11 @@ public:
 protected:
 
 	const SimplexArg Args;
-	const STPPermutationGenerator::STPPermutationResult Result;
+	const STPPermutationGenerator::STPPermutationTable Result;
 
 	void copyTable() {
 		//copy device table back to host
-		const auto& table_d = this->Result.PermutationTable;
+		const auto& table_d = this->Result.Permutation;
 		//allocation
 		this->HostPerm = make_unique<unsigned char[]>(512);
 		this->HostGrad2D = make_unique<float[]>(table_d.Gradient2DSize * 2);
@@ -99,7 +99,7 @@ SCENARIO_METHOD(PermutationGenTester, "STPPermutationGenerator can a generate de
 	GIVEN("A correct simplex noise setting") {
 
 		WHEN("Permutation is retrieved from generation") {
-			const auto& permutation = this->Result.PermutationTable;
+			const auto& permutation = this->Result.Permutation;
 
 			THEN("Correctness of the gradient table should be verified") {
 				REQUIRE(permutation.Gradient2DSize == this->Args.Distribution);

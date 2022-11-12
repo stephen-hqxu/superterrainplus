@@ -375,10 +375,10 @@ public:
 			STPBuffer texture_cache;
 			texture_cache.bufferStorage(this->calcBufferSize(), GL_NONE);
 
-			this->TextureResource = STPSmartDeviceObject::makeGLBuffer(*texture_cache, this->TextureDesc.ResourceRegisterFlag);
+			this->TextureResource = STPSmartDeviceObject::makeGLBufferResource(*texture_cache, this->TextureDesc.ResourceRegisterFlag);
 			this->TextureCache = move(texture_cache);
 		} else {
-			this->TextureResource = STPSmartDeviceObject::makeGLImage(*texture, GL_TEXTURE_2D, this->TextureDesc.ResourceRegisterFlag);
+			this->TextureResource = STPSmartDeviceObject::makeGLImageResource(*texture, GL_TEXTURE_2D, this->TextureDesc.ResourceRegisterFlag);
 		}
 		this->Texture = move(texture);
 	}

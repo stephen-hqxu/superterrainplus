@@ -67,6 +67,10 @@ namespace SuperTerrainPlus::STPRealism {
 			//Specify the dimension of the noise sampling texture to be used in the shader.
 			//Higher scale provides more randomness but also consumes more memory.
 			glm::uvec3 NoiseDimension;
+			//Set the seed for a texture of random number used during rendering, and regenerate the random texture
+			//with the dimension initialised.
+			unsigned long long NoiseSeed;
+
 			//Specify the normalmap blending algorithm to be used during rendering.
 			STPNormalBlendingAlgorithm NormalBlender;
 
@@ -95,7 +99,6 @@ namespace SuperTerrainPlus::STPRealism {
 		//data for texture splatting
 		STPBuffer SplatRegion;
 		STPBindlessBuffer SplatRegionAddress;
-		std::vector<STPBindlessTexture> SplatTextureHandle;
 
 		/**
 		 * @brief Calculate the base chunk position (the coordinate of top-left corner) for the most top-left corner chunk.
@@ -110,9 +113,6 @@ namespace SuperTerrainPlus::STPRealism {
 		void updateTerrainModel();
 
 	public:
-
-		//The size of the texture storing random numbers.
-		const glm::uvec3 RandomTextureDimension;
 
 		/**
 		 * @brief Initialise the heightfield terrain rendering engine without shadow.
@@ -143,14 +143,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * It is recommended to use a (much) lower quality than the actual rendering.
 		*/
 		void setDepthMeshQuality(const STPEnvironment::STPTessellationSetting&);
-
-		/**
-		 * @brief Set the seed for a texture of random number used during rendering, and regenerate the random texture 
-		 * with the dimension initialised.
-		 * This function is considered to be expensive and hence should not be called frequently.
-		 * @param seed The new seed value.
-		*/
-		void seedRandomBuffer(unsigned long long);
 
 		/**
 		 * @brief Set the new view position and signal the terrain generator to prepare heightfield texture.

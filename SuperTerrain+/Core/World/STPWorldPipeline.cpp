@@ -10,8 +10,6 @@
 
 //GL
 #include <glad/glad.h>
-//CUDA
-#include <cuda_gl_interop.h>
 
 #include <glm/common.hpp>
 
@@ -601,11 +599,16 @@ public:
 		//Terrain maps that are mapped to CUDA array.
 		using STPMappedMemoryUnit = STPMemoryUnit<cudaArray_t>;
 
+		//terrain map but the memory is automatically managed.
+		STPMemoryUnit<STPSmartDeviceObject::STPGLTextureObject> TerrainMapManaged;
+		//a shallow copy to the pointer to the managed terrain map.
 		//index 0: R16UI biome map
 		//index 1: R16 height map
 		//index 2: R8UI splat map
 		STPMemoryUnit<GLuint> TerrainMap;
-		//registered CUDA graphics handle for GL terrain maps.
+		//managed graphics resource handle.
+		STPMemoryUnit<STPSmartDeviceObject::STPGraphicsResource> TerrainMapResourceManaged;
+		//registered CUDA graphics handle for GL terrain maps, copy of the managed memory.
 		STPMemoryUnit<cudaGraphicsResource_t> TerrainMapResource;
 
 		//Vector that stored rendered chunk world position and loading status (True is loaded, false otherwise).
@@ -619,9 +622,9 @@ public:
 		*/
 		STPMemoryBlock(const STPMemoryManager& manager) {
 			const STPEnvironment::STPChunkSetting& setting = manager.ChunkSetting;
-			const uvec2 buffer_size = setting.RenderedChunk * setting.MapSize;
 			auto setupMap = 
-				[buffer_size](GLuint texture, GLint min_filter, GLint mag_filter, GLsizei levels, GLenum internal) -> void {
+				[buffer_size = setting.RenderedChunk * setting.MapSize](GLuint texture, GLint min_filter,
+					GLint mag_filter, GLenum internal) -> void {
 				//set texture parameter
 				glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 				glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -629,26 +632,37 @@ public:
 				glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, min_filter);
 				glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, mag_filter);
 				//allocation
-				glTextureStorage2D(texture, levels, internal, buffer_size.x, buffer_size.y);
+				glTextureStorage2D(texture, 1, internal, buffer_size.x, buffer_size.y);
 			};
-			auto registerMap = 
-				[](GLuint texture, cudaGraphicsResource_t* res, unsigned int reg_flag = cudaGraphicsRegisterFlagsNone) -> void {
-				//register CUDA texture
-				STP_CHECK_CUDA(cudaGraphicsGLRegisterImage(res, texture, GL_TEXTURE_2D, reg_flag));
-				STP_CHECK_CUDA(cudaGraphicsResourceSetMapFlags(*res, cudaGraphicsMapFlagsNone));
+			//graphics register flag for each corresponding texture
+			constexpr static STPMemoryUnit<unsigned int> registerFlag = {
+				cudaGraphicsRegisterFlagsNone,
+				cudaGraphicsRegisterFlagsNone,
+				cudaGraphicsRegisterFlagsSurfaceLoadStore
 			};
 
-			//creating texture map
-			glCreateTextures(GL_TEXTURE_2D, 3, this->TerrainMap.data());
+			using std::generate;
+			using std::transform;
+			//creating texture map and copy the raw handles into a separate array, so we can access them easily
+			generate(this->TerrainMapManaged.begin(), this->TerrainMapManaged.end(), []() {
+				return STPSmartDeviceObject::makeGLTextureObject(GL_TEXTURE_2D);
+			});
+			transform(this->TerrainMapManaged.cbegin(), this->TerrainMapManaged.cend(), this->TerrainMap.begin(),
+				[](const auto& managed_texture) { return managed_texture.get(); });
 			//biomemap
-			setupMap(this->TerrainMap[0], GL_NEAREST, GL_NEAREST, 1, GL_R16UI);
-			registerMap(this->TerrainMap[0], &this->TerrainMapResource[0]);
+			setupMap(this->TerrainMap[0], GL_NEAREST, GL_NEAREST, GL_R16UI);
 			//heightfield
-			setupMap(this->TerrainMap[1], GL_LINEAR, GL_LINEAR, 1, GL_R16);
-			registerMap(this->TerrainMap[1], &this->TerrainMapResource[1]);
+			setupMap(this->TerrainMap[1], GL_LINEAR, GL_LINEAR, GL_R16);
 			//splatmap
-			setupMap(this->TerrainMap[2], GL_NEAREST, GL_NEAREST, 1, GL_R8UI);
-			registerMap(this->TerrainMap[2], &this->TerrainMapResource[2], cudaGraphicsRegisterFlagsSurfaceLoadStore);
+			setupMap(this->TerrainMap[2], GL_NEAREST, GL_NEAREST, GL_R8UI);
+
+			//create CUDA mapping of the texture
+			transform(this->TerrainMap.cbegin(), this->TerrainMap.cend(), registerFlag.cbegin(), this->TerrainMapResourceManaged.begin(),
+				[](const auto tbo, const auto flag) {
+					return STPSmartDeviceObject::makeGLImageResource(tbo, GL_TEXTURE_2D, flag);
+				});
+			transform(this->TerrainMapResourceManaged.cbegin(), this->TerrainMapResourceManaged.cend(),
+				this->TerrainMapResource.begin(), [](const auto& res) { return res.get(); });
 
 			const unsigned int renderedChunkCount = setting.RenderedChunk.x * setting.RenderedChunk.y;
 			//reserve memory for lookup tables
@@ -664,15 +678,7 @@ public:
 
 		STPMemoryBlock& operator=(STPMemoryBlock&&) = delete;
 
-		~STPMemoryBlock() {
-			//unregister texture
-			FOR_EACH_MEMORY_START()
-				STP_CHECK_CUDA(cudaGraphicsUnregisterResource(this->TerrainMapResource[i]));
-			FOR_EACH_MEMORY_END()
-
-			//delete texture map
-			glDeleteTextures(3, this->TerrainMap.data());
-		}
+		~STPMemoryBlock() = default;
 
 		/**
 		 * @brief Set the CUDA resource mapping flag for each GL texture.

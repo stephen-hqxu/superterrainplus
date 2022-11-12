@@ -1,6 +1,7 @@
 #include <SuperRealism+/Scene/Component/STPHeightfieldTerrain.h>
 #include <SuperRealism+/STPRealismInfo.h>
 //Noise Generator
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceObject.h>
 #include <SuperRealism+/Utility/STPRandomTextureGenerator.cuh>
 
 //Error
@@ -58,7 +59,7 @@ constexpr static STPIndirectCommand::STPDrawElement TerrainDrawCommand = {
 };
 
 STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipeline, const STPTerrainShaderOption& option) :
-	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D), RandomTextureDimension(option.NoiseDimension) {
+	TerrainGenerator(generator_pipeline), NoiseSample(GL_TEXTURE_3D) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->TerrainGenerator.ChunkSetting;
 	const STPDiversity::STPTextureFactory& splatmap_generator = this->TerrainGenerator.splatmapGenerator();
 	const STPDiversity::STPTextureInformation::STPSplatTextureDatabase splat_texture = splatmap_generator.getSplatTexture();
@@ -88,7 +89,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 			//prepare identifiers for texture splatting
 			using namespace SuperTerrainPlus::STPDiversity;
 			//general info
-			Macro("GROUP_COUNT", splat_texture.TextureBufferCount)
+			Macro("GROUP_COUNT", splat_texture.TextureHandleCount)
 				//The registry contains region that either has and has no texture data.
 				("REGISTRY_COUNT", splat_texture.LocationRegistryDictionaryCount)
 				("SPLAT_REGION_COUNT", splat_texture.SplatRegionCount)
@@ -165,7 +166,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 
 	/* --------------------------------- setup texture splatting ------------------------------------ */
 	//get splatmap dataset
-	const auto& [tbo, tbo_count, registry, registry_count, dict, dict_count, view_reg, region_count] = splat_texture;
+	const auto& [tbo_handle, tbo_handle_count, registry, registry_count, dict, dict_count, view_reg, region_count] = splat_texture;
 
 	using STPDiversity::STPTextureInformation::STPTextureDataLocation;
 	//prepare region registry
@@ -188,29 +189,41 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 		region_data_address[i] = region_address_beg + sizeof(STPTextureDataLocation) * reg_loc;
 	}
 
-	//prepare bindless texture
-	this->SplatTextureHandle.reserve(tbo_count);
-	unique_ptr<GLuint64[]> rawHandle = make_unique<GLuint64[]>(tbo_count);
-	for (unsigned int i = 0u; i < tbo_count; i++) {
-		//extract raw handle so we can send them to the shader via uniform
-		rawHandle[i] = *this->SplatTextureHandle.emplace_back(tbo[i]);
-	}
-
 	//prepare texture region scaling data
 	unique_ptr<uvec3[]> scale_factors = make_unique<uvec3[]>(region_count);
 	std::transform(view_reg, view_reg + region_count, scale_factors.get(), [](const auto& tex_view) {
 		return uvec3(tex_view.PrimaryScale, tex_view.SecondaryScale, tex_view.TertiaryScale);
 	});
 	//send bindless handle to the shader
-	this->TerrainShader.uniform(glProgramUniformHandleui64vARB, "RegionTexture", static_cast<GLsizei>(tbo_count), rawHandle.get())
+	this->TerrainShader.uniform(glProgramUniformHandleui64vARB, "RegionTexture", static_cast<GLsizei>(tbo_handle_count), tbo_handle)
 		//prepare registry
 		.uniform(glProgramUniformui64vNV, "RegionRegistry", static_cast<GLsizei>(dict_count), region_data_address.get())
 		.uniform(glProgramUniform3uiv, "RegionScaleRegistry", static_cast<GLsizei>(region_count), value_ptr(scale_factors[0]));
 
 	/* --------------------------------- shader noise texture preparation ------------------------------ */
-	this->NoiseSample.textureStorage3D(1, GL_R8, this->RandomTextureDimension);
+	this->NoiseSample.textureStorage3D(1, GL_R8, option.NoiseDimension);
 	this->NoiseSample.wrap(GL_REPEAT);
 	this->NoiseSample.filter(GL_NEAREST, GL_LINEAR);
+	{
+		//generate noise texture
+		const STPSmartDeviceObject::STPGraphicsResource res_managed = STPSmartDeviceObject::makeGLImageResource(
+			*this->NoiseSample, GL_TEXTURE_3D, cudaGraphicsRegisterFlagsWriteDiscard);
+		cudaGraphicsResource_t res = res_managed.get();
+		//map
+		cudaArray_t random_buffer;
+		STP_CHECK_CUDA(cudaGraphicsMapResources(1, &res));
+		STP_CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&random_buffer, res, 0u, 0u));
+
+		//compute
+		STPRandomTextureGenerator::generate<unsigned char>(random_buffer, option.NoiseDimension, option.NoiseSeed,
+			numeric_limits<unsigned char>::min(), numeric_limits<unsigned char>::max());
+
+		//clear up
+		STP_CHECK_CUDA(cudaGraphicsUnmapResources(1, &res));
+	}
+	//create bindless handle for noise sampler
+	this->NoiseSampleHandle = STPBindlessTexture(this->NoiseSample);
+	this->TerrainShader.uniform(glProgramUniformHandleui64ARB, "Noisemap", *this->NoiseSampleHandle);
 
 	/* -------------------------------------------- initialise ----------------------------------------- */
 	this->TerrainGenerator.load(option.InitialViewPosition);
@@ -283,31 +296,6 @@ void STPHeightfieldTerrain::setDepthMeshQuality(const STPEnvironment::STPTessell
 		.uniform(glProgramUniform1f, "Tess[1].MinLod", tess.MinTessLevel)
 		.uniform(glProgramUniform1f, "Tess[1].MaxDis", tess.FurthestTessDistance)
 		.uniform(glProgramUniform1f, "Tess[1].MinDis", tess.NearestTessDistance);
-}
-
-void STPHeightfieldTerrain::seedRandomBuffer(unsigned long long seed) {
-	cudaGraphicsResource_t res;
-	cudaArray_t random_buffer;
-
-	//CUDA will throw error when mapping on a texture with bindless handle active, so we need to deactivate it first.
-	this->NoiseSampleHandle = STPBindlessTexture();
-	//register CUDA graphics
-	STP_CHECK_CUDA(cudaGraphicsGLRegisterImage(&res, *this->NoiseSample, GL_TEXTURE_3D, cudaGraphicsRegisterFlagsWriteDiscard));
-	//map
-	STP_CHECK_CUDA(cudaGraphicsMapResources(1, &res));
-	STP_CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&random_buffer, res, 0u, 0u));
-
-	//compute
-	STPRandomTextureGenerator::generate<unsigned char>(random_buffer, this->RandomTextureDimension, seed, 
-		numeric_limits<unsigned char>::min(), numeric_limits<unsigned char>::max());
-
-	//clear up
-	STP_CHECK_CUDA(cudaGraphicsUnmapResources(1, &res));
-	STP_CHECK_CUDA(cudaGraphicsUnregisterResource(res));
-
-	//create bindless handle for noise sampler
-	this->NoiseSampleHandle = STPBindlessTexture(this->NoiseSample);
-	this->TerrainShader.uniform(glProgramUniformHandleui64ARB, "Noisemap", *this->NoiseSampleHandle);
 }
 
 void STPHeightfieldTerrain::setViewPosition(const dvec3& viewPos) {

@@ -21,9 +21,12 @@ using std::vector;
 
 using glm::uvec2;
 
-STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& database_view, const STPEnvironment::STPChunkSetting& terrain_chunk) :
-	MapDimension(terrain_chunk.MapSize), RenderedChunk(terrain_chunk.RenderedChunk), RenderedChunkCount(terrain_chunk.RenderedChunk.x * terrain_chunk.RenderedChunk.y),
-	LocalChunkInfo(STPSmartDeviceMemory::makeDevice<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation[]>(RenderedChunkCount)), 
+STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& database_view,
+	const STPEnvironment::STPChunkSetting& terrain_chunk, const STPSamplerStateModifier& modify_sampler) :
+	MapDimension(terrain_chunk.MapSize), RenderedChunk(terrain_chunk.RenderedChunk),
+	RenderedChunkCount(terrain_chunk.RenderedChunk.x * terrain_chunk.RenderedChunk.y),
+	LocalChunkInfo(STPSmartDeviceMemory::makeDevice
+		<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation[]>(RenderedChunkCount)),
 	ValidType(database_view.getValidMapType()) {
 	//temporary cache
 	STPIDConverter<STPTextureInformation::STPTextureID> textureID_converter;
@@ -46,6 +49,8 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 
 	//we build the data structure that holds all texture in groups first
 	{
+		using std::generate;
+		using std::transform;
 		//we build the texture ID to index converter
 		//loop through all texture collection
 		textureID_converter.reserve(texture_rec.size());
@@ -65,9 +70,15 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 		}
 
 		//this is the total number of layered texture we will have
-		this->Texture.resize(group_rec.size());
-		this->TextureOwnership.reserve(group_rec.size());
-		glCreateTextures(GL_TEXTURE_2D_ARRAY, static_cast<GLsizei>(this->Texture.size()), this->Texture.data());
+		const size_t textureCount = group_rec.size();
+		this->Texture.resize(textureCount);
+		this->TextureHandle.resize(textureCount);
+		this->RawTextureHandle.resize(textureCount);
+		//create texture
+		generate(this->Texture.begin(), this->Texture.end(), []() {
+			return STPSmartDeviceObject::makeGLTextureObject(GL_TEXTURE_2D_ARRAY);
+		});
+
 		//each texture ID contains some number of type as stride, if type is not use we set the index to
 		this->TextureRegion.reserve(texture_map_rec.size());
 		this->TextureRegionLookup.resize(database_view.Database.textureSize() * UsedTypeCount, STPTextureFactory::UnusedType);
@@ -91,12 +102,10 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 				const auto& [group_rec_id, member_count, group_props] = group_rec[group_idx];
 				assert(group_rec_id == group_id && "Group ID from group record should be the same as that from texture map record.");
 				desc = &group_props;
-				gl_texture = this->Texture[group_idx];
+				gl_texture = this->Texture[group_idx].get();
 				//allocate memory for each layer
 				glTextureStorage3D(gl_texture, desc->MipMapLevel, desc->InteralFormat, desc->Dimension.x,
 					desc->Dimension.y, static_cast<GLsizei>(member_count));
-				//build texture ownership table, so we can lookup texture buffer using group ID later
-				this->TextureOwnership.try_emplace(group_id, gl_texture);
 			}
 
 			const unsigned int texture_idx = textureID_converter.at(texture_id);
@@ -115,6 +124,16 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			//advance to the next layer in this group
 			layer_idx++;
 		}
+
+		//change sampler parameter for the texture before creating bindless handle
+		std::for_each(this->Texture.cbegin(), this->Texture.cend(), [&modify_sampler](const auto& texture) { modify_sampler(texture.get()); });
+		//create bindless texture handle
+		transform(this->Texture.cbegin(), this->Texture.cend(), this->TextureHandle.begin(), [](const auto& texture) {
+			return STPSmartDeviceObject::makeGLBindlessTextureHandle(texture.get());
+		});
+		//and create a view to the texture handle so they can be passed to the renderer easier
+		transform(this->TextureHandle.cbegin(), this->TextureHandle.cend(), this->RawTextureHandle.begin(),
+			[](const auto& handle) { return handle.get(); });
 	}
 
 	//then we can start building splat rule data structure
@@ -155,11 +174,6 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 		this->AltitudeRegistry_d = move(STPTextureFactory::copyToDevice(alt_reg));
 		this->GradientRegistry_d = move(STPTextureFactory::copyToDevice(gra_reg));
 	}
-}
-
-STPTextureFactory::~STPTextureFactory() {
-	//delete all GL texture
-	glDeleteTextures(static_cast<GLsizei>(this->Texture.size()), this->Texture.data());
 }
 
 template<typename N>
@@ -218,14 +232,10 @@ void STPTextureFactory::operator()(cudaTextureObject_t biomemap_tex, cudaTexture
 	}, stream);
 }
 
-STPOpenGL::STPuint STPTextureFactory::operator[](STPTextureInformation::STPMapGroupID group_id) const {
-	return this->TextureOwnership.at(group_id);
-}
-
 STPTextureInformation::STPSplatTextureDatabase STPTextureFactory::getSplatTexture() const noexcept {
 	return STPTextureInformation::STPSplatTextureDatabase{
-		this->Texture.data(),
-		this->Texture.size(),
+		this->RawTextureHandle.data(),
+		this->RawTextureHandle.size(),
 
 		this->TextureRegion.data(),
 		this->TextureRegion.size(),

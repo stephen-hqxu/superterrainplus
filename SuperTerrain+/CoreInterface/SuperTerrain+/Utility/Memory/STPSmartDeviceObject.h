@@ -80,6 +80,26 @@ namespace SuperTerrainPlus {
 
 			};
 
+			/**
+			 * @brief Delete GL texture object.
+			*/
+			struct STP_API STPGLTextureDeleter {
+			public:
+
+				void operator()(STPOpenGL::STPuint) const noexcept;
+
+			};
+
+			/**
+			 * @brief Unresident bindless GL texture handle.
+			*/
+			struct STP_API STPGLTextureHandleUnresidenter {
+			public:
+
+				void operator()(STPOpenGL::STPuint64) const noexcept;
+
+			};
+
 		}
 
 		//STPStream is a smartly managed CUDA stream object.
@@ -95,12 +115,17 @@ namespace SuperTerrainPlus {
 		//STPGraphicsResource is a smartly managed CUDA graphics resource.
 		using STPGraphicsResource = STPUniqueResource<cudaGraphicsResource_t, nullptr, STPSmartDeviceObjectImpl::STPGraphicsResourceUnregisterer>;
 
+		//STPGLTextureObject is a smartly managed GL texture object.
+		using STPGLTextureObject = STPUniqueResource<STPOpenGL::STPuint, 0u, STPSmartDeviceObjectImpl::STPGLTextureDeleter>;
+		//STPGLBindlessTextureHandle is a smartly managed GL bindless texture handle to texture object.
+		using STPGLBindlessTextureHandle = STPUniqueResource<STPOpenGL::STPuint64, 0ull, STPSmartDeviceObjectImpl::STPGLTextureHandleUnresidenter>;
+
 		/**
 		 * @brief Create a new CUDA stream.
-		 * @param flag Specifies the flag for the created stream; default is cudaStreamDefault.
+		 * @param flag Specifies the flag for the created stream.
 		 * @return A managed CUDA stream object.
 		*/
-		STP_API STPStream makeStream(unsigned int = cudaStreamDefault);
+		STP_API STPStream makeStream(unsigned int);
 
 		/**
 		 * @brief Create a new CUDA stream with priority.
@@ -112,10 +137,10 @@ namespace SuperTerrainPlus {
 
 		/**
 		 * @brief Create a new CUDA event.
-		 * @param flag Specifies the flag for the created event; default is cudaEventDefault.
+		 * @param flag Specifies the flag for the created event.
 		 * @return A managed CUDA event object.
 		*/
-		STP_API STPEvent makeEvent(unsigned int = cudaEventDefault);
+		STP_API STPEvent makeEvent(unsigned int);
 
 		/**
 		 * @brief Create a new CUDA memory pool object.
@@ -146,7 +171,7 @@ namespace SuperTerrainPlus {
 		 * @param flags Register flags.
 		 * @return A managed CUDA graphics resource object.
 		*/
-		STP_API STPGraphicsResource makeGLBuffer(STPOpenGL::STPuint, unsigned int);
+		STP_API STPGraphicsResource makeGLBufferResource(STPOpenGL::STPuint, unsigned int);
 
 		/**
 		 * @brief Create a new CUDA graphics resource from GL texture or renderbuffer object.
@@ -155,7 +180,29 @@ namespace SuperTerrainPlus {
 		 * @param flags Register flags.
 		 * @return A managed CUDA graphics resource object.
 		*/
-		STP_API STPGraphicsResource makeGLImage(STPOpenGL::STPuint, STPOpenGL::STPenum, unsigned int);
+		STP_API STPGraphicsResource makeGLImageResource(STPOpenGL::STPuint, STPOpenGL::STPenum, unsigned int);
+
+		/**
+		 * @brief Create GL texture objects.
+		 * @param target Specifies the effective texture target of each created texture.
+		 * @return A managed GL texture object.
+		*/
+		STP_API STPGLTextureObject makeGLTextureObject(STPOpenGL::STPenum) noexcept;
+
+		/**
+		 * @brief Create a texture handle using the current state of the texture, including any embedded sampler state.
+		 * @param texture The texture where bindless handle is created from.
+		 * @return A managed GL bindless texture handle.
+		*/
+		STP_API STPGLBindlessTextureHandle makeGLBindlessTextureHandle(STPOpenGL::STPuint) noexcept;
+
+		/**
+		 * @brief Create a texture handle using the current state of the texture, and an external sampler state.
+		 * @param texture The texture where bindless handle is created from.
+		 * @param sampler The sampler where sampler states are fetched.
+		 * @return A managed GL bindless texture handle.
+		*/
+		STP_API STPGLBindlessTextureHandle makeGLBindlessTextureHandle(STPOpenGL::STPuint, STPOpenGL::STPuint) noexcept;
 
 	}
 

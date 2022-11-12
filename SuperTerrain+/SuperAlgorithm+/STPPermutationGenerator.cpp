@@ -36,7 +36,7 @@ constexpr static auto generateInitialTable(integer_sequence<unsigned short, Seq.
 //Use unsigned short to avoid overflow.
 constexpr static auto InitialTable = generateInitialTable(make_integer_sequence<unsigned short, numeric_limits<unsigned char>::max() + 1u> {});
 
-STPPermutationGenerator::STPPermutationResult STPPermutationGenerator::generate(const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) {
+STPPermutationGenerator::STPPermutationTable STPPermutationGenerator::generate(const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) {
 	simplex_setting.validate();
 	//distribution equals to size of gradient table
 	const auto [seed, gradientSize, offset] = simplex_setting;
@@ -73,7 +73,7 @@ STPPermutationGenerator::STPPermutationResult STPPermutationGenerator::generate(
 	}
 
 	/* ---------------------------------- prepare output ---------------------------------- */
-	STPPermutationResult result;
+	STPPermutationTable result;
 	auto& [result_d, result_h] = result;
 	auto& [perm_device, grad_device] = result_d;
 

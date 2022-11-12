@@ -33,9 +33,10 @@ namespace STPDemo {
 		 * @param program The program contains the kernel source codes
 		 * @param database_view A view to the texture database that has all texture data and splat rules loaded.
 		 * @param chunk_setting The pointer to the chunk setting.
+		 * @param anisotropy The level of anisotropy filtering to be used for textures.
 		*/
 		STPSplatmapGenerator(const STPCommonCompiler& program, const SuperTerrainPlus::STPDiversity::STPTextureDatabase::STPDatabaseView&, 
-			const SuperTerrainPlus::STPEnvironment::STPChunkSetting&);
+			const SuperTerrainPlus::STPEnvironment::STPChunkSetting&, float);
 
 		STPSplatmapGenerator(const STPSplatmapGenerator&) = delete;
 

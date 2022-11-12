@@ -109,11 +109,10 @@ namespace STPDemo {
 
 		/**
 		 * @brief Link all pipeline stages together.
-		 * @param anisotropy The level of anisotropy filtering to be used for textures.
 		 * @param chunk_setting All chunk settings, it will be copied under the object.
 		 * @param heightfield_setting All heightfield settings, also copied.
 		*/
-		void linkProgram(float, const SuperTerrainPlus::STPEnvironment::STPChunkSetting&,
+		void linkProgram(const SuperTerrainPlus::STPEnvironment::STPChunkSetting&,
 			const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting&);
 
 		/**

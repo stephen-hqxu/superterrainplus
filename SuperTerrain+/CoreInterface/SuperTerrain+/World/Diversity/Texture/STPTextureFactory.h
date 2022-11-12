@@ -3,11 +3,9 @@
 #define _STP_TEXTURE_FACTORY_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-//Container
-#include <unordered_map>
-#include <vector>
 //Memory
 #include "../../../Utility/Memory/STPSmartDeviceMemory.h"
+#include "../../../Utility/Memory/STPSmartDeviceObject.h"
 //Texture
 #include "STPTextureDatabase.h"
 
@@ -21,6 +19,10 @@
 #include <glm/vec2.hpp>
 
 #include <limits>
+#include <functional>
+//Container
+#include <unordered_map>
+#include <vector>
 
 namespace SuperTerrainPlus::STPDiversity {
 
@@ -53,9 +55,10 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation[]> LocalChunkInfo;
 
 		//A collection of all texture data
-		std::vector<STPOpenGL::STPuint> Texture;
-		//this is a 1-to-1 mapping to the texture, group to a texture buffer.
-		std::unordered_map<STPTextureInformation::STPMapGroupID, STPOpenGL::STPuint> TextureOwnership;
+		std::vector<STPSmartDeviceObject::STPGLTextureObject> Texture;
+		std::vector<STPSmartDeviceObject::STPGLBindlessTextureHandle> TextureHandle;
+		std::vector<STPOpenGL::STPuint64> RawTextureHandle;
+
 		//texture view settings for each valid texture. View of a texture can be located using the region ID on the splatmap.
 		//This data structure ensures all texture regions have one and only one view record.
 		std::vector<STPTextureInformation::STPTextureView> TextureViewRecord;
@@ -84,7 +87,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @tparam N The node type
 		 * @param node The splat structure to be converted.
 		 * @param converter A lookup table that converts texture ID to index
-		 * @return The splat registry output after the convertion
+		 * @return The splat registry output after the conversion
 		*/
 		template<typename N>
 		static std::vector<N> convertSplatID(const STPTextureDatabase::STPDatabaseView::STPNodeRecord<N>&, const STPIDConverter<STPTextureInformation::STPTextureID>&);
@@ -122,13 +125,21 @@ namespace SuperTerrainPlus::STPDiversity {
 	public:
 
 		/**
+		 * @brief Modifies the sampler state, i.e., texture parameter for a given texture.
+		 * Making any change to the texture other than texture parameter is undefined behaviour.
+		 * @param texture The name of the texture to modify.
+		*/
+		typedef std::function<void(STPOpenGL::STPuint)> STPSamplerStateModifier;
+
+		/**
 		 * @brief Setup texture factory, manufacture texture data provided and process it to the way that it can be used by texturing system.
 		 * After this function returns, all internal states are initialised and no further change can be made.
 		 * No reference is retained after the function returns.
-		 * @param database_view The pointer to the texture database view which contains all texture information
-		 * @param chunk_setting The configuration about terrain chunk
+		 * @param database_view The pointer to the texture database view which contains all texture information.
+		 * @param chunk_setting The configuration about terrain chunk.
+		 * @param modify_sampler The sampler state modifier to change the sampler state of a given texture.
 		*/
-		STPTextureFactory(const STPTextureDatabase::STPDatabaseView&, const STPEnvironment::STPChunkSetting&);
+		STPTextureFactory(const STPTextureDatabase::STPDatabaseView&, const STPEnvironment::STPChunkSetting&, const STPSamplerStateModifier&);
 
 		STPTextureFactory(const STPTextureFactory&) = delete;
 
@@ -138,7 +149,7 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		STPTextureFactory& operator=(STPTextureFactory&&) = delete;
 
-		virtual ~STPTextureFactory();
+		virtual ~STPTextureFactory() = default;
 
 		/**
 		 * @brief Generate a terrain texture splatmap based on all splat rules set.
@@ -153,14 +164,6 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param stream The CUDA stream generation work will be sent to.
 		*/
 		void operator()(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t, const STPRequestingChunkInfo&, cudaStream_t) const;
-
-		/**
-		 * @brief Obtain the texture buffer object associated with a group.
-		 * @param group_id Texture buffer owned.
-		 * @return The textuer buffer object associating with the group ID specified.
-		 * If group ID is not valid, exception will eb thrown.
-		*/
-		STPOpenGL::STPuint operator[](STPTextureInformation::STPMapGroupID) const;
 
 		/**
 		 * @brief Get a data structure containing splat texture.

@@ -82,14 +82,46 @@ void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPGraphicsResourceUnregist
 	STP_CHECK_CUDA(cudaGraphicsUnregisterResource(resource));
 }
 
-STPSmartDeviceObject::STPGraphicsResource STPSmartDeviceObject::makeGLBuffer(STPOpenGL::STPuint buffer, unsigned int flags) {
+STPSmartDeviceObject::STPGraphicsResource STPSmartDeviceObject::makeGLBufferResource(STPOpenGL::STPuint buffer, unsigned int flags) {
 	cudaGraphicsResource_t resource;
 	STP_CHECK_CUDA(cudaGraphicsGLRegisterBuffer(&resource, buffer, flags));
 	return STPGraphicsResource(resource);
 }
 
-STPSmartDeviceObject::STPGraphicsResource STPSmartDeviceObject::makeGLImage(STPOpenGL::STPuint image, STPOpenGL::STPenum target, unsigned int flags) {
+STPSmartDeviceObject::STPGraphicsResource STPSmartDeviceObject::makeGLImageResource(STPOpenGL::STPuint image, STPOpenGL::STPenum target, unsigned int flags) {
 	cudaGraphicsResource_t resource;
 	STP_CHECK_CUDA(cudaGraphicsGLRegisterImage(&resource, image, target, flags));
 	return STPGraphicsResource(resource);
+}
+
+/* STPGLTextureObject */
+
+void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPGLTextureDeleter::operator()(STPOpenGL::STPuint tbo) const noexcept {
+	glDeleteTextures(1u, &tbo);
+}
+
+STPSmartDeviceObject::STPGLTextureObject STPSmartDeviceObject::makeGLTextureObject(STPOpenGL::STPenum target) noexcept {
+	GLuint tbo;
+	glCreateTextures(target, 1u, &tbo);
+	return STPGLTextureObject(tbo);
+}
+
+/* STPGLBindlessTextureHandle */
+
+void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPGLTextureHandleUnresidenter::operator()(STPOpenGL::STPuint64 tHandle) const noexcept {
+	glMakeTextureHandleNonResidentARB(tHandle);
+}
+
+STPSmartDeviceObject::STPGLBindlessTextureHandle STPSmartDeviceObject::makeGLBindlessTextureHandle(STPOpenGL::STPuint texture) noexcept {
+	const GLuint64 tHandle = glGetTextureHandleARB(texture);
+	glMakeTextureHandleResidentARB(tHandle);
+
+	return STPGLBindlessTextureHandle(tHandle);
+}
+
+STPSmartDeviceObject::STPGLBindlessTextureHandle STPSmartDeviceObject::makeGLBindlessTextureHandle(STPOpenGL::STPuint texture, STPOpenGL::STPuint sampler) noexcept {
+	const GLuint64 tHandle = glGetTextureSamplerHandleARB(texture, sampler);
+	glMakeTextureHandleResidentARB(tHandle);
+
+	return STPGLBindlessTextureHandle(tHandle);
 }

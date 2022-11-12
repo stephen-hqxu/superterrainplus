@@ -161,9 +161,10 @@ namespace STPStart {
 				this->WorldManager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>
 					(this->WorldManager->SharedProgram, chunk_setting.MapSize, this->biomeINI.at("").at("interpolationRadius").to<unsigned int>());
 				this->WorldManager->attachTextureFactory<STPDemo::STPSplatmapGenerator>
-					(this->WorldManager->SharedProgram, this->WorldManager->getTextureDatabase(), chunk_setting);
+					(this->WorldManager->SharedProgram, this->WorldManager->getTextureDatabase(), chunk_setting,
+						this->engineINI.at("Global").at("Anisotropy").to<float>());
 
-				this->WorldManager->linkProgram(this->engineINI.at("Global").at("Anisotropy").to<float>(), chunk_setting, heightfield_setting);
+				this->WorldManager->linkProgram(chunk_setting, heightfield_setting);
 				if (!this->WorldManager) {
 					//do not proceed if it fails
 					std::terminate();
@@ -354,6 +355,7 @@ namespace STPStart {
 				const STPHeightfieldTerrain::STPTerrainShaderOption terrain_opt = {
 					this->ViewPosition,
 					uvec3(128u, 128u, 6u),
+					this->getNextSeed(),
 					STPHeightfieldTerrain::STPNormalBlendingAlgorithm::BasisTransform
 				};
 				STPEnvironment::STPTessellationSetting DepthTessSetting = mesh_setting.TessSetting;
@@ -365,7 +367,6 @@ namespace STPStart {
 				//initial setup
 				this->TerrainRenderer->setMesh(mesh_setting);
 				this->TerrainRenderer->setDepthMeshQuality(DepthTessSetting);
-				this->TerrainRenderer->seedRandomBuffer(this->getNextSeed());
 			}
 			{
 				//water
@@ -577,22 +578,28 @@ namespace STPStart {
 		MainCamera->zoom(-Yoffset);
 	}
 
-#define STP_GET_KEY(KEY, FUNC) \
-if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
-	FUNC; \
-}
+#define STP_GET_KEY(KEY, FUNC) do { \
+	if (glfwGetKey(GLCanvas, KEY) == GLFW_PRESS) { \
+		FUNC; \
+	} \
+} while (false)
 
 	inline static void process_event(double delta) {
 		using Dir = SuperTerrainPlus::STPRealism::STPCamera::STPMoveDirection;
 
-		STP_GET_KEY(GLFW_KEY_W, MainCamera->move(Dir::Forward, delta))
-		STP_GET_KEY(GLFW_KEY_S, MainCamera->move(Dir::Backward, delta))
-		STP_GET_KEY(GLFW_KEY_A, MainCamera->move(Dir::Left, delta))
-		STP_GET_KEY(GLFW_KEY_D, MainCamera->move(Dir::Right, delta))
-		STP_GET_KEY(GLFW_KEY_SPACE, MainCamera->move(Dir::Up, delta))
-		STP_GET_KEY(GLFW_KEY_C, MainCamera->move(Dir::Down, delta))
+		//modifier
+		STP_GET_KEY(GLFW_KEY_LEFT_SHIFT, delta *= 2.0);
 
-		STP_GET_KEY(GLFW_KEY_ESCAPE, glfwSetWindowShouldClose(GLCanvas, GLFW_TRUE))
+		//movement
+		STP_GET_KEY(GLFW_KEY_W, MainCamera->move(Dir::Forward, delta));
+		STP_GET_KEY(GLFW_KEY_S, MainCamera->move(Dir::Backward, delta));
+		STP_GET_KEY(GLFW_KEY_A, MainCamera->move(Dir::Left, delta));
+		STP_GET_KEY(GLFW_KEY_D, MainCamera->move(Dir::Right, delta));
+		STP_GET_KEY(GLFW_KEY_SPACE, MainCamera->move(Dir::Up, delta));
+		STP_GET_KEY(GLFW_KEY_C, MainCamera->move(Dir::Down, delta));
+
+		//system control
+		STP_GET_KEY(GLFW_KEY_ESCAPE, glfwSetWindowShouldClose(GLCanvas, GLFW_TRUE));
 	}
 	
 #undef STP_GET_KEY

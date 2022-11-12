@@ -167,9 +167,9 @@ namespace SuperTerrainPlus::STPDiversity {
 		*/
 		struct STPSplatTextureDatabase {
 
-			//An array of OpenGL texture buffer objects in the form of texture 2D array.
-			const STPOpenGL::STPuint* TextureBufferObject;
-			size_t TextureBufferCount;
+			//An array of OpenGL handles to bindless texture buffer objects in the form of texture 2D array.
+			const STPOpenGL::STPuint64* TextureHandle;
+			size_t TextureHandleCount;
 			//An array of structure of indices to locate a specific type of texture for a region in the texture buffer array.
 			const STPTextureDataLocation* LocationRegistry;
 			size_t LocationRegistryCount;
