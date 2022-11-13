@@ -10,8 +10,6 @@ STPScenePipeline.cpp
 
 STPRandomTextureGenerator.cu
 # /Object
-Object/STPBindlessBuffer.cpp
-Object/STPBindlessTexture.cpp
 Object/STPBuffer.cpp
 Object/STPFrameBuffer.cpp
 Object/STPPipelineManager.cpp

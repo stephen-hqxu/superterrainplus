@@ -91,8 +91,8 @@ STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLig
 	this->ShadowData.bufferStorage(shadowBuffer_size, 
 		GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
 	//grab the address of buffer
-	this->ShadowDataAddress = STPBindlessBuffer(this->ShadowData, GL_READ_ONLY);
-	const GLuint64EXT shadowData_addr = *this->ShadowDataAddress;
+	this->ShadowDataAddress = this->ShadowData.getAddress();
+	this->ShadowData.makeResident(GL_READ_ONLY);
 
 	/* ----------------------------------- initial shadow data fill up --------------------------------------- */
 	unsigned char* const shadowData_init = reinterpret_cast<unsigned char*>(this->ShadowData.mapBufferRange(0, shadowBuffer_size, 
@@ -106,8 +106,8 @@ STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLig
 	//fixed data header
 	STPPackedCSMBufferHeader* const dataHeader = reinterpret_cast<STPPackedCSMBufferHeader*>(shadowData_init);
 	dataHeader->LiDim = static_cast<unsigned int>(lightSpaceDim);
-	dataHeader->LiSpacePtr = shadowData_addr + shadowBufferMat_offset;
-	dataHeader->DivPtr = shadowData_addr + shadowBufferDiv_offset;
+	dataHeader->LiSpacePtr = this->ShadowDataAddress + shadowBufferMat_offset;
+	dataHeader->DivPtr = this->ShadowDataAddress + shadowBufferDiv_offset;
 
 	//skip light space matrix, send frustum divisor
 	float* const shadowData_div = reinterpret_cast<float*>(shadowData_init + shadowBufferDiv_offset);
@@ -302,5 +302,5 @@ inline size_t STPCascadedShadowMap::lightSpaceDimension() const {
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPCascadedShadowMap::lightSpaceMatrixAddress() const {
-	return *this->ShadowDataAddress + sizeof(STPPackedCSMBufferHeader);
+	return this->ShadowDataAddress + sizeof(STPPackedCSMBufferHeader);
 }

@@ -21,7 +21,7 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STP_REALISM_API STPRenderBufferDeleter {
 		public:
 
-			void operator()(STPOpenGL::STPuint) const;
+			void operator()(STPOpenGL::STPuint) const noexcept;
 
 		};
 		typedef STPSmartGLuintObject<STPRenderBufferDeleter> STPSmartRenderBuffer;
@@ -33,7 +33,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Init a new and empty render buffer object.
 		*/
-		STPRenderBuffer();
+		STPRenderBuffer() noexcept;
 
 		STPRenderBuffer(const STPRenderBuffer&) = delete;
 
@@ -49,24 +49,24 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Get the underlying managed render buffer object.
 		 * @return The render buffer object.
 		*/
-		STPOpenGL::STPuint operator*() const;
+		STPOpenGL::STPuint operator*() const noexcept;
 
 		/**
 		 * @brief Bind a renderbuffer to a renderbuffer target.
 		*/
-		void bind() const;
+		void bind() const noexcept;
 
 		/**
 		 * @brief Unbind renderbuffer target.
 		*/
-		static void unbind();
+		static void unbind() noexcept;
 
 		/**
 		 * @brief Establish data storage, format and dimensions of a renderbuffer object's image.
 		 * @param internal Specifies the internal format to use for the renderbuffer object's image.
 		 * @param dimension The width and height of the renderbuffer, in pixels.
 		*/
-		void renderbufferStorage(STPOpenGL::STPenum, STPGLVector::STPsizeiVec2);
+		void renderbufferStorage(STPOpenGL::STPenum, STPGLVector::STPsizeiVec2) noexcept;
 
 		/**
 		 * @brief Establish data storage, format, dimensions and sample count of a renderbuffer object's image.
@@ -74,7 +74,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param internal Specifies the internal format to use for the renderbuffer object's image.
 		 * @param dimension The width and height of the renderbuffer, in pixels.
 		*/
-		void renderbufferStorageMultisample(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec2);
+		void renderbufferStorageMultisample(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec2) noexcept;
 
 	};
 

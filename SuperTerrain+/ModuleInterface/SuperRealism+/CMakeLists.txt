@@ -18,7 +18,6 @@ Environment/STPWaterSetting.h
 # /Geometry
 Geometry/STPPlaneGeometry.h
 # /Object
-Object/STPBindlessBuffer.h
 Object/STPBindlessTexture.h
 Object/STPBuffer.h
 Object/STPFrameBuffer.h

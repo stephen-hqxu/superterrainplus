@@ -25,7 +25,7 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STP_REALISM_API STPFrameBufferDeleter {
 		public:
 
-			void operator()(STPOpenGL::STPuint) const;
+			void operator()(STPOpenGL::STPuint) const noexcept;
 
 		};
 		typedef STPSmartGLuintObject<STPFrameBufferDeleter> STPSmartFrameBuffer;
@@ -37,7 +37,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Create a new frame buffer object.
 		*/
-		STPFrameBuffer();
+		STPFrameBuffer() noexcept;
 
 		STPFrameBuffer(const STPFrameBuffer&) = delete;
 
@@ -53,26 +53,33 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Get the GL framebuffer object.
 		 * @return The framebuffer object.
 		*/
-		STPOpenGL::STPuint operator*() const;
+		STPOpenGL::STPuint operator*() const noexcept;
 
 		/**
 		 * @brief Bind a framebuffer to a framebuffer target.
 		 * @param target Specifies the framebuffer target of the binding operation.
 		*/
-		void bind(STPOpenGL::STPenum) const;
+		void bind(STPOpenGL::STPenum) const noexcept;
 
 		/**
 		 * @brief Break the existing binding of a framebuffer object to target. 
 		 * @param target Specifies the framebuffer target of the unbinding operation.
 		*/
-		static void unbind(STPOpenGL::STPenum);
+		static void unbind(STPOpenGL::STPenum) noexcept;
 
 		/**
-		 * @brief Check the completeness status of a framebuffer.
+		 * @brief Get the completeness status of a framebuffer.
 		 * @param target Specify which framebuffer completeness of framebuffer is checked for status.
 		 * @return A GL status enum.
 		*/
-		STPOpenGL::STPenum status(STPOpenGL::STPenum) const;
+		STPOpenGL::STPenum status(STPOpenGL::STPenum) const noexcept;
+
+		/**
+		 * @brief Validate the completeness status of a framebuffer.
+		 * If the framebuffer fails the validation, excetion is generated.
+		 * @param target Specify which framebuffer completeness of framebuffer is checked for status.
+		*/
+		void validate(STPOpenGL::STPenum) const;
 
 		/**
 		 * @brief Attach a level of a texture object as a logical buffer of a framebuffer object.
@@ -80,7 +87,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param texture The pointer to the managed texture object which specifies the name of an existing texture object to attach.
 		 * @param level Specifies the mipmap level of the texture object to attach.
 		*/
-		void attach(STPOpenGL::STPenum, const STPTexture&, STPOpenGL::STPint);
+		void attach(STPOpenGL::STPenum, const STPTexture&, STPOpenGL::STPint) noexcept;
 
 		/**
 		 * @brief Attach a renderbuffer as a logical buffer of a framebuffer object.
@@ -88,37 +95,37 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param renderbuffer The pointer to the managed render buffer object which 
 		 * specifies the name of an existing renderbuffer object of type renderbuffer target to attach.
 		*/
-		void attach(STPOpenGL::STPenum, const STPRenderBuffer&);
+		void attach(STPOpenGL::STPenum, const STPRenderBuffer&) noexcept;
 
 		/**
 		 * @brief Detach a texture target from the framebuffer.
 		 * @param attachment The attachment on the framebuffer to be detached.
 		*/
-		void detachTexture(STPOpenGL::STPenum);
+		void detachTexture(STPOpenGL::STPenum) noexcept;
 
 		/**
 		 * @brief Detach a renderbuffer target from the framebuffer.
 		 * @param attachment The attachment on the framebuffer to be detached.
 		*/
-		void detachRenderBuffer(STPOpenGL::STPenum);
+		void detachRenderBuffer(STPOpenGL::STPenum) noexcept;
 
 		/**
 		 * @brief Specify which colour buffers are to be drawn into.
 		 * @param buf The buffer for the framebuffer.
 		*/
-		void drawBuffer(STPOpenGL::STPenum);
+		void drawBuffer(STPOpenGL::STPenum) noexcept;
 
 		/**
 		 * @brief Specifies a list of colour buffers to be drawn into.
 		 * @param bufs Points to an array of symbolic constants specifying the buffers into which fragment colour or data values will be written.
 		*/
-		void drawBuffers(const std::vector<STPOpenGL::STPenum>&);
+		void drawBuffers(const std::vector<STPOpenGL::STPenum>&) noexcept;
 
 		/**
 		 * @brief Select a colour buffer source for pixels.
 		 * @param mode Specifies a colour buffer.
 		*/
-		void readBuffer(STPOpenGL::STPenum);
+		void readBuffer(STPOpenGL::STPenum) noexcept;
 
 		/**
 		 * @brief Clear individual colour buffers of a framebuffer.
@@ -128,28 +135,28 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param drawbuffer Specify a particular draw buffer to clear.
 		 * @param colour A four-element typed vector specifying the R, G, B and A colour to clear that draw buffer to.
 		*/
-		void clearColor(STPOpenGL::STPint, const STPGLVector::STPfloatVec4&);
-		void clearColor(STPOpenGL::STPint, const STPGLVector::STPintVec4&);
-		void clearColor(STPOpenGL::STPint, const STPGLVector::STPuintVec4&);
+		void clearColor(STPOpenGL::STPint, const STPGLVector::STPfloatVec4&) noexcept;
+		void clearColor(STPOpenGL::STPint, const STPGLVector::STPintVec4&) noexcept;
+		void clearColor(STPOpenGL::STPint, const STPGLVector::STPuintVec4&) noexcept;
 
 		/**
 		 * @brief Clear depth buffer of a framebuffer.
 		 * @param value Value to clear the depth buffer to.
 		*/
-		void clearDepth(STPOpenGL::STPfloat);
+		void clearDepth(STPOpenGL::STPfloat) noexcept;
 
 		/**
 		 * @brief Clear stencil buffer of a framebuffer.
 		 * @param value Value to clear the stencil buffer to.
 		*/
-		void clearStencil(STPOpenGL::STPint);
+		void clearStencil(STPOpenGL::STPint) noexcept;
 
 		/**
 		 * @brief Clear both depth and stencil buffer of a framebuffer.
 		 * @param depth The value depth buffer is cleared to.
 		 * @param stencil The value stencil buffer is cleared to.
 		*/
-		void clearDepthStencil(STPOpenGL::STPfloat, STPOpenGL::STPint);
+		void clearDepthStencil(STPOpenGL::STPfloat, STPOpenGL::STPint) noexcept;
 
 		/**
 		 * @brief Copy a block of pixels from one framebuffer object to the current one.
@@ -159,7 +166,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param mask The bitwise OR of the flags indicating which buffers are to be copied.
 		 * @param filter Specifies the interpolation to be applied if the image is stretched.
 		*/
-		void blitFrom(const STPFrameBuffer&, const STPGLVector::STPintVec4&, const STPGLVector::STPintVec4&, STPOpenGL::STPbitfield, STPOpenGL::STPenum);
+		void blitFrom(const STPFrameBuffer&, const STPGLVector::STPintVec4&, const STPGLVector::STPintVec4&, STPOpenGL::STPbitfield, STPOpenGL::STPenum) noexcept;
 
 	};
 

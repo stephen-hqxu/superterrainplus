@@ -6,7 +6,6 @@
 //Error
 #include <SuperTerrain+/Exception/STPInvalidArgument.h>
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPGLError.h>
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
@@ -66,9 +65,7 @@ STPTexture STPScreen::STPSimpleScreenFrameBuffer::updateScreenFrameBuffer(
 		this->ScreenColorContainer.detachTexture(GL_STENCIL_ATTACHMENT);
 	}
 	//depth buffer is not needed because we are doing off-screen rendering
-	if (this->ScreenColorContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		throw STPException::STPGLError("Screen framebuffer cannot be validated");
-	}
+	this->ScreenColorContainer.validate(GL_FRAMEBUFFER);
 
 	return new_screen_color;
 }
@@ -95,7 +92,7 @@ void STPScreen::STPSimpleScreenBindlessFrameBuffer::setScreenBuffer(
 	using std::move;
 	STPTexture new_screen_color = this->updateScreenFrameBuffer(stencil, dimension, internal);
 	//update bindless handle
-	this->ScreenColorHandle = move(STPBindlessTexture(new_screen_color, this->ScreenColorSampler));
+	this->ScreenColorHandle = STPBindlessTexture::make(new_screen_color, this->ScreenColorSampler);
 	this->ScreenColor = move(new_screen_color);
 }
 

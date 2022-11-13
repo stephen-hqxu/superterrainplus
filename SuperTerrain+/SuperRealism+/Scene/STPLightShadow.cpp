@@ -2,7 +2,6 @@
 
 //Error
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPGLError.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -24,7 +23,7 @@ STPLightShadow::STPLightShadow(unsigned int resolution, STPShadowMapFormat forma
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPLightShadow::shadowMapHandle() const {
-	return *this->ShadowMapHandle;
+	return this->ShadowMapHandle.get();
 }
 
 void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::STPint level, STPOpenGL::STPfloat anisotropy) {
@@ -95,13 +94,11 @@ void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::S
 		this->ShadowMapContainer.readBuffer(GL_NONE);
 	}
 
-	if (this->ShadowMapContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		throw STPException::STPGLError("Framebuffer for capturing shadow map fails to setup");
-	}
+	this->ShadowMapContainer.validate(GL_FRAMEBUFFER);
 
 	/* --------------------------- setup depth handle -------------------------------- */
-	this->ShadowMapHandle = STPBindlessTexture(shadow_map);
-	this->updateShadowMapHandle(*this->ShadowMapHandle);
+	this->ShadowMapHandle = STPBindlessTexture::make(shadow_map);
+	this->updateShadowMapHandle(this->ShadowMapHandle.get());
 
 	using std::move;
 	//store the target as member
@@ -109,7 +106,7 @@ void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::S
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPLightShadow::shadowDataAddress() const {
-	return *this->ShadowDataAddress;
+	return this->ShadowDataAddress;
 }
 
 void STPLightShadow::captureDepth() const {

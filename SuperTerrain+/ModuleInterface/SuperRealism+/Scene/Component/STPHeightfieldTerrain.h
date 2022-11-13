@@ -9,7 +9,6 @@
 //GL Utility
 #include "../../Object/STPPipelineManager.h"
 #include "../../Object/STPBuffer.h"
-#include "../../Object/STPBindlessBuffer.h"
 #include "../../Object/STPVertexArray.h"
 #include "../../Object/STPTexture.h"
 #include "../../Object/STPBindlessTexture.h"
@@ -87,7 +86,7 @@ namespace SuperTerrainPlus::STPRealism {
 		STPBuffer TerrainRenderCommand;
 
 		STPTexture NoiseSample;
-		STPBindlessTexture NoiseSampleHandle;
+		STPBindlessTexture::STPHandle NoiseSampleHandle;
 
 		//Shader program for terrain rendering
 		//modeller contains vertex, tes control and tes eval, shader contains geom and frag.
@@ -98,7 +97,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//data for texture splatting
 		STPBuffer SplatRegion;
-		STPBindlessBuffer SplatRegionAddress;
+		STPOpenGL::STPuint64 SplatRegionAddress;
 
 		/**
 		 * @brief Calculate the base chunk position (the coordinate of top-left corner) for the most top-left corner chunk.

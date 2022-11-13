@@ -5,36 +5,37 @@
 
 using namespace SuperTerrainPlus::STPRealism;
 
-inline static GLuint createRenderBuffer() {
+inline static GLuint createRenderBuffer() noexcept {
 	GLuint rbo;
 	glCreateRenderbuffers(1, &rbo);
 	return rbo;
 }
 
-void STPRenderBuffer::STPRenderBufferDeleter::operator()(STPOpenGL::STPuint render_buffer) const {
+void STPRenderBuffer::STPRenderBufferDeleter::operator()(STPOpenGL::STPuint render_buffer) const noexcept {
 	glDeleteRenderbuffers(1u, &render_buffer);
 }
 
-STPRenderBuffer::STPRenderBuffer() : RenderBuffer(STPSmartRenderBuffer(createRenderBuffer())) {
+STPRenderBuffer::STPRenderBuffer() noexcept : RenderBuffer(STPSmartRenderBuffer(createRenderBuffer())) {
 
 }
 
-SuperTerrainPlus::STPOpenGL::STPuint STPRenderBuffer::operator*() const {
+SuperTerrainPlus::STPOpenGL::STPuint STPRenderBuffer::operator*() const noexcept {
 	return this->RenderBuffer.get();
 }
 
-void STPRenderBuffer::bind() const {
+void STPRenderBuffer::bind() const noexcept {
 	glBindRenderbuffer(GL_RENDERBUFFER, this->RenderBuffer.get());
 }
 
-void STPRenderBuffer::unbind() {
+void STPRenderBuffer::unbind() noexcept {
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
-void STPRenderBuffer::renderbufferStorage(STPOpenGL::STPenum internal, STPGLVector::STPsizeiVec2 dimension) {
+void STPRenderBuffer::renderbufferStorage(STPOpenGL::STPenum internal, STPGLVector::STPsizeiVec2 dimension) noexcept {
 	glNamedRenderbufferStorage(this->RenderBuffer.get(), internal, dimension.x, dimension.y);
 }
 
-void STPRenderBuffer::renderbufferStorageMultisample(STPOpenGL::STPsizei samples, STPOpenGL::STPenum internal, STPGLVector::STPsizeiVec2 dimension) {
+void STPRenderBuffer::renderbufferStorageMultisample(
+	STPOpenGL::STPsizei samples, STPOpenGL::STPenum internal, STPGLVector::STPsizeiVec2 dimension) noexcept {
 	glNamedRenderbufferStorageMultisample(this->RenderBuffer.get(), samples, internal, dimension.x, dimension.y);
 }

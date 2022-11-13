@@ -248,7 +248,7 @@ private:
 	//The dependent scene pipeline.
 	const STPScenePipeline& Pipeline;
 
-	typedef std::array<STPBindlessTexture, 5u> STPGeometryBufferHandle;
+	typedef std::array<STPBindlessTexture::STPHandle, 5u> STPGeometryBufferHandle;
 	typedef std::array<GLuint64, 5u> STPGeometryBufferRawHandle;
 
 	STPScreen DeferredQuad;
@@ -466,24 +466,22 @@ public:
 		this->ExtinctionEnvironmentCache.setScreenBuffer(const_cast<STPTexture*>(&depth_stencil), dimension, GL_RGB16F);
 
 		//verify
-		if (this->GeometryContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE
-			|| this->AmbientOcclusionContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE
-			|| this->ExtinctionCullingContainer.status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			throw STPException::STPGLError("Geometry buffer framebuffer fails to verify");
-		}
+		this->GeometryContainer.validate(GL_FRAMEBUFFER);
+		this->AmbientOcclusionContainer.validate(GL_FRAMEBUFFER);
+		this->ExtinctionCullingContainer.validate(GL_FRAMEBUFFER);
 
 		//reset bindless handle
 		this->GHandle = std::move(STPGeometryBufferHandle{
-			STPBindlessTexture(albedo, this->GSampler),
-			STPBindlessTexture(normal, this->GSampler),
-			STPBindlessTexture(roughness, this->GSampler),
-			STPBindlessTexture(ao, this->GSampler),
-			STPBindlessTexture(depth_stencil, this->DepthSampler)
+			STPBindlessTexture::make(albedo, this->GSampler),
+			STPBindlessTexture::make(normal, this->GSampler),
+			STPBindlessTexture::make(roughness, this->GSampler),
+			STPBindlessTexture::make(ao, this->GSampler),
+			STPBindlessTexture::make(depth_stencil, this->DepthSampler)
 		});
 		//upload new handles
 		STPGeometryBufferRawHandle raw_handle;
 		std::transform(this->GHandle->cbegin(), this->GHandle->cend(), raw_handle.begin(),
-			[](const auto& handle) { return *handle; });
+			[](const auto& handle) { return handle.get(); });
 		this->DeferredQuad.OffScreenRenderer.uniform(
 			glProgramUniformHandleui64vARB, "GBuffer", static_cast<GLsizei>(raw_handle.size()), raw_handle.data());
 

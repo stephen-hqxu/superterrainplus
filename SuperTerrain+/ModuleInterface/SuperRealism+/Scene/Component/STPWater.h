@@ -30,7 +30,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//A texture to hold all water level data for each biome
 		STPTexture WaterLevelTable;
-		STPBindlessTexture WaterLevelTableHandle;
+		STPBindlessTexture::STPHandle WaterLevelTableHandle;
 
 		mutable STPProgramManager WaterAnimator;
 		STPPipelineManager WaterRenderer;

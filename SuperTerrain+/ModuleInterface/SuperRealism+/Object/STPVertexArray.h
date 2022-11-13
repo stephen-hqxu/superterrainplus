@@ -36,7 +36,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @brief Init STPVertexAttributeBuilder
 			 * @param vao The vertex array object.
 			*/
-			STPVertexAttributeBuilder(STPOpenGL::STPuint);
+			STPVertexAttributeBuilder(STPOpenGL::STPuint) noexcept;
 
 			~STPVertexAttributeBuilder() = default;
 
@@ -51,7 +51,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @param attribSize The number of byte this type of format has.
 			 * @return The pointer to the current builder for chaining.
 			*/
-			STPVertexAttributeBuilder& format(STPOpenGL::STPint, STPOpenGL::STPenum, STPOpenGL::STPboolean, unsigned int);
+			STPVertexAttributeBuilder& format(STPOpenGL::STPint, STPOpenGL::STPenum, STPOpenGL::STPboolean, unsigned int) noexcept;
 
 			/**
 			 * @brief Bind a buffer to the vertex array binding point.
@@ -60,27 +60,27 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @param offset The offset of the first element of the buffer.
 			 * @return The pointer to the current builder for chaining.
 			*/
-			STPVertexAttributeBuilder& vertexBuffer(const STPBuffer&, STPOpenGL::STPintptr);
+			STPVertexAttributeBuilder& vertexBuffer(const STPBuffer&, STPOpenGL::STPintptr) noexcept;
 
 			/**
 			 * @brief Bind a element buffer to the current vertex array binding point.
 			 * @param buffer The pointer to the element buffer.
 			 * @return The pointer to the current builder for chaining.
 			*/
-			STPVertexAttributeBuilder& elementBuffer(const STPBuffer&);
+			STPVertexAttributeBuilder& elementBuffer(const STPBuffer&) noexcept;
 
 			/**
 			 * @brief Bind all previous formatted attribute to the next binding block.
 			 * @return The pointer to the current builder for chaining.
 			*/
-			STPVertexAttributeBuilder& binding();
+			STPVertexAttributeBuilder& binding() noexcept;
 
 			/**
 			 * @brief Set vertex array divisor for the current attribute index.
 			 * @param divisor Specify the number of instances that will pass between updates of the generic attribute at slot index. 
 			 * @return The pointer to the current builder for chaining.
 			*/
-			STPVertexAttributeBuilder& divisor(STPOpenGL::STPint);
+			STPVertexAttributeBuilder& divisor(STPOpenGL::STPint) noexcept;
 
 		};
 
@@ -92,7 +92,7 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STP_REALISM_API STPVertexArrayDeleter {
 		public:
 
-			void operator()(STPOpenGL::STPuint) const;
+			void operator()(STPOpenGL::STPuint) const noexcept;
 
 		};
 		typedef STPSmartGLuintObject<STPVertexArrayDeleter> STPSmartVertexArray;
@@ -104,7 +104,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Initialise a new vertex array object.
 		*/
-		STPVertexArray();
+		STPVertexArray() noexcept;
 
 		STPVertexArray(const STPVertexArray&) = delete;
 
@@ -119,43 +119,43 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Bind the current vertex array to the GL context.
 		*/
-		void bind() const;
+		void bind() const noexcept;
 
 		/**
 		 * @brief Reset vertex array of the current GL context to zero.
 		*/
-		static void unbind();
+		static void unbind() noexcept;
 
 		/**
 		 * @brief Get the underlying vertex array object.
 		 * @return The vertex array.
 		*/
-		STPOpenGL::STPuint operator*() const;
+		STPOpenGL::STPuint operator*() const noexcept;
 
 		/**
 		 * @brief Enable a generic vertex attribute array.
 		 * @param index Specifies the index of the generic vertex attribute to be enabled.
 		*/
-		void enable(STPOpenGL::STPuint);
+		void enable(STPOpenGL::STPuint) noexcept;
 
 		/**
 		 * @brief Enable a vertex attribute array within a range.
 		 * @param start The first index to be enabled.
 		 * @param count The number of index to be enabled.
 		*/
-		void enable(STPOpenGL::STPuint, STPOpenGL::STPuint);
+		void enable(STPOpenGL::STPuint, STPOpenGL::STPuint) noexcept;
 
 		/**
 		 * @brief Disable a generic vertex attribute array.
 		 * @param index Specifies the index of the generic vertex attribute to be disable.
 		*/
-		void disable(STPOpenGL::STPuint);
+		void disable(STPOpenGL::STPuint) noexcept;
 
 		/**
 		 * @brief Get a vertex array attribute builder.
 		 * @return A attribute builder for the current vertex array.
 		*/
-		STPVertexAttributeBuilder attribute();
+		STPVertexAttributeBuilder attribute() noexcept;
 
 	};
 

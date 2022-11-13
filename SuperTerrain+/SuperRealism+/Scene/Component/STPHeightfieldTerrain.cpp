@@ -172,8 +172,8 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	//prepare region registry
 	//store all region registry data into a buffer and grab the device address
 	this->SplatRegion.bufferStorageSubData(registry, sizeof(STPTextureDataLocation) * registry_count, GL_NONE);
-	this->SplatRegionAddress = STPBindlessBuffer(this->SplatRegion, GL_READ_ONLY);
-	const GLuint64EXT region_address_beg = *this->SplatRegionAddress;
+	this->SplatRegionAddress = this->SplatRegion.getAddress();
+	this->SplatRegion.makeResident(GL_READ_ONLY);
 
 	//next build the registry lookup dictionary
 	unique_ptr<GLuint64EXT[]> region_data_address = make_unique<GLuint64EXT[]>(dict_count);
@@ -186,7 +186,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 		}
 
 		//if this region has texture data, we lookup the address of it.
-		region_data_address[i] = region_address_beg + sizeof(STPTextureDataLocation) * reg_loc;
+		region_data_address[i] = this->SplatRegionAddress + sizeof(STPTextureDataLocation) * reg_loc;
 	}
 
 	//prepare texture region scaling data
@@ -222,8 +222,8 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 		STP_CHECK_CUDA(cudaGraphicsUnmapResources(1, &res));
 	}
 	//create bindless handle for noise sampler
-	this->NoiseSampleHandle = STPBindlessTexture(this->NoiseSample);
-	this->TerrainShader.uniform(glProgramUniformHandleui64ARB, "Noisemap", *this->NoiseSampleHandle);
+	this->NoiseSampleHandle = STPBindlessTexture::make(this->NoiseSample);
+	this->TerrainShader.uniform(glProgramUniformHandleui64ARB, "Noisemap", this->NoiseSampleHandle.get());
 
 	/* -------------------------------------------- initialise ----------------------------------------- */
 	this->TerrainGenerator.load(option.InitialViewPosition);

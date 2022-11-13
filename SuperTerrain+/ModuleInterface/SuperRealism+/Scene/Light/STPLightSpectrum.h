@@ -22,7 +22,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 		//The generated spectrum, it is a 1D texture of light colour
 		STPTexture Spectrum;
-		STPBindlessTexture SpectrumHandle;
+		STPBindlessTexture::STPHandle SpectrumHandle;
 
 	public:
 

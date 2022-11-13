@@ -102,7 +102,7 @@ namespace SuperTerrainPlus::STPRealism {
 
 			//The bindless handle for the screen colour texture.
 			STPSampler ScreenColorSampler;
-			STPBindlessTexture ScreenColorHandle;
+			STPBindlessTexture::STPHandle ScreenColorHandle;
 
 			STPSimpleScreenBindlessFrameBuffer();
 

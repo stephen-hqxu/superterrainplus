@@ -80,7 +80,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 	this->RandomRotationVector.filter(GL_NEAREST, GL_NEAREST);
 	this->RandomRotationVector.wrap(GL_REPEAT);
 	//create handle
-	this->RandomRotationVectorHandle = STPBindlessTexture(this->RandomRotationVector);
+	this->RandomRotationVectorHandle = STPBindlessTexture::make(this->RandomRotationVector);
 
 	/* ------------------------------------------ setup uniform ------------------------------------- */
 	this->OcclusionQuad.OffScreenRenderer.uniform(glProgramUniform1f, "KernelRadius", kernel_setting.SampleRadius)
@@ -88,7 +88,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 		//sampler setup
 		.uniform(glProgramUniform1i, "GeoDepth", 0)
 		.uniform(glProgramUniform1i, "GeoNormal", 1)
-		.uniform(glProgramUniformHandleui64ARB, "RandomRotationVector", *this->RandomRotationVectorHandle);
+		.uniform(glProgramUniformHandleui64ARB, "RandomRotationVector", this->RandomRotationVectorHandle.get());
 
 	//setup kernel data based on chosen algorithm
 	kernel_instance.uniformKernel(this->OcclusionQuad.OffScreenRenderer, rng);

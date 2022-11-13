@@ -67,8 +67,8 @@ void STPBidirectionalScattering::setCopyBuffer(uvec2 dimension) {
 	//update buffer dimension
 	this->BufferDimension = dimension;
 	//send new handle
-	this->BSDFQuad.OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, "SceneColor", *this->RawSceneColorCopier.ScreenColorHandle)
-		.uniform(glProgramUniformHandleui64ARB, "SceneDepth", *this->RawSceneDepthCopier.ScreenColorHandle);
+	this->BSDFQuad.OffScreenRenderer.uniform(glProgramUniformHandleui64ARB, "SceneColor", this->RawSceneColorCopier.ScreenColorHandle.get())
+		.uniform(glProgramUniformHandleui64ARB, "SceneDepth", this->RawSceneDepthCopier.ScreenColorHandle.get());
 }
 
 void STPBidirectionalScattering::copyScene(const STPTexture& color, const STPTexture& depth) {

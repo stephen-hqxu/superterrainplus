@@ -7,8 +7,6 @@
 #include "./Light/STPLightSpectrum.h"
 //Light Shadow
 #include "./Light/STPLightShadow.h"
-//GL Object
-#include "../Object/STPBindlessBuffer.h"
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -34,7 +32,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//A buffer stores data of a light.
 		STPBuffer LightData;
 		//An address to the light data buffer to be shared with shaders.
-		STPBindlessBuffer LightDataAddress;
+		STPOpenGL::STPuint64 LightDataAddress;
 
 	public:
 

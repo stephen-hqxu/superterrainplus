@@ -32,7 +32,7 @@ STPLightSpectrum::STPLightSpectrum(unsigned int length, STPOpenGL::STPenum forma
 	this->Spectrum.wrap(GL_CLAMP_TO_EDGE);
 
 	//create spectrum texture handle
-	this->SpectrumHandle = STPBindlessTexture(this->Spectrum);
+	this->SpectrumHandle = STPBindlessTexture::make(this->Spectrum);
 }
 
 const STPTexture& STPLightSpectrum::spectrum() const {
@@ -40,7 +40,7 @@ const STPTexture& STPLightSpectrum::spectrum() const {
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPLightSpectrum::spectrumHandle() const {
-	return *this->SpectrumHandle;
+	return this->SpectrumHandle.get();
 }
 
 template<typename T>

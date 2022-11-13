@@ -2,7 +2,6 @@
 #include <SuperRealism+/STPRealismInfo.h>
 
 //GL Object
-#include <SuperRealism+/Object/STPBindlessBuffer.h>
 #include <SuperRealism+/Object/STPProgramManager.h>
 
 //Error
@@ -42,8 +41,10 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 	//each vertex has a 2-component float as position and 2-component float as texture coordinate
 	buffer.bufferStorage(4u * sizeof(float) * vertexCount, GL_NONE);
 	index.bufferStorage(sizeof(unsigned int) * this->IndexCount, GL_NONE);
-	STPBindlessBuffer buffer_addr(buffer, GL_WRITE_ONLY), 
-		index_addr(index, GL_WRITE_ONLY);
+	const GLuint64EXT buffer_addr = buffer.getAddress(),
+		index_addr = index.getAddress();
+	buffer.makeResident(GL_WRITE_ONLY);
+	index.makeResident(GL_WRITE_ONLY);
 
 	//setup tile buffer generator shader
 	STPShaderManager tile_generator(GL_COMPUTE_SHADER);
@@ -59,8 +60,8 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 		.finalise();
 
 	//setup up uniform data
-	plane_generator.uniform(glProgramUniformui64NV, "TileBuffer", *buffer_addr)
-		.uniform(glProgramUniformui64NV, "TileIndex", *index_addr)
+	plane_generator.uniform(glProgramUniformui64NV, "TileBuffer", buffer_addr)
+		.uniform(glProgramUniformui64NV, "TileIndex", index_addr)
 		.uniform(glProgramUniform2uiv, "TotalTile", 1, value_ptr(tile_dimension))
 		.uniform(glProgramUniform2dv, "BaseTilePosition", 1, value_ptr(top_left_position));
 
@@ -96,6 +97,8 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 
 	//clear up
 	STPProgramManager::unuse();
+	buffer.makeNonResident();
+	index.makeNonResident();
 }
 
 const STPPlaneGeometry::STPPlaneGeometryData& STPPlaneGeometry::operator*() const {

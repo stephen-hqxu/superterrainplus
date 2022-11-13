@@ -103,7 +103,7 @@ namespace SuperTerrainPlus::STPRealism {
 		STPScreen OcclusionQuad;
 
 		STPTexture RandomRotationVector;
-		STPBindlessTexture RandomRotationVectorHandle;
+		STPBindlessTexture::STPHandle RandomRotationVectorHandle;
 		//Sampler for the external input
 		STPSampler GBufferSampler;
 

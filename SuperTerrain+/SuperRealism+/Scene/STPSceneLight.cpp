@@ -22,7 +22,7 @@ STPLightShadow* STPSceneLight::getLightShadow() {
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPSceneLight::lightDataAddress() const {
-	return *this->LightDataAddress;
+	return this->LightDataAddress;
 }
 
 //STPAmbientLight.h
@@ -51,7 +51,8 @@ STPAmbientLight::STPAmbientLight(STPLightSpectrum&& spectrum) : STPSceneLight(mo
 	this->LightData.bufferStorageSubData(&ambBuf, sizeof(STPPackedAmbientLightBuffer), 
 		GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
 	//get the buffer address
-	this->LightDataAddress = STPBindlessBuffer(this->LightData, GL_READ_ONLY);
+	this->LightDataAddress = this->LightData.getAddress();
+	this->LightData.makeResident(GL_READ_ONLY);
 
 	//get the pointer to ambient light spectrum coordinate
 	this->AmbSpecCoord = reinterpret_cast<float*>(this->LightData.mapBufferRange(offsetof(STPPackedAmbientLightBuffer, SpecCoord), sizeof(float), 
@@ -102,7 +103,8 @@ STPDirectionalLight::STPDirectionalLight(STPDirectionalLightShadow&& dir_shadow,
 	};
 	this->LightData.bufferStorageSubData(&dirBuf, sizeof(STPPackedDirectionalLightBuffer), 
 		GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
-	this->LightDataAddress = STPBindlessBuffer(this->LightData, GL_READ_ONLY);
+	this->LightDataAddress = this->LightData.getAddress();
+	this->LightData.makeResident(GL_READ_ONLY);
 
 	unsigned char* const mappedDirBuf = reinterpret_cast<unsigned char*>(this->LightData.mapBufferRange(offsetof(STPPackedDirectionalLightBuffer, Dir),
 		sizeof(vec3) + sizeof(float), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));

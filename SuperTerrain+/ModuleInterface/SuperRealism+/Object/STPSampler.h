@@ -24,7 +24,7 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STP_REALISM_API STPSamplerUnbinder {
 		public:
 
-			void operator()(STPOpenGL::STPuint) const;
+			void operator()(STPOpenGL::STPuint) const noexcept;
 
 		};
 		//A smart texture unit state manager that automatically unbinds the sampler from specified texture unit to avoid state leakage.
@@ -38,7 +38,7 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STP_REALISM_API STPSamplerDeleter {
 		public:
 
-			void operator()(STPOpenGL::STPuint) const;
+			void operator()(STPOpenGL::STPuint) const noexcept;
 
 		};
 		typedef STPSmartGLuintObject<STPSamplerDeleter> STPSmartSampler;
@@ -50,7 +50,7 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Create a new sampler object.
 		*/
-		STPSampler();
+		STPSampler() noexcept;
 
 		STPSampler(const STPSampler&) = delete;
 
@@ -66,25 +66,25 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Get the underlying sampler object.
 		 * @return The GL sampler object.
 		*/
-		STPOpenGL::STPuint operator*() const;
+		STPOpenGL::STPuint operator*() const noexcept;
 
-		void filter(STPOpenGL::STPint, STPOpenGL::STPint) override;
+		void filter(STPOpenGL::STPint, STPOpenGL::STPint) noexcept override;
 
-		void wrap(STPOpenGL::STPint, STPOpenGL::STPint, STPOpenGL::STPint) override;
+		void wrap(STPOpenGL::STPint, STPOpenGL::STPint, STPOpenGL::STPint) noexcept override;
 
-		void wrap(STPOpenGL::STPint) override;
+		void wrap(STPOpenGL::STPint) noexcept override;
 
-		void borderColor(STPGLVector::STPfloatVec4) override;
+		void borderColor(STPGLVector::STPfloatVec4) noexcept override;
 
-		void borderColor(STPGLVector::STPintVec4) override;
+		void borderColor(STPGLVector::STPintVec4) noexcept override;
 
-		void borderColor(STPGLVector::STPuintVec4) override;
+		void borderColor(STPGLVector::STPuintVec4) noexcept override;
 
-		void anisotropy(STPOpenGL::STPfloat) override;
+		void anisotropy(STPOpenGL::STPfloat) noexcept override;
 
-		void compareFunction(STPOpenGL::STPint) override;
+		void compareFunction(STPOpenGL::STPint) noexcept override;
 
-		void compareMode(STPOpenGL::STPint) override;
+		void compareMode(STPOpenGL::STPint) noexcept override;
 
 		/**
 		 * @brief Bind a named sampler to a texturing target, with automatic binding state management.
@@ -94,7 +94,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The sampler unit state manager.
 		 * This manager will automatically unbind the sampler from this texture unit, based on std::unique_ptr.
 		*/
-		STPSamplerUnitStateManager bindManaged(STPOpenGL::STPuint) const;
+		STPSamplerUnitStateManager bindManaged(STPOpenGL::STPuint) const noexcept;
 
 	};
 

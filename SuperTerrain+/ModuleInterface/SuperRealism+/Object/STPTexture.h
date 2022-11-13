@@ -3,8 +3,7 @@
 #define _STP_TEXTURE_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
-//GL Management
-#include "STPNullableObject.hpp"
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceObject.h>
 
 #include "STPImageParameter.hpp"
 
@@ -16,18 +15,7 @@ namespace SuperTerrainPlus::STPRealism {
 	class STP_REALISM_API STPTexture : public STPImageParameter {
 	private:
 
-		/**
-		 * @brief STPTextureDeleter is a smart deleter for GL texture buffer object.
-		*/
-		struct STP_REALISM_API STPTextureDeleter {
-		public:
-
-			void operator()(STPOpenGL::STPuint) const;
-
-		};
-		typedef STPSmartGLuintObject<STPTextureDeleter> STPSmartTexture;
-		//TBO
-		STPSmartTexture Texture;
+		STPSmartDeviceObject::STPGLTextureObject Texture;
 
 		//The target this texture object is bound to.
 		STPOpenGL::STPenum Target;
@@ -38,7 +26,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Init a new and empty STPTexture.
 		 * @param target Specifies the effective texture target of each created texture.
 		*/
-		STPTexture(STPOpenGL::STPenum);
+		STPTexture(STPOpenGL::STPenum) noexcept;
 
 		STPTexture(const STPTexture&) = delete;
 
@@ -54,19 +42,19 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Get the target this texture object is bound to.
 		 * @return The texture target bounded.
 		*/
-		STPOpenGL::STPenum target() const;
+		STPOpenGL::STPenum target() const noexcept;
 
 		/**
 		 * @brief Get the underlying texture buffer object.
 		 * @return The texture object.
 		*/
-		STPOpenGL::STPuint operator*() const;
+		STPOpenGL::STPuint operator*() const noexcept;
 
 		/**
 		 * @brief Bind an existing texture object to the specified texture unit 
 		 * @param unit Specifies the texture unit, to which the texture object should be bound to. 
 		*/
-		void bind(STPOpenGL::STPuint) const;
+		void bind(STPOpenGL::STPuint) const noexcept;
 
 		/**
 		 * @brief Bind a level of a texture to an image unit.
@@ -77,42 +65,42 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param access Specifies a token indicating the type of access that will be performed on the image.
 		 * @param format Specifies the format that the elements of the image will be treated as for the purposes of formatted stores.
 		*/
-		void bindImage(STPOpenGL::STPuint, STPOpenGL::STPint, STPOpenGL::STPboolean, STPOpenGL::STPint, STPOpenGL::STPenum, STPOpenGL::STPenum) const;
+		void bindImage(STPOpenGL::STPuint, STPOpenGL::STPint, STPOpenGL::STPboolean, STPOpenGL::STPint, STPOpenGL::STPenum, STPOpenGL::STPenum) const noexcept;
 
 		/**
 		 * @brief Unbine a texture from the image unit.
 		 * @param unit The texture unit to be unbound.
 		*/
-		static void unbindImage(STPOpenGL::STPuint);
+		static void unbindImage(STPOpenGL::STPuint) noexcept;
 
 		/**
 		 * @brief Unbind a texture unit.
 		 * @param unit The unit to be unbound.
 		*/
-		static void unbind(STPOpenGL::STPuint);
+		static void unbind(STPOpenGL::STPuint) noexcept;
 
 		/**
 		 * @brief Generate mipmaps for a specified texture object
 		*/
-		void generateMipmap();
+		void generateMipmap() noexcept;
 
-		void filter(STPOpenGL::STPint, STPOpenGL::STPint) override;
+		void filter(STPOpenGL::STPint, STPOpenGL::STPint) noexcept override;
 
-		void wrap(STPOpenGL::STPint, STPOpenGL::STPint, STPOpenGL::STPint) override;
+		void wrap(STPOpenGL::STPint, STPOpenGL::STPint, STPOpenGL::STPint) noexcept override;
 
-		void wrap(STPOpenGL::STPint) override;
+		void wrap(STPOpenGL::STPint) noexcept override;
 
-		void borderColor(STPGLVector::STPfloatVec4) override;
+		void borderColor(STPGLVector::STPfloatVec4) noexcept override;
 
-		void borderColor(STPGLVector::STPintVec4) override;
+		void borderColor(STPGLVector::STPintVec4) noexcept override;
 
-		void borderColor(STPGLVector::STPuintVec4) override;
+		void borderColor(STPGLVector::STPuintVec4) noexcept override;
 
-		void anisotropy(STPOpenGL::STPfloat) override;
+		void anisotropy(STPOpenGL::STPfloat) noexcept override;
 
-		void compareFunction(STPOpenGL::STPint) override;
+		void compareFunction(STPOpenGL::STPint) noexcept override;
 
-		void compareMode(STPOpenGL::STPint) override;
+		void compareMode(STPOpenGL::STPint) noexcept override;
 
 		/**
 		 * @brief Allocate immutable storage for a texture.
@@ -124,9 +112,9 @@ namespace SuperTerrainPlus::STPRealism {
 		 * For 2D or 1D array texture, z component is ignored.
 		 * Used component should not be zero.
 		*/
-		void textureStorage1D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPOpenGL::STPsizei);
-		void textureStorage2D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec2);
-		void textureStorage3D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec3);
+		void textureStorage1D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPOpenGL::STPsizei) noexcept;
+		void textureStorage2D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec2) noexcept;
+		void textureStorage3D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec3) noexcept;
 
 		/**
 		 * @brief Specify storage for a multisample texture.
@@ -139,8 +127,8 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param fixed Specifies whether the image will use identical sample locations and the same number of samples for all texels in the image, 
 		 * and the sample locations will not depend on the internal format or size of the image. 
 		*/
-		void textureStorageMultisample2D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec2, STPOpenGL::STPboolean);
-		void textureStorageMultisample3D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec3, STPOpenGL::STPboolean);
+		void textureStorageMultisample2D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec2, STPOpenGL::STPboolean) noexcept;
+		void textureStorageMultisample3D(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPGLVector::STPsizeiVec3, STPOpenGL::STPboolean) noexcept;
 
 		/**
 		 * @brief Specify a three-dimensional texture subimage.
@@ -150,14 +138,14 @@ namespace SuperTerrainPlus::STPRealism {
 		 * For 1D texture, y and z offset are ignored.
 		 * For 2D or 1D array texture, z offset is ignored.
 		 * @param dimension Specifies the width, height, depth of the texture subimage.
-		 * The dimension requirment remains the same as textureStorage() function.
+		 * The dimension requirement remains the same as textureStorage() function.
 		 * @param format Specifies the format of the pixel data.
 		 * @param type Specifies the data type of the pixel data.
 		 * @param pixel Specifies a pointer to the image data in memory.
 		*/
-		void textureSubImage1D(STPOpenGL::STPint, STPOpenGL::STPint, STPOpenGL::STPsizei, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
-		void textureSubImage2D(STPOpenGL::STPint, STPGLVector::STPintVec2, STPGLVector::STPsizeiVec2, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
-		void textureSubImage3D(STPOpenGL::STPint, STPGLVector::STPintVec3, STPGLVector::STPsizeiVec3, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
+		void textureSubImage1D(STPOpenGL::STPint, STPOpenGL::STPint, STPOpenGL::STPsizei, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*) noexcept;
+		void textureSubImage2D(STPOpenGL::STPint, STPGLVector::STPintVec2, STPGLVector::STPsizeiVec2, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*) noexcept;
+		void textureSubImage3D(STPOpenGL::STPint, STPGLVector::STPintVec3, STPGLVector::STPsizeiVec3, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*) noexcept;
 
 		/**
 		 * @brief Return a texture image.
@@ -168,7 +156,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param bufSize Specifies the size of the buffer pixels.
 		 * @param pixel Returns the texture image. Should be a pointer to an array of the type specified by type.
 		*/
-		void getTextureImage(STPOpenGL::STPint, STPOpenGL::STPenum, STPOpenGL::STPenum, STPOpenGL::STPsizei, void*) const;
+		void getTextureImage(STPOpenGL::STPint, STPOpenGL::STPenum, STPOpenGL::STPenum, STPOpenGL::STPsizei, void*) const noexcept;
 
 		/**
 		 * @brief Fills all a texture image with a constant value
@@ -177,7 +165,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param type The type of the data whose address in memory is given by data.
 		 * @param data The address in memory of the data to be used to clear the specified region.
 		*/
-		void clearTextureImage(STPOpenGL::STPint, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*);
+		void clearTextureImage(STPOpenGL::STPint, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*) noexcept;
 
 	};
 

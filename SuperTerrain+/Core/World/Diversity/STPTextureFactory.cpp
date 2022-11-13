@@ -125,10 +125,10 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 			layer_idx++;
 		}
 
-		//change sampler parameter for the texture before creating bindless handle
-		std::for_each(this->Texture.cbegin(), this->Texture.cend(), [&modify_sampler](const auto& texture) { modify_sampler(texture.get()); });
 		//create bindless texture handle
-		transform(this->Texture.cbegin(), this->Texture.cend(), this->TextureHandle.begin(), [](const auto& texture) {
+		transform(this->Texture.cbegin(), this->Texture.cend(), this->TextureHandle.begin(), [&modify_sampler](const auto& texture) {
+			//change sampler parameter for the texture before creating bindless handle
+			modify_sampler(texture.get());
 			return STPSmartDeviceObject::makeGLBindlessTextureHandle(texture.get());
 		});
 		//and create a view to the texture handle so they can be passed to the renderer easier

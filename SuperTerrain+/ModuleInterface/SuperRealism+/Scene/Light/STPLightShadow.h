@@ -6,7 +6,7 @@
 //Shadow
 #include "STPShadowMapFilter.hpp"
 //GL Object
-#include "../../Object/STPBindlessBuffer.h"
+#include "../../Object/STPBuffer.h"
 #include "../../Object/STPBindlessTexture.h"
 #include "../../Object/STPFrameBuffer.h"
 
@@ -39,7 +39,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//A rendering texture that contains depth information about the scene.
 		std::optional<STPTexture> ShadowMap;
 		//A bindless handle to the shadow map.
-		STPBindlessTexture ShadowMapHandle;
+		STPBindlessTexture::STPHandle ShadowMapHandle;
 
 		STPFrameBuffer ShadowMapContainer;
 
@@ -48,7 +48,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//A buffer stores data of the shadow light.
 		STPBuffer ShadowData;
 		//An address pointing to the shadow data to be shared with shaders.
-		STPBindlessBuffer ShadowDataAddress;
+		STPOpenGL::STPuint64 ShadowDataAddress;
 
 		/**
 		 * @brief Trigger a update to the shadow map bindless texture handle.
