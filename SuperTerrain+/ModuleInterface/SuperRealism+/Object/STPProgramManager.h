@@ -11,11 +11,8 @@
 //GLM
 #include <glm/vec3.hpp>
 
-//Container
-#include <tuple>
-#include <unordered_map>
-
-#include <functional>
+#include <initializer_list>
+#include <optional>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -32,34 +29,46 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STP_REALISM_API STPProgramDeleter {
 		public:
 
-			void operator()(STPOpenGL::STPuint) const;
+			void operator()(STPOpenGL::STPuint) const noexcept;
 
 		};
 		typedef STPSmartGLuintObject<STPProgramDeleter> STPSmartProgram;
 		//A shader program
 		STPSmartProgram Program;
 
-		//Indicate if the current program is used as a compute shader.
-		bool isComputeProgram;
-
-		//Use shader type as key, find the shader reference number
-		typedef std::unordered_map<STPOpenGL::STPenum, STPOpenGL::STPuint> STPShaderDatabase;
-		STPShaderDatabase AttachedShader;
-
-		/**
-		 * @brief Detach a shader by the shader database iterator.
-		 * @param it The iterator to the detaching shader.
-		 * The iterator will be erased from the shader database after the function has returned.
-		 * @return The iterator to the following element.
-		*/
-		STPShaderDatabase::iterator detachByIterator(STPShaderDatabase::iterator);
-
 	public:
 
 		/**
-		 * @brief Initialise a STPProgramManager.
+		 * @brief STPProgramParameter contains parameters to the program
 		*/
-		STPProgramManager();
+		struct STPProgramParameter {
+		public:
+
+			//Flag the current program as a separable program, which can be used in program pipeline.
+			bool Separable = false;
+
+		};
+		//Specifies compiler option for GL shader program.
+		typedef std::optional<STPProgramParameter> STPProgramCompileOption;
+
+		/**
+		 * @brief Initialise an empty program manager.
+		*/
+		STPProgramManager() = default;
+
+		/**
+		 * @brief Initialise a program manager and link all shader together to form a complete program.
+		 * @param shader_ptr An array of pointers, each to a shader to be linked.
+		 * @param count The number of element in the array.
+		 * For contiguous memory, this should be the number of shader object.
+		 * For non-contiguous memory, this should be the number of pointer to shader objects.
+		 * @param option Specifies the shader compiler option.
+		*/
+		STPProgramManager(const STPShaderManager::STPShader* const*, size_t, const STPProgramCompileOption& = std::nullopt);
+
+		//Array of pointers, each to a shader object.
+		//@see STPProgramManager
+		STPProgramManager(std::initializer_list<const STPShaderManager::STPShader*>, const STPProgramCompileOption& = std::nullopt);
 
 		STPProgramManager(const STPProgramManager&) = delete;
 
@@ -72,47 +81,11 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPProgramManager() = default;
 
 		/**
-		 * @brief Attach a new shaders to the current program.
-		 * @param shader A pointer to a shader to be attached to this program.
-		 * @return The pointer to the current program manager for chaining.
-		 * If shader type repeats, or shader fails to compile, exception is thrown.
-		*/
-		STPProgramManager& attach(const STPShaderManager&);
-
-		/**
-		 * @brief Detach a shader from the current program.
-		 * @param type The type of the shader to be detached.
-		 * @return True if it has been detached. False if no type of this shader is found.
-		*/
-		bool detach(STPOpenGL::STPenum);
-
-		/**
-		 * @brief Detach all shaders from the current program.
-		 * This does not reset program parameters, however.
-		*/
-		void clear();
-
-		/**
-		 * @brief Flag the current program as a separable program, which can be used in program pipeline.
-		 * @param separable True to indicate the new separable status of this program.
-		*/
-		void separable(bool);
-
-		/**
-		 * @brief Finalise the shader program by linking all shaders.
-		 * Any program parameters setting must be done before linking.
-		 * Linkage may fail and exception is thrown.
-		 * Log generated during program linkage will be reflected to the log handler.
-		 * @see STPLogHandler
-		*/
-		void finalise();
-
-		/**
 		 * @brief Get the uniform location for a uniform in the current program.
 		 * @param uni The name of the uniform.
 		 * @return The uniform location in this program.
 		*/
-		STPOpenGL::STPint uniformLocation(const char*) const;
+		STPOpenGL::STPint uniformLocation(const char*) const noexcept;
 
 		/**
 		 * @brief Perform glProgramUniform... operation for the current program object.
@@ -124,7 +97,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The pointer to *this* for chaining.
 		*/
 		template<typename Uni, typename... Arg>
-		STPProgramManager& uniform(Uni&&, const char*, Arg&&...);
+		STPProgramManager& uniform(Uni&&, const char*, Arg&&...) noexcept;
 
 		/**
 		 * @brief Perform glProgramUniform... operation for the current program object using an explicit uniform location.
@@ -136,30 +109,29 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The pointer to the current instance for chaining.
 		*/
 		template<typename Uni, typename... Arg>
-		STPProgramManager& uniform(Uni&&, STPOpenGL::STPint, Arg&&...);
+		STPProgramManager& uniform(Uni&&, STPOpenGL::STPint, Arg&&...) noexcept;
 
 		/**
 		 * @brief Query the local work group size of the compute program as specified by its input layout qualifier(s).
-		 * If the program is not a compute program, exception is thrown.
 		 * @return A vector of 3 integers containing the local work-group size
 		*/
-		glm::ivec3 workgroupSize() const;
+		glm::ivec3 workgroupSize() const noexcept;
 
 		/**
 		 * @brief Get the underlying program object.
 		 * @return The program object.
 		*/
-		STPOpenGL::STPuint operator*() const;
+		STPOpenGL::STPuint operator*() const noexcept;
 
 		/**
 		 * @brief Use the current program object to make it active.
 		*/
-		void use() const;
+		void use() const noexcept;
 
 		/**
 		 * @brief Clear all active used program and reset it to default.
 		*/
-		static void unuse();
+		static void unuse() noexcept;
 
 	};
 

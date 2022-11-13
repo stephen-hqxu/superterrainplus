@@ -60,18 +60,6 @@ constexpr static STPIndirectCommand::STPDrawElement BoxDrawCommand = {
 	0u
 };
 
-STPSkybox::STPSkyboxVertexShader::STPSkyboxVertexShader() : SkyboxVertexShader(GL_VERTEX_SHADER) {
-	const char* const skybox_source_file = SkyboxShaderFilename.data();
-	STPShaderManager::STPShaderSource skybox_source(skybox_source_file, STPFile::read(skybox_source_file));
-
-	//compile
-	this->SkyboxVertexShader(skybox_source);
-}
-
-const STPShaderManager& STPSkybox::STPSkyboxVertexShader::operator*() const {
-	return this->SkyboxVertexShader;
-}
-
 STPSkybox::STPSkyboxVertexBuffer::STPSkyboxVertexBuffer() {
 	//setup sky rendering buffer
 	this->SkyboxBuffer.bufferStorageSubData(BoxVertex.data(), BoxVertex.size() * sizeof(signed char), GL_NONE);
@@ -93,8 +81,18 @@ void STPSkybox::STPSkyboxVertexBuffer::bind() const {
 	this->SkyboxDrawCommand.bind(GL_DRAW_INDIRECT_BUFFER);
 }
 
-void STPSkybox::initSkyboxRenderer(const STPShaderManager& skybox_fs, const STPSkyboxInitialiser& skybox_init) {
-	if (skybox_fs.Type != GL_FRAGMENT_SHADER) {
+inline static STPShaderManager::STPShader createSkyboxVertexShader() {
+	const char* const skybox_source_file = SkyboxShaderFilename.data();
+	STPShaderManager::STPShaderSource skybox_source(skybox_source_file, SuperTerrainPlus::STPFile::read(skybox_source_file));
+	return STPShaderManager::make(GL_VERTEX_SHADER, skybox_source);
+}
+
+STPSkybox::STPSkyboxInitialiser::STPSkyboxInitialiser() : VertexShader(createSkyboxVertexShader()) {
+	
+}
+
+void STPSkybox::initSkyboxRenderer(const STPShaderManager::STPShader& skybox_fs, const STPSkyboxInitialiser& skybox_init) {
+	if (STPShaderManager::shaderType(skybox_fs) != GL_FRAGMENT_SHADER) {
 		throw STPException::STPInvalidArgument("The shader initialised for skybox rendering must a fragment shader");
 	}
 	const auto& [skybox_vs, skybox_buf] = skybox_init;
@@ -102,10 +100,7 @@ void STPSkybox::initSkyboxRenderer(const STPShaderManager& skybox_fs, const STPS
 	//construction of shared pointer throws exception if weak pointer is empty
 	this->SkyboxVertex = shared_ptr(skybox_buf);
 
-	this->SkyboxRenderer
-		.attach(**skybox_vs)
-		.attach(skybox_fs)
-		.finalise();
+	this->SkyboxRenderer = STPProgramManager({ &skybox_vs, &skybox_fs });
 }
 
 void STPSkybox::drawSkybox() const {

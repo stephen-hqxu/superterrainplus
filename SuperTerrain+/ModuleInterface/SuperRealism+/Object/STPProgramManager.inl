@@ -1,16 +1,18 @@
 //INLINE DEFINITION FOR PROGRAM MANAGER, PLEASE DO NOT INCLUDE MANUALLY
-
 #ifdef _STP_PROGRAM_MANAGER_H_
 
+#include <tuple>
+#include <functional>
+
 template<typename Uni, typename... Arg>
-SuperTerrainPlus::STPRealism::STPProgramManager& SuperTerrainPlus::STPRealism::STPProgramManager::uniform
-	(Uni&& uniform_function, const char* uni, Arg&&... args) {
+SuperTerrainPlus::STPRealism::STPProgramManager& SuperTerrainPlus::STPRealism::STPProgramManager::uniform(
+	Uni&& uniform_function, const char* uni, Arg&&... args) noexcept {
 	return this->uniform(uniform_function, this->uniformLocation(uni), args...);
 }
 
 template<typename Uni, typename... Arg>
-SuperTerrainPlus::STPRealism::STPProgramManager& SuperTerrainPlus::STPRealism::STPProgramManager::uniform
-	(Uni&& uniform_function, STPOpenGL::STPint location, Arg&&... args) {
+SuperTerrainPlus::STPRealism::STPProgramManager& SuperTerrainPlus::STPRealism::STPProgramManager::uniform(
+	Uni&& uniform_function, STPOpenGL::STPint location, Arg&&... args) noexcept {
 	using std::apply;
 	using std::make_tuple;
 

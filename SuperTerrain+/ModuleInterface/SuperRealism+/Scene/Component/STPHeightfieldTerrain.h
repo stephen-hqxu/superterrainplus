@@ -149,7 +149,7 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		void setViewPosition(const glm::dvec3&);
 
-		bool addDepthConfiguration(size_t, const STPShaderManager*) override;
+		bool addDepthConfiguration(size_t, const STPShaderManager::STPShader*) override;
 
 		/**
 		 * @brief Render a regular procedural heightfield terrain.

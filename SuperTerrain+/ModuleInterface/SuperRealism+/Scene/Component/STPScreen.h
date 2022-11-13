@@ -122,39 +122,6 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 
 		/**
-		 * @brief STPScreenVertexShader provides a vertex shader for off-screen rendering.
-		*/
-		class STP_REALISM_API STPScreenVertexShader {
-		private:
-
-			STPShaderManager ScreenVertexShader;
-
-		public:
-
-			/**
-			 * @brief Init and compile a screen vertex shader.
-			*/
-			STPScreenVertexShader();
-
-			STPScreenVertexShader(const STPScreenVertexShader&) = delete;
-
-			STPScreenVertexShader(STPScreenVertexShader&&) noexcept = default;
-
-			STPScreenVertexShader& operator=(const STPScreenVertexShader&) = delete;
-
-			STPScreenVertexShader& operator=(STPScreenVertexShader&&) noexcept = default;
-
-			~STPScreenVertexShader() = default;
-
-			/**
-			 * @brief Get the underlying screen vertex shader.
-			 * @return The pointer to the vertex shader that is ready to be linked with a complete pipeline.
-			*/
-			const STPShaderManager& operator*() const;
-
-		};
-
-		/**
 		 * @brief STPScreenVertexBuffer provides vertex buffer objects for screen drawing.
 		*/
 		class STP_REALISM_API STPScreenVertexBuffer {
@@ -192,14 +159,21 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Information necessary to create any screen instance.
 		 * None of the underlying pointer should be null.
 		*/
-		struct STPScreenInitialiser {
+		struct STP_REALISM_API STPScreenInitialiser {
 		public:
 
 			//The vertex shader to be shared during initialisation.
 			//This vertex shader can be safely destroyed after initialisation and no reference is retained.
-			const STPScreenVertexShader* VertexShader;
+			const STPShaderManager::STPShader VertexShader;
 			//The vertex buffer to be shared with different screen instances.
 			std::weak_ptr<const STPScreenVertexBuffer> SharedVertexBuffer;
+
+			/**
+			 * @brief Initialise and compile a screen vertex shader.
+			*/
+			STPScreenInitialiser();
+
+			~STPScreenInitialiser() = default;
 
 		};
 
@@ -267,7 +241,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param screen_fs The pointer to the fragment shader used by the pipeline.
 		 * @param screen_init The pointer to the screen initialiser.
 		*/
-		void initScreenRenderer(const STPShaderManager&, const STPScreenInitialiser&);
+		void initScreenRenderer(const STPShaderManager::STPShader&, const STPScreenInitialiser&);
 
 		/**
 		 * @brief Draw the screen.

@@ -113,7 +113,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		 * is only available while STPHistogramBuffer_t is valid.
 		 * @see STPSingleHistogram
 		*/
-		static STPSingleHistogram readHistogramBuffer(const STPHistogramBuffer_t&);
+		static STPSingleHistogram readHistogramBuffer(const STPHistogramBuffer_t&) noexcept;
 
 	};
 

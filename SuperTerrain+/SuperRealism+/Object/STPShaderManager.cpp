@@ -46,7 +46,7 @@ constexpr static array<string_view, 9u> mShaderIncludeRegistry = {
 	"/Common/STPSeparableShaderPredefine.glsl"
 };
 
-void STPShaderManager::STPShaderDeleter::operator()(STPOpenGL::STPuint shader) const {
+void STPShaderManager::STPShaderManagerDetail::STPShaderDeleter::operator()(STPOpenGL::STPuint shader) const noexcept {
 	glDeleteShader(shader);
 }
 
@@ -55,16 +55,12 @@ STPShaderManager::STPShaderSource::STPShaderIncludePath& STPShaderManager::STPSh
 	return *this;
 }
 
-STPShaderManager::STPShaderSource::STPShaderSource(const string& name, const string& source) : SourceName(name), Cache(source) {
+STPShaderManager::STPShaderSource::STPShaderSource(string&& name, string&& source) : SourceName(std::move(name)), Source(std::move(source)) {
 
-}
-
-const string& STPShaderManager::STPShaderSource::operator*() const {
-	return this->Cache;
 }
 
 unsigned int STPShaderManager::STPShaderSource::define(const STPMacroValueDictionary& dictionary) {
-	if (this->Cache.empty()) {
+	if (this->Source.empty()) {
 		//do nothing for empty string
 		return 0u;
 	}
@@ -77,7 +73,7 @@ unsigned int STPShaderManager::STPShaderSource::define(const STPMacroValueDictio
 	};
 
 	unsigned int macroReplaced = 0u;
-	istringstream original_src(this->Cache);
+	istringstream original_src(this->Source);
 	ostringstream output_src;
 	string line;
 	//read line by line
@@ -109,20 +105,12 @@ unsigned int STPShaderManager::STPShaderSource::define(const STPMacroValueDictio
 		output_src << line << endl;
 	}
 	//copy stream to cache
-	this->Cache = output_src.str();
+	this->Source = output_src.str();
 
 	return macroReplaced;
 }
 
-inline const string& STPShaderManager::STPShaderSource::getName() const {
-	return this->SourceName;
-}
-
-STPShaderManager::STPShaderManager(STPOpenGL::STPenum type) : Shader(glCreateShader(type)), Type(type) {
-	
-}
-
-inline static bool includeImpl(const char* name, size_t nameLen, const string& source) {
+inline static bool includeImpl(const char* name, size_t nameLen, const string& source) noexcept {
 	//check if path exists as named string
 	if (!glIsNamedStringARB(static_cast<GLint>(nameLen), name)) {
 		//try to add the named string to GL virtual include system
@@ -143,27 +131,29 @@ void STPShaderManager::initialise() {
 	}
 }
 
-bool STPShaderManager::include(const string& name, const string& source) {
+bool STPShaderManager::Addinclude(const string& name, const string& source) noexcept {
 	return includeImpl(name.c_str(), name.length(), source);
 }
 
-void STPShaderManager::uninclude(const string& name) {
+void STPShaderManager::Removeinclude(const string& name) noexcept {
 	glDeleteNamedStringARB(static_cast<GLint>(name.size()), name.c_str());
 }
 
-void STPShaderManager::operator()(const STPShaderSource& source) {
-	const string& src_str = *source;
+STPShaderManager::STPShader STPShaderManager::make(STPOpenGL::STPenum type, const STPShaderSource& source) {
+	const string& src_str = source.Source;
 	const auto& include = source.Include.Pathname;
-
+	STPShader shaderManaged = STPShader(glCreateShader(type));
+	const GLuint shader = shaderManaged.get();
+	
 	//attach source code to the shader
 	//std::string makes sure string is null-terminated, so we can pass NULL as the code length
 	const char* const sourceArray = src_str.c_str();
 	const GLint sourceLength = static_cast<GLint>(src_str.size());
-	glShaderSource(this->Shader.get(), 1, &sourceArray, &sourceLength);
+	glShaderSource(shader, 1, &sourceArray, &sourceLength);
 
 	//try to compile it
 	if (include.empty()) {
-		glCompileShader(this->Shader.get());
+		glCompileShader(shader);
 	}
 	else {
 		const size_t pathCount = include.size();
@@ -177,12 +167,12 @@ void STPShaderManager::operator()(const STPShaderSource& source) {
 			pathLength.emplace_back(static_cast<GLint>(path.size()));
 		}
 
-		glCompileShaderIncludeARB(this->Shader.get(), static_cast<GLsizei>(pathCount), pathStr.data(), pathLength.data());
+		glCompileShaderIncludeARB(shader, static_cast<GLsizei>(pathCount), pathStr.data(), pathLength.data());
 	}
 	//retrieve any log
 	GLint logLength, status;
-	glGetShaderiv(this->Shader.get(), GL_INFO_LOG_LENGTH, &logLength);
-	glGetShaderiv(this->Shader.get(), GL_COMPILE_STATUS, &status);
+	glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
 
 	//store information
 	string log;
@@ -190,9 +180,9 @@ void STPShaderManager::operator()(const STPShaderSource& source) {
 	if (logLength > 0) {
 		//shader compilation has log
 		log.resize(logLength);
-		glGetShaderInfoLog(this->Shader.get(), logLength, nullptr, log.data());
+		glGetShaderInfoLog(shader, logLength, nullptr, log.data());
 
-		const string& name = source.getName();
+		const string& name = source.SourceName;
 		if (!name.empty()) {
 			ostringstream identifier;
 			identifier << name << endl;
@@ -215,8 +205,12 @@ void STPShaderManager::operator()(const STPShaderSource& source) {
 
 	//write log
 	STPLogHandler::ActiveLogHandler->handle(log);
+
+	return shaderManaged;
 }
 
-SuperTerrainPlus::STPOpenGL::STPuint STPShaderManager::operator*() const {
-	return this->Shader.get();
+SuperTerrainPlus::STPOpenGL::STPint STPShaderManager::shaderType(const STPShader& shader) noexcept {
+	GLint type;
+	glGetShaderiv(shader.get(), GL_SHADER_TYPE, &type);
+	return type;
 }

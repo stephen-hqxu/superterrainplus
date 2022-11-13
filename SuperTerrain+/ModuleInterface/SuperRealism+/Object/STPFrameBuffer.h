@@ -9,7 +9,7 @@
 #include "STPTexture.h"
 #include "STPRenderBuffer.h"
 
-#include <vector>
+#include <initializer_list>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -117,9 +117,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Specifies a list of colour buffers to be drawn into.
-		 * @param bufs Points to an array of symbolic constants specifying the buffers into which fragment colour or data values will be written.
+		 * @param bufs An array of symbolic constants specifying the buffers into which fragment colour or data values will be written.
 		*/
-		void drawBuffers(const std::vector<STPOpenGL::STPenum>&) noexcept;
+		void drawBuffers(std::initializer_list<STPOpenGL::STPenum>) noexcept;
 
 		/**
 		 * @brief Select a colour buffer source for pixels.

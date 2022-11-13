@@ -47,13 +47,11 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 	//validate the setting
 	this->SunSetting.validate();
 
-	//setup sky renderer
-	STPShaderManager sky_shader(GL_FRAGMENT_SHADER);
 	//build the shader filename
 	const char* const sky_source_file = SkyShaderFilename.data();
 	STPShaderManager::STPShaderSource sky_source(sky_source_file, STPFile::read(sky_source_file));
-	//compile
-	sky_shader(sky_source);
+	//setup sky renderer
+	const STPShaderManager::STPShader sky_shader = STPShaderManager::make(GL_FRAGMENT_SHADER, sky_source);
 
 	//initialise skybox renderer
 	this->SunBox.initSkyboxRenderer(sky_shader, sun_init);
@@ -65,14 +63,11 @@ STPSun::STPSun(const STPEnvironment::STPSunSetting& sun_setting, const STPBundle
 
 	/* ---------------------------------------- sun spectrum emulator ----------------------------------- */
 	//setup spectrum emulator
-	STPShaderManager spectrum_shader(GL_COMPUTE_SHADER);
 	const char* const spectrum_source_file = SpectrumShaderFilename.data();
 	STPShaderManager::STPShaderSource spectrum_source(spectrum_source_file, STPFile::read(spectrum_source_file));
 
-	spectrum_shader(spectrum_source);
-	this->SpectrumEmulator.attach(spectrum_shader);
-	//link
-	this->SpectrumEmulator.finalise();
+	const STPShaderManager::STPShader spectrum_shader = STPShaderManager::make(GL_COMPUTE_SHADER, spectrum_source);
+	this->SpectrumEmulator = STPProgramManager({ &spectrum_shader });
 
 	//record the sun direction domain
 	const auto& [sunDir_start, sunDir_end] = spectrum_domain;

@@ -63,7 +63,7 @@ namespace SuperTerrainPlus::STPRealism {
 			 * therefore if this depth configuration has been added previously, no operation should be performed and false should be returned.
 			 * If a new configuration is added, returns true.
 			*/
-			virtual bool addDepthConfiguration(size_t, const STPShaderManager*) = 0;
+			virtual bool addDepthConfiguration(size_t, const STPShaderManager::STPShader*) = 0;
 
 			/**
 			 * @brief Render the opaque object to a depth texture, with shading pruned.

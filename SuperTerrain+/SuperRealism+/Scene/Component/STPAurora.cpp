@@ -24,9 +24,7 @@ STPAurora::STPAurora(STPLightSpectrum&& aurora_spectrum, const STPSkybox::STPSky
 	const char* const aurora_source_file = AuroraShaderFilename.data();
 	const STPShaderManager::STPShaderSource aurora_source(aurora_source_file, STPFile::read(aurora_source_file));
 
-	STPShaderManager aurora_fs(GL_FRAGMENT_SHADER);
-	aurora_fs(aurora_source);
-
+	const STPShaderManager::STPShader aurora_fs = STPShaderManager::make(GL_FRAGMENT_SHADER, aurora_source);
 	this->AuroraBox.initSkyboxRenderer(aurora_fs, aurora_init);
 
 	/* ----------------------------------- uniform time --------------------------------------- */

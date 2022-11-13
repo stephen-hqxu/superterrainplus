@@ -60,8 +60,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 
 	ssao_source.define(Macro);
 
-	STPShaderManager ssao_shader(GL_FRAGMENT_SHADER);
-	ssao_shader(ssao_source);
+	const STPShaderManager::STPShader ssao_shader = STPShaderManager::make(GL_FRAGMENT_SHADER, ssao_source);
 	this->OcclusionQuad.initScreenRenderer(ssao_shader, kernel_init);
 
 	const auto& kernel_setting = kernel_instance.Kernel;

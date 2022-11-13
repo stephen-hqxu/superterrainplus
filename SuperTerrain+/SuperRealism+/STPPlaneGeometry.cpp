@@ -47,17 +47,13 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 	index.makeResident(GL_WRITE_ONLY);
 
 	//setup tile buffer generator shader
-	STPShaderManager tile_generator(GL_COMPUTE_SHADER);
 	const char* const tile_source_file = PlaneGenerationShaderFilename.data();
 	STPShaderManager::STPShaderSource tile_source(tile_source_file, STPFile::read(tile_source_file));
 	//compile shader
-	tile_generator(tile_source);
+	const STPShaderManager::STPShader tile_generator = STPShaderManager::make(GL_COMPUTE_SHADER, tile_source);
 
 	//setup tile generator program
-	STPProgramManager plane_generator;
-	plane_generator
-		.attach(tile_generator)
-		.finalise();
+	STPProgramManager plane_generator({ &tile_generator });
 
 	//setup up uniform data
 	plane_generator.uniform(glProgramUniformui64NV, "TileBuffer", buffer_addr)

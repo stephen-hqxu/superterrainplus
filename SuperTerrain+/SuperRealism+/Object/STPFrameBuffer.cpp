@@ -107,8 +107,8 @@ void STPFrameBuffer::drawBuffer(STPOpenGL::STPenum buf) noexcept {
 	glNamedFramebufferDrawBuffer(this->FrameBuffer.get(), buf);
 }
 
-void STPFrameBuffer::drawBuffers(const std::vector<STPOpenGL::STPenum>& bufs) noexcept {
-	glNamedFramebufferDrawBuffers(this->FrameBuffer.get(), static_cast<GLsizei>(bufs.size()), bufs.data());
+void STPFrameBuffer::drawBuffers(std::initializer_list<STPOpenGL::STPenum> bufs) noexcept {
+	glNamedFramebufferDrawBuffers(this->FrameBuffer.get(), static_cast<GLsizei>(bufs.size()), std::data(bufs));
 }
 
 void STPFrameBuffer::readBuffer(STPOpenGL::STPenum mode) noexcept {

@@ -249,7 +249,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Get the shader used for performing additional operations during depth rendering.
 		 * @return The pointer to the depth shader. Null pointer is returned if depth shader is unused.
 		*/
-		const STPShaderManager* getDepthShader() const;
+		const STPShaderManager::STPShader* getDepthShader() const;
 
 		/**
 		 * @brief Draw the environment.

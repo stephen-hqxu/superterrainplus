@@ -18,14 +18,28 @@ namespace SuperTerrainPlus::STPRealism {
 	 * @brief STPShaderManager is a smart manager to OpenGL shader. It automatically loads GLSL source code and attach it to a managed shader object.
 	 * Following OpenGL specification, as soon as a shader is attached to a program, it can be deleted, and OpenGL should handle the rest automatically.
 	*/
-	class STP_REALISM_API STPShaderManager {
-	public:
+	namespace STPShaderManager {
+
+		//Internal implementation of the shader manager
+		namespace STPShaderManagerDetail {
+
+			/**
+			 * @brief STPShaderDeleter calls glDeleteShader to remove a shader.
+			*/
+			struct STP_REALISM_API STPShaderDeleter {
+			public:
+
+				void operator()(STPOpenGL::STPuint) const noexcept;
+
+			};
+
+		}
 
 		/**
 		 * @brief STPShaderSource contains information about a shader source code and allow 
 		 * pre-process the code before compilation.
 		*/
-		class STP_REALISM_API STPShaderSource {
+		struct STP_REALISM_API STPShaderSource {
 		public:
 
 			/**
@@ -77,40 +91,23 @@ namespace SuperTerrainPlus::STPRealism {
 
 			};
 
-		private:
-
 			//The name of the source as an identifier in the compilation log;
 			const std::string SourceName;
 			//Attached source code.
-			std::string Cache;
+			std::string Source;
 
-		public:
 			//A list of string that contains include paths of a shader.
 			STPShaderIncludePath Include;
 
 			/**
 			 * @brief Create a new shader source class.
-			 * @param name The pointer to a source name as an identifier in the compilation log.
+			 * @param name The rvalue reference to be moved to a source name as an identifier in the compilation log.
 			 * If both the source name and the log is not empty, this source name will be prepended to the log output for easier debugging.
-			 * @param source The pointer to the source code. It will be copied.
+			 * @param source The rvalue reference to the source code. It will be moved.
 			*/
-			STPShaderSource(const std::string&, const std::string&);
-
-			STPShaderSource(const STPShaderSource&) = default;
-
-			STPShaderSource(STPShaderSource&&) noexcept = default;
-
-			STPShaderSource& operator=(const STPShaderSource&) = default;
-
-			STPShaderSource& operator=(STPShaderSource&&) noexcept = default;
+			STPShaderSource(std::string&&, std::string&&);
 
 			~STPShaderSource() = default;
-
-			/**
-			 * @brief Get the source cached in the shader source instance.
-			 * @return The pointer to the source.
-			*/
-			const std::string& operator*() const;
 
 			/**
 			 * @brief Assign macros with values in the cached source code.
@@ -120,56 +117,17 @@ namespace SuperTerrainPlus::STPRealism {
 			*/
 			unsigned int define(const STPMacroValueDictionary&);
 
-			/**
-			 * @brief Get the identifier string as the name of this shader source.
-			 * @return The pointer to the source name.
-			*/
-			const std::string& getName() const;
-
 		};
 
-	private:
-
-		/**
-		 * @brief STPShaderDeleter calls glDeleteShader to remove a shader.
-		*/
-		struct STP_REALISM_API STPShaderDeleter {
-		public:
-
-			void operator()(STPOpenGL::STPuint) const;
-
-		};
-		typedef STPSmartGLuintObject<STPShaderDeleter> STPSmartShaderObject;
-		//An OpenGL shader object
-		STPSmartShaderObject Shader;
-
-	public:
-
-		//Type of the shader currently managed by the shader manager.
-		const STPOpenGL::STPenum Type;
-
-		/**
-		 * @brief Initialise a new shader manager.
-		 * @param type The type of this shader.
-		*/
-		STPShaderManager(STPOpenGL::STPenum);
-
-		STPShaderManager(const STPShaderManager&) = delete;
-
-		STPShaderManager(STPShaderManager&&) noexcept = default;
-
-		STPShaderManager& operator=(const STPShaderManager&) = delete;
-
-		STPShaderManager& operator=(STPShaderManager&&) noexcept = default;
-
-		~STPShaderManager() = default;
+		//A GL shader object with managed memory lifetime
+		using STPShader = STPSmartGLuintObject<STPShaderManagerDetail::STPShaderDeleter>;
 
 		/**
 		 * @brief Initialise the shader manager for the current context.
 		 * Specifically, it flushes all system shader include code (i.e., shader code used by the rendering engine) to GL include tree.
 		 * Each context only needs to be initialised once.
 		*/
-		static void initialise();
+		STP_REALISM_API void initialise();
 
 		/**
 		 * @brief Add a shader source to GL include file tree.
@@ -177,30 +135,31 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param source The string, i.e., source, of the shader.
 		 * @return True if the shader has been added, false if the same name has been included previously.
 		*/
-		static bool include(const std::string&, const std::string&);
+		STP_REALISM_API bool Addinclude(const std::string&, const std::string&) noexcept;
 
 		/**
 		 * @brief Remove a shader source from GL include file tree.
 		 * GL will throw error if name is not valid.
 		 * @param name The name of the include shader.
 		*/
-		static void uninclude(const std::string&);
+		STP_REALISM_API void Removeinclude(const std::string&) noexcept;
 
 		/**
 		 * @brief Attach source code to the current shader manager and compile. Previously attached source code will be removed.
 		 * Shader compilation log will be reflected to the shader log handler.
-		 * @see STPLogHandler
+		 * @param type The type of this shader.
 		 * @param source The pointer to the shader source manager.
 		*/
-		void operator()(const STPShaderSource&);
+		STP_REALISM_API STPShader make(STPOpenGL::STPenum, const STPShaderSource&);
 
 		/**
-		 * @brief Get the underlying shader object.
-		 * @return The shader object.
+		 * @brief Get the type of the shader.
+		 * @param shader The shader object.
+		 * @return The type of the shader.
 		*/
-		STPOpenGL::STPuint operator*() const;
+		STP_REALISM_API STPOpenGL::STPint shaderType(const STPShader&) noexcept;
 
-	};
+	}
 
 }
 #include "STPShaderManager.inl"

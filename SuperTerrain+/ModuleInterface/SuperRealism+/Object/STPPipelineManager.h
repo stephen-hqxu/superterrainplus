@@ -7,6 +7,9 @@
 //Program
 #include "STPProgramManager.h"
 
+#include <utility>
+#include <initializer_list>
+
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -22,7 +25,7 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STP_REALISM_API STPPipelineDeleter {
 		public:
 
-			void operator()(STPOpenGL::STPuint) const;
+			void operator()(STPOpenGL::STPuint) const noexcept;
 
 		};
 		typedef STPSmartGLuintObject<STPPipelineDeleter> STPSmartPipeline;
@@ -31,10 +34,24 @@ namespace SuperTerrainPlus::STPRealism {
 
 	public:
 
+		//Selects from a shader program whose stages should be mounted onto the pipeline.
+		typedef std::pair<STPOpenGL::STPbitfield, const STPProgramManager*> STPPipelineStage;
+
 		/**
-		 * @brief Initialise a new program pipeline object.
+		 * @brief Initialise an empty program pipeline object.
 		*/
-		STPPipelineManager();
+		STPPipelineManager() = default;
+
+		/**
+		 * @brief Initialise a program pipeline object and select shader stages from a range of program.
+		 * @param stage_program An array of stage-program pair to be mounted onto the pipeline.
+		 * @param count The number of element in the array.
+		*/
+		STPPipelineManager(const STPPipelineStage*, size_t);
+
+		//An array of pipeline stage information
+		//@see STPPipelineManager
+		STPPipelineManager(std::initializer_list<const STPPipelineStage>);
 
 		STPPipelineManager(const STPPipelineManager&) = delete;
 
@@ -47,36 +64,20 @@ namespace SuperTerrainPlus::STPRealism {
 		~STPPipelineManager() = default;
 
 		/**
-		 * @brief Bind stages of a program object to the current program pipeline.
-		 * @param stage Specifies a set of program stages to bind to the program pipeline object. 
-		 * @param program Specifies the program object containing the shader executables to use in pipeline. 
-		 * @return The pointer to the current pipeline manager for chaining.
-		*/
-		STPPipelineManager& stage(STPOpenGL::STPbitfield, const STPProgramManager&);
-
-		/**
-		 * @brief Instantiate a program pipeline. All previous pipeline instances will be removed.
-		 * @return The log from instantiation of the pipeline, if any.
-		 * Log generated during pipeline building will be reflected to the log handler.
-		 * @see STPLogHandler
-		*/
-		void finalise();
-
-		/**
 		 * @brief Get the underlying program pipeline object.
 		 * @return The program pipeline object.
 		*/
-		STPOpenGL::STPuint operator*() const;
+		STPOpenGL::STPuint operator*() const noexcept;
 
 		/**
 		 * @brief Bind the current program pipeline to the context to make it active.
 		*/
-		void bind() const;
+		void bind() const noexcept;
 
 		/**
 		 * @brief Reset the program pipeline to default state, meaning no pipeline will be active.
 		*/
-		static void unbind();
+		static void unbind() noexcept;
 
 	};
 

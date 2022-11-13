@@ -90,7 +90,7 @@ STPScenePipeline::STPSharedTexture::STPSharedTexture() :
 class STPScenePipeline::STPShadowPipeline {
 public:
 
-	optional<STPShaderManager> DepthPassShader;
+	STPShaderManager::STPShader DepthPassShader;
 
 private:
 
@@ -131,8 +131,6 @@ public:
 		/* ------------------------------------------- depth shader setup -------------------------------------------------- */
 		if (this->isVSMDerived) {
 			//create a new depth shader
-			this->DepthPassShader.emplace(GL_FRAGMENT_SHADER);
-
 			const char* const shader_source_file = STPShadowPipeline::ShadowDepthPassShaderFilename.data();
 			STPShaderManager::STPShaderSource shader_source(shader_source_file, STPFile::read(shader_source_file));
 			STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
@@ -142,7 +140,7 @@ public:
 
 			shader_source.define(Macro);
 			//compile the shader
-			(*this->DepthPassShader)(shader_source);
+			this->DepthPassShader = STPShaderManager::make(GL_FRAGMENT_SHADER, shader_source);
 
 			//stores shadow map settings for this type of shadow filters
 			const auto& vsm_filter = dynamic_cast<const STPShadowMapFilterKernel<STPShadowMapFilter::VSM>&>(shadow_filter);
@@ -335,8 +333,7 @@ public:
 		deferred_source.define(Macro);
 
 		//compile shader
-		STPShaderManager deffered_shader(GL_FRAGMENT_SHADER);
-		deffered_shader(deferred_source);
+		const STPShaderManager::STPShader deffered_shader = STPShaderManager::make(GL_FRAGMENT_SHADER, deferred_source);
 		this->DeferredQuad.initScreenRenderer(deffered_shader, lighting_init);
 
 		/* ------------------------------- setup G-buffer sampler ------------------------------------- */
@@ -638,9 +635,9 @@ STPScenePipeline::~STPScenePipeline() {
 	STPBuffer::unbindBase(GL_SHADER_STORAGE_BUFFER, 2u);
 }
 
-const STPShaderManager* STPScenePipeline::getDepthShader() const {
+const STPShaderManager::STPShader* STPScenePipeline::getDepthShader() const {
 	//if depth shader is not applicable, return nullptr
-	return this->GeometryShadowPass->DepthPassShader.has_value() ? &*this->GeometryShadowPass->DepthPassShader : nullptr;
+	return this->GeometryShadowPass->DepthPassShader ? &this->GeometryShadowPass->DepthPassShader : nullptr;
 }
 
 void STPScenePipeline::setCamera(const STPCamera* camera) const {
@@ -708,7 +705,7 @@ void STPScenePipeline::add(STPSceneLight& light) {
 		if (isNewSize) {
 			//the new light space size is new in that array
 			//we need to add this new light configuration to all shadow-casting objects
-			const STPShaderManager* const depth_shader = this->getDepthShader();
+			const STPShaderManager::STPShader* const depth_shader = this->getDepthShader();
 			for (auto shadow_obj : scene_graph.ShadowOpaqueObject) {
 				shadow_obj->addDepthConfiguration(newLightSpaceCount, depth_shader);
 			}

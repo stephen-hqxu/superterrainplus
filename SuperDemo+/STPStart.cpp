@@ -46,6 +46,8 @@
 //System
 #include <iostream>
 #include <optional>
+#include <array>
+#include <vector>
 
 //GLM
 #include <glm/gtc/matrix_transform.hpp>
@@ -58,6 +60,7 @@
 using std::optional;
 using std::string;
 using std::string_view;
+using std::array;
 using std::make_pair;
 using std::make_unique;
 using std::make_optional;
@@ -132,6 +135,16 @@ namespace STPStart {
 			return this->CurrentSeed;
 		}
 
+		/**
+		 * @brief Send colour data to a light spectrum
+		 * @param spectrum The spectrum to send to.
+		 * @param data An array of colour data.
+		 * @param size The number of element in the array.
+		*/
+		void setSpectrumData(SuperTerrainPlus::STPRealism::STPLightSpectrum& spectrum, const glm::u8vec3* data, size_t size) {
+			spectrum.setData(static_cast<GLsizei>(size), GL_RGB, GL_UNSIGNED_BYTE, data);
+		}
+
 	public:
 
 		/**
@@ -187,18 +200,13 @@ namespace STPStart {
 			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, nullptr, GL_FALSE);
 
 			//setup vertex shader for off-screen rendering that can be shared
-			const STPScreen::STPScreenVertexShader ScreenVertexShader;
-			const STPSkybox::STPSkyboxVertexShader SkyboxVertexShader;
-
 			//this buffer is a shared pointer wrapper and we don't need to manage its lifetime
 			const auto OffScreenVertexBuffer = std::make_shared<const STPScreen::STPScreenVertexBuffer>();
 			STPScreen::STPScreenInitialiser screen_renderer_init;
-			screen_renderer_init.VertexShader = &ScreenVertexShader;
 			screen_renderer_init.SharedVertexBuffer = OffScreenVertexBuffer;
 
 			const auto SkyboxVertexBuffer = std::make_shared<const STPSkybox::STPSkyboxVertexBuffer>();
 			STPSkybox::STPSkyboxInitialiser skybox_renderer_init;
-			skybox_renderer_init.VertexShader = &SkyboxVertexShader;
 			skybox_renderer_init.SharedVertexBuffer = SkyboxVertexBuffer;
 
 			STPMaterialLibrary::STPMaterialID waterMaterialID;
@@ -282,11 +290,12 @@ namespace STPStart {
 
 				//night-light
 				STPLightSpectrum nightlight_spec(3u, GL_SRGB8);
-				nightlight_spec.setData(STPLightSpectrum::STPColourArray<glm::u8vec3> {
-					{  0u, 0u, 0u },
-					{ 29u, 56u,	97u },
+				const array<glm::u8vec3, 3u> nightlight_spec_data {{
+					{ 0u, 0u, 0u },
+					{ 29u, 56u, 97u },
 					{ 218u, 223, 247u }
-				});
+				}};
+				this->setSpectrumData(nightlight_spec, nightlight_spec_data.data(), nightlight_spec_data.size());
 
 				this->Nightlight.emplace(move(nightlight_spec));
 				this->RenderPipeline->add(*this->Nightlight);
@@ -297,12 +306,13 @@ namespace STPStart {
 					STPTerrainParaLoader::getStarfieldSetting(this->engineINI.at("Night"));
 
 				STPLightSpectrum starfield_spec(4u, GL_SRGB8);
-				starfield_spec.setData(STPLightSpectrum::STPColourArray<glm::u8vec3> {
+				const array<glm::u8vec3, 4u> starfield_spec_data {{
 					{ 129u, 194u, 235u },
 					{ 232u, 169u, 146u },
 					{ 101u, 184u, 155u },
 					{ 225u, 208u, 242u }
-				});
+				}};
+				this->setSpectrumData(starfield_spec, starfield_spec_data.data(), starfield_spec_data.size());
 
 				const STPStarfield::STPStarfieldModel starfield_model = {
 					&starfield_spec,
@@ -321,7 +331,7 @@ namespace STPStart {
 				using glm::u8vec3;
 				//generate the colour spectrum for aurora
 				STPLightSpectrum aurora_spec(10u, GL_SRGB8);
-				STPLightSpectrum::STPColourArray<u8vec3> aurora_colour;
+				std::vector<u8vec3> aurora_colour;
 				aurora_colour.reserve(10u);
 
 				//main body colour
@@ -336,7 +346,7 @@ namespace STPStart {
 				aurora_colour.insert(aurora_colour.end(), 2u, tailColA);
 				aurora_colour.insert(aurora_colour.end(), 2u, tailColB);
 
-				aurora_spec.setData(aurora_colour);
+				this->setSpectrumData(aurora_spec, aurora_colour.data(), aurora_colour.size());
 
 				this->AuroraRenderer.emplace(std::move(aurora_spec), skybox_renderer_init);
 				this->AuroraRenderer->setAurora(aurora_setting);

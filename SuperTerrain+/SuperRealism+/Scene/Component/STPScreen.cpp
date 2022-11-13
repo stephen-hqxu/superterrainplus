@@ -96,18 +96,6 @@ void STPScreen::STPSimpleScreenBindlessFrameBuffer::setScreenBuffer(
 	this->ScreenColor = move(new_screen_color);
 }
 
-STPScreen::STPScreenVertexShader::STPScreenVertexShader() : ScreenVertexShader(GL_VERTEX_SHADER) {
-	//read source
-	const char* const screen_source_file = ScreenShaderFilename.data();
-	STPShaderManager::STPShaderSource shader_source(screen_source_file, STPFile::read(screen_source_file));
-	//compile
-	this->ScreenVertexShader(shader_source);
-}
-
-const STPShaderManager& STPScreen::STPScreenVertexShader::operator*() const {
-	return this->ScreenVertexShader;
-}
-
 STPScreen::STPScreenVertexBuffer::STPScreenVertexBuffer() {
 	//send of off screen quad
 	this->ScreenBuffer.bufferStorageSubData(QuadVertex.data(), QuadVertex.size() * sizeof(signed char), GL_NONE);
@@ -129,6 +117,17 @@ void STPScreen::STPScreenVertexBuffer::bind() const {
 	this->ScreenRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
 }
 
+inline static STPShaderManager::STPShader createScreenVertexShader() {
+	//read source
+	const char* const screen_source_file = ScreenShaderFilename.data();
+	STPShaderManager::STPShaderSource shader_source(screen_source_file, SuperTerrainPlus::STPFile::read(screen_source_file));
+	return STPShaderManager::make(GL_VERTEX_SHADER, shader_source);
+}
+
+STPScreen::STPScreenInitialiser::STPScreenInitialiser() : VertexShader(createScreenVertexShader()) {
+	
+}
+
 STPScreen::STPScreenProgramExecutor::STPScreenProgramExecutor(const STPScreen& screen) {
 	screen.ScreenVertex->bind();
 	screen.OffScreenRenderer.use();
@@ -142,8 +141,8 @@ void STPScreen::STPScreenProgramExecutor::operator()() const {
 	glDrawArraysIndirect(GL_TRIANGLE_FAN, nullptr);
 }
 
-void STPScreen::initScreenRenderer(const STPShaderManager& screen_fs, const STPScreenInitialiser& screen_init) {
-	if (screen_fs.Type != GL_FRAGMENT_SHADER) {
+void STPScreen::initScreenRenderer(const STPShaderManager::STPShader& screen_fs, const STPScreenInitialiser& screen_init) {
+	if (STPShaderManager::shaderType(screen_fs) != GL_FRAGMENT_SHADER) {
 		throw STPException::STPInvalidArgument("The shader initialised for off-screen rendering must be a fragment shader");
 	}
 	const auto& [screen_vs, screen_buf] = screen_init;
@@ -152,10 +151,7 @@ void STPScreen::initScreenRenderer(const STPShaderManager& screen_fs, const STPS
 	this->ScreenVertex = shared_ptr(screen_buf);
 
 	//setup screen program
-	this->OffScreenRenderer
-		.attach(**screen_vs)
-		.attach(screen_fs)
-		.finalise();
+	this->OffScreenRenderer = STPProgramManager({ &screen_vs, &screen_fs });
 }
 
 void STPScreen::drawScreen() const {

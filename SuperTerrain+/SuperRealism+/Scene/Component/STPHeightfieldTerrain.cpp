@@ -76,10 +76,12 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	this->TerrainRenderCommand.bufferStorageSubData(&cmd, sizeof(cmd), GL_NONE);
 
 	/* ------------------------------------------ setup terrain shader ---------------------------------------------- */
-	STPShaderManager terrain_shader[HeightfieldTerrainShaderFilename.size()] = {
-		GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER, GL_FRAGMENT_SHADER
-	};
-	for (unsigned int i = 0u; i < HeightfieldTerrainShaderFilename.size(); i++) {
+	const size_t terrain_shader_count = HeightfieldTerrainShaderFilename.size();
+	constexpr static GLenum terrain_shader_type[terrain_shader_count] = {
+		GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER, GL_FRAGMENT_SHADER };
+	STPShaderManager::STPShader terrain_shader[terrain_shader_count];
+
+	for (unsigned int i = 0u; i < terrain_shader_count; i++) {
 		const char* const source_file = HeightfieldTerrainShaderFilename[i].data();
 		STPShaderManager::STPShaderSource shader_source(source_file, STPFile::read(source_file));
 
@@ -109,39 +111,25 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 			shader_source.define(Macro);
 		}
 		//compile
-		terrain_shader[i](shader_source);
-
-		//attach the complete terrain program
-		switch (i) {
-		case 0u:
-			//vertex shader
-			this->TerrainVertex.attach(terrain_shader[i]);
-			break;
-		case 3u:
-			//fragment shader
-			this->TerrainShader.attach(terrain_shader[i]);
-			break;
-		default:
-			//anything else
-			this->TerrainModeller.attach(terrain_shader[i]);
-			break;
-		}
+		terrain_shader[i] = STPShaderManager::make(terrain_shader_type[i], shader_source);
 	}
-	this->TerrainVertex.separable(true);
-	this->TerrainModeller.separable(true);
-	this->TerrainShader.separable(true);
 
-	//link
-	this->TerrainVertex.finalise();
-	this->TerrainModeller.finalise();
-	this->TerrainShader.finalise();
+	//link programs
+	STPProgramManager::STPProgramParameter terrain_program_option = { };
+	terrain_program_option.Separable = true;
+	//vertex shader
+	this->TerrainVertex = STPProgramManager({ terrain_shader }, terrain_program_option);
+	//2 tessellation shaders
+	this->TerrainModeller = STPProgramManager({ terrain_shader + 1, terrain_shader + 2 }, terrain_program_option);
+	//fragment shader
+	this->TerrainShader = STPProgramManager({ terrain_shader + 3 }, terrain_program_option);
 
 	//build pipeline
-	this->TerrainRenderer
-		.stage(GL_VERTEX_SHADER_BIT, this->TerrainVertex)
-		.stage(GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
-		.stage(GL_FRAGMENT_SHADER_BIT, this->TerrainShader)
-		.finalise();
+	this->TerrainRenderer = STPPipelineManager({
+		{ GL_VERTEX_SHADER_BIT, &this->TerrainVertex },
+		{ GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, &this->TerrainModeller },
+		{ GL_FRAGMENT_SHADER_BIT, &this->TerrainShader }
+	});
 
 	/* ------------------------------- setup initial immutable uniforms ---------------------------------- */
 	//setup mesh model uniform location
@@ -324,7 +312,7 @@ void STPHeightfieldTerrain::render() const {
 	STPPipelineManager::unbind();
 }
 
-bool STPHeightfieldTerrain::addDepthConfiguration(size_t light_space_count, const STPShaderManager* depth_shader) {
+bool STPHeightfieldTerrain::addDepthConfiguration(size_t light_space_count, const STPShaderManager::STPShader* depth_shader) {
 	//create a new render group
 	auto [depth_group, inserted] = this->TerrainDepthRenderer.try_emplace(light_space_count);
 	if (!inserted) {
@@ -334,9 +322,6 @@ bool STPHeightfieldTerrain::addDepthConfiguration(size_t light_space_count, cons
 	auto& [depth_renderer, depth_writer_arr] = depth_group->second;
 	auto& [depth_writer] = depth_writer_arr;
 
-	//now the base renderer is finished, setup depth renderer
-	STPShaderManager terrain_shadow_shader(GL_GEOMETRY_SHADER);
-
 	//geometry shader for depth writing
 	//make a copy of the original source because we need to modify it
 	const char* const shadow_source_file = HeightfieldTerrainShadowShaderFilename.data();
@@ -345,26 +330,26 @@ bool STPHeightfieldTerrain::addDepthConfiguration(size_t light_space_count, cons
 
 	//disable eval shader output because shadow pass does need those data
 	Macro("HEIGHTFIELD_SHADOW_PASS_INVOCATION", light_space_count);
-
 	shadow_shader_source.define(Macro);
-	terrain_shadow_shader(shadow_shader_source);
 
-	//attach program for depth writing
+	//now the base renderer is finished, setup depth renderer
+	const STPShaderManager::STPShader terrain_shadow_shader = STPShaderManager::make(GL_GEOMETRY_SHADER, shadow_shader_source);
+
+	STPProgramManager::STPProgramParameter depth_option = { };
+	depth_option.Separable = true;
+	//link program for depth writing
 	if (depth_shader) {
-		depth_writer.attach(*depth_shader);
+		depth_writer = STPProgramManager({ &terrain_shadow_shader, depth_shader }, depth_option);
+	} else {
+		depth_writer = STPProgramManager({ &terrain_shadow_shader }, depth_option);
 	}
-	depth_writer.attach(terrain_shadow_shader)
-		.separable(true);
-
-	//link
-	depth_writer.finalise();
 
 	//build shadow pipeline
-	depth_renderer
-		.stage(GL_VERTEX_SHADER_BIT, this->TerrainVertex)
-		.stage(GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, this->TerrainModeller)
-		.stage(GL_GEOMETRY_SHADER_BIT | (depth_shader ? GL_FRAGMENT_SHADER_BIT : 0), depth_writer)
-		.finalise();
+	depth_renderer = STPPipelineManager({
+		{ GL_VERTEX_SHADER_BIT,	&this->TerrainVertex },
+		{ GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT, &this->TerrainModeller },
+		{ GL_GEOMETRY_SHADER_BIT | (depth_shader ? GL_FRAGMENT_SHADER_BIT : 0), &depth_writer }
+	});
 
 	return true;
 }

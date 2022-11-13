@@ -258,7 +258,7 @@ public:
 	 * @return The reference.
 	 * If index is out-of-bound, return value is undefined.
 	*/
-	inline T& operator[](size_t index) {
+	inline T& operator[](size_t index) noexcept {
 		return this->Begin[index];
 	}
 
@@ -266,7 +266,7 @@ public:
 	 * @brief Clear the internal storage of the array list.
 	 * Clear takes constant time as the array list only deals with trivial type
 	*/
-	inline void clear() {
+	inline void clear() noexcept {
 		//since the array list only holds trivially destructible type, we can simply move the pointer
 		this->End = this->begin();
 	}
@@ -276,7 +276,7 @@ public:
 	 * @return True if the array list is empty.
 	 * True denotes size equals zero
 	*/
-	inline bool empty() const {
+	inline bool empty() const noexcept {
 		return this->size() == 0u;
 	}
 
@@ -284,7 +284,7 @@ public:
 	 * @brief Retrieve the number of element stored in the array list
 	 * @return The number of element
 	*/
-	inline size_t size() const {
+	inline size_t size() const noexcept {
 		return this->End - this->Begin.get();
 	}
 
@@ -292,7 +292,7 @@ public:
 	 * @brief Get the number of element can be held by the internal storage
 	 * @return The capacity
 	*/
-	inline size_t capacity() const {
+	inline size_t capacity() const noexcept {
 		return this->Last - this->Begin.get();
 	}
 
@@ -300,7 +300,7 @@ public:
 	 * @brief Get the constant iterator to the beginning of the array list
 	 * @return The const iterator to the beginning of the array list
 	*/
-	inline STPArrayList_cit cbegin() const {
+	inline STPArrayList_cit cbegin() const noexcept {
 		return this->Begin.get();
 	}
 
@@ -308,7 +308,7 @@ public:
 	 * @brief Get the constant iterator to the end of the array list
 	 * @return The const iterator to the end of the array list
 	*/
-	inline STPArrayList_cit cend() const {
+	inline STPArrayList_cit cend() const noexcept {
 		return this->End;
 	}
 
@@ -316,7 +316,7 @@ public:
 	 * @brief Get the iterator to the beginning of the array list
 	 * @return The iterator to the beginning of the array list
 	*/
-	inline STPArrayList_it begin() {
+	inline STPArrayList_it begin() noexcept {
 		return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T, A>*>(this)->cbegin());
 	}
 
@@ -325,7 +325,7 @@ public:
 	 * @return The iterator to the end of the array list.
 	 * Note that dereferencing this iterator will result in undefined behaviour.
 	*/
-	inline STPArrayList_it end() {
+	inline STPArrayList_it end() noexcept {
 		return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T, A>*>(this)->cend());
 	}
 
@@ -334,7 +334,7 @@ public:
 	 * @return The pointer to the first element.
 	 * If array list is empty, return nullptr
 	*/
-	inline T* data() {
+	inline T* data() noexcept {
 		return this->begin();
 	}
 
@@ -907,6 +907,6 @@ STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample* samplemap,
 	return STPSingleHistogramFilter::readHistogramBuffer(histogram_output);
 }
 
-STPSingleHistogram STPSingleHistogramFilter::readHistogramBuffer(const STPHistogramBuffer_t& buffer) {
+STPSingleHistogram STPSingleHistogramFilter::readHistogramBuffer(const STPHistogramBuffer_t& buffer) noexcept {
 	return STPSingleHistogram{ buffer->Bin.data(), buffer->HistogramStartOffset.data() };
 }

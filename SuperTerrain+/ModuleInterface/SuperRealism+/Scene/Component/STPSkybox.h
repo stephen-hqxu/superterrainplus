@@ -21,40 +21,6 @@ namespace SuperTerrainPlus::STPRealism {
 	public:
 
 		/**
-		 * @brief STPSkyboxVertexShader provides a vertex shader for skybox rendering.
-		 * This vertex shader can be shared by many environment renderers during initialisation.
-		 */
-		class STP_REALISM_API STPSkyboxVertexShader {
-		private:
-
-			STPShaderManager SkyboxVertexShader;
-
-		public:
-
-			/**
-			 * @brief Initialise a new skybox vertex shader.
-			*/
-			STPSkyboxVertexShader();
-
-			STPSkyboxVertexShader(const STPSkyboxVertexShader&) = delete;
-
-			STPSkyboxVertexShader(STPSkyboxVertexShader&&) noexcept = default;
-
-			STPSkyboxVertexShader& operator=(const STPSkyboxVertexShader&) = delete;
-
-			STPSkyboxVertexShader& operator=(STPSkyboxVertexShader&&) noexcept = default;
-
-			~STPSkyboxVertexShader() = default;
-
-			/**
-			 * @brief Get the underlying skybox shader manager.
-			 * @return The pointer to the skybox vertex shader.
-			*/
-			const STPShaderManager& operator*() const;
-
-		};
-
-		/**
 		 * @brief STPSkyboxVertexBuffer provides vertex buffer of a skybox for drawing.
 		*/
 		class STP_REALISM_API STPSkyboxVertexBuffer {
@@ -91,15 +57,22 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief STPSkyboxInitialiser contains information required to create a skybox-based renderer.
 		*/
-		struct STPSkyboxInitialiser {
+		struct STP_REALISM_API STPSkyboxInitialiser {
 		public:
 
 			//Specifies a pointer to a skybox vertex shader.
 			//This shader can be shared by many skybox renderer during initialisation and no state is retained afterwards,
 			//therefore it can be destroyed safely.
-			const STPSkyboxVertexShader* VertexShader;
+			const STPShaderManager::STPShader VertexShader;
 			//The skybox vertex buffer to be shared between different skybox renderers.
 			std::weak_ptr<const STPSkyboxVertexBuffer> SharedVertexBuffer;
+
+			/**
+			 * @brief Initialise a new skybox vertex shader.
+			*/
+			STPSkyboxInitialiser();
+
+			~STPSkyboxInitialiser() = default;
 
 		};
 
@@ -132,7 +105,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param skybox_fs The fragment shader for the skybox rendering.
 		 * @param skybox_init The pointer to the skybox initialiser.
 		*/
-		void initSkyboxRenderer(const STPShaderManager&, const STPSkyboxInitialiser&);
+		void initSkyboxRenderer(const STPShaderManager::STPShader&, const STPSkyboxInitialiser&);
 
 		/**
 		 * @brief Draw the skybox using the skybox rendering program.

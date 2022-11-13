@@ -43,8 +43,7 @@ STPPostProcess::STPPostProcess(const STPToneMappingCurve& tone_mapping, const ST
 	//update macros in the source code
 	post_source.define(Macro);
 	
-	STPShaderManager post_shader(GL_FRAGMENT_SHADER);
-	post_shader(post_source);
+	const STPShaderManager::STPShader post_shader = STPShaderManager::make(GL_FRAGMENT_SHADER, post_source);
 	this->PostProcessQuad.initScreenRenderer(post_shader, post_process_init);
 
 	/* -------------------------------- setup sampler ---------------------------------- */

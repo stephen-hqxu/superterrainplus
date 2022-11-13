@@ -27,8 +27,7 @@ STPBidirectionalScattering::STPBidirectionalScattering(const STPScreen::STPScree
 	const char* const scattering_shader_file = BSDFShaderFilename.data();
 	STPShaderManager::STPShaderSource scattering_source(scattering_shader_file , STPFile::read(scattering_shader_file));
 
-	STPShaderManager scattering_shader(GL_FRAGMENT_SHADER);
-	scattering_shader(scattering_source);
+	const STPShaderManager::STPShader scattering_shader = STPShaderManager::make(GL_FRAGMENT_SHADER, scattering_source);
 	this->BSDFQuad.initScreenRenderer(scattering_shader, screen_init);
 
 	/* -------------------------------------- setup sampler ---------------------------------------------- */

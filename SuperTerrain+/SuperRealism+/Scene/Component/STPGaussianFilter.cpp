@@ -125,8 +125,7 @@ STPGaussianFilter::STPGaussianFilter(const STPFilterExecution& execution, const 
 
 	filter_source.define(Macro);
 
-	STPShaderManager filter_shader(GL_FRAGMENT_SHADER);
-	filter_shader(filter_source);
+	const STPShaderManager::STPShader filter_shader = STPShaderManager::make(GL_FRAGMENT_SHADER, filter_source);
 	this->GaussianQuad.initScreenRenderer(filter_shader, filter_init);
 
 	//uniform

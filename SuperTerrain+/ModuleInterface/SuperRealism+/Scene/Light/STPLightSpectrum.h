@@ -6,12 +6,6 @@
 //GL Object
 #include "../../Object/STPBindlessTexture.h"
 
-//GLM
-#include <glm/vec3.hpp>
-
-//System
-#include <vector>
-
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -25,10 +19,6 @@ namespace SuperTerrainPlus::STPRealism {
 		STPBindlessTexture::STPHandle SpectrumHandle;
 
 	public:
-
-		//Contains an array of colour
-		template<typename T>
-		using STPColourArray = std::vector<T>;
 
 		//Record the length of the spectrum, i.e., the number of pixel.
 		const unsigned int SpectrumLength;
@@ -54,20 +44,22 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Get the light spectrum.
 		 * @return The pointer to a GL 1D texture of a light spectrum.
 		*/
-		const STPTexture& spectrum() const;
+		const STPTexture& spectrum() const noexcept;
 
 		/**
 		 * @brief Get the light spectrum handle.
 		 * @return The texture handle to the light spectrum.
 		*/
-		STPOpenGL::STPuint64 spectrumHandle() const;
+		STPOpenGL::STPuint64 spectrumHandle() const noexcept;
 
 		/**
 		 * @brief Set the light spectrum with new array of colours.
-		 * @param colour The array of colour to be filled into the spectrum.
+		 * @param size The number of element in the array.
+		 * @param format The pixel format.
+		 * @param type The data type of pixel.
+		 * @param data An array of data.
 		*/
-		template<typename T>
-		void setData(const STPColourArray<T>&);
+		void setData(STPOpenGL::STPsizei, STPOpenGL::STPenum, STPOpenGL::STPenum, const void*) noexcept;
 
 	};
 

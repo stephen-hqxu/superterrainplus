@@ -66,8 +66,7 @@ inline void STPAlphaCulling::prepareAlphaShader(const STPShaderManager::STPShade
 	cull_source.define(macro);
 
 	//build the program
-	STPShaderManager cull_shader(GL_FRAGMENT_SHADER);
-	cull_shader(cull_source);
+	const STPShaderManager::STPShader cull_shader = STPShaderManager::make(GL_FRAGMENT_SHADER, cull_source);
 	this->CullingQuad.initScreenRenderer(cull_shader, screen_init);
 
 	//sampler

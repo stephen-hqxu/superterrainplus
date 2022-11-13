@@ -24,9 +24,7 @@ STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSk
 	Macro("STAR_QUADRATIC_ATTENUATION", (starfield_model.UseQuadraticAttenuation ? 1 : 0));
 
 	star_source.define(Macro);
-	STPShaderManager star_fs(GL_FRAGMENT_SHADER);
-	star_fs(star_source);
-
+	const STPShaderManager::STPShader star_fs = STPShaderManager::make(GL_FRAGMENT_SHADER, star_source);
 	this->StarfieldBox.initSkyboxRenderer(star_fs, starfield_init);
 
 	/* -------------------------------- setup uniform --------------------------------- */

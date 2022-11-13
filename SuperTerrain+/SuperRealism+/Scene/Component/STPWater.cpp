@@ -33,9 +33,11 @@ constexpr static size_t WaterShaderCount = 3u;
 STPWater::STPWater(const STPHeightfieldTerrain& terrain, const STPBiomeWaterLevel& water_level) :
 	TerrainObject(terrain), WaterLevelTable(GL_TEXTURE_1D) {
 	/* ----------------------------- setup water shader -------------------------------- */
-	STPShaderManager water_shader[WaterShaderCount] = {
+	constexpr static GLenum water_shader_type[WaterShaderCount] = {
 		GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER, GL_FRAGMENT_SHADER
 	};
+	STPShaderManager::STPShader water_shader[WaterShaderCount];
+
 	for (unsigned int i = 0u; i < WaterShaderCount; i++) {
 		const char* const water_source_file = i < 2u ? WaterShaderFilename[i].data() : WaterFragmentShaderFilename.data();
 		STPShaderManager::STPShaderSource water_source(water_source_file, STPFile::read(water_source_file));
@@ -49,20 +51,18 @@ STPWater::STPWater(const STPHeightfieldTerrain& terrain, const STPBiomeWaterLeve
 
 			water_source.define(Macro);
 		}
-		water_shader[i](water_source);
-
-		//attach
-		this->WaterAnimator.attach(water_shader[i]);
+		water_shader[i] = STPShaderManager::make(water_shader_type[i], water_source);
 	}
+	STPProgramManager::STPProgramParameter water_program_option = { };
+	water_program_option.Separable = true;
 	//link
-	this->WaterAnimator.separable(true);
-	this->WaterAnimator.finalise();
-
-	this->WaterRenderer
-		//water shares the same vertex program (and hence the mesh model) with the terrain
-		.stage(GL_VERTEX_SHADER_BIT, this->TerrainObject.TerrainVertex)
-		.stage(GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, this->WaterAnimator)
-		.finalise();
+	this->WaterAnimator = STPProgramManager({ water_shader, water_shader + 1, water_shader + 2 }, water_program_option);
+	
+	//water shares the same vertex program (and hence the mesh model) with the terrain
+	this->WaterRenderer = STPPipelineManager({
+		{ GL_VERTEX_SHADER_BIT, &this->TerrainObject.TerrainVertex },
+		{ GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, &this->WaterAnimator }
+	});
 
 	/* --------------------------------- build water level dictionary -------------------------- */
 	//default water level for biome with no given water level
