@@ -75,7 +75,7 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 		const uvec2 dimGridSize = (count + dimBlockSize - 1u) / dimBlockSize;
 		glDispatchCompute(dimGridSize.x, dimGridSize.y, 1u);
 	};
-	plane_generator.use();
+	const STPProgramManager::STPProgramStateManager plane_gen_state = plane_generator.useManaged();
 	GLuint generation_pass;
 	/* ---------------------------- plane vertex generation ------------------------ */
 	generation_pass = 0u;
@@ -92,7 +92,6 @@ STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position
 	glMemoryBarrier(GL_SHADER_GLOBAL_ACCESS_BARRIER_BIT_NV);
 
 	//clear up
-	STPProgramManager::unuse();
 	buffer.makeNonResident();
 	index.makeNonResident();
 }

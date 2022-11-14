@@ -179,7 +179,7 @@ STPSun::STPBundledData<STPLightSpectrum> STPSun::generateSunSpectrum(unsigned in
 	const unsigned int blockDim = static_cast<unsigned int>(this->SpectrumEmulator.workgroupSize().x),
 		gridDim = (spectrum_length + blockDim - 1u) / blockDim;
 	//compute
-	this->SpectrumEmulator.use();
+	const STPProgramManager::STPProgramStateManager spectrum_state = this->SpectrumEmulator.useManaged();
 	glDispatchCompute(gridDim, 1u, 1u);
 	//sync to ensure valid texture access later
 	glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT);
@@ -187,7 +187,6 @@ STPSun::STPBundledData<STPLightSpectrum> STPSun::generateSunSpectrum(unsigned in
 	//clear up
 	STPTexture::unbindImage(0u);
 	STPTexture::unbindImage(1u);
-	STPProgramManager::unuse();
 
 	return spectrum;
 }

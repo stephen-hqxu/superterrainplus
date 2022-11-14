@@ -56,7 +56,7 @@ STPWater::STPWater(const STPHeightfieldTerrain& terrain, const STPBiomeWaterLeve
 	STPProgramManager::STPProgramParameter water_program_option = { };
 	water_program_option.Separable = true;
 	//link
-	this->WaterAnimator = STPProgramManager({ water_shader, water_shader + 1, water_shader + 2 }, water_program_option);
+	this->WaterAnimator = STPProgramManager({ water_shader, water_shader + 1, water_shader + 2 }, &water_program_option);
 	
 	//water shares the same vertex program (and hence the mesh model) with the terrain
 	this->WaterRenderer = STPPipelineManager({

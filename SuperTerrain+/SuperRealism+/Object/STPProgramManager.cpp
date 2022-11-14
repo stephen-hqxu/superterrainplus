@@ -31,8 +31,12 @@ void STPProgramManager::STPProgramDeleter::operator()(STPOpenGL::STPuint program
 	glDeleteProgram(program);
 }
 
+STPProgramManager::STPProgramStateManager::~STPProgramStateManager() {
+	glUseProgram(0);
+}
+
 STPProgramManager::STPProgramManager(const STPShaderManager::STPShader* const* shader_ptr, size_t count,
-	const STPProgramCompileOption& option) : Program(glCreateProgram()) {
+	const STPProgramParameter* option) : Program(glCreateProgram()) {
 	const GLuint program = this->Program.get();
 	//attach all shaders
 	for_each_n(shader_ptr, count, [program](const auto& shader) { glAttachShader(program, shader->get()); });
@@ -66,10 +70,10 @@ STPProgramManager::STPProgramManager(const STPShaderManager::STPShader* const* s
 		throw STPException::STPGLError(log.get());
 	}
 	//write log
-	STPLogHandler::ActiveLogHandler->handle(string_view(log.get(), logLength));
+	STPLogHandler::handle(string_view(log.get(), logLength));
 }
 
-STPProgramManager::STPProgramManager(initializer_list<const STPShaderManager::STPShader*> shader, const STPProgramCompileOption& option) :
+STPProgramManager::STPProgramManager(initializer_list<const STPShaderManager::STPShader*> shader, const STPProgramParameter* option) :
 	STPProgramManager(std::data(shader), shader.size(), option) {
 
 }
@@ -89,10 +93,7 @@ SuperTerrainPlus::STPOpenGL::STPuint STPProgramManager::operator*() const noexce
 	return this->Program.get();
 }
 
-void STPProgramManager::use() const noexcept {
+STPProgramManager::STPProgramStateManager STPProgramManager::useManaged() const noexcept {
 	glUseProgram(this->Program.get());
-}
-
-void STPProgramManager::unuse() noexcept {
-	glUseProgram(0);
+	return STPProgramStateManager();
 }

@@ -118,11 +118,11 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	STPProgramManager::STPProgramParameter terrain_program_option = { };
 	terrain_program_option.Separable = true;
 	//vertex shader
-	this->TerrainVertex = STPProgramManager({ terrain_shader }, terrain_program_option);
+	this->TerrainVertex = STPProgramManager({ terrain_shader }, &terrain_program_option);
 	//2 tessellation shaders
-	this->TerrainModeller = STPProgramManager({ terrain_shader + 1, terrain_shader + 2 }, terrain_program_option);
+	this->TerrainModeller = STPProgramManager({ terrain_shader + 1, terrain_shader + 2 }, &terrain_program_option);
 	//fragment shader
-	this->TerrainShader = STPProgramManager({ terrain_shader + 3 }, terrain_program_option);
+	this->TerrainShader = STPProgramManager({ terrain_shader + 3 }, &terrain_program_option);
 
 	//build pipeline
 	this->TerrainRenderer = STPPipelineManager({
@@ -339,9 +339,9 @@ bool STPHeightfieldTerrain::addDepthConfiguration(size_t light_space_count, cons
 	depth_option.Separable = true;
 	//link program for depth writing
 	if (depth_shader) {
-		depth_writer = STPProgramManager({ &terrain_shadow_shader, depth_shader }, depth_option);
+		depth_writer = STPProgramManager({ &terrain_shadow_shader, depth_shader }, &depth_option);
 	} else {
-		depth_writer = STPProgramManager({ &terrain_shadow_shader }, depth_option);
+		depth_writer = STPProgramManager({ &terrain_shadow_shader }, &depth_option);
 	}
 
 	//build shadow pipeline

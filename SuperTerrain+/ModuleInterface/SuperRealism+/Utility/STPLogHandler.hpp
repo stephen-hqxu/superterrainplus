@@ -24,20 +24,27 @@ namespace SuperTerrainPlus::STPRealism {
 			 * Note that the underlying memory to the string is not guaranteed to be available after the function return,
 			 * retaining memory will lead to UB. In that case, user should copy the string content.
 			*/
-			virtual void handle(std::string_view) { }
+			virtual void handle(std::string_view) = 0;
 
 		};
 
-		//The log handler default by the system.
-		STP_REALISM_API extern STPLogHandlerSolution DefaultLogHandler;
-		//Set the active log handler.
-		//If user is intended to use a custom log handler, the lifetime of the handle must persist until the end of the application
-		//or the new handle is emplaced.
-		//The pointer should always be a valid pointer.
-		STP_REALISM_API extern STPLogHandlerSolution* ActiveLogHandler;
+		/**
+		 * @brief Set the active log handler.
+		 * @param solution The pointer to the log handler.
+		 * If user is intended to use a custom log handler, the lifetime of the handle must persist until the end of the application
+		 * or the new handle is emplaced.
+		 * If a nullptr is supplied, the system will use the default log handler.
+		*/
+		STP_REALISM_API void set(STPLogHandlerSolution*);
 
-		/* Note: don't declare them as inline to ensure unique address and instance across dynamic library on Windows platform;
-		their definitions reside in STPShaderManager.cpp. */
+		/**
+		 * @brief Handle the log using the current active log handler.
+		 * @param log A view to the log string.
+		 * @see STPLogHandlerSolution::handle()
+		*/
+		STP_REALISM_API void handle(std::string_view);
+
+		/* The definitions reside in STPShaderManager.cpp. */
 
 	}
 

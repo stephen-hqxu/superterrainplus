@@ -35,7 +35,7 @@ namespace SuperTerrainPlus::STPRealism {
 			/**
 			 * @brief Initialise a new skybox vertex buffer.
 			*/
-			STPSkyboxVertexBuffer();
+			STPSkyboxVertexBuffer() noexcept;
 
 			STPSkyboxVertexBuffer(const STPSkyboxVertexBuffer&) = delete;
 
@@ -50,7 +50,7 @@ namespace SuperTerrainPlus::STPRealism {
 			/**
 			 * @brief Bind the skybox vertex buffer.
 			*/
-			void bind() const;
+			void bind() const noexcept;
 
 		};
 
@@ -111,7 +111,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Draw the skybox using the skybox rendering program.
 		 * All buffers and program are bound automatically.
 		*/
-		void drawSkybox() const;
+		void drawSkybox() const noexcept;
 
 	};
 }

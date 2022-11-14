@@ -3,12 +3,16 @@
 //GLAD
 #include <glad/glad.h>
 
-using std::ostream;
+#include <string_view>
 
-using namespace SuperTerrainPlus;
+using std::string_view;
+using std::ostream;
+using std::endl;
+
 using namespace SuperTerrainPlus::STPRealism;
 
-static void defaultDebugOutput(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei, const GLchar* message, const void* userParam) {
+ostream& STPDebugCallback::print(STPOpenGL::STPenum source, STPOpenGL::STPenum type, STPOpenGL::STPuint id,
+	STPOpenGL::STPenum severity, STPOpenGL::STPsizei length, const char* message, ostream& stream) {
 	//string conversion
 	static constexpr auto getSourceStr = [](GLenum source) constexpr -> const char* {
 		switch (source) {
@@ -42,20 +46,9 @@ static void defaultDebugOutput(GLenum source, GLenum type, GLuint id, GLenum sev
 		default: return "NULL";
 		}
 	};
-	
-	using std::endl;
-	//user parameter has a stream
-	ostream& stream = *const_cast<ostream*>(reinterpret_cast<const ostream*>(userParam));
+
+	//the GL specification doesn't guarantee the message is null-terminated
 	stream << getSourceStr(source) << '(' << getTypeStr(type) << "::" << getSeverityStr(severity) << "):" << id << ':' << endl;
-	stream << message << endl;
-}
-
-int STPDebugCallback::support() {
-	return GLAD_GL_ARB_debug_output;
-}
-
-void STPDebugCallback::registerAsyncCallback(ostream& stream) {
-	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	//use the default message callback
-	glDebugMessageCallback(&defaultDebugOutput, &stream);
+	stream << string_view(message, length) << endl;
+	return stream;
 }

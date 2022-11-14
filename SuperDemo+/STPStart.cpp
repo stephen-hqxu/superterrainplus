@@ -1,9 +1,8 @@
 //SuperTerrain+ Engine
 #include <SuperTerrain+/STPEngineInitialiser.h>
 //Error
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
+#include <SuperTerrain+/Exception/STPGLError.h>
 #include <SuperTerrain+/Exception/STPInvalidSyntax.h>
-#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 
@@ -158,6 +157,7 @@ namespace STPStart {
 			SceneMaterial(1u), ViewPosition(camera.cameraStatus().Position), 
 			CurrentSeed(this->biomeINI.at("simplex").at("seed").to<unsigned long long>()) {
 			using namespace SuperTerrainPlus;
+			using namespace SuperTerrainPlus::STPRealism;
 			using namespace STPDemo;
 
 			//loading terrain parameters
@@ -187,17 +187,6 @@ namespace STPStart {
 				cerr << se.what() << endl;
 				std::terminate();
 			}
-
-			//setup GL environment
-			using namespace SuperTerrainPlus::STPRealism;
-			//debug callback
-			if (!STPDebugCallback::support()) {
-				throw STPException::STPUnsupportedFunctionality("The current GL does not support debug callback");
-			}
-			glEnable(GL_DEBUG_OUTPUT);
-			STPDebugCallback::registerAsyncCallback(cout);
-			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
-			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, nullptr, GL_FALSE);
 
 			//setup vertex shader for off-screen rendering that can be shared
 			//this buffer is a shared pointer wrapper and we don't need to manage its lifetime
@@ -537,6 +526,19 @@ namespace STPStart {
 
 	};
 
+	static void handleGLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
+		//let's print them
+		SuperTerrainPlus::STPRealism::STPDebugCallback::print(source, type, id, severity, length, message, cout);
+
+		//if error is severe, stop the application
+		if (type == GL_DEBUG_TYPE_ERROR) {
+			//we know the parameter is defined as non-constant, so we can safely cast away
+			bool& shouldHalt = *reinterpret_cast<bool*>(const_cast<void*>(userParam));
+
+			shouldHalt = true;
+		}
+	}
+
 	class STPLogConsolePrinter : public SuperTerrainPlus::STPRealism::STPLogHandler::STPLogHandlerSolution {
 	public:
 
@@ -737,6 +739,18 @@ int main() {
 	cout << "OpenGL Vendor: " << glGetString(GL_VENDOR) << endl;
 	cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << '\n' << endl;
 
+	//capture any error from the GL callback
+	bool shouldApplicationHalt = false;
+	//setup debug callback
+	{
+		using namespace SuperTerrainPlus::STPRealism;
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		glDebugMessageCallback(&STPStart::handleGLDebugCallback, &shouldApplicationHalt);
+
+		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
+		glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, nullptr, GL_FALSE);
+	}
 	//setup camera
 	{
 		const STPINISectionView& engineMain = engineINI.at("");
@@ -763,7 +777,7 @@ int main() {
 	}
 
 	//setup realism engine logging system
-	SuperTerrainPlus::STPRealism::STPLogHandler::ActiveLogHandler = &STPStart::RendererLogHandler;
+	SuperTerrainPlus::STPRealism::STPLogHandler::set(&STPStart::RendererLogHandler);
 	//setup renderer
 	try {
 		STPStart::MasterEngine.emplace(engineINI, biomeINI, *STPStart::MainCamera);
@@ -795,6 +809,10 @@ int main() {
 		STPStart::MainCamera->flush();
 		//draw
 		try {
+			if (shouldApplicationHalt) {
+				throw SuperTerrainPlus::STPException::STPGLError("An erroneous GL debug message is encountered, check the output for more information...");
+			}
+
 			STPStart::MasterEngine->render(currentTime, deltaTime);
 		} catch (const std::exception& e) {
 			cerr << e.what() << endl;

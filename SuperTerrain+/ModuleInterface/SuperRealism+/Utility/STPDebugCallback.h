@@ -3,6 +3,7 @@
 #define _STP_DEBUG_CALLBACK_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
+#include <SuperTerrain+/STPOpenGL.h>
 
 //Stream
 #include <ostream>
@@ -17,19 +18,19 @@ namespace SuperTerrainPlus::STPRealism {
 	namespace STPDebugCallback {
 
 		/**
-		 * @brief Check if the graphics card support debug callback.
-		 * @return True if GPU has support, otherwise false.
-		*/
-		STP_REALISM_API int support();
-
-		/**
-		 * @brief Enable asynchronous debug callback with default debug callback function.
-		 * The built-in debug callback function writes contents to the output stream.
-		 * Debug callback must be enabled first.
+		 * @brief Parse the GL debug callback data and print them to formatted stream output.
+		 * The returned message has newline at the end.
+		 * @param source The source.
+		 * @param type The type.
+		 * @param id The ID.
+		 * @param severity The severity.
+		 * @param length The length.
+		 * @param message The message.
 		 * @param stream The output stream to store the debug message.
-		 * The stream must remain valid throughout the life-time of the application until this function is called again with another stream.
+		 * @return The stream same as the input stream.
 		*/
-		STP_REALISM_API void registerAsyncCallback(std::ostream&);
+		STP_REALISM_API std::ostream& print(STPOpenGL::STPenum, STPOpenGL::STPenum, STPOpenGL::STPuint,
+			STPOpenGL::STPenum, STPOpenGL::STPsizei, const char*, std::ostream&);
 
 	}
 

@@ -30,9 +30,39 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-//Definition for STPLogHandler
-STPLogHandler::STPLogHandlerSolution STPLogHandler::DefaultLogHandler;
-STPLogHandler::STPLogHandlerSolution* STPLogHandler::ActiveLogHandler = &STPLogHandler::DefaultLogHandler;
+/* STPLogHandler */
+
+namespace {
+	struct STPDefaultLogHandler : public STPLogHandler::STPLogHandlerSolution {
+	public:
+
+		void handle(string_view) override {
+			//trivially do nothing
+		}
+
+	};
+}
+
+//The system's default log handler, prefix denotes `*l*og *h*andler`
+static STPDefaultLogHandler lhDefaultLogHandler;
+//The currently active log handler, might be defined by user
+static STPLogHandler::STPLogHandlerSolution* lhActiveLogHandler = &lhDefaultLogHandler;
+
+void STPLogHandler::set(STPLogHandlerSolution* solution) {
+	if (solution) {
+		//set to user-defined
+		lhActiveLogHandler = solution;
+	} else {
+		//nullptr, reset to default
+		lhActiveLogHandler = &lhDefaultLogHandler;
+	}
+}
+
+void STPLogHandler::handle(string_view log) {
+	lhActiveLogHandler->handle(log);
+}
+
+/* STPShaderManager */
 
 constexpr static array<string_view, 9u> mShaderIncludeRegistry = {
 	"/Common/STPAnimatedWave.glsl",
@@ -204,7 +234,7 @@ STPShaderManager::STPShader STPShaderManager::make(STPOpenGL::STPenum type, cons
 	}
 
 	//write log
-	STPLogHandler::ActiveLogHandler->handle(log);
+	STPLogHandler::handle(log);
 
 	return shaderManaged;
 }

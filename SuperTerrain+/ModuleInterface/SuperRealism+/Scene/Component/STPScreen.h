@@ -56,7 +56,7 @@ namespace SuperTerrainPlus::STPRealism {
 			/**
 			 * @brief Initialise a new simple screen framebuffer instance.
 			*/
-			STPSimpleScreenFrameBuffer();
+			STPSimpleScreenFrameBuffer() noexcept;
 
 			STPSimpleScreenFrameBuffer(const STPSimpleScreenFrameBuffer&) = delete;
 
@@ -83,13 +83,13 @@ namespace SuperTerrainPlus::STPRealism {
 			 * @brief Clear the colour attachment of the screen buffer.
 			 * @param colour The colour to be cleared to.
 			*/
-			void clearScreenBuffer(const glm::vec4&);
+			void clearScreenBuffer(const glm::vec4&) noexcept;
 
 			/**
 			 * @brief Activating the screen colour framebuffer.
 			 * To deactivate, bind framebuffer target to any other points.
 			*/
-			void capture() const;
+			void capture() const noexcept;
 
 		};
 
@@ -104,7 +104,7 @@ namespace SuperTerrainPlus::STPRealism {
 			STPSampler ScreenColorSampler;
 			STPBindlessTexture::STPHandle ScreenColorHandle;
 
-			STPSimpleScreenBindlessFrameBuffer();
+			STPSimpleScreenBindlessFrameBuffer() noexcept;
 
 			STPSimpleScreenBindlessFrameBuffer(const STPSimpleScreenBindlessFrameBuffer&) = delete;
 
@@ -136,7 +136,7 @@ namespace SuperTerrainPlus::STPRealism {
 			/**
 			 * @brief Init a new screen vertex buffer.
 			*/
-			STPScreenVertexBuffer();
+			STPScreenVertexBuffer() noexcept;
 
 			STPScreenVertexBuffer(const STPScreenVertexBuffer&) = delete;
 
@@ -151,7 +151,7 @@ namespace SuperTerrainPlus::STPRealism {
 			/**
 			 * @brief Bind the screen vertex buffer.
 			*/
-			void bind() const;
+			void bind() const noexcept;
 
 		};
 
@@ -191,13 +191,16 @@ namespace SuperTerrainPlus::STPRealism {
 		struct STPScreenProgramExecutor {
 		public:
 
+			//This is the thing that prevents state leakage for our screen renderer.
+			const STPProgramManager::STPProgramStateManager OffScreenRendererState;
+
 			/**
 			 * @brief Start a screen program rendering execution.
 			 * The screen draw program is made active automatically and will be deactivated when the current instance is destroyed.
 			 * Changing any indirect buffer, vertex array and program state while a program executor is active will lead to undefined behaviour.
 			 * @param screen The screen program to be rendered.
 			*/
-			STPScreenProgramExecutor(const STPScreen&);
+			STPScreenProgramExecutor(const STPScreen&) noexcept;
 
 			STPScreenProgramExecutor(const STPScreenProgramExecutor&) = delete;
 
@@ -207,12 +210,12 @@ namespace SuperTerrainPlus::STPRealism {
 
 			STPScreenProgramExecutor& operator=(STPScreenProgramExecutor&&) = delete;
 
-			~STPScreenProgramExecutor();
+			~STPScreenProgramExecutor() = default;
 
 			/**
 			 * @brief Draw the screen.
 			*/
-			void operator()() const;
+			void operator()() const noexcept;
 
 		};
 
@@ -247,7 +250,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @brief Draw the screen.
 		 * Buffer and program are bound and used automatically.
 		*/
-		void drawScreen() const;
+		void drawScreen() const noexcept;
 
 		/**
 		 * @brief Draw the screen using a screen draw executor.
@@ -255,7 +258,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * This allows issuing multiple draw commands without reactivating the states repetitively.
 		 * @return A screen draw executor.
 		*/
-		STPScreenProgramExecutor drawScreenFromExecutor() const;
+		[[nodiscard]] STPScreenProgramExecutor drawScreenFromExecutor() const noexcept;
 
 	};
 

@@ -12,7 +12,6 @@
 #include <glm/vec3.hpp>
 
 #include <initializer_list>
-#include <optional>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -21,6 +20,28 @@ namespace SuperTerrainPlus::STPRealism {
 	 * It links with multiple shaders into a single program.
 	*/
 	class STP_REALISM_API STPProgramManager {
+	public:
+
+		/**
+		 * @brief STPProgramStateManager un-uses a program and reset active program state to zero upon destruction.
+		*/
+		struct STP_REALISM_API STPProgramStateManager {
+		public:
+
+			STPProgramStateManager() = default;
+
+			STPProgramStateManager(const STPProgramStateManager&) = delete;
+
+			STPProgramStateManager(STPProgramStateManager&&) = delete;
+
+			STPProgramStateManager& operator=(const STPProgramStateManager&) = delete;
+
+			STPProgramStateManager& operator=(STPProgramStateManager&&) = delete;
+
+			~STPProgramStateManager();
+
+		};
+
 	private:
 
 		/**
@@ -48,8 +69,6 @@ namespace SuperTerrainPlus::STPRealism {
 			bool Separable = false;
 
 		};
-		//Specifies compiler option for GL shader program.
-		typedef std::optional<STPProgramParameter> STPProgramCompileOption;
 
 		/**
 		 * @brief Initialise an empty program manager.
@@ -64,11 +83,11 @@ namespace SuperTerrainPlus::STPRealism {
 		 * For non-contiguous memory, this should be the number of pointer to shader objects.
 		 * @param option Specifies the shader compiler option.
 		*/
-		STPProgramManager(const STPShaderManager::STPShader* const*, size_t, const STPProgramCompileOption& = std::nullopt);
+		STPProgramManager(const STPShaderManager::STPShader* const*, size_t, const STPProgramParameter* = nullptr);
 
 		//Array of pointers, each to a shader object.
 		//@see STPProgramManager
-		STPProgramManager(std::initializer_list<const STPShaderManager::STPShader*>, const STPProgramCompileOption& = std::nullopt);
+		STPProgramManager(std::initializer_list<const STPShaderManager::STPShader*>, const STPProgramParameter* = nullptr);
 
 		STPProgramManager(const STPProgramManager&) = delete;
 
@@ -124,14 +143,14 @@ namespace SuperTerrainPlus::STPRealism {
 		STPOpenGL::STPuint operator*() const noexcept;
 
 		/**
-		 * @brief Use the current program object to make it active.
+		 * @brief Use the current program object to make it active, with automatic program state management.
+		 * The intuition is that program state will override program pipeline state if they are use together,
+		 * this state leakage can be painful to debug when mixing program and program pipeline together in a rendering system.
+		 * Therefore we can avoid this by deactivating the program state after using.
+		 * @return The program active state manager.
+		 * Application should call any GL function that uses program state within guard of this state manager.
 		*/
-		void use() const noexcept;
-
-		/**
-		 * @brief Clear all active used program and reset it to default.
-		*/
-		static void unuse() noexcept;
+		[[nodiscard]] STPProgramStateManager useManaged() const noexcept;
 
 	};
 

@@ -60,7 +60,7 @@ constexpr static STPIndirectCommand::STPDrawElement BoxDrawCommand = {
 	0u
 };
 
-STPSkybox::STPSkyboxVertexBuffer::STPSkyboxVertexBuffer() {
+STPSkybox::STPSkyboxVertexBuffer::STPSkyboxVertexBuffer() noexcept {
 	//setup sky rendering buffer
 	this->SkyboxBuffer.bufferStorageSubData(BoxVertex.data(), BoxVertex.size() * sizeof(signed char), GL_NONE);
 	this->SkyboxIndex.bufferStorageSubData(BoxIndex.data(), BoxIndex.size() * sizeof(unsigned char), GL_NONE);
@@ -76,7 +76,7 @@ STPSkybox::STPSkyboxVertexBuffer::STPSkyboxVertexBuffer() {
 	this->SkyboxArray.enable(0u);
 }
 
-void STPSkybox::STPSkyboxVertexBuffer::bind() const {
+void STPSkybox::STPSkyboxVertexBuffer::bind() const noexcept {
 	this->SkyboxArray.bind();
 	this->SkyboxDrawCommand.bind(GL_DRAW_INDIRECT_BUFFER);
 }
@@ -103,13 +103,10 @@ void STPSkybox::initSkyboxRenderer(const STPShaderManager::STPShader& skybox_fs,
 	this->SkyboxRenderer = STPProgramManager({ &skybox_vs, &skybox_fs });
 }
 
-void STPSkybox::drawSkybox() const {
+void STPSkybox::drawSkybox() const noexcept {
 	//bind
 	this->SkyboxVertex->bind();
-	this->SkyboxRenderer.use();
+	const STPProgramManager::STPProgramStateManager skybox_state = this->SkyboxRenderer.useManaged();
 
 	glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_BYTE, nullptr);
-
-	//clean up
-	STPProgramManager::unuse();
 }

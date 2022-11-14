@@ -42,7 +42,7 @@ constexpr static STPIndirectCommand::STPDrawArray QuadDrawCommand = {
 	0u
 };
 
-STPScreen::STPSimpleScreenFrameBuffer::STPSimpleScreenFrameBuffer() : ScreenColor(GL_TEXTURE_2D) {
+STPScreen::STPSimpleScreenFrameBuffer::STPSimpleScreenFrameBuffer() noexcept : ScreenColor(GL_TEXTURE_2D) {
 
 }
 
@@ -75,15 +75,15 @@ void STPScreen::STPSimpleScreenFrameBuffer::setScreenBuffer(STPTexture* stencil,
 	this->ScreenColor = std::move(this->updateScreenFrameBuffer(stencil, dimension, internal));
 }
 
-void STPScreen::STPSimpleScreenFrameBuffer::clearScreenBuffer(const vec4& color) {
+void STPScreen::STPSimpleScreenFrameBuffer::clearScreenBuffer(const vec4& color) noexcept {
 	this->ScreenColorContainer.clearColor(0, color);
 }
 
-void STPScreen::STPSimpleScreenFrameBuffer::capture() const {
+void STPScreen::STPSimpleScreenFrameBuffer::capture() const noexcept {
 	this->ScreenColorContainer.bind(GL_FRAMEBUFFER);
 }
 
-STPScreen::STPSimpleScreenBindlessFrameBuffer::STPSimpleScreenBindlessFrameBuffer() : STPSimpleScreenFrameBuffer() {
+STPScreen::STPSimpleScreenBindlessFrameBuffer::STPSimpleScreenBindlessFrameBuffer() noexcept : STPSimpleScreenFrameBuffer() {
 
 }
 
@@ -96,7 +96,7 @@ void STPScreen::STPSimpleScreenBindlessFrameBuffer::setScreenBuffer(
 	this->ScreenColor = move(new_screen_color);
 }
 
-STPScreen::STPScreenVertexBuffer::STPScreenVertexBuffer() {
+STPScreen::STPScreenVertexBuffer::STPScreenVertexBuffer() noexcept {
 	//send of off screen quad
 	this->ScreenBuffer.bufferStorageSubData(QuadVertex.data(), QuadVertex.size() * sizeof(signed char), GL_NONE);
 	//rendering command
@@ -111,7 +111,7 @@ STPScreen::STPScreenVertexBuffer::STPScreenVertexBuffer() {
 	this->ScreenArray.enable(0u, 2u);
 }
 
-void STPScreen::STPScreenVertexBuffer::bind() const {
+void STPScreen::STPScreenVertexBuffer::bind() const noexcept {
 	//bind vertex buffer
 	this->ScreenArray.bind();
 	this->ScreenRenderCommand.bind(GL_DRAW_INDIRECT_BUFFER);
@@ -128,16 +128,11 @@ STPScreen::STPScreenInitialiser::STPScreenInitialiser() : VertexShader(createScr
 	
 }
 
-STPScreen::STPScreenProgramExecutor::STPScreenProgramExecutor(const STPScreen& screen) {
+STPScreen::STPScreenProgramExecutor::STPScreenProgramExecutor(const STPScreen& screen) noexcept : OffScreenRendererState(screen.OffScreenRenderer.useManaged()) {
 	screen.ScreenVertex->bind();
-	screen.OffScreenRenderer.use();
 }
 
-STPScreen::STPScreenProgramExecutor::~STPScreenProgramExecutor() {
-	STPProgramManager::unuse();
-}
-
-void STPScreen::STPScreenProgramExecutor::operator()() const {
+void STPScreen::STPScreenProgramExecutor::operator()() const noexcept {
 	glDrawArraysIndirect(GL_TRIANGLE_FAN, nullptr);
 }
 
@@ -154,11 +149,11 @@ void STPScreen::initScreenRenderer(const STPShaderManager::STPShader& screen_fs,
 	this->OffScreenRenderer = STPProgramManager({ &screen_vs, &screen_fs });
 }
 
-void STPScreen::drawScreen() const {
+void STPScreen::drawScreen() const noexcept {
 	const STPScreenProgramExecutor executor = this->drawScreenFromExecutor();
 	executor();
 }
 
-STPScreen::STPScreenProgramExecutor STPScreen::drawScreenFromExecutor() const {
+STPScreen::STPScreenProgramExecutor STPScreen::drawScreenFromExecutor() const noexcept {
 	return STPScreenProgramExecutor(*this);
 }

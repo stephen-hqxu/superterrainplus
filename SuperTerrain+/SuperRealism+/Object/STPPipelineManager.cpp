@@ -44,7 +44,7 @@ STPPipelineManager::STPPipelineManager(const STPPipelineStage* stage_program, si
 		glGetProgramPipelineInfoLog(pipeline, logLength, NULL, log.get());
 	}
 
-	STPLogHandler::ActiveLogHandler->handle(string_view(log.get(), logLength));
+	STPLogHandler::handle(string_view(log.get(), logLength));
 }
 
 STPPipelineManager::STPPipelineManager(initializer_list<const STPPipelineStage> stage_program) :

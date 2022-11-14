@@ -729,10 +729,10 @@ public:
 		auto [ssri_program_object, ssri_log, ssri_expr] =
 			STPDeviceRuntimeBinary::compile("STPScreenSpaceRayIntersection.cu", STPFile::read(SSRIShaderFilename.data()), ssri_info);
 		const nvrtcProgram ssri_program = ssri_program_object.Program.get();
-		STPLogHandler::ActiveLogHandler->handle(ssri_log);
+		STPLogHandler::handle(ssri_log);
 		
 		//prepare for log cache
-		char log[mDefaultLogSize];
+		char log[mDefaultLogSize] = { };
 		size_t logSize = mDefaultLogSize;
 
 		OptixModule ssri_module;
@@ -758,7 +758,7 @@ public:
 		}
 		const STPSmartModule ssri_module_manager(ssri_module);
 		//logging
-		STPLogHandler::ActiveLogHandler->handle(string_view(log, glm::min<size_t>(logSize, mDefaultLogSize)));
+		STPLogHandler::handle(string_view(log, glm::min<size_t>(logSize, mDefaultLogSize)));
 		//reset initial log size counter
 		logSize = mDefaultLogSize;
 
@@ -792,7 +792,7 @@ public:
 			STPSmartProgramGroup(ssri_program_group[1]),
 			STPSmartProgramGroup(ssri_program_group[2])
 		};
-		STPLogHandler::ActiveLogHandler->handle(string_view(log, glm::min<size_t>(logSize, mDefaultLogSize)));
+		STPLogHandler::handle(string_view(log, glm::min<size_t>(logSize, mDefaultLogSize)));
 		logSize = mDefaultLogSize;
 
 		OptixPipeline ssri_pipeline;
@@ -815,7 +815,7 @@ public:
 			auto& [traversal_stack, state_stack, continuation_stack] = this->IntersectionStackSize;
 			STP_CHECK_OPTIX(optixUtilComputeStackSizes(&ssri_stack, 1u, 0u, 0u, &traversal_stack, &state_stack, &continuation_stack));
 		}
-		STPLogHandler::ActiveLogHandler->handle(string_view(log, glm::min<size_t>(logSize, mDefaultLogSize)));
+		STPLogHandler::handle(string_view(log, glm::min<size_t>(logSize, mDefaultLogSize)));
 
 		/* ---------------------------- allocate shader binding table -------------------------------- */
 		{
