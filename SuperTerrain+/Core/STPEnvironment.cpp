@@ -18,19 +18,20 @@ void STPChunkSetting::validate() const {
 		constexpr uvec2 VecOne = uvec2(1u);
 		return (num & VecOne) == VecOne;
 	};
+	static constexpr auto isPositiveui = [](uvec2 val) constexpr -> bool {
+		return val.x > 0u && val.y > 0u;
+	};
+	static constexpr auto isPositived = [](dvec2 val) constexpr -> bool {
+		return val.x > 0.0 && val.y > 0.0;
+	};
 
-	if (this->ChunkSize.x > 0u
-		&& this->ChunkSize.y > 0u
-		&& this->MapSize.x > 0u
-		&& this->MapSize.y > 0u
-		&& this->RenderedChunk.x > 0u
-		&& this->RenderedChunk.y > 0u
-		&& this->ChunkScaling > 0.0
-		&& this->FreeSlipChunk.x > 0u
-		&& this->FreeSlipChunk.y > 0u
+	if (isPositiveui(this->ChunkSize)
+		&& isPositiveui(this->MapSize)
+		&& isPositived(this->ChunkScale)
 		//number validation
-		&& isOdd(this->RenderedChunk)
-		&& isOdd(this->FreeSlipChunk)) {
+		&& isOdd(this->DiversityNearestNeighbour)
+		&& isOdd(this->ErosionNearestNeighbour)
+		&& isOdd(this->RenderDistance)) {
 		return;
 	}
 	throw STPException::STPInvalidEnvironment("STPChunkSetting validation fails");

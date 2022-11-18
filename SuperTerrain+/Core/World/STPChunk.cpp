@@ -130,9 +130,9 @@ void STPChunk::markChunkState(STPChunkState state) noexcept {
 	this->State = state;
 }
 
-ivec2 STPChunk::calcWorldChunkCoordinate(const dvec3& viewPos, const uvec2& chunkSize, double scaling) noexcept {
+ivec2 STPChunk::calcWorldChunkCoordinate(const dvec3& viewPos, const uvec2& chunkSize, const dvec2& scale) noexcept {
 	//scale the chunk
-	const dvec2 scaled_chunk_size = static_cast<dvec2>(chunkSize) * scaling;
+	const dvec2 scaled_chunk_size = static_cast<dvec2>(chunkSize) * scale;
 	//determine which chunk unit the viewer is in, basically we are trying to round down to the chunk size.
 	const ivec2 chunk_unit = static_cast<ivec2>(glm::floor(dvec2(viewPos.x, viewPos.z) / scaled_chunk_size));
 	return chunk_unit * static_cast<ivec2>(chunkSize);

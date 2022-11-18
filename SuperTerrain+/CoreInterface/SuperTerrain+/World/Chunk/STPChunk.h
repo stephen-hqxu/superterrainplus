@@ -177,10 +177,10 @@ namespace SuperTerrainPlus {
 		 * The chunk coordinate is different from chunk world position where it is represented by the chunk size.
 		 * @param viewPos The current view position.
 		 * @param chunkSize The size of the chunk, that is the number of unit plane in (x, z) directions.
-		 * @param scaling The scaling applying on the (x, z) directions in world position.
+		 * @param scale The scaling applying on the (x, z) directions in world position.
 		 * @return The chunk coordinate in the unit of chunk size in world space.
 		*/
-		static glm::ivec2 calcWorldChunkCoordinate(const glm::dvec3&, const glm::uvec2&, double) noexcept;
+		static glm::ivec2 calcWorldChunkCoordinate(const glm::dvec3&, const glm::uvec2&, const glm::dvec2&) noexcept;
 
 		/**
 		 * @brief Convert local chunk index to local chunk coordinate

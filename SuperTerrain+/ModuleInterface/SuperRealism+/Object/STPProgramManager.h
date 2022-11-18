@@ -77,16 +77,9 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Initialise a program manager and link all shader together to form a complete program.
-		 * @param shader_ptr An array of pointers, each to a shader to be linked.
-		 * @param count The number of element in the array.
-		 * For contiguous memory, this should be the number of shader object.
-		 * For non-contiguous memory, this should be the number of pointer to shader objects.
+		 * @param shader_array An array of pointers, each to a shader to be linked.
 		 * @param option Specifies the shader compiler option.
 		*/
-		STPProgramManager(const STPShaderManager::STPShader* const*, size_t, const STPProgramParameter* = nullptr);
-
-		//Array of pointers, each to a shader object.
-		//@see STPProgramManager
 		STPProgramManager(std::initializer_list<const STPShaderManager::STPShader*>, const STPProgramParameter* = nullptr);
 
 		STPProgramManager(const STPProgramManager&) = delete;

@@ -20,7 +20,7 @@ using std::initializer_list;
 
 using std::endl;
 using std::make_unique;
-using std::for_each_n;
+using std::for_each;
 
 using glm::ivec3;
 using glm::value_ptr;
@@ -35,11 +35,11 @@ STPProgramManager::STPProgramStateManager::~STPProgramStateManager() {
 	glUseProgram(0);
 }
 
-STPProgramManager::STPProgramManager(const STPShaderManager::STPShader* const* shader_ptr, size_t count,
+STPProgramManager::STPProgramManager(initializer_list<const STPShaderManager::STPShader*> shader_array,
 	const STPProgramParameter* option) : Program(glCreateProgram()) {
 	const GLuint program = this->Program.get();
 	//attach all shaders
-	for_each_n(shader_ptr, count, [program](const auto& shader) { glAttachShader(program, shader->get()); });
+	for_each(shader_array.begin(), shader_array.end(), [program](const auto& shader) { glAttachShader(program, shader->get()); });
 	//set compiler option
 	if (option) {
 		const auto [separable] = *option;
@@ -51,7 +51,7 @@ STPProgramManager::STPProgramManager(const STPShaderManager::STPShader* const* s
 	//link the program
 	glLinkProgram(program);
 	//clean up, detach all shaders
-	for_each_n(shader_ptr, count, [program](const auto& shader) { glDetachShader(program, shader->get()); });
+	for_each(shader_array.begin(), shader_array.end(), [program](const auto& shader) { glDetachShader(program, shader->get()); });
 
 	//status check
 	GLint logLength, status;
@@ -71,11 +71,6 @@ STPProgramManager::STPProgramManager(const STPShaderManager::STPShader* const* s
 	}
 	//write log
 	STPLogHandler::handle(string_view(log.get(), logLength));
-}
-
-STPProgramManager::STPProgramManager(initializer_list<const STPShaderManager::STPShader*> shader, const STPProgramParameter* option) :
-	STPProgramManager(std::data(shader), shader.size(), option) {
-
 }
 
 SuperTerrainPlus::STPOpenGL::STPint STPProgramManager::uniformLocation(const char* uni) const noexcept {

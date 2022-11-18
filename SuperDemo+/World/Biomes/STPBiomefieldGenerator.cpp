@@ -65,8 +65,11 @@ inline auto STPBiomefieldGenerator::STPHistogramBufferCreator::operator()() cons
 	return STPSingleHistogramFilter::createHistogramBuffer();
 }
 	
-void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap_buffer, 
-	STPFreeSlipSampleTextureBuffer& biomemap_buffer, const STPFreeSlipInformation& freeslip_info, vec2 offset, cudaStream_t stream) const {
+void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBuffer& heightmap_buffer,
+	const STPNearestNeighbourSampleRTextureBuffer& biomemap_buffer, const vec2 offset) {
+	//this function is called from multiple threads, consolidate the device context before calling any driver API function
+	STP_CHECK_CUDA(cudaSetDevice(0));
+
 	int Mingridsize, blocksize;
 	//smart launch configuration
 	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->GeneratorEntry, nullptr, 0u, 0));
@@ -75,20 +78,29 @@ void STPBiomefieldGenerator::operator()(STPFreeSlipFloatTextureBuffer& heightmap
 		Dimgridsize = (this->MapSize + Dimblocksize - 1u) / Dimblocksize;
 
 	//retrieve raw texture
-	float* heightmap = heightmap_buffer(STPFreeSlipFloatTextureBuffer::STPFreeSlipLocation::DeviceMemory);
+	const STPNearestNeighbourFloatWTextureBuffer::STPMergedBuffer heightmap_mem(
+		heightmap_buffer, STPNearestNeighbourFloatWTextureBuffer::STPMemoryLocation::DeviceMemory);
+	float* const heightmap = heightmap_mem.getDevice();
 	//we only need host memory on biome map
-	const Sample* biomemap = biomemap_buffer(STPFreeSlipSampleTextureBuffer::STPFreeSlipLocation::HostMemory);
+	const STPNearestNeighbourSampleRTextureBuffer::STPMergedBuffer biomemap_mem(
+		biomemap_buffer, STPNearestNeighbourSampleRTextureBuffer::STPMemoryLocation::HostMemory);
+	const Sample* const biomemap = biomemap_mem.getHost();
+	//get the stream, both buffer use the same stream
+	const cudaStream_t stream = heightmap_buffer.DeviceMemInfo.second;
 
 	//histogram filter
 	STPSingleHistogramFilter::STPHistogramBuffer_t histogram_buffer = this->BufferPool.requestObject();
 	//start execution
 	//host to host memory copy is always synchronous, so the host memory should be available now
 	STPSingleHistogram histogram_h;
-	histogram_h = this->biome_histogram(biomemap, freeslip_info, histogram_buffer, this->InterpolationRadius);
+	//need to use biomemap neighbour information because we are generating histogram based on biome neighbours
+	const STPNearestNeighbourInformation& biome_neighbour_info = biomemap_buffer.NeighbourInfo;
+
+	histogram_h = this->biome_histogram(biomemap, biome_neighbour_info, histogram_buffer, this->InterpolationRadius);
 	//copy histogram to device
 	STPSingleHistogram histogram_d;
 	//calculate the size of allocation
-	const uvec2& biome_dimension = freeslip_info.Dimension;
+	const uvec2& biome_dimension = biome_neighbour_info.MapSize;
 	const unsigned int num_pixel_biomemap = biome_dimension.x * biome_dimension.y;
 	const size_t bin_size = histogram_h.HistogramStartOffset[num_pixel_biomemap] * sizeof(STPSingleHistogram::STPBin),
 		offset_size = (num_pixel_biomemap + 1u) * sizeof(unsigned int);

@@ -66,7 +66,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 
 	/* ---------------------------------------- setup terrain tile buffer ---------------------------------------- */
 	const dvec2 chunkHorizontalOffset = dvec2(chunk_setting.ChunkOffset.x, chunk_setting.ChunkOffset.z);
-	const uvec2 tileDimension = chunk_setting.ChunkSize * chunk_setting.RenderedChunk;
+	const uvec2 tileDimension = chunk_setting.ChunkSize * chunk_setting.RenderDistance;
 
 	//generate terrain mesh
 	this->TerrainMesh.emplace(tileDimension, this->calcBaseChunkPosition(chunkHorizontalOffset));
@@ -149,7 +149,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 		.uniform(glProgramUniform1i, "Heightmap", 0)
 		.uniform(glProgramUniform1i, "Splatmap", 1)
 		//extra terrain info for rendering
-		.uniform(glProgramUniform2uiv, "VisibleChunk", 1, value_ptr(chunk_setting.RenderedChunk))
+		.uniform(glProgramUniform2uiv, "VisibleChunk", 1, value_ptr(chunk_setting.RenderDistance))
 		.uniform(glProgramUniform2fv, "ChunkHorizontalOffset", 1, value_ptr(static_cast<vec2>(chunkHorizontalOffset)));
 
 	/* --------------------------------- setup texture splatting ------------------------------------ */
@@ -222,7 +222,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 dvec2 STPHeightfieldTerrain::calcBaseChunkPosition(dvec2 horizontal_offset) {
 	const STPEnvironment::STPChunkSetting& chunk_settings = this->TerrainGenerator.ChunkSetting;
 	//calculate offset
-	const ivec2 chunk_offset = -static_cast<ivec2>(chunk_settings.RenderedChunk / 2u),
+	const ivec2 chunk_offset = -static_cast<ivec2>(chunk_settings.RenderDistance / 2u),
 		base_chunk_coord = STPChunk::offsetChunk(ivec2(0), chunk_settings.ChunkSize, chunk_offset);
 
 	return static_cast<dvec2>(base_chunk_coord) + horizontal_offset;
@@ -235,9 +235,9 @@ inline void STPHeightfieldTerrain::updateTerrainModel() {
 	//move the terrain centre to the camera
 	const ivec2& chunkCentre = this->TerrainGenerator.centre();
 	Model = glm::scale(Model, dvec3(
-		chunk_setting.ChunkScaling,
-		1.0f,
-		chunk_setting.ChunkScaling
+		chunk_setting.ChunkScale.x,
+		1.0,
+		chunk_setting.ChunkScale.y
 	));
 	Model = glm::translate(Model, dvec3(
 		chunkCentre.x + chunk_setting.ChunkOffset.x,

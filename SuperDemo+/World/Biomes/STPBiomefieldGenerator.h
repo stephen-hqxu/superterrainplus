@@ -13,7 +13,6 @@
 
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceObject.h>
 
-#include <glm/vec2.hpp>
 //GLM
 #include <glm/vec2.hpp>
 
@@ -81,9 +80,8 @@ namespace STPDemo {
 
 		~STPBiomefieldGenerator() = default;
 
-		void operator()(SuperTerrainPlus::STPFreeSlipFloatTextureBuffer&, 
-			SuperTerrainPlus::STPFreeSlipSampleTextureBuffer&, 
-			const SuperTerrainPlus::STPFreeSlipInformation&, glm::vec2, cudaStream_t) const override;
+		void operator()(const SuperTerrainPlus::STPNearestNeighbourFloatWTextureBuffer&,
+			const SuperTerrainPlus::STPNearestNeighbourSampleRTextureBuffer&, glm::vec2) override;
 
 	};
 

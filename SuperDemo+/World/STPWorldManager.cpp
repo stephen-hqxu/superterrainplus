@@ -206,8 +206,6 @@ void STPWorldManager::linkProgram(const STPEnvironment::STPChunkSetting& chunk_s
 	setup.ChunkSetting = &chunk_setting;
 	setup.HeightfieldSetting = &heightfield_setting;
 	setup.DiversityGenerator = this->DiversityGenerator.get();
-	//TODO: correctly calculate the thread occupancy
-	setup.ConcurrencyLevelHint = 5u;
 	this->ChunkGenerator.emplace(setup);
 
 	//create the world pipeline

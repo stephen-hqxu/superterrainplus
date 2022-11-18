@@ -15,23 +15,28 @@ namespace SuperTerrainPlus::STPEnvironment {
 	struct STP_API STPChunkSetting {
 	public:
 
-		//Determine the X*Y number of unit planes, greater chunk size will give more chunk details
-		//It's highly recommend to use squared chunk size
+		//Determine the X*Y number of unit planes, greater chunk size gives more detailed mesh quality but requires more memory and processing power.
+		//It's highly recommend to use squared chunk size.
 		glm::uvec2 ChunkSize;
-		//Determine the size of all generated maps, it's recommend to have the same ratio as the chunk size to avoid any possible up/down scaling on texture
+		//Determine the size of all generated maps, it's recommend to have the same ratio as the chunk size to avoid any possible up/down scaling on texture.
 		glm::uvec2 MapSize;
-		//Determine the X*Y number of chunk to be rendered surrounded by player, greater value will give further visible distance.
-		//It's highly recommend to use the squared rendering distance, and odd number which makes centring the chunk easier.
-		glm::uvec2 RenderedChunk;
-		//Determine the offset of all the chunks in (x,y,z) direction, usually there is no need to change the value other than (0,0,0)
+		//Determine the offset of all the chunks in (x, y, z) direction.
+		//This will offset the chunk loading and unloading boundary as the viewer moves.
 		glm::dvec3 ChunkOffset;
-		//Determine the scale of the unit plane, in (x,z) direction
-		double ChunkScaling;
-		//Specify the (x,z) offset of the terrain heightmap, x and y specify the offset on x and y direction of the map
+		//Determine the scale of each chunk, in (x, z) direction.
+		glm::dvec2 ChunkScale;
+		//Specify the (x, z) offset of the terrain heightmap.
 		glm::dvec2 MapOffset;
-		//Specify the number of chunk that will be used as free slip chunk and allows data access outside the central chunk
-		//When both values are 1, it will effectively disable the neighbour chunk logic
-		glm::uvec2 FreeSlipChunk;
+
+		//Specify the number of nearest neighbour chunk around the centre chunk during diversity generation, i.e. biomemap and multi-biome heightmap generation.
+		//Based on the user implementation of diversity generator, this allows accessing information beyond the current working chunk.
+		glm::uvec2 DiversityNearestNeighbour;
+		//Specify the number of nearest neighbour chunk around the centre chunk during heightmap erosion and allows erosion happens outside the central chunk.
+		//This allows erosion to work in a *free-slip* manner, allowing water droplet to travel beyond the centre chunk to avoid chunk edge artefact.
+		glm::uvec2 ErosionNearestNeighbour;
+		//Determine the X*Y number of chunk to be rendered surrounded by player, greater value gives further visible distance.
+		//It's highly recommend to use the squared rendering distance.
+		glm::uvec2 RenderDistance;
 
 		void validate() const;
 	};

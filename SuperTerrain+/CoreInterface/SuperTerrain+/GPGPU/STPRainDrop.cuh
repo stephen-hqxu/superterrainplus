@@ -12,8 +12,6 @@
 //Settings
 #include "../Environment/STPRainDropSetting.h"
 #include "../World/Chunk/STPErosionBrush.hpp"
-//Free slipper
-#include "../World/Chunk/STPFreeSlipInformation.hpp"
 
 //GLM
 #include <glm/vec2.hpp>

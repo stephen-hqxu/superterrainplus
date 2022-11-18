@@ -55,9 +55,9 @@ Utility/STPThreadPool.inl
 World/Chunk/STPChunk.h
 World/Chunk/STPDiversityGenerator.hpp
 World/Chunk/STPErosionBrush.hpp
-World/Chunk/STPFreeSlipInformation.hpp
-World/Chunk/STPFreeSlipTextureBuffer.h
 World/Chunk/STPHeightfieldGenerator.h
+World/Chunk/STPNearestNeighbourInformation.hpp
+World/Chunk/STPNearestNeighbourTextureBuffer.h
 # /World/Diversity
 World/Diversity/STPBiomeDefine.h
 World/Diversity/STPBiomeFactory.h

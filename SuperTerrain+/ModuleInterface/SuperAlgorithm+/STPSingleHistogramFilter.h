@@ -5,7 +5,7 @@
 #include <SuperAlgorithm+/STPAlgorithmDefine.h>
 #include <SuperTerrain+/World/Diversity/STPBiomeDefine.h>
 //Engine Components
-#include <SuperTerrain+/World/Chunk/STPFreeSlipInformation.hpp>
+#include <SuperTerrain+/World/Chunk/STPNearestNeighbourInformation.hpp>
 //Single Histogram Data Structure
 #include "STPSingleHistogram.hpp"
 
@@ -94,9 +94,9 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		/**
 		 * @brief Perform histogram filter on the input texture.
 		 * If there is a histogram returned and no destroyHistogram() is called, execution is thrown and no execution is launched.
-		 * @param samplemap The input free-slip manager with sample_map loaded
+		 * @param samplemap The input samplemap. This is typically a merged nearest-neighbour samplemap.
 		 * The input texture must be aligned in row-major order, and must be a available on host memory space.
-		 * @param freeslip_info The information about the free-slip logic.
+		 * @param nn_info The information about the nearest-neighbour logic used by the samplemap.
 		 * @param histogram_output The histogram buffer where the final output will be stored
 		 * @param radius The filter radius
 		 * @return The raw pointer resultant histogram of the execution.
@@ -104,7 +104,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		 * The same output can be retrieved later by calling function readHistogramBuffer()
 		 * @see readHistogramBuffer()
 		*/
-		STPSingleHistogram operator()(const STPDiversity::Sample*, const STPFreeSlipInformation&, const STPHistogramBuffer_t&, unsigned int);
+		STPSingleHistogram operator()(const STPDiversity::Sample*, const STPNearestNeighbourInformation&, const STPHistogramBuffer_t&, unsigned int);
 
 		/**
 		 * @brief Retrieve the underlying contents in the histogram buffer and pass them as pointers in STPSingleHistogram

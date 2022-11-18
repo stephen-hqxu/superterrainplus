@@ -14,7 +14,7 @@ using glm::uvec2;
 __global__ static void curandInitKERNEL(STPHeightfieldKernel::STPcurand_t*, unsigned long long, unsigned int);
 
 __global__ static void hydraulicErosionKERNEL(
-	float*, const STPEnvironment::STPRainDropSetting*, STPFreeSlipInformation, STPErosionBrush, STPHeightfieldKernel::STPcurand_t*);
+	float*, const STPEnvironment::STPRainDropSetting*, STPNearestNeighbourInformation, STPErosionBrush, STPHeightfieldKernel::STPcurand_t*);
 
 __global__ static void texture32Fto16KERNEL(float*, unsigned short*, uvec2);
 
@@ -35,7 +35,7 @@ __host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(un
 }
 
 __host__ void STPHeightfieldKernel::hydraulicErosion(float* heightmap_storage,
-	const STPEnvironment::STPRainDropSetting* raindrop_setting, const STPFreeSlipInformation& freeslip_info,
+	const STPEnvironment::STPRainDropSetting* raindrop_setting, const STPNearestNeighbourInformation& nn_info,
 	const STPErosionBrush& brush, unsigned int raindrop_count, STPcurand_t* rng, cudaStream_t stream) {
 	//brush contains two components: weights (float) and indices (int)
 	const unsigned int erosionBrushCache_size = brush.BrushSize * (sizeof(int) + sizeof(float));
@@ -46,21 +46,19 @@ __host__ void STPHeightfieldKernel::hydraulicErosion(float* heightmap_storage,
 
 	//erode the heightmap
 	hydraulicErosionKERNEL<<<gridsize, blocksize, erosionBrushCache_size, stream>>>(
-		heightmap_storage, raindrop_setting, freeslip_info, brush, rng);
+		heightmap_storage, raindrop_setting, nn_info, brush, rng);
 	STP_CHECK_CUDA(cudaGetLastError());
 }
 
-__host__ void STPHeightfieldKernel::texture32Fto16(float* input, unsigned short* output, uvec2 dimension, unsigned int channel, cudaStream_t stream) {
-	const uvec2 totalDimension = dimension * channel;
-
+__host__ void STPHeightfieldKernel::texture32Fto16(float* input, unsigned short* output, uvec2 dimension, cudaStream_t stream) {
 	int Mingridsize, blocksize;
 	STP_CHECK_CUDA(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &texture32Fto16KERNEL));
 	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
-		Dimgridsize = (totalDimension + Dimblocksize - 1u) / Dimblocksize;
+		Dimgridsize = (dimension + Dimblocksize - 1u) / Dimblocksize;
 
 	//compute
 	texture32Fto16KERNEL<<<dim3(Dimgridsize.x, Dimgridsize.y), dim3(Dimblocksize.x, Dimblocksize.y), 0, stream>>>(
-		input, output, totalDimension);
+		input, output, dimension);
 	STP_CHECK_CUDA(cudaGetLastError());
 }
 
@@ -85,7 +83,7 @@ __global__ void curandInitKERNEL(STPHeightfieldKernel::STPcurand_t* rng, unsigne
 #include <SuperTerrain+/GPGPU/STPRainDrop.cuh>
 
 __global__ void hydraulicErosionKERNEL(float* heightmap_storage,
-	const STPEnvironment::STPRainDropSetting* raindrop_setting, STPFreeSlipInformation freeslip_info,
+	const STPEnvironment::STPRainDropSetting* raindrop_setting, STPNearestNeighbourInformation nn_info,
 	STPErosionBrush brush, STPHeightfieldKernel::STPcurand_t* rng) {
 	//current working index
 	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
@@ -99,8 +97,8 @@ __global__ void hydraulicErosionKERNEL(float* heightmap_storage,
 	__shared__ uvec2 base;
 	__shared__ uvec2 range;
 	if (threadIdx.x == 0u) {
-		base = freeslip_info.Dimension - 1u,
-			range = (freeslip_info.FreeSlipChunk / 2u) * freeslip_info.Dimension;
+		base = nn_info.MapSize - 1u,
+			range = (nn_info.ChunkNearestNeighbour / 2u) * nn_info.MapSize;
 	}
 	__syncthreads();
 
@@ -114,7 +112,7 @@ __global__ void hydraulicErosionKERNEL(float* heightmap_storage,
 	initPos += range;
 
 	//spawn the raindrop
-	STPRainDrop droplet(initPos, raindrop_setting->initWaterVolume, raindrop_setting->initSpeed, freeslip_info.FreeSlipRange);
+	STPRainDrop droplet(initPos, raindrop_setting->initWaterVolume, raindrop_setting->initSpeed, nn_info.TotalMapSize);
 	droplet(heightmap_storage, static_cast<const STPEnvironment::STPRainDropSetting&>(*raindrop_setting), brush);
 }
 

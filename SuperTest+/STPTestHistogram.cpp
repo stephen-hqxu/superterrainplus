@@ -49,7 +49,7 @@ private:
 		2, 0, 1, 1, 2, 3, 1, 2, 3, 2, 0, 1
 	};
 
-	constexpr static STPFreeSlipInformation Data = {
+	constexpr static STPNearestNeighbourInformation Data = {
 		Dimension,
 		Unit,
 		Range

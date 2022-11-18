@@ -59,7 +59,7 @@ try { \
 
 STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk,
 	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : SimplexPermutation(STPAlgorithm::STPPermutationGenerator::generate(simplex_setting)),
-	Dimension(chunk.MapSize), RenderingRange(chunk.RenderedChunk) {
+	Dimension(chunk.MapSize), RenderingRange(chunk.RenderDistance) {
 	const auto commonSourceInfo = [capabilityOption = "-arch=sm_" + to_string(STPEngineInitialiser::architecture(0))]() {
 		using SuperTerrainPlus::STPStringUtility::concatCharArray;
 		constexpr static auto coreIncludeOption = concatCharArray("-I ", STPCoreInfo::CoreInclude);

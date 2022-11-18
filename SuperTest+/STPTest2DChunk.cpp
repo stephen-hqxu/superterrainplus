@@ -31,11 +31,11 @@ SCENARIO("STPChunk static functions can compute chunk coordinate correctly", "[C
 	GIVEN("A camera position in the world and some chunk parameters") {
 		constexpr dvec3 CameraPosition = dvec3(-573.74, 679.5, 845.982);
 		constexpr uvec2 ChunkSize = uvec2(10u);
-		constexpr double ChunkScaling = 25.5;
+		constexpr dvec2 ChunkScale = dvec2(25.5);
 
 		THEN("The chunk world position should be correctly calculated") {
 			constexpr ivec2 ChunkPosition = ivec2(-30, 30);
-			CHECK(STPChunk::calcWorldChunkCoordinate(CameraPosition, ChunkSize, ChunkScaling) == ChunkPosition);
+			CHECK(STPChunk::calcWorldChunkCoordinate(CameraPosition, ChunkSize, ChunkScale) == ChunkPosition);
 
 			WHEN("Trying to generate some map for a chunk with this world coordinate") {
 

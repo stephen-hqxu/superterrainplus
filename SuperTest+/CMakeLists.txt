@@ -14,7 +14,7 @@ STPTestMain.cpp
 STPTest2DBiome.cpp
 STPTest2DChunk.cpp
 STPTestAlgebra.cpp
-STPTestFreeSlip.cpp
+STPTestNearestNeighbour.cpp
 STPTestRTC.cpp
 STPTestTexture.cpp
 STPTestUtility.cpp

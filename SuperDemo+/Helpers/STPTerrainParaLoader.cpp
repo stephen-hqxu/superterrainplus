@@ -56,7 +56,7 @@ STPEnvironment::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const STPI
 		section.at("chunkSizeX").to<unsigned int>(),
 		section.at("chunkSizeZ").to<unsigned int>()
 	);
-	chunks_options.RenderedChunk = uvec2(
+	chunks_options.RenderDistance = uvec2(
 		section.at("renderedSizeX").to<unsigned int>(),
 		section.at("renderedSizeZ").to<unsigned int>()
 	);
@@ -69,11 +69,18 @@ STPEnvironment::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const STPI
 		section.at("mapOffsetX").to<double>(),
 		section.at("mapOffsetZ").to<double>()
 	);
-	chunks_options.FreeSlipChunk = uvec2(
-		section.at("freeSlipX").to<unsigned int>(),
-		section.at("freeSlipZ").to<unsigned int>()
+	chunks_options.DiversityNearestNeighbour = uvec2(
+		section.at("diversityNeighbourX").to<unsigned int>(),
+		section.at("diversityNeighbourY").to<unsigned int>()
 	);
-	chunks_options.ChunkScaling = section.at("chunkScale").to<double>();
+	chunks_options.ErosionNearestNeighbour = uvec2(
+		section.at("erosionNeighbourX").to<unsigned int>(),
+		section.at("erosionNeighbourY").to<unsigned int>()
+	);
+	chunks_options.ChunkScale = dvec2(
+		section.at("chunkScaleX").to<double>(),
+		section.at("chunkScaleY").to<double>()
+	);
 
 	return chunks_options;
 }

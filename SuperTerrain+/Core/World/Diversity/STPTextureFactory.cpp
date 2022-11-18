@@ -23,10 +23,10 @@ using glm::uvec2;
 
 STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& database_view,
 	const STPEnvironment::STPChunkSetting& terrain_chunk, const STPSamplerStateModifier& modify_sampler) :
-	MapDimension(terrain_chunk.MapSize), RenderedChunk(terrain_chunk.RenderedChunk),
-	RenderedChunkCount(terrain_chunk.RenderedChunk.x * terrain_chunk.RenderedChunk.y),
+	MapDimension(terrain_chunk.MapSize), RenderDistance(terrain_chunk.RenderDistance),
+	RenderDistanceCount(terrain_chunk.RenderDistance.x * terrain_chunk.RenderDistance.y),
 	LocalChunkInfo(STPSmartDeviceMemory::makeDevice
-		<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation[]>(RenderedChunkCount)),
+		<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation[]>(RenderDistanceCount)),
 	ValidType(database_view.getValidMapType()) {
 	//temporary cache
 	STPIDConverter<STPTextureInformation::STPTextureID> textureID_converter;
@@ -215,7 +215,7 @@ void STPTextureFactory::operator()(cudaTextureObject_t biomemap_tex, cudaTexture
 		//nothing needs to be done
 		return;
 	}
-	if (requesting_local.size() > this->RenderedChunkCount) {
+	if (requesting_local.size() > this->RenderDistanceCount) {
 		//too many rendered chunk than the memory we have allocation
 		throw STPException::STPBadNumericRange("The number of requesting local is more than the total number of rendered chunk.");
 	}

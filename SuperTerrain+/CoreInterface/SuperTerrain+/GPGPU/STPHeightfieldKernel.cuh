@@ -16,8 +16,8 @@
 //GLM
 #include <glm/vec2.hpp>
 
-//Free-Slip
-#include "../World/Chunk/STPFreeSlipInformation.hpp"
+//Nearest-Neighbour
+#include "../World/Chunk/STPNearestNeighbourInformation.hpp"
 #include "../World/Chunk/STPErosionBrush.hpp"
 //Settings
 #include "../Environment/STPHeightfieldSetting.h"
@@ -43,16 +43,16 @@ namespace SuperTerrainPlus {
 
 		/**
 		 * @brief Performing hydraulic erosion for the given heightmap terrain.
-		 * @param height_storage The floating point heightmap with global-local free-slip management.
+		 * @param height_storage The floating point heightmap with all neighbours merged together.
 		 * Heightmap must be available in device memory.
 		 * @param raindrop_settings The settings to use to erosion the heightmap, must be in device memory space.
-		 * @param freeslip_info The information about the free-slip erosion.
+		 * @param nn_info The information about the nearest neighbour of chunk, allowing *free-slip* erosion.
 		 * @param brush The information about the generated erosion brush.
 		 * @param raindrop_count The number of raindrop to spawn and erode the terrain.
 		 * @param rng The random number generator map sequence, independent for each rain drop.
 		 * @param stream Specify a CUDA stream work will be submitted to.
 		*/
-		__host__ void hydraulicErosion(float*, const STPEnvironment::STPRainDropSetting*, const STPFreeSlipInformation&,
+		__host__ void hydraulicErosion(float*, const STPEnvironment::STPRainDropSetting*, const STPNearestNeighbourInformation&,
 			const STPErosionBrush&, unsigned int, STPcurand_t*, cudaStream_t);
 
 		/**
@@ -61,10 +61,9 @@ namespace SuperTerrainPlus {
 		 * @param input The input FP32 texture. Must be in the range of [0.0f, 1.0f].
 		 * @param output The output INT16 texture.
 		 * @param dimension The dimension (number of pixel) of the texture.
-		 * @param channel The number of channel per pixel
 		 * @param stream Specify a CUDA stream work will be submitted to
 		*/
-		__host__ void texture32Fto16(float*, unsigned short*, glm::uvec2, unsigned int, cudaStream_t);
+		__host__ void texture32Fto16(float*, unsigned short*, glm::uvec2, cudaStream_t);
 
 	}
 

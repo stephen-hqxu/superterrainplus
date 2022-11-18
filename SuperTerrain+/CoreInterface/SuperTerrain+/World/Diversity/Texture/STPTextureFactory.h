@@ -38,8 +38,8 @@ namespace SuperTerrainPlus::STPDiversity {
 		//The dimension of terrain map in one chunk
 		const glm::uvec2 MapDimension;
 		//The total number of chunk being rendered
-		const glm::uvec2 RenderedChunk;
-		const unsigned int RenderedChunkCount;
+		const glm::uvec2 RenderDistance;
+		const unsigned int RenderDistanceCount;
 
 		//An array of chunk requesting for splatmap generation
 		typedef std::vector<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation> STPRequestingChunkInfo;

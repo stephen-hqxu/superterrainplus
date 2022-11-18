@@ -44,6 +44,7 @@ using std::queue;
 using std::unordered_map;
 using std::unordered_set;
 using std::vector;
+using std::unique_ptr;
 
 using std::exception_ptr;
 using std::future;
@@ -140,16 +141,6 @@ private:
 	}
 
 	/**
-	 * @brief Get all neighbour for this chunk position
-	 * @param chunkCoord The central chunk world coordinate
-	 * @return A list of all neighbour chunk position
-	*/
-	inline STPChunk::STPChunkCoordinateCache getNeighbour(const ivec2& chunkCoord) const noexcept {
-		const STPEnvironment::STPChunkSetting& chk_config = this->ChunkSetting;
-		return STPChunk::calcChunkNeighbour(chunkCoord, chk_config.ChunkSize, chk_config.FreeSlipChunk);
-	}
-
-	/**
 	 * @brief Convert a list of chunks into unique visitors.
 	 * Unique visitors are cached into an internal memory.
 	 * @param chunk An array of pointers to chunk.
@@ -195,42 +186,32 @@ private:
 	 * require the central chunk and neighbour chunks arranged in row-major flavour. The central chunk should also be included.
 	 * @param chunkCoord The world coordinate of the chunk
 	*/
-	void computeHeightmap(STPChunk::STPUniqueMapVisitor& current_chunk, STPUniqueChunkRecord& neighbour_chunk, const ivec2& chunkCoord) {
-		//generate heightmap
-		STPHeightfieldGenerator::STPMapStorage maps;
-		maps.Biomemap.reserve(neighbour_chunk.size());
-		maps.Heightmap32F.reserve(1u);
-		for (auto& chk : neighbour_chunk) {
-			maps.Biomemap.push_back(chk.biomemap());
-		}
-		maps.Heightmap32F.push_back(current_chunk.heightmap());
-		maps.HeightmapOffset = static_cast<vec2>(this->calcOffset(chunkCoord));
-		const STPHeightfieldGenerator::STPGeneratorOperation op = 
-			STPHeightfieldGenerator::HeightmapGeneration;
+	inline void computeHeightmap(STPChunk::STPUniqueMapVisitor& current_chunk, STPUniqueChunkRecord& neighbour_chunk, const ivec2& chunkCoord) {
+		//put array of biomemap pointers to a memory
+		const unique_ptr<const Sample*[]> biomemap = make_unique<const Sample*[]>(neighbour_chunk.size());
 
-		//computing heightmap
-		this->generateHeightfield(maps, op);
+		std::transform(neighbour_chunk.cbegin(), neighbour_chunk.cend(), biomemap.get(), [](const auto& chk) { return chk.biomemap(); });
+
+		this->generateHeightfield.generate(current_chunk.heightmap(), biomemap.get(), static_cast<vec2>(this->calcOffset(chunkCoord)));
 	}
 
 	/**
-	 * @brief Dispatch compute for free-slip hydraulic erosion, normalmap compute and formatting, requires heightmap presenting in the chunk
-	 * @param neighbour_chunk The maps of the chunks that require to be eroded with a free-slip manner, require the central chunk and neighbour chunks
+	 * @brief Dispatch compute for hydraulic erosion, normalmap compute and formatting, requires heightmap presenting in the chunk
+	 * @param neighbour_chunk The maps of the chunks that require to be eroded, require the central chunk and neighbour chunks
 	 * arranged in row-major flavour. The central chunk should also be included.
 	*/
-	void computeErosion(STPUniqueChunkRecord& neighbour_chunk) {
-		STPHeightfieldGenerator::STPMapStorage maps;
-		maps.Heightmap32F.reserve(neighbour_chunk.size());
-		maps.Heightfield16UI.reserve(neighbour_chunk.size());
-		for (auto& chk : neighbour_chunk) {
-			maps.Heightmap32F.push_back(chk.heightmap());
-			maps.Heightfield16UI.push_back(chk.heightmapBuffer());
-		}
-		const STPHeightfieldGenerator::STPGeneratorOperation op =
-			STPHeightfieldGenerator::Erosion |
-			STPHeightfieldGenerator::RenderingBufferGeneration;
+	inline void computeErosion(STPUniqueChunkRecord& neighbour_chunk) {
+		const size_t neightbour_count = neighbour_chunk.size();
+		const unique_ptr<float*[]> heightmap = make_unique<float*[]>(neightbour_count);
+		const unique_ptr<unsigned short*[]> heightmap_low = make_unique<unsigned short*[]>(neightbour_count);
 
-		//computing and return success state
-		this->generateHeightfield(maps, op);
+		for (size_t i = 0u; i < neightbour_count; i++) {
+			STPChunk::STPUniqueMapVisitor& curr_chunk = neighbour_chunk[i];
+			heightmap[i] = curr_chunk.heightmap();
+			heightmap_low[i] = curr_chunk.heightmapBuffer();
+		}
+
+		this->generateHeightfield.erode(heightmap.get(), heightmap_low.get());
 	}
 
 	/**
@@ -297,7 +278,14 @@ private:
 
 		//reminder: central chunk is included in neighbours
 		const STPEnvironment::STPChunkSetting& chk_config = this->ChunkSetting;
-		const STPChunk::STPChunkCoordinateCache neighbour_position = this->getNeighbour(chunkCoord);
+		//select neighbour configuration based on recursion pass
+		uvec2 neighbour_count;
+		if constexpr (Pass == STPRecursiveNeighbourCheckingPass::BiomemapPass) {
+			neighbour_count = chk_config.DiversityNearestNeighbour;
+		} else if constexpr (Pass == STPRecursiveNeighbourCheckingPass::HeightmapPass) {
+			neighbour_count = chk_config.ErosionNearestNeighbour;
+		}
+		const STPChunk::STPChunkCoordinateCache neighbour_position = STPChunk::calcChunkNeighbour(chunkCoord, chk_config.ChunkSize, neighbour_count);
 
 		bool canContinue = true;
 		//The first pass: check if all neighbours are ready for some operations
@@ -623,7 +611,7 @@ public:
 		STPMemoryBlock(const STPMemoryManager& manager) {
 			const STPEnvironment::STPChunkSetting& setting = manager.ChunkSetting;
 			auto setupMap = 
-				[buffer_size = setting.RenderedChunk * setting.MapSize](GLuint texture, GLint min_filter,
+				[buffer_size = setting.RenderDistance * setting.MapSize](GLuint texture, GLint min_filter,
 					GLint mag_filter, GLenum internal) -> void {
 				//set texture parameter
 				glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -664,10 +652,10 @@ public:
 			transform(this->TerrainMapResourceManaged.cbegin(), this->TerrainMapResourceManaged.cend(),
 				this->TerrainMapResource.begin(), [](const auto& res) { return res.get(); });
 
-			const unsigned int renderedChunkCount = setting.RenderedChunk.x * setting.RenderedChunk.y;
+			const unsigned int displayChunkCount = setting.RenderDistance.x * setting.RenderDistance.y;
 			//reserve memory for lookup tables
-			this->LocalChunkRecord.reserve(renderedChunkCount);
-			this->LocalChunkDictionary.reserve(renderedChunkCount);
+			this->LocalChunkRecord.reserve(displayChunkCount);
+			this->LocalChunkDictionary.reserve(displayChunkCount);
 		}
 
 		STPMemoryBlock(const STPMemoryBlock&) = delete;
@@ -786,7 +774,7 @@ private:
 	*/
 	inline uvec2 calcLocalMapOffset(unsigned int index) const noexcept {
 		const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
-		const unsigned int rendered_width = chunk_setting.RenderedChunk.x;
+		const unsigned int rendered_width = chunk_setting.RenderDistance.x;
 
 		//calculate global offset, basically
 		const uvec2 chunkIdx(index % rendered_width, index / rendered_width);
@@ -808,8 +796,8 @@ private:
 	void recomputeNeighbour(unsigned int chunkIdx) {
 		const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
 
-		const uvec2 rendered_chunk = setting.RenderedChunk;
-		const unsigned int chunkRowCount = rendered_chunk.x;
+		const uvec2 render_distance = setting.RenderDistance;
+		const unsigned int chunkRowCount = render_distance.x;
 		//for each neighbour of each computing chunk...
 		for (const ivec2 coord_offset : this->NeighbourCoordinateOffset) {
 			//small negative number will become a huge unsigned,
@@ -817,7 +805,7 @@ private:
 			const uvec2 current_coord =
 				static_cast<uvec2>(ivec2(chunkIdx % chunkRowCount, chunkIdx / chunkRowCount) + coord_offset);
 			//make sure the coordinate is in a valid range
-			if (current_coord.x >= rendered_chunk.x || current_coord.y >= rendered_chunk.y) {
+			if (current_coord.x >= render_distance.x || current_coord.y >= render_distance.y) {
 				continue;
 			}
 
@@ -859,7 +847,7 @@ public:
 		const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
 		const uvec2 mapDim = setting.MapSize,
 			clearBuffer_size = this->calcChunkCacheSize();
-		const unsigned int chunkCount = setting.RenderedChunk.x * setting.RenderedChunk.y;
+		const unsigned int chunkCount = setting.RenderDistance.x * setting.RenderDistance.y;
 
 		//init clear buffers that are used to clear texture when new rendered chunks are loaded
 		//(we need to clear the previous chunk data)
@@ -877,8 +865,8 @@ public:
 			//clear every chunk in parallel
 			//make sure workers do not start until main stream has mapped the texture
 			this->Worker.workersWaitMain(this->PipelineStream);
-			for (unsigned int y = 0u; y < setting.RenderedChunk.y; y++) {
-				for (unsigned int x = 0u; x < setting.RenderedChunk.x; x++) {
+			for (unsigned int y = 0u; y < setting.RenderDistance.y; y++) {
+				for (unsigned int x = 0u; x < setting.RenderDistance.x; x++) {
 					const uvec2 localMapOffset = uvec2(x, y) * setting.MapSize;
 					FOR_EACH_MEMORY_START()
 						STP_CHECK_CUDA(cudaMemcpy2DToArrayAsync(mapped[i], localMapOffset.x * MemoryFormat[i],
@@ -1092,7 +1080,7 @@ public:
 		const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
 
 		STPChunk::STPChunkCoordinateCache allChunks =
-			STPChunk::calcChunkNeighbour(chunkPos, setting.ChunkSize, setting.RenderedChunk);
+			STPChunk::calcChunkNeighbour(chunkPos, setting.ChunkSize, setting.RenderDistance);
 		this->BackBuffer->recomputeLocalChunkTable(allChunks);
 	}
 
@@ -1114,7 +1102,7 @@ public:
 				const vec2 offset = static_cast<vec2>(STPChunk::calcChunkMapOffset(chunk_record[index].first,
 					chunk_setting.ChunkSize, chunk_setting.MapSize, chunk_setting.MapOffset));
 				//local chunk coordinate
-				const uvec2 local_coord = STPChunk::calcLocalChunkCoordinate(index, chunk_setting.RenderedChunk);
+				const uvec2 local_coord = STPChunk::calcLocalChunkCoordinate(index, chunk_setting.RenderDistance);
 				requesting_info.emplace_back(
 					STPDiversity::STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation
 					{ local_coord.x, local_coord.y, offset.x, offset.y }
@@ -1171,7 +1159,7 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 
 	//check if the central position has changed or not
 	if (const ivec2 thisCentrePos = STPChunk::calcWorldChunkCoordinate(
-			viewPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScaling);
+			viewPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScale);
 		thisCentrePos != this->LastCentreLocation) {
 		//centre position changed
 		if (loaderStatus == STPChunkLoaderStatus::Busy) {

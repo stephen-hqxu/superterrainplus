@@ -754,12 +754,12 @@ public:
 	/**
 	 * @brief Perform a complete histogram filter
 	 * @param sample_map The input sample map for filter.
-	 * @param freeslip_info The information about the free-slip logic applies to the samplemap.
+	 * @param nn_info The information about the nearest_neighbour logic applies to the samplemap.
 	 * @param histogram_output The histogram buffer that will be used as buffer, and also output the final output
 	 * @param central_chunk_index The local free-slip coordinate points to the central chunk.
 	 * @param radius The radius of the filter
 	*/
-	void filter(const Sample* sample_map, const STPFreeSlipInformation& freeslip_info,
+	void filter(const Sample* sample_map, const STPNearestNeighbourInformation& nn_info,
 		STPPinnedHistogramBuffer* histogram_output, uvec2 central_chunk_index, unsigned int radius) {
 		using std::future;
 		using std::cref;
@@ -767,7 +767,7 @@ public:
 
 		future<void> workgroup[STPSHFKernel::Parallelism];
 		//calculate central texture starting index
-		const uvec2 &dimension = freeslip_info.Dimension,
+		const uvec2 &dimension = nn_info.MapSize,
 			central_starting_coordinate = dimension * central_chunk_index;
 
 		//request a working memory
@@ -829,7 +829,7 @@ public:
 			uvec2 w_range(width_start, width_start + width_step);
 			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
 				workgroup[w] = this->FilterWorker.enqueue(STPSHFKernel::filterVertical, cref(sample_map),
-					freeslip_info.FreeSlipRange.x, freeslip_info.Dimension.y, central_starting_coordinate.y, w_range,
+					nn_info.TotalMapSize.x, nn_info.MapSize.y, central_starting_coordinate.y, w_range,
 					ref(memoryBlock[w]), radius);
 				//increment
 				w_range.x = w_range.y;
@@ -887,7 +887,7 @@ STPSingleHistogramFilter::STPHistogramBuffer_t STPSingleHistogramFilter::createH
 	return STPHistogramBuffer_t(new STPPinnedHistogramBuffer());
 }
 
-STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample* samplemap, const STPFreeSlipInformation& freeslip_info, 
+STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample* samplemap, const STPNearestNeighbourInformation& nn_info, 
 	const STPHistogramBuffer_t& histogram_output, unsigned int radius) {
 	//do some simple runtime check
 	//first make sure radius is an even number
@@ -895,14 +895,14 @@ STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample* samplemap,
 		throw STPException::STPBadNumericRange("radius should be an positive even number");
 	}
 	//second make sure radius is not larger than the free-slip range
-	const uvec2 central_chunk_index = freeslip_info.FreeSlipChunk / 2u;
-	if (const uvec2 halo_size = central_chunk_index * freeslip_info.Dimension;
+	const uvec2 central_chunk_index = nn_info.ChunkNearestNeighbour / 2u;
+	if (const uvec2 halo_size = central_chunk_index * nn_info.MapSize;
 		halo_size.x < radius || halo_size.y < radius) {
 		throw STPException::STPBadNumericRange("radius is too large and will overflow free-slip boundary");
 	}
 
 	//looks safe now, start the filter
-	this->Kernel->filter(samplemap, freeslip_info, histogram_output.get(), central_chunk_index, radius);
+	this->Kernel->filter(samplemap, nn_info, histogram_output.get(), central_chunk_index, radius);
 
 	return STPSingleHistogramFilter::readHistogramBuffer(histogram_output);
 }
