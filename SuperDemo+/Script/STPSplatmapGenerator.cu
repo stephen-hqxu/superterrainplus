@@ -60,8 +60,8 @@ using namespace STPCommonGenerator;
  * @param splatmap_surf The splatmap surface output
  * @param splat_info Information about the generation.
 */
-__global__ void generateTextureSplatmap
-	(cudaTextureObject_t biomemap_tex, cudaTextureObject_t heightmap_tex, cudaSurfaceObject_t splatmap_surf, STPTI::STPSplatGeneratorInformation splat_info) {
+__global__ void generateTextureSplatmap(const cudaTextureObject_t biomemap_tex, const cudaTextureObject_t heightmap_tex,
+	const cudaSurfaceObject_t splatmap_surf, const STPTI::STPSplatGeneratorInformation splat_info) {
 	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y,
 		//block is in 2D, so threadIdx.z is always 0 and blockDim.z is always 1
@@ -123,7 +123,7 @@ __global__ void generateTextureSplatmap
 	surf2Dwrite(static_cast<unsigned char>(region), splatmap_surf, SamplingPosition.x * sizeof(unsigned char), SamplingPosition.y, cudaBoundaryModeTrap);
 }
 
-__device__ float generateNoise(unsigned int x, unsigned int y, float2 offset) {
+__device__ float generateNoise(const unsigned int x, const unsigned int y, const float2 offset) {
 	//use simplex noise to generate fractals
 	STPSimplexNoise::STPFractalSimplexInformation fractal_info = { };
 	fractal_info.Persistence = Per;

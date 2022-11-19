@@ -14,11 +14,11 @@ namespace STPDemo {
 	class STPContinentLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
-		STPContinentLayer(size_t cache_size, Seed global_seed, Seed salt) : STPLayer(cache_size, global_seed, salt) {
+		STPContinentLayer(const size_t cache_size, const Seed global_seed, const Seed salt) : STPLayer(cache_size, global_seed, salt) {
 
 		}
 
-		Sample sample(int x, int, int z) override {
+		Sample sample(const int x, int, const int z) override {
 			//get the RNG for this coordinate
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 

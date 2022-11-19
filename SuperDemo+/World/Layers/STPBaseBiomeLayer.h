@@ -53,11 +53,12 @@ namespace STPDemo {
 
 	public:
 
-		STPBaseBiomeLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(cache_size, global_seed, salt, parent) {
+		STPBaseBiomeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPLayer(cache_size, global_seed, salt, parent) {
 			//parent:: climate layer
 		}
 
-		Sample sample(int x, int y, int z) override {
+		Sample sample(const int x, const int y, const int z) override {
 			//get the local RNG
 			STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 			//get the climate for this local coordinate

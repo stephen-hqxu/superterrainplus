@@ -100,7 +100,7 @@ void STPBidirectionalScatteringSetting::validate() const {
 //STPCameraSetting.h
 
 void STPCameraSetting::validate() const {
-	static constexpr auto range = [](const double val, const double min, const double max) constexpr->double {
+	static constexpr auto range = [](const double val, const double min, const double max) constexpr -> double {
 		return val > min && val < max;
 	};
 	static constexpr double Pi = glm::pi<double>(),
@@ -154,7 +154,7 @@ void STPMeshSetting::STPTextureRegionSmoothSetting::validate() const {
 }
 
 void STPMeshSetting::STPTextureScaleDistanceSetting::validate() const {
-	constexpr static auto isNormalised = [](const float val) constexpr->bool {
+	constexpr static auto isNormalised = [](const float val) constexpr -> bool {
 		return val > 0.0f && val <= 1.0f;
 	};
 
@@ -194,7 +194,7 @@ void STPOcclusionKernelSetting::validate() const {
 //STPStarfieldSetting.h
 
 void STPStarfieldSetting::validate() const {
-	static constexpr auto isNormalised = [](const float num) constexpr->bool {
+	static constexpr auto isNormalised = [](const float num) constexpr -> bool {
 		return num > 0.0f && num < 1.0f;
 	};
 
@@ -215,7 +215,7 @@ void STPStarfieldSetting::validate() const {
 
 void STPSunSetting::validate() const {
 	static constexpr double PiByTwo = glm::pi<double>() * 0.5;
-	static constexpr auto range_check = [](const double val, const double min, const double max) constexpr->bool {
+	static constexpr auto range_check = [](const double val, const double min, const double max) constexpr -> bool {
 		return val >= min && val <= max;
 	};
 
@@ -233,7 +233,7 @@ void STPSunSetting::validate() const {
 //STPTessellationSetting.h
 
 void STPTessellationSetting::validate() const {
-	static constexpr auto isNormalised = [](const float val) constexpr->bool {
+	static constexpr auto isNormalised = [](const float val) constexpr -> bool {
 		return val >= 0.0f && val <= 1.0f;
 	};
 

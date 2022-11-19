@@ -21,11 +21,12 @@ namespace STPDemo {
 		 * @param salt Random salt
 		 * @param parent The previous layer
 		*/
-		STPCrossLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(cache_size, global_seed, salt, parent) {
+		STPCrossLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPLayer(cache_size, global_seed, salt, parent) {
 
 		}
 
-		Sample sample(int x, int y, int z) override {
+		Sample sample(const int x, const int y, const int z) override {
 			//sample in a cross
 			STPLayer* const asc = this->getAscendant();
 			return this->sample(

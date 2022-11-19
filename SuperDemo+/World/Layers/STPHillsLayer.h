@@ -19,12 +19,13 @@ namespace STPDemo {
 
 	public:
 
-		STPHillsLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* land, STPLayer* noise) : STPLayer(cache_size, global_seed, salt, land, noise) {
+		STPHillsLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const land,
+			STPLayer* const noise) : STPLayer(cache_size, global_seed, salt, land, noise) {
 			//parent 0: land / biome
 			//parent 1: noise
 		}
 
-		Sample sample(int x, int y, int z) override {
+		Sample sample(const int x, const int y, const int z) override {
 			//get the local RNG
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 			//get the parent samples

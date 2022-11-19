@@ -3,8 +3,8 @@
 #ifdef _STP_SINGLE_HISTOGRAM_WRAPPER_CUH_
 
 template<class Func>
-__device__ __inline__ void SuperTerrainPlus::STPAlgorithm::STPSingleHistogramWrapper::iterate(
-	const STPSingleHistogram& histogram, unsigned int pixel_index, Func&& function) {
+__device__ inline void SuperTerrainPlus::STPAlgorithm::STPSingleHistogramWrapper::iterate(
+	const STPSingleHistogram& histogram, const unsigned int pixel_index, Func&& function) {
 	const auto [bin, start_offset] = histogram;
 	//get the bin index range for the current histogram
 	const unsigned int begin = start_offset[pixel_index],

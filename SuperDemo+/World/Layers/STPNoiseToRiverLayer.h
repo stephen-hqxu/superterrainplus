@@ -20,11 +20,12 @@ namespace STPDemo {
 
 	public:
 
-		STPNoiseToRiverLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
+		STPNoiseToRiverLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 
-		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
+		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, Seed) override {
 			//filter the river
 			//basically it's an edge detector
 			const Sample i = STPNoiseToRiverLayer::filterRiver(center);

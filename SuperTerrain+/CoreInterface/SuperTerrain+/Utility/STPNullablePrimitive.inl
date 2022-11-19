@@ -4,7 +4,7 @@
 
 template<typename Pri, Pri Null>
 template<class Del>
-inline void SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::STPNullableDeleter<Del>::operator()(pointer ptr) const noexcept {
+inline void SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::STPNullableDeleter<Del>::operator()(const pointer ptr) const noexcept {
 	this->Deleter(ptr);
 }
 
@@ -14,7 +14,7 @@ inline SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::STPNullablePrimitive(s
 }
 
 template<typename Pri, Pri Null>
-inline SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::STPNullablePrimitive(Pri value) noexcept : Value(value) {
+inline SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::STPNullablePrimitive(const Pri value) noexcept : Value(value) {
 
 }
 
@@ -36,12 +36,12 @@ inline SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::operator bool() const 
 }
 
 template<typename Pri, Pri Null>
-inline bool SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::operator==(STPNullablePrimitive p) const noexcept {
+inline bool SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::operator==(const STPNullablePrimitive p) const noexcept {
 	return this->Value == p.Value;
 }
 
 template<typename Pri, Pri Null>
-inline bool SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::operator!=(STPNullablePrimitive p) const noexcept {
+inline bool SuperTerrainPlus::STPNullablePrimitive<Pri, Null>::operator!=(const STPNullablePrimitive p) const noexcept {
 	return this->Value != p.Value;
 }
 

@@ -14,11 +14,12 @@ namespace STPDemo {
 	class STPEdgeBiomeLayer : public STPCrossLayer {
 	public:
 
-		STPEdgeBiomeLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
+		STPEdgeBiomeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 
-		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) {
+		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, Seed) override {
 			if (STPBiomeRegistry::isOcean(center)) {
 				//ocean should be untouched
 				return center;
@@ -26,7 +27,7 @@ namespace STPDemo {
 
 			const bool snowy_area = STPBiomeRegistry::getPrecipitationType(center) == STPBiomeRegistry::STPPrecipitationType::SNOW;
 			//if the centre is land and the surrounding has ocean, turn it into one of the edge biomes
-			if (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
+			if (!STPBiomeRegistry::applyAll([](const Sample val) -> bool {
 				return !STPBiomeRegistry::isOcean(val);
 			}, north, east, south, west)) {
 				//if one of the surrounding is ocean...

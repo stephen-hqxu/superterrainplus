@@ -33,11 +33,12 @@ namespace STPDemo {
 		class STPClimateSingle : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
-			STPClimateSingle(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(cache_size, global_seed, salt, parent) {
+			STPClimateSingle(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+				STPLayer(cache_size, global_seed, salt, parent) {
 
 			}
 
-			Sample sample(int x, int y, int z) override {
+			Sample sample(const int x, const int y, const int z) override {
 				//get the sample from the previous layer
 				const Sample val = this->getAscendant()->retrieve(x, y, z);
 				//get the local RNG
@@ -71,11 +72,13 @@ namespace STPDemo {
 		class STPClimateModerate : public STPCrossLayer {
 		public:
 
-			STPClimateModerate(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
+			STPClimateModerate(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+				STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 			}
 
-			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
+			Sample sample(const Sample center, const Sample north, const Sample east, const Sample south,
+				const Sample west, Seed) override {
 				//escape the one that is extreme on the centre
 				//and either temperate on one of the other side
 				//and replace it with a more temperate biome
@@ -98,11 +101,13 @@ namespace STPDemo {
 		class STPClimateExtreme : public STPCrossLayer {
 		public:
 
-			STPClimateExtreme(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
+			STPClimateExtreme(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+				STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 			}
 
-			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
+			Sample sample(const Sample center, const Sample north, const Sample east, const Sample south,
+				const Sample west, Seed) override {
 				//escape the one that is cold on the centre
 				//and either hot or warm on one of the other side
 				//extreme climate cannot be placed together

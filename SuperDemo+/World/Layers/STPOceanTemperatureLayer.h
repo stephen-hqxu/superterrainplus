@@ -20,11 +20,11 @@ namespace STPDemo {
 		class STPOceanNoise : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
-			STPOceanNoise(size_t cache_size, Seed global_seed, Seed salt) : STPLayer(cache_size, global_seed, salt) {
+			STPOceanNoise(const size_t cache_size, const Seed global_seed, const Seed salt) : STPLayer(cache_size, global_seed, salt) {
 
 			}
 
-			Sample sample(int x, int, int z) override {
+			Sample sample(const int x, int, const int z) override {
 				//get local RNG
 				const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 
@@ -49,11 +49,13 @@ namespace STPDemo {
 		class STPOceanTemperate : public STPCrossLayer {
 		public:
 
-			STPOceanTemperate(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
+			STPOceanTemperate(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+				STPCrossLayer(cache_size, global_seed, salt, parent) {
 				//parent: STPOceanExtreme
 			}
 
-			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
+			Sample sample(const Sample center, const Sample north, const Sample east, const Sample south,
+				const Sample west, Seed) override {
 				if (center != STPBiomeRegistry::LukewarmOcean.ID
 					|| STPBiomeRegistry::applyAll([](Sample val) -> bool {
 						return val != STPBiomeRegistry::ColdOcean.ID;
@@ -81,11 +83,13 @@ namespace STPDemo {
 		class STPOceanExtreme : public STPCrossLayer {
 		public:
 
-			STPOceanExtreme(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
+			STPOceanExtreme(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+				STPCrossLayer(cache_size, global_seed, salt, parent) {
 				//parent: STPOceanNoise
 			}
 
-			Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
+			Sample sample(const Sample center, const Sample north, const Sample east, const Sample south,
+				const Sample west, Seed) override {
 				if (center == STPBiomeRegistry::WarmOcean.ID
 					&& (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
 						return val != STPBiomeRegistry::FrozenOcean.ID;
@@ -114,11 +118,13 @@ namespace STPDemo {
 		class STPOceanTransition : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
-			STPOceanTransition(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(cache_size, global_seed, salt, parent) {
+			STPOceanTransition(
+				const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+				STPLayer(cache_size, global_seed, salt, parent) {
 
 			}
 
-			Sample sample(int x, int y, int z) override {
+			Sample sample(const int x, const int y, const int z) override {
 				//get the value from previous layer
 				const Sample val = this->getAscendant()->retrieve(x, y, z);
 				//don't touch it if it's land
@@ -156,13 +162,13 @@ namespace STPDemo {
 		class STPOceanMix : public SuperTerrainPlus::STPDiversity::STPLayer {
 		public:
 
-			STPOceanMix(size_t cache_size, Seed global_seed, Seed salt, STPLayer* land, STPLayer* ocean) :
+			STPOceanMix(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const land, STPLayer* const ocean) :
 				STPLayer(cache_size, global_seed, salt, land, ocean) {
 				//parent 0: land
 				//parent 1: STPOceanTemperate
 			}
 
-			Sample sample(int x, int y, int z) override {
+			Sample sample(const int x, const int y, const int z) override {
 				//get the land value from the land layer
 				const Sample land = this->getAscendant(0)->retrieve(x, y, z);
 				//don't touch it if it's land

@@ -21,7 +21,7 @@ inline constexpr auto SuperTerrainPlus::STPStringUtility::concatCharArray(const 
 }
 
 template<size_t LP, size_t LF, size_t... LE>
-constexpr auto SuperTerrainPlus::STPStringUtility::generateFilename(const char (&path)[LP], const char (&file)[LF], const char (&... extension)[LE]) noexcept {
+inline constexpr auto SuperTerrainPlus::STPStringUtility::generateFilename(const char (&path)[LP], const char (&file)[LF], const char (&... extension)[LE]) noexcept {
 	constexpr auto allSameSize = [](const auto& x, const auto&... xs) constexpr -> bool {
 		return ((x == xs) && ... && true);
 	};

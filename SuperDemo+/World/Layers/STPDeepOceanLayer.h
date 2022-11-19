@@ -14,11 +14,12 @@ namespace STPDemo {
 	class STPDeepOceanLayer : public STPCrossLayer {
 	public:
 
-		STPDeepOceanLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
+		STPDeepOceanLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 
-		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed) override {
+		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, Seed) override {
 			//if the centre is not shallow or it's not even ocean, we can't change anything
 			if (!STPBiomeRegistry::isShallowOcean(center)) {
 				return center;

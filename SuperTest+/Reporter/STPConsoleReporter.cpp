@@ -26,7 +26,7 @@ private:
 	template<class S>
 	constexpr static inline string_view getView(const S& str) {
 		static_assert(std::disjunction_v<std::is_same<S, string>, std::is_same<S, Catch::StringRef>>);
-		return string_view(str.data());
+		return string_view(str.data(), str.size());
 	}
 
 	/**

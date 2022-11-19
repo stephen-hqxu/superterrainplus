@@ -28,7 +28,7 @@ using glm::value_ptr;
 
 STPSplatmapGenerator::STPSplatmapGenerator(const STPCommonCompiler& program,
 	const STPTextureDatabase::STPDatabaseView& database_view,
-	const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting, float anisotropy) :
+	const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk_setting, const float anisotropy) :
 	//bias is a scaling value, we need to calculate the reciprocal.
 	STPTextureFactory(database_view, chunk_setting, [anisotropy](auto tbo) {
 		glTextureParameteri(tbo, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -61,8 +61,8 @@ void STPSplatmapGenerator::initGenerator() {
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
 
-void STPSplatmapGenerator::splat(cudaTextureObject_t biomemap_tex, cudaTextureObject_t heightmap_tex,
-	cudaSurfaceObject_t splatmap_surf, const STPTI::STPSplatGeneratorInformation& info, cudaStream_t stream) const {
+void STPSplatmapGenerator::splat(const cudaTextureObject_t biomemap_tex, const cudaTextureObject_t heightmap_tex,
+	const cudaSurfaceObject_t splatmap_surf, const STPTI::STPSplatGeneratorInformation& info, const cudaStream_t stream) const {
 	int Mingridsize, blocksize;
 	//smart launch config
 	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->SplatmapEntry, nullptr, 0u, 0));

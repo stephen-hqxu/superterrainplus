@@ -14,13 +14,13 @@ namespace STPDemo {
 	class STPRiverMixLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
-		STPRiverMixLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent_land, STPLayer* parent_river) :
+		STPRiverMixLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent_land, STPLayer* const parent_river) :
 			STPLayer(cache_size, global_seed, salt, parent_land, parent_river) {
 			//parent 0: land
 			//parent 1: river noise
 		}
 
-		Sample sample(int x, int y, int z) override {
+		Sample sample(const int x, const int y, const int z) override {
 			//get the parent values
 			const Sample land_val = this->getAscendant(0)->retrieve(x, y, z);
 			const Sample river_val = this->getAscendant(1)->retrieve(x, y, z);

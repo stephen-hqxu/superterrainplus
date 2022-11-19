@@ -47,7 +47,7 @@ void STPHeightfieldSetting::validate() const {
 //STPRainDropSetting.h
 
 void STPRainDropSetting::validate() const {
-	static constexpr auto checkRange = [](const float value, const float lower, const float upper) constexpr->bool {
+	static constexpr auto checkRange = [](const float value, const float lower, const float upper) constexpr -> bool {
 		return value >= lower && value <= upper;
 	};
 

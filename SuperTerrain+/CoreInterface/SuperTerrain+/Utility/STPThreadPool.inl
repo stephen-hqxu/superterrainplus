@@ -7,7 +7,7 @@
 #include <exception>
 
 template<class Func, class... Args, typename Ret>
-std::future<Ret> SuperTerrainPlus::STPThreadPool::enqueue(Func&& function, Args&&... args) {
+inline std::future<Ret> SuperTerrainPlus::STPThreadPool::enqueue(Func&& function, Args&&... args) {
 	std::shared_ptr<std::promise<Ret>> new_task_promise = std::make_shared<std::promise<Ret>>();
 	this->enqueueDetached([new_task = std::bind(std::forward<Func>(function), std::forward<Args>(args)...), new_task_promise]() {
 		try {
@@ -26,7 +26,7 @@ std::future<Ret> SuperTerrainPlus::STPThreadPool::enqueue(Func&& function, Args&
 }
 
 template<class Func, class... Args>
-void SuperTerrainPlus::STPThreadPool::enqueueDetached(Func&& function, Args&&... args) {
+inline void SuperTerrainPlus::STPThreadPool::enqueueDetached(Func&& function, Args&&... args) {
 	auto new_task = std::bind(std::forward<Func>(function), std::forward<Args>(args)...);
 	//enqueue new work
 	{

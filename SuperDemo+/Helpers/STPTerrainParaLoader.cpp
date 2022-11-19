@@ -3,7 +3,7 @@
 //Biome Registry, just a demo program
 #include "../World/Biomes/STPBiomeRegistry.h"
 //System
-#include <string>
+#include <string_view>
 
 using namespace STPDemo;
 using namespace SuperTerrainPlus;
@@ -11,7 +11,7 @@ using namespace SuperTerrainPlus;
 using STPAlgorithm::STPINIStorageView;
 using STPAlgorithm::STPINISectionView;
 
-using std::string;
+using std::string_view;
 using std::pair;
 
 using glm::uvec2;
@@ -212,7 +212,7 @@ STPEnvironment::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(con
 	return ao_kernel;
 }
 
-STPEnvironment::STPWaterSetting STPTerrainParaLoader::getWaterSetting(const STPINISectionView& section, float altitude) {
+STPEnvironment::STPWaterSetting STPTerrainParaLoader::getWaterSetting(const STPINISectionView& section, const float altitude) {
 	STPEnvironment::STPWaterSetting water = { };
 	STPEnvironment::STPTessellationSetting& water_tess = water.WaterMeshTess;
 	STPEnvironment::STPWaterSetting::STPWaterWaveSetting& water_wave = water.WaterWave;
@@ -264,7 +264,7 @@ STPEnvironment::STPBidirectionalScatteringSetting STPTerrainParaLoader::getBSDFS
 void STPTerrainParaLoader::loadBiomeParameters(const STPINIStorageView& biomeini) {
 	using namespace STPDiversity;
 	namespace BR = STPDemo::STPBiomeRegistry;
-	auto load = [&biomeini](STPDemo::STPBiome& biome, string name) -> void {
+	const auto load = [&biomeini](STPDemo::STPBiome& biome, const string_view name) -> void {
 		const STPINISectionView& curr_biome = biomeini.at(name);
 
 		//assigning props

@@ -140,7 +140,7 @@ namespace STPStart {
 		 * @param data An array of colour data.
 		 * @param size The number of element in the array.
 		*/
-		void setSpectrumData(SuperTerrainPlus::STPRealism::STPLightSpectrum& spectrum, const glm::u8vec3* data, size_t size) {
+		void setSpectrumData(SuperTerrainPlus::STPRealism::STPLightSpectrum& spectrum, const glm::u8vec3* const data, const size_t size) {
 			spectrum.setData(static_cast<GLsizei>(size), GL_RGB, GL_UNSIGNED_BYTE, data);
 		}
 
@@ -457,7 +457,7 @@ namespace STPStart {
 		 * @param abs_second The current frame time in second.
 		 * @param delta_second The time elapsed since the last frame.
 		*/
-		inline void render(double abs_second, double delta_second) {
+		inline void render(const double abs_second, const double delta_second) {
 			//Update light after that many second, to avoid doing expensive update every frame.
 			constexpr static double LightUpdateFrequency = 0.1;
 			//update timer
@@ -520,13 +520,14 @@ namespace STPStart {
 		 * @brief Set the display gamma.
 		 * @param gamma The gamma value for display.
 		*/
-		inline void setGamma(float gamma) {
+		inline void setGamma(const float gamma) {
 			this->FinalProcess->setEffect<SuperTerrainPlus::STPRealism::STPPostProcess::STPPostEffect::Gamma>(gamma);
 		}
 
 	};
 
-	static void handleGLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
+	static void handleGLDebugCallback(const GLenum source, const GLenum type, const GLuint id, const GLenum severity,
+		const GLsizei length, const GLchar* const message, const void* const userParam) {
 		//let's print them
 		SuperTerrainPlus::STPRealism::STPDebugCallback::print(source, type, id, severity, length, message, cout);
 
@@ -542,7 +543,7 @@ namespace STPStart {
 	class STPLogConsolePrinter : public SuperTerrainPlus::STPRealism::STPLogHandler::STPLogHandlerSolution {
 	public:
 
-		void handle(string_view log) override {
+		void handle(const string_view log) override {
 			if (!log.empty()) {
 				cout << log << endl;
 			}
@@ -563,7 +564,7 @@ namespace STPStart {
 	static GLFWwindow* GLCanvas = nullptr;
 	static dvec2 LastRotation;
 
-	static void frame_resized(GLFWwindow*, int width, int height) {
+	static void frame_resized(GLFWwindow*, const int width, const int height) {
 		if (width != 0 && height != 0) {
 			//user has not minimised the window
 			//updating the screen size variable
@@ -575,7 +576,7 @@ namespace STPStart {
 		}
 	}
 
-	static void cursor_moved(GLFWwindow*, double X, double Y) {
+	static void cursor_moved(GLFWwindow*, const double X, const double Y) {
 		//we reverse Y since Y goes from bottom to top (from negative axis to positive)
 		const dvec2 currentPos = dvec2(X, Y);
 		const dvec2 offset = dvec2(currentPos.x - LastRotation.x, LastRotation.y - currentPos.y);
@@ -585,7 +586,7 @@ namespace STPStart {
 		LastRotation = currentPos;
 	}
 
-	static void scrolled(GLFWwindow*, double, double Yoffset) {
+	static void scrolled(GLFWwindow*, double, const double Yoffset) {
 		//we only need vertical scroll
 		MainCamera->zoom(-Yoffset);
 	}

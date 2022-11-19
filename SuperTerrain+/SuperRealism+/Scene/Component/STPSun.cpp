@@ -107,7 +107,7 @@ void STPSun::updateAnimationTimer(const double second) {
 
 	//the old direction cache is no longer accurate, needs to recalculate
 	static constexpr double TWO_PI = glm::pi<double>() * 2.0;
-	static constexpr auto saturate = [](const double val) constexpr->double {
+	static constexpr auto saturate = [](const double val) constexpr -> double {
 		return clamp(val, -1.0, 1.0);
 	};
 	//Calculate hour angle based on the local solar time (LST), i.e., current time in a day - noon time;

@@ -30,7 +30,7 @@ using namespace STPCommonGenerator;
  * @param biomemap_histogram - The biomemap histogram to decide the weight of each biome in a pixel
  * @param offset - Controlling the offset on x, y directions
 */
-__global__ void generateMultiBiomeHeightmap(float* height_storage, STPSingleHistogram biomemap_histogram, float2 offset) {
+__global__ void generateMultiBiomeHeightmap(float* const height_storage, const STPSingleHistogram biomemap_histogram, const float2 offset) {
 	//the current thread index, starting from top-left corner
 	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -54,7 +54,7 @@ __global__ void generateMultiBiomeHeightmap(float* height_storage, STPSingleHist
 	
 }
 
-__device__ float sampleSimplexNoise(uint2 coord, const STPDemo::STPBiomeProperty& parameter, float2 offset) {
+__device__ float sampleSimplexNoise(const uint2 coord, const STPDemo::STPBiomeProperty& parameter, const float2 offset) {
 	const auto [scale, octave, pers, lacu, depth, variation] = parameter;
 
 	//prepare for the fractal generator

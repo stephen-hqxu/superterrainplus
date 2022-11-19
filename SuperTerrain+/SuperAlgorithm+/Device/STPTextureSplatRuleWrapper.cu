@@ -66,7 +66,7 @@ __device__ STPTextureSplatRuleWrapper::~STPTextureSplatRuleWrapper() {
 
 }
 
-const __device__ STPTI::STPSplatRegistry* STPTextureSplatRuleWrapper::findSplatRegistry(const Sample sample) const {
+__device__ const STPTI::STPSplatRegistry* STPTextureSplatRuleWrapper::findSplatRegistry(const Sample sample) const {
 	//binary search this sample in the registry dictionary
 	//here because biomemap is generally a large scale texture, most threads in a half warp should have the same sample
 	//so memory access should basically be aligned

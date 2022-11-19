@@ -584,7 +584,7 @@ public:
 
 };
 
-STPScenePipeline::STPScenePipeline(const STPMaterialLibrary*const  mat_lib, const STPScenePipelineInitialiser& scene_init) :
+STPScenePipeline::STPScenePipeline(const STPMaterialLibrary* const mat_lib, const STPScenePipelineInitialiser& scene_init) :
 	SceneMemoryCurrent{ }, SceneMemoryLimit(scene_init.ShaderCapacity),
 	hasMaterialLibrary(mat_lib),
 	GeometryShadowPass(make_unique<STPShadowPipeline>(*scene_init.ShadowFilter)),

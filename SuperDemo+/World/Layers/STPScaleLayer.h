@@ -28,7 +28,7 @@ namespace STPDemo {
 		//The scaling type for this layer
 		const STPScaleType Type;
 
-		Sample sample(Sample center, Sample e, Sample s, Sample se, const STPLayer::STPLocalSampler& rng) {
+		Sample sample(const Sample center, const Sample e, const Sample s, const Sample se, const STPLayer::STPLocalSampler& rng) {
 			//choose randomly between each cell
 			const Sample ret = rng.choose(center, e, s, se);
 
@@ -66,12 +66,12 @@ namespace STPDemo {
 
 	public:
 
-		STPScaleLayer(size_t cache_size, Seed global_seed, Seed salt, STPScaleType type, STPLayer* parent) :
+		STPScaleLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const STPScaleType type, STPLayer* const parent) :
 			STPLayer(cache_size, global_seed, salt, parent), Type(type) {
 			//parent: undefined
 		}
 
-		Sample sample(int x, int y, int z) override {
+		Sample sample(const int x, const int y, const int z) override {
 			//get the sample of the neighbour cell
 			const Sample i = this->getAscendant()->retrieve(x >> 1, y, z >> 1);
 			const int xb = x & 1, zb = z & 1;

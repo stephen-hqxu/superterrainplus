@@ -12,11 +12,11 @@ using std::string;
 
 using glm::ivec3;
 
-void STPTextureStorage::STPTextureFreer::operator()(stbi_uc* img) const {
+void STPTextureStorage::STPTextureFreer::operator()(stbi_uc* const img) const {
 	stbi_image_free(img);
 }
 
-STPTextureStorage::STPTextureStorage(const string& filename, int comp) {
+STPTextureStorage::STPTextureStorage(const string& filename, const int comp) {
 	this->Property = ivec3();
 	stbi_uc* const texture = stbi_load(filename.c_str(), &this->Property.x, &this->Property.y, &this->Property.z, comp);
 	if (texture == nullptr) {

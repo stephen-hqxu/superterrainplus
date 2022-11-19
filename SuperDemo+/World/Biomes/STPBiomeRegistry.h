@@ -187,7 +187,7 @@ namespace STPDemo {
 			}
 
 			//add all biomes to registry
-			static auto reg_insert = [](const STPBiome& biome) -> void {
+			static const auto reg_insert = [](const STPBiome& biome) -> void {
 				STPBiomeRegistry::Registry.emplace(biome.ID, &biome);
 				return;
 			};
@@ -240,7 +240,7 @@ namespace STPDemo {
 		 * @param val The biome id to be checked against
 		 * @return True if it's a shallow ocean
 		*/
-		inline bool isShallowOcean(Sample val) noexcept {
+		inline bool isShallowOcean(const Sample val) noexcept {
 			return val == STPBiomeRegistry::Ocean.ID || val == STPBiomeRegistry::FrozenOcean.ID
 				|| val == STPBiomeRegistry::WarmOcean.ID || val == STPBiomeRegistry::LukewarmOcean.ID
 				|| val == STPBiomeRegistry::ColdOcean.ID;
@@ -251,7 +251,7 @@ namespace STPDemo {
 		 * @param val The biome id to be checked against
 		 * @return True if it's an ocean biome.
 		*/
-		inline bool isOcean(Sample val) noexcept {
+		inline bool isOcean(const Sample val) noexcept {
 			return STPBiomeRegistry::isShallowOcean(val) || val == STPBiomeRegistry::DeepOcean.ID
 				|| val == STPBiomeRegistry::DeepWarmOcean.ID || val == STPBiomeRegistry::DeepLukewarmOcean.ID
 				|| val == STPBiomeRegistry::DeepColdOcean.ID || val == STPBiomeRegistry::DeepFrozenOcean.ID;
@@ -262,7 +262,7 @@ namespace STPDemo {
 		 * @param val The biome id to be checked against
 		 * @return True if it's a river biome
 		*/
-		inline bool isRiver(Sample val) noexcept {
+		inline bool isRiver(const Sample val) noexcept {
 			return val == STPBiomeRegistry::River.ID || val == STPBiomeRegistry::FrozenRiver.ID;
 		}
 
@@ -271,7 +271,7 @@ namespace STPDemo {
 		 * @param val The biome id
 		 * @return The precipitation type of this biome
 		*/
-		inline STPPrecipitationType getPrecipitationType(Sample val) {
+		inline STPPrecipitationType getPrecipitationType(const Sample val) {
 			const STPBiome* const& biome = STPBiomeRegistry::Registry[val];
 
 			//we check for precipitation first, some biome like taiga, even it's cold but it's dry so it won't snow nor rain
@@ -314,7 +314,7 @@ namespace STPDemo {
 		 * @param fallback If comparator is not equal to comparable, return this value
 		 * @return Comparable if comparator equals comparable otherwise fallback value
 		*/
-		inline Sample CAS(Sample comparator, Sample comparable, Sample fallback) noexcept {
+		inline Sample CAS(const Sample comparator, const Sample comparable, const Sample fallback) noexcept {
 			return comparator == comparable ? comparable : fallback;
 		}
 	}

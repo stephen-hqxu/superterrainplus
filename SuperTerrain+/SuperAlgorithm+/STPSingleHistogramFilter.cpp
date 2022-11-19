@@ -111,7 +111,7 @@ private:
 		const size_t current_size = this->size();
 
 		//allocate a cache
-		constexpr static auto deleter = [](T* const ptr, RebindAlloc alloc, const size_t size) constexpr->void {
+		constexpr static auto deleter = [](T* const ptr, RebindAlloc alloc, const size_t size) constexpr -> void {
 			//ptr is trivially destructor so we don't need to call destroy
 			AllocTr::deallocate(alloc, ptr, size);
 		};
@@ -887,7 +887,7 @@ STPSingleHistogramFilter::STPHistogramBuffer_t STPSingleHistogramFilter::createH
 	return STPHistogramBuffer_t(new STPPinnedHistogramBuffer());
 }
 
-STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample*const  samplemap, const STPNearestNeighbourInformation& nn_info, 
+STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample* const samplemap, const STPNearestNeighbourInformation& nn_info, 
 	const STPHistogramBuffer_t& histogram_output, const unsigned int radius) {
 	//do some simple runtime check
 	//first make sure radius is an even number

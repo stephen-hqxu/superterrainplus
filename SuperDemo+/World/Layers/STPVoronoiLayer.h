@@ -18,13 +18,14 @@ namespace STPDemo {
 
 		const Seed voronoi_seed;
 
-		static double sqrtDist(Seed seed, int x, int y, int z, double xFrac, double yFrac, double zFrac) {
-			static constexpr auto distribute = [](Seed seed) constexpr -> double {
+		static double sqrtDist(const Seed seed, const int x, const int y, const int z, const double xFrac,
+			const double yFrac, const double zFrac) noexcept {
+			static constexpr auto distribute = [](const Seed seed) constexpr -> double {
 				const double d = static_cast<double>(static_cast<unsigned int>((seed >> 24ull) % 1024ull)) / 1024.0;
 				return (d - 0.5) * 0.9;
 			};
 
-			static constexpr auto sqr = [](double n) constexpr -> double {
+			static constexpr auto sqr = [](const double n) constexpr -> double {
 				return n * n;
 			};
 
@@ -46,7 +47,7 @@ namespace STPDemo {
 
 	public:
 
-		STPVoronoiLayer(size_t cache_size, Seed global_seed, Seed salt, bool is3D , STPLayer* parent)
+		STPVoronoiLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const bool is3D, STPLayer* const parent)
 			: STPLayer(cache_size, global_seed, salt, parent), is3D(is3D), voronoi_seed(std::hash<Seed>{}(global_seed)) {
 			
 		}
@@ -55,7 +56,7 @@ namespace STPDemo {
 			return this->is3D;
 		}
 
-		Sample sample(int x, int y, int z) override {
+		Sample sample(const int x, const int y, const int z) override {
 			const int ijk[3] = {
 				x - 2, 
 				y - 2, 

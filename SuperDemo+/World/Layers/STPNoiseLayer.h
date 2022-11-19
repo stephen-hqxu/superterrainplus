@@ -14,11 +14,12 @@ namespace STPDemo {
 	class STPNoiseLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
 	public:
 
-		STPNoiseLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPLayer(cache_size, global_seed, salt, parent) {
+		STPNoiseLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPLayer(cache_size, global_seed, salt, parent) {
 			//noise layer will overwrite previous interpretation, this is a new chain of layers
 		}
 
-		Sample sample(int x, int y, int z) override {
+		Sample sample(const int x, const int y, const int z) override {
 			//get the local generator
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 

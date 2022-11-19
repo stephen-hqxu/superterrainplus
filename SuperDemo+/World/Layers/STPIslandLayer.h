@@ -14,11 +14,13 @@ namespace STPDemo {
 	class STPIslandLayer : public STPCrossLayer {
 	public:
 
-		STPIslandLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent){
+		STPIslandLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 
-		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) override {
+		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west,
+			const Seed local_seed) override {
 			//get the local RNG
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(local_seed);
 

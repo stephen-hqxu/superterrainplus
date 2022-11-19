@@ -13,11 +13,12 @@ namespace STPDemo {
 	class STPSmoothScaleLayer : public STPCrossLayer {
 	public:
 
-		STPSmoothScaleLayer(size_t cache_size, Seed global_seed, Seed salt, STPLayer* parent) : STPCrossLayer(cache_size, global_seed, salt, parent) {
+		STPSmoothScaleLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 
-		Sample sample(Sample center, Sample north, Sample east, Sample south, Sample west, Seed local_seed) {
+		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, const Seed local_seed) override {
 			//set local RNG
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(local_seed);
 
