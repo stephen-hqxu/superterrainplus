@@ -130,5 +130,5 @@ __global__ void texture32Fto16KERNEL(float* const input, unsigned short* const o
 		return;
 	}
 
-	output[index] = static_cast<unsigned short>(glm::clamp(input[index], 0.0f, 1.0f) * FP32toUINT16constant);
+	output[index] = static_cast<unsigned short>(rintf(__saturatef(input[index]) * FP32toUINT16constant));
 }

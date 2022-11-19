@@ -38,7 +38,7 @@ uniform vec2 RotationVectorScale;
 
 //Compute occlusion factor.
 //Output a value in range [0, 1] where 1 means no occlusion and vice versa.
-float computeOcclusion(vec3, vec3);
+float computeOcclusion(const vec3, const vec3);
 
 void main(){
 	//get inputs
@@ -52,13 +52,13 @@ void main(){
 
 //Given a view position, return a view position which is on the geometry.
 //Basically the x, y coordinate is unchanged but the depth will be on the geometry, if the geometry exists.
-vec3 viewSnapToGeometry(mat4x2 proj_xy, vec3 viewPos){
+vec3 viewSnapToGeometry(const mat4x2 proj_xy, const vec3 viewPos){
 	const vec2 position_ndc = fragViewToNDC(proj_xy, viewPos);
 	//get the geometry depth at this coordinate and return
 	return fragDepthReconstructionView(textureLod(GeoDepth, position_ndc, 0.0f).r, position_ndc);
 }
 
-float computeOcclusion(vec3 position_view, vec3 normal_view){
+float computeOcclusion(const vec3 position_view, const vec3 normal_view){
 	//the output occlusion factor
 	float occlusion = 0.0f;
 	//the projection matrix that only deals with x and y component

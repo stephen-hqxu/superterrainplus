@@ -32,31 +32,31 @@ uniform float Sharpness;
 
 //The main filter function
 //A separable filter allows breaking down a 2D filter into two 1D filters
-subroutine float SeparableFilter(int);
+subroutine float SeparableFilter(const int);
 layout(location = 0) subroutine uniform SeparableFilter filterImage;
 
 void main(){
 	FilterOutput = filterImage(int(KernelRadius));
 }
 
-float getImageValueOffset(vec2 uv_offset){
+float getImageValueOffset(const vec2 uv_offset){
 	return textureLod(ImgInput, FragTexCoord + uv_offset, 0.0f).r;
 }
 
 #if GUASSIAN_KERNEL_VARIANT == 1
-float getImageDepthOffset(vec2 uv_offset){
+float getImageDepthOffset(const vec2 uv_offset){
 	return lineariseDepth(textureLod(ImgDepth, FragTexCoord + uv_offset, 0.0f).r);
 }
 
-float getFilteredImageDepthOffset(float depth_centre, vec2 uv_offset){
+float getFilteredImageDepthOffset(const float depth_centre, const vec2 uv_offset){
 	const float delta_depth = (getImageDepthOffset(uv_offset) - depth_centre) * Sharpness,
 		freq_response = -delta_depth * delta_depth * InvTwoVarSqr;
 	return StandardDeviation * exp(freq_response);
 }
 #endif
 
-#define HORIZONTAL_PASS layout(index = 0) subroutine(SeparableFilter) float horizontalPass(int radius)
-#define VERTICAL_PASS layout(index = 1) subroutine(SeparableFilter) float verticalPass(int radius)
+#define HORIZONTAL_PASS layout(index = 0) subroutine(SeparableFilter) float horizontalPass(const int radius)
+#define VERTICAL_PASS layout(index = 1) subroutine(SeparableFilter) float verticalPass(const int radius)
 #define KERNEL_LOOP(VAR) for(int VAR = -radius; VAR <= radius; VAR++)
 #define UV_OFFSET_HORIZONTAL vec2(x * texel_unit.x, 0.0f)
 #define UV_OFFSET_VERTICAL vec2(0.0f, y * texel_unit.y)

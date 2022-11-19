@@ -35,7 +35,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param instanceID The instance ID.
 		 * @return The user ID.
 		*/
-		__forceinline__ unsigned int encode(unsigned int objectID, unsigned int instanceID) noexcept {
+		__forceinline__ unsigned int encode(const unsigned int objectID, const unsigned int instanceID) noexcept {
 			return (STPInstanceIDCoder::ObjectIDMask & objectID << STPInstanceIDCoder::ObjectIDBit)
 				| (instanceID & STPInstanceIDCoder::InstanceIDMask);
 		}
@@ -45,7 +45,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param userID The user ID.
 		 * @return The object and instance ID, respectively.
 		*/
-		__forceinline__ uint2 decode(unsigned int userID) noexcept {
+		__forceinline__ uint2 decode(const unsigned int userID) noexcept {
 			return make_uint2(
 				(userID & STPInstanceIDCoder::ObjectIDMask) >> STPInstanceIDCoder::ObjectIDBit,
 				userID & STPInstanceIDCoder::InstanceIDMask

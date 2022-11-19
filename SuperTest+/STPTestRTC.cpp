@@ -72,7 +72,7 @@ protected:
 
 	CUfunction MattransformAdd, MattransformSub, Matscale;
 
-	static STPDeviceRuntimeBinary::STPCompilationOutput testCompilation(bool test_enable, bool attach_header) {
+	static STPDeviceRuntimeBinary::STPCompilationOutput testCompilation(const bool test_enable, const bool attach_header) {
 		const string Capability = "-arch=compute_" + std::to_string(STPEngineInitialiser::architecture(0));
 		//settings
 		STPDeviceRuntimeBinary::STPSourceInformation src_info;
@@ -108,7 +108,7 @@ protected:
 
 		//compile
 		STPDeviceRuntimeBinary::STPCompilationOutput output;
-		auto startCompile = [&src_info, &src, &output, &header]() {
+		const auto startCompile = [&src_info, &src, &output, &header]() {
 			try {
 				output = STPDeviceRuntimeBinary::compile(RTCTester::SourceName, src, src_info, header);
 			} catch (const STPException::STPCompilationError& ce) {
@@ -180,7 +180,7 @@ protected:
 		return module;
 	}
 
-	void prepData(CUmodule program, const STPDeviceRuntimeBinary::STPLoweredName& lowered_name) {
+	void prepData(const CUmodule program, const STPDeviceRuntimeBinary::STPLoweredName& lowered_name) {
 		CUdeviceptr matrixDim_d;
 		size_t matrixDimSize;
 
@@ -195,7 +195,7 @@ protected:
 		STP_CHECK_CUDA(cuModuleGetFunction(&this->Matscale, program, lowered_name.at("scale").c_str()));
 	}
 
-	mat4 matrixTransform(CUfunction func, const mat4& matA, const mat4& matB, float factor) {
+	mat4 matrixTransform(const CUfunction func, const mat4& matA, const mat4& matB, float factor) {
 		assert(func != this->Matscale);
 
 		//copy input to device

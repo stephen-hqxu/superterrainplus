@@ -37,7 +37,7 @@ private:
 	 * If text does not exceed the line limit, it will simply emit the text
 	 * @return The last line of the wrap
 	*/
-	string_view emitWrapped(string_view text, size_t reserve = 0u) const {
+	string_view emitWrapped(string_view text, const size_t reserve = 0u) const {
 		while (text.size() > CATCH_CONFIG_CONSOLE_WIDTH - reserve) {
 			//we do not wish to break a single word into half, instead of wrap it when it's a space
 			//find the last space in the emit string
@@ -70,8 +70,8 @@ private:
 	 * @param text The text to be centred
 	*/
 	void emitCentreString(const string_view& text) const {
-		auto centreStr = [&stream = m_stream](const string_view& text) -> void {
-			auto emit_border = [&stream](size_t border_size) -> void {
+		const auto centreStr = [&stream = m_stream](const string_view& text) -> void {
+			const auto emit_border = [&stream](const size_t border_size) -> void {
 				for (size_t i = 0u; i < border_size / 2u; i++) {
 					stream << ' ';
 				}
@@ -108,7 +108,7 @@ private:
 	 * @param text The text to be aligned right
 	 * @param colour The colour of the emitted text
 	*/
-	inline void emitRightString(size_t border_size, const string_view& text, Colour::Code colour) {
+	inline void emitRightString(const size_t border_size, const string_view& text, const Colour::Code colour) {
 		const size_t emit_length = CATCH_CONFIG_CONSOLE_WIDTH - border_size - text.size();
 		for (size_t i = 0u; i < emit_length; i++) {
 			m_stream << ' ';
@@ -144,7 +144,7 @@ private:
 	 * @param section The root section to be emitted
 	 * @param depth The current recursion depth, start from 0
 	*/
-	void writeSection(const CumulativeReporterBase::SectionNode* section, unsigned short depth = 0u) {
+	void writeSection(const CumulativeReporterBase::SectionNode* const section, const unsigned short depth = 0u) {
 		const auto& sec_stats = section->stats;
 		//reserve some spaces some the status tag at the end
 		const string indented_sec = string(depth * 2u, '-') + "> " + sec_stats.sectionInfo.name;
@@ -238,18 +238,18 @@ public:
 		//begin a run
 		this->emitSymbol('=');
 
-		const auto* run = m_testRun.get();
+		const auto& run = *m_testRun;
 		//write the information about the current run
-		this->emitCentreString(STPConsoleReporter::getView(run->value.runInfo.name));
+		this->emitCentreString(STPConsoleReporter::getView(run.value.runInfo.name));
 		this->emitSymbol('.');
 
 		//for each test case in a run
-		const auto& total_case = run->children;
+		const auto& total_case = run.children;
 		for (const auto& testcase : total_case) {
 			//write information about the current test case
-			const auto* testcase_info = testcase->value.testInfo;
+			const auto& testcase_info = *testcase->value.testInfo;
 			this->emitSymbol('-');
-			m_stream << m_colour->guardColour(Colour::FileName) << this->emitWrapped(STPConsoleReporter::getView(testcase_info->name)) << endl;
+			m_stream << m_colour->guardColour(Colour::FileName) << this->emitWrapped(STPConsoleReporter::getView(testcase_info.name)) << endl;
 			this->emitSymbol('-');
 
 			//for each section in a test case
@@ -265,7 +265,7 @@ public:
 		//end of test case
 		//emit stats for the run
 		this->emitSymbol('.');
-		this->emitStats(run->value.totals.assertions);
+		this->emitStats(run.value.totals.assertions);
 
 		//end of run
 		this->emitSymbol('=');

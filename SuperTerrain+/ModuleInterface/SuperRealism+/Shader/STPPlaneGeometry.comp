@@ -37,7 +37,7 @@ const uvec2 PlaneIndexOffset[2][3] = {
 };
 
 //Select to generate a different set of plane geometry data.
-subroutine void PlaneGeometryGenerator(uvec2);
+subroutine void PlaneGeometryGenerator(const uvec2);
 layout(location = 0) subroutine uniform PlaneGeometryGenerator generatePlane;
 
 void main(){
@@ -53,7 +53,7 @@ void main(){
 	generatePlane(gl_GlobalInvocationID.xy);
 }
 
-layout(index = 0) subroutine(PlaneGeometryGenerator) void generateVertex(uvec2 local_offset){
+layout(index = 0) subroutine(PlaneGeometryGenerator) void generateVertex(const uvec2 local_offset){
 	//during vertex data generation, each thread is responsible for one vertex.
 	//N tiles => N + 1 vertices
 	const uvec2 TotalVertex = TotalTile + 1u;
@@ -74,7 +74,7 @@ layout(index = 0) subroutine(PlaneGeometryGenerator) void generateVertex(uvec2 l
 	OutputBuffer->TexCoord = vec2(local_plane_uv);
 }
 
-layout(index = 1) subroutine(PlaneGeometryGenerator) void generateIndex(uvec2 local_offset){
+layout(index = 1) subroutine(PlaneGeometryGenerator) void generateIndex(const uvec2 local_offset){
 	//during index data generation, each thread is responsible for one face, each tile has 2 faces, so 4 vertices
 	//N tiles => 2N faces, by default we count faces in the horizontal direction, so multiply x by 2, and remain y unchanged.
 	if(local_offset.x >= TotalTile.x * 2u || local_offset.y >= TotalTile.y){

@@ -29,22 +29,22 @@ layout(std430, binding = 0) readonly restrict buffer STPCameraInformation {
 //Reconstruct fragment world/view position from fragment depth using camera matrix
 //depth should have range [0, 1]
 //fragment texture coordinate should also be in [0, 1] range
-vec3 fragDepthReconstructionGeneric(mat4 inv_transform, float frag_depth, vec2 frag_coord) {
+vec3 fragDepthReconstructionGeneric(const mat4 inv_transform, const float frag_depth, const vec2 frag_coord) {
 	const vec4 position_scaled = inv_transform * STP_DEPTH_BUFFER_TO_NDC(frag_coord, frag_depth);
 	//perform perspective division to un-scale the projection
 	return position_scaled.xyz / position_scaled.w;
 }
 
-vec3 fragDepthReconstructionWorld(float frag_depth, vec2 frag_coord) {
+vec3 fragDepthReconstructionWorld(const float frag_depth, const vec2 frag_coord) {
 	return fragDepthReconstructionGeneric(Camera.InvProjectionView, frag_depth, frag_coord);
 }
 
-vec3 fragDepthReconstructionView(float frag_depth, vec2 frag_coord) {
+vec3 fragDepthReconstructionView(const float frag_depth, const vec2 frag_coord) {
 	return fragDepthReconstructionGeneric(Camera.InvProjection, frag_depth, frag_coord);
 }
 
 //convert a view position to 2D normalised device coordinate
-vec2 fragViewToNDC(mat4x2 projection_xy, vec3 position_view) {
+vec2 fragViewToNDC(const mat4x2 projection_xy, const vec3 position_view) {
 	//convert from view to clip space first
 	const vec2 position_clip = projection_xy * vec4(position_view, 1.0f);
 	//from clip space to NDC by perspective division
@@ -52,7 +52,7 @@ vec2 fragViewToNDC(mat4x2 projection_xy, vec3 position_view) {
 	return (position_clip / -position_view.z) * 0.5f + 0.5f;
 }
 
-float lineariseDepth(float depth) {
+float lineariseDepth(const float depth) {
 	//depth remains in the range [0, 1] in reversed, so convert it to [1, 0]
 	//both exchanging far and near values and flipping the depth range works
 	//here we flip the depth by doing 1 - z

@@ -17,10 +17,10 @@ struct AtmosphereComposition {
 //ray-sphere intersection that assumes
 //the sphere is centred at the origin.
 //No intersection when result.x > result.y
-vec2 raySphereIntersection(vec3, vec3, float);
+vec2 raySphereIntersection(const vec3, const vec3, const float);
 
 //sun position should be a normalised direction to the sun
-AtmosphereComposition atmosphere(AtmosphereSetting atmo, vec3 sun_pos, vec3 ray_dir) {
+AtmosphereComposition atmosphere(const AtmosphereSetting atmo, const vec3 sun_pos, const vec3 ray_dir) {
 	const vec3 ray_origin = vec3(0.0f, atmo.vAlt, 0.0f);
 
 	//calculate step size of the primary ray
@@ -111,7 +111,7 @@ AtmosphereComposition atmosphere(AtmosphereSetting atmo, vec3 sun_pos, vec3 ray_
 	);
 }
 
-vec2 raySphereIntersection(vec3 ray_origin, vec3 ray_direction, float sphere_radius) {
+vec2 raySphereIntersection(const vec3 ray_origin, const vec3 ray_direction, const float sphere_radius) {
 	const float a = dot(ray_direction, ray_direction),
 		b = 2.0f * dot(ray_direction, ray_origin),
 		c = dot(ray_origin, ray_origin) - (sphere_radius * sphere_radius),

@@ -20,7 +20,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param dim The dimension of the texture.
 		 * @return The texture coordinate for the given fragment index, within range [0.0f, 1.0f].
 		*/
-		__device__ __forceinline__ static float2 calcTextureCoordinate(uint2 frag_index, uint2 dim) {
+		__device__ __forceinline__ static float2 calcTextureCoordinate(const uint2 frag_index, const uint2 dim) {
 			return make_float2(frag_index) / make_float2(dim);
 		}
 
@@ -33,7 +33,7 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @return The reconstructed world position of the fragment.
 		 * @see STPCameraInformation.glsl
 		*/
-		__device__ __forceinline__ static float3 reconstructDepthToWorld(const float4x4& inv_pv, float frag_depth, float2 frag_uv) {
+		__device__ __forceinline__ static float3 reconstructDepthToWorld(const float4x4& inv_pv, const float frag_depth, const float2 frag_uv) {
 			//compatibility type conversion
 			float3 (*vec3)(const float2&, const float) = &make_float3;
 			float4 (*vec4)(const float3&, const float) = &make_float4;
@@ -53,11 +53,11 @@ namespace SuperTerrainPlus::STPRealism {
 		 * @param v3 Vertex three.
 		 * @return The interpolation vertex data.
 		*/
-		__device__ __forceinline__ static float2 barycentricInterpolation(float2 bary, float2 v1, float2 v2, float2 v3) {
+		__device__ __forceinline__ static float2 barycentricInterpolation(const float2 bary, const float2 v1, const float2 v2, const float2 v3) {
 			return BARYCENTRIC_INTERP_DEF;
 		}
 		//@see barycentricInterpolation(float2...)
-		__device__ __forceinline__ static float3 barycentricInterpolation(float2 bary, float3 v1, float3 v2, float3 v3) {
+		__device__ __forceinline__ static float3 barycentricInterpolation(const float2 bary, const float3 v1, const float3 v2, const float3 v3) {
 			return BARYCENTRIC_INTERP_DEF;
 		}
 

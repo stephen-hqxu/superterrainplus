@@ -27,7 +27,7 @@ uniform vec3 Tint;
 uniform uint WaterMaterialID;
 
 //compute the surface normal of the water at the current fragment
-vec3 calcWaterNormal(vec2);
+vec3 calcWaterNormal(const vec2);
 
 void main(){
 	const float waveDistance = distance(fs_in.position_world, Camera.Position);
@@ -40,11 +40,11 @@ void main(){
 	writeGeometryData(Tint, waveNormal, 1.0 - glossiness, 1.0f, WaterMaterialID);
 }
 
-vec3 getSamplePosition(vec2 coord){
+vec3 getSamplePosition(const vec2 coord){
 	return vec3(coord.x, getWaveHeight(coord, WaterWave, WaveNormalIteration, WaveTime) * WaveHeight, coord.y);
 }
 
-vec3 calcWaterNormal(vec2 position){
+vec3 calcWaterNormal(const vec2 position){
 	const vec2 eps = vec2(Epsilon, 0.0f);
 	//get sample positions
 	const vec3 centreHeight = getSamplePosition(position),

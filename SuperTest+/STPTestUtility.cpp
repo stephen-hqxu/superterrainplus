@@ -53,7 +53,7 @@ protected:
 	//use optional so we can control the life-time of the thread pool for easy testing
 	optional<STPThreadPool> Pool;
 
-	static unsigned int busyWork(unsigned int value) {
+	static unsigned int busyWork(const unsigned int value) {
 		ThreadPoolTester::sleep();
 		return value;
 	}
@@ -63,7 +63,7 @@ protected:
 		flag = !flag;
 	}
 
-	[[noreturn]] static void brokenWork(unsigned int value) {
+	[[noreturn]] static void brokenWork(const unsigned int value) {
 		ThreadPoolTester::busyWork(value);
 		throw std::runtime_error("This test case is intended to fail");
 	}
@@ -261,8 +261,8 @@ TEMPLATE_TEST_CASE_METHOD(ObjectPoolTester, "STPObjectPool reuses object wheneve
 SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Utility][STPSmartDeviceMemory]") {
 	
 	GIVEN("A piece of host data that is needed to be copied to device memory") {
-		unique_ptr<unsigned int[]> HostData = make_unique<unsigned int[]>(8);
-		unique_ptr<unsigned int[]> ReturnedData = make_unique<unsigned int[]>(8);
+		const unique_ptr<unsigned int[]> HostData = make_unique<unsigned int[]>(8);
+		const unique_ptr<unsigned int[]> ReturnedData = make_unique<unsigned int[]>(8);
 
 		const unsigned int Data = GENERATE(take(3, random(0u, 66666666u)));
 		std::fill_n(HostData.get(), 8, Data);
@@ -276,7 +276,7 @@ SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Util
 
 			THEN("Smart device memory can be used like normal memory") {
 				constexpr static size_t DataSize = sizeof(unsigned int) * 8u;
-				auto compareData = [Data](auto i) {
+				const auto compareData = [Data](const auto i) {
 					return i == Data;
 				};
 

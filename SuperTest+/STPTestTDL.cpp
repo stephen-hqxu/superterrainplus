@@ -94,7 +94,7 @@ SCENARIO("TDL interpreter parses a TDL script", "[AlgorithmHost][Texture][STPTex
 
 	GIVEN("A TDL source with incorrect syntax and semantics") {
 		using namespace Catch::Matchers;
-		auto tryParse = [&Parser](const char* src) {
+		const auto tryParse = [&Parser](const char* const src) {
 			Parser.emplace(src);
 		};
 

@@ -35,7 +35,7 @@ uniform float Gamma;
 uniform FilmicToneSetting Tone;
 
 //perform tone mapping for the input color
-vec3 toneMapping(vec3);
+vec3 toneMapping(const vec3);
 #endif//TONE_MAPPING
 
 void main(){
@@ -54,7 +54,7 @@ void main(){
 }
 
 #if TONE_MAPPING
-vec3 toneMapping(vec3 x){
+vec3 toneMapping(const vec3 x){
 	//switch to different tone mapping function
 
 #if TONE_MAPPING == 1

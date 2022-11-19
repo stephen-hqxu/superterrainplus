@@ -100,7 +100,7 @@ SCENARIO("INI reader can parsed all values correctly", "[AlgorithmHost][INI][STP
 	}
 
 	GIVEN("A raw INI string which does not comply with INI syntax") {
-		auto tryRead = [&Reader](const char* src) {
+		const auto tryRead = [&Reader](const char* const src) {
 			Reader.emplace(src);
 		};
 		constexpr char BrokenINI1[] = "[Diet\ncat=fish";

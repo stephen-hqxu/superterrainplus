@@ -26,9 +26,9 @@ layout(binding = 1) uniform sampler2D ObjectNormal;
 layout(binding = 2) uniform usampler2D ObjectMaterial;
 
 //find the closest hit on the geometry, returns the colour value at that point.
-vec3 findClosestHitColor(vec3, vec3, mat4x2);
+vec3 findClosestHitColor(const vec3, const vec3, const mat4x2);
 //sample linear depth from the scene
-float getLinearDepthAt(vec2);
+float getLinearDepthAt(const vec2);
 
 void main(){
 	//find the material for the current fragment
@@ -60,7 +60,7 @@ void main(){
 }
 
 //compare the current sample depth with the actual depth on the depth buffer
-float compareSampleDepth(float init_depth, float final_depth, float factor, vec2 position_ndc){
+float compareSampleDepth(const float init_depth, const float final_depth, const float factor, const vec2 position_ndc){
 	//use linear interpolation to calculate the current ray depth
 	//perspective correction for perspective projection
 	const float sampleDepth_theoretical = init_depth * final_depth / mix(init_depth, final_depth, factor),
@@ -72,11 +72,11 @@ float compareSampleDepth(float init_depth, float final_depth, float factor, vec2
 }
 
 //True if the sample point is inside the geometry, otherwise false
-bool isDeltaDepthInside(float depth){
+bool isDeltaDepthInside(const float depth){
 	return depth > 0.0f && depth < DepthBias;
 }
 
-vec3 findClosestHitColor(vec3 ray_origin, vec3 ray_dir, mat4x2 proj_xy){
+vec3 findClosestHitColor(const vec3 ray_origin, const vec3 ray_dir, const mat4x2 proj_xy){
 	/* =============================================== Pass 1 ================================================== */
 	/* ==== perform a rough ray marching to get an approximated ray-primitive intersection point, if exists ==== */
 	const vec3 rayEndView = ray_origin + ray_dir * MaxDistance;
@@ -137,6 +137,6 @@ vec3 findClosestHitColor(vec3 ray_origin, vec3 ray_dir, mat4x2 proj_xy){
 	return textureLod(SceneColor, closestHit, 0.0f).rgb;
 }
 
-float getLinearDepthAt(vec2 uv){
+float getLinearDepthAt(const vec2 uv){
 	return lineariseDepth(textureLod(SceneDepth, uv, 0.0f).r);
 }

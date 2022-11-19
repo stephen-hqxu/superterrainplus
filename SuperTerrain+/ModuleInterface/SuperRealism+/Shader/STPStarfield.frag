@@ -27,7 +27,7 @@ uniform StarfieldSetting Star;
 //control star shining
 uniform float ShineTime;
 
-vec3 hash33(vec3);
+vec3 hash33(const vec3);
 
 void main(){
 	const vec3 rayDir = normalize(FragRayDirection);
@@ -80,7 +80,7 @@ void main(){
 	FragColor = vec4(starColor * Star.LumMul, 1.0f);
 }
 
-vec3 hash33(vec3 v){
+vec3 hash33(const vec3 v){
 	const vec3 floatMax = 1.0f / vec3(0xFFFFFFFFu);
 
 	//unsigned overflow is OK

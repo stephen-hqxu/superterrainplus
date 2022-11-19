@@ -23,7 +23,7 @@ constexpr static int SelectedDevice = 0;
 //Initialise shared data
 cudaMemPool_t STPTestInformation::TestDeviceMemoryPool;
 
-int main(int argc, char* argv[]) {
+int main(const int argc, const char* const* const argv) {
 	//setup the engine
 	try {
 		STPEngineInitialiser::initialise(SelectedDevice, nullptr);

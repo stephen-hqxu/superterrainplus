@@ -59,7 +59,7 @@ protected:
 
 	const STPSingleHistogramFilter::STPHistogramBuffer_t Buffer = STPSingleHistogramFilter::createHistogramBuffer();
 
-	inline STPSingleHistogram execute(unsigned int radius = 2u) {
+	inline STPSingleHistogram execute(const unsigned int radius = 2u) {
 		return (*this)(HistogramTester::Texture, HistogramTester::Data, Buffer, radius);
 	}
 

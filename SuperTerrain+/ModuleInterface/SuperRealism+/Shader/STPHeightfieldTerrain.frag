@@ -103,7 +103,7 @@ const ivec2 ConvolutionKernelOffset[8] = {
 };
 
 //Get all types of available texture using texture region smoothing algorithm
-TerrainTextureData getSmoothTexture(vec2);
+TerrainTextureData getSmoothTexture(const vec2);
 /**
  * We have three normal systems for terrain, plane normal, terrain normal and terrain texture normal.
  * plane normal is simply (0,1,0), that's how our model is defined (model space normal)
@@ -114,7 +114,7 @@ TerrainTextureData getSmoothTexture(vec2);
 */
 vec3 calcTerrainNormal();
 //Blend a main normalmap with detail normalmap
-vec3 blendNormal(vec3, vec3);
+vec3 blendNormal(const vec3, const vec3);
 
 const vec2 HeightmapTexelUnit = 1.0f / vec2(textureSize(Heightmap, 0).xy);
 
@@ -173,7 +173,7 @@ void main(){
 }
 
 //dx_dy is the derivative used for sampling texture, the first two components store dx while the last two store dy.
-vec3 getRegionTexture(vec2 texture_uv, vec3 replacement, uint region, uint type, vec4 dx_dy){
+vec3 getRegionTexture(const vec2 texture_uv, const vec3 replacement, const uint region, const uint type, const vec4 dx_dy){
 	const uint regionLoc = region * TYPE_STRIDE + type;
 	//invalid region
 	if(regionLoc >= REGISTRY_COUNT){
@@ -206,7 +206,7 @@ void sampleTerrainTexture(in out TerrainTextureData data, vec2 sampling_uv, uint
 #endif
 }
 
-TerrainTextureData getSmoothTexture(vec2 world_uv){
+TerrainTextureData getSmoothTexture(const vec2 world_uv){
 	const uint regionBinSize = SPLAT_REGION_COUNT + 1u;
 	//the bin is used to record the number of each region presented in the smoothing kernel.
 	//The last bin acts as a dummy bin to handle any invalid region
@@ -369,7 +369,7 @@ vec3 calcTerrainNormal(){
 }
 
 //n1 is the main normalmap, n2 adds details
-vec3 blendNormal(vec3 n1, vec3 n2){
+vec3 blendNormal(const vec3 n1, const vec3 n2){
 	//there exists many different algorithms for normal blending, pick one yourself
 
 #if NORMALMAP_BLENDING == 0

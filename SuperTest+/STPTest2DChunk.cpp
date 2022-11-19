@@ -91,7 +91,7 @@ protected:
 	constexpr static unsigned int Count = Size.x * Size.y;
 
 	template<typename T>
-	static void fillValue(T* texture, T value) {
+	static void fillValue(T* const texture, const T value) {
 		for (unsigned int y = 0u; y < ChunkTester::Size.y; y++) {
 			for (unsigned int x = 0u; x < ChunkTester::Size.x; x++) {
 				texture[x + y * ChunkTester::Size.x] = value;
@@ -100,7 +100,7 @@ protected:
 	}
 
 	template<typename T>
-	inline static void testMapValue(T* map, T reference) {
+	inline static void testMapValue(T* const map, const T reference) {
 		CHECK(std::all_of(map, map + ChunkTester::Count, [reference](auto val) { return val == reference; }));
 	}
 

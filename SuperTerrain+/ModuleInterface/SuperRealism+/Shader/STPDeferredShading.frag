@@ -110,10 +110,10 @@ layout(bindless_sampler) uniform sampler2D GBuffer[5];
 uniform float ExtinctionBand;
 
 //Calculate light colour for the current fragment position
-vec3 calcAmbientLight(float, const AmbientLight*);
-vec3 calcDirectionalLight(vec3, vec3, vec3, float, const DirectionalLight*);
+vec3 calcAmbientLight(const float, const AmbientLight* const);
+vec3 calcDirectionalLight(const vec3, const vec3, const vec3, const float, const DirectionalLight* const);
 //This function returns the light intensity multiplier in the range [0.0, 1.0], with 0.0 means no light and 1.0 means full light.
-float sampleShadow(vec3, float, const DirectionalShadow*);
+float sampleShadow(const vec3, const float, const DirectionalShadow* const);
 
 void main(){
 	const float fragment_depth = textureLod(G_DEPTH, FragTexCoord, 0.0f).r;
@@ -153,14 +153,15 @@ void main(){
 	FragColor = vec4(Albedo * LightColor, extinctionFactor);
 }
 
-vec3 calcAmbientLight(float ambient_strength, const AmbientLight* amb_light){
+vec3 calcAmbientLight(const float ambient_strength, const AmbientLight* const amb_light){
 	const vec3 indirect_color = textureLod(amb_light->AmbSpec, amb_light->SpecCoord, 0.0f).rgb;
 	const float ambient = ambient_strength * amb_light->Ka;
 
 	return indirect_color * ambient;
 }
 
-vec3 calcDirectionalLight(vec3 position_world, vec3 view_direction, vec3 normal, float shininess, const DirectionalLight* dir_light){
+vec3 calcDirectionalLight(const vec3 position_world, const vec3 view_direction, const vec3 normal,
+	const float shininess, const DirectionalLight* const dir_light){
 	const vec3 direct_color = textureLod(dir_light->DirSpec, dir_light->SpecCoord, 0.0f).rgb;
 
 	//diffuse
@@ -189,9 +190,9 @@ vec3 calcDirectionalLight(vec3 position_world, vec3 view_direction, vec3 normal,
 #define USE_PCF_FILTER
 #endif
 
-float filterShadow(SHADOW_MAP_FORMAT shadow_map, vec2 projection_coord, float frag_depth, uint layer
+float filterShadow(const SHADOW_MAP_FORMAT shadow_map, const vec2 projection_coord, const float frag_depth, const uint layer
 #ifdef USE_PCF_FILTER
-, float pcf_sampling_texel, float pcf_totalKernel_sq_inv
+, const float pcf_sampling_texel, const float pcf_totalKernel_sq_inv
 #endif
 ){
 #ifdef USE_PCF_FILTER
@@ -229,7 +230,7 @@ float filterShadow(SHADOW_MAP_FORMAT shadow_map, vec2 projection_coord, float fr
 #endif
 }
 
-vec3 determineShadowCoord(vec4 worldPos, const mat4* light_space){
+vec3 determineShadowCoord(const vec4 worldPos, const mat4* const light_space){
 	//convert world position to light clip space
 	const vec4 fraglightPos = *light_space * worldPos;
 	//perform perspective division and transform to [0, 1] range
@@ -239,13 +240,13 @@ vec3 determineShadowCoord(vec4 worldPos, const mat4* light_space){
 	return fragShadowCoord;
 }
 
-vec2 determineLayerFarBias(uint layer, uint cascadeCount, const float* div, float original_bias){
+vec2 determineLayerFarBias(const uint layer, const uint cascadeCount, const float* const div, const float original_bias){
 	const float layerFar = (layer == cascadeCount) ? Camera.Far : div[layer];
 	//scale the bias depends on how far the frustum plane is
 	return vec2(layerFar, original_bias / (layerFar * Filter.FarBias));
 }
 
-float sampleShadow(vec3 world_position, float rawBias, const DirectionalShadow* dir_shadow) {
+float sampleShadow(const vec3 world_position, const float rawBias, const DirectionalShadow* const dir_shadow) {
 	//as we are dealing with directional light, w component is always 1.0
 	const vec4 fragworldPos = vec4(world_position, 1.0f);
 	//The shadow map is always a square

@@ -8,9 +8,9 @@ struct WaveFunction {
 };
 
 //X: wave height; Y: wave height derivative
-vec2 waveEquation(vec2, vec2, float, float, float);
+vec2 waveEquation(const vec2, const vec2, const float, const float, const float);
 
-float getWaveHeight(vec2 position, WaveFunction func, uint iteration, float time) {
+float getWaveHeight(vec2 position, const WaveFunction func, const uint iteration, const float time) {
 	float rotation = func.iRot, 
 		frequency = func.iFreq, 
 		amplitude = func.iAmp, 
@@ -38,7 +38,7 @@ float getWaveHeight(vec2 position, WaveFunction func, uint iteration, float time
 	return waveHeight / heightSum;
 }
 
-vec2 waveEquation(vec2 position, vec2 direction, float speed, float frequency, float phase) {
+vec2 waveEquation(const vec2 position, const vec2 direction, const float speed, const float frequency, const float phase) {
 	const float x = dot(position, direction) * frequency + phase * speed,
 		//the exp function makes the wave a bit more gentle; wave has range [exp(-2), 1]
 		wave = exp(sin(x) - 1.0f),

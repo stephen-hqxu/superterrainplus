@@ -32,14 +32,14 @@ using glm::uvec2;
 class RootLayer : public STPLayer {
 protected:
 
-	Sample sample(int x, int y, int z) override {
+	Sample sample(const int x, const int y, const int z) override {
 		//unsigned type wins!!!
 		return static_cast<Sample>(1u + x + y + z);
 	}
 
 public:
 
-	RootLayer(size_t cache, Seed seed, Seed salt) : STPLayer(cache, seed, salt) {
+	RootLayer(const size_t cache, const Seed seed, const Seed salt) : STPLayer(cache, seed, salt) {
 
 	}
 
@@ -55,7 +55,7 @@ protected:
 
 public:
 
-	NormalLayer(size_t cache, Seed seed, Seed salt, STPLayer* ascendant) : STPLayer(cache, seed, salt, ascendant) {
+	NormalLayer(const size_t cache, const Seed seed, const Seed salt, STPLayer* const ascendant) : STPLayer(cache, seed, salt, ascendant) {
 
 	}
 
@@ -64,13 +64,14 @@ public:
 class MergingLayer : public STPLayer {
 protected:
 
-	Sample sample(int x, int y, int z) override {
+	Sample sample(const int x, const int y, const int z) override {
 		return static_cast<Sample>(this->getAscendant(0)->retrieve(x, y, z) + this->getAscendant(1)->retrieve(x, y, z));
 	}
 
 public:
 
-	MergingLayer(size_t cache, Seed seed, Seed salt, STPLayer* asc1, STPLayer* asc2) : STPLayer(cache, seed, salt, asc1, asc2) {
+	MergingLayer(const size_t cache, const Seed seed, const Seed salt, STPLayer* const asc1, STPLayer* const asc2) :
+		STPLayer(cache, seed, salt, asc1, asc2) {
 
 	}
 
@@ -79,13 +80,13 @@ public:
 class RandomLayer : public STPLayer {
 private:
 
-	Sample sample(int x, int, int z) {
+	Sample sample(const int x, int, const int z) override {
 		return static_cast<Sample>(this->seedLocal(x, z));
 	}
 
 protected:
 
-	inline Sample getValue(ivec2 coord) {
+	inline Sample getValue(const ivec2 coord) {
 		return this->sample(coord.x, 0, coord.y);
 	}
 
@@ -304,7 +305,7 @@ protected:
 		return Layer;
 	}
 
-	inline Sample getExpected(unsigned int index, const ivec2& offset) const {
+	inline Sample getExpected(const unsigned int index, const ivec2& offset) const {
 		return static_cast<Sample>(((index % BiomeFactoryTester::Dimension.x) + (index / BiomeFactoryTester::Dimension.y) + offset.x + offset.y + 1) * 2);
 	}
 
@@ -314,11 +315,11 @@ public:
 
 	}
 
-	BiomeFactoryTester(uvec2 dimension) : STPBiomeFactory(dimension) {
+	BiomeFactoryTester(const uvec2 dimension) : STPBiomeFactory(dimension) {
 
 	}
 
-	void generateMap(Sample* biomemap, const ivec2& offset) {
+	void generateMap(Sample* const biomemap, const ivec2& offset) {
 		(*this)(biomemap, offset);
 	}
 

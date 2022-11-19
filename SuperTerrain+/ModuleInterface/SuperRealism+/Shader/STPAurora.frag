@@ -82,7 +82,7 @@ void main(){
 }
 
 //Construct a 2D rotation matrix, angle unit radians
-mat2 doRotation(float theta){
+mat2 doRotation(const float theta){
 	const float sinT = sin(theta),
 		cosT = cos(theta);
 	return mat2(
@@ -91,12 +91,12 @@ mat2 doRotation(float theta){
 	);
 }
 
-float triangularWave(float x){
+float triangularWave(const float x){
 	//if you sketch this function, it should give a shark-fin like function ranged [0.0, 0.5]
 	return abs(fract(x) - 0.5f);
 }
 
-vec2 triangularWave(vec2 p){
+vec2 triangularWave(const vec2 p){
 	return vec2(triangularWave(p.x) + triangularWave(p.y), triangularWave(p.y + triangularWave(p.x)));
 }
 

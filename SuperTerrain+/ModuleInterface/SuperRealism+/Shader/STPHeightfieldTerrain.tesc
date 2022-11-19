@@ -61,7 +61,7 @@ uniform uint TerrainRenderPass;
 #endif//STP_WATER
 
 //Calculate the level-of-detail for the mesh
-float calcLoD(TessellationSetting, float, float);
+float calcLoD(const TessellationSetting, const float, const float);
 
 const uvec2 PatchEdgeIdx[3] = {
 	{ 1u, 2u },
@@ -174,6 +174,6 @@ void main(){
 	}
 }
 
-float calcLoD(TessellationSetting tess, float v1, float v2){
+float calcLoD(const TessellationSetting tess, const float v1, const float v2){
 	return mix(tess.MaxLod, tess.MinLod, (v1 + v2) * 0.5f);
 }

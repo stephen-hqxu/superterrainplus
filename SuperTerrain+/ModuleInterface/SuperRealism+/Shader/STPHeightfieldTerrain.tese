@@ -44,8 +44,8 @@ uniform uint TerrainRenderPass;
 #endif//STP_WATER
 
 //Functions
-vec2 toCartesian2D(vec2, vec2, vec2);
-vec4 toCartesian4D(vec4, vec4, vec4);
+vec2 toCartesian2D(const vec2, const vec2, const vec2);
+vec4 toCartesian4D(const vec4, const vec4, const vec4);
 
 void main(){
 	//interpolate Barycentric to Cartesian
@@ -74,10 +74,10 @@ void main(){
 	}
 }
 
-vec2 toCartesian2D(vec2 v1, vec2 v2, vec2 v3){
+vec2 toCartesian2D(const vec2 v1, const vec2 v2, const vec2 v3){
 	return vec2(gl_TessCoord.x) * v1 + vec2(gl_TessCoord.y) * v2 + vec2(gl_TessCoord.z) * v3;
 }
 
-vec4 toCartesian4D(vec4 v1, vec4 v2, vec4 v3){
+vec4 toCartesian4D(const vec4 v1, const vec4 v2, const vec4 v3){
 	return vec4(gl_TessCoord.x) * v1 + vec4(gl_TessCoord.y) * v2 + vec4(gl_TessCoord.z) * v3;
 }

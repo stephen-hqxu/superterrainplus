@@ -12,7 +12,7 @@ layout(location = 4) out uint gFragMaterial;
 
 //It is better to keep the normal vector normalised, however it will be normalised by GL anyway
 //because the pixel format is signed normalised.
-void writeGeometryData(vec3 albedo, vec3 normal, float roughness, float ao, uint material) {
+void writeGeometryData(const vec3 albedo, const vec3 normal, const float roughness, const float ao, const uint material) {
 	gFragAlbedo = albedo;
 	gFragNormal = normal;
 	gFragRoughness = roughness;
@@ -20,7 +20,7 @@ void writeGeometryData(vec3 albedo, vec3 normal, float roughness, float ao, uint
 	gFragMaterial = material;
 }
 
-void writeGeometryData(vec3 a, vec3 n, float r, float o) {
+void writeGeometryData(const vec3 a, const vec3 n, const float r, const float o) {
 	writeGeometryData(a, n, r, o, 0u);
 }
 #endif//_STP_GEOMETRY_BUFFER_WRITER_GLSL_

@@ -25,7 +25,7 @@ public:
 
 };
 
-__device__ __forceinline__ static STPSSRIPayload traceIntersection(const float3& origin, const float3& direction, unsigned int mask) {
+__device__ __forceinline__ static STPSSRIPayload traceIntersection(const float3& origin, const float3& direction, const unsigned int mask) {
 	//initialise all payloads as undefined
 	unsigned int p[STPSSRIPayload::DataCount];
 	for (unsigned int i = 0u; i < STPSSRIPayload::DataCount; i++) {
