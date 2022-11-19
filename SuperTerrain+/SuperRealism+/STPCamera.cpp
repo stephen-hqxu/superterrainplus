@@ -124,7 +124,7 @@ inline void STPCamera::triggerSubscriberEvent(Func&& func) const {
 	std::for_each(this->CameraSubscriber.cbegin(), this->CameraSubscriber.cend(), std::forward<Func>(func));
 }
 
-inline auto STPCamera::findSubcriber(STPSubscriberBenefit* benefit) const {
+inline auto STPCamera::findSubcriber(STPSubscriberBenefit* const benefit) const {
 	return std::find(this->CameraSubscriber.cbegin(), this->CameraSubscriber.cend(), benefit);
 }
 
@@ -151,7 +151,7 @@ void STPCamera::unsubscribe(STPSubscriberBenefit& benefit) {
 	this->CameraSubscriber.erase(it);
 }
 
-void STPCamera::bindCameraBuffer(STPOpenGL::STPenum target, STPOpenGL::STPuint index) const {
+void STPCamera::bindCameraBuffer(const STPOpenGL::STPenum target, const STPOpenGL::STPuint index) const {
 	this->CameraInformation.bindBase(target, index);
 }
 
@@ -216,7 +216,7 @@ const STPMatrix4x4d& STPCamera::projection() const noexcept {
 	return this->PerspectiveProjection;
 }
 
-STPMatrix4x4d STPCamera::projection(double near, double far) const {
+STPMatrix4x4d STPCamera::projection(const double near, const double far) const {
 	//remember we are using reversed depth, so flip near and far plane
 	alignas(STPMatrix4x4d) const dmat4 projection_data = glm::perspectiveRH_ZO(
 		this->Camera.FoV,
@@ -231,7 +231,7 @@ const SuperTerrainPlus::STPEnvironment::STPCameraSetting& STPCamera::cameraStatu
 	return this->Camera;
 }
 
-void STPCamera::move(const STPMoveDirection direction, double delta) {
+void STPCamera::move(const STPMoveDirection direction, const double delta) {
 	//scale the movement speed with delta, delta usually is the frametime
 	const double velocity = this->Camera.MovementSpeed * delta;
 
@@ -256,7 +256,7 @@ void STPCamera::move(const STPMoveDirection direction, double delta) {
 	//position change implies view change
 	this->PositionOutdated = true;
 	this->ViewOutdated = true;
-	this->triggerSubscriberEvent([](auto* sub) { sub->Moved = true; });
+	this->triggerSubscriberEvent([](auto* const sub) { sub->Moved = true; });
 }
 
 void STPCamera::rotate(const dvec2& offset) {
@@ -276,10 +276,10 @@ void STPCamera::rotate(const dvec2& offset) {
 	this->updateViewSpace();
 
 	this->ViewOutdated = true;
-	this->triggerSubscriberEvent([](auto* sub) { sub->Rotated = true; });
+	this->triggerSubscriberEvent([](auto* const sub) { sub->Rotated = true; });
 }
 
-void STPCamera::zoom(double delta) {
+void STPCamera::zoom(const double delta) {
 	//change the view angle
 	this->Camera.FoV += delta * this->Camera.ZoomSensitivity;
 	//limit the zoom angle
@@ -290,12 +290,12 @@ void STPCamera::zoom(double delta) {
 	);
 
 	this->ProjectionOutdated = true;
-	this->triggerSubscriberEvent([](auto* sub) { sub->Zoomed = true; });
+	this->triggerSubscriberEvent([](auto* const sub) { sub->Zoomed = true; });
 }
 
-void STPCamera::setAspect(double aspect) {
+void STPCamera::setAspect(const double aspect) {
 	this->Camera.Aspect = aspect;
 
 	this->ProjectionOutdated = true;
-	this->triggerSubscriberEvent([](auto* sub) { sub->AspectChanged = true; });
+	this->triggerSubscriberEvent([](auto* const sub) { sub->AspectChanged = true; });
 }

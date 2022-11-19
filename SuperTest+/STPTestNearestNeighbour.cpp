@@ -121,7 +121,7 @@ protected:
 		});
 	}
 
-	inline static bool isMergedDataAllZero(const T* merged_data) {
+	inline static bool isMergedDataAllZero(const T* const merged_data) {
 		return all_of(merged_data, merged_data + NNBufferTester::MergedSize, [](const auto val) { return val == static_cast<T>(0); });
 	}
 

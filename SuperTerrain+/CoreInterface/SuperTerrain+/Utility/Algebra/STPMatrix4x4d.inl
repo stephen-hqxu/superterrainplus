@@ -18,11 +18,11 @@ inline SuperTerrainPlus::STPMatrix4x4d::STPMatrix4x4d(const glm::dmat4 & mat) no
 	FOREACH_COL_END()
 }
 
-inline const __m256d& SuperTerrainPlus::STPMatrix4x4d::get(size_t idx) const noexcept {
+inline const __m256d& SuperTerrainPlus::STPMatrix4x4d::get(const size_t idx) const noexcept {
 	return this->Mat[idx].Vec;
 }
 
-inline __m256d& SuperTerrainPlus::STPMatrix4x4d::get(size_t idx) noexcept {
+inline __m256d& SuperTerrainPlus::STPMatrix4x4d::get(const size_t idx) noexcept {
 	return const_cast<__m256d&>(const_cast<const STPMatrix4x4d*>(this)->get(idx));
 }
 
@@ -42,11 +42,11 @@ inline SuperTerrainPlus::STPMatrix4x4d::operator glm::mat4() const noexcept {
 	return res;
 }
 
-inline const SuperTerrainPlus::STPVector4d& SuperTerrainPlus::STPMatrix4x4d::operator[](size_t idx) const noexcept {
+inline const SuperTerrainPlus::STPVector4d& SuperTerrainPlus::STPMatrix4x4d::operator[](const size_t idx) const noexcept {
 	return this->Mat[idx];
 }
 
-inline SuperTerrainPlus::STPVector4d& SuperTerrainPlus::STPMatrix4x4d::operator[](size_t idx) noexcept {
+inline SuperTerrainPlus::STPVector4d& SuperTerrainPlus::STPMatrix4x4d::operator[](const size_t idx) noexcept {
 	return const_cast<STPVector4d&>(const_cast<const STPMatrix4x4d*>(this)->operator[](idx));
 }
 

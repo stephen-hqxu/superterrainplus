@@ -13,7 +13,7 @@ STPAsyncAccelBuilder::STPAsyncAccelBuilder() :
 
 }
 
-OptixTraversableHandle STPAsyncAccelBuilder::build(const STPBuildInformation& buildInfo, cudaMemPool_t memPool) {
+OptixTraversableHandle STPAsyncAccelBuilder::build(const STPBuildInformation& buildInfo, const cudaMemPool_t memPool) {
 	const auto [context, stream, accelOptions, buildInputs, numBuildInputs, tempBuffer, tempBufferSize,
 		outputBufferSize, emittedProperties, numEmittedProperties] = buildInfo;
 
@@ -37,7 +37,7 @@ OptixTraversableHandle STPAsyncAccelBuilder::build(const STPBuildInformation& bu
 	return back_handle;
 }
 
-OptixTraversableHandle STPAsyncAccelBuilder::compact(const STPCompactInformation& compactInfo, cudaMemPool_t memPool) {
+OptixTraversableHandle STPAsyncAccelBuilder::compact(const STPCompactInformation& compactInfo, const cudaMemPool_t memPool) {
 	const auto [context, stream, outputBufferSize] = compactInfo;
 
 	auto& [back_mem, back_handle] = *this->BackBuffer;

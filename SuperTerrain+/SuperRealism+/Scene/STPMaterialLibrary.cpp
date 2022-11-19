@@ -13,7 +13,7 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPMaterialLibrary::STPMaterialLibrary(STPMaterialCount count) : MaterialCount(1u), MaxMaterialAllowance(count + 1u) {
+STPMaterialLibrary::STPMaterialLibrary(const STPMaterialCount count) : MaterialCount(1u), MaxMaterialAllowance(count + 1u) {
 	if (count > std::numeric_limits<STPMaterialID>::max()) {
 		throw STPException::STPMemoryError("The number of element must be within the numeric range of material ID");
 	}
@@ -45,7 +45,7 @@ STPMaterialLibrary::STPMaterialID STPMaterialLibrary::add(const STPMaterialPrope
 	return mat_idx;
 }
 
-const STPMaterialLibrary::STPMaterialProperty& STPMaterialLibrary::operator[](STPMaterialID id) const {
+const STPMaterialLibrary::STPMaterialProperty& STPMaterialLibrary::operator[](const STPMaterialID id) const {
 	if (id > this->MaterialCount - 1u) {
 		throw STPException::STPMemoryError("Material ID is invalid");
 	}

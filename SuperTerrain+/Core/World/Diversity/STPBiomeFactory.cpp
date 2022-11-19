@@ -17,13 +17,13 @@ STPLayer* STPBiomeFactory::STPProductionLineCreator::operator()() {
 	return this->Factory.supply();
 }
 
-STPBiomeFactory::STPBiomeFactory(uvec2 dimension) : LayerProductionLine(*this), BiomeDimension(dimension) {
+STPBiomeFactory::STPBiomeFactory(const uvec2 dimension) : LayerProductionLine(*this), BiomeDimension(dimension) {
 	if (dimension.x == 0u || dimension.y == 0u) {
 		throw STPException::STPBadNumericRange("No component in a dimension vector should be zero");
 	}
 }
 
-void STPBiomeFactory::operator()(Sample* biomemap, ivec2 offset) {
+void STPBiomeFactory::operator()(Sample* const biomemap, const ivec2 offset) {
 	//request a production line
 	STPLayer* tree = this->LayerProductionLine.requestObject();
 

@@ -97,7 +97,7 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 	this->BlurWorker.setBorderColor(vec4(1.0f));
 }
 
-void STPAmbientOcclusion::setScreenSpace(STPTexture* stencil, uvec2 dimension) {
+void STPAmbientOcclusion::setScreenSpace(STPTexture* const stencil, const uvec2 dimension) {
 	this->OcclusionResultContainer.setScreenBuffer(stencil, dimension, GL_R8);
 	this->BlurWorker.setFilterCacheDimension(stencil, dimension);
 
@@ -108,7 +108,7 @@ void STPAmbientOcclusion::setScreenSpace(STPTexture* stencil, uvec2 dimension) {
 }
 
 void STPAmbientOcclusion::occlude(
-	const STPTexture& depth, const STPTexture& normal, STPFrameBuffer& output, bool output_blending) const {
+	const STPTexture& depth, const STPTexture& normal, STPFrameBuffer& output, const bool output_blending) const {
 	//binding
 	depth.bind(0);
 	normal.bind(1);

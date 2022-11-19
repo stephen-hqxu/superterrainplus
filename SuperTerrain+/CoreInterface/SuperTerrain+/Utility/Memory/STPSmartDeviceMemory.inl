@@ -4,24 +4,24 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 template<typename T>
-inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPPinnedMemoryDeleter<T>::operator()(T* ptr) const {
+inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPPinnedMemoryDeleter<T>::operator()(T* const ptr) const {
 	STP_CHECK_CUDA(cudaFreeHost(ptr));
 }
 
 template<typename T>
-inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPDeviceMemoryDeleter<T>::operator()(T* ptr) const {
+inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPDeviceMemoryDeleter<T>::operator()(T* const ptr) const {
 	STP_CHECK_CUDA(cudaFree(ptr));
 }
 
 template<typename T>
 inline SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<T>::STPStreamedDeviceMemoryDeleter
-	(cudaStream_t stream) : Stream(stream) {
+	(const cudaStream_t stream) : Stream(stream) {
 	
 }
 
 template<typename T>
 inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<T>::operator()
-	(T* ptr) const {
+	(T* const ptr) const {
 	STP_CHECK_CUDA(cudaFreeAsync(ptr, *this->Stream));
 }
 
@@ -32,7 +32,7 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPit
 
 template<typename T>
 inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPitchedDeviceMemory
-	(STPSmartDeviceMemoryImpl::NoArray<T>* ptr, size_t pitch) :
+	(STPSmartDeviceMemoryImpl::NoArray<T>* const ptr, const size_t pitch) :
 	STPDeviceMemory<T>(ptr), Pitch(pitch) {
 	
 }
@@ -41,7 +41,7 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPit
 U* cache
 
 template<typename T>
-inline SuperTerrainPlus::STPSmartDeviceMemory::STPPinnedMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makePinned(size_t size) {
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPPinnedMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makePinned(const size_t size) {
 	TYPE_SANITISE;
 
 	STP_CHECK_CUDA(cudaMallocHost(&cache, sizeof(U) * size));
@@ -49,7 +49,7 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPPinnedMemory<T> SuperTerrainPl
 }
 
 template<typename T>
-inline SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeDevice(size_t size) {
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeDevice(const size_t size) {
 	TYPE_SANITISE;
 
 	//remember size denotes the number of element
@@ -60,8 +60,8 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPDeviceMemory<T> SuperTerrainPl
 }
 
 template<typename T>
-inline SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeStreamedDevice
-	(cudaMemPool_t memPool, cudaStream_t stream, size_t size) {
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makeStreamedDevice(
+	const cudaMemPool_t memPool, const cudaStream_t stream, const size_t size) {
 	TYPE_SANITISE;
 
 	//allocate using the pool
@@ -71,8 +71,8 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemory<T> SuperT
 }
 
 template<typename T>
-inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T> SuperTerrainPlus::STPSmartDeviceMemory::makePitchedDevice(
-	size_t width, size_t height) {
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>
+	SuperTerrainPlus::STPSmartDeviceMemory::makePitchedDevice(const size_t width, const size_t height) {
 	TYPE_SANITISE;
 
 	size_t pitch;

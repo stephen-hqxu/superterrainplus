@@ -219,7 +219,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	this->updateTerrainModel();
 }
 
-dvec2 STPHeightfieldTerrain::calcBaseChunkPosition(dvec2 horizontal_offset) {
+dvec2 STPHeightfieldTerrain::calcBaseChunkPosition(const dvec2 horizontal_offset) {
 	const STPEnvironment::STPChunkSetting& chunk_settings = this->TerrainGenerator.ChunkSetting;
 	//calculate offset
 	const ivec2 chunk_offset = -static_cast<ivec2>(chunk_settings.RenderDistance / 2u),
@@ -312,7 +312,7 @@ void STPHeightfieldTerrain::render() const {
 	STPPipelineManager::unbind();
 }
 
-bool STPHeightfieldTerrain::addDepthConfiguration(size_t light_space_count, const STPShaderManager::STPShader* depth_shader) {
+bool STPHeightfieldTerrain::addDepthConfiguration(const size_t light_space_count, const STPShaderManager::STPShader* const depth_shader) {
 	//create a new render group
 	auto [depth_group, inserted] = this->TerrainDepthRenderer.try_emplace(light_space_count);
 	if (!inserted) {
@@ -354,7 +354,7 @@ bool STPHeightfieldTerrain::addDepthConfiguration(size_t light_space_count, cons
 	return true;
 }
 
-void STPHeightfieldTerrain::renderDepth(size_t light_space_count) const {
+void STPHeightfieldTerrain::renderDepth(const size_t light_space_count) const {
 	//in this case we only need heightfield for tessellation
 	glBindTextureUnit(0, this->TerrainGenerator[STPWorldPipeline::STPTerrainMapType::Heightmap]);
 

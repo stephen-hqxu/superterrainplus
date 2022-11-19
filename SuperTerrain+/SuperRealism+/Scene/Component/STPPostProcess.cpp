@@ -27,7 +27,7 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static auto PostProcessShaderFilename = 
 	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPPostProcess", ".frag");
 
-STPPostProcess::STPToneMappingCurve::STPToneMappingCurve(STPToneMappingFunction function) : Function(function) {
+STPPostProcess::STPToneMappingCurve::STPToneMappingCurve(const STPToneMappingFunction function) : Function(function) {
 
 }
 
@@ -68,7 +68,7 @@ const STPTexture& STPPostProcess::operator*() const {
 
 SET_EFFECT(Gamma, "Gamma")
 
-void STPPostProcess::setPostProcessBuffer(STPTexture* stencil, uvec2 dimension) {
+void STPPostProcess::setPostProcessBuffer(STPTexture* const stencil, const uvec2 dimension) {
 	this->PostProcessResultContainer.setScreenBuffer(stencil, dimension, GL_RGBA16F);
 }
 

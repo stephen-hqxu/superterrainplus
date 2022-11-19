@@ -27,7 +27,7 @@ using glm::value_ptr;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-void STPProgramManager::STPProgramDeleter::operator()(STPOpenGL::STPuint program) const noexcept {
+void STPProgramManager::STPProgramDeleter::operator()(const STPOpenGL::STPuint program) const noexcept {
 	glDeleteProgram(program);
 }
 
@@ -35,7 +35,7 @@ STPProgramManager::STPProgramStateManager::~STPProgramStateManager() {
 	glUseProgram(0);
 }
 
-STPProgramManager::STPProgramManager(initializer_list<const STPShaderManager::STPShader*> shader_array,
+STPProgramManager::STPProgramManager(const initializer_list<const STPShaderManager::STPShader*> shader_array,
 	const STPProgramParameter* option) : Program(glCreateProgram()) {
 	const GLuint program = this->Program.get();
 	//attach all shaders
@@ -73,7 +73,7 @@ STPProgramManager::STPProgramManager(initializer_list<const STPShaderManager::ST
 	STPLogHandler::handle(string_view(log.get(), logLength));
 }
 
-SuperTerrainPlus::STPOpenGL::STPint STPProgramManager::uniformLocation(const char* uni) const noexcept {
+SuperTerrainPlus::STPOpenGL::STPint STPProgramManager::uniformLocation(const char* const uni) const noexcept {
 	return glGetUniformLocation(this->Program.get(), uni);
 }
 

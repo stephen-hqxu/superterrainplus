@@ -33,7 +33,7 @@ private:
 	struct STPDbCloser {
 	public:
 
-		inline void operator()(sqlite3* db) const {
+		inline void operator()(sqlite3* const db) const {
 			STP_CHECK_SQLITE3(sqlite3_close_v2(db));
 		}
 
@@ -49,7 +49,7 @@ private:
 	struct STPStmtFinaliser {
 	public:
 
-		inline void operator()(sqlite3_stmt* stmt) const {
+		inline void operator()(sqlite3_stmt* const stmt) const {
 			STP_CHECK_SQLITE3(sqlite3_finalize(stmt));
 		}
 
@@ -97,7 +97,7 @@ public:
 				| SQLITE_OPEN_PRIVATECACHE, nullptr));
 		this->SQL = STPSmartDb(db_connection);
 
-		auto configure = [SQL = db_connection](int opt, int val) -> bool {
+		const auto configure = [SQL = db_connection](const int opt, const int val) -> bool {
 			int report;
 			STP_CHECK_SQLITE3(sqlite3_db_config(SQL, opt, val, &report));
 			//usually it should always be true, unless sqlite is bugged
@@ -127,7 +127,7 @@ public:
 	 * @brief Reset stmt back to its initial state
 	 * @param stmt The statement to be reset
 	*/
-	static void resetStmt(sqlite3_stmt* stmt) {
+	static void resetStmt(sqlite3_stmt* const stmt) {
 		STP_CHECK_SQLITE3(sqlite3_reset(stmt));
 		STP_CHECK_SQLITE3(sqlite3_clear_bindings(stmt));
 	}
@@ -157,7 +157,7 @@ public:
 	 * @param flag Optional prepare statement flag
 	 * @return The smart prepared statement
 	*/
-	STPSmartStmt createStmt(const string_view& sql, unsigned int flag = 0u) {
+	STPSmartStmt createStmt(const string_view& sql, const unsigned int flag = 0u) {
 		sqlite3_stmt* newStmt;
 		STP_CHECK_SQLITE3(sqlite3_prepare_v3(this->SQL.get(), sql.data(), static_cast<int>(sql.size()), flag, &newStmt, nullptr));
 		return STPSmartStmt(newStmt);
@@ -170,7 +170,7 @@ public:
 	 * @param sql The SQL query used to create. This argument is ignored if statement has been created previously.
 	 * @return The pointer to the statement. The statement will be ready to be used.
 	*/
-	sqlite3_stmt* getStmt(STPStatementID sid, const string_view& sql) {
+	sqlite3_stmt* getStmt(const STPStatementID sid, const string_view& sql) {
 		STPSmartStmt& stmt = this->Statement[sid];
 
 		if (!stmt) {
@@ -180,7 +180,7 @@ public:
 			return stmt.get();
 		}
 		//get the statement
-		sqlite3_stmt* currStmt = stmt.get();
+		sqlite3_stmt* const currStmt = stmt.get();
 		//reset the statement before returning, since it may contain state from the previous call
 		STPTextureDatabaseImpl::resetStmt(currStmt);
 		return currStmt;
@@ -191,7 +191,7 @@ public:
 	 * @param stmt The pointer to prepare statement to be executed
 	 * @return True if the statement has another row ready, in other words, step status == SQLITE_ROW not SQLITE_DONE, and no error occurs
 	*/
-	bool execStmt(sqlite3_stmt* stmt) {
+	bool execStmt(sqlite3_stmt* const stmt) {
 		const int err_code = sqlite3_step(stmt);
 		if (err_code != SQLITE_ROW && err_code != SQLITE_DONE) {
 			//error occurs
@@ -207,7 +207,7 @@ public:
 	 * @return The only output from the query
 	*/
 	size_t getInt(const string_view& sql) {
-		STPTextureDatabaseImpl::STPSmartStmt smart_stmt = this->createStmt(sql);
+		const STPTextureDatabaseImpl::STPSmartStmt smart_stmt = this->createStmt(sql);
 		sqlite3_stmt* const texture_stmt = smart_stmt.get();
 
 		//no data to be bound, exec
@@ -229,7 +229,7 @@ public:
 	 * @param blob The binary data.
 	 * @param blob_size The number of byte in the data.
 	*/
-	void addIntBlob(sqlite3_stmt* stmt, int integer, const void* blob, int blob_size) {
+	void addIntBlob(sqlite3_stmt* const stmt, const int integer, const void* const blob, const int blob_size) {
 		STP_CHECK_SQLITE3(sqlite3_bind_int(stmt, 1, integer));
 		//we tell sqlite to copy the object and it will manage its lifetime for us
 		STP_CHECK_SQLITE3(sqlite3_bind_blob(stmt, 2, blob, blob_size, SQLITE_TRANSIENT));
@@ -242,7 +242,7 @@ public:
 	 * @param stmt The statement used for removing.
 	 * @param integer The integer as the first argument to the statement.
 	*/
-	void removeInt(sqlite3_stmt* stmt, int integer) {
+	void removeInt(sqlite3_stmt* const stmt, const int integer) {
 		STP_CHECK_SQLITE3(sqlite3_bind_int(stmt, 1, integer));
 
 		this->execStmt(stmt);
@@ -256,7 +256,7 @@ public:
 	 * @return A pointer to the blob.
 	 * This pointer remains valid until, see sqlite3 documentation for sqlite3_column_blob().
 	*/
-	const void* getBlobWithInt(sqlite3_stmt* stmt, int integer) {
+	const void* getBlobWithInt(sqlite3_stmt* const stmt, const int integer) {
 		STP_CHECK_SQLITE3(sqlite3_bind_int(stmt, 1, integer));
 		//now we need to retrieve the the blob data, since int should be a primary key, we expect a unique result
 		if (!this->execStmt(stmt)) {
@@ -310,7 +310,7 @@ STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::STPTextureSplatB
 	STPTextureSplatBuilder&&) noexcept = default;
 
 void STPTextureDatabase::STPTextureSplatBuilder::addAltitude(
-	Sample sample, float upperBound, STPTextureInformation::STPTextureID texture_id) {
+	const Sample sample, const float upperBound, const STPTextureInformation::STPTextureID texture_id) {
 	static constexpr string_view AddAltitude = 
 		"INSERT INTO AltitudeStructure (ASID, Sample, UpperBound, TID) VALUES(?, ?, ?, ?)";
 	sqlite3_stmt* const altitude_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddAltitude, AddAltitude);
@@ -331,8 +331,8 @@ size_t STPTextureDatabase::STPTextureSplatBuilder::altitudeSize() const {
 	return this->Database->getInt(GetAltitudeCount);
 }
 
-void STPTextureDatabase::STPTextureSplatBuilder::addGradient(Sample sample, float minGradient, float maxGradient,
-	float lowerBound, float upperBound, STPTextureInformation::STPTextureID texture_id) {
+void STPTextureDatabase::STPTextureSplatBuilder::addGradient(const Sample sample, const float minGradient, const float maxGradient,
+	const float lowerBound, const float upperBound, const STPTextureInformation::STPTextureID texture_id) {
 	static constexpr string_view AddGradient =
 		"INSERT INTO GradientStructure (GSID, Sample, minGradient, maxGradient, LowerBound, UpperBound, TID) VALUES(?, ?, ?, ?, ?, ?, ?);";
 	sqlite3_stmt* const gradient_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddGradient, AddGradient);
@@ -364,7 +364,7 @@ STPTextureDatabase::STPDatabaseView::STPDatabaseView(const STPTextureDatabase& d
 STPTextureDatabase::STPDatabaseView::STPAltitudeRecord STPTextureDatabase::STPDatabaseView::getAltitudes() const {
 	static constexpr string_view GetAltitude =
 		"SELECT Sample, UpperBound, TID FROM AltitudeStructure ORDER BY Sample ASC, UpperBound ASC;";
-	STPTextureDatabaseImpl::STPSmartStmt smart_altitude_stmt = this->Impl->createStmt(GetAltitude);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_altitude_stmt = this->Impl->createStmt(GetAltitude);
 	sqlite3_stmt* const altitude_stmt = smart_altitude_stmt.get();
 	STPAltitudeRecord altitude_rec;
 	//preallocate memory
@@ -384,7 +384,7 @@ STPTextureDatabase::STPDatabaseView::STPAltitudeRecord STPTextureDatabase::STPDa
 STPTextureDatabase::STPDatabaseView::STPGradientRecord STPTextureDatabase::STPDatabaseView::getGradients() const {
 	static constexpr string_view GetGradient =
 		"SELECT Sample, minGradient, maxGradient, LowerBound, UpperBound, TID FROM GradientStructure ORDER BY Sample ASC;";
-	STPTextureDatabaseImpl::STPSmartStmt smart_gradient_stmt = this->Impl->createStmt(GetGradient);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_gradient_stmt = this->Impl->createStmt(GetGradient);
 	sqlite3_stmt* const gradient_stmt = smart_gradient_stmt.get();
 	STPGradientRecord gradient_rec;
 	//preallocate memory
@@ -404,7 +404,7 @@ STPTextureDatabase::STPDatabaseView::STPGradientRecord STPTextureDatabase::STPDa
 	return gradient_rec;
 }
 
-STPTextureDatabase::STPDatabaseView::STPSampleRecord STPTextureDatabase::STPDatabaseView::getValidSample(unsigned int hint) const {
+STPTextureDatabase::STPDatabaseView::STPSampleRecord STPTextureDatabase::STPDatabaseView::getValidSample(const unsigned int hint) const {
 	//get sample ID that appears in both splat structures
 	static constexpr string_view GetAffectedSample =
 		//sqlite does not support full outer join, we can union two left outer joins to emulate the behaviour
@@ -416,7 +416,7 @@ STPTextureDatabase::STPDatabaseView::STPSampleRecord STPTextureDatabase::STPData
 		"LEFT OUTER JOIN (SELECT Sample, Count(Sample) AS AltCount FROM AltitudeStructure GROUP BY Sample) A ON A.Sample = P.Sample "
 		"LEFT OUTER JOIN (SELECT Sample, Count(Sample) AS GraCount FROM GradientStructure GROUP BY Sample) G ON G.Sample = P.Sample "
 		"ORDER BY P.Sample ASC;";
-	STPTextureDatabaseImpl::STPSmartStmt smart_affected_stmt = this->Impl->createStmt(GetAffectedSample);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_affected_stmt = this->Impl->createStmt(GetAffectedSample);
 	sqlite3_stmt* const affected_stmt = smart_affected_stmt.get();
 	STPSampleRecord sample_rec;
 	sample_rec.reserve(hint);
@@ -441,7 +441,7 @@ STPTextureDatabase::STPDatabaseView::STPMapGroupRecord STPTextureDatabase::STPDa
 		"SELECT MG.MGID, COUNT(VM.MGID), MG.MapDescription FROM MapGroup MG "
 			"INNER JOIN ValidMap VM ON MG.MGID = VM.MGID "
 		"GROUP BY VM.MGID ORDER BY MG.MGID ASC;";
-	STPTextureDatabaseImpl::STPSmartStmt smart_group_stmt = this->Impl->createStmt(GetAllGroup);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_group_stmt = this->Impl->createStmt(GetAllGroup);
 	sqlite3_stmt* const group_stmt = smart_group_stmt.get();
 	STPMapGroupRecord group_rc;
 	//estimate the size, the number of valid group must be less than or equal to the total number of group
@@ -467,7 +467,7 @@ STPTextureDatabase::STPDatabaseView::STPTextureRecord STPTextureDatabase::STPDat
 			"INNER JOIN Texture T ON VM.TID = T.TID "
 			"INNER JOIN ViewGroup VG ON T.VGID = VG.VGID "
 		"ORDER BY VM.TID ASC;";
-	STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl->createStmt(GetAllTexture);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl->createStmt(GetAllTexture);
 	sqlite3_stmt* const texture_stmt = smart_texture_stmt.get();
 	STPTextureRecord texture_rec;
 	//The number of valid texture ID must be less than or equal to the total number of registered texture
@@ -489,7 +489,7 @@ STPTextureDatabase::STPDatabaseView::STPTextureRecord STPTextureDatabase::STPDat
 STPTextureDatabase::STPDatabaseView::STPMapRecord STPTextureDatabase::STPDatabaseView::getValidMap() const {
 	static constexpr string_view GetAllTextureData =
 		"SELECT MGID, TID, Type, Data FROM ValidMap ORDER BY MGID ASC;";
-	STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl->createStmt(GetAllTextureData);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl->createStmt(GetAllTextureData);
 	sqlite3_stmt* const texture_stmt = smart_texture_stmt.get();
 	STPMapRecord texture_rec;
 	//reserve data, since we are retrieving all texture data, the size is exact
@@ -510,10 +510,10 @@ STPTextureDatabase::STPDatabaseView::STPMapRecord STPTextureDatabase::STPDatabas
 	return texture_rec;
 }
 
-STPTextureDatabase::STPDatabaseView::STPTextureTypeRecord STPTextureDatabase::STPDatabaseView::getValidMapType(unsigned int hint) const {
+STPTextureDatabase::STPDatabaseView::STPTextureTypeRecord STPTextureDatabase::STPDatabaseView::getValidMapType(const unsigned int hint) const {
 	static constexpr string_view GetAllType = 
 		"SELECT DISTINCT Type FROM ValidMap ORDER BY Type ASC;";
-	STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl->createStmt(GetAllType);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl->createStmt(GetAllType);
 	sqlite3_stmt* const texture_stmt = smart_texture_stmt.get();
 	STPTextureTypeRecord type_rec;
 	//reserve with hint
@@ -618,7 +618,7 @@ STPTextureInformation::STPViewGroupID STPTextureDatabase::addViewGroup(const STP
 	return ViewGroupIDAccumulator++;
 }
 
-void STPTextureDatabase::removeMapGroup(STPTextureInformation::STPMapGroupID group_id) {
+void STPTextureDatabase::removeMapGroup(const STPTextureInformation::STPMapGroupID group_id) {
 	static constexpr string_view RemoveMapGroup = 
 		"DELETE FROM MapGroup WHERE MGID = ?;";
 	sqlite3_stmt* const group_stmt = this->Database->getStmt(STPTextureDatabaseImpl::RemoveMapGroup, RemoveMapGroup);
@@ -626,7 +626,7 @@ void STPTextureDatabase::removeMapGroup(STPTextureInformation::STPMapGroupID gro
 	this->Database->removeInt(group_stmt, static_cast<int>(group_id));
 }
 
-void STPTextureDatabase::removeViewGroup(STPTextureInformation::STPViewGroupID group_id) {
+void STPTextureDatabase::removeViewGroup(const STPTextureInformation::STPViewGroupID group_id) {
 	static constexpr string_view RemoveViewGroup = 
 		"DELETE FROM ViewGroup WHERE VGID = ?;";
 	sqlite3_stmt* const group_stmt = this->Database->getStmt(STPTextureDatabaseImpl::RemoveViewGroup, RemoveViewGroup);
@@ -638,7 +638,7 @@ STPTextureDatabase::STPDatabaseView STPTextureDatabase::visit() const {
 	return STPDatabaseView(*this);
 }
 
-STPTextureDatabase::STPMapGroupDescription STPTextureDatabase::getMapGroupDescription(STPTextureInformation::STPMapGroupID id) const {
+STPTextureDatabase::STPMapGroupDescription STPTextureDatabase::getMapGroupDescription(const STPTextureInformation::STPMapGroupID id) const {
 	static constexpr string_view GetMapGroup = 
 		"SELECT MapDescription FROM MapGroup WHERE MGID = ?;";
 	sqlite3_stmt* const group_stmt = this->Database->getStmt(STPTextureDatabaseImpl::GetMapGroup, GetMapGroup);
@@ -647,7 +647,7 @@ STPTextureDatabase::STPMapGroupDescription STPTextureDatabase::getMapGroupDescri
 	return *reinterpret_cast<const STPTextureDatabase::STPMapGroupDescription*>(this->Database->getBlobWithInt(group_stmt, static_cast<int>(id)));
 }
 
-STPTextureDatabase::STPViewGroupDescription STPTextureDatabase::getViewGroupDescription(STPTextureInformation::STPViewGroupID id) const {
+STPTextureDatabase::STPViewGroupDescription STPTextureDatabase::getViewGroupDescription(const STPTextureInformation::STPViewGroupID id) const {
 	static constexpr string_view GetViewGroup = 
 		"SELECT ViewDescription FROM ViewGroup WHERE VGID = ?;";
 	sqlite3_stmt* const group_stmt = this->Database->getStmt(STPTextureDatabaseImpl::GetViewGroup, GetViewGroup);
@@ -670,7 +670,7 @@ size_t STPTextureDatabase::viewGroupSize() const {
 }
 
 STPTextureInformation::STPTextureID STPTextureDatabase::addTexture(
-	STPTextureInformation::STPViewGroupID group_id, const optional<std::string_view>& name) {
+	const STPTextureInformation::STPViewGroupID group_id, const optional<std::string_view>& name) {
 	static STPTextureInformation::STPTextureID TextureIDAccumulator = 10000u;
 
 	static constexpr string_view AddTexture =
@@ -691,7 +691,7 @@ STPTextureInformation::STPTextureID STPTextureDatabase::addTexture(
 	return TextureIDAccumulator++;
 }
 
-void STPTextureDatabase::removeTexture(STPTextureInformation::STPTextureID texture_id) {
+void STPTextureDatabase::removeTexture(const STPTextureInformation::STPTextureID texture_id) {
 	static constexpr string_view RemoveTexture = 
 		"DELETE FROM Texture WHERE TID = ?;";
 	sqlite3_stmt* const texture_stmt = this->Database->getStmt(STPTextureDatabaseImpl::RemoveTexture, RemoveTexture);
@@ -699,8 +699,8 @@ void STPTextureDatabase::removeTexture(STPTextureInformation::STPTextureID textu
 	this->Database->removeInt(texture_stmt, static_cast<int>(texture_id));
 }
 
-void STPTextureDatabase::addMap(STPTextureInformation::STPTextureID texture_id, STPTextureType type,
-	STPTextureInformation::STPMapGroupID group_id, const void* texture_data) {
+void STPTextureDatabase::addMap(const STPTextureInformation::STPTextureID texture_id, const STPTextureType type,
+	const STPTextureInformation::STPMapGroupID group_id, const void* const texture_data) {
 	static constexpr string_view AddMap =
 		"INSERT INTO Map (MID, Type, MGID, Data, TID) VALUES(?, ?, ?, ?, ?);";
 	sqlite3_stmt* const texture_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddMap, AddMap);

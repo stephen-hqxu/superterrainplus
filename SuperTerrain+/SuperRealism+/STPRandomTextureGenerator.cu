@@ -18,6 +18,13 @@ using namespace SuperTerrainPlus::STPRealism;
 
 /* ------------------------ Kernel declaration ------------------------------- */
 
+/* TODO:
+This seems to be a bug in CUDA that, for a template global function,
+	both declaration and definition must have corresponding arguments with `const`.
+According to C++ specification this should not mandated.
+Bug report: https://forums.developer.nvidia.com/t/invaliddevicefunction-error-when-launching-templated-global-function/234870?u=stephen.hqxu
+*/
+
 /**
  * @brief Call CUDA kernel to generate a random texture.
  * @tpara T The type of the texture.
@@ -28,10 +35,11 @@ using namespace SuperTerrainPlus::STPRealism;
  * @param range The distance from the max and base.
 */
 template<typename T>
-__global__ static void generateRandomTextureKERNEL(cudaSurfaceObject_t, uvec3, unsigned long long, T, T);
+__global__ static void generateRandomTextureKERNEL(const cudaSurfaceObject_t, const uvec3, const unsigned long long, const T, const T);
 
 template<typename T>
-__host__ void STPRandomTextureGenerator::generate(cudaArray_t output, uvec3 dimension, unsigned long long seed, T min, T max) {
+__host__ void STPRandomTextureGenerator::generate(const cudaArray_t output, const uvec3 dimension,
+	const unsigned long long seed, const T min, const T max) {
 	//range check
 	if (dimension.x == 0u || dimension.y == 0u || dimension.z == 0u) {
 		throw STPException::STPBadNumericRange("Invalid dimension");
@@ -81,11 +89,22 @@ __host__ void STPRandomTextureGenerator::generate(cudaArray_t output, uvec3 dime
 #include <curand_kernel.h>
 #include <device_launch_parameters.h>
 
-//TODO: You can pick your RNG here.
-typedef curandStatePhilox4_32_10_t STPTextureRNG;
+/**
+ * @brief Generate a random number.
+ * Force no inline to prevent regenerating huge CURAND code for different template instantiation.
+ * @param seed The seed.
+ * @param index The index of the kernel thread.
+ * @return A normalised random number.
+*/
+__device__ __noinline__ static float getRandomNumber(const unsigned long long seed, const unsigned int index) {
+	curandStatePhilox4_32_10_t state;
+	curand_init(seed, static_cast<unsigned long long>(index), 0ull, &state);
+	return curand_uniform(&state);
+}
 
 template<typename T>
-__global__ void generateRandomTextureKERNEL(cudaSurfaceObject_t surface, uvec3 dimension, unsigned long long seed, T base, T range) {
+__global__ void generateRandomTextureKERNEL(const cudaSurfaceObject_t surface, const uvec3 dimension,
+	const unsigned long long seed, const T base, const T range) {
 	//get current invocation
 	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y,
@@ -96,14 +115,11 @@ __global__ void generateRandomTextureKERNEL(cudaSurfaceObject_t surface, uvec3 d
 	}
 	const unsigned int index = x + dimension.x * y + (dimension.x * dimension.y) * z;
 
-	//init random number generator
-	STPTextureRNG state;
-	curand_init(seed, static_cast<unsigned long long>(index), 0ull, &state);
 	//generate and scale the random number
-	const T rand = static_cast<T>(curand_uniform(&state) * range + base);
+	const T rand = static_cast<T>(rintf(getRandomNumber(seed, index) * range + base));
 
 	//output
-	surf3Dwrite(rand, surface, x, y, z, cudaBoundaryModeTrap);
+	surf3Dwrite(rand, surface, x * sizeof(T), y, z, cudaBoundaryModeTrap);
 }
 
 //Template instantiation

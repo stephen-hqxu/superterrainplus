@@ -13,7 +13,7 @@ using namespace SuperTerrainPlus::STPRealism;
 
 //STPSceneLight.h
 
-STPSceneLight::STPSceneLight(STPLightSpectrum&& spectrum, STPLightType type) : Type(type), LightSpectrum(move(spectrum)) {
+STPSceneLight::STPSceneLight(STPLightSpectrum&& spectrum, const STPLightType type) : Type(type), LightSpectrum(move(spectrum)) {
 
 }
 
@@ -64,7 +64,7 @@ const STPLightShadow* STPAmbientLight::getLightShadow() const {
 	return nullptr;
 }
 
-void STPAmbientLight::setSpectrumCoordinate(float coord) {
+void STPAmbientLight::setSpectrumCoordinate(const float coord) {
 	*this->AmbSpecCoord = coord;
 }
 
@@ -117,7 +117,7 @@ const STPLightShadow* STPDirectionalLight::getLightShadow() const {
 	return this->Shadow ? &*this->Shadow : nullptr;
 }
 
-void STPDirectionalLight::setSpectrumCoordinate(float coord) {
+void STPDirectionalLight::setSpectrumCoordinate(const float coord) {
 	*this->DirSpecCoord = coord;
 }
 

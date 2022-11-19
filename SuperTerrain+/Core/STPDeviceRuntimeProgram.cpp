@@ -21,13 +21,13 @@ public:
 };
 
 STPDeviceRuntimeProgram::STPLinkerInformation::STPDataJitOption&
-	STPDeviceRuntimeProgram::STPLinkerInformation::STPDataJitOption::operator()(CUjit_option flag, void* value) {
+	STPDeviceRuntimeProgram::STPLinkerInformation::STPDataJitOption::operator()(const CUjit_option flag, void* const value) {
 	this->OptionFlag.emplace_back(flag);
 	this->OptionValue.emplace_back(value);
 	return *this;
 }
 
-void STPDeviceRuntimeProgram::STPModuleDeleter::operator()(CUmodule module) const {
+void STPDeviceRuntimeProgram::STPModuleDeleter::operator()(const CUmodule module) const {
 	STP_CHECK_CUDA(cuModuleUnload(module));
 }
 

@@ -7,7 +7,7 @@
 
 using namespace SuperTerrainPlus::STPRealism;
 
-STPLightSpectrum::STPLightSpectrum(unsigned int length, STPOpenGL::STPenum format) : Spectrum(GL_TEXTURE_1D), SpectrumLength(length) {
+STPLightSpectrum::STPLightSpectrum(const unsigned int length, const STPOpenGL::STPenum format) : Spectrum(GL_TEXTURE_1D), SpectrumLength(length) {
 	//check for argument
 	if (this->SpectrumLength == 0u) {
 		throw STPException::STPBadNumericRange("The length of the spectrum should be a positive integer");
@@ -31,6 +31,7 @@ SuperTerrainPlus::STPOpenGL::STPuint64 STPLightSpectrum::spectrumHandle() const 
 	return this->SpectrumHandle.get();
 }
 
-void STPLightSpectrum::setData(STPOpenGL::STPsizei size, STPOpenGL::STPenum format, STPOpenGL::STPenum type, const void* data) noexcept {
+void STPLightSpectrum::setData(const STPOpenGL::STPsizei size, const STPOpenGL::STPenum format,
+	const STPOpenGL::STPenum type, const void* const data) noexcept {
 	this->Spectrum.textureSubImage1D(0, 0, size, format, type, data);
 }

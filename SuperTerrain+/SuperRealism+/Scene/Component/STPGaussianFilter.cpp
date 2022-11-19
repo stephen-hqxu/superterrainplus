@@ -39,16 +39,16 @@ static constexpr auto FilterShaderFilename =
  * @param radius The radius of the kernel.
  * @return The extent length of the kernel.
 */
-inline static unsigned int calcExtentLength(unsigned int radius) {
+inline static unsigned int calcExtentLength(const unsigned int radius) {
 	return radius * 2u + 1u;
 }
 
 //Gaussian standard deviation
-inline static double calcGaussianStd(double variance) {
+inline static double calcGaussianStd(const double variance) {
 	return 1.0 / (glm::sqrt(2.0 * glm::pi<double>()) * variance);
 }
 
-inline static double calcGaussianResponseFactor(double variance) {
+inline static double calcGaussianResponseFactor(const double variance) {
 	return 1.0 / (2.0 * variance * variance);
 }
 
@@ -60,7 +60,7 @@ inline static double calcGaussianResponseFactor(double variance) {
  * @param normalise Specifies if all weights in the kernel should sum up to one.
  * @return An array of Gaussian kernel weight with length of extent length of the kernel.
 */
-static auto generateGaussianKernel(double variance, double sample_distance, unsigned int radius, bool normalise) {
+static auto generateGaussianKernel(const double variance, const double sample_distance, const unsigned int radius, const bool normalise) {
 	const unsigned int kernel_length = calcExtentLength(radius);
 	//because we are using a separable filter, only a 1D kernel is needed
 	unique_ptr<float[]> GaussianKernel = make_unique<float[]>(kernel_length);
@@ -82,12 +82,12 @@ static auto generateGaussianKernel(double variance, double sample_distance, unsi
 		float* const kernel_start = GaussianKernel.get(),
 			*const kernel_end = kernel_start + kernel_length;
 		transform(kernel_start, kernel_end, kernel_start,
-			[&kernel_sum](auto val) { return static_cast<float>(val / kernel_sum); });
+			[&kernel_sum](const auto val) { return static_cast<float>(val / kernel_sum); });
 	}
 	return GaussianKernel;
 }
 
-STPGaussianFilter::STPFilterExecution::STPFilterExecution(STPFilterVariant variant) :
+STPGaussianFilter::STPFilterExecution::STPFilterExecution(const STPFilterVariant variant) :
 	Variant(variant),
 	Variance(1.0),
 	SampleDistance(1.0),
@@ -140,17 +140,17 @@ STPGaussianFilter::STPGaussianFilter(const STPFilterExecution& execution, const 
 	this->InputDepthSampler.filter(GL_NEAREST, GL_NEAREST);
 }
 
-void STPGaussianFilter::setFilterCacheDimension(STPTexture* stencil, uvec2 dimension) {
+void STPGaussianFilter::setFilterCacheDimension(STPTexture* const stencil, const uvec2 dimension) {
 	this->IntermediateCache.setScreenBuffer(stencil, dimension, GL_R8);
 }
 
-void STPGaussianFilter::setBorderColor(vec4 border) {
+void STPGaussianFilter::setBorderColor(const vec4 border) {
 	this->BorderColor = border;
 	this->InputImageSampler.borderColor(this->BorderColor);
 }
 
 void STPGaussianFilter::filter(
-	const STPTexture& depth, const STPTexture& input, STPFrameBuffer& output, bool output_blending) const {
+	const STPTexture& depth, const STPTexture& input, STPFrameBuffer& output, const bool output_blending) const {
 	//only the input texture data requires sampler
 	//output is an image object
 	const STPSampler::STPSamplerUnitStateManager input_sampler_mgr[2] = {

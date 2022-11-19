@@ -15,7 +15,7 @@ using namespace SuperTerrainPlus::STPRealism;
 //clear depth colour to zero
 constexpr static vec4 BlackColour = vec4(vec3(0.0f), 1.0f);
 
-STPLightShadow::STPLightShadow(unsigned int resolution, STPShadowMapFormat format) :
+STPLightShadow::STPLightShadow(const unsigned int resolution, const STPShadowMapFormat format) :
 	ShadowMapFormat(format), ShadowMapResolution(resolution), ShadowMapShouldUpdate(true), ShadowMapUpdateMask(true) {
 	if (this->ShadowMapResolution == 0u) {
 		throw STPException::STPBadNumericRange("The resolution of the shadow map should be a positive integer");
@@ -26,7 +26,7 @@ SuperTerrainPlus::STPOpenGL::STPuint64 STPLightShadow::shadowMapHandle() const {
 	return this->ShadowMapHandle.get();
 }
 
-void STPLightShadow::setShadowMap(STPShadowMapFilter shadow_filter, STPOpenGL::STPint level, STPOpenGL::STPfloat anisotropy) {
+void STPLightShadow::setShadowMap(const STPShadowMapFilter shadow_filter, const STPOpenGL::STPint level, const STPOpenGL::STPfloat anisotropy) {
 	//determine the texture target to be used based on shadow map format.
 	GLenum shadow_target = 0u;
 	switch (this->ShadowMapFormat) {

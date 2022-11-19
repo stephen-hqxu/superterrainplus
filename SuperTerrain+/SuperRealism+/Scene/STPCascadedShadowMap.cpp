@@ -65,7 +65,7 @@ static STPCascadedShadowMap::STPLightFrustum transformFrustum(STPCascadedShadowM
 	return frustum;
 }
 
-STPCascadedShadowMap::STPCascadedShadowMap(unsigned int resolution, const STPLightFrustum& light_frustum) :
+STPCascadedShadowMap::STPCascadedShadowMap(const unsigned int resolution, const STPLightFrustum& light_frustum) :
 	STPLightShadow(resolution, STPShadowMapFormat::Array), LightDirection(vec3(0.0f)), FocusEventData { }, LightFrustum(transformFrustum(light_frustum)) {
 	const auto& [div, band_radius, focus_camera, distance_mul] = this->LightFrustum;
 	if (distance_mul < 1.0f) {
@@ -141,7 +141,7 @@ STPCascadedShadowMap::~STPCascadedShadowMap() {
 	this->LightFrustum.Focus->unsubscribe(this->FocusEventData);
 }
 
-mat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const STPMatrix4x4d& view) const {
+mat4 STPCascadedShadowMap::calcLightSpace(const double near, const double far, const STPMatrix4x4d& view) const {
 	//min and max of float
 	static constexpr double minD = numeric_limits<double>::min(),
 		maxD = numeric_limits<double>::max();
@@ -223,7 +223,7 @@ mat4 STPCascadedShadowMap::calcLightSpace(double near, double far, const STPMatr
 	return static_cast<mat4>(lightProjection * lightView);
 }
 
-void STPCascadedShadowMap::calcAllLightSpace(mat4* light_space) const {
+void STPCascadedShadowMap::calcAllLightSpace(mat4* const light_space) const {
 	const STPCamera& viewer = *this->LightFrustum.Focus;
 	const auto& shadow_level = this->LightFrustum.Division;
 	//this offset pushes the far plane away and near plane in
@@ -265,7 +265,7 @@ inline void STPCascadedShadowMap::requireShadowMapUpdate() {
 	this->ShadowMapShouldUpdate = true;
 }
 
-void STPCascadedShadowMap::updateShadowMapHandle(STPOpenGL::STPuint64 handle) {
+void STPCascadedShadowMap::updateShadowMapHandle(const STPOpenGL::STPuint64 handle) {
 	//send the new texture handle to the buffer
 	this->ShadowData.bufferSubData(&handle, sizeof(GLuint64), offsetof(STPPackedCSMBufferHeader, TexHandle));
 }

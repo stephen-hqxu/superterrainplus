@@ -6,17 +6,17 @@ constexpr static float F2 = 0.3660254038;// 0.5 * (sqrt(3.0) - 1.0)
 constexpr static float G2 = 0.2113248654;// (3.0 - sqrt(3.0)) / 6.0
 constexpr static float H2 = -1.0 + 2.0 * G2;
 
-__device__ __forceinline__ static float dot2D(float v1x, float v1y, float v2x, float v2y) {
+__device__ __forceinline__ static float dot2D(const float v1x, const float v1y, const float v2x, const float v2y) {
 	return v1x * v2x + v1y * v2y;
 }
 
 //a fast floor? I didn't test how fast it is compared to built-in maths function
-__device__ __forceinline__ static int floori(float x) {
+__device__ __forceinline__ static int floori(const float x) {
 	return x > 0.0f ? static_cast<int>(x) : static_cast<int>(x - 1.0f);
 }
 
-__device__ float STPSimplexNoise::simplex2D(const STPPermutation& permutation, float x, float y) {
-	const auto grad2D = [perm_grad2D = permutation.Gradient2D] __device__(unsigned int index, unsigned int component) -> float {
+__device__ float STPSimplexNoise::simplex2D(const STPPermutation& permutation, const float x, const float y) {
+	const auto grad2D = [perm_grad2D = permutation.Gradient2D] __device__(const unsigned int index, const unsigned int component) -> float {
 		return perm_grad2D[index * 2u + component];
 	};
 
@@ -80,7 +80,8 @@ __device__ float STPSimplexNoise::simplex2D(const STPPermutation& permutation, f
 	return 70.0f * (corner[0] + corner[1] + corner[2]);
 }
 
-__device__ float STPSimplexNoise::simplex2DFractal(const STPPermutation& permutation, float x, float y, const STPFractalSimplexInformation& desc) {
+__device__ float STPSimplexNoise::simplex2DFractal(const STPPermutation& permutation,
+	const float x, const float y, const STPFractalSimplexInformation& desc) {
 	//extract all settings
 	const auto [pers, lacu, oct, half_dim, offset, scale, init_amp, init_freq] = desc;
 	float fractal = 0.0f;

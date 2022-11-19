@@ -25,7 +25,7 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static auto PlaneGenerationShaderFilename =
 	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPPlaneGeometry", ".comp");
 
-STPPlaneGeometry::STPPlaneGeometry(uvec2 tile_dimension, dvec2 top_left_position) {
+STPPlaneGeometry::STPPlaneGeometry(const uvec2 tile_dimension, const dvec2 top_left_position) {
 	if (tile_dimension.x == 0u || tile_dimension.y == 0u) {
 		throw STPException::STPBadNumericRange("Plane geometry must have positive dimension");
 	}

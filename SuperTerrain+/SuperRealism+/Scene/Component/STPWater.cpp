@@ -73,7 +73,7 @@ STPWater::STPWater(const STPHeightfieldTerrain& terrain, const STPBiomeWaterLeve
 		[](auto v1, auto v2) { return v1.first < v2.first; })->first + 1u;
 
 	//now we need to expand this table so every biome can be looked up
-	unique_ptr<float[]> waterLevelDict = make_unique<float[]>(biomeCount);
+	const unique_ptr<float[]> waterLevelDict = make_unique<float[]>(biomeCount);
 	for (unsigned int i = 0u; i < biomeCount; i++) {
 		//find water level at the biome
 		auto biome_it = water_level.find(static_cast<STPDiversity::Sample>(i));
@@ -148,11 +148,11 @@ void STPWater::setWater(const STPEnvironment::STPWaterSetting& water_setting) {
 	//e.g., 48 fractals sine wave, each octave has lacunarity of 1.25, the period is 5^48.
 }
 
-void STPWater::setWaterMaterial(STPMaterialLibrary::STPMaterialID water_material) {
+void STPWater::setWaterMaterial(const STPMaterialLibrary::STPMaterialID water_material) {
 	this->WaterAnimator.uniform(glProgramUniform1ui, "WaterMaterialID", water_material);
 }
 
-void STPWater::updateAnimationTimer(double second) {
+void STPWater::updateAnimationTimer(const double second) {
 	this->WaterAnimator.uniform(glProgramUniform1f, this->WaveTimeLocation, static_cast<float>(second));
 }
 

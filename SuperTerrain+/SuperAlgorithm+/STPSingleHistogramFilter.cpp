@@ -49,14 +49,14 @@ public:
 
 	typedef T value_type;
 
-	T* allocate(size_t size) const {
+	T* allocate(const size_t size) const {
 		T* mem;
 		//note that the allocator-provided size is the number of object, not byte
 		STP_CHECK_CUDA(cudaMallocHost(&mem, size * sizeof(T)));
 		return mem;
 	}
 
-	void deallocate(T* mem, size_t) const {
+	void deallocate(T* const mem, const size_t) const {
 		STP_CHECK_CUDA(cudaFreeHost(mem));
 	}
 
@@ -111,7 +111,7 @@ private:
 		const size_t current_size = this->size();
 
 		//allocate a cache
-		constexpr static auto deleter = [](T* ptr, RebindAlloc alloc, size_t size) constexpr -> void {
+		constexpr static auto deleter = [](T* const ptr, RebindAlloc alloc, const size_t size) constexpr->void {
 			//ptr is trivially destructor so we don't need to call destroy
 			AllocTr::deallocate(alloc, ptr, size);
 		};
@@ -131,7 +131,7 @@ private:
 	 * @brief Check if reallocation is needed for insert_back_n function
 	 * @param count The number of new elements are going to be inserted
 	*/
-	inline void insert_back_realloc_check(size_t count) {
+	inline void insert_back_realloc_check(const size_t count) {
 		if (this->cend() + count > this->Last) {
 			//not enough room, reallocation
 			this->expand((this->size() + count) * 2u);
@@ -142,7 +142,7 @@ private:
 	 * @brief Insert count many elements at the end without initialisation
 	 * @param count The number of element to be inserted
 	*/
-	inline void insert_back_n(size_t count) {
+	inline void insert_back_n(const size_t count) {
 		this->insert_back_realloc_check(count);
 
 		//simply move the end iterator ahead
@@ -196,7 +196,7 @@ public:
 	 * @param value The value to be filled for every new element
 	 * @return The iterator to the last inserted element
 	*/
-	STPArrayList_it insert_back_n(size_t count, const T& value) {
+	STPArrayList_it insert_back_n(const size_t count, const T& value) {
 		this->insert_back_realloc_check(count);
 
 		//init
@@ -213,7 +213,7 @@ public:
 	 * @param it The item to be erased
 	 * @return The iterator to the item following the iterator provided
 	*/
-	STPArrayList_it erase(STPArrayList_it it) {
+	STPArrayList_it erase(const STPArrayList_it it) {
 		//we don't need to call the destructor since T is always trivially destructible
 
 		if (it < this->cend() - 1) {
@@ -234,7 +234,7 @@ public:
 	 * Since T is trivial, no initialisation will be done to save time.
 	 * @param new_size The new size for the array
 	*/
-	void resize(size_t new_size) {
+	void resize(const size_t new_size) {
 		const size_t current_size = this->size();
 
 		if (new_size == current_size) {
@@ -258,7 +258,7 @@ public:
 	 * @return The reference.
 	 * If index is out-of-bound, return value is undefined.
 	*/
-	inline T& operator[](size_t index) noexcept {
+	inline T& operator[](const size_t index) noexcept {
 		return this->Begin[index];
 	}
 
@@ -454,7 +454,7 @@ private:
 		 * @param sample The sample bin that will be operated on
 		 * @param count The number to increment
 		*/
-		inline void inc(Sample sample, unsigned int count) {
+		inline void inc(const Sample sample, const unsigned int count) {
 			(*this)[sample].Data.Quantity += count;
 		}
 
@@ -466,7 +466,7 @@ private:
 		 * @param sample The sample bin that will be operated on
 		 * @param count The number to decrement
 		*/
-		void dec(Sample sample, unsigned int count) {
+		void dec(const Sample sample, const unsigned int count) {
 			//our algorithm guarantees the bin has been increment by this sample before, so no check is needed
 			unsigned int& bin_index = this->Dictionary[sample];
 			unsigned int& quant = this->Bin[static_cast<unsigned int>(bin_index)].Data.Quantity;
@@ -576,8 +576,8 @@ private:
 	 * @param workplace The pointer to the allocated working memory.
 	 * @param radius The radius of the filter.
 	*/
-	static void filterVertical(const Sample* sample_map, unsigned int freeslip_rangeX, unsigned int dimensionY,
-		unsigned int vertical_start_offset, uvec2 w_range, STPWorkplace& workplace, unsigned int radius) {
+	static void filterVertical(const Sample* const sample_map, const unsigned int freeslip_rangeX, const unsigned int dimensionY,
+		const unsigned int vertical_start_offset, const uvec2 w_range, STPWorkplace& workplace, const unsigned int radius) {
 		auto& [target, acc] = workplace;
 		//clear both
 		target.clear();
@@ -626,8 +626,8 @@ private:
 	 * @param workplaceID The ID of the workplace in the department. Note that threadID 0 doesn't require offset correction.
 	 * @param output_base The base start index from the beginning of output container for each thread for bin and histogram offset.
 	*/
-	static void copyToOutput(STPPinnedHistogramBuffer* buffer, const STPDefaultHistogramBuffer& workplace_memory,
-		unsigned char workplaceID, uvec2 output_base) {
+	static void copyToOutput(STPPinnedHistogramBuffer* const buffer, const STPDefaultHistogramBuffer& workplace_memory,
+		const unsigned char workplaceID, const uvec2 output_base) {
 		auto offset_base_it = buffer->HistogramStartOffset.begin() + output_base.y;
 		//caller should guarantee the output container has been allocated that many elements,
 		//we don't need to allocate memory here
@@ -639,7 +639,7 @@ private:
 			std::transform(workplace_memory.HistogramStartOffset.cbegin(), workplace_memory.HistogramStartOffset.cend(),
 				offset_base_it,
 				//get the starting index, so the current buffer connects to the previous buffer seamlessly
-				[bin_base = output_base.x](auto offset) { return bin_base + offset; });
+				[bin_base = output_base.x](const auto offset) { return bin_base + offset; });
 		} else {
 			//direct copy for threadID 0
 			std::copy(workplace_memory.HistogramStartOffset.cbegin(),
@@ -661,8 +661,8 @@ private:
 	 * @param workplace The pointer to the allocated working memory.
 	 * @param radius The radius of the filter
 	*/
-	static void filterHorizontal(STPPinnedHistogramBuffer* histogram_input, const uvec2& dimension, uvec2 h_range,
-		STPWorkplace& workplace, unsigned int radius) {
+	static void filterHorizontal(STPPinnedHistogramBuffer* const histogram_input, const uvec2& dimension, const uvec2 h_range,
+		STPWorkplace& workplace, const unsigned int radius) {
 		auto& [target, acc] = workplace;
 		//make sure both of them are cleared (don't deallocate)
 		target.clear();
@@ -759,8 +759,8 @@ public:
 	 * @param central_chunk_index The local free-slip coordinate points to the central chunk.
 	 * @param radius The radius of the filter
 	*/
-	void filter(const Sample* sample_map, const STPNearestNeighbourInformation& nn_info,
-		STPPinnedHistogramBuffer* histogram_output, uvec2 central_chunk_index, unsigned int radius) {
+	void filter(const Sample* const sample_map, const STPNearestNeighbourInformation& nn_info,
+		STPPinnedHistogramBuffer* const histogram_output, const uvec2 central_chunk_index, const unsigned int radius) {
 		using std::future;
 		using std::cref;
 		using std::ref;
@@ -872,7 +872,7 @@ public:
 
 /* Single Histogram Filter main class */
 
-void STPSingleHistogramFilter::STPPinnedHistogramBufferDeleter::operator()(STPPinnedHistogramBuffer* ptr) const {
+void STPSingleHistogramFilter::STPPinnedHistogramBufferDeleter::operator()(STPPinnedHistogramBuffer* const ptr) const {
 	std::default_delete<STPPinnedHistogramBuffer>()(ptr);
 }
 
@@ -887,8 +887,8 @@ STPSingleHistogramFilter::STPHistogramBuffer_t STPSingleHistogramFilter::createH
 	return STPHistogramBuffer_t(new STPPinnedHistogramBuffer());
 }
 
-STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample* samplemap, const STPNearestNeighbourInformation& nn_info, 
-	const STPHistogramBuffer_t& histogram_output, unsigned int radius) {
+STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample*const  samplemap, const STPNearestNeighbourInformation& nn_info, 
+	const STPHistogramBuffer_t& histogram_output, const unsigned int radius) {
 	//do some simple runtime check
 	//first make sure radius is an even number
 	if (radius == 0u || (radius & 0x01u) != 0x00u) {

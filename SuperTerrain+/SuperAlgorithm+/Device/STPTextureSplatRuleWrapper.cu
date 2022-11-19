@@ -21,7 +21,7 @@ using SuperTerrainPlus::STPDiversity::Sample;
  * greater or equal to) value, or last if no such element is found.
 */
 template<class It, class T, class Comp>
-__device__ static const It* lowerBound(const It* first, const It* last, T value, Comp&& comp) {
+__device__ static const It* lowerBound(const It* first, const It* const last, const T value, Comp&& comp) {
 	//std::lower_bound implementation
 	const It* it;
 	std::ptrdiff_t count = last - first, step;
@@ -51,7 +51,7 @@ __device__ static const It* lowerBound(const It* first, const It* last, T value,
  * greater or equal to) value, or last if no such element is found.
 */
 template<class T>
-__device__ __forceinline__ static const T* lowerBound(const T* first, const T* last, T value) {
+__device__ __forceinline__ static const T* lowerBound(const T* const first, const T* const last, const T value) {
 	constexpr static auto lessThan = [] __device__(const T current, const T value) constexpr -> bool {
 		return current < value;
 	};
@@ -66,7 +66,7 @@ __device__ STPTextureSplatRuleWrapper::~STPTextureSplatRuleWrapper() {
 
 }
 
-__device__ const STPTI::STPSplatRegistry* STPTextureSplatRuleWrapper::findSplatRegistry(Sample sample) const {
+const __device__ STPTI::STPSplatRegistry* STPTextureSplatRuleWrapper::findSplatRegistry(const Sample sample) const {
 	//binary search this sample in the registry dictionary
 	//here because biomemap is generally a large scale texture, most threads in a half warp should have the same sample
 	//so memory access should basically be aligned
@@ -83,7 +83,7 @@ __device__ const STPTI::STPSplatRegistry* STPTextureSplatRuleWrapper::findSplatR
 	return this->SplatRule.SplatRegistry + registry_idx;
 }
 
-__device__ unsigned int STPTextureSplatRuleWrapper::altitudeRegion(const STPTI::STPSplatRegistry* splat_reg, float alt) const {
+__device__ unsigned int STPTextureSplatRuleWrapper::altitudeRegion(const STPTI::STPSplatRegistry* const  splat_reg, const float alt) const {
 	const STPTI::STPAltitudeNode* const alt_node = this->SplatRule.AltitudeRegistry;
 	if (!splat_reg) {
 		//no active region can be used
@@ -104,7 +104,7 @@ __device__ unsigned int STPTextureSplatRuleWrapper::altitudeRegion(const STPTI::
 	return alt_it->Reference.RegionIndex;
 }
 
-__device__ unsigned int STPTextureSplatRuleWrapper::gradientRegion(const STPTI::STPSplatRegistry* splat_reg, float gra, float alt) const {
+__device__ unsigned int STPTextureSplatRuleWrapper::gradientRegion(const STPTI::STPSplatRegistry* const splat_reg, const float gra, const float alt) const {
 	const STPTI::STPGradientNode* const gra_node = this->SplatRule.GradientRegistry;
 	if (!splat_reg) {
 		return STPTextureSplatRuleWrapper::NoRegion;

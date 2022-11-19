@@ -34,7 +34,7 @@ static_assert(conjunction_v<
 	is_same<STPOpenGL::STPsizeiptr, GLsizeiptr>
 >, "OpenGL specification is no longer compatible with SuperTerrain+, please contact the maintainer.");
 
-void STPEngineInitialiser::initialise(int device, STPGLProc gl_process) {
+void STPEngineInitialiser::initialise(const int device, STPGLProc gl_process) {
 	//CUDA
 	STP_CHECK_CUDA(cudaSetDevice(device));
 	//init context in case the first call is CUDA driver API
@@ -57,7 +57,7 @@ void STPEngineInitialiser::initialise(int device, STPGLProc gl_process) {
 	}
 }
 
-int STPEngineInitialiser::architecture(int device) {
+int STPEngineInitialiser::architecture(const int device) {
 	int major, minor;
 	STP_CHECK_CUDA(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, device));
 	STP_CHECK_CUDA(cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, device));

@@ -14,14 +14,14 @@ using glm::dvec3;
 //STPChunkSetting.h
 
 void STPChunkSetting::validate() const {
-	static constexpr auto isOdd = [](uvec2 num) constexpr -> bool {
+	static constexpr auto isOdd = [](const uvec2 num) constexpr -> bool {
 		constexpr uvec2 VecOne = uvec2(1u);
 		return (num & VecOne) == VecOne;
 	};
-	static constexpr auto isPositiveui = [](uvec2 val) constexpr -> bool {
+	static constexpr auto isPositiveui = [](const uvec2 val) constexpr -> bool {
 		return val.x > 0u && val.y > 0u;
 	};
-	static constexpr auto isPositived = [](dvec2 val) constexpr -> bool {
+	static constexpr auto isPositived = [](const dvec2 val) constexpr -> bool {
 		return val.x > 0.0 && val.y > 0.0;
 	};
 
@@ -47,7 +47,7 @@ void STPHeightfieldSetting::validate() const {
 //STPRainDropSetting.h
 
 void STPRainDropSetting::validate() const {
-	static constexpr auto checkRange = [](float value, float lower, float upper) constexpr -> bool {
+	static constexpr auto checkRange = [](const float value, const float lower, const float upper) constexpr->bool {
 		return value >= lower && value <= upper;
 	};
 

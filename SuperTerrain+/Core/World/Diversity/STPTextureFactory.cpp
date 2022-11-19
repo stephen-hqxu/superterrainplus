@@ -209,8 +209,9 @@ STPSmartDeviceMemory::STPDeviceMemory<T[]> STPTextureFactory::copyToDevice(const
 	return device;
 }
 
-void STPTextureFactory::operator()(cudaTextureObject_t biomemap_tex, cudaTextureObject_t heightmap_tex, cudaSurfaceObject_t splatmap_surf, 
-	const STPRequestingChunkInfo& requesting_local, cudaStream_t stream) const {
+void STPTextureFactory::operator()(const cudaTextureObject_t biomemap_tex, const cudaTextureObject_t heightmap_tex,
+	const cudaSurfaceObject_t splatmap_surf, const STPRequestingChunkInfo& requesting_local,
+	const cudaStream_t stream) const {
 	if (requesting_local.size() == 0u) {
 		//nothing needs to be done
 		return;
@@ -248,7 +249,7 @@ STPTextureInformation::STPSplatTextureDatabase STPTextureFactory::getSplatTextur
 	};
 }
 
-STPTextureFactory::STPTextureType_t STPTextureFactory::convertType(STPTextureType type) const {
+STPTextureFactory::STPTextureType_t STPTextureFactory::convertType(const STPTextureType type) const {
 	auto type_beg = this->ValidType.cbegin();
 	//check if type exists
 	if (!std::binary_search(type_beg, this->ValidType.cend(), type)) {

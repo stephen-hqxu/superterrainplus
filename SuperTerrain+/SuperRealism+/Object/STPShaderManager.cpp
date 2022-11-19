@@ -48,7 +48,7 @@ static STPDefaultLogHandler lhDefaultLogHandler;
 //The currently active log handler, might be defined by user
 static STPLogHandler::STPLogHandlerSolution* lhActiveLogHandler = &lhDefaultLogHandler;
 
-void STPLogHandler::set(STPLogHandlerSolution* solution) {
+void STPLogHandler::set(STPLogHandlerSolution* const solution) {
 	if (solution) {
 		//set to user-defined
 		lhActiveLogHandler = solution;
@@ -58,7 +58,7 @@ void STPLogHandler::set(STPLogHandlerSolution* solution) {
 	}
 }
 
-void STPLogHandler::handle(string_view log) {
+void STPLogHandler::handle(const string_view log) {
 	lhActiveLogHandler->handle(log);
 }
 
@@ -76,11 +76,11 @@ constexpr static array<string_view, 9u> mShaderIncludeRegistry = {
 	"/Common/STPSeparableShaderPredefine.glsl"
 };
 
-void STPShaderManager::STPShaderManagerDetail::STPShaderDeleter::operator()(STPOpenGL::STPuint shader) const noexcept {
+void STPShaderManager::STPShaderManagerDetail::STPShaderDeleter::operator()(const STPOpenGL::STPuint shader) const noexcept {
 	glDeleteShader(shader);
 }
 
-STPShaderManager::STPShaderSource::STPShaderIncludePath& STPShaderManager::STPShaderSource::STPShaderIncludePath::operator[](const char* path) {
+STPShaderManager::STPShaderSource::STPShaderIncludePath& STPShaderManager::STPShaderSource::STPShaderIncludePath::operator[](const char* const path) {
 	this->Pathname.emplace_back(path);
 	return *this;
 }
@@ -140,7 +140,7 @@ unsigned int STPShaderManager::STPShaderSource::define(const STPMacroValueDictio
 	return macroReplaced;
 }
 
-inline static bool includeImpl(const char* name, size_t nameLen, const string& source) noexcept {
+inline static bool includeImpl(const char* const name, const size_t nameLen, const string& source) noexcept {
 	//check if path exists as named string
 	if (!glIsNamedStringARB(static_cast<GLint>(nameLen), name)) {
 		//try to add the named string to GL virtual include system
@@ -169,7 +169,7 @@ void STPShaderManager::Removeinclude(const string& name) noexcept {
 	glDeleteNamedStringARB(static_cast<GLint>(name.size()), name.c_str());
 }
 
-STPShaderManager::STPShader STPShaderManager::make(STPOpenGL::STPenum type, const STPShaderSource& source) {
+STPShaderManager::STPShader STPShaderManager::make(const STPOpenGL::STPenum type, const STPShaderSource& source) {
 	const string& src_str = source.Source;
 	const auto& include = source.Include.Pathname;
 	STPShader shaderManaged = STPShader(glCreateShader(type));

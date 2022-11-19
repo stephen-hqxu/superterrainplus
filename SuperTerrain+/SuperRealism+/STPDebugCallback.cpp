@@ -11,10 +11,10 @@ using std::endl;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-ostream& STPDebugCallback::print(STPOpenGL::STPenum source, STPOpenGL::STPenum type, STPOpenGL::STPuint id,
-	STPOpenGL::STPenum severity, STPOpenGL::STPsizei length, const char* message, ostream& stream) {
+ostream& STPDebugCallback::print(const STPOpenGL::STPenum source, const STPOpenGL::STPenum type, const STPOpenGL::STPuint id,
+	const STPOpenGL::STPenum severity, const STPOpenGL::STPsizei length, const char* const message, ostream& stream) {
 	//string conversion
-	static constexpr auto getSourceStr = [](GLenum source) constexpr -> const char* {
+	static constexpr auto getSourceStr = [](const GLenum source) constexpr -> const char* {
 		switch (source) {
 		case GL_DEBUG_SOURCE_API: return "API";
 		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
@@ -25,7 +25,7 @@ ostream& STPDebugCallback::print(STPOpenGL::STPenum source, STPOpenGL::STPenum t
 		default: return "NULL";
 		}
 	};
-	static constexpr auto getTypeStr = [](GLenum type) constexpr -> const char* {
+	static constexpr auto getTypeStr = [](const GLenum type) constexpr -> const char* {
 		switch (type) {
 		case GL_DEBUG_TYPE_ERROR: return "ERROR";
 		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
@@ -37,7 +37,7 @@ ostream& STPDebugCallback::print(STPOpenGL::STPenum source, STPOpenGL::STPenum t
 		default: return "NULL";
 		}
 	};
-	static constexpr auto getSeverityStr = [](GLenum severity) constexpr -> const char* {
+	static constexpr auto getSeverityStr = [](const GLenum severity) constexpr -> const char* {
 		switch (severity) {
 		case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION";
 		case GL_DEBUG_SEVERITY_LOW: return "LOW";

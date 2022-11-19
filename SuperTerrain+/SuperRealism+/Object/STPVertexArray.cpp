@@ -14,17 +14,18 @@ inline static GLuint createVertexArray() noexcept {
 	return vao;
 }
 
-void STPVertexArray::STPVertexArrayDeleter::operator()(STPOpenGL::STPuint vertex_array) const noexcept {
+void STPVertexArray::STPVertexArrayDeleter::operator()(const STPOpenGL::STPuint vertex_array) const noexcept {
 	glDeleteVertexArrays(1u, &vertex_array);
 }
 
-STPVertexArray::STPVertexAttributeBuilder::STPVertexAttributeBuilder(STPOpenGL::STPuint vao) noexcept :
+STPVertexArray::STPVertexAttributeBuilder::STPVertexAttributeBuilder(const STPOpenGL::STPuint vao) noexcept :
 	VertexArray(vao), AttribIndex(0u), RelativeOffset(0u), BindingIndex(0u), BlockStart(0u), BlockEnd(0u) {
 
 }
 
-STPVertexArray::STPVertexAttributeBuilder& STPVertexArray::STPVertexAttributeBuilder::format(STPOpenGL::STPint size,
-	STPOpenGL::STPenum type, STPOpenGL::STPboolean normalise, unsigned int attribSize) noexcept {
+STPVertexArray::STPVertexAttributeBuilder& STPVertexArray::STPVertexAttributeBuilder::format(
+	const STPOpenGL::STPint size, const STPOpenGL::STPenum type, const STPOpenGL::STPboolean normalise,
+	const unsigned int attribSize) noexcept {
 	glVertexArrayAttribFormat(this->VertexArray, this->AttribIndex, size, type, normalise, this->RelativeOffset);
 
 	//increment counters
@@ -36,7 +37,7 @@ STPVertexArray::STPVertexAttributeBuilder& STPVertexArray::STPVertexAttributeBui
 }
 
 STPVertexArray::STPVertexAttributeBuilder& STPVertexArray::STPVertexAttributeBuilder::vertexBuffer(
-	const STPBuffer& buffer, STPOpenGL::STPintptr offset) noexcept {
+	const STPBuffer& buffer, const STPOpenGL::STPintptr offset) noexcept {
 	glVertexArrayVertexBuffer(this->VertexArray, this->BindingIndex, *buffer, offset, static_cast<GLsizei>(this->RelativeOffset));
 
 	return *this;
@@ -64,7 +65,7 @@ STPVertexArray::STPVertexAttributeBuilder& STPVertexArray::STPVertexAttributeBui
 	return *this;
 }
 
-STPVertexArray::STPVertexAttributeBuilder& STPVertexArray::STPVertexAttributeBuilder::divisor(STPOpenGL::STPint divisor) noexcept {
+STPVertexArray::STPVertexAttributeBuilder& STPVertexArray::STPVertexAttributeBuilder::divisor(const STPOpenGL::STPint divisor) noexcept {
 	glVertexArrayBindingDivisor(this->VertexArray, this->BindingIndex, divisor);
 	return *this;
 }
@@ -85,17 +86,17 @@ SuperTerrainPlus::STPOpenGL::STPuint STPVertexArray::operator*() const noexcept 
 	return this->VertexArray.get();
 }
 
-void STPVertexArray::enable(STPOpenGL::STPuint index) noexcept {
+void STPVertexArray::enable(const STPOpenGL::STPuint index) noexcept {
 	glEnableVertexArrayAttrib(this->VertexArray.get(), index);
 }
 
-void STPVertexArray::enable(STPOpenGL::STPuint start, STPOpenGL::STPuint count) noexcept {
+void STPVertexArray::enable(const STPOpenGL::STPuint start, const STPOpenGL::STPuint count) noexcept {
 	for (GLuint i = 0u; i < count; i++) {
 		this->enable(start + i);
 	}
 }
 
-void STPVertexArray::disable(STPOpenGL::STPuint index) noexcept {
+void STPVertexArray::disable(const STPOpenGL::STPuint index) noexcept {
 	glDisableVertexArrayAttrib(this->VertexArray.get(), index);
 }
 

@@ -14,7 +14,7 @@ using std::istreambuf_iterator;
 
 using namespace SuperTerrainPlus;
 
-string STPFile::read(const char* filename) {
+string STPFile::read(const char* const filename) {
 	using std::ios;
 	//open the file
 	ifstream fileIO(filename, ios::in);

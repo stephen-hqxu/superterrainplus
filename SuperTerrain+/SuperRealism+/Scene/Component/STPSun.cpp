@@ -99,7 +99,7 @@ const vec3& STPSun::sunDirection() const {
 	return this->SunDirectionCache;
 }
 
-void STPSun::updateAnimationTimer(double second) {
+void STPSun::updateAnimationTimer(const double second) {
 	const STPEnvironment::STPSunSetting& sun = this->SunSetting;
 
 	//calculate new day count and wrap the day around within a year
@@ -107,7 +107,7 @@ void STPSun::updateAnimationTimer(double second) {
 
 	//the old direction cache is no longer accurate, needs to recalculate
 	static constexpr double TWO_PI = glm::pi<double>() * 2.0;
-	static constexpr auto saturate = [](double val) constexpr -> double {
+	static constexpr auto saturate = [](const double val) constexpr->double {
 		return clamp(val, -1.0, 1.0);
 	};
 	//Calculate hour angle based on the local solar time (LST), i.e., current time in a day - noon time;
@@ -160,7 +160,7 @@ void STPSun::setAtmoshpere(const STPEnvironment::STPAtmosphereSetting& atmo_sett
 	STPSun::updateAtmosphere(this->SpectrumEmulator, atmo_setting);
 }
 
-STPSun::STPBundledData<STPLightSpectrum> STPSun::generateSunSpectrum(unsigned int spectrum_length, const mat3& ray_space) const {
+STPSun::STPBundledData<STPLightSpectrum> STPSun::generateSunSpectrum(const unsigned int spectrum_length, const mat3& ray_space) const {
 	this->SpectrumEmulator.uniform(
 		glProgramUniformMatrix3fv, "SunToRayDirection", 1, static_cast<GLboolean>(GL_FALSE), value_ptr(ray_space));
 	//setup output

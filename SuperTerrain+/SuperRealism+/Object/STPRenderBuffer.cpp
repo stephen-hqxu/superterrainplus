@@ -11,7 +11,7 @@ inline static GLuint createRenderBuffer() noexcept {
 	return rbo;
 }
 
-void STPRenderBuffer::STPRenderBufferDeleter::operator()(STPOpenGL::STPuint render_buffer) const noexcept {
+void STPRenderBuffer::STPRenderBufferDeleter::operator()(const STPOpenGL::STPuint render_buffer) const noexcept {
 	glDeleteRenderbuffers(1u, &render_buffer);
 }
 
@@ -31,11 +31,11 @@ void STPRenderBuffer::unbind() noexcept {
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
-void STPRenderBuffer::renderbufferStorage(STPOpenGL::STPenum internal, STPGLVector::STPsizeiVec2 dimension) noexcept {
+void STPRenderBuffer::renderbufferStorage(const STPOpenGL::STPenum internal, const STPGLVector::STPsizeiVec2 dimension) noexcept {
 	glNamedRenderbufferStorage(this->RenderBuffer.get(), internal, dimension.x, dimension.y);
 }
 
-void STPRenderBuffer::renderbufferStorageMultisample(
-	STPOpenGL::STPsizei samples, STPOpenGL::STPenum internal, STPGLVector::STPsizeiVec2 dimension) noexcept {
+void STPRenderBuffer::renderbufferStorageMultisample(const STPOpenGL::STPsizei samples,
+	const STPOpenGL::STPenum internal, const STPGLVector::STPsizeiVec2 dimension) noexcept {
 	glNamedRenderbufferStorageMultisample(this->RenderBuffer.get(), samples, internal, dimension.x, dimension.y);
 }

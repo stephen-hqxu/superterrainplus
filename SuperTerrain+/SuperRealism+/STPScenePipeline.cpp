@@ -59,11 +59,11 @@ using namespace SuperTerrainPlus::STPRealism;
 //Nothing can be more black than this...
 constexpr static vec4 ConstantBlackColour = vec4(vec3(0.0f), 1.0f);
 
-STPScenePipeline::STPShadingEquation::STPShadingEquation(STPShadingModel model) : Model(model) {
+STPScenePipeline::STPShadingEquation::STPShadingEquation(const STPShadingModel model) : Model(model) {
 
 }
 
-STPScenePipeline::STPShadowMapFilterFunction::STPShadowMapFilterFunction(STPShadowMapFilter filter) :
+STPScenePipeline::STPShadowMapFilterFunction::STPShadowMapFilterFunction(const STPShadowMapFilter filter) :
 	Filter(filter), 
 	DepthBias(vec2(0.0f)),
 	NormalBias(vec2(0.0f)),
@@ -281,7 +281,7 @@ private:
 	 * @param sampler The sampler to be used.
 	 * @param vp The coordinate of the screen.
 	*/
-	static inline void drawTextureScreen(GLuint texture, GLuint sampler, const vec4& vp) {
+	static inline void drawTextureScreen(const GLuint texture, const GLuint sampler, const vec4& vp) {
 		glDrawTextureNV(texture, sampler, vp.x, vp.y, vp.z, vp.w, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f);
 	}
 
@@ -337,7 +337,7 @@ public:
 		this->DeferredQuad.initScreenRenderer(deffered_shader, lighting_init);
 
 		/* ------------------------------- setup G-buffer sampler ------------------------------------- */
-		auto setGBufferSampler = [](STPSampler& sampler) -> void {
+		const auto setGBufferSampler = [](STPSampler& sampler) -> void {
 			sampler.filter(GL_NEAREST, GL_NEAREST);
 			sampler.wrap(GL_CLAMP_TO_BORDER);
 			sampler.borderColor(ConstantBlackColour);
@@ -578,13 +578,13 @@ public:
 	 * @param name The name of the uniform.
 	 * @param value The float value to be set.
 	*/
-	inline void setFloat(const char* name, float value) {
+	inline void setFloat(const char* const name, const float value) {
 		this->DeferredQuad.OffScreenRenderer.uniform(glProgramUniform1f, name, value);
 	}
 
 };
 
-STPScenePipeline::STPScenePipeline(const STPMaterialLibrary* mat_lib, const STPScenePipelineInitialiser& scene_init) :
+STPScenePipeline::STPScenePipeline(const STPMaterialLibrary*const  mat_lib, const STPScenePipelineInitialiser& scene_init) :
 	SceneMemoryCurrent{ }, SceneMemoryLimit(scene_init.ShaderCapacity),
 	hasMaterialLibrary(mat_lib),
 	GeometryShadowPass(make_unique<STPShadowPipeline>(*scene_init.ShadowFilter)),
@@ -640,7 +640,7 @@ const STPShaderManager::STPShader* STPScenePipeline::getDepthShader() const {
 	return this->GeometryShadowPass->DepthPassShader ? &this->GeometryShadowPass->DepthPassShader : nullptr;
 }
 
-void STPScenePipeline::setCamera(const STPCamera* camera) const {
+void STPScenePipeline::setCamera(const STPCamera* const camera) const {
 	if (!camera) {
 		//unbind
 		STPBuffer::unbindBase(GL_SHADER_STORAGE_BUFFER, 0u);
@@ -756,7 +756,7 @@ void STPScenePipeline::addShadow(STPSceneObject::STPOpaqueObject& opaque_shadow)
 		(const auto depth_config) { opaque_shadow.addDepthConfiguration(depth_config, depth_shader); });
 }
 
-void STPScenePipeline::setClearColor(vec4 color) {
+void STPScenePipeline::setClearColor(const vec4 color) {
 	glClearColor(color.r, color.g, color.b, color.a);
 	//update member variable
 	this->DefaultClearColor = color;
@@ -766,7 +766,7 @@ void STPScenePipeline::setClearColor(vec4 color) {
 	}
 }
 
-void STPScenePipeline::setResolution(uvec2 resolution) {
+void STPScenePipeline::setResolution(const uvec2 resolution) {
 	if (resolution == uvec2(0u)) {
 		throw STPException::STPBadNumericRange("The rendering resolution must be both non-zero positive integers");
 	}
@@ -800,7 +800,7 @@ void STPScenePipeline::setResolution(uvec2 resolution) {
 	this->SceneTexture = move(scene_texture);
 }
 
-void STPScenePipeline::setExtinctionArea(float factor) const {
+void STPScenePipeline::setExtinctionArea(const float factor) const {
 	if (factor < 0.0f && factor > 1.0f) {
 		throw STPException::STPBadNumericRange(
 			"The extinction factor is a multiplier to far viewing distance and hence it should be a normalised value");
@@ -836,7 +836,7 @@ inline void STPScenePipeline::drawEnvironment(const Env& env, const vec4& vp) co
 }
 
 template<class Ao, class Pp>
-inline void STPScenePipeline::shadeObject(const Ao* ao, const Pp* post_process, unsigned char mask) const {
+inline void STPScenePipeline::shadeObject(const Ao* const ao, const Pp* const post_process, const unsigned char mask) const {
 	//from this step we start performing off-screen rendering using the buffer we got from previous steps.
 	//off-screen rendering does not need depth test
 	glDisable(GL_DEPTH_TEST);

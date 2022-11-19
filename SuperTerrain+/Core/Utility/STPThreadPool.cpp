@@ -14,7 +14,7 @@ using std::as_const;
 
 using namespace SuperTerrainPlus;
 
-STPThreadPool::STPThreadPool(size_t count) : IsPoolRunning(false), IsPoolWaiting(false), PendingTask(0u),
+STPThreadPool::STPThreadPool(const size_t count) : IsPoolRunning(false), IsPoolWaiting(false), PendingTask(0u),
 	Worker(make_unique<thread[]>(count)), WorkerCount(count) {
 	if (this->WorkerCount == 0u) {
 		throw STPException::STPBadNumericRange("The number of worker in a thread pool must be greater than 0");

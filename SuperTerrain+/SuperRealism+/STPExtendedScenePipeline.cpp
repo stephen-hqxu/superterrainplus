@@ -78,7 +78,7 @@ using namespace SuperTerrainPlus::STPRealism;
 //The preallocation size for log passed into OptiX compiler
 constexpr static size_t mDefaultLogSize = 1024u;
 
-inline static void loadExtendedShaderOption(unsigned int arch, SuperTerrainPlus::STPDeviceRuntimeBinary::STPSourceInformation& info) {
+inline static void loadExtendedShaderOption(const unsigned int arch, SuperTerrainPlus::STPDeviceRuntimeBinary::STPSourceInformation& info) {
 	using SuperTerrainPlus::STPStringUtility::concatCharArray;
 	//For performance consideration, always build with optimisation turned on;
 	//we are not going to debug runtime compiled binary anyway.
@@ -96,8 +96,8 @@ inline static void loadExtendedShaderOption(unsigned int arch, SuperTerrainPlus:
 		[optixSDKOption.data()];
 }
 
-inline static void deviceContextDebugCallback(unsigned int level, const char* tag, const char* message, void* cbdata) {
-	static constexpr auto getLevelStr = [](unsigned int level) constexpr -> const char* {
+inline static void deviceContextDebugCallback(const unsigned int level, const char* const tag, const char* const message, void* const cbdata) {
+	static constexpr auto getLevelStr = [](const unsigned int level) constexpr -> const char* {
 		switch (level) {
 		case 1u: return "FATAL";
 		case 2u: return "ERROR";
@@ -153,7 +153,7 @@ public:
 struct STPModuleDestroyer {
 public:
 
-	inline void operator()(OptixModule module) const {
+	inline void operator()(const OptixModule module) const {
 		STP_CHECK_OPTIX(optixModuleDestroy(module));
 	}
 
@@ -165,7 +165,7 @@ using STPSmartModule = STPUniqueResource<OptixModule, nullptr, STPModuleDestroye
 struct STPProgramGroupDestroyer {
 public:
 
-	inline void operator()(OptixProgramGroup pg) const {
+	inline void operator()(const OptixProgramGroup pg) const {
 		STP_CHECK_OPTIX(optixProgramGroupDestroy(pg));
 	}
 
@@ -177,14 +177,14 @@ using STPSmartProgramGroup = STPUniqueResource<OptixProgramGroup, nullptr, STPPr
 struct STPPipelineDestroyer {
 public:
 
-	inline void operator()(OptixPipeline pipeline) const {
+	inline void operator()(const OptixPipeline pipeline) const {
 		STP_CHECK_OPTIX(optixPipelineDestroy(pipeline));
 	}
 
 };
 using STPSmartPipeline = STPUniqueResource<OptixPipeline, nullptr, STPPipelineDestroyer>;
 
-void STPExtendedScenePipeline::STPDeviceContextDestroyer::operator()(OptixDeviceContext context) const {
+void STPExtendedScenePipeline::STPDeviceContextDestroyer::operator()(const OptixDeviceContext context) const {
 	STP_CHECK_OPTIX(optixDeviceContextDestroy(context));
 }
 
@@ -336,7 +336,7 @@ public:
 	 * If any component is set to zero, no memory will be allocated and user is required to set the resolution manually later before using.
 	 * However no error is generated in this case.
 	*/
-	STPShaderMemoryInternal(STPShaderMemoryType type, uvec2 init_resolution) :
+	STPShaderMemoryInternal(const STPShaderMemoryType type, const uvec2 init_resolution) :
 		Texture(GL_TEXTURE_2D),
 		TextureDesc(STPShaderMemoryInternal::MemoryTypeDescription[static_cast<STPShaderMemoryType_t>(type)]),
 		TextureType(type) {
@@ -363,7 +363,7 @@ public:
 	 * This will cause a memory reallocation.
 	 * @param resolution The new resolution.
 	*/
-	void setResolution(uvec2 resolution) {
+	void setResolution(const uvec2 resolution) {
 		this->TextureResolution = resolution;
 		
 		//create new texture
@@ -404,7 +404,7 @@ public:
 	 * @return The mapped data, the exact type depends on the type of shader memory.
 	*/
 	template<class Mem_t>
-	Mem_t mapMemory(cudaStream_t stream) {
+	Mem_t mapMemory(const cudaStream_t stream) {
 		if (this->TextureCache && ((this->TextureDesc.CopyDirection & STPShaderMemoryDescription::Input) != 0u)) {
 			//copy from texture to cache
 			this->copyFromTexture(this->Texture);
@@ -454,7 +454,7 @@ public:
 	 * @brief Unmap the memory and return control back to the renderer so CUDA cannot access it.
 	 * @param stream Specifies a CUDA stream.
 	*/
-	void unmapMemory(cudaStream_t stream) {
+	void unmapMemory(const cudaStream_t stream) {
 		cudaGraphicsResource_t res = this->TextureResource.get();
 		STP_CHECK_CUDA(cudaGraphicsUnmapResources(1, &res, stream));
 
@@ -648,7 +648,7 @@ public:
 	 * @brief Make a stream wait for an event recorded with build tasks.
 	 * @param stream The stream to be waiting for AS build.
 	*/
-	inline void waitForASBuild(cudaStream_t stream) const {
+	inline void waitForASBuild(const cudaStream_t stream) const {
 		STP_CHECK_CUDA(cudaStreamWaitEvent(stream, this->ASBuildEvent.get()));
 	}
 
@@ -713,7 +713,7 @@ public:
 	 * @param master The pointer to the master extended scene pipeline.
 	 * @param arch Specifies the CUDA device architecture for code generation.
 	*/
-	STPScreenSpaceRayIntersection(const STPExtendedScenePipeline& master, unsigned int arch) :
+	STPScreenSpaceRayIntersection(const STPExtendedScenePipeline& master, const unsigned int arch) :
 		Master(master), MasterContext(this->Master.Context.get()),
 		MasterStream(this->Master.RendererStream.get()), IntersectionShader{ },
 		IntersectionGlobalData(STPSmartDeviceMemory::makeDevice<STPScreenSpaceRayIntersectionData>()) {
@@ -872,7 +872,7 @@ public:
 	 * @brief Update the stack size for intersection tracer pipeline.
 	 * @param traversableDepth The maximum possible traversable graph depth for all traceable objects.
 	*/
-	inline void updateStackSize(unsigned int traversableDepth) {
+	inline void updateStackSize(const unsigned int traversableDepth) {
 		const auto [traversal_stack, state_stack, continuation_stack] = this->IntersectionStackSize;
 		//add one to the total depth because we have a top level IAS enclosing all other AS's.
 		STP_CHECK_OPTIX(optixPipelineSetStackSize(this->IntersectionPipeline.get(), traversal_stack, state_stack, continuation_stack, traversableDepth + 1u));
@@ -882,7 +882,7 @@ public:
 	 * @brief Update the internal record of traversable handle.
 	 * @param handle The new handle to be used.
 	*/
-	inline void updateTraversableHandle(OptixTraversableHandle handle) {
+	inline void updateTraversableHandle(const OptixTraversableHandle handle) {
 		STP_CHECK_CUDA(cudaMemcpyAsync(this->getRawGlobalData() + offsetof(STPScreenSpaceRayIntersectionData, Handle), &handle,
 			sizeof(OptixTraversableHandle), cudaMemcpyHostToDevice, this->MasterStream));
 	}
@@ -915,7 +915,7 @@ public:
 
 };
 
-STPExtendedScenePipeline::STPShaderMemory::STPShaderMemory(STPShaderMemoryInternal* internal) : Internal(internal) {
+STPExtendedScenePipeline::STPShaderMemory::STPShaderMemory(STPShaderMemoryInternal* const internal) : Internal(internal) {
 	
 }
 
@@ -932,7 +932,7 @@ STPExtendedScenePipeline::STPShaderMemoryType STPExtendedScenePipeline::STPShade
 }
 
 template<class Desc>
-STPExtendedScenePipeline::STPValidatedInformation<Desc>::STPValidatedInformation(Desc descriptor) : Description(descriptor) {
+STPExtendedScenePipeline::STPValidatedInformation<Desc>::STPValidatedInformation(const Desc descriptor) : Description(descriptor) {
 
 }
 
@@ -1036,7 +1036,7 @@ void STPExtendedScenePipeline::add(STPExtendedSceneObject::STPTraceable& object)
 	curr_traceable = object_db.size();
 }
 
-void STPExtendedScenePipeline::setResolution(uvec2 resolution) {
+void STPExtendedScenePipeline::setResolution(const uvec2 resolution) {
 	if (resolution.x == 0u || resolution.y == 0u) {
 		throw STPException::STPBadNumericRange("Both components of render resolution must be positive");
 	}
@@ -1050,11 +1050,11 @@ void STPExtendedScenePipeline::setInverseProjectionView(const mat4& inv_pv) {
 	this->IntersectionTracer->updateInvPV(inv_pv);
 }
 
-STPExtendedScenePipeline::STPShaderMemory STPExtendedScenePipeline::createShaderMemory(STPShaderMemoryType type) {
+STPExtendedScenePipeline::STPShaderMemory STPExtendedScenePipeline::createShaderMemory(const STPShaderMemoryType type) {
 	return &this->SceneMemory->ShaderMemoryStorage.emplace_back(type, this->RenderResolution);
 }
 
-void STPExtendedScenePipeline::destroyShaderMemory(STPShaderMemory sm) {
+void STPExtendedScenePipeline::destroyShaderMemory(const STPShaderMemory sm) {
 	auto& smStorage = this->SceneMemory->ShaderMemoryStorage;
 	smStorage.erase(std::find_if(smStorage.cbegin(), smStorage.cend(),
 		[sm_ptr = const_cast<const STPShaderMemoryInternal*>(sm.Internal)](const auto& internal) { return &internal == sm_ptr; }));

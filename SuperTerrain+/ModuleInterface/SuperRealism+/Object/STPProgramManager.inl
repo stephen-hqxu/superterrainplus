@@ -6,13 +6,13 @@
 
 template<typename Uni, typename... Arg>
 SuperTerrainPlus::STPRealism::STPProgramManager& SuperTerrainPlus::STPRealism::STPProgramManager::uniform(
-	Uni&& uniform_function, const char* uni, Arg&&... args) noexcept {
+	Uni&& uniform_function, const char* const uni, Arg&&... args) noexcept {
 	return this->uniform(uniform_function, this->uniformLocation(uni), args...);
 }
 
 template<typename Uni, typename... Arg>
 SuperTerrainPlus::STPRealism::STPProgramManager& SuperTerrainPlus::STPRealism::STPProgramManager::uniform(
-	Uni&& uniform_function, STPOpenGL::STPint location, Arg&&... args) noexcept {
+	Uni&& uniform_function, const STPOpenGL::STPint location, Arg&&... args) noexcept {
 	using std::apply;
 	using std::make_tuple;
 

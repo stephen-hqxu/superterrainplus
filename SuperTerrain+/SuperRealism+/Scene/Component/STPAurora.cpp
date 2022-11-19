@@ -74,7 +74,7 @@ void STPAurora::setAurora(const STPEnvironment::STPAuroraSetting& aurora_setting
 		.uniform(glProgramUniform1ui, "TriNoise.Oct", tri_noise.Octave);
 }
 
-void STPAurora::updateAnimationTimer(double second) {
+void STPAurora::updateAnimationTimer(const double second) {
 	this->AuroraBox.SkyboxRenderer.uniform(glProgramUniform1f, this->AuroraTimeLocation, static_cast<float>(second));
 }
 

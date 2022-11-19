@@ -17,7 +17,7 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
 
-void STPPipelineManager::STPPipelineDeleter::operator()(STPOpenGL::STPuint pipeline) const noexcept {
+void STPPipelineManager::STPPipelineDeleter::operator()(const STPOpenGL::STPuint pipeline) const noexcept {
 	glDeleteProgramPipelines(1u, &pipeline);
 }
 
@@ -27,7 +27,7 @@ inline static GLuint createOnePipeline() noexcept {
 	return pipeline;
 }
 
-STPPipelineManager::STPPipelineManager(const STPPipelineStage* stage_program, size_t count) : Pipeline(createOnePipeline()) {
+STPPipelineManager::STPPipelineManager(const STPPipelineStage* const stage_program, const size_t count) : Pipeline(createOnePipeline()) {
 	const GLuint pipeline = this->Pipeline.get();
 	//stage all programs
 	std::for_each_n(stage_program, count, [pipeline](const auto s_p) {
@@ -47,7 +47,7 @@ STPPipelineManager::STPPipelineManager(const STPPipelineStage* stage_program, si
 	STPLogHandler::handle(string_view(log.get(), logLength));
 }
 
-STPPipelineManager::STPPipelineManager(initializer_list<const STPPipelineStage> stage_program) :
+STPPipelineManager::STPPipelineManager(const initializer_list<const STPPipelineStage> stage_program) :
 	STPPipelineManager(std::data(stage_program), stage_program.size()) {
 
 }

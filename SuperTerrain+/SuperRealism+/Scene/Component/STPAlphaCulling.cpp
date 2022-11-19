@@ -13,7 +13,7 @@ using namespace SuperTerrainPlus::STPRealism;
 constexpr static auto AlphaCullingFilename =
 	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPAlphaCulling", ".frag");
 
-STPAlphaCulling::STPAlphaCulling(STPCullComparator comp, float limit, const STPScreen::STPScreenInitialiser& screen_init) {
+STPAlphaCulling::STPAlphaCulling(const STPCullComparator comp, const float limit, const STPScreen::STPScreenInitialiser& screen_init) {
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 	
 	Macro("ALPHA_COMPARATOR", STPAlphaCulling::comparatorString(comp));
@@ -23,8 +23,8 @@ STPAlphaCulling::STPAlphaCulling(STPCullComparator comp, float limit, const STPS
 	this->CullingQuad.OffScreenRenderer.uniform(glProgramUniform1f, "Lim", limit);
 }
 
-STPAlphaCulling::STPAlphaCulling(STPCullComparator comp1, float limit1, 
-	STPCullConnector conn, STPCullComparator comp2, float limit2, const STPScreen::STPScreenInitialiser& screen_init) {
+STPAlphaCulling::STPAlphaCulling(const STPCullComparator comp1, const float limit1, 
+	const STPCullConnector conn, const STPCullComparator comp2, const float limit2, const STPScreen::STPScreenInitialiser& screen_init) {
 	STPShaderManager::STPShaderSource::STPMacroValueDictionary Macro;
 
 	Macro("USE_DUAL_EXPRESSIONS", 1)
@@ -38,7 +38,7 @@ STPAlphaCulling::STPAlphaCulling(STPCullComparator comp1, float limit1,
 		.uniform(glProgramUniform1f, "LimB", limit2);
 }
 
-inline const char* STPAlphaCulling::comparatorString(STPCullComparator comp) {
+inline const char* STPAlphaCulling::comparatorString(const STPCullComparator comp) {
 	switch (comp) {
 	case STPCullComparator::Equal: return "=";
 	case STPCullComparator::NotEqual: return "!=";
@@ -50,7 +50,7 @@ inline const char* STPAlphaCulling::comparatorString(STPCullComparator comp) {
 	}
 }
 
-inline const char* STPAlphaCulling::connectorString(STPCullConnector conn) {
+inline const char* STPAlphaCulling::connectorString(const STPCullConnector conn) {
 	switch (conn) {
 	case STPCullConnector::And: return "&&";
 	case STPCullConnector::Or: return "||";

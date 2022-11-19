@@ -31,7 +31,7 @@ STPBidirectionalScattering::STPBidirectionalScattering(const STPScreen::STPScree
 	this->BSDFQuad.initScreenRenderer(scattering_shader, screen_init);
 
 	/* -------------------------------------- setup sampler ---------------------------------------------- */
-	auto setSampler = [](STPSampler& sampler, const auto& border) -> void {
+	const auto setSampler = [](STPSampler& sampler, const auto& border) -> void {
 		sampler.wrap(GL_CLAMP_TO_BORDER);
 		sampler.borderColor(border);
 		sampler.filter(GL_NEAREST, GL_NEAREST);
@@ -58,7 +58,7 @@ void STPBidirectionalScattering::setScattering(const STPEnvironment::STPBidirect
 		.uniform(glProgramUniform1ui, "StepSize", scattering_setting.RayStep);
 }
 
-void STPBidirectionalScattering::setCopyBuffer(uvec2 dimension) {
+void STPBidirectionalScattering::setCopyBuffer(const uvec2 dimension) {
 	//use floating point to support HDR colour
 	this->RawSceneColorCopier.setScreenBuffer(nullptr, dimension, GL_RGB16F);
 	this->RawSceneDepthCopier.setScreenBuffer(nullptr, dimension, GL_R32F);

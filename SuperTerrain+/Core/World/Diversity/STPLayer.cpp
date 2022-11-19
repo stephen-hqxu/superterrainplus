@@ -43,7 +43,7 @@ private:
 	 * @param val The value to check.
 	 * @return True if the number is power of 2.
 	*/
-	inline static bool isPow2(unsigned long long val) noexcept {
+	inline static bool isPow2(const unsigned long long val) noexcept {
 		return val && !(val & (val - 1ull));
 	}
 
@@ -52,7 +52,7 @@ private:
 	 * @param bits The power to raise.
 	 * @return The mask value.
 	*/
-	inline static unsigned long long getMask(unsigned long long bits) noexcept {
+	inline static unsigned long long getMask(const unsigned long long bits) noexcept {
 		//1 << bits is equivalent to pow(2, bits)
 		return bits >= 64ull ? ~0 : (1ull << bits) - 1ull;
 	}
@@ -64,7 +64,7 @@ private:
 	 * @param z The z world coordinate.
 	 * @return The unique hash value for this coordinate.
 	*/
-	inline static unsigned long long uniqueHash(int x, int y, int z) noexcept {
+	inline static unsigned long long uniqueHash(const int x, const int y, const int z) noexcept {
 		unsigned long long hash = static_cast<unsigned long long>(x) & getMask(28ull);
 		hash |= (static_cast<unsigned long long>(z) & getMask(28ull)) << 28ull;
 		hash |= (static_cast<unsigned long long>(y) & getMask(8ull)) << 56ull;
@@ -92,7 +92,7 @@ public:
 	 * @param layer The dependent layer.
 	 * @param capacity The capacity of the cache, it must be power of 2.
 	*/
-	STPLayerCache(STPLayer& layer, size_t capacity) :
+	STPLayerCache(STPLayer& layer, const size_t capacity) :
 		Layer(layer), Key(make_unique<unsigned long long[]>(capacity)), Value(make_unique<Sample[]>(capacity)),
 		Mask(capacity - 1ull) {
 		if (!isPow2(capacity)) {
@@ -121,7 +121,7 @@ public:
 	 * @param z THe Z world coordinate.
 	 * @return The sample value at the current coordinate.
 	*/
-	inline Sample get(int x, int y, int z) {
+	inline Sample get(const int x, const int y, const int z) {
 		//calculate the key
 		const unsigned long long key = uniqueHash(x, y, z);
 		//locate the index in our hash table
@@ -159,12 +159,12 @@ public:
 
 };
 
-STPLayer::STPLocalSampler::STPLocalSampler(Seed layer_seed, Seed local_seed) noexcept :
+STPLayer::STPLocalSampler::STPLocalSampler(const Seed layer_seed, const Seed local_seed) noexcept :
 	LayerSeed(layer_seed), LocalSeed(local_seed) {
 
 }
 
-Sample STPLayer::STPLocalSampler::nextValue(Sample range) const noexcept {
+Sample STPLayer::STPLocalSampler::nextValue(const Sample range) const noexcept {
 	//Please do not use standard library rng, it will trash the performance
 	
 	//the original Minecraft implementation uses floorMod, which produces the same result as "%" when both inputs have the same sign
@@ -175,16 +175,16 @@ Sample STPLayer::STPLocalSampler::nextValue(Sample range) const noexcept {
 	return val;
 }
 
-Sample STPLayer::STPLocalSampler::choose(Sample var1, Sample var2) const noexcept {
+Sample STPLayer::STPLocalSampler::choose(const Sample var1, const Sample var2) const noexcept {
 	return this->nextValue(2u) == 0u ? var1 : var2;
 }
 
-Sample STPLayer::STPLocalSampler::choose(Sample var1, Sample var2, Sample var3, Sample var4) const noexcept {
+Sample STPLayer::STPLocalSampler::choose(const Sample var1, const Sample var2, const Sample var3, const Sample var4) const noexcept {
 	const Sample i = this->nextValue(4u);
 	return i == 0u ? var1 : i == 1u ? var2 : i == 2u ? var3 : var4;
 }
 
-STPLayer::STPLayer(size_t ascendant_count, size_t cache_size, Seed global_seed, Seed salt) :
+STPLayer::STPLayer(const size_t ascendant_count, const size_t cache_size, const Seed global_seed, const Seed salt) :
 	AscendantCount(ascendant_count),
 	Ascendant(this->AscendantCount == 0u ? nullptr : make_unique<STPLayer*[]>(this->AscendantCount)), Salt(salt),
 	LayerSeed(STPLayer::seedLayer(global_seed, salt)) {
@@ -196,7 +196,7 @@ STPLayer::STPLayer(size_t ascendant_count, size_t cache_size, Seed global_seed, 
 
 STPLayer::~STPLayer() = default;
 
-Seed STPLayer::seedLayer(Seed global_seed, Seed salt) noexcept {
+Seed STPLayer::seedLayer(const Seed global_seed, const Seed salt) noexcept {
 	Seed midSalt = STPLayer::mixSeed(salt, salt);
 	midSalt = STPLayer::mixSeed(midSalt, midSalt);
 	midSalt = STPLayer::mixSeed(midSalt, midSalt);
@@ -206,7 +206,7 @@ Seed STPLayer::seedLayer(Seed global_seed, Seed salt) noexcept {
 	return layer_seed;
 }
 
-Seed STPLayer::seedLocal(int x, int z) const noexcept {
+Seed STPLayer::seedLocal(const int x, const int z) const noexcept {
 	Seed local_seed = STPLayer::mixSeed(this->LayerSeed, x);
 	local_seed = STPLayer::mixSeed(local_seed, z);
 	local_seed = STPLayer::mixSeed(local_seed, x);
@@ -214,7 +214,7 @@ Seed STPLayer::seedLocal(int x, int z) const noexcept {
 	return local_seed;
 }
 
-STPLayer::STPLayer(size_t cache_size, Seed global_seed, Seed salt) : STPLayer(0u, cache_size, global_seed, salt) {
+STPLayer::STPLayer(const size_t cache_size, const Seed global_seed, const Seed salt) : STPLayer(0u, cache_size, global_seed, salt) {
 	
 }
 
@@ -223,21 +223,21 @@ size_t STPLayer::cacheSize() const noexcept {
 	return this->Cache ? this->Cache->capacity() : 0u ;
 }
 
-STPLayer::STPLocalSampler STPLayer::createLocalSampler(Seed local_seed) const noexcept {
+STPLayer::STPLocalSampler STPLayer::createLocalSampler(const Seed local_seed) const noexcept {
 	return STPLayer::STPLocalSampler(this->LayerSeed, local_seed);
 }
 
-STPLayer::STPLocalSampler STPLayer::createLocalSampler(int x, int z) const noexcept {
+STPLayer::STPLocalSampler STPLayer::createLocalSampler(const int x, const int z) const noexcept {
 	return this->createLocalSampler(this->seedLocal(x, z));
 }
 
-Seed STPLayer::mixSeed(Seed s, long long fac) noexcept {
+Seed STPLayer::mixSeed(Seed s, const long long fac) noexcept {
 	s *= s * 6364136223846793005ull + 1442695040888963407ull;
 	s += fac;
 	return s;
 }
 
-Sample STPLayer::retrieve(int x, int y, int z) {
+Sample STPLayer::retrieve(const int x, const int y, const int z) {
 	if (!this->Cache) {
 		//this layer has no cache
 		return this->sample(x, y, z);
@@ -247,7 +247,7 @@ Sample STPLayer::retrieve(int x, int y, int z) {
 	return this->Cache->get(x, y, z);
 }
 
-STPLayer* STPLayer::getAscendant(size_t index) const noexcept {
+STPLayer* STPLayer::getAscendant(const size_t index) const noexcept {
 	return index < this->AscendantCount ? this->Ascendant[index] : nullptr;
 }
 

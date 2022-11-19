@@ -32,7 +32,7 @@ STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSk
 	this->StarfieldBox.SkyboxRenderer.uniform(glProgramUniformHandleui64ARB, "StarColorSpectrum", this->StarlightSpectrum.spectrumHandle());
 }
 
-void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starfield_setting, unsigned int rng_seed) {
+void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starfield_setting, const unsigned int rng_seed) {
 	starfield_setting.validate();
 
 	this->StarfieldBox.SkyboxRenderer.uniform(glProgramUniform1f, "Star.iLklh", starfield_setting.InitialLikelihood)
@@ -47,7 +47,7 @@ void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starf
 		.uniform(glProgramUniform1ui, "RandomSeed", rng_seed);
 }
 
-void STPStarfield::updateAnimationTimer(double second) {
+void STPStarfield::updateAnimationTimer(const double second) {
 	this->StarfieldBox.SkyboxRenderer.uniform(glProgramUniform1f, this->ShineTimeLocation, static_cast<float>(second));
 }
 
