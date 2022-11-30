@@ -6,8 +6,6 @@
 #include <SuperTerrain+/STPOpenGL.h>
 
 #include "../Environment/STPChunkSetting.h"
-//Chunk
-#include "./Chunk/STPChunk.h"
 //World Generator
 #include "./Diversity/STPBiomeFactory.h"
 #include "./Chunk/STPHeightfieldGenerator.h"
@@ -19,9 +17,6 @@
 
 //System
 #include <memory>
-
-//CUDA
-#include <cuda_runtime.h>
 
 namespace SuperTerrainPlus {
 
@@ -56,16 +51,12 @@ namespace SuperTerrainPlus {
 		enum class STPWorldLoadStatus : unsigned char {
 			//The centre chunk location has no change, no operation is performed.
 			Unchanged = 0x00u,
-			//The centre chunk location has changed, and operation is already in progress.
-			//The user can keep using the front buffer without being affected.
+			//The back buffer is current busy on generation operations.
+			//The user can keep using the front buffer without being affected, this chunk loading request is ignored.
 			BackBufferBusy = 0x01u,
 			//Since last time the world is requested to reload, some operations have been finished.
 			//Back and front buffer has been swapped with the new information loaded.
-			Swapped = 0x02u,
-			//There is already a pending chunk loading requesting and back buffer is still in used.
-			//No more vacant buffer to perform asynchronous operation for another task.
-			//This new request is then ignored.
-			BufferExhaust = 0xFFu
+			Swapped = 0x02u
 		};
 
 		/**
@@ -106,9 +97,7 @@ namespace SuperTerrainPlus {
 		class STPMemoryManager;
 		std::unique_ptr<STPMemoryManager> Memory;
 
-		//we do this in a little cheaty way, that if the chunk is loaded the first time this make sure the
-		//currentCentralPos is different from this value the last world position of the central chunk of the entire
-		//visible chunks
+		//The centre chunk world coordinate last time the map loader worked on.
 		glm::ivec2 LastCentreLocation;
 
 		//async chunk loader
@@ -148,16 +137,6 @@ namespace SuperTerrainPlus {
 		 * How the function should behave is indicated by the load status returned.
 		*/
 		STPWorldLoadStatus load(const glm::dvec3&);
-
-		/**
-		 * @brief Change the rendering chunk status to force reload terrain map onto the GL texture memory.
-		 * If chunk position is not in the rendering range, command is ignored.
-		 * It will insert current chunk into reloading queue and chunk will not be reloaded until the next rendering loop.
-		 * When the rendering chunks are changed, all unprocessed queries are discarded as all new rendering chunks are reloaded regardless.
-		 * @param chunkCoord The world coordinate of the chunk required for reloading
-		 * @return True if query has been submitted successfully, false if chunk is not in the rendering range or the same query has been submitted before.
-		*/
-		bool reload(const glm::ivec2&);
 
 		/**
 		 * @brief Get the current world position of the central chunk.

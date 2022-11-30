@@ -1,7 +1,6 @@
 #include <SuperTerrain+/World/Chunk/STPChunk.h>
 
 #include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 #include <glm/common.hpp>
 
@@ -12,139 +11,79 @@ using glm::dvec3;
 
 using std::unique_ptr;
 using std::make_unique;
-using std::ostream;
-using std::istream;
-using std::ios_base;
 
 using namespace SuperTerrainPlus;
+using STPDiversity::Sample;
 
-void STPChunk::STPChunkUnoccupier::operator()(STPChunk* chunk) const {
-	//release the chunk lock
-	chunk->markOccupancy(false);
-}
-
-template<bool Unique>
-STPChunk::STPMapVisitor<Unique>::STPMapVisitor(STPChunk& chunk) noexcept(!Unique) : Chunk(nullptr) {
-	if constexpr (Unique) {
-		if (chunk.occupied()) {
-			throw STPException::STPMemoryError("It is not allowed to have multiple alive unique chunk visitor at a time");
-		}
-		//initialise a unique visitor which will mark the chunk as free automatically.
-		this->Chunk = unique_ptr<STPChunk, STPChunkUnoccupier>(&chunk);
-		this->Chunk->markOccupancy(true);
-	} else {
-		//initialise a shared visitor
-		this->Chunk = &chunk;
-	}
-}
-
-template<bool Unique>
-template<typename T>
-auto* STPChunk::STPMapVisitor<Unique>::getMapSafe(const unique_ptr<T[]>& map) const noexcept(Unique) {
-	if constexpr (!Unique) {
-		if (this->Chunk->occupied()) {
-			throw STPException::STPMemoryError("Access to chunk map via a shared visitor while a unique visitor is alive is prohibited");
-		}
-	}
-	return map.get();
-}
-
-template<bool Unique>
-float* STPChunk::STPMapVisitor<Unique>::heightmap() noexcept(Unique) {
-	return const_cast<float*>(const_cast<const STPMapVisitor<Unique>*>(this)->heightmap());
-}
-
-template<bool Unique>
-const float* STPChunk::STPMapVisitor<Unique>::heightmap() const noexcept(Unique) {
-	return this->getMapSafe(this->Chunk->Heightmap);
-}
-
-template<bool Unique>
-unsigned short* STPChunk::STPMapVisitor<Unique>::heightmapBuffer() noexcept(Unique) {
-	return const_cast<unsigned short*>(const_cast<const STPMapVisitor<Unique>*>(this)->heightmapBuffer());
-}
-
-template<bool Unique>
-const unsigned short* STPChunk::STPMapVisitor<Unique>::heightmapBuffer() const noexcept(Unique) {
-	return this->getMapSafe(this->Chunk->HeightmapRenderingBuffer);
-}
-
-template<bool Unique>
-STPDiversity::Sample* STPChunk::STPMapVisitor<Unique>::biomemap() noexcept(Unique) {
-	return const_cast<STPDiversity::Sample*>(const_cast<const STPMapVisitor<Unique>*>(this)->biomemap());
-}
-
-template<bool Unique>
-const STPDiversity::Sample* STPChunk::STPMapVisitor<Unique>::biomemap() const noexcept(Unique) {
-	return this->getMapSafe(this->Chunk->Biomemap);
-}
-
-template<bool Unique>
-STPChunk* STPChunk::STPMapVisitor<Unique>::operator->() noexcept {
-	return const_cast<STPChunk*>(const_cast<const STPMapVisitor<Unique>*>(this)->operator->());
-}
-
-template<bool Unique>
-const STPChunk* STPChunk::STPMapVisitor<Unique>::operator->() const noexcept {
-	if constexpr (Unique) {
-		return this->Chunk.get();
-	} else {
-		return this->Chunk;
-	}
-}
-
-STPChunk::STPChunk(uvec2 size) : Occupied(false), State(STPChunkState::Empty), PixelSize(size) {
-	const unsigned int num_pixel = size.x * size.y;
+STPChunk::STPChunk(const uvec2 size) : MapDimension(size), Completeness(STPChunkCompleteness::Empty) {
+	const unsigned int num_pixel = this->MapDimension.x * this->MapDimension.y;
 	if (num_pixel == 0) {
 		throw STPException::STPBadNumericRange("The dimension of texture must not be zero");
 	}
 
-	//heightmap is R32F format
+	//allocate memory for each map
+	this->Biomemap = make_unique<Sample[]>(num_pixel);
 	this->Heightmap = make_unique<float[]>(num_pixel);
-	//biomemap is R16UI format
-	this->Biomemap = make_unique<STPDiversity::Sample[]>(num_pixel);
-	//rendering buffer is R16 format heightmap
-	this->HeightmapRenderingBuffer = make_unique<unsigned short[]>(num_pixel);
+	this->LowHeightmap = make_unique<unsigned short[]>(num_pixel);
 }
 
-STPChunk::~STPChunk() {
-	while (this->occupied()) {
-		//make sure the chunk is not in used, and all previous tasks are finished
-	}
-	//array deleted by smart ptr
+Sample* STPChunk::biomemap() noexcept {
+	return this->Biomemap.get();
 }
 
-void STPChunk::markOccupancy(bool val) noexcept {
-	this->Occupied = val;
+const Sample* STPChunk::biomemap() const noexcept {
+	return this->Biomemap.get();
 }
 
-bool STPChunk::occupied() const noexcept {
-	return this->Occupied;
+float* STPChunk::heightmap() noexcept {
+	return this->Heightmap.get();
 }
 
-STPChunk::STPChunkState STPChunk::chunkState() const noexcept {
-	return this->State;
+const float* STPChunk::heightmap() const noexcept {
+	return this->Heightmap.get();
 }
 
-void STPChunk::markChunkState(STPChunkState state) noexcept {
-	this->State = state;
+unsigned short* STPChunk::heightmapLow() noexcept {
+	return this->LowHeightmap.get();
 }
 
-ivec2 STPChunk::calcWorldChunkCoordinate(const dvec3& viewPos, const uvec2& chunkSize, const dvec2& scale) noexcept {
+const unsigned short* STPChunk::heightmapLow() const noexcept {
+	return this->LowHeightmap.get();
+}
+
+const ivec2* STPChunk::STPChunkNeighbourOffset::begin() const noexcept {
+	return this->NeighbourOffset.get();
+}
+
+const ivec2* STPChunk::STPChunkNeighbourOffset::end() const noexcept {
+	return this->NeighbourOffset.get() + this->NeighbourOffsetCount;
+}
+
+const ivec2& STPChunk::STPChunkNeighbourOffset::operator[](size_t idx) const noexcept {
+	return this->NeighbourOffset[idx];
+}
+
+ivec2 STPChunk::calcWorldChunkCoordinate(const dvec3& pointPos, const uvec2& chunkSize, const dvec2& scale) noexcept {
 	//scale the chunk
 	const dvec2 scaled_chunk_size = static_cast<dvec2>(chunkSize) * scale;
 	//determine which chunk unit the viewer is in, basically we are trying to round down to the chunk size.
-	const ivec2 chunk_unit = static_cast<ivec2>(glm::floor(dvec2(viewPos.x, viewPos.z) / scaled_chunk_size));
+	const ivec2 chunk_unit = static_cast<ivec2>(glm::floor(dvec2(pointPos.x, pointPos.z) / scaled_chunk_size));
 	return chunk_unit * static_cast<ivec2>(chunkSize);
 }
 
-uvec2 STPChunk::calcLocalChunkCoordinate(unsigned int chunkID, const uvec2& chunkRange) noexcept {
-	return uvec2(chunkID % chunkRange.x, chunkID / chunkRange.y);
+uvec2 STPChunk::calcLocalChunkCoordinate(const unsigned int chunkID, const uvec2& chunkRange) noexcept {
+	return uvec2(chunkID % chunkRange.x, chunkID / chunkRange.x);
+}
+
+ivec2 STPChunk::calcLocalChunkOrigin(const ivec2& centreChunkCoord, const uvec2& chunkSize, const uvec2& neighbourSize) noexcept {
+	//division by 2 to get the border width of the render distance, excluding the centre chunk
+	//moving towards the origin, need to use negative offset
+	return STPChunk::offsetChunk(centreChunkCoord, chunkSize, -static_cast<ivec2>(neighbourSize / 2u));
 }
 
 dvec2 STPChunk::calcChunkMapOffset(const ivec2& chunkCoord, const uvec2& chunkSize, const uvec2& mapSize, const dvec2& mapOffset) noexcept {
 	//chunk coordinate is a multiple of chunk size
-	const dvec2 chunk_unit = chunkCoord / static_cast<ivec2>(chunkSize);
+	const dvec2 chunk_unit = static_cast<dvec2>(chunkCoord) / static_cast<dvec2>(chunkSize);
 	return chunk_unit * static_cast<dvec2>(mapSize) + mapOffset;
 }
 
@@ -152,32 +91,21 @@ ivec2 STPChunk::offsetChunk(const ivec2& chunkCoord, const uvec2& chunkSize, con
 	return chunkCoord + static_cast<ivec2>(chunkSize) * offset;
 }
 
-STPChunk::STPChunkCoordinateCache STPChunk::calcChunkNeighbour(const ivec2& centreCoord, const uvec2& chunkSize, const uvec2& regionSize) {
-	const unsigned int num_chunk = regionSize.x * regionSize.y;
-	//We need to calculate the starting unit plane, i.e., the unit plane of the top-left corner of the entire rendered terrain
+STPChunk::STPChunkNeighbourOffset STPChunk::calcChunkNeighbourOffset(const uvec2& chunkSize, const uvec2& regionSize) {
+	//prepare memory
+	const unsigned int offset_count = regionSize.x * regionSize.y;
+	unique_ptr<ivec2[]> offset_array = make_unique<ivec2[]>(offset_count);
+
+	//We need to calculate the top-left corner of the entire neighbour
 	//We don't need y, all the plane will be aligned at the same height, so it contains x and z position
-	//Base position is negative since we want the camera locates above the centre of the entire rendered plane
-	const ivec2 base_position = STPChunk::offsetChunk(centreCoord, chunkSize, -static_cast<ivec2>(regionSize / 2u));
-
-	STPChunkCoordinateCache results;
-	results.reserve(num_chunk);
-	for (unsigned int i = 0u; i < num_chunk; i++) {
-		//Calculate the position for each chunk
-		//Note that the chunk_position is not the base chunk position, 
-		//the former one is refereed to the relative coordinate to the entire terrain, i.e., local chunk coordinate.
-		//The latter one refers to the world coordinate
-
-		//Basically it converts 1D chunk ID to 2D local chunk position, btw chunk position must be a positive integer
+	//We want the centre of centre be the centre of the entire neighbour region
+	//The centre chunk has relative offset of zero
+	const ivec2 base_position = STPChunk::calcLocalChunkOrigin(ivec2(0), chunkSize, regionSize);
+	for (unsigned int i = 0u; i < offset_count; i++) {
+		//Basically it converts 1D chunk ID to a 2D local chunk position
 		const uvec2 local_chunk_offset = STPChunk::calcLocalChunkCoordinate(i, regionSize);
-		//Then convert local to world coordinate
-		//arranged from top-left to bottom right
-		results.emplace_back(STPChunk::offsetChunk(base_position, chunkSize, local_chunk_offset));
+		//Multiply by the chunk size to get the chunk coordinate system
+		offset_array[i] = STPChunk::offsetChunk(base_position, chunkSize, local_chunk_offset);
 	}
-
-	return results;
+	return STPChunkNeighbourOffset { std::move(offset_array), offset_count };
 }
-
-//Explicit Instantiation
-#define CHUNK_VISITOR(UNI) template class STP_API STPChunk::STPMapVisitor<UNI>
-CHUNK_VISITOR(true);
-CHUNK_VISITOR(false);

@@ -26,24 +26,27 @@ using glm::vec2;
 using glm::dvec2;
 using glm::dvec3;
 
-SCENARIO("STPChunk static functions can compute chunk coordinate correctly", "[Chunk][STPChunk]") {
+using std::fill_n;
+using std::all_of;
+
+SCENARIO("STPChunk utility functions can compute chunk coordinate correctly", "[Chunk][STPChunk]") {
 
 	GIVEN("A camera position in the world and some chunk parameters") {
 		constexpr dvec3 CameraPosition = dvec3(-573.74, 679.5, 845.982);
-		constexpr uvec2 ChunkSize = uvec2(10u);
-		constexpr dvec2 ChunkScale = dvec2(25.5);
+		constexpr uvec2 ChunkSize = uvec2(8u, 5u);
+		constexpr dvec2 ChunkScale = dvec2(2.5, 4.0);
 
 		THEN("The chunk world position should be correctly calculated") {
-			constexpr ivec2 ChunkPosition = ivec2(-30, 30);
+			constexpr ivec2 ChunkPosition = ivec2(-232, 210);
 			CHECK(STPChunk::calcWorldChunkCoordinate(CameraPosition, ChunkSize, ChunkScale) == ChunkPosition);
 
 			WHEN("Trying to generate some map for a chunk with this world coordinate") {
 
 				THEN("Chunk should report the correct map offset to ensure seamless generated texture.") {
-					constexpr uvec2 MapSize = uvec2(512u);
+					constexpr uvec2 MapSize = uvec2(512u, 256u);
 					constexpr dvec2 MapOfffset = dvec2(25.5, -57.5);
 
-					constexpr dvec2 ChunkMapOffset = dvec2(-1510.5, 1478.5);
+					constexpr dvec2 ChunkMapOffset = dvec2(-14822.5, 10694.5);
 					CHECK(STPChunk::calcChunkMapOffset(ChunkPosition, ChunkSize, MapSize, MapOfffset) == ChunkMapOffset);
 				}
 
@@ -55,13 +58,13 @@ SCENARIO("STPChunk static functions can compute chunk coordinate correctly", "[C
 
 			THEN("The offset chunk world position should be correct") {
 				constexpr ivec2 OriginalChunkPosition = ivec2(30, -30);
-				constexpr ivec2 OffsetChunkPosition = ivec2(60, -50);
+				constexpr ivec2 OffsetChunkPosition = ivec2(54, -40);
 				CHECK(STPChunk::offsetChunk(OriginalChunkPosition, ChunkSize, ChunkOffset) == OffsetChunkPosition);
 			}
 		}
 
 		WHEN("Asking for a region of chunks") {
-			constexpr uvec2 RegionSize = uvec2(5u, 5u);
+			constexpr uvec2 RegionSize = uvec2(5u, 7u);
 
 			THEN("Chunk index can be converted to local coordinate") {
 				CHECK(STPChunk::calcLocalChunkCoordinate(7u, RegionSize) == uvec2(2u, 1u));
@@ -69,16 +72,19 @@ SCENARIO("STPChunk static functions can compute chunk coordinate correctly", "[C
 				CHECK(STPChunk::calcLocalChunkCoordinate(20u, RegionSize) == uvec2(0u, 4u));
 			}
 
-			THEN("All chunk world positions within this region should be correct") {
-				constexpr ivec2 ChunkCentre = ivec2(-10, 20);
+			THEN("Local chunk origin can be recovered given centre chunk coordinate") {
+				constexpr ivec2 LocalChunkCentre = ivec2(-24, 50);
+				CHECK(STPChunk::calcLocalChunkOrigin(LocalChunkCentre, ChunkSize, RegionSize) == ivec2(-40, 35));
+			}
 
-				const auto ChunkRegionPosition = STPChunk::calcChunkNeighbour(ChunkCentre, ChunkSize, RegionSize);
+			THEN("All chunk neighbour offset within this region should be correct") {
+				const auto ChunkRegionOffset = STPChunk::calcChunkNeighbourOffset(ChunkSize, RegionSize);
 				//testing every chunk position is too much, let's pick a few
-				CHECK(ChunkRegionPosition[0] == ivec2(-30, 0));
-				CHECK(ChunkRegionPosition[9] == ivec2(10, 10));
-				CHECK(ChunkRegionPosition[12] == ChunkCentre);
-				CHECK(ChunkRegionPosition[16] == ivec2(-20, 30));
-				CHECK(ChunkRegionPosition[24] == ivec2(10,40));
+				CHECK(ChunkRegionOffset[0] == ivec2(-16, -15));
+				CHECK(ChunkRegionOffset[9] == ivec2(16, -10));
+				CHECK(ChunkRegionOffset[17] == ivec2(0));
+				CHECK(ChunkRegionOffset[23] == ivec2(8, 5));
+				CHECK(ChunkRegionOffset[34] == ivec2(16, 15));
 			}
 		}
 	}
@@ -91,17 +97,13 @@ protected:
 	constexpr static unsigned int Count = Size.x * Size.y;
 
 	template<typename T>
-	static void fillValue(T* const texture, const T value) {
-		for (unsigned int y = 0u; y < ChunkTester::Size.y; y++) {
-			for (unsigned int x = 0u; x < ChunkTester::Size.x; x++) {
-				texture[x + y * ChunkTester::Size.x] = value;
-			}
-		}
+	inline static void fillValue(T* const texture, const T value) {
+		fill_n(texture, ChunkTester::Count, value);
 	}
 
 	template<typename T>
 	inline static void testMapValue(T* const map, const T reference) {
-		CHECK(std::all_of(map, map + ChunkTester::Count, [reference](auto val) { return val == reference; }));
+		CHECK(all_of(map, map + ChunkTester::Count, [reference](auto val) { return val == reference; }));
 	}
 
 public:
@@ -112,7 +114,7 @@ public:
 
 };
 
-SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk][STPChunk]") {
+SCENARIO_METHOD(ChunkTester, "STPChunk data structure stores chunk status and texture", "[Chunk][STPChunk]") {
 
 	GIVEN("An invalid chunk object with zero in any of the dimension component") {
 
@@ -123,64 +125,10 @@ SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk
 	}
 
 	GIVEN("A chunk object") {
-		constexpr auto no_state = STPChunk::STPChunkState::Empty;
 
 		THEN("New chunk should be usable and empty with fixed size") {
-			REQUIRE_FALSE(this->occupied());
-			REQUIRE(this->chunkState() == no_state);
-			REQUIRE(this->PixelSize == ChunkTester::Size);
-		}
-
-		WHEN("Try to visit the chunk") {
-			STPChunk::STPSharedMapVisitor SharedVisitor(*this);
-
-			AND_WHEN("No unique visitor is alive") {
-
-				THEN("Visit from shared visitor is allowed") {
-					REQUIRE_NOTHROW(SharedVisitor.heightmap());
-					REQUIRE_FALSE(this->occupied());
-				}
-
-				THEN("Unique visitor can be created without problem") {
-					STPChunk::STPUniqueMapVisitor UniqueVisitor(*this);
-
-					REQUIRE_NOTHROW(UniqueVisitor.biomemap());
-					REQUIRE(this->occupied());
-				}
-
-			}
-			
-			AND_WHEN("Unique visitor is alive") {
-				STPChunk::STPUniqueMapVisitor UniqueVisitor(*this);
-				REQUIRE(this->occupied());
-
-				THEN("Visit from shared visitor is prohibited") {
-					REQUIRE_THROWS_AS(SharedVisitor.heightmapBuffer(), STPException::STPMemoryError);
-				}
-
-				THEN("Multiple alive unique visitor is not allowed") {
-					REQUIRE_THROWS_AS([this]() {
-						STPChunk::STPUniqueMapVisitor UniqueVisitor(*this);
-					}(), STPException::STPMemoryError);
-				}
-
-			}
-
-		}
-
-		WHEN("Changing the chunk status flags") {
-
-			THEN("Chunk state can be changed randomly") {
-				const auto target_state = GENERATE(values({
-					STPChunk::STPChunkState::BiomemapReady, 
-					STPChunk::STPChunkState::HeightmapReady, 
-					STPChunk::STPChunkState::Complete
-				}));
-				//change chunk status
-				this->markChunkState(target_state);
-				REQUIRE(this->chunkState() == target_state);
-			}
-
+			REQUIRE(this->Completeness == STPChunk::STPChunkCompleteness::Empty);
+			REQUIRE(this->MapDimension == ChunkTester::Size);
 		}
 
 		AND_GIVEN("Some texture values") {
@@ -189,16 +137,14 @@ SCENARIO_METHOD(ChunkTester, "STPChunk stores chunk status and texture", "[Chunk
 			constexpr unsigned short buffer_value = 123u;
 
 			WHEN("Trying to write some data into the texture") {
-				STPChunk::STPUniqueMapVisitor Visitor(*this);
-
-				ChunkTester::fillValue(Visitor.heightmap(), float_value);
-				ChunkTester::fillValue(Visitor.biomemap(), biome_value);
-				ChunkTester::fillValue(Visitor.heightmapBuffer(), buffer_value);
+				ChunkTester::fillValue(this->heightmap(), float_value);
+				ChunkTester::fillValue(this->biomemap(), biome_value);
+				ChunkTester::fillValue(this->heightmapLow(), buffer_value);
 
 				THEN("Value can be retrieved without being corrupted") {
-					ChunkTester::testMapValue(Visitor.heightmap(), float_value);
-					ChunkTester::testMapValue(Visitor.biomemap(), biome_value);
-					ChunkTester::testMapValue(Visitor.heightmapBuffer(), buffer_value);
+					ChunkTester::testMapValue(this->heightmap(), float_value);
+					ChunkTester::testMapValue(this->biomemap(), biome_value);
+					ChunkTester::testMapValue(this->heightmapLow(), buffer_value);
 				}
 			}
 		}

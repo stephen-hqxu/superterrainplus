@@ -3,6 +3,8 @@
 //Noise Generator
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceObject.h>
 #include <SuperRealism+/Utility/STPRandomTextureGenerator.cuh>
+//Chunk
+#include <SuperTerrain+/World/Chunk/STPChunk.h>
 
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
@@ -222,8 +224,7 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 dvec2 STPHeightfieldTerrain::calcBaseChunkPosition(const dvec2 horizontal_offset) {
 	const STPEnvironment::STPChunkSetting& chunk_settings = this->TerrainGenerator.ChunkSetting;
 	//calculate offset
-	const ivec2 chunk_offset = -static_cast<ivec2>(chunk_settings.RenderDistance / 2u),
-		base_chunk_coord = STPChunk::offsetChunk(ivec2(0), chunk_settings.ChunkSize, chunk_offset);
+	const ivec2 base_chunk_coord = STPChunk::calcLocalChunkOrigin(ivec2(0), chunk_settings.ChunkSize, chunk_settings.RenderDistance);
 
 	return static_cast<dvec2>(base_chunk_coord) + horizontal_offset;
 }

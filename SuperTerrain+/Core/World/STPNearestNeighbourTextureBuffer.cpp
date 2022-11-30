@@ -1,4 +1,6 @@
 #include <SuperTerrain+/World/Chunk/STPNearestNeighbourTextureBuffer.h>
+//Chunk
+#include <SuperTerrain+/World/Chunk/STPChunk.h>
 
 //CUDA
 #include <cuda_runtime.h>
@@ -89,14 +91,17 @@ void STPNearestNeighbourTextureBuffer<T, MM>::STPMergedBuffer::copyNeighbourText
 		}
 		return;
 	}
-	const unsigned int neighbour_chunk_row = chunk_nn.x,
-		pixel_per_row_chunk = info.TotalMapSize.x * info.MapSize.y;
 
 	const size_t map_row_size = info.MapSize.x * sizeof(T),
-		total_row_size = map_row_size * neighbour_chunk_row;
+		total_row_size = map_row_size * chunk_nn.x;
 	//copy with free-slip logic using 2D copy
 	for (unsigned int i = 0u; i < neighbour_count; i++) {
-		const unsigned int offset = info.MapSize.x * (i % neighbour_chunk_row) + pixel_per_row_chunk * (i / neighbour_chunk_row);
+		//the local coordinate of the current chunk
+		const uvec2 local_offset = STPChunk::calcLocalChunkCoordinate(i, chunk_nn),
+			//the pixel coordinate at the top-left corner of the current chunk
+			local_pixel_offset = info.MapSize * local_offset;
+		//convert that to linear offset
+		const unsigned int offset = local_pixel_offset.x + local_pixel_offset.y * info.TotalMapSize.x;
 
 		if constexpr (Pack) {
 			STP_CHECK_CUDA(cudaMemcpy2DAsync(host_accumulator + offset, total_row_size, neighbour_texture[i],

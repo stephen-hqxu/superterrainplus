@@ -1,9 +1,12 @@
 #include <SuperTerrain+/World/STPWorldPipeline.h>
 
+//Data Structure
+#include <SuperTerrain+/World/Chunk/STPChunk.h>
+#include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
+
 //Error Handling
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPAsyncGenerationError.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
 
 //Hasher
 #include <SuperTerrain+/Utility/STPHashCombine.h>
@@ -18,16 +21,16 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <array>
-#include <list>
 #include <queue>
-#include <optional>
+//Thread
+#include <future>
 
 #include <utility>
+#include <iterator>
 #include <limits>
 #include <algorithm>
-#include <sstream>
-#include <shared_mutex>
 #include <type_traits>
+#include <cassert>
 
 //GLM
 using glm::ivec2;
@@ -37,324 +40,572 @@ using glm::dvec2;
 using glm::dvec3;
 
 using std::array;
-using std::list;
-using std::optional;
 using std::pair;
-using std::queue;
 using std::unordered_map;
+using std::unordered_multimap;
 using std::unordered_set;
 using std::vector;
-using std::unique_ptr;
+using std::queue;
+using std::priority_queue;
 
-using std::exception_ptr;
+using std::unique_ptr;
 using std::future;
-using std::mutex;
-using std::shared_lock;
-using std::shared_mutex;
-using std::unique_lock;
+using std::numeric_limits;
 
 using std::for_each;
-using std::make_pair;
-using std::make_optional;
+using std::transform;
 using std::make_unique;
-using std::nullopt;
+using std::make_pair;
+using std::as_const;
+using std::back_inserter;
 
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
 
-//Used by STPGeneratorManager for storing asynchronous exceptions
-#define STORE_EXCEPTION(FUN) try { \
-	FUN; \
-} \
-catch (...) { \
-	{ \
-		unique_lock<shared_mutex> newExceptionLock(this->ExceptionStorageLock); \
-		this->ExceptionStorage.emplace(std::current_exception()); \
-	} \
-}
-
 #define TERRAIN_MAP_INDEX(M) static_cast<std::underlying_type_t<STPWorldPipeline::STPTerrainMapType>>(M)
 
-/**
- * @brief The hash function for the glm::ivec2
- */
-struct STPHashivec2 {
-public:
+namespace {
+	/**
+	 * @brief The hash function for the glm::ivec2
+	 */
+	struct STPHashivec2 {
+	public:
 
-	inline size_t operator()(const ivec2& position) const noexcept {
-		//combine hash
-		return STPHashCombine::combine(0u, position.x, position.y);
-	}
+		inline size_t operator()(const ivec2& position) const noexcept {
+			//combine hash
+			return STPHashCombine::combine(0u, position.x, position.y);
+		}
 
-};
+	};
+}
 
 class STPWorldPipeline::STPGeneratorManager {
 private:
 
-	unordered_map<ivec2, STPChunk, STPHashivec2> ChunkCache;
+	//create a new array of pointers containing exact number of neighbour entry
+	struct STPNeighbourArrayCreator {
+	public:
 
-	//all terrain map generators
-	STPBiomeFactory& generateBiomemap;
-	STPHeightfieldGenerator& generateHeightfield;
+		const size_t NeighbourCount;
 
-public:
+		/**
+		 * @brief Create a new neighbour array.
+		 * @param neighbour The number of neighbour.
+		*/
+		STPNeighbourArrayCreator(const uvec2 neighbour) noexcept : NeighbourCount(neighbour.x * neighbour.y) {
 
-	STPTextureFactory& generateSplatmap;
+		}
 
-private:
+		~STPNeighbourArrayCreator() = default;
 
-	//Specifies the type of the current pass in the recursive neighbour checking function.
-	enum class STPRecursiveNeighbourCheckingPass : unsigned char {
-		BiomemapPass = 0x01u,
-		HeightmapPass = 0x02u
+		inline unique_ptr<void*[]> operator()() const {
+			return make_unique<void*[]>(this->NeighbourCount);
+		}
+
 	};
 
 	STPWorldPipeline& Pipeline;
 	const STPEnvironment::STPChunkSetting& ChunkSetting;
 
-	//Store exception thrown from asynchronous execution
-	queue<exception_ptr> ExceptionStorage;
-	shared_mutex ExceptionStorageLock;
+	typedef unordered_map<ivec2, STPChunk, STPHashivec2> STPChunkDatabase;
+	typedef STPChunkDatabase::value_type STPChunkDatabaseEntry;
+	STPChunkDatabase ChunkDatabase;
 
-	//Contains pointers of chunk.
-	typedef vector<STPChunk*> STPChunkRecord;
-	//Contains visitors of chunk which guarantees unique access.
-	typedef vector<STPChunk::STPUniqueMapVisitor> STPUniqueChunkRecord;
+	/* ----------------------------------------- custom data structure --------------------------------------------------- */
+	//the schedule priority for a chunk, higher priority gets smaller schedule number.
+	typedef unsigned short STPChunkPriorityNumber;
+	//0 is a reserved number for a dummy variable, does not represent a valid priority.
+	//priority starts from the minimum number, which stands for the highest priority
+	constexpr static STPChunkPriorityNumber DummyChunkPriorityNumber = 0u,
+		MinimumChunkPriorityNumber = 1u;
 
-	typedef list<STPUniqueChunkRecord> STPUniqueChunkCache_t;
-	//A temporary storage of unique chunk map visitor to be passed to other threads.
-	//For data safety, remove the iterator from the container while accessing the underlying value;
-	STPUniqueChunkCache_t UniqueChunkCache;
-	mutex UniqueChunkCacheLock;
-	typedef STPUniqueChunkCache_t::iterator STPUniqueChunkCacheEntry;
+	//pair of priority number and chunk world coordinate
+	typedef pair<STPChunkPriorityNumber, STPChunkDatabaseEntry*> STPChunkSchedulePriority;
+	//compares the schedule priority comparator.
+	struct STPChunkScheduleComparator {
+	public:
+
+		inline bool operator()(const STPChunkSchedulePriority& left, const STPChunkSchedulePriority& right) const noexcept {
+			//smallest number (high priority) first
+			return left.first > right.first;
+		}
+
+	};
+	typedef vector<STPChunkDatabaseEntry*> STPChunkDatabaseEntryCollection;
+	//a priority queue indicating parallel computing order of chunks to ensure no race condition when chunk neighbour overlaps
+	typedef priority_queue<STPChunkSchedulePriority, vector<STPChunkSchedulePriority>, STPChunkScheduleComparator> STPChunkSchedule;
+
+	/* ------------------------------------------------- memory pool ---------------------------------------------------- */
+	const STPChunk::STPChunkNeighbourOffset DiversityNeightbourOffset, ErosionNeighbourOffset;
+	STPObjectPool<unique_ptr<void*[]>, STPNeighbourArrayCreator> DiversityNeighbourMemoryPool, ErosionNeighbourMemoryPool;
+
+	//used by function to merge neighbour chunks
+	struct STPNeighbourUnionCache {
+	public:
+
+		//chunks merged
+		STPChunkDatabaseEntryCollection UnionChunk;
+		//just a lookup table to make sure there is no duplicate entry in the array above
+		unordered_set<ivec2, STPHashivec2> UnionChunkDictionary;
+
+		void reserve(const size_t totalNeighbour) {
+			this->UnionChunk.reserve(totalNeighbour);
+			this->UnionChunkDictionary.reserve(totalNeighbour);
+		}
+
+		void clear() noexcept {
+			this->UnionChunk.clear();
+			this->UnionChunkDictionary.clear();
+		}
+
+	} HeightmapPreconditionCache, ErosionPreconditionCache, ErosionUnionCache;
+
+	//used by function to schedule chunk computation order to avoid neighbour collision
+	struct STPChunkScheduleCache {
+	public:
+
+		//all scheduled chunks including neighbours, serve as a lookup table
+		unordered_multimap<ivec2, STPChunkPriorityNumber, STPHashivec2> ChunkSchdule;
+		//see below, it is just a cache to be transferred to the actual memory to avoid reallocation.
+		STPChunkSchedule::container_type CentreScheduleCache;
+		//already scheduled centre chunks
+		STPChunkSchedule CentreSchedule;
+		//a temporary array for tracking priority numbers of all neighbours for the current chunk.
+		vector<STPChunkPriorityNumber> CurrentChunkNeighbourPriority;
+		//the dictionary for the above array to avoid duplication.
+		unordered_set<STPChunkPriorityNumber> CurrentChunkNeighbourPriorityDictionary;
+
+		void reserve(const STPChunk::STPChunkNeighbourOffset& offset, const size_t entryCount) {
+			const size_t offsetCount = offset.NeighbourOffsetCount,
+				offsetEntryProduct = offsetCount * entryCount;
+
+			this->ChunkSchdule.reserve(offsetEntryProduct);
+			this->CentreScheduleCache.reserve(entryCount);
+			this->CurrentChunkNeighbourPriority.reserve(offsetCount);
+			this->CurrentChunkNeighbourPriorityDictionary.reserve(offsetCount);
+		}
+
+		void clear() noexcept {
+			this->ChunkSchdule.clear();
+			this->CentreScheduleCache.clear();
+			//by design of our algorithm all tasks should be completed so the schedule should be empty
+			assert(this->CentreSchedule.empty());
+			this->CurrentChunkNeighbourPriority.clear();
+			this->CurrentChunkNeighbourPriorityDictionary.clear();
+		}
+
+	} ErosionScheduleCache;
+
+	//used by function to request chunks
+	struct {
+	public:
+
+		//corresponded entry in the chunk database for each request if they are not usable yet
+		STPChunkDatabaseEntryCollection UnfinishedEntry;
+
+		void reserve(const size_t entryCount) {
+			this->UnfinishedEntry.reserve(entryCount);
+		}
+
+		void clear() noexcept {
+			this->UnfinishedEntry.clear();
+		}
+
+	} ChunkRequestCache;
+	
+	//all generation functions share this future, and we guarantee the generations will be finished by the end of each function
+	queue<future<void>> GenerationFuture;
+	/* ----------------------------------------------------------------------------------------------------------------- */
+
+	//all terrain map generators
+	STPBiomeFactory& BiomemapGenerator;
+	STPHeightfieldGenerator& HeightfieldGenerator;
+
+public:
+
+	STPTextureFactory& SplatmapGenerator;
+
+private:
 
 	STPThreadPool GeneratorWorker;
 
 	/**
-	 * @brief Calculate the chunk offset such that the transition of each chunk is seamless
-	 * @param chunkCoord The world coordinate of the chunk
+	 * @brief Calculate the offset of generated map such that the transition of each chunk is seamless.
+	 * @param chunkCoord The world coordinate of the chunk.
 	 * @return The chunk offset in world coordinate.
 	*/
-	inline dvec2 calcOffset(const ivec2& chunkCoord) const noexcept {
+	inline dvec2 calcMapOffset(const ivec2& chunkCoord) const noexcept {
 		const STPEnvironment::STPChunkSetting& chk_config = this->ChunkSetting;
 		return STPChunk::calcChunkMapOffset(chunkCoord, chk_config.ChunkSize, chk_config.MapSize, chk_config.MapOffset);
 	}
 
 	/**
-	 * @brief Convert a list of chunks into unique visitors.
-	 * Unique visitors are cached into an internal memory.
-	 * @param chunk An array of pointers to chunk.
-	 * @return An array of unique visitor cache entry.
-	 * To obtain the raw unique visitor:
-	 * @see ownUniqueChunk()
+	 * @brief Calculate the relative offset of all neighbours regarding a centre chunk.
+	 * @param region_size The size of the region.
+	 * @return The chunk neighbour offset.
 	*/
-	inline STPUniqueChunkCacheEntry cacheUniqueChunk(const STPChunkRecord& chunk) {
-		unique_lock<mutex> cache_lock(this->UniqueChunkCacheLock);
+	inline STPChunk::STPChunkNeighbourOffset calcNeighbourOffset(const ivec2 region_size) const {
+		return STPChunk::calcChunkNeighbourOffset(this->ChunkSetting.ChunkSize, region_size);
+	}
 
-		STPUniqueChunkRecord& visitor_entry = this->UniqueChunkCache.emplace_back();
-		visitor_entry.reserve(chunk.size());
+	/**
+	 * @brief Block and wait for all tasks in the generation task queue.
+	*/
+	void waitAllGenerationTasks() {
+		while (!this->GenerationFuture.empty()) {
+			//wait for the task to finish then pop
+			this->GenerationFuture.front().get();
+			this->GenerationFuture.pop();
+		}
+	}
+
+	/**
+	 * @brief Find the union of all neighbours of given chunks.
+	 * @tparam Pred A function to decide if the current neighbour should be merged.
+	 * @param chunk_entry A range of chunks to be merged.
+	 * @param neighbour_offset The range of neighbour offset for each chunk.
+	 * @param union_cache The cache memory for storing intermediate data for this operation
+	 * to avoid repetitive memory allocation.
+	 * @param predicate For a input chunk, return true to put this chunk into the union.
+	 * Otherwise it will be ignored.
+	 * @return A union of the input chunk entry with no duplicate.
+	*/
+	template<class Pred>
+	const STPChunkDatabaseEntryCollection& unionChunkNeighbour(const STPChunkDatabaseEntryCollection& chunk_entry,
+		const STPChunk::STPChunkNeighbourOffset& neighbour_offset, STPNeighbourUnionCache& union_cache, Pred&& predicate) {
+		union_cache.clear();
+		auto& [chunk_neighbour_union, chunk_neighbour_union_dict] = union_cache;
 		
-		std::transform(chunk.cbegin(), chunk.cend(), std::back_inserter(visitor_entry), [](auto* chk) {
-			//create a unique visitor and insert into cache
-			return STPChunk::STPUniqueMapVisitor(*chk);
-		});
-
-		return --this->UniqueChunkCache.end();
-	}
-
-	/**
-	 * @brief Convert a unique chunk visitor to an owning state.
-	 * @param entry The iterators to lookup the visitor in the cache entry.
-	 * It will remove this visitor from the internal cache such that the iterator will become invalid after return of this function.
-	 * @return The unique map visitor.
-	*/
-	inline STPUniqueChunkRecord ownUniqueChunk(STPUniqueChunkCacheEntry entry) {
-		unique_lock<mutex> cache_lock(this->UniqueChunkCacheLock);
-
-		//own the visitor
-		STPUniqueChunkRecord rec = std::move(*entry);
-		//remove the iterator from the container
-		this->UniqueChunkCache.erase(entry);
-
-		return rec;
-	}
-
-	/**
-	 * @brief Dispatch compute for heightmap, the heightmap result will be written back to the storage
-	 * @param current_chunk The maps for the chunk
-	 * @param neighbour_chunk The maps of the chunks that require to be used for biome-edge interpolation during heightmap generation,
-	 * require the central chunk and neighbour chunks arranged in row-major flavour. The central chunk should also be included.
-	 * @param chunkCoord The world coordinate of the chunk
-	*/
-	inline void computeHeightmap(STPChunk::STPUniqueMapVisitor& current_chunk, STPUniqueChunkRecord& neighbour_chunk, const ivec2& chunkCoord) {
-		//put array of biomemap pointers to a memory
-		const unique_ptr<const Sample*[]> biomemap = make_unique<const Sample*[]>(neighbour_chunk.size());
-
-		std::transform(neighbour_chunk.cbegin(), neighbour_chunk.cend(), biomemap.get(), [](const auto& chk) { return chk.biomemap(); });
-
-		this->generateHeightfield.generate(current_chunk.heightmap(), biomemap.get(), static_cast<vec2>(this->calcOffset(chunkCoord)));
-	}
-
-	/**
-	 * @brief Dispatch compute for hydraulic erosion, normalmap compute and formatting, requires heightmap presenting in the chunk
-	 * @param neighbour_chunk The maps of the chunks that require to be eroded, require the central chunk and neighbour chunks
-	 * arranged in row-major flavour. The central chunk should also be included.
-	*/
-	inline void computeErosion(STPUniqueChunkRecord& neighbour_chunk) {
-		const size_t neightbour_count = neighbour_chunk.size();
-		const unique_ptr<float*[]> heightmap = make_unique<float*[]>(neightbour_count);
-		const unique_ptr<unsigned short*[]> heightmap_low = make_unique<unsigned short*[]>(neightbour_count);
-
-		for (size_t i = 0u; i < neightbour_count; i++) {
-			STPChunk::STPUniqueMapVisitor& curr_chunk = neighbour_chunk[i];
-			heightmap[i] = curr_chunk.heightmap();
-			heightmap_low[i] = curr_chunk.heightmapBuffer();
-		}
-
-		this->generateHeightfield.erode(heightmap.get(), heightmap_low.get());
-	}
-
-	/**
-	 * @brief Recursively prepare neighbour chunks for the central chunk.
-	 * The first recursion will prepare neighbour biomemap for heightmap generation.
-	 * The second recursion will prepare neighbour heightmap for erosion.
-	 * @param chunkCoord The coordinate to the chunk which should be prepared.
-	 * @param Pass Please leave this empty, this is the recursion depth and will be managed properly
-	 * @return If all neighbours are ready to be used, true is returned.
-	 * If any neighbour is not ready (being used by other threads or neighbour is not ready and compute is launched), return false
-	*/
-	template<STPRecursiveNeighbourCheckingPass Pass = STPRecursiveNeighbourCheckingPass::HeightmapPass>
-	const optional<STPChunk::STPSharedMapVisitor> recNeighbourChecking(const ivec2& chunkCoord) {
-		using std::move;
-		{
-			STPChunk::STPChunkState expected_state = STPChunk::STPChunkState::Empty;
-			if constexpr (Pass == STPRecursiveNeighbourCheckingPass::BiomemapPass) {
-				expected_state = STPChunk::STPChunkState::HeightmapReady;
-			} else if constexpr (Pass == STPRecursiveNeighbourCheckingPass::HeightmapPass) {
-				expected_state = STPChunk::STPChunkState::Complete;
-			}
-			if (auto center = this->ChunkCache.find(chunkCoord);
-				center != this->ChunkCache.end() && center->second.chunkState() >= expected_state) {
-				if (center->second.occupied()) {
-					//central chunk is in-used, do not proceed.
-					return nullopt;
+		//for each generating chunk, and for each of their neighbours...
+		for (const auto entry : chunk_entry) {
+			const ivec2 chunk_coord = entry->first;
+			//find each neighbour from the database
+			for (const auto neighbour_coord_offset : neighbour_offset) {
+				//convert offset to the absolute coordinate of a chunk
+				const ivec2 neighbour_coord = chunk_coord + neighbour_coord_offset;
+				
+				//find chunk from the database, or create a new one
+				auto& curr_db_entry = *this->ChunkDatabase.try_emplace(neighbour_coord, this->ChunkSetting.MapSize).first;
+				//status checking
+				if (std::forward<Pred>(predicate)(curr_db_entry) && chunk_neighbour_union_dict.emplace(neighbour_coord).second) {
+					//chunk passes the predicate and it is a newly encountered neighbour
+					chunk_neighbour_union.emplace_back(&curr_db_entry);
 				}
-				//no need to continue if centre chunk is available
-				//since the centre chunk might be used as a neighbour chunk later, we only return boolean instead of a pointer
-				//after checkChunk() is performed for every chunks, we can grab all pointers and check for occupancy in other functions.
-				return make_optional<STPChunk::STPSharedMapVisitor>(center->second);
 			}
 		}
-		auto biomemap_computer = [this](STPUniqueChunkCacheEntry chunk_entry, dvec2 offset) -> void {
-			//own the unique chunk visitor
-			STPChunk::STPUniqueMapVisitor chunk = move(this->ownUniqueChunk({ chunk_entry }).front());
+		assert(chunk_neighbour_union.size() == chunk_neighbour_union_dict.size());
+		return chunk_neighbour_union;
+	}
 
-			//since biomemap is discrete, we need to round the pixel
-			STORE_EXCEPTION(this->generateBiomemap(chunk.biomemap(), static_cast<ivec2>(glm::round(offset))))
-			
-			//computation was successful
-			chunk->markChunkState(STPChunk::STPChunkState::BiomemapReady);
-			//chunk will be unlocked automatically by unique visitor
-		};
-		auto heightmap_computer = [this](STPUniqueChunkCacheEntry neighbours_entry, ivec2 coordinate) -> void {
-			STPUniqueChunkRecord neighbours = this->ownUniqueChunk(neighbours_entry);
-			//the centre chunk is always at the middle of all neighbours
-			STPChunk::STPUniqueMapVisitor& centre = neighbours[neighbours.size() / 2u];
+	//An overload without predicate, and it finds the union of all chunk neighbours
+	//@see unionChunkNeighbour
+	const STPChunkDatabaseEntryCollection& unionChunkNeighbour(const STPChunkDatabaseEntryCollection& ce,
+		const STPChunk::STPChunkNeighbourOffset& no, STPNeighbourUnionCache& uc) {
+		return this->unionChunkNeighbour(ce, no, uc, [](const auto&) { return true; });
+	}
 
-			STORE_EXCEPTION(this->computeHeightmap(centre, neighbours, coordinate))
-				
-			//computation was successful
-			centre->markChunkState(STPChunk::STPChunkState::HeightmapReady);
-		};
-		auto erosion_computer = [this](STPUniqueChunkCacheEntry neighbours_entry) -> void {
-			STPUniqueChunkRecord neighbours = this->ownUniqueChunk(neighbours_entry);
+	/**
+	 * @brief Attempt to verify preconditions for neighbours of all given chunks in any generation process, given an expected state.
+	 * @param chunk_entry A range of chunks to be checked.
+	 * @param neighbour_offset The range of neighbour offset for each chunk.
+	 * @param expected_state The state for each neighbour for which, if the chunk state is less than this value, it fails the verification.
+	 * As chunk state grows progressively, a state that is no less than will be treated as pass.
+	 * @param precond_cache The cache memory for storing the intermediate data for this verification process
+	 * to avoid repetitive memory allocation.
+	 * @return A subset of the input chunk entry that does not meet the requirement.
+	*/
+	const STPChunkDatabaseEntryCollection& verifyNeighbourPrecondition(const STPChunkDatabaseEntryCollection& chunk_entry,
+		const STPChunk::STPChunkNeighbourOffset& neighbour_offset, const STPChunk::STPChunkCompleteness expected_state, STPNeighbourUnionCache& precond_cache) {
+		//put chunk into the union if it has not met the expected status
+		return this->unionChunkNeighbour(chunk_entry, neighbour_offset, precond_cache,
+			[expected_state](const auto& chunk) { return chunk.second.Completeness < expected_state; });
+	}
 
-			STORE_EXCEPTION(this->computeErosion(neighbours))
-				
-			//erosion was successful
-			//mark centre chunk complete
-			neighbours[neighbours.size() / 2u]->markChunkState(STPChunk::STPChunkState::Complete);
-		};
+	/**
+	 * @brief Schedule the parallel computation order for a given array of chunks to avoid possible neighbour overlap thus race condition.
+	 * Because each centre chunk is assigned with one thread, and neighbour chunks may overlap potentially,
+	 * for example 2 centre chunks are right next to each other so their neighbours overlap.
+	 * @param chunk_entry The range of chunk to be scheduled.
+	 * @param neighbour_offset The range of neighbour offset for each chunk.
+	 * @param schedule_cache The cache memory for storing intermediate data for chunk scheduling.
+	 * @return The schedule of each chunk.
+	 * @see STPChunkSchedule
+	*/
+	static STPChunkSchedule& scheduleChunk(const STPChunkDatabaseEntryCollection& chunk_entry, const STPChunk::STPChunkNeighbourOffset& neighbour_offset,
+		STPChunkScheduleCache& schedule_cache) {
+		schedule_cache.clear();
+		auto& [chunk_schedule, centre_schedule_cache, centre_schedule, current_neighbour_priority,
+			current_neighbour_priority_dict] = schedule_cache;
 
-		//reminder: central chunk is included in neighbours
-		const STPEnvironment::STPChunkSetting& chk_config = this->ChunkSetting;
-		//select neighbour configuration based on recursion pass
-		uvec2 neighbour_count;
-		if constexpr (Pass == STPRecursiveNeighbourCheckingPass::BiomemapPass) {
-			neighbour_count = chk_config.DiversityNearestNeighbour;
-		} else if constexpr (Pass == STPRecursiveNeighbourCheckingPass::HeightmapPass) {
-			neighbour_count = chk_config.ErosionNearestNeighbour;
+		//for every chunk, find their neighbour
+		for (const auto entry : chunk_entry) {
+			//clear priority for previous neighbours
+			current_neighbour_priority.clear();
+			current_neighbour_priority_dict.clear();
+
+			const ivec2 chunk_coord = entry->first;
+			//find the union of priority numbers in this neighbourhood
+			//and reduce the union of priority number to a sorted unique range
+			for (const auto offset : neighbour_offset) {
+				const auto [begin, end] = chunk_schedule.equal_range(chunk_coord + offset);
+				//insert into the union only when it is not a duplicate member
+				for (auto it = begin; it != end; it++) {
+					if (const STPChunkPriorityNumber pri = it->second;
+						current_neighbour_priority_dict.emplace(pri).second) {
+						//not a duplicate member
+						current_neighbour_priority.emplace_back(pri);
+					}
+				}
+			}
+			std::sort(current_neighbour_priority.begin(), current_neighbour_priority.end());
+
+			//now we need to determine the priority number for this range of chunks
+			//as the range is sorted, we can read the smallest priority
+			STPChunkPriorityNumber schedulePri = STPGeneratorManager::DummyChunkPriorityNumber;
+			if (current_neighbour_priority.empty()) {
+				//if there is no schedule in this neighbour, use the minimum priority
+				schedulePri = STPGeneratorManager::MinimumChunkPriorityNumber;
+
+				//else, what we want is a priority number that is not seen in the entire neighbourhood
+			} else if (const STPChunkPriorityNumber minNeighbourPri = current_neighbour_priority.front();
+				minNeighbourPri > STPGeneratorManager::MinimumChunkPriorityNumber) {
+				//we can now pick a number that is just less than the minimum of the range
+				schedulePri = minNeighbourPri - 1u;
+			} else {
+				//this is now a bit tricky
+				//The priority should not go below the minimum allowed priority range.
+				//We try to find non-consecutive priority in this range, so there is a gap between 2 numbers.
+				//If we cannot find such gap, use one plus the max priority at the back of the range.
+				//The container is sorted in non-decreasing order, and each element is unique,
+				//so the latter number must be strictly greater than the prior number.
+				const auto it = std::adjacent_find(current_neighbour_priority.begin(), current_neighbour_priority.end(),
+					[](const auto a, const auto b) { return static_cast<STPChunkPriorityNumber>(b - a) > 1u; });
+				schedulePri = it != current_neighbour_priority.end() ? *it + 1u : current_neighbour_priority.back() + 1u;
+			}
+
+			//record the new priority for this chunk and its neighbour
+			centre_schedule_cache.emplace_back(schedulePri, entry);
+			//record the priority for every chunks in this neighbourhood
+			for_each(neighbour_offset.begin(), neighbour_offset.end(), [&cs = chunk_schedule, schedulePri, chunk_coord](const auto offset) {
+				cs.emplace(chunk_coord + offset, schedulePri);
+			});
 		}
-		const STPChunk::STPChunkCoordinateCache neighbour_position = STPChunk::calcChunkNeighbour(chunkCoord, chk_config.ChunkSize, neighbour_count);
 
-		bool canContinue = true;
-		//The first pass: check if all neighbours are ready for some operations
-		STPChunkRecord neighbour;
-		for (const auto& neighbourPos : neighbour_position) {
-			//get current neighbour chunk
-			const auto [chunk_it, chunk_added] = this->ChunkCache.try_emplace(neighbourPos, chk_config.MapSize);
-			STPChunk& curr_neighbour = chunk_it->second;
+		//return with sorted container
+		//we make a copy from the cache since we want to preserve the allocated memory
+		//allocating memory is way more expensive than copying small and trivial data
+		centre_schedule = STPChunkSchedule(STPChunkScheduleComparator { }, centre_schedule_cache);
+		return centre_schedule;
+	}
 
-			if (curr_neighbour.occupied()) {
-				//occupied means it's currently in used (probably another thread has already started to compute it)
-				canContinue = false;
+	/**
+	 * @brief Generate biomemap for all given chunks.
+	 * Precondition: chunk must be empty.
+	 * @param chunk_entry The entries of chunks from the database to be generated.
+	*/
+	void generateBiomemap(const STPChunkDatabaseEntryCollection& chunk_entry) {
+		const auto computeBiomemap = [this](STPChunkDatabaseEntry& chunk_entry) -> void {
+			auto& [chunkCoord, chunk] = chunk_entry;
+			//calculate map offset from world coordinate
+			const ivec2 biomemap_offset = static_cast<ivec2>(glm::roundEven(this->calcMapOffset(chunkCoord)));
+			//call biomemap generator
+			this->BiomemapGenerator(chunk.biomemap(), biomemap_offset);
+
+			//update chunk status
+			chunk.Completeness = STPChunk::STPChunkCompleteness::BiomemapReady;
+		};
+
+		//start biomemap generation tasks
+		for_each(chunk_entry.cbegin(), chunk_entry.cend(), [&tp = this->GeneratorWorker, &computer = computeBiomemap,
+			&task_queue = this->GenerationFuture](const auto entry) {
+			task_queue.emplace(tp.enqueue(computer, std::ref(*entry)));
+		});
+		//wait for all working threads to finish
+		this->waitAllGenerationTasks();
+	}
+
+	/**
+	 * @brief Generate heightmap for all given chunks.
+	 * Precondition: chunk must be either empty or has biomemap computed.
+	 * @param chunk_entry The entries of chunks from the database to be generated.
+	*/
+	void generateHeightmap(const STPChunkDatabaseEntryCollection& chunk_entry) {
+		//heightmap generation requires use of biomemap
+		//check if all neighbour chunks of the entry have biomemap ready
+		if (const STPChunkDatabaseEntryCollection& chunk_biomemap_entry = this->verifyNeighbourPrecondition(chunk_entry, this->DiversityNeightbourOffset,
+				STPChunk::STPChunkCompleteness::BiomemapReady, this->HeightmapPreconditionCache);
+			!chunk_biomemap_entry.empty()) {
+			//generate biomemap
+			this->generateBiomemap(chunk_biomemap_entry);
+		}
+
+		//Precondition: chunk must have biomemap generated
+		const auto computeHeightmap = [this](STPChunkDatabaseEntry& centre_chunk) -> void {
+			auto& [chunkCoord, chunk] = centre_chunk;
+			const STPChunk::STPChunkNeighbourOffset& neighbour_offset = this->DiversityNeightbourOffset;
+
+			const auto& db = this->ChunkDatabase;
+			//get the memory of all neighbour
+			//since biomemap is read only, we can safely read from the database and get the biomemap memory,
+			//even if some neighbours may overlap and be read by multiple threads
+			unique_ptr<void*[]> neighbour_biome_mem = this->DiversityNeighbourMemoryPool.requestObject();
+			const Sample** const neighbour_biome = const_cast<const Sample**>(reinterpret_cast<Sample**>(neighbour_biome_mem.get()));
+			transform(neighbour_offset.begin(), neighbour_offset.end(), neighbour_biome,
+				[&db, centre_chunk = chunkCoord](const auto chunk_coord_offset) {
+					return db.find(centre_chunk + chunk_coord_offset)->second.biomemap();
+				});
+			//invoke generator
+			this->HeightfieldGenerator.generate(chunk.heightmap(), neighbour_biome, static_cast<vec2>(this->calcMapOffset(chunkCoord)));
+			//return memory
+			this->DiversityNeighbourMemoryPool.returnObject(std::move(neighbour_biome_mem));
+
+			chunk.Completeness = STPChunk::STPChunkCompleteness::HeightmapReady;
+		};
+
+		//start heightmap generation tasks
+		for (const auto entry : chunk_entry) {
+			this->GenerationFuture.emplace(this->GeneratorWorker.enqueue(computeHeightmap, std::ref(*entry)));
+		}
+		this->waitAllGenerationTasks();
+	}
+
+	/**
+	 * @brief Erode heightmap for all given chunks.
+	 * Precondition: centre chunk must not be complete.
+	 * @param chunk_entry The entries of chunks from the database to be eroded.
+	 * @return An array of chunks whose heightmap have been modified besides input chunk entry (input chunks are also included in this array)
+	 * due to the nearest neighbour logic used during erosion algorithm.
+	 * Application should reload heightmap of all chunks in the returned array.
+	*/
+	const STPChunkDatabaseEntryCollection& erodeHeightmap(const STPChunkDatabaseEntryCollection& chunk_entry) {
+		//eroding a heightmap, well obviously, requires all neighbours to at least have heightmap available.
+		//but neighbour can either be complete, or just having heightmap available.
+		if (const STPChunkDatabaseEntryCollection& chunk_heightmap_entry = this->verifyNeighbourPrecondition(chunk_entry, this->ErosionNeighbourOffset,
+				STPChunk::STPChunkCompleteness::HeightmapReady, this->ErosionPreconditionCache);
+			!chunk_heightmap_entry.empty()) {
+			//generate heightmap
+			this->generateHeightmap(chunk_heightmap_entry);
+		}
+		//before doing the actual generation, we need to resolve the possible collision when writing to the neighbour chunks
+		STPChunkSchedule& erosion_schedule = STPGeneratorManager::scheduleChunk(chunk_entry, this->ErosionNeighbourOffset, this->ErosionScheduleCache);
+
+		//Precondition: chunk must have heightmap generated at least
+		const auto computeHeightmapErosion = [this](STPChunkDatabaseEntry& chunk_entry) -> void {
+			auto& [chunkCoord, chunk] = chunk_entry;
+			const STPChunk::STPChunkNeighbourOffset& neighbour_offset = this->ErosionNeighbourOffset;
+			
+			//get memory, we need to 2 neighbour sets
+			unique_ptr<void*[]> neighbour_heightmap_mem = this->ErosionNeighbourMemoryPool.requestObject(),
+				neighbour_heightmap_low_mem = this->ErosionNeighbourMemoryPool.requestObject();
+			float** const neighbour_heightmap = reinterpret_cast<float**>(neighbour_heightmap_mem.get());
+			unsigned short** const neighbour_heightmap_low = reinterpret_cast<unsigned short**>(neighbour_heightmap_low_mem.get());
+			//prepare pointers
+			for (unsigned int local_idx = 0u; local_idx < neighbour_offset.NeighbourOffsetCount; local_idx++) {
+				STPChunk& curr_chunk = this->ChunkDatabase.find(chunkCoord + neighbour_offset[local_idx])->second;
+
+				neighbour_heightmap[local_idx] = curr_chunk.heightmap();
+				neighbour_heightmap_low[local_idx] = curr_chunk.heightmapLow();
+			}
+			//where the magic happens
+			this->HeightfieldGenerator.erode(neighbour_heightmap, neighbour_heightmap_low);
+			//clean up
+			this->ErosionNeighbourMemoryPool.returnObject(std::move(neighbour_heightmap_mem));
+			this->ErosionNeighbourMemoryPool.returnObject(std::move(neighbour_heightmap_low_mem));
+
+			chunk.Completeness = STPChunk::STPChunkCompleteness::Complete;
+		};
+
+		//we submit tasks in batch, each batch should have the same priority number
+		//start from the highest priority
+		STPChunkPriorityNumber batchPriority = erosion_schedule.top().first;
+		while (!erosion_schedule.empty()) {
+			const auto [chunkPri, chunkEntry] = erosion_schedule.top();
+			if (chunkPri == batchPriority) {
+				//launch a new task and pop
+				this->GenerationFuture.emplace(this->GeneratorWorker.enqueue(computeHeightmapErosion, std::ref(*chunkEntry)));
+				erosion_schedule.pop();
 				continue;
 			}
-			if constexpr (Pass == STPRecursiveNeighbourCheckingPass::BiomemapPass) {
-				//container will guaranteed to exists since heightmap pass has already created it
-				if (curr_neighbour.chunkState() == STPChunk::STPChunkState::Empty) {
-					//compute biomemap
-					this->GeneratorWorker.enqueueDetached(biomemap_computer, this->cacheUniqueChunk({ &curr_neighbour }), this->calcOffset(neighbourPos));
-					//try to compute all biomemap, and when biomemap is computing, we don't need to wait
-					canContinue = false;
-				}
-			} else if constexpr (Pass == STPRecursiveNeighbourCheckingPass::HeightmapPass) {
-				//check neighbouring biomemap
-				if (!this->recNeighbourChecking<STPRecursiveNeighbourCheckingPass::BiomemapPass>(neighbourPos)) {
-					canContinue = false;
-				}
-			}
 
-			neighbour.emplace_back(&curr_neighbour);
-			//if chunk is found, we can guarantee it's in-used empty or at least biomemap/heightmap complete
-		}
-		if (!canContinue) {
-			//if biomemap/heightmap is computing, we don't need to check for heightmap generation/erosion because some chunks are in use
-			return nullopt;
+			//encounter a new batch, wait for all tasks in this batch to finish
+			this->waitAllGenerationTasks();
+			//go to the next batch
+			batchPriority = chunkPri;
 		}
 
-		//The second pass: launch compute on the centre with all neighbours
-		//all chunks are available, obtain unique visitors
-		const STPUniqueChunkCacheEntry visitor_entry = this->cacheUniqueChunk(neighbour);
-		//send the list of neighbour chunks to GPU to perform some operations
-		if constexpr (Pass == STPRecursiveNeighbourCheckingPass::BiomemapPass) {
-			//generate heightmap
-			this->GeneratorWorker.enqueueDetached(heightmap_computer, visitor_entry, chunkCoord);
-		} else if constexpr (Pass == STPRecursiveNeighbourCheckingPass::HeightmapPass) {
-			//perform erosion on heightmap
-			this->GeneratorWorker.enqueueDetached(erosion_computer, visitor_entry);
-			{
-				//trigger a chunk reload as some chunks have been added to render buffer already after neighbours are updated
-				for_each(neighbour_position.cbegin(), neighbour_position.cend(), 
-					[&pipeline = this->Pipeline](const auto& position) -> void { pipeline.reload(position); });
-			}
-		}
-
-		//compute has been launched
-		return nullopt;
+		//tell application which chunks have changed, besides chunks specified in the input
+		//because erosion may also modify neighbour chunks from the input
+		return this->unionChunkNeighbour(chunk_entry, this->ErosionNeighbourOffset, this->ErosionUnionCache);
 	}
 
 public:
+
+	//data for chunk requested
+	//the chunk coordinate must be provided as data header, and pointer to chunk will be returned as response
+	typedef vector<ivec2> STPChunkRequestPayload;
+	//one data entry in the response based on the request
+	typedef STPChunkDatabaseEntryCollection STPChunkRequestResponseEntry;
+	//store the response from the last chunk request query
+	struct STPChunkRequestResponse {
+	public:
+
+		//The response based on each entry in the original request
+		STPChunkRequestResponseEntry PrimaryResponse;
+
+		//The following additional responses indicate addition operations required besides the original request.
+		//Chunks that required heightmap to be reloaded because this request may trigger heightmap modification
+		//outside the requested chunks.
+		//This can be a null if there is no such heightmap exists.
+		const STPChunkRequestResponseEntry* RequireHeightmapReload;
+
+		void reserve(const size_t entryCount) {
+			this->PrimaryResponse.reserve(entryCount);
+		}
+
+		void clear() noexcept {
+			this->PrimaryResponse.clear();
+			this->RequireHeightmapReload = nullptr;
+		}
+
+	} LastChunkRequestResponse;
 
 	/**
 	 * @brief Initialise generator manager with pipeline stages filled with generators.
 	 * @param setup The pointer to all pipeline stages.
 	 * @param pipeline The pointer to the world pipeline registered with the generator manager.
 	*/
-	STPGeneratorManager(const STPWorldPipeline::STPPipelineSetup& setup, STPWorldPipeline& pipeline) : 
-		generateBiomemap(*setup.BiomemapGenerator), generateHeightfield(*setup.HeightfieldGenerator), generateSplatmap(*setup.SplatmapGenerator), 
-		Pipeline(pipeline), ChunkSetting(this->Pipeline.ChunkSetting), GeneratorWorker(5u) {
+	STPGeneratorManager(const STPWorldPipeline::STPPipelineSetup& setup, STPWorldPipeline& pipeline) :
+		Pipeline(pipeline), ChunkSetting(this->Pipeline.ChunkSetting),
+		DiversityNeightbourOffset(this->calcNeighbourOffset(this->ChunkSetting.DiversityNearestNeighbour)),
+		ErosionNeighbourOffset(this->calcNeighbourOffset(this->ChunkSetting.ErosionNearestNeighbour)),
+		DiversityNeighbourMemoryPool(this->ChunkSetting.DiversityNearestNeighbour), ErosionNeighbourMemoryPool(this->ChunkSetting.ErosionNearestNeighbour),
+		BiomemapGenerator(*setup.BiomemapGenerator), HeightfieldGenerator(*setup.HeightfieldGenerator), SplatmapGenerator(*setup.SplatmapGenerator), 
+		GeneratorWorker(5u) {
+		//reserve memory for various cache
+		//we consider the maximum number of possible nearest neighbour chunk for each generation stage
+		constexpr static auto calcEntryCount = [](const uvec2& entry_range) constexpr -> size_t {
+			return entry_range.x * entry_range.y;
+		};
+		const STPEnvironment::STPChunkSetting& chk = this->ChunkSetting;
+		//minus 1, which is the centre chunk
+		//rendering requires erosion of heightmap in render distance
+		const uvec2 nn_erosion = chk.RenderDistance,
+			//erosion requires heightmap from some neighbour chunks
+			nn_heightmap = nn_erosion - 1u + chk.ErosionNearestNeighbour,
+			//heightmap generation requires biomemap from some neighbour chunks
+			nn_biomemap = nn_heightmap - 1u + chk.DiversityNearestNeighbour;
+		const size_t erosionCount = calcEntryCount(nn_erosion),
+			heightmapCount = calcEntryCount(nn_heightmap),
+			biomemapCount = calcEntryCount(nn_biomemap);
+		
+		this->ErosionUnionCache.reserve(heightmapCount);
+		this->ErosionPreconditionCache.reserve(heightmapCount);
+		this->HeightmapPreconditionCache.reserve(biomemapCount);
 
+		this->ErosionScheduleCache.reserve(this->ErosionNeighbourOffset, erosionCount);
+
+		this->ChunkRequestCache.reserve(erosionCount);
+		this->LastChunkRequestResponse.reserve(erosionCount);
 	}
 
 	STPGeneratorManager(const STPGeneratorManager&) = delete;
@@ -365,44 +616,42 @@ public:
 
 	STPGeneratorManager& operator=(STPGeneratorManager&&) = delete;
 
-	~STPGeneratorManager() = default;
+	~STPGeneratorManager() {
+		this->waitAllGenerationTasks();
+	}
 
 	/**
-	 * @brief Request a pointer to the chunk given a world coordinate.
-	 * @param chunk_coord The world coordinate where the chunk is requesting.
-	 * @return The shared visitor to the requested chunk.
-	 * The function returns a valid point only when the chunk is fully ready for rendering.
-	 * In case chunk is not ready, such as being used by other chunks, or map generation is in progress, nullptr is returned.
+	 * @brief Request chunk data.
+	 * All generation will be handled automatically by the generator manager, if chunk is not available.
+	 * All chunks are guaranteed to be available when this function returns.
+	 * @param request The chunk world coordinate of chunk requested.
+	 * @return The response based on the request.
+	 * The response result will be available until the next initiation of request.
 	*/
-	auto getChunk(const ivec2& chunk_coord) {
-		//check if there's any exception thrown from previous asynchronous compute launch
-		bool hasException;
-		{
-			shared_lock<shared_mutex> checkExceptionLock(this->ExceptionStorageLock);
-			hasException = !this->ExceptionStorage.empty();
-		}
-		if (hasException) {
-			unique_lock<shared_mutex> clearExceptionLock(this->ExceptionStorageLock);
-			std::stringstream error_message;
-
-			//merge all exception messages
-			while (!this->ExceptionStorage.empty()) {
-				std::exception_ptr exptr = this->ExceptionStorage.front();
-				this->ExceptionStorage.pop();
-				try {
-					std::rethrow_exception(exptr);
-				}
-				catch (const std::exception& e) {
-					//unfortunately we will lose all exception type information :(
-					error_message << e.what() << std::endl;
-				}
+	const STPChunkRequestResponse& requestChunk(const STPChunkRequestPayload& request) {
+		const size_t requestCount = request.size();
+		//request data
+		this->ChunkRequestCache.clear();
+		auto& [generation_entry] = this->ChunkRequestCache;
+		//response data
+		this->LastChunkRequestResponse.clear();
+		auto& [response_primary, response_heightmap_reload] = this->LastChunkRequestResponse;
+		
+		//check if any chunks are ready to use, if not, prepare for generation
+		for (const auto chunk_coord : request) {
+			if (const auto entry = response_primary.emplace_back(
+					&(*this->ChunkDatabase.try_emplace(chunk_coord, this->ChunkSetting.MapSize).first));
+				entry->second.Completeness != STPChunk::STPChunkCompleteness::Complete) {
+				//need to generate
+				generation_entry.emplace_back(entry);
 			}
-			//throw the compound exception out
-			throw STPException::STPAsyncGenerationError(error_message.str().c_str());
+		}
+		if (!generation_entry.empty()) {
+			//invoke generators, start from the top of the generation chain
+			response_heightmap_reload = &this->erodeHeightmap(generation_entry);
 		}
 
-		//recursively preparing neighbours
-		return this->recNeighbourChecking(chunk_coord);
+		return this->LastChunkRequestResponse;
 	}
 
 	/**
@@ -413,7 +662,7 @@ public:
 	 * Note that the coordinate of local chunk should specify chunk map offset rather than chunk world position.
 	*/
 	template<class M>
-	void computeSplatmap(const M& buffer,
+	void generateSplatmap(const M& buffer,
 		const STPTextureFactory::STPRequestingChunkInfo& requesting_chunk) const {
 		//prepare texture and surface object
 		STPSmartDeviceObject::STPTexture biomemap, heightfield;
@@ -445,7 +694,7 @@ public:
 
 		const cudaStream_t stream = this->Pipeline.BufferStream.get();
 		//launch splatmap computer
-		this->generateSplatmap(biomemap.get(), heightfield.get(), splatmap.get(), requesting_chunk, stream);
+		this->SplatmapGenerator(biomemap.get(), heightfield.get(), splatmap.get(), requesting_chunk, stream);
 
 		//before deallocation happens make sure everything has finished.
 		STP_CHECK_CUDA(cudaStreamSynchronize(stream));
@@ -479,7 +728,7 @@ public:
 	 * @param cache_texture_dim Species the dimension of the cache texture.
 	 * Each stream will be allocated with one cache texture.
 	*/
-	STPConcurrentStreamManager(uvec2 cache_texture_dim) {
+	STPConcurrentStreamManager(const uvec2 cache_texture_dim) {
 		using std::generate;
 		using std::bind;
 		//create stream and event
@@ -510,7 +759,7 @@ public:
 	 * @brief Ask the worker streams to wait for the main stream before starting tasks enqueued after.
 	 * @param main The main stream whom workers are waiting for.
 	*/
-	inline void workersWaitMain(cudaStream_t main) const {
+	inline void workersWaitMain(const cudaStream_t main) const {
 		//the last event is for the main stream
 		const cudaEvent_t mainEvent = this->MemoryWorkerSync[STPConcurrentStreamManager::Parallelism].get();
 
@@ -525,7 +774,7 @@ public:
 	 * @brief Ask the main stream to wait for all worker streams before starting tasks enqueued after.
 	 * @param main The main stream to wait.
 	*/
-	inline void mainWaitsWorkers(cudaStream_t main) const {
+	inline void mainWaitsWorkers(const cudaStream_t main) const {
 		//record the status of all worker streams.
 		for (size_t worker = 0u; worker < this->MemoryWorker.size(); worker++) {
 			STP_CHECK_CUDA(cudaEventRecord(this->MemoryWorkerSync[worker].get(), this->MemoryWorker[worker].get()));
@@ -540,7 +789,7 @@ public:
 	 * We cycle the workers to maximise ability of parallelism.
 	 * @return The currently active memory worker.
 	*/
-	inline cudaStream_t nextWorker() {
+	inline cudaStream_t nextWorker() noexcept {
 		const unsigned char idx = this->WorkerIndex++;
 		//wrap the index around
 		this->WorkerIndex %= STPConcurrentStreamManager::Parallelism;
@@ -551,15 +800,17 @@ public:
 	 * @brief Get the transfer cache of the current memory worker.
 	 * @return The pointer to the transfer cache.
 	*/
-	inline auto& currentTransferCache() {
+	inline auto& currentTransferCache() noexcept {
 		//worker 0 uses cache 1, 1 uses 2, ..., N - 2 uses N - 1, N - 1 uses 0.
 		return this->MapTransferCache[this->WorkerIndex];
 	}
 
 };
 
-#define FOR_EACH_MEMORY_START() for (size_t i = 0u; i < STPWorldPipeline::STPMemoryManager::MemoryUnitCapacity; i++) {
-#define FOR_EACH_MEMORY_END() }
+#define FOR_EACH_MEMORY() for (size_t i = 0u; i < STPWorldPipeline::STPMemoryManager::MemoryUnitCapacity; i++)
+
+//world pipeline: min chunk coordinate
+constexpr static ivec2 wpMinChunkCoordinate = ivec2(numeric_limits<int>::min());
 
 class STPWorldPipeline::STPMemoryManager {
 public:
@@ -587,6 +838,9 @@ public:
 		//Terrain maps that are mapped to CUDA array.
 		using STPMappedMemoryUnit = STPMemoryUnit<cudaArray_t>;
 
+		//from the memory manager
+		const STPChunk::STPChunkNeighbourOffset& LocalChunkOffsetTable;
+
 		//terrain map but the memory is automatically managed.
 		STPMemoryUnit<STPSmartDeviceObject::STPGLTextureObject> TerrainMapManaged;
 		//a shallow copy to the pointer to the managed terrain map.
@@ -599,20 +853,22 @@ public:
 		//registered CUDA graphics handle for GL terrain maps, copy of the managed memory.
 		STPMemoryUnit<cudaGraphicsResource_t> TerrainMapResource;
 
+		const uvec2 ChunkSize, RenderDistance;
+		//The origin (top-left chunk) of the current render distance.
+		ivec2 LocalOriginCoordinate;
 		//Vector that stored rendered chunk world position and loading status (True is loaded, false otherwise).
 		vector<pair<ivec2, bool>> LocalChunkRecord;
-		//Use chunk world coordinate to lookup chunk ID, which is the index to the local chunk record.
-		unordered_map<ivec2, unsigned int, STPHashivec2> LocalChunkDictionary;
 
 		/**
 		 * @brief Initialise a memory block.
 		 * @param manager The pointer to the dependent world memory manager.
 		*/
-		STPMemoryBlock(const STPMemoryManager& manager) {
+		STPMemoryBlock(const STPMemoryManager& manager) : LocalChunkOffsetTable(manager.RenderChunkNeighbourOffset),
+			ChunkSize(manager.ChunkSetting.ChunkSize), RenderDistance(manager.ChunkSetting.RenderDistance),
+			LocalOriginCoordinate(wpMinChunkCoordinate) {
 			const STPEnvironment::STPChunkSetting& setting = manager.ChunkSetting;
-			auto setupMap = 
-				[buffer_size = setting.RenderDistance * setting.MapSize](GLuint texture, GLint min_filter,
-					GLint mag_filter, GLenum internal) -> void {
+			const auto setupMap = [buffer_size = setting.RenderDistance * setting.MapSize](const GLuint texture,
+				const GLint min_filter, const GLint mag_filter, const GLenum internal) -> void {
 				//set texture parameter
 				glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 				glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -630,7 +886,6 @@ public:
 			};
 
 			using std::generate;
-			using std::transform;
 			//creating texture map and copy the raw handles into a separate array, so we can access them easily
 			generate(this->TerrainMapManaged.begin(), this->TerrainMapManaged.end(), []() {
 				return STPSmartDeviceObject::makeGLTextureObject(GL_TEXTURE_2D);
@@ -652,10 +907,8 @@ public:
 			transform(this->TerrainMapResourceManaged.cbegin(), this->TerrainMapResourceManaged.cend(),
 				this->TerrainMapResource.begin(), [](const auto& res) { return res.get(); });
 
-			const unsigned int displayChunkCount = setting.RenderDistance.x * setting.RenderDistance.y;
-			//reserve memory for lookup tables
-			this->LocalChunkRecord.reserve(displayChunkCount);
-			this->LocalChunkDictionary.reserve(displayChunkCount);
+			//allocate memory for lookup tables
+			this->LocalChunkRecord.resize(this->LocalChunkOffsetTable.NeighbourOffsetCount);
 		}
 
 		STPMemoryBlock(const STPMemoryBlock&) = delete;
@@ -669,29 +922,59 @@ public:
 		~STPMemoryBlock() = default;
 
 		/**
+		 * @brief Calculate the index coordinate of this chunk in the current rendering distance.
+		 * @param chunk_coord The chunk world coordinate.
+		 * @return The chunk local index.
+		*/
+		inline ivec2 calcLocalIndexCoordinate(const ivec2& chunk_coord) const noexcept {
+			return (chunk_coord - this->LocalOriginCoordinate) / static_cast<ivec2>(this->ChunkSize);
+		}
+
+		/**
+		 * @brief Convert the chunk local index coordinate to the local index.
+		 * The result is correct only if the chunk is in the rendering distance.
+		 * @param localIdxCoord The chunk local index coordinate.
+		 * @return The chunk local index.
+		*/
+		inline unsigned int toLocalIndex(const ivec2& localIdxCoord) const noexcept {
+			//the 2D index will always be a positive number
+			//convert to 1D index
+			return localIdxCoord.x + localIdxCoord.y * this->RenderDistance.x;
+		}
+
+		/**
+		 * @brief Check if this chunk's local index coordinate is in the current rendering distance.
+		 * @param localIdxCoord The chunk local index coordinate.
+		 * @return True if the chunk is in the rendering distance.
+		*/
+		inline bool isLocalChunk(const ivec2& localIdxCoord) const noexcept {
+			const ivec2 iRenderDistance = static_cast<ivec2>(this->RenderDistance);
+			//might be negative if it is outside the local
+			return localIdxCoord.x >= 0 && localIdxCoord.x < iRenderDistance.x
+				&& localIdxCoord.y >= 0 && localIdxCoord.y < iRenderDistance.y;
+		}
+
+		/**
 		 * @brief Set the CUDA resource mapping flag for each GL texture.
 		 * @param flag The resource mapping flag.
 		*/
-		inline void setMappingFlag(unsigned int flag) const {
-			FOR_EACH_MEMORY_START()
+		inline void setMappingFlag(const unsigned int flag) const {
+			FOR_EACH_MEMORY() {
 				STP_CHECK_CUDA(cudaGraphicsResourceSetMapFlags(this->TerrainMapResource[i], flag));
-			FOR_EACH_MEMORY_END()
+			}
 		}
 
 		/**
 		 * @brief Recompute the chunk tables.
-		 * @param rendered_chunk A range of rendered chunks.
+		 * @param chunk_coord The chunk local coordinate of the centre of the range of chunks.
 		*/
-		inline void recomputeLocalChunkTable(const STPChunk::STPChunkCoordinateCache& rendered_chunk) {
-			this->LocalChunkRecord.clear();
-			this->LocalChunkDictionary.clear();
-			//we also need chunkID, which is just the index of the visible chunk from top-left to bottom-right
-			for_each(rendered_chunk.cbegin(), rendered_chunk.cend(),
-				[chunkIdx = 0u, &local_status = this->LocalChunkRecord,
-					&local_dict = this->LocalChunkDictionary](const auto chunk_pos) mutable {
-				local_status.emplace_back(chunk_pos, false);
-				local_dict.try_emplace(chunk_pos, chunkIdx++);
-			});
+		inline void recomputeLocalChunkTable(const ivec2& centre_chunk_coord) {
+			//no need to clear, we overwrite all elements
+			transform(this->LocalChunkOffsetTable.begin(), this->LocalChunkOffsetTable.end(), this->LocalChunkRecord.begin(),
+				[centre_chunk_coord](const auto chunk_offset) { return make_pair(centre_chunk_coord + chunk_offset, false); });
+
+			//recompute the local origin
+			this->LocalOriginCoordinate = STPChunk::calcLocalChunkOrigin(centre_chunk_coord, this->ChunkSize, this->RenderDistance);
 		}
 
 		/**
@@ -699,15 +982,15 @@ public:
 		 * @param stream The CUDA stream where the work is submitted to.
 		 * @return The mapped CUDA array.
 		*/
-		inline STPMappedMemoryUnit mapTerrainMap(cudaStream_t stream) {
+		inline STPMappedMemoryUnit mapTerrainMap(const cudaStream_t stream) {
 			STPMappedMemoryUnit map;
 			//map the texture, all OpenGL related work must be done on the main contexted thread
 			//CUDA will make sure all previous graphics API calls are finished before stream begins
 			STP_CHECK_CUDA(cudaGraphicsMapResources(3, this->TerrainMapResource.data(), stream));
 			//we only have one texture, so index is always zero
-			FOR_EACH_MEMORY_START()
+			FOR_EACH_MEMORY() {
 				STP_CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&map[i], this->TerrainMapResource[i], 0, 0));
-			FOR_EACH_MEMORY_END()
+			}
 
 			return map;
 		}
@@ -716,27 +999,10 @@ public:
 		 * @brief Unmap the GL terrain texture from CUDA array.
 		 * @param stream The CUDA stream where the unmap should be synchronised.
 		*/
-		inline void unmapTerrainmap(cudaStream_t stream) {
+		inline void unmapTerrainmap(const cudaStream_t stream) {
 			//sync the stream that modifies the texture and unmap the chunk
 			//CUDA will make sure all previous pending works in the stream has finished before graphics API can be called
 			STP_CHECK_CUDA(cudaGraphicsUnmapResources(3, this->TerrainMapResource.data(), stream));
-		}
-
-		/**
-		 * @brief Force reload a terrain map.
-		 * @param chunkPos The chunk position to be reloaded.
-		 * @return The status indicating if the chunk position is in the local rendered area,
-		 * and if the reload flag has been set correctly.
-		*/
-		inline bool reloadMap(const ivec2& chunkPos) {
-			auto it = this->LocalChunkDictionary.find(chunkPos);
-			if (it == this->LocalChunkDictionary.end()) {
-				//chunk position provided is not required to be rendered, or new rendering area has changed
-				return false;
-			}
-			//found, trigger a reload
-			this->LocalChunkRecord[it->second].second = false;
-			return true;
 		}
 
 	};
@@ -746,15 +1012,8 @@ private:
 	const cudaStream_t PipelineStream;
 	const STPEnvironment::STPChunkSetting& ChunkSetting;
 
-	array<STPMemoryBlock, 2u> MemoryBuffer;
-	//clear buffer is just a memory filled with the same value as clear value.
-	STPSmartDeviceMemory::STPPitchedDeviceMemory<unsigned char[]> MapClearBuffer;
-	//Store the CUDA array after mapping the back buffer
-	STPMemoryBlock::STPMappedMemoryUnit MappedBackBuffer;
-	bool isBackBufferMapped;
-
 	//Record indices of chunks that need to have splatmap computed for the current task.
-	unordered_set<unsigned int> ComputingChunk;
+	unordered_set<unsigned int> SplatmapComputeChunk;
 	constexpr static array<ivec2, 9u> NeighbourCoordinateOffset = {
 		ivec2(-1, -1),
 		ivec2( 0, -1),
@@ -766,18 +1025,24 @@ private:
 		ivec2( 0, +1),
 		ivec2(+1, +1)
 	};
+	//using the centre chunk as the origin, the relative offsets of all chunks in a render area
+	const STPChunk::STPChunkNeighbourOffset RenderChunkNeighbourOffset;
+
+	array<STPMemoryBlock, 2u> MemoryBuffer;
+	//clear buffer is just a memory filled with the same value as clear value.
+	STPSmartDeviceMemory::STPPitchedDeviceMemory<unsigned char[]> MapClearBuffer;
+	//Store the CUDA array after mapping the back buffer
+	STPMemoryBlock::STPMappedMemoryUnit MappedBackBuffer;
+	bool isBackBufferMapped;
 
 	/**
 	 * @brief Calculate the map offset on the terrain map to reach a specific local chunk.
 	 * @param index The local chunk index.
 	 * @return The chunk memory offset on the map.
 	*/
-	inline uvec2 calcLocalMapOffset(unsigned int index) const noexcept {
+	inline uvec2 calcLocalMapOffset(const unsigned int index) const noexcept {
 		const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
-		const unsigned int rendered_width = chunk_setting.RenderDistance.x;
-
-		//calculate global offset, basically
-		const uvec2 chunkIdx(index % rendered_width, index / rendered_width);
+		const uvec2 chunkIdx = STPChunk::calcLocalChunkCoordinate(index, chunk_setting.RenderDistance);
 		return chunk_setting.MapSize * chunkIdx;
 	}
 
@@ -789,31 +1054,30 @@ private:
 		return this->ChunkSetting.MapSize * uvec2(STPMemoryManager::MaxMemoryFormat, 1u);
 	}
 
-	/**
-	 * @brief Given a chunk index, trigger a recompute of itself and its valid neighbours.
-	 * @param chunkIdx The chunk index to be triggered.
-	*/
-	void recomputeNeighbour(unsigned int chunkIdx) {
-		const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
-
-		const uvec2 render_distance = setting.RenderDistance;
-		const unsigned int chunkRowCount = render_distance.x;
-		//for each neighbour of each computing chunk...
-		for (const ivec2 coord_offset : this->NeighbourCoordinateOffset) {
-			//small negative number will become a huge unsigned,
-			//so when checking for validity we don't need to consider negative number.
-			const uvec2 current_coord =
-				static_cast<uvec2>(ivec2(chunkIdx % chunkRowCount, chunkIdx / chunkRowCount) + coord_offset);
-			//make sure the coordinate is in a valid range
-			if (current_coord.x >= render_distance.x || current_coord.y >= render_distance.y) {
-				continue;
-			}
-
-			this->ComputingChunk.emplace(current_coord.x + current_coord.y * chunkRowCount);
-		}
-	}
-
 public:
+
+	/* -------------------------------- memory cache --------------------------------- */
+	//array of chunks to have splatmap generated
+	STPDiversity::STPTextureFactory::STPRequestingChunkInfo SplatmapInfoCache;
+	//chunks to request from the generator manager
+	STPGeneratorManager::STPChunkRequestPayload GeneratorRequestPayload;
+
+	//the result of intersection between a given set of chunks and the render distance
+	struct STPRenderDistanceIntersectionCache {
+	public:
+
+		STPGeneratorManager::STPChunkRequestResponseEntry ValidIntersection;
+
+		void reserve(const size_t renderCount) {
+			this->ValidIntersection.reserve(renderCount);
+		}
+
+		void clear() noexcept {
+			this->ValidIntersection.clear();
+		}
+
+	} HeightmapIntersectionCache;
+	/* ------------------------------------------------------------------------------- */
 
 	STPConcurrentStreamManager Worker;
 
@@ -841,13 +1105,13 @@ public:
 	*/
 	STPMemoryManager(STPWorldPipeline& pipeline) :
 		PipelineStream(pipeline.BufferStream.get()), ChunkSetting(pipeline.ChunkSetting),
+		RenderChunkNeighbourOffset(STPChunk::calcChunkNeighbourOffset(this->ChunkSetting.ChunkSize, this->ChunkSetting.RenderDistance)),
 		MemoryBuffer{ *this, *this }, isBackBufferMapped(false),
 		Worker(this->calcChunkCacheSize()),
 		FrontBuffer(&this->MemoryBuffer[0]), BackBuffer(&this->MemoryBuffer[1]) {
 		const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
 		const uvec2 mapDim = setting.MapSize,
 			clearBuffer_size = this->calcChunkCacheSize();
-		const unsigned int chunkCount = setting.RenderDistance.x * setting.RenderDistance.y;
 
 		//init clear buffers that are used to clear texture when new rendered chunks are loaded
 		//(we need to clear the previous chunk data)
@@ -868,11 +1132,11 @@ public:
 			for (unsigned int y = 0u; y < setting.RenderDistance.y; y++) {
 				for (unsigned int x = 0u; x < setting.RenderDistance.x; x++) {
 					const uvec2 localMapOffset = uvec2(x, y) * setting.MapSize;
-					FOR_EACH_MEMORY_START()
+					FOR_EACH_MEMORY() {
 						STP_CHECK_CUDA(cudaMemcpy2DToArrayAsync(mapped[i], localMapOffset.x * MemoryFormat[i],
 							localMapOffset.y, this->MapClearBuffer.get(), this->MapClearBuffer.Pitch,
 							mapDim.x * MemoryFormat[i], mapDim.y, cudaMemcpyDeviceToDevice, this->Worker.nextWorker()));
-					FOR_EACH_MEMORY_END()
+					}
 				}
 			}
 			//also ensure main stream does not unmap the texture while workers are working hard
@@ -883,7 +1147,11 @@ public:
 		STP_CHECK_CUDA(cudaStreamSynchronize(this->PipelineStream));
 		this->correctResourceMappingFlag();
 
-		this->ComputingChunk.reserve(chunkCount);
+		const unsigned int chunkCount = setting.RenderDistance.x * setting.RenderDistance.y;
+		this->SplatmapComputeChunk.reserve(chunkCount);
+		this->SplatmapInfoCache.reserve(chunkCount);
+		this->GeneratorRequestPayload.reserve(chunkCount);
+		this->HeightmapIntersectionCache.reserve(chunkCount);
 	}
 
 	STPMemoryManager(const STPMemoryManager&) = delete;
@@ -900,7 +1168,7 @@ public:
 	 * @brief Get the corresponding terrain map given a type from the front buffer.
 	 * @param type The type of the map to be retrieved.
 	*/
-	inline GLuint getMap(STPWorldPipeline::STPTerrainMapType type) const noexcept {
+	inline GLuint getMap(const STPWorldPipeline::STPTerrainMapType type) const noexcept {
 		return this->FrontBuffer->TerrainMap[TERRAIN_MAP_INDEX(type)];
 	}
 
@@ -933,7 +1201,7 @@ public:
 	 * @brief Get the array to the mapped back buffer.
 	 * @return The array to the mapped back buffer.
 	*/
-	inline const STPMemoryBlock::STPMappedMemoryUnit& getMappedBackBuffer() const {
+	inline const STPMemoryBlock::STPMappedMemoryUnit& getMappedBackBuffer() const noexcept {
 		return this->MappedBackBuffer;
 	}
 
@@ -955,25 +1223,23 @@ public:
 		const uvec2 mapDim = chunk_setting.MapSize;
 
 		//map the front buffer as read-only
-		STPMemoryBlock* frontBuffer_w = const_cast<STPMemoryBlock*>(this->FrontBuffer);
-		const auto frontBuffer_ptr = frontBuffer_w->mapTerrainMap(this->PipelineStream);
+		STPMemoryBlock& frontBuffer_w = const_cast<STPMemoryBlock&>(*this->FrontBuffer);
+		const STPMemoryBlock::STPMappedMemoryUnit frontBuffer_ptr = frontBuffer_w.mapTerrainMap(this->PipelineStream);
 
-		const auto& front_local_dict = this->FrontBuffer->LocalChunkDictionary;
 		//here we perform an optimisation: reuse chunk that has been rendered previously from the front buffer
 		//make sure memory is available before any worker can begin
 		this->Worker.workersWaitMain(this->PipelineStream);
 		for (auto& [chunkPos, loaded] : this->BackBuffer->LocalChunkRecord) {
 			const cudaStream_t stream_worker = this->Worker.nextWorker();
+
 			//checking the new back buffer chunk, is there any old chunk has the same world coordinate as the new chunk?
-			auto equal_pos_it = front_local_dict.find(chunkPos);
-
-			const unsigned int back_buffer_chunkIdx = this->BackBuffer->LocalChunkDictionary.at(chunkPos);
-			if (equal_pos_it != front_local_dict.cend()) {
+			const unsigned int back_buffer_chunkIdx = this->BackBuffer->toLocalIndex(this->BackBuffer->calcLocalIndexCoordinate(chunkPos));
+			if (const ivec2 front_buffer_chunkIdxCoord = this->FrontBuffer->calcLocalIndexCoordinate(chunkPos);
+				this->FrontBuffer->isLocalChunk(front_buffer_chunkIdxCoord)) {
 				//found, check if the previous cache is complete
-				const unsigned int front_buffer_chunkIdx = equal_pos_it->second;
+				const unsigned int front_buffer_chunkIdx = this->FrontBuffer->toLocalIndex(front_buffer_chunkIdxCoord);
 
-				if (const bool front_status = this->FrontBuffer->LocalChunkRecord[front_buffer_chunkIdx].second;
-					front_status) {
+				if (this->FrontBuffer->LocalChunkRecord[front_buffer_chunkIdx].second) {
 					//if the previous front buffer chunk is complete, copy to the back buffer
 					{
 						const uvec2 src_offset = this->calcLocalMapOffset(front_buffer_chunkIdx),
@@ -981,16 +1247,16 @@ public:
 
 						//Each worker is assigned with a transfer cache, and works submitted to one worker queue are executed sequentially.
 						const auto& trans_cache = this->Worker.currentTransferCache();
-						FOR_EACH_MEMORY_START()
+						FOR_EACH_MEMORY() {
 							//front buffer -> cache
 							STP_CHECK_CUDA(cudaMemcpy2DFromArrayAsync(trans_cache.get(), trans_cache.Pitch,
 								frontBuffer_ptr[i], src_offset.x * MemoryFormat[i], src_offset.y,
 								mapDim.x * MemoryFormat[i], mapDim.y, cudaMemcpyDeviceToDevice, stream_worker));
 							//cache -> back buffer
 							STP_CHECK_CUDA(cudaMemcpy2DToArrayAsync(backBuffer_ptr[i], dest_offset.x * MemoryFormat[i],
-								dest_offset.y, trans_cache.get(), trans_cache.Pitch, mapDim.x * MemoryFormat[i], mapDim.y,
-								cudaMemcpyDeviceToDevice, stream_worker));
-						FOR_EACH_MEMORY_END()
+								dest_offset.y, trans_cache.get(), trans_cache.Pitch, mapDim.x * MemoryFormat[i],
+								mapDim.y, cudaMemcpyDeviceToDevice, stream_worker));
+						}
 					}
 
 					//mark this chunk is loaded in the back buffer
@@ -1002,74 +1268,57 @@ public:
 			//clear this chunk
 			{
 				const uvec2 dest_offset = this->calcLocalMapOffset(back_buffer_chunkIdx);
-				FOR_EACH_MEMORY_START()
+				FOR_EACH_MEMORY() {
 					STP_CHECK_CUDA(cudaMemcpy2DToArrayAsync(backBuffer_ptr[i], dest_offset.x * MemoryFormat[i],
-						dest_offset.y, this->MapClearBuffer.get(), this->MapClearBuffer.Pitch, mapDim.x * MemoryFormat[i],
-						mapDim.y, cudaMemcpyDeviceToDevice, stream_worker));
-				FOR_EACH_MEMORY_END()
+						dest_offset.y, this->MapClearBuffer.get(), this->MapClearBuffer.Pitch,
+						mapDim.x * MemoryFormat[i], mapDim.y, cudaMemcpyDeviceToDevice, stream_worker));
+				}
 			}
 		}
 		//make sure workers on the memory are finished before releasing
 		this->Worker.mainWaitsWorkers(this->PipelineStream);
 		//unmap the front buffer
-		frontBuffer_w->unmapTerrainmap(this->PipelineStream);
+		frontBuffer_w.unmapTerrainmap(this->PipelineStream);
 
 		//record indices of chunks that need to be computed
-		const auto& backBuf_rec = this->BackBuffer->LocalChunkRecord;
-		this->ComputingChunk.clear();
+		this->SplatmapComputeChunk.clear();
 		//To avoid artefacts, if any chunk is a neighbour of those chunks we just recorded, need to recompute them as
 		//well. This is to mainly avoid splatmap seams. The logic is, if previously those chunks do not have a valid
 		//neighbour but this time they have one, The border of them may not be aligned properly with the new chunks.
-		for (unsigned int chunkIdx = 0u; chunkIdx < backBuf_rec.size(); chunkIdx++) {
-			if (backBuf_rec[chunkIdx].second) {
+		for (const auto& [chunkCoord, chunkLoaded] : this->BackBuffer->LocalChunkRecord) {
+			if (chunkLoaded) {
 				//if this chunk already has data, skip it along with its neighbours.
 				continue;
 			}
-
-			this->recomputeNeighbour(chunkIdx);
+			//for each neighbour of each computing chunk...
+			for (const ivec2 coord_offset : this->NeighbourCoordinateOffset) {
+				//make sure the coordinate is in a valid render distance
+				if (const ivec2 current_coord = this->BackBuffer->calcLocalIndexCoordinate(chunkCoord + coord_offset);
+					this->BackBuffer->isLocalChunk(current_coord)) {
+					this->SplatmapComputeChunk.emplace(this->BackBuffer->toLocalIndex(current_coord));
+				}
+			}
 		}
-	}
-
-	/**
-	 * @brief Trigger a chunk buffer reload for the back buffer.
-	 * @param chunkCoord The chunk coordinate for the chunk to be reloaded.
-	 * @return True if the chunk coordinate is triggered to be reloaded.
-	 * False if chunk coordinate is not in rendered area.
-	*/
-	inline bool reloadBuffer(ivec2 chunkCoord) {
-		const bool reload_status = this->BackBuffer->reloadMap(chunkCoord);
-		if (reload_status) {
-			//also trigger a re-compute if it has been reloaded
-			const unsigned int chunkIdx = this->BackBuffer->LocalChunkDictionary.at(chunkCoord);
-			this->recomputeNeighbour(chunkIdx);
-		}
-
-		return reload_status;
 	}
 
 	/**
 	 * @brief Transfer terrain map on host side to device (OpenGL) texture by a local chunk.
 	 * @param buffer Texture map on device side, a mapped OpenGL pointer.
-	 * @param chunk_visitor The visitor to read the chunk data.
+	 * @param source The source of data.
+	 * @param map_type The type of the terrain map.
 	 * @param chunkIdx Local chunk index that specified which chunk in render area will be overwritten.
 	 * @param stream The stream where works are sent.
 	*/
-	void sendChunkToBuffer(const STPMemoryBlock::STPMappedMemoryUnit& buffer,
-		const STPChunk::STPSharedMapVisitor& chunk_visitor, unsigned int chunkIdx, cudaStream_t stream) {
-		//chunk is ready, copy to rendering buffer
-		auto copy_buffer = [&stream, dimension = this->ChunkSetting.MapSize,
-			buffer_offset = this->calcLocalMapOffset(chunkIdx)]
-			(cudaArray_t dest, const void* src, size_t channelSize) -> void {
-			STP_CHECK_CUDA(cudaMemcpy2DToArrayAsync(dest, buffer_offset.x * channelSize, buffer_offset.y, src,
-				dimension.x * channelSize, dimension.x * channelSize, dimension.y, cudaMemcpyHostToDevice, stream));
-		};
-
-		unsigned int index;
+	void sendChunkToBuffer(const STPMemoryBlock::STPMappedMemoryUnit& buffer, const void* const source,
+		const STPTerrainMapType map_type, const unsigned int chunkIdx, const cudaStream_t stream) {
+		const uvec2 dimension = this->ChunkSetting.MapSize,
+			buffer_offset = this->calcLocalMapOffset(chunkIdx);
+		const size_t index = TERRAIN_MAP_INDEX(map_type),
+			channelSize = STPMemoryManager::MemoryFormat[index];
+		
 		//copy buffer to GL texture
-		index = TERRAIN_MAP_INDEX(STPWorldPipeline::STPTerrainMapType::Biomemap);
-		copy_buffer(buffer[index], chunk_visitor.biomemap(), MemoryFormat[index]);
-		index = TERRAIN_MAP_INDEX(STPWorldPipeline::STPTerrainMapType::Heightmap);
-		copy_buffer(buffer[index], chunk_visitor.heightmapBuffer(), MemoryFormat[index]);
+		STP_CHECK_CUDA(cudaMemcpy2DToArrayAsync(buffer[index], buffer_offset.x * channelSize, buffer_offset.y, source,
+			dimension.x * channelSize, dimension.x * channelSize, dimension.y, cudaMemcpyHostToDevice, stream));
 	}
 
 	/**
@@ -1077,39 +1326,84 @@ public:
 	 * @param chunkPos The new chunk position.
 	*/
 	inline void recomputeLocalChunkTable(const ivec2& chunkPos) {
-		const STPEnvironment::STPChunkSetting& setting = this->ChunkSetting;
-
-		STPChunk::STPChunkCoordinateCache allChunks =
-			STPChunk::calcChunkNeighbour(chunkPos, setting.ChunkSize, setting.RenderDistance);
-		this->BackBuffer->recomputeLocalChunkTable(allChunks);
+		this->BackBuffer->recomputeLocalChunkTable(chunkPos);
 	}
 
 	/**
 	 * @brief Generate a list of chunks that are required to have splatmap computed, based on the compute table.
 	 * Therefore splatmap of all chunks should be computed after all chunks have finished.
+	 * @param force_regenerate An optional array of chunk entry which states the chunks in the array should have splatmap regenerated.
+	 * It is undefined behaviour if any chunk is not in the rendering distance.
 	 * @return The splatmap generator requesting info.
 	*/
-	STPDiversity::STPTextureFactory::STPRequestingChunkInfo generateSplatmapGeneratorInfo() const {
-		STPDiversity::STPTextureFactory::STPRequestingChunkInfo requesting_info;
-		requesting_info.reserve(this->ComputingChunk.size());
+	const STPDiversity::STPTextureFactory::STPRequestingChunkInfo& generateSplatmapGeneratorInfo(
+		const STPGeneratorManager::STPChunkRequestResponseEntry* force_regenerate) {
+		using STPLocalChunkInformation = STPDiversity::STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation;
+		//given local chunk index
+		const auto createLocalChunkInfo = [&chunk_setting = as_const(this->ChunkSetting), &localRec = as_const(this->BackBuffer->LocalChunkRecord)](
+			const unsigned int index) -> STPLocalChunkInformation {
+			//mark updated rendering buffer
+			//we need to use the chunk normalised coordinate to get the splatmap offset,
+			//splatmap offset needs to be consistent with the heightmap and biomemap
+			const vec2 offset = static_cast<vec2>(STPChunk::calcChunkMapOffset(localRec[index].first,
+				chunk_setting.ChunkSize, chunk_setting.MapSize, chunk_setting.MapOffset));
+			//local chunk coordinate
+			const uvec2 local_coord = STPChunk::calcLocalChunkCoordinate(index, chunk_setting.RenderDistance);
 
-		for_each(this->ComputingChunk.cbegin(), this->ComputingChunk.cend(),
-			[&requesting_info, &chunk_setting = this->ChunkSetting,
-				&chunk_record = std::as_const(this->BackBuffer->LocalChunkRecord)](const unsigned int index) {
-				//mark updated rendering buffer
-				//we need to use the chunk normalised coordinate to get the splatmap offset,
-				//splatmap offset needs to be consistent with the heightmap and biomemap
-				const vec2 offset = static_cast<vec2>(STPChunk::calcChunkMapOffset(chunk_record[index].first,
-					chunk_setting.ChunkSize, chunk_setting.MapSize, chunk_setting.MapOffset));
-				//local chunk coordinate
-				const uvec2 local_coord = STPChunk::calcLocalChunkCoordinate(index, chunk_setting.RenderDistance);
-				requesting_info.emplace_back(
-					STPDiversity::STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation
-					{ local_coord.x, local_coord.y, offset.x, offset.y }
-				);
-			});
+			return STPLocalChunkInformation { local_coord.x, local_coord.y, offset.x, offset.y };
+		};
+		this->SplatmapInfoCache.clear();
 
-		return requesting_info;
+		//put all mandated chunks that should have splatmap computed first
+		transform(this->SplatmapComputeChunk.cbegin(), this->SplatmapComputeChunk.cend(),
+			back_inserter(this->SplatmapInfoCache), createLocalChunkInfo);
+		//then take force regenerate into account
+		if (force_regenerate) {
+			for (const auto force_entry : *force_regenerate) {
+				//need to make sure this entry is not a duplicate in the previous container
+				if (const unsigned int index = this->BackBuffer->toLocalIndex(this->BackBuffer->calcLocalIndexCoordinate(force_entry->first));
+					this->SplatmapComputeChunk.find(index) == this->SplatmapComputeChunk.cend()) {
+					//not a duplicate, insert
+					this->SplatmapInfoCache.emplace_back(createLocalChunkInfo(index));
+				}
+			}
+		}
+		return this->SplatmapInfoCache;
+	}
+
+	/**
+	 * @brief Generate a list of chunks that need to be requested from the generator.
+	 * @return The chunk request payload.
+	*/
+	const STPGeneratorManager::STPChunkRequestPayload& generateChunkRequestPayload() {
+		this->GeneratorRequestPayload.clear();
+		for (const auto [chunk_coord, loaded] : this->BackBuffer->LocalChunkRecord) {
+			if (!loaded) {
+				//put the local chunk to the request payload if it is not currently loaded in the rendering memory
+				this->GeneratorRequestPayload.emplace_back(chunk_coord);
+			}
+		}
+		return this->GeneratorRequestPayload;
+	}
+
+	/**
+	 * @brief Find the intersection between a given set of chunk, and the chunks in the current render distance.
+	 * This function allows filtering out chunks that are not render-able.
+	 * @param chunk_set The set of chunks as input.
+	 * @param intersection_cache The cache input for storing intermediate data.
+	 * @return The intersection result, which is a subset of the input chunk set.
+	*/
+	const STPGeneratorManager::STPChunkRequestResponseEntry& intersectRenderDistance(
+		const STPGeneratorManager::STPChunkRequestResponseEntry& chunk_set, STPRenderDistanceIntersectionCache& intersection_cache) {
+		intersection_cache.clear();
+		auto& [valid_chunk] = intersection_cache;
+
+		//loop through the chunk set
+		//test if this chunk coordinate is in the render distance
+		//if it is in the render distance, put that into the result!
+		std::copy_if(chunk_set.cbegin(), chunk_set.cend(), back_inserter(valid_chunk),
+			[&bb = as_const(*this->BackBuffer)](const auto set_element) { return bb.isLocalChunk(bb.calcLocalIndexCoordinate(set_element->first)); });
+		return valid_chunk;
 	}
 
 };
@@ -1117,7 +1411,7 @@ public:
 STPWorldPipeline::STPWorldPipeline(const STPPipelineSetup& setup) :
 	ChunkSetting(*setup.ChunkSetting), BufferStream(STPSmartDeviceObject::makeStream(cudaStreamNonBlocking)),
 	Generator(make_unique<STPGeneratorManager>(setup, *this)), Memory(make_unique<STPMemoryManager>(*this)),
-	LastCentreLocation(ivec2(std::numeric_limits<int>::min())), PipelineWorker(1u) {
+	LastCentreLocation(wpMinChunkCoordinate), PipelineWorker(1u) {
 	this->ChunkSetting.validate();
 }
 
@@ -1146,96 +1440,90 @@ inline STPWorldPipeline::STPChunkLoaderStatus STPWorldPipeline::isLoaderBusy() {
 	return STPChunkLoaderStatus::Yield;
 }
 
-const ivec2& STPWorldPipeline::centre() const noexcept {
-	return this->LastCentreLocation;
-}
-
 STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos) {
 	const STPEnvironment::STPChunkSetting& chunk_setting = this->ChunkSetting;
 	
 	/* -------------------------------- Status Check --------------------------------- */
 	const STPChunkLoaderStatus loaderStatus = this->isLoaderBusy();
-	bool shouldClearBuffer = false;
 
+	if (loaderStatus == STPChunkLoaderStatus::Busy) {
+		//loader is working on the back buffer for a previous task
+		//can't do anything, ignore the load request
+		return STPWorldLoadStatus::BackBufferBusy;
+	}
+	//we know the loader is not busy
 	//check if the central position has changed or not
 	if (const ivec2 thisCentrePos = STPChunk::calcWorldChunkCoordinate(
 			viewPos - chunk_setting.ChunkOffset, chunk_setting.ChunkSize, chunk_setting.ChunkScale);
 		thisCentrePos != this->LastCentreLocation) {
 		//centre position changed
-		if (loaderStatus == STPChunkLoaderStatus::Busy) {
-			//loader is working on the back buffer for a previous task
-			return STPWorldLoadStatus::BufferExhaust;
-		}
 		//discard previous unfinished task and move on to the new task
 		
 		//recalculate loading chunks
 		this->Memory->recomputeLocalChunkTable(thisCentrePos);
-
 		this->LastCentreLocation = thisCentrePos;
-		//clear up previous rendering buffer
-		shouldClearBuffer = true;
+
 		//start loading the new rendered chunks
 		this->Memory->mapBackBuffer();
 	} else {
 		//centre position has not changed
-		if (loaderStatus == STPChunkLoaderStatus::Busy) {
-			//loader is working on the back buffer for the current task
-			return STPWorldLoadStatus::BackBufferBusy;
+		//our current algorithm guarantees all chunks should be loaded when loader finishes
+		if (loaderStatus == STPChunkLoaderStatus::Yield) {
+			//current task just done completely
+			//synchronise the buffer before passing to the user
+			this->Memory->unmapBackBuffer();
+			this->Memory->swapBuffer();
+			return STPWorldLoadStatus::Swapped;
 		}
-		//loader is not busy, we can safely read from the memory
-		if (const auto& back_local_record = this->Memory->BackBuffer->LocalChunkRecord;
-			std::all_of(back_local_record.cbegin(), back_local_record.cend(),
-				[](const auto& rec) { return rec.second; })) {
-			if (loaderStatus == STPChunkLoaderStatus::Yield) {
-				//current task just done completely
-				//synchronise the buffer before passing to the user
-				this->Memory->unmapBackBuffer();
-				this->Memory->swapBuffer();
-				return STPWorldLoadStatus::Swapped;
-			}
-			return STPWorldLoadStatus::Unchanged;
-		}
-		//continue loading the current rendered chunks
+		return STPWorldLoadStatus::Unchanged;
 	}
 
 	/* ----------------------------- Asynchronous Chunk Loading ------------------------------- */
-	auto asyncChunkLoader = [&mem_mgr = *this->Memory, &gen_mgr = *this->Generator,
+	const auto asyncChunkLoader = [&mem_mgr = *this->Memory, &gen_mgr = *this->Generator,
 			stream_main = this->BufferStream.get()](const auto& map_data) -> void {
-		auto& local_record = mem_mgr.BackBuffer->LocalChunkRecord;
 		STPConcurrentStreamManager& stream_mgr = mem_mgr.Worker;
-		bool allLoaded = true;
+		//given world coordinate...
+		const auto toLocalIndex = [&back_buffer = as_const(*mem_mgr.BackBuffer)](const ivec2 coord) noexcept -> unsigned int {
+			return back_buffer.toLocalIndex(back_buffer.calcLocalIndexCoordinate(coord));
+		};
 
-		//check all workers and release chunks once they have finished.
+		//request chunk based on the chunk loading status
+		const STPGeneratorManager::STPChunkRequestPayload& requestPayload = mem_mgr.generateChunkRequestPayload();
+		const auto& [request_response, require_heightmap_reload] = gen_mgr.requestChunk(requestPayload);
+		//find the valid subset for reloading chunk texture
+		//this response is different, there might be chunks that are outside the current render area
+		//need to filter out
+		const STPGeneratorManager::STPChunkRequestResponseEntry* const valid_heightmap_reload = require_heightmap_reload
+			? &mem_mgr.intersectRenderDistance(*require_heightmap_reload, mem_mgr.HeightmapIntersectionCache) : nullptr;
+
+		//start auxiliary workers
 		stream_mgr.workersWaitMain(stream_main);
-		for (unsigned int i = 0u; i < local_record.size(); i++) {
-			auto& [chunkPos, chunkLoaded] = local_record[i];
-			if (chunkLoaded) {
-				//skip this chunk if loading has been completed before
-				continue;
-			}
-
-			//ask provider if we can get the chunk
-			const optional<STPChunk::STPSharedMapVisitor> chunk = gen_mgr.getChunk(chunkPos);
-			if (chunk) {
-				//load chunk into device texture
-				mem_mgr.sendChunkToBuffer(map_data, *chunk, i, stream_mgr.nextWorker());
-				chunkLoaded = true;
-				continue;
-			}
-
-			//chunk is not gettable
-			allLoaded = false;
+		//first, send biomemap from the request to rendering memory
+		for (const auto entry : request_response) {
+			const auto& [chunk_world_coord, chunk] = *entry;
+			mem_mgr.sendChunkToBuffer(map_data, chunk.biomemap(), STPTerrainMapType::Biomemap,
+				toLocalIndex(chunk_world_coord), stream_mgr.nextWorker());
 		}
+		//then, send heightmap based on the response that tells us to update our heightmap buffer
+		//If response tells us to reload heightmap, this array is a superset of the main request response,
+		//and we don't need to worry about heightmap from the main response.
+		//Otherwise we loop through the main response.
+		for (const auto entry : valid_heightmap_reload ? *valid_heightmap_reload : request_response) {
+			const auto& [chunk_world_coord, chunk] = *entry;
+			mem_mgr.sendChunkToBuffer(map_data, chunk.heightmapLow(), STPTerrainMapType::Heightmap,
+				toLocalIndex(chunk_world_coord), stream_mgr.nextWorker());
+		}
+		//end of auxiliary workers
 		stream_mgr.mainWaitsWorkers(stream_main);
 
-		//generate splatmap after all chunks had their maps loaded from host, so we only need to generate once.
-		if (allLoaded) {
-			//there exists chunk that has terrain maps updated, we need to update splatmap as well
-			gen_mgr.computeSplatmap(map_data, mem_mgr.generateSplatmapGeneratorInfo());
-		}
-		//wait for the work to finish in the loader thread
-		//if the rendering thread issues rendering command after buffer swapping but some works have yet finished,
-		//it may stall the rendering thread.
+		//finally, (re)generate splatmap for those chunks that have heightmap (re)loaded
+		gen_mgr.generateSplatmap(map_data, mem_mgr.generateSplatmapGeneratorInfo(valid_heightmap_reload));
+
+		//all chunks now should have loaded into the memory, update their statuses
+		for_each(requestPayload.cbegin(), requestPayload.cend(),
+			[&lr = mem_mgr.BackBuffer->LocalChunkRecord, &toLocalIndex](const auto chunk_coord) { lr[toLocalIndex(chunk_coord)].second = true; });
+
+		//end of chunk loader task
 		STP_CHECK_CUDA(cudaStreamSynchronize(stream_main));
 	};
 
@@ -1243,23 +1531,21 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 	const auto& backBuffer_ptr = this->Memory->getMappedBackBuffer();
 	//Search if any chunk in the front buffer can be reused.
 	//If so, copy to the back buffer; if not, clear the chunk.
-	if (shouldClearBuffer) {
-		this->Memory->reuseBuffer(backBuffer_ptr);
-	}
+	this->Memory->reuseBuffer(backBuffer_ptr);
 
 	//group mapped data together and start loading chunk
 	this->MapLoader = this->PipelineWorker.enqueue(asyncChunkLoader, std::cref(backBuffer_ptr));
 	return STPWorldLoadStatus::BackBufferBusy;
 }
 
-bool STPWorldPipeline::reload(const ivec2& chunkCoord) {
-	return this->Memory->reloadBuffer(chunkCoord);
+const ivec2& STPWorldPipeline::centre() const noexcept {
+	return this->LastCentreLocation;
 }
 
-STPOpenGL::STPuint STPWorldPipeline::operator[](STPTerrainMapType type) const noexcept {
+STPOpenGL::STPuint STPWorldPipeline::operator[](const STPTerrainMapType type) const noexcept {
 	return this->Memory->getMap(type);
 }
 
 const STPDiversity::STPTextureFactory& STPWorldPipeline::splatmapGenerator() const noexcept {
-	return this->Generator->generateSplatmap;
+	return this->Generator->SplatmapGenerator;
 }
