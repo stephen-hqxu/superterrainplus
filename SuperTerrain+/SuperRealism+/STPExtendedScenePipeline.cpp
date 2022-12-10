@@ -10,9 +10,11 @@
 
 //Error
 #include <SuperRealism+/Utility/STPRendererErrorHandler.hpp>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Exception/STPInsufficientMemory.h>
+#include <SuperTerrain+/Exception/STPInvalidEnum.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
+#include <SuperTerrain+/Exception/STPUnsupportedSystem.h>
+#include <SuperTerrain+/Exception/STPValidationFailed.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperTerrain+/Utility/STPStringUtility.h>
@@ -237,7 +239,7 @@ private:
 		for (STPShaderMemoryType_t typeIdx = 0u; typeIdx < Desc.size(); typeIdx++) {
 			STPShaderMemoryDescription& typeDesc = Desc[typeIdx];
 
-			switch (static_cast<STPShaderMemoryType>(typeIdx)) {
+			switch (const STPShaderMemoryType memType = static_cast<STPShaderMemoryType>(typeIdx)) {
 			case STPShaderMemoryType::ScreenSpaceStencil:
 				//although we said stencil is input / output, since CUDA cannot map stencil texture directly,
 				//we need to pack it into the internal cache from an external texture, map the cache, then copy to the texture.
@@ -306,8 +308,7 @@ private:
 				};
 				break;
 			default:
-				throw STPException::STPInvalidArgument("The type of shader memory is not valid");
-				break;
+				throw STP_INVALID_ENUM_CREATE(memType, STPShaderMemoryType);
 			}
 		}
 
@@ -936,15 +937,16 @@ STPExtendedScenePipeline::STPValidatedInformation<Desc>::STPValidatedInformation
 
 }
 
+#define VALIDATE_SSRI_MEMORY(EXPR) STP_ASSERTION_VALIDATION(EXPR, "One or more specified shader memory have incompatible type with SSRI shader")
+
 STPExtendedScenePipeline::STPValidatedInformation<STPExtendedScenePipeline::STPSSRIDescription>
 	STPExtendedScenePipeline::STPSSRIDescription::validate() const {
-	if (this->Stencil.type() != STPShaderMemoryType::ScreenSpaceStencil
-		|| this->RayDepth.type() != STPShaderMemoryType::ScreenSpaceRayDepth
-		|| this->RayDirection.type() != STPShaderMemoryType::ScreenSpaceRayDirection
-		|| this->Position.type() != STPShaderMemoryType::GeometryPosition
-		|| this->UV.type() != STPShaderMemoryType::GeometryUV) {
-		throw STPException::STPMemoryError("One or more specified shader memory have incompatible type with SSRI shader");
-	}
+	VALIDATE_SSRI_MEMORY(this->Stencil.type() == STPShaderMemoryType::ScreenSpaceStencil);
+	VALIDATE_SSRI_MEMORY(this->RayDepth.type() == STPShaderMemoryType::ScreenSpaceRayDepth);
+	VALIDATE_SSRI_MEMORY(this->RayDirection.type() == STPShaderMemoryType::ScreenSpaceRayDirection);
+	VALIDATE_SSRI_MEMORY(this->Position.type() == STPShaderMemoryType::GeometryPosition);
+	VALIDATE_SSRI_MEMORY(this->UV.type() == STPShaderMemoryType::GeometryUV);
+
 	return STPValidatedInformation(*this);
 }
 
@@ -967,16 +969,15 @@ STPExtendedScenePipeline::STPExtendedScenePipeline(const STPScenePipelineInitial
 	RenderResolution(uvec2(0u)) {
 	//traceable object max count check, which should be less than the bit width of standard stencil buffer
 	const auto [object_max] = this->SceneMemoryLimit;
-	if (object_max > STPScreenSpaceRayIntersection::MaxPrimitiveRayID) {
-		throw STPException::STPUnsupportedFunctionality("The extended scene memory limit should not exceed the allowance defined by each shader");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(object_max <= STPScreenSpaceRayIntersection::MaxPrimitiveRayID,
+		"The extended scene memory limit should not exceed the allowance defined by each shader");
 
 	//context check
 	const OptixDeviceContext dev_ctx = this->Context.get();
 	unsigned int maxInstanceID;
 	STP_CHECK_OPTIX(optixDeviceContextGetProperty(dev_ctx, OPTIX_DEVICE_PROPERTY_LIMIT_MAX_INSTANCE_ID, &maxInstanceID, sizeof(unsigned int)));
 	if (maxInstanceID < STPInstanceIDCoder::UserIDMask) {
-		throw STPException::STPUnsupportedFunctionality("The current OptiX rendering device does not support enough bits for IAS user ID");
+		throw STP_UNSUPPORTED_SYSTEM_CREATE("The current OptiX rendering device does not support enough bits for IAS user ID");
 	}
 }
 
@@ -1008,9 +1009,7 @@ void STPExtendedScenePipeline::updateAccelerationStructure() {
 
 void STPExtendedScenePipeline::add(STPExtendedSceneObject::STPTraceable& object) {
 	size_t& curr_traceable = this->SceneMemoryCurrent.TraceableObject;
-	if (curr_traceable >= this->SceneMemoryLimit.TraceableObject) {
-		throw STPException::STPMemoryError("The number of traceable object has reached the limit");
-	}
+	STP_ASSERTION_MEMORY_SUFFICIENCY(curr_traceable, 1u, this->SceneMemoryLimit.TraceableObject, "The number of traceable object has reached the limit");
 	auto& [object_db, object_depth] = this->SceneComponent;
 	//record the old maximum traversable depth
 	const unsigned int traversableDepth_old = object_depth.empty() ? 0u : *object_depth.crbegin();
@@ -1037,9 +1036,7 @@ void STPExtendedScenePipeline::add(STPExtendedSceneObject::STPTraceable& object)
 }
 
 void STPExtendedScenePipeline::setResolution(const uvec2 resolution) {
-	if (resolution.x == 0u || resolution.y == 0u) {
-		throw STPException::STPBadNumericRange("Both components of render resolution must be positive");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(resolution.x > 0u && resolution.y > 0u, "Both components of render resolution must be positive");
 	this->RenderResolution = resolution;
 
 	auto& smStorage = this->SceneMemory->ShaderMemoryStorage;

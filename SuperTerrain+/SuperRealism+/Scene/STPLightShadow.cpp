@@ -1,7 +1,8 @@
 #include <SuperRealism+/Scene/Light/STPLightShadow.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
+#include <SuperTerrain+/Exception/STPInvalidEnum.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -17,9 +18,7 @@ constexpr static vec4 BlackColour = vec4(vec3(0.0f), 1.0f);
 
 STPLightShadow::STPLightShadow(const unsigned int resolution, const STPShadowMapFormat format) :
 	ShadowMapFormat(format), ShadowMapResolution(resolution), ShadowMapShouldUpdate(true), ShadowMapUpdateMask(true) {
-	if (this->ShadowMapResolution == 0u) {
-		throw STPException::STPBadNumericRange("The resolution of the shadow map should be a positive integer");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(this->ShadowMapResolution > 0u, "The resolution of the shadow map should be a positive integer");
 }
 
 SuperTerrainPlus::STPOpenGL::STPuint64 STPLightShadow::shadowMapHandle() const {
@@ -37,8 +36,7 @@ void STPLightShadow::setShadowMap(const STPShadowMapFilter shadow_filter, const 
 	case STPShadowMapFormat::Cube: shadow_target = GL_TEXTURE_CUBE_MAP;
 		break;
 	default:
-		//impossible enum case
-		break;
+		throw STP_INVALID_ENUM_CREATE(this->ShadowMapFormat, STPShadowMapFormat);
 	}
 	//determine texture internal format based on shadow map filter
 	//For VSM-related shadow mapping, we should use 2-channel colour format rather than depth format.

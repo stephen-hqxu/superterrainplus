@@ -1,6 +1,6 @@
 #include <SuperTerrain+/World/Diversity/STPLayer.h>
 
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 #include <optional>
 #include <tuple>
@@ -95,9 +95,7 @@ public:
 	STPLayerCache(STPLayer& layer, const size_t capacity) :
 		Layer(layer), Key(make_unique<unsigned long long[]>(capacity)), Value(make_unique<Sample[]>(capacity)),
 		Mask(capacity - 1ull) {
-		if (!isPow2(capacity)) {
-			throw STPException::STPBadNumericRange("The capacity must be a power of 2");
-		}
+		STP_ASSERTION_NUMERIC_DOMAIN(isPow2(capacity), "The capacity of the layer cache must be a power of 2");
 		//make sure the hash table starts at 0
 		this->clearCache();
 	}

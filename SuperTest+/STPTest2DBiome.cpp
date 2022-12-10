@@ -9,8 +9,7 @@
 #include<SuperTerrain+/World/Diversity/STPLayer.h>
 #include <SuperTerrain+/World/Diversity/STPBiomeFactory.h>
 
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -200,7 +199,7 @@ SCENARIO("STPLayer connected with some testing layers for biome generation", "[D
 						[]() {
 							RootLayer root(3u, RandomSeed, Salt);
 						}(),
-						STPException::STPBadNumericRange);
+						STPException::STPNumericDomainError);
 				}
 
 			}
@@ -330,7 +329,7 @@ SCENARIO_METHOD(BiomeFactoryTester, "STPBiomeFactory can be used to produce biom
 	WHEN("Dimension is some invalid values") {
 
 		THEN("Biome factory should reject the values") {
-			REQUIRE_THROWS_AS(BiomeFactoryTester(uvec2(0u, 4u)), SuperTerrainPlus::STPException::STPBadNumericRange);
+			REQUIRE_THROWS_AS(BiomeFactoryTester(uvec2(0u, 4u)), STPException::STPNumericDomainError);
 		}
 
 	}

@@ -6,8 +6,7 @@
 #include <SuperRealism+/Utility/STPLogHandler.hpp>
 
 //Error
-#include <SuperTerrain+/Exception/STPGLError.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/API/STPGLError.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -230,7 +229,7 @@ STPShaderManager::STPShader STPShaderManager::make(const STPOpenGL::STPenum type
 
 	if (!valid) {
 		//compilation error
-		throw STPException::STPGLError(log.c_str());
+		throw STP_GL_ERROR_CREATE(log);
 	}
 
 	//write log

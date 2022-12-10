@@ -1,8 +1,7 @@
 #include <SuperAlgorithm+/Parser/STPTextureDefinitionLanguage.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPInvalidSyntax.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
+//#include <SuperTerrain+/Exception/STPParserError.h>
 
 //Matching
 #include <ctype.h>
@@ -300,7 +299,7 @@ public:
 			msg << "Got: " << endl;
 			msg << '\'' << nextToken.Lexeme << '\'' << endl;
 
-			throw STPException::STPInvalidSyntax(msg.str().c_str());
+			throw std::runtime_error(msg.str().c_str());
 		}
 		return nextToken;
 	}
@@ -338,7 +337,7 @@ public:
 			//impossible
 			break;
 		}
-		throw STPException::STPInvalidSyntax(err_msg.str().c_str());
+		throw std::runtime_error(err_msg.str().c_str());
 	}
 
 };
@@ -371,7 +370,7 @@ STPTextureDefinitionLanguage::STPTextureDefinitionLanguage(const string_view& so
 			stringstream msg;
 			lexer.composeInitialErrorInfo(msg, "unknown operation")
 				<< "Operation code \'" << operation << "\' is undefined by Texture Definition Language." << endl;
-			throw STPException::STPInvalidSyntax(msg.str().c_str());
+			throw std::runtime_error(msg.str().c_str());
 		}
 	}
 	
@@ -385,7 +384,7 @@ void STPTextureDefinitionLanguage::checkTextureDeclared(const STPTDLLexer& lexer
 		stringstream msg;
 		lexer.composeInitialErrorInfo(msg, "unknown texture")
 			<< "Texture \'" << texture << "\' is not declared before it is being referenced." << endl;
-		throw STPException::STPInvalidSyntax(msg.str().c_str());
+		throw std::runtime_error(msg.str().c_str());
 	}
 }
 
@@ -458,7 +457,7 @@ void STPTextureDefinitionLanguage::processRule(STPTDLLexer& lexer) {
 				stringstream msg;
 				lexer.composeInitialErrorInfo(msg, "unrecognised rule type")
 					<< "Rule type \'" << rule_type << "\' is not recognised." << endl;
-				throw STPException::STPInvalidSyntax(msg.str().c_str());
+				throw std::runtime_error(msg.str().c_str());
 			}
 
 			if (lexer.expect(TokenType::Comma, TokenType::RightBracket).Type == TokenType::RightBracket) {
@@ -516,7 +515,7 @@ void STPTextureDefinitionLanguage::processGroup(STPTDLLexer& lexer) {
 			stringstream msg;
 			lexer.composeInitialErrorInfo(msg, "unrecognised group type")
 				<< "Group type \'" << group_type << "\' is not recognised." << endl;
-			throw STPException::STPInvalidSyntax(msg.str().c_str());
+			throw std::runtime_error(msg.str().c_str());
 		}
 		//end of a group definition tuple
 		lexer.expect(TokenType::RightBracket);
@@ -558,7 +557,7 @@ STPTextureDefinitionLanguage::STPTextureVariable STPTextureDefinitionLanguage::o
 			stringstream msg;
 			msg << "View group reference for \'" << texture_name << "\' is undefined." << endl;
 
-			throw STPException::STPMemoryError(msg.str().c_str());
+			throw std::runtime_error(msg.str().c_str());
 		}
 
 		const TI::STPViewGroupID view_group_id = ViewGroupIDLookup[view_group_index];

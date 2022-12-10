@@ -1,6 +1,6 @@
 #include <SuperTerrain+/World/Diversity/STPBiomeFactory.h>
 
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 using glm::uvec2;
 using glm::ivec2;
@@ -18,9 +18,7 @@ STPLayer* STPBiomeFactory::STPProductionLineCreator::operator()() {
 }
 
 STPBiomeFactory::STPBiomeFactory(const uvec2 dimension) : LayerProductionLine(*this), BiomeDimension(dimension) {
-	if (dimension.x == 0u || dimension.y == 0u) {
-		throw STPException::STPBadNumericRange("No component in a dimension vector should be zero");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(dimension.x > 0u && dimension.y > 0u, "Biomemap should have strictly positive dimension in both vector components");
 }
 
 void STPBiomeFactory::operator()(Sample* const biomemap, const ivec2 offset) {

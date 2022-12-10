@@ -3,8 +3,8 @@
 #include <SuperTerrain+/STPSQLite.h>
 //Error
 #include <SuperTerrain+/Utility/STPDatabaseErrorHandler.hpp>
-#include <SuperTerrain+/Exception/STPDatabaseError.h>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/API/STPSQLError.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 //System
 #include <string>
@@ -105,11 +105,11 @@ public:
 		};
 		//enforce foreign key constraints
 		if (!configure(SQLITE_DBCONFIG_ENABLE_FKEY, 1)) {
-			throw STPException::STPDatabaseError("Foreign key constraints cannot be enforced");
+			throw STP_SQL_ERROR_CREATE("Foreign key constraints cannot be enforced");
 		}
 		//enable view
 		if (!configure(SQLITE_DBCONFIG_ENABLE_VIEW, 1)) {
-			throw STPException::STPDatabaseError("View cannot be enabled");
+			throw STP_SQL_ERROR_CREATE("View cannot be enabled");
 		}
 	}
 
@@ -141,13 +141,12 @@ public:
 		try {
 			//we don't need callback function since create table does not return anything
 			STP_CHECK_SQLITE3(sqlite3_exec(this->SQL.get(), sql.data(), nullptr, nullptr, &err_msg));
-		}
-		catch (const STPException::STPDatabaseError& dbe) {
+		} catch (const STPException::STPSQLError& dbe) {
 			//concatenate error message and throw a new one
 			//usually exception should not be thrown since schema is created by developer not client
 			const string compound = string(dbe.what()) + "\nMessage: " + err_msg;
 			sqlite3_free(err_msg);
-			throw STPException::STPDatabaseError(compound.c_str());
+			throw STP_SQL_ERROR_CREATE(compound.c_str());
 		}
 	}
 
@@ -214,7 +213,7 @@ public:
 		if (!this->execStmt(texture_stmt)) {
 			//these types of query doesn't have any condition so does not rely on user input.
 			//If fails, there must be something wrong with program itself.
-			throw STPException::STPDatabaseError("Query that supposed to produce a result does not. "
+			throw STP_SQL_ERROR_CREATE("Query that supposed to produce a result does not. "
 				"This error is caused by the program itself, please contact the engine maintainer.");
 		}
 		//we only expect a single row and column
@@ -261,7 +260,7 @@ public:
 		//now we need to retrieve the the blob data, since int should be a primary key, we expect a unique result
 		if (!this->execStmt(stmt)) {
 			//no data was retrieved, meaning int is invalid and nothing has been retrieved
-			throw STPException::STPDatabaseError("The integer value given is not found in the database");
+			throw STP_SQL_ERROR_CREATE("The integer value given is not found in the database");
 		}
 
 		return sqlite3_column_blob(stmt, 0);
@@ -587,12 +586,8 @@ const STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::getSplatBu
 STPTextureInformation::STPMapGroupID STPTextureDatabase::addMapGroup(const STPMapGroupDescription& desc) {
 	static STPTextureInformation::STPMapGroupID MapGroupIDAccumulator = 10000u;
 
-	if (desc.Dimension.x == 0u || desc.Dimension.y == 0u) {
-		throw STPException::STPBadNumericRange("Dimension of a texture should be positive");
-	}
-	if (desc.MipMapLevel == 0u) {
-		throw STPException::STPBadNumericRange("The number of mipmap should be positive");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(desc.Dimension.x > 0u && desc.Dimension.y > 0u, "Dimension of a texture should be positive");
+	STP_ASSERTION_NUMERIC_DOMAIN(desc.MipMapLevel > 0u, "The number of mipmap should be positive");
 
 	static constexpr string_view AddMapGroup =
 		"INSERT INTO MapGroup (MGID, MapDescription) VALUES(?, ?);";
@@ -606,9 +601,7 @@ STPTextureInformation::STPViewGroupID STPTextureDatabase::addViewGroup(const STP
 	static STPTextureInformation::STPViewGroupID ViewGroupIDAccumulator = 10000u;
 
 	const auto& [one, two, three] = desc;
-	if (one == 0u || two == 0u || three == 0u) {
-		throw STPException::STPBadNumericRange("Texture scales must be all positive");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(one > 0u && two > 0u && three > 0u, "Texture scales must be all positive");
 
 	static constexpr string_view AddViewGroup = 
 		"INSERT INTO ViewGroup (VGID, ViewDescription) VALUES(?, ?);";

@@ -7,9 +7,6 @@
 //SuperAlgorithm+/Parser
 #include <SuperAlgorithm+/Parser/STPTextureDefinitionLanguage.h>
 
-//Error
-#include <SuperTerrain+/Exception/STPSerialisationError.h>
-
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 

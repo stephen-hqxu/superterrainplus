@@ -1,7 +1,7 @@
 #include <SuperRealism+/Scene/Light/STPCascadedShadowMap.h>
 //Error
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPGLError.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
+#include <SuperTerrain+/Exception/STPValidationFailed.h>
 //Algebra
 #include <SuperTerrain+/Utility/Algebra/STPVector4d.h>
 #include <SuperTerrain+/Utility/Algebra/STPMatrix4x4d.h>
@@ -68,15 +68,9 @@ static STPCascadedShadowMap::STPLightFrustum transformFrustum(STPCascadedShadowM
 STPCascadedShadowMap::STPCascadedShadowMap(const unsigned int resolution, const STPLightFrustum& light_frustum) :
 	STPLightShadow(resolution, STPShadowMapFormat::Array), LightDirection(vec3(0.0f)), FocusEventData { }, LightFrustum(transformFrustum(light_frustum)) {
 	const auto& [div, band_radius, focus_camera, distance_mul] = this->LightFrustum;
-	if (distance_mul < 1.0f) {
-		throw STPException::STPBadNumericRange("A less-than-one shadow distance is not able to cover the view frustum");
-	}
-	if (div.size() == 0u) {
-		throw STPException::STPBadNumericRange("There is no shadow level being defined");
-	}
-	if (band_radius < 0.0f) {
-		throw STPException::STPBadNumericRange("Shadow cascade band radius must be non-negative");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(distance_mul >= 1.0f, "A less-than-one shadow distance is not able to cover the view frustum");
+	STP_ASSERTION_NUMERIC_DOMAIN(div.size() > 0u, "There is no shadow level being defined");
+	STP_ASSERTION_NUMERIC_DOMAIN(band_radius >= 0.0f, "Shadow cascade band radius must be non-negative");
 	//register a camera callback
 	focus_camera->subscribe(this->FocusEventData);
 
@@ -97,9 +91,7 @@ STPCascadedShadowMap::STPCascadedShadowMap(const unsigned int resolution, const 
 	/* ----------------------------------- initial shadow data fill up --------------------------------------- */
 	unsigned char* const shadowData_init = reinterpret_cast<unsigned char*>(this->ShadowData.mapBufferRange(0, shadowBuffer_size, 
 		GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
-	if (!shadowData_init) {
-		throw STPException::STPGLError("Unable to map shadow data buffer to setup initial data for cascaded shadow map");
-	}
+	STP_ASSERTION_VALIDATION(shadowData_init, "Unable to map shadow data buffer to setup initial data for cascaded shadow map");
 
 	//zero fill
 	memset(shadowData_init, 0x00, shadowBuffer_size);
@@ -123,9 +115,7 @@ STPCascadedShadowMap::STPCascadedShadowMap(const unsigned int resolution, const 
 	//assigned the light space matrix pointer
 	this->LightSpaceMatrix = reinterpret_cast<mat4*>(this->ShadowData.mapBufferRange(shadowBufferMat_offset, shadowBufferMat_size,
 		GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
-	if (!this->LightSpaceMatrix) {
-		throw STPException::STPGLError("Unable to map the shadow data buffer for cascaded shadow map");
-	}
+	STP_ASSERTION_VALIDATION(this->LightSpaceMatrix, "Unable to map the shadow data buffer for cascaded shadow map");
 }
 
 using std::move;

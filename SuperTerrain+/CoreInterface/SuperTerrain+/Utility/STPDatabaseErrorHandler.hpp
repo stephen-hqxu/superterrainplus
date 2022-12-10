@@ -8,10 +8,10 @@
 #ifdef STP_HAS_SQLITE3
 #ifndef _STP_DATABASE_ERROR_HANDLER_HPP_
 #define _STP_DATABASE_ERROR_HANDLER_HPP_
-#include <SuperTerrain+/Exception/STPDatabaseError.h>
+#include <SuperTerrain+/Exception/API/STPSQLError.h>
 
-STP_ERROR_DESCRIPTOR(assertSqlite3, int, SQLITE_OK, STPException::STPDatabaseError) {
-	msg_str << "SQLite: " << sqlite3_errstr(error_code);
+STP_ERROR_DESCRIPTOR(assertSqlite3, int, SQLITE_OK, STPException::STPSQLError) {
+	return std::string("SQLite: ") + sqlite3_errstr(error_code);
 }
 #define STP_CHECK_SQLITE3(ERR) STP_INVOKE_ERROR_DESCRIPTOR(assertSqlite3, ERR)
 

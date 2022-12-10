@@ -1,8 +1,6 @@
 #include <SuperRealism+/Scene/Component/STPStarfield.h>
 #include <SuperRealism+/STPRealismInfo.h>
 
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
-
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperTerrain+/Utility/STPStringUtility.h>

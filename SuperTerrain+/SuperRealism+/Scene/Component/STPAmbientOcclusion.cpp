@@ -2,7 +2,7 @@
 //Info
 #include <SuperRealism+/STPRealismInfo.h>
 //Error
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 //File Reader
 #include <SuperTerrain+/Utility/STPFile.h>
@@ -167,9 +167,7 @@ AO_KERNEL_VEC(SSAO) {
 }
 
 AO_KERNEL_OPT(SSAO) {
-	if (this->KernelSize == 0u) {
-		throw STPException::STPBadNumericRange("The ambient occlusion kernel must have positive size");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(this->KernelSize > 0u, "The ambient occlusion kernel must have positive size");
 
 	option("AO_KERNEL_SAMPLE_SIZE", this->KernelSize);
 }
@@ -212,9 +210,7 @@ AO_KERNEL_CSTR(HBAO) : STPOcclusionKernelInstance(kernel, STPOcclusionAlgorithm:
 }
 
 AO_KERNEL_VEC(HBAO) {
-	if (this->DirectionStep == 0u || this->RayStep == 0u) {
-		throw STPException::STPBadNumericRange("The number of step for ambient occlusion kernel should be positive");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(this->DirectionStep > 0u && this->RayStep > 0u, "The number of step for ambient occlusion kernel should be positive");
 
 	//for HBAO the random vector texture contains 2-component rotation vector and a random number as a random starting point for ray marching.
 	const uvec2& randVecDim = this->Kernel.RotationVectorSize;

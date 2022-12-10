@@ -11,7 +11,7 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Utility/STPDatabaseErrorHandler.hpp>
 
-#include <SuperTerrain+/Exception/STPGLError.h>
+#include <SuperTerrain+/Exception/API/STPGLError.h>
 
 #include <type_traits>
 
@@ -53,7 +53,7 @@ void STPEngineInitialiser::initialise(const int device, const STPGLProc gl_proce
 	}
 
 	if (!gladLoadGLLoader(gl_process)) {
-		throw STPException::STPGLError("Unable to setup GL context");
+		throw STP_GL_ERROR_CREATE("Unable to setup a GL context on the current runtime environment");
 	}
 }
 

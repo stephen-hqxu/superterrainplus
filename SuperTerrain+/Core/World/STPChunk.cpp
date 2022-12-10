@@ -1,6 +1,6 @@
 #include <SuperTerrain+/World/Chunk/STPChunk.h>
 
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 #include <glm/common.hpp>
 
@@ -17,9 +17,7 @@ using STPDiversity::Sample;
 
 STPChunk::STPChunk(const uvec2 size) : MapDimension(size), Completeness(STPChunkCompleteness::Empty) {
 	const unsigned int num_pixel = this->MapDimension.x * this->MapDimension.y;
-	if (num_pixel == 0) {
-		throw STPException::STPBadNumericRange("The dimension of texture must not be zero");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(num_pixel > 0u, "The dimension of texture must not be zero");
 
 	//allocate memory for each map
 	this->Biomemap = make_unique<Sample[]>(num_pixel);

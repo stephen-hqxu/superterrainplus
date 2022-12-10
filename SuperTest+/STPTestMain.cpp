@@ -7,9 +7,7 @@
 
 //Setup Engine
 #include <SuperTerrain+/STPEngineInitialiser.h>
-#include <SuperTerrain+/Exception/STPCUDAError.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
-
 
 #include <iostream>
 

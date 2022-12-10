@@ -5,7 +5,7 @@
 #include <SuperTerrain+/STPEngineInitialiser.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPCompilationError.h>
+#include <SuperTerrain+/Exception/API/STPCUDAError.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //IO
@@ -52,7 +52,7 @@ try { \
 	if (!output.Log.empty()) { \
 		cout << output.Log << endl; \
 	} \
-} catch (const SuperTerrainPlus::STPException::STPCompilationError& error) { \
+} catch (const SuperTerrainPlus::STPException::STPCUDAError& error) { \
 	cerr << error.what() << endl; \
 	std::terminate(); \
 }

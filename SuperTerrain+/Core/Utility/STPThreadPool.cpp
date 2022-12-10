@@ -1,6 +1,6 @@
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 #include <algorithm>
 #include <utility>
@@ -16,9 +16,7 @@ using namespace SuperTerrainPlus;
 
 STPThreadPool::STPThreadPool(const size_t count) : IsPoolRunning(false), IsPoolWaiting(false), PendingTask(0u),
 	Worker(make_unique<thread[]>(count)), WorkerCount(count) {
-	if (this->WorkerCount == 0u) {
-		throw STPException::STPBadNumericRange("The number of worker in a thread pool must be greater than 0");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(this->WorkerCount > 0u, "The number of worker in a thread pool must be greater than 0");
 
 	//start the thread pool with forever-spinning threads
 	this->IsPoolRunning = true;

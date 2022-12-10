@@ -1,11 +1,11 @@
 #include <SuperRealism+/STPScenePipeline.h>
 #include <SuperRealism+/STPRealismInfo.h>
 //Error
-#include <SuperTerrain+/Exception/STPGLError.h>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
-#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
+#include <SuperTerrain+/Exception/STPInsufficientMemory.h>
+#include <SuperTerrain+/Exception/STPUnimplementedFeature.h>
+#include <SuperTerrain+/Exception/STPValidationFailed.h>
+#include <SuperTerrain+/Exception/STPInvalidEnum.h>
 
 //Base Off-screen Rendering
 #include <SuperRealism+/Scene/Component/STPScreen.h>
@@ -157,9 +157,7 @@ public:
 		this->MappedBuffer = reinterpret_cast<STPPackLightSpaceBuffer*>(
 			this->LightSpaceBuffer.mapBufferRange(0, lightSpaceSize,
 				GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
-		if (!this->MappedBuffer) {
-			throw STPException::STPGLError("Unable to map light space information buffer to shader storage buffer");
-		}
+		STP_ASSERTION_VALIDATION(this->MappedBuffer, "Unable to map light space information buffer to shader storage buffer");
 		//clear the garbage data
 		memset(this->MappedBuffer, 0x00, lightSpaceSize);
 	}
@@ -307,12 +305,8 @@ public:
 		ExtinctionStencilCuller(STPAlphaCulling::STPCullComparator::LessEqual, 0.0f,
 			STPAlphaCulling::STPCullConnector::Or, STPAlphaCulling::STPCullComparator::Greater, 1.0f, lighting_init),
 		ClearEnvironmentTexture(GL_TEXTURE_2D) {
-		if (!shadow_filter.validate()) {
-			throw STPException::STPBadNumericRange("The shadow map filter has invalid values");
-		}
-		if (!shading_equa.validate()) {
-			throw STPException::STPBadNumericRange("The shading model has invalid parameters");
-		}
+		STP_ASSERTION_NUMERIC_DOMAIN(shadow_filter.validate(), "The shadow map filter has invalid values");
+		STP_ASSERTION_NUMERIC_DOMAIN(shading_equa.validate(), "The shading model has invalid parameters");
 
 		const bool cascadeLayerBlend = shadow_filter.CascadeBlendArea > 0.0f;
 
@@ -683,9 +677,15 @@ void STPScenePipeline::add(STPSceneLight& light) {
 		const STPSceneShaderCapacity& current_usage = this->SceneMemoryCurrent,
 			limit_usage = this->SceneMemoryLimit;
 		
-		if ((light.Type == LT::Ambient && current_usage.AmbientLight >= limit_usage.AmbientLight)
-			|| (light.Type == LT::Directional && current_usage.DirectionalLight >= limit_usage.DirectionalLight)) {
-			throw STPException::STPMemoryError("The number of this type of light has reached the limit");
+		switch (light.Type) {
+		case LT::Ambient:
+			STP_ASSERTION_MEMORY_SUFFICIENCY(current_usage.AmbientLight, 1u, limit_usage.AmbientLight, "number of ambient light");
+			break;
+		case LT::Directional:
+			STP_ASSERTION_MEMORY_SUFFICIENCY(current_usage.DirectionalLight, 1u, limit_usage.DirectionalLight, "number of directional light");
+			break;
+		default:
+			throw STP_INVALID_ENUM_CREATE(light.Type, STPSceneLight::STPLightType);
 		}
 	}
 
@@ -734,10 +734,8 @@ void STPScenePipeline::add(STPAmbientOcclusion& ambient_occlusion) {
 }
 
 void STPScenePipeline::add(STPBidirectionalScattering& bsdf) {
-	if (!this->hasMaterialLibrary) {
-		throw STPException::STPMemoryError("Bidirectional scattering effect requires material data, "
-			"however material library is not available in this scene pipeline instance");
-	}
+	STP_ASSERTION_VALIDATION(this->hasMaterialLibrary, "Bidirectional scattering effect requires material data, "
+		"however material library is not available in this scene pipeline instance");
 	this->SceneComponent.BSDFObject = &bsdf;
 }
 
@@ -767,9 +765,7 @@ void STPScenePipeline::setClearColor(const vec4 color) {
 }
 
 void STPScenePipeline::setResolution(const uvec2 resolution) {
-	if (resolution == uvec2(0u)) {
-		throw STPException::STPBadNumericRange("The rendering resolution must be both non-zero positive integers");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(resolution.x > 0u && resolution.y > 0u, "The rendering resolution must be both non-zero positive integers");
 
 	//create a new scene shared buffer
 	STPSharedTexture scene_texture;
@@ -801,10 +797,8 @@ void STPScenePipeline::setResolution(const uvec2 resolution) {
 }
 
 void STPScenePipeline::setExtinctionArea(const float factor) const {
-	if (factor < 0.0f && factor > 1.0f) {
-		throw STPException::STPBadNumericRange(
-			"The extinction factor is a multiplier to far viewing distance and hence it should be a normalised value");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(factor >= 0.0f && factor <= 1.0f,
+		"The extinction factor is a multiplier to far viewing distance and hence it should be a normalised value");
 
 	this->GeometryLightPass->setFloat("ExtinctionBand", factor);
 }
@@ -869,7 +863,7 @@ inline void STPScenePipeline::shadeObject(const Ao* const ao, const Pp* const po
 void STPScenePipeline::traverse() {
 	const auto& [object, object_shadow, trans_obj, env_obj, unique_light_space_size, light_shadow, ao, bsdf, post_process] = this->SceneComponent;
 	if (!post_process) {
-		throw STPException::STPUnsupportedFunctionality(
+		throw STP_UNIMPLEMENTED_FEATURE_CREATE(
 			"It is currently not allowed to render to default framebuffer without post processing, "
 			"because there is no stencil information written.");
 	}

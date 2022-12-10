@@ -6,7 +6,6 @@
 
 //Error Handling
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
-#include <SuperTerrain+/Exception/STPAsyncGenerationError.h>
 
 //Hasher
 #include <SuperTerrain+/Utility/STPHashCombine.h>

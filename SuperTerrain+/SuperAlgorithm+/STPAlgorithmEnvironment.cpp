@@ -8,11 +8,10 @@ using namespace SuperTerrainPlus::STPEnvironment;
 
 //STPSimplexNoiseSetting.h
 
+#define ASSERT_SIMPLEX_NOISE(EXPR) STP_ASSERTION_ENVIRONMENT(EXPR, STPSimplexNoiseSetting)
+
 void STPSimplexNoiseSetting::validate() const {
-	if (this->Distribution != 0
-		&& this->Offset >= 0.0
-		&& this->Offset < 2.0 * glm::pi<double>()) {
-		return;
-	}
-	throw STPException::STPInvalidEnvironment("STPSimplexNoiseSetting validation fails");
+	ASSERT_SIMPLEX_NOISE(this->Distribution != 0);
+	ASSERT_SIMPLEX_NOISE(this->Offset >= 0.0);
+	ASSERT_SIMPLEX_NOISE(this->Offset < 2.0 * glm::pi<double>());
 }

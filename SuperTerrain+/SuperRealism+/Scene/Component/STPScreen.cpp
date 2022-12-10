@@ -4,8 +4,8 @@
 #include <SuperRealism+/Utility/STPIndirectCommand.hpp>
 
 //Error
-#include <SuperTerrain+/Exception/STPInvalidArgument.h>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPValidationFailed.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
@@ -48,9 +48,7 @@ STPScreen::STPSimpleScreenFrameBuffer::STPSimpleScreenFrameBuffer() noexcept : S
 
 STPTexture STPScreen::STPSimpleScreenFrameBuffer::updateScreenFrameBuffer(
 	STPTexture* const stencil, const uvec2& dimension, const STPOpenGL::STPenum internal) {
-	if (dimension.x == 0u || dimension.y == 0u) {
-		throw STPException::STPBadNumericRange("Both component of a screen buffer dimension must be positive");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(dimension.x > 0u && dimension.y > 0u, "Both component of a screen buffer dimension must be positive");
 	//create new texture
 	STPTexture new_screen_color(GL_TEXTURE_2D);
 	//allocate memory
@@ -137,9 +135,8 @@ void STPScreen::STPScreenProgramExecutor::operator()() const noexcept {
 }
 
 void STPScreen::initScreenRenderer(const STPShaderManager::STPShader& screen_fs, const STPScreenInitialiser& screen_init) {
-	if (STPShaderManager::shaderType(screen_fs) != GL_FRAGMENT_SHADER) {
-		throw STPException::STPInvalidArgument("The shader initialised for off-screen rendering must be a fragment shader");
-	}
+	STP_ASSERTION_VALIDATION(STPShaderManager::shaderType(screen_fs) == GL_FRAGMENT_SHADER,
+		"The shader initialised for off-screen rendering must be a fragment shader");
 	const auto& [screen_vs, screen_buf] = screen_init;
 
 	//initialise screen vertex buffer

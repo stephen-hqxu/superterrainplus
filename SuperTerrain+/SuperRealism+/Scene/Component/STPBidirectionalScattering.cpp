@@ -1,9 +1,6 @@
 #include <SuperRealism+/Scene/Component/STPBidirectionalScattering.h>
 #include <SuperRealism+/STPRealismInfo.h>
 
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPGLError.h>
-
 //GLAD
 #include <glad/glad.h>
 

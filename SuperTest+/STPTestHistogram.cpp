@@ -6,7 +6,7 @@
 //SuperAlgorithm+Host
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 //System
 #include <utility>
@@ -113,11 +113,11 @@ SCENARIO_METHOD(HistogramTester, "STPSingleHistogramFilter analyses a sample tex
 
 			THEN("Error should be thrown to prevent bad things to happen") {
 				//radius is zero
-				REQUIRE_THROWS_AS(this->execute(0u), STPException::STPBadNumericRange);
+				REQUIRE_THROWS_AS(this->execute(0u), STPException::STPNumericDomainError);
 				//radius is bigger than the free-slip texture
-				REQUIRE_THROWS_AS(this->execute(128u), STPException::STPBadNumericRange);
+				REQUIRE_THROWS_AS(this->execute(128u), STPException::STPNumericDomainError);
 				//radius is not an even number
-				REQUIRE_THROWS_AS(this->execute(3u), STPException::STPBadNumericRange);
+				REQUIRE_THROWS_AS(this->execute(3u), STPException::STPNumericDomainError);
 			}
 
 		}

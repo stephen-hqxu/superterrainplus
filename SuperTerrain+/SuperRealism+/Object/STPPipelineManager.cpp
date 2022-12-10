@@ -1,7 +1,5 @@
 #include <SuperRealism+/Object/STPPipelineManager.h>
 
-//Error
-#include <SuperTerrain+/Exception/STPGLError.h>
 //Log
 #include <SuperRealism+/Utility/STPLogHandler.hpp>
 

@@ -1,7 +1,7 @@
 #include <SuperRealism+/Scene/STPMaterialLibrary.h>
 
 //Exception
-#include <SuperTerrain+/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPInsufficientMemory.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -14,10 +14,6 @@ using std::make_unique;
 using namespace SuperTerrainPlus::STPRealism;
 
 STPMaterialLibrary::STPMaterialLibrary(const STPMaterialCount count) : MaterialCount(1u), MaxMaterialAllowance(count + 1u) {
-	if (count > std::numeric_limits<STPMaterialID>::max()) {
-		throw STPException::STPMemoryError("The number of element must be within the numeric range of material ID");
-	}
-
 	//allocate memory
 	this->MaterialMemory = make_unique<STPMaterialProperty[]>(this->MaxMaterialAllowance);
 	std::fill_n(this->MaterialMemory.get(), this->MaxMaterialAllowance, STPMaterialLibrary::DefaultMaterial);
@@ -26,9 +22,7 @@ STPMaterialLibrary::STPMaterialLibrary(const STPMaterialCount count) : MaterialC
 }
 
 STPMaterialLibrary::STPMaterialID STPMaterialLibrary::add(const STPMaterialProperty& mat_prop) {
-	if (this->MaterialCount >= this->MaxMaterialAllowance) {
-		throw STPException::STPMemoryError("The number of material has reached the maximum material allowance");
-	}
+	STP_ASSERTION_MEMORY_SUFFICIENCY(this->MaterialCount, 1u, this->MaxMaterialAllowance, "number of material");
 
 	//all materials are laid out in the memory in a contiguous manner
 	//material ID serves as an index
@@ -45,13 +39,14 @@ STPMaterialLibrary::STPMaterialID STPMaterialLibrary::add(const STPMaterialPrope
 	return mat_idx;
 }
 
-const STPMaterialLibrary::STPMaterialProperty& STPMaterialLibrary::operator[](const STPMaterialID id) const {
-	if (id > this->MaterialCount - 1u) {
-		throw STPException::STPMemoryError("Material ID is invalid");
-	}
+STPMaterialLibrary::STPMaterialCount STPMaterialLibrary::size() const noexcept {
+	return this->MaterialCount;
+}
+
+const STPMaterialLibrary::STPMaterialProperty& STPMaterialLibrary::operator[](const STPMaterialID id) const noexcept {
 	return this->MaterialMemory[id];
 }
 
-const STPBuffer& STPMaterialLibrary::operator*() const {
+const STPBuffer& STPMaterialLibrary::operator*() const noexcept {
 	return this->MaterialBuffer;
 }

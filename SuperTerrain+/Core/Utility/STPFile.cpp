@@ -1,7 +1,7 @@
 #include <SuperTerrain+/Utility/STPFile.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPSerialisationError.h>
+#include <SuperTerrain+/Exception/STPIOException.h>
 
 //IO
 #include <fstream>
@@ -22,7 +22,7 @@ string STPFile::read(const char* const filename) {
 		//cannot open the file
 		ostringstream msg;
 		msg << "File \'" << filename << "\' cannot be opened" << std::endl;
-		throw STPException::STPSerialisationError(msg.str().c_str());
+		throw STP_IO_EXCEPTION_CREATE(msg.str());
 	}
 
 	//read all lines

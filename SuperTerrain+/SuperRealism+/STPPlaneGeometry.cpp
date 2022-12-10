@@ -5,7 +5,7 @@
 #include <SuperRealism+/Object/STPProgramManager.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
@@ -26,9 +26,7 @@ constexpr static auto PlaneGenerationShaderFilename =
 	SuperTerrainPlus::STPStringUtility::generateFilename(STPRealismInfo::ShaderPath, "/STPPlaneGeometry", ".comp");
 
 STPPlaneGeometry::STPPlaneGeometry(const uvec2 tile_dimension, const dvec2 top_left_position) {
-	if (tile_dimension.x == 0u || tile_dimension.y == 0u) {
-		throw STPException::STPBadNumericRange("Plane geometry must have positive dimension");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(tile_dimension.x > 0u && tile_dimension.y > 0u, "Plane geometry must have positive dimension");
 	auto& [buffer, index, vertex_array] = this->PlaneData;
 
 	//allocate memory for plane buffer

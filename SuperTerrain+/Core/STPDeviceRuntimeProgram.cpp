@@ -1,8 +1,8 @@
 #include <SuperTerrain+/GPGPU/STPDeviceRuntimeProgram.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPCompilationError.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
+#include <SuperTerrain+/Exception/STPInvalidEnum.h>
 
 #include <algorithm>
 
@@ -55,6 +55,8 @@ STPDeviceRuntimeProgram::STPSmartModule STPDeviceRuntimeProgram::link(STPLinkerI
 			program_data = STPDeviceRuntimeBinary::readNVVM(program);
 			bin_input = CU_JIT_INPUT_NVVM;
 			break;
+		default:
+			throw STP_INVALID_ENUM_CREATE(bin_type, STPBinaryType);
 		}
 
 		//add to the linker

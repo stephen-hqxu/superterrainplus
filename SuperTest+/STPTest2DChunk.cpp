@@ -8,8 +8,7 @@
 //SuperTerrain+/World/Chunk
 #include <SuperTerrain+/World/Chunk/STPChunk.h>
 
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 //GLM
 #include <glm/gtc/type_ptr.hpp>
@@ -119,7 +118,7 @@ SCENARIO_METHOD(ChunkTester, "STPChunk data structure stores chunk status and te
 	GIVEN("An invalid chunk object with zero in any of the dimension component") {
 
 		THEN("Construction of such chunk is not allowed") {
-			REQUIRE_THROWS_AS(STPChunk(uvec2(0u, 128u)), STPException::STPBadNumericRange);
+			REQUIRE_THROWS_AS(STPChunk(uvec2(0u, 128u)), STPException::STPNumericDomainError);
 		}
 
 	}

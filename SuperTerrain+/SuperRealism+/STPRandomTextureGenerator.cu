@@ -4,7 +4,7 @@
 
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceObject.h>
 
@@ -41,9 +41,7 @@ template<typename T>
 __host__ void STPRandomTextureGenerator::generate(const cudaArray_t output, const uvec3 dimension,
 	const unsigned long long seed, const T min, const T max) {
 	//range check
-	if (dimension.x == 0u || dimension.y == 0u || dimension.z == 0u) {
-		throw STPException::STPBadNumericRange("Invalid dimension");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(dimension.x > 0u && dimension.y > 0u && dimension.z > 0u, "The dimension of the random texture must be all positive");
 
 	//calculate launch configuration
 	int Mingridsize, blocksize;

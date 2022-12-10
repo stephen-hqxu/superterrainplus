@@ -9,8 +9,6 @@
 //SuperTerrain+/World/Chunk
 #include <SuperTerrain+/World/Chunk/STPNearestNeighbourTextureBuffer.h>
 
-#include <SuperTerrain+/Exception/STPInvalidArgument.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
 //Error
 #include <cuda_runtime.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>

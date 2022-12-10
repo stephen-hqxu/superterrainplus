@@ -1,8 +1,7 @@
 //SuperTerrain+ Engine
 #include <SuperTerrain+/STPEngineInitialiser.h>
 //Error
-#include <SuperTerrain+/Exception/STPGLError.h>
-#include <SuperTerrain+/Exception/STPInvalidSyntax.h>
+#include <SuperTerrain+/Exception/API/STPGLError.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 
@@ -182,7 +181,8 @@ namespace STPStart {
 					//do not proceed if it fails
 					std::terminate();
 				}
-			} catch (const STPException::STPInvalidSyntax& se) {
+				//TODO: TDL parser temporarily throws runtime error
+			} catch (const std::runtime_error& se) {
 				//catch parser error
 				cerr << se.what() << endl;
 				std::terminate();
@@ -720,7 +720,8 @@ int main() {
 	try {
 		engineINIReader.emplace(engineData);
 		biomeINIReader.emplace(biomeData);
-	} catch (const SuperTerrainPlus::STPException::STPInvalidSyntax& se) {
+		//TODO: INI parser temporarily throws runtime error
+	} catch (const std::runtime_error& se) {
 		cerr << se.what() << endl;
 		return -1;
 	}
@@ -811,7 +812,7 @@ int main() {
 		//draw
 		try {
 			if (shouldApplicationHalt) {
-				throw SuperTerrainPlus::STPException::STPGLError("An erroneous GL debug message is encountered, check the output for more information...");
+				throw STP_GL_ERROR_CREATE("An erroneous GL debug message is encountered, check the output for more information...");
 			}
 
 			STPStart::MasterEngine->render(currentTime, deltaTime);

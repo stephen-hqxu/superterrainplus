@@ -1,8 +1,5 @@
 #include <SuperRealism+/Object/STPVertexArray.h>
 
-//Error
-#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
-
 //GLAD
 #include <glad/glad.h>
 

@@ -1,6 +1,6 @@
 #include <SuperRealism+/Scene/Light/STPLightSpectrum.h>
 //Error
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -9,9 +9,7 @@ using namespace SuperTerrainPlus::STPRealism;
 
 STPLightSpectrum::STPLightSpectrum(const unsigned int length, const STPOpenGL::STPenum format) : Spectrum(GL_TEXTURE_1D), SpectrumLength(length) {
 	//check for argument
-	if (this->SpectrumLength == 0u) {
-		throw STPException::STPBadNumericRange("The length of the spectrum should be a positive integer");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(this->SpectrumLength > 0u, "The length of the spectrum should be a positive integer");
 
 	//setup output texture
 	this->Spectrum.textureStorage1D(1, format, this->SpectrumLength);

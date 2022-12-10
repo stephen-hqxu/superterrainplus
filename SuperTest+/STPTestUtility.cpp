@@ -20,8 +20,8 @@
 #include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 //SuperTerrain+/SuperTerrain+/Exception
-#include <SuperTerrain+/Exception/STPCUDAError.h>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/API/STPCUDAError.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 #include <stdexcept>
 #include <algorithm>
@@ -90,7 +90,7 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded worklo
 	GIVEN("An invalid thread pool with zero worker") {
 
 		THEN("Thread pool should throw an error") {
-			REQUIRE_THROWS_AS(STPThreadPool(0u), STPException::STPBadNumericRange);
+			REQUIRE_THROWS_AS(STPThreadPool(0u), STPException::STPNumericDomainError);
 		}
 
 	}

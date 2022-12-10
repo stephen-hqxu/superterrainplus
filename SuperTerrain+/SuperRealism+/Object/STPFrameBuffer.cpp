@@ -1,8 +1,10 @@
 #include <SuperRealism+/Object/STPFrameBuffer.h>
 
-#include <SuperTerrain+/Exception/STPGLError.h>
+#include <SuperTerrain+/Exception/API/STPGLError.h>
+#include <SuperTerrain+/Exception/STPInvalidEnum.h>
 
 #include <sstream>
+#include <string>
 
 //GLAD
 #include <glad/glad.h>
@@ -76,6 +78,8 @@ void STPFrameBuffer::validate(const STPOpenGL::STPenum target) const {
 	case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
 		flagStr = "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
 		break;
+	default:
+		throw STP_INVALID_STRING_ENUM_CREATE(std::to_string(validFlag), "GL Framebuffer Status");
 	}
 
 	using std::endl;
@@ -83,7 +87,7 @@ void STPFrameBuffer::validate(const STPOpenGL::STPenum target) const {
 	std::ostringstream err;
 	err << "Framebuffer validation failed." << endl;
 	err << "Status code: \n" << validFlag << "Reason: \n" << flagStr << std::endl;
-	throw STPException::STPGLError(err.str().c_str());
+	throw STP_GL_ERROR_CREATE(err.str());
 }
 
 void STPFrameBuffer::attach(const STPOpenGL::STPenum attachment, const STPTexture& texture, const STPOpenGL::STPint level) noexcept {

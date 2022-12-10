@@ -2,7 +2,7 @@
 #include <SuperAlgorithm+/Parser/INI/STPINIWriter.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPInvalidSyntax.h>
+//#include <SuperTerrain+/Exception/STPParserError.h>
 
 #include <optional>
 #include <sstream>
@@ -172,7 +172,7 @@ STPINIReader::STPINIReader(const string_view& ini_str) {
 				reader.createInitialErrorMessage(msg, "invalid section")
 					<< "Line value \'" << *line << "\' that is supposed to be a section cannot be parsed." << endl;
 				
-				throw STPException::STPInvalidSyntax(msg.str().c_str());
+				throw std::runtime_error(msg.str().c_str());
 			}
 
 			//start a new section
@@ -195,7 +195,7 @@ STPINIReader::STPINIReader(const string_view& ini_str) {
 				reader.createInitialErrorMessage(msg, "invalid property")
 					<< "Line value \'" << *line << "\' that is supposed to be a property cannot be parsed." << endl;
 
-				throw STPException::STPInvalidSyntax(msg.str().c_str());
+				throw std::runtime_error(msg.str().c_str());
 			}
 			const auto& [key, value] = *next_prop;
 

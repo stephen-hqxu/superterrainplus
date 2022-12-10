@@ -3,8 +3,8 @@
 #include <glad/glad.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPMemoryError.h>
-#include <SuperTerrain+/Exception/STPGLError.h>
+#include <SuperTerrain+/Exception/STPListenerError.h>
+#include <SuperTerrain+/Exception/STPValidationFailed.h>
 
 //Camera Calculation
 #include <glm/trigonometric.hpp>
@@ -89,9 +89,7 @@ STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) :
 	this->MappedBuffer =
 		reinterpret_cast<STPPackedCameraBuffer*>(this->CameraInformation.mapBufferRange(0, sizeof(STPPackedCameraBuffer),
 			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
-	if (!this->MappedBuffer) {
-		throw STPException::STPGLError("Unable to map the camera buffer");
-	}
+	STP_ASSERTION_VALIDATION(this->MappedBuffer, "Unable to map the camera buffer");
 	//buffer has been setup, clear the buffer before use
 	std::memset(this->MappedBuffer, 0x00u, sizeof(STPPackedCameraBuffer));
 
@@ -132,7 +130,7 @@ void STPCamera::subscribe(STPSubscriberBenefit& benefit) {
 	//make sure the same listener is not registered twice.
 	if (this->findSubcriber(&benefit) != this->CameraSubscriber.cend()) {
 		//the same instance is found
-		throw STPException::STPMemoryError("The same listener instance has been registered with this camera previously");
+		throw STP_LISTENER_ERROR_CREATE(&benefit, STPRepeatedListener);
 	}
 
 	//ok, add
@@ -144,7 +142,7 @@ void STPCamera::unsubscribe(STPSubscriberBenefit& benefit) {
 	const auto it = this->findSubcriber(&benefit);
 	if (it == this->CameraSubscriber.cend()) {
 		//not found
-		throw STPException::STPMemoryError("This listener is not previously registered");
+		throw STP_LISTENER_ERROR_CREATE(&benefit, STPListenerNotFound);
 	}
 
 	//found, remove it

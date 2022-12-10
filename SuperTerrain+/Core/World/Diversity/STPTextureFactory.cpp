@@ -1,8 +1,8 @@
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureFactory.h>
 
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
+#include <SuperTerrain+/Exception/STPValidationFailed.h>
 
 //GLAD
 #include <glad/glad.h>
@@ -41,10 +41,9 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 	const DbView::STPAltitudeRecord altitude_rec = database_view.getAltitudes();
 	const DbView::STPGradientRecord gradient_rec = database_view.getGradients();
 	//checking if data are valid
-	if (group_rec.empty() || texture_rec.empty() || texture_map_rec.empty() || this->ValidType.empty() || sample_rec.empty()) {
-		//sample not empty implies we have at least one splat rule of any
-		throw STPException::STPMemoryError("Database contains empty thus invalid data and/or rules.");
-	}
+	//sample not empty implies we have at least one splat rule of any
+	STP_ASSERTION_VALIDATION(!group_rec.empty() && !texture_rec.empty() && !texture_map_rec.empty()
+			&& !this->ValidType.empty() && !sample_rec.empty(), "Database contains empty thus invalid data and/or rules.");
 	const size_t UsedTypeCount = this->ValidType.size();
 
 	//we build the data structure that holds all texture in groups first
@@ -216,10 +215,9 @@ void STPTextureFactory::operator()(const cudaTextureObject_t biomemap_tex, const
 		//nothing needs to be done
 		return;
 	}
-	if (requesting_local.size() > this->RenderDistanceCount) {
-		//too many rendered chunk than the memory we have allocation
-		throw STPException::STPBadNumericRange("The number of requesting local is more than the total number of rendered chunk.");
-	}
+	//too many rendered chunk than the memory we have allocation
+	STP_ASSERTION_NUMERIC_DOMAIN(requesting_local.size() <= this->RenderDistanceCount,
+		"The number of requesting local is more than the total number of rendered chunk.");
 
 	//prepare the request
 	STP_CHECK_CUDA(cudaMemcpyAsync(this->LocalChunkInfo.get(), requesting_local.data(), 

@@ -3,7 +3,7 @@
 #include <SuperRealism+/STPRealismInfo.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperTerrain+/Utility/STPStringUtility.h>
@@ -96,12 +96,8 @@ STPGaussianFilter::STPFilterExecution::STPFilterExecution(const STPFilterVariant
 }
 
 void STPGaussianFilter::STPFilterExecution::operator()(STPProgramManager& program) const {
-	if (this->Radius == 0u) {
-		throw STPException::STPBadNumericRange("The radius of the filter kernel must be positive");
-	}
-	if (this->Variance <= 0.0f) {
-		throw STPException::STPBadNumericRange("Non-positive variance is meaningless for Gaussian distribution");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(this->Radius > 0u, "The radius of the filter kernel must be positive");
+	STP_ASSERTION_NUMERIC_DOMAIN(this->Variance > 0.0f, "Non-positive variance is meaningless for Gaussian distribution");
 
 	//normalise naive Gaussian kernel; for bilateral filter we will normalise it in the shader.
 	const unique_ptr<float[]> GaussianKernel = generateGaussianKernel(

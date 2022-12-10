@@ -17,10 +17,10 @@
 #ifdef STP_HAS_CUDA_RUNTIME
 #ifndef _STP_CUDA_RUNTIME_ERROR_HANDLER_HPP_
 #define _STP_CUDA_RUNTIME_ERROR_HANDLER_HPP_
-#include <SuperTerrain+/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/API/STPCUDAError.h>
 
 STP_ERROR_DESCRIPTOR(assertCUDA, cudaError_t, cudaSuccess, STPException::STPCUDAError) {
-	msg_str << "CUDA Runtime API: " << cudaGetErrorString(error_code);
+	return std::string("CUDA Runtime API: ") + cudaGetErrorString(error_code);
 }
 #endif//_STP_CUDA_RUNTIME_ERROR_HANDLER_HPP_
 #endif//STP_HAS_CUDA_RUNTIME
@@ -29,12 +29,12 @@ STP_ERROR_DESCRIPTOR(assertCUDA, cudaError_t, cudaSuccess, STPException::STPCUDA
 #ifdef STP_HAS_CUDA_DRIVER
 #ifndef _STP_CUDA_DRIVER_ERROR_HANDLER_HPP_
 #define _STP_CUDA_DRIVER_ERROR_HANDLER_HPP_
-#include <SuperTerrain+/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/API/STPCUDAError.h>
 
 STP_ERROR_DESCRIPTOR(assertCUDA, CUresult, CUDA_SUCCESS, STPException::STPCUDAError) {
 	const char* str;
 	cuGetErrorString(error_code, &str);
-	msg_str << "CUDA Driver API: " << str;
+	return std::string("CUDA Driver API: ") + str;
 }
 #endif//_STP_CUDA_DRIVER_ERROR_HANDLER_HPP_
 #endif//STP_HAS_CUDA_DRIVER
@@ -43,10 +43,10 @@ STP_ERROR_DESCRIPTOR(assertCUDA, CUresult, CUDA_SUCCESS, STPException::STPCUDAEr
 #ifdef STP_HAS_CUDA_NVRTC
 #ifndef _STP_CUDA_NVRTC_ERROR_HANDLER_HPP_
 #define _STP_CUDA_NVRTC_ERROR_HANDLER_HPP_
-#include <SuperTerrain+/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/API/STPCUDAError.h>
 
 STP_ERROR_DESCRIPTOR(assertCUDA, nvrtcResult, NVRTC_SUCCESS, STPException::STPCUDAError) {
-	msg_str << "CUDA Runtime Compiler: " << nvrtcGetErrorString(error_code);
+	return std::string("CUDA Runtime Compiler: ") + nvrtcGetErrorString(error_code);
 }
 #endif//_STP_CUDA_NVRTC_ERROR_HANDLER_HPP_
 #endif//STP_HAS_CUDA_NVRTC

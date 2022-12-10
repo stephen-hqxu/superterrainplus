@@ -1,10 +1,14 @@
 #include <SuperRealism+/Utility/STPDebugCallback.h>
 
+#include <SuperTerrain+/Exception/STPInvalidEnum.h>
+
 //GLAD
 #include <glad/glad.h>
 
+#include <string>
 #include <string_view>
 
+using std::to_string;
 using std::string_view;
 using std::ostream;
 using std::endl;
@@ -22,7 +26,7 @@ ostream& STPDebugCallback::print(const STPOpenGL::STPenum source, const STPOpenG
 		case GL_DEBUG_SOURCE_THIRD_PARTY: return "THIRD PARTY";
 		case GL_DEBUG_SOURCE_APPLICATION: return "APPLICATION";
 		case GL_DEBUG_SOURCE_OTHER: return "OTHER";
-		default: return "NULL";
+		default: throw STP_INVALID_STRING_ENUM_CREATE(to_string(source), "GL Debug Source");
 		}
 	};
 	static constexpr auto getTypeStr = [](const GLenum type) constexpr -> const char* {
@@ -34,7 +38,7 @@ ostream& STPDebugCallback::print(const STPOpenGL::STPenum source, const STPOpenG
 		case GL_DEBUG_TYPE_PERFORMANCE: return "PERFORMANCE";
 		case GL_DEBUG_TYPE_MARKER: return "MARKER";
 		case GL_DEBUG_TYPE_OTHER: return "OTHER";
-		default: return "NULL";
+		default: throw STP_INVALID_STRING_ENUM_CREATE(to_string(type), "GL Debug Type");
 		}
 	};
 	static constexpr auto getSeverityStr = [](const GLenum severity) constexpr -> const char* {
@@ -43,7 +47,7 @@ ostream& STPDebugCallback::print(const STPOpenGL::STPenum source, const STPOpenG
 		case GL_DEBUG_SEVERITY_LOW: return "LOW";
 		case GL_DEBUG_SEVERITY_MEDIUM: return "MEDIUM";
 		case GL_DEBUG_SEVERITY_HIGH: return "HIGH";
-		default: return "NULL";
+		default: throw STP_INVALID_STRING_ENUM_CREATE(to_string(severity), "GL Debug Severity");
 		}
 	};
 

@@ -1,7 +1,7 @@
 #include <SuperTerrain+/GPGPU/STPDeviceRuntimeBinary.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPCompilationError.h>
+#include <SuperTerrain+/Exception/API/STPCUDAError.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //System
@@ -50,7 +50,7 @@ STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compile(
 			err << "External header '" << required_header_name << "\' is required for source '"
 				<< program_name << "\' but its definition is not found." << endl;
 
-			throw STPException::STPCompilationError(err.str().c_str());
+			throw STP_CUDA_ERROR_CREATE(err.str());
 		}
 
 		const auto& [db_header_name, db_header_source] = *it;
@@ -66,21 +66,21 @@ STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compile(
 	managed_program = STPSmartProgram(program);
 	//compile the new program
 	const auto& name_expr_arg = src_name_expr.StringArgument;
+
+	//extract raw string options
+	const auto& option_arg = src_option.StringArgument;
+	vector<const char*> raw_option;
+	raw_option.resize(option_arg.size());
+	std::transform(option_arg.cbegin(), option_arg.cend(), raw_option.begin(), [](const auto& str) { return str.c_str(); });
+
+	//add name expression
+	std::for_each(name_expr_arg.cbegin(), name_expr_arg.cend(),
+		[program](const auto& str) { STP_CHECK_CUDA(nvrtcAddNameExpression(program, str.c_str())); });
+	
 	exception_ptr exptr;
 	try {
-		//extract raw string options
-		const auto& option_arg = src_option.StringArgument;
-		vector<const char*> raw_option;
-		raw_option.resize(option_arg.size());
-		std::transform(option_arg.cbegin(), option_arg.cend(), raw_option.begin(), [](const auto& str) { return str.c_str(); });
-
-		//add name expression
-		std::for_each(name_expr_arg.cbegin(), name_expr_arg.cend(),
-			[program](const auto& str) { STP_CHECK_CUDA(nvrtcAddNameExpression(program, str.c_str())); });
-
 		//compile
 		STP_CHECK_CUDA(nvrtcCompileProgram(program, static_cast<int>(raw_option.size()), raw_option.data()));
-
 	} catch (...) {
 		//restore the exception if any, because we want to get the log
 		exptr = std::current_exception();
@@ -93,7 +93,14 @@ STPDeviceRuntimeBinary::STPCompilationOutput STPDeviceRuntimeBinary::compile(
 	STP_CHECK_CUDA(nvrtcGetProgramLog(program, output_log.data()));
 
 	if (exptr) {
-		throw STPException::STPCompilationError(output_log.c_str());
+		try {
+			//get the message in exception pointer
+			std::rethrow_exception(exptr);
+		} catch (const STPException::STPCUDAError& ce) {
+			output_log.insert(0u, ce.what());
+			output_log += '\n';
+			throw STP_CUDA_ERROR_CREATE(output_log);
+		}
 	}
 	//if no error appears grab the lowered name expression from compiled program
 	//declare a new lowered name storage, so if any errors appears later it will not affect the storage in the class.

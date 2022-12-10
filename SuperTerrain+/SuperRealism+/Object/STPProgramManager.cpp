@@ -1,6 +1,6 @@
 #include <SuperRealism+/Object/STPProgramManager.h>
 
-#include <SuperTerrain+/Exception/STPGLError.h>
+#include <SuperTerrain+/Exception/API/STPGLError.h>
 
 //Log Utility
 #include <SuperRealism+/Utility/STPLogHandler.hpp>
@@ -67,7 +67,7 @@ STPProgramManager::STPProgramManager(const initializer_list<const STPShaderManag
 		glGetProgramInfoLog(program, logLength, nullptr, log.get());
 	}
 	if (!valid) {
-		throw STPException::STPGLError(log.get());
+		throw STP_GL_ERROR_CREATE(log.get());
 	}
 	//write log
 	STPLogHandler::handle(string_view(log.get(), logLength));

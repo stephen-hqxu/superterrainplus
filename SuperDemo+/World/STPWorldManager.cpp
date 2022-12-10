@@ -1,7 +1,7 @@
 #include "STPWorldManager.h"
 
 //Error
-#include <SuperTerrain+/Exception/STPInvalidArgument.h>
+#include <SuperTerrain+/Exception/STPInvalidEnum.h>
 
 //System
 #include <array>
@@ -92,7 +92,7 @@ private:
 			return STPTextureType::AmbientOcclusion;
 		}
 
-		throw STPException::STPInvalidArgument("Cannot determine the type of this texture");
+		throw STP_INVALID_STRING_ENUM_CREATE(string(typeStr), "Valid Texture Type Name");
 	}
 
 public:

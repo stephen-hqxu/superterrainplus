@@ -75,18 +75,24 @@ namespace SuperTerrainPlus::STPRealism {
 		[[nodiscard]] STPMaterialID add(const STPMaterialProperty&);
 
 		/**
+		 * @brief Get the current number of registered material.
+		 * @return The current number of material.
+		*/
+		STPMaterialCount size() const noexcept;
+
+		/**
 		 * @brief Get the material registered in the library.
 		 * @param id The material ID for which the property to be returned.
 		 * @return The pointer to the material property.
-		 * Exception will be thrown if material ID is invalid, i.e., no such ID is found.
+		 * Index out of bound will result in undefined behaviour.
 		*/
-		const STPMaterialProperty& operator[](STPMaterialID) const;
+		const STPMaterialProperty& operator[](STPMaterialID) const noexcept;
 
 		/**
 		 * @brief Get the underlying buffer for the material library.
 		 * @return The pointer to the buffer containing material data.
 		*/
-		const STPBuffer& operator*() const;
+		const STPBuffer& operator*() const noexcept;
 
 	};
 

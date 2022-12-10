@@ -20,10 +20,7 @@
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 #include <SuperTerrain+/Utility/STPFile.h>
 
-#include <SuperTerrain+/Exception/STPCompilationError.h>
-#include <SuperTerrain+/Exception/STPSerialisationError.h>
-#include <SuperTerrain+/Exception/STPMemoryError.h>
-
+#include <SuperTerrain+/Exception/API/STPCUDAError.h>
 
 //GLM
 #include <glm/vec4.hpp>
@@ -111,9 +108,9 @@ protected:
 		const auto startCompile = [&src_info, &src, &output, &header]() {
 			try {
 				output = STPDeviceRuntimeBinary::compile(RTCTester::SourceName, src, src_info, header);
-			} catch (const STPException::STPCompilationError& ce) {
+			} catch (const STPException::STPCUDAError& cuda_err) {
 				//compile time error
-				cerr << ce.what() << endl;
+				cerr << cuda_err.what() << endl;
 				//rethrow it
 				throw;
 			}

@@ -7,19 +7,22 @@ STPSQLite.h
 Environment/STPChunkSetting.h
 Environment/STPHeightfieldSetting.h
 Environment/STPRainDropSetting.h
+# /Exception/API
+Exception/API/STPCUDAError.h
+Exception/API/STPGLError.h
+Exception/API/STPSQLError.h
 # /Exception
-Exception/STPAsyncGenerationError.h
-Exception/STPBadNumericRange.h
-Exception/STPCompilationError.h
-Exception/STPCUDAError.h
-Exception/STPDatabaseError.h
-Exception/STPGLError.h
-Exception/STPInvalidArgument.h
+Exception/STPFundamentalException.h
+Exception/STPInsufficientMemory.h
+Exception/STPInvalidEnum.h
 Exception/STPInvalidEnvironment.h
-Exception/STPInvalidSyntax.h
-Exception/STPMemoryError.h
-Exception/STPSerialisationError.h
-Exception/STPUnsupportedFunctionality.h
+Exception/STPIOException.h
+Exception/STPListenerError.h
+Exception/STPNumericDomainError.h
+Exception/STPParserError.h
+Exception/STPUnimplementedFeature.h
+Exception/STPUnsupportedSystem.h
+Exception/STPValidationFailed.h
 # /GPGPU
 GPGPU/STPDeviceRuntimeBinary.h
 GPGPU/STPDeviceRuntimeProgram.h

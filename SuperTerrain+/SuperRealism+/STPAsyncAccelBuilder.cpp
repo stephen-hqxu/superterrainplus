@@ -1,6 +1,6 @@
 #include <SuperRealism+/Utility/STPAsyncAccelBuilder.h>
 
-#include <SuperTerrain+/Exception/STPUnsupportedFunctionality.h>
+#include <SuperTerrain+/Exception/STPUnimplementedFeature.h>
 
 //OptiX
 #include <optix.h>
@@ -24,7 +24,7 @@ OptixTraversableHandle STPAsyncAccelBuilder::build(const STPBuildInformation& bu
 		//because it would be too expensive to copy the front buffer content to the back buffer and relocate then update;
 		//also we need to make sure front buffer is always available after this function returns.
 		//But update is much faster than build so we are fine.
-		throw STPException::STPUnsupportedFunctionality("The acceleration structure builder utility currently does not work with update operation");
+		throw STP_UNIMPLEMENTED_FEATURE_CREATE("The acceleration structure builder utility currently does not work with update operation");
 	}
 	//allocate memory for back buffer
 	auto& [back_mem, back_handle] = *this->BackBuffer;

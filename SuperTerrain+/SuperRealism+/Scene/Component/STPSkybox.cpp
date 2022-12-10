@@ -4,7 +4,7 @@
 #include <SuperRealism+/Utility/STPIndirectCommand.hpp>
 
 //Error
-#include <SuperTerrain+/Exception/STPInvalidArgument.h>
+#include <SuperTerrain+/Exception/STPValidationFailed.h>
 
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperTerrain+/Utility/STPStringUtility.h>
@@ -92,9 +92,8 @@ STPSkybox::STPSkyboxInitialiser::STPSkyboxInitialiser() : VertexShader(createSky
 }
 
 void STPSkybox::initSkyboxRenderer(const STPShaderManager::STPShader& skybox_fs, const STPSkyboxInitialiser& skybox_init) {
-	if (STPShaderManager::shaderType(skybox_fs) != GL_FRAGMENT_SHADER) {
-		throw STPException::STPInvalidArgument("The shader initialised for skybox rendering must a fragment shader");
-	}
+	STP_ASSERTION_VALIDATION(STPShaderManager::shaderType(skybox_fs) == GL_FRAGMENT_SHADER,
+		"The shader initialised for skybox rendering must a fragment shader");
 	const auto& [skybox_vs, skybox_buf] = skybox_init;
 
 	//construction of shared pointer throws exception if weak pointer is empty

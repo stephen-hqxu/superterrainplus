@@ -2,7 +2,6 @@
 
 #include <iostream>
 //Error
-#include <SuperTerrain+/Exception/STPCUDAError.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 //GL

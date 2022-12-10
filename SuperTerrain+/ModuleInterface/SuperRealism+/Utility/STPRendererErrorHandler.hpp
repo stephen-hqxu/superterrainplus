@@ -14,10 +14,10 @@
 #include <optix_stubs.h>
 #pragma warning(pop)
 //well OptiX is based on CUDA, so we just boil it down to CUDA error.
-#include <SuperTerrain+/Exception/STPCUDAError.h>
+#include <SuperTerrain+/Exception/API/STPCUDAError.h>
 
 STP_ERROR_DESCRIPTOR(assertOptiX, OptixResult, OPTIX_SUCCESS, STPException::STPCUDAError) {
-	msg_str << "OptiX: " << optixGetErrorString(error_code);
+	return std::string("OptiX: ") + optixGetErrorString(error_code);
 }
 #define STP_CHECK_OPTIX(ERR) STP_INVOKE_ERROR_DESCRIPTOR(assertOptiX, ERR)
 

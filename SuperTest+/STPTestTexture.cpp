@@ -9,7 +9,7 @@
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureDatabase.h>
 
 //Exception
-#include <SuperTerrain+/Exception/STPDatabaseError.h>
+#include <SuperTerrain+/Exception/API/STPSQLError.h>
 
 #include <algorithm>
 
@@ -60,8 +60,8 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 			AND_WHEN("Trying to retrieve data that does not exist in the database") {
 
 				THEN("Operation is halted and error is reported") {
-					REQUIRE_THROWS_AS(this->getMapGroupDescription(123u), SuperTerrainPlus::STPException::STPDatabaseError);
-					REQUIRE_THROWS_AS(this->getViewGroupDescription(456u), SuperTerrainPlus::STPException::STPDatabaseError);
+					REQUIRE_THROWS_AS(this->getMapGroupDescription(123u), SuperTerrainPlus::STPException::STPSQLError);
+					REQUIRE_THROWS_AS(this->getViewGroupDescription(456u), SuperTerrainPlus::STPException::STPSQLError);
 				}
 
 			}
@@ -124,7 +124,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 			AND_WHEN("Some texture maps are added into the container") {
 
 				THEN("Map should not be inserted if the containers are invalid") {
-					REQUIRE_THROWS_AS(this->addMap(6666666u, STPTextureType::Albedo, 66666666u, DummyTexture), STPException::STPDatabaseError);
+					REQUIRE_THROWS_AS(this->addMap(6666666u, STPTextureType::Albedo, 66666666u, DummyTexture), STPException::STPSQLError);
 					REQUIRE(this->mapSize() == 0u);
 				}
 
@@ -158,8 +158,8 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 						WHEN("Splat map does not reference a valid texture") {
 
 							THEN("Splat rule is hence considered to be invalid and should not be added") {
-								REQUIRE_THROWS_AS(Splat.addAltitude(0u, 0.2f, 666666u), STPException::STPDatabaseError);
-								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.2f, 0.8f, 0.0f, 1.0f, 666666u), STPException::STPDatabaseError);
+								REQUIRE_THROWS_AS(Splat.addAltitude(0u, 0.2f, 666666u), STPException::STPSQLError);
+								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.2f, 0.8f, 0.0f, 1.0f, 666666u), STPException::STPSQLError);
 
 								REQUIRE(Splat.altitudeSize() == 0u);
 								REQUIRE(Splat.gradientSize() == 0u);
@@ -170,8 +170,8 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 						WHEN("Splat rules violate boundary conditions, e.g., max < min") {
 							
 							THEN("Splat rule should not be added") {
-								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.2f, 0.8f, 0.8f, 0.3f, DummyTex), STPException::STPDatabaseError);
-								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.9f, 0.1f, 0.0f, 1.0f, DummyTex), STPException::STPDatabaseError);
+								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.2f, 0.8f, 0.8f, 0.3f, DummyTex), STPException::STPSQLError);
+								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.9f, 0.1f, 0.0f, 1.0f, DummyTex), STPException::STPSQLError);
 
 								REQUIRE(Splat.gradientSize() == 0u);
 							}

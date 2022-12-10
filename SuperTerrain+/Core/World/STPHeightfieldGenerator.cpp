@@ -4,7 +4,7 @@
 #include <SuperTerrain+/GPGPU/STPHeightfieldKernel.cuh>
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 #include <algorithm>
 
@@ -44,14 +44,10 @@ inline STPSmartDeviceMemory::STPDeviceMemory<STPHeightfieldGenerator::STPcurandR
 */
 template<class T>
 static T generateErosionBrush(const unsigned int freeslip_rangeX, const unsigned int erosion_radius) {
-	if (erosion_radius == 0u) {
-		//radius must be greater than 0
-		throw STPException::STPBadNumericRange("Erosion brush radius must be a positive integer");
-	}
-	if (freeslip_rangeX == 0u) {
-		//none of the component should be zero
-		throw STPException::STPBadNumericRange("Free-slip range row count should be positive");
-	}
+	//radius must be greater than 0
+	STP_ASSERTION_NUMERIC_DOMAIN(erosion_radius > 0u, "Erosion brush radius must be a positive integer");
+	//none of the component should be zero
+	STP_ASSERTION_NUMERIC_DOMAIN(freeslip_rangeX > 0u, "Free-slip range row count should be positive");
 	/* -------------------------------------- Generate Erosion Brush ------------------------------- */
 	const int radius = static_cast<int>(erosion_radius),
 		radiusSqr = radius * radius;

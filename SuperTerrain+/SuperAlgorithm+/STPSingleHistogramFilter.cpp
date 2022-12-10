@@ -5,7 +5,7 @@
 
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
-#include <SuperTerrain+/Exception/STPBadNumericRange.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 //Threading
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 //Memory
@@ -891,15 +891,11 @@ STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample* const samp
 	const STPHistogramBuffer_t& histogram_output, const unsigned int radius) {
 	//do some simple runtime check
 	//first make sure radius is an even number
-	if (radius == 0u || (radius & 0x01u) != 0x00u) {
-		throw STPException::STPBadNumericRange("radius should be an positive even number");
-	}
+	STP_ASSERTION_NUMERIC_DOMAIN(radius > 0u && (radius & 0x01u) == 0x00u, "radius should be an positive even number");
 	//second make sure radius is not larger than the free-slip range
-	const uvec2 central_chunk_index = nn_info.ChunkNearestNeighbour / 2u;
-	if (const uvec2 halo_size = central_chunk_index * nn_info.MapSize;
-		halo_size.x < radius || halo_size.y < radius) {
-		throw STPException::STPBadNumericRange("radius is too large and will overflow free-slip boundary");
-	}
+	const uvec2 central_chunk_index = nn_info.ChunkNearestNeighbour / 2u,
+		halo_size = central_chunk_index * nn_info.MapSize;
+	STP_ASSERTION_NUMERIC_DOMAIN(radius <= halo_size.x && radius <= halo_size.y, "radius is too large and will overflow free-slip boundary");
 
 	//looks safe now, start the filter
 	this->Kernel->filter(samplemap, nn_info, histogram_output.get(), central_chunk_index, radius);

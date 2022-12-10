@@ -6,6 +6,10 @@ The application is still in its rapid development stage, therefore documentation
 
 All historical release notes are exported and can be found in [Changelog](https://github.com/stephen-hqxu/superterrainplus/tree/master/Documentation/Changelog). Recent version of release notes can be found instead in *GitHub Releases*.
 
+**STPAlgorithm**
+
+- [Single Histogram Filter](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/single-histogram-filter.md)
+
 **STPDiversity**
 
 - [*Texture Definition Language* specification](https://github.com/stephen-hqxu/superterrainplus/blob/master/Documentation/tdl-specification.md)

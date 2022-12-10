@@ -1,6 +1,8 @@
 #include <SuperRealism+/Scene/Component/STPAlphaCulling.h>
 #include <SuperRealism+/STPRealismInfo.h>
 
+#include <SuperTerrain+/Exception/STPInvalidEnum.h>
+
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperTerrain+/Utility/STPStringUtility.h>
@@ -46,7 +48,7 @@ inline const char* STPAlphaCulling::comparatorString(const STPCullComparator com
 	case STPCullComparator::GreaterEqual: return ">=";
 	case STPCullComparator::Less: return "<";
 	case STPCullComparator::LessEqual: return "<=";
-	default: return "impossible";
+	default: throw STP_INVALID_ENUM_CREATE(comp, STPCullComparator);
 	}
 }
 
@@ -54,7 +56,7 @@ inline const char* STPAlphaCulling::connectorString(const STPCullConnector conn)
 	switch (conn) {
 	case STPCullConnector::And: return "&&";
 	case STPCullConnector::Or: return "||";
-	default: return "impossible";
+	default: throw STP_INVALID_ENUM_CREATE(conn, STPCullConnector);
 	}
 }
 
