@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+title: "SuperTerrain+: A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering"
+message: "If you use this software and/or originally developed algorithms from this project, please cite this as follows."
+authors:
+  - family-names: "Xu"
+    given-names: "Stephen Haoqian"
+type: software
+date-released: 2020-07-11
+url: "https://github.com/stephen-hqxu/superterrainplus"

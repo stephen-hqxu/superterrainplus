@@ -56,6 +56,10 @@ STPEnvironment::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const STPI
 		section.at("chunkSizeX").to<unsigned int>(),
 		section.at("chunkSizeZ").to<unsigned int>()
 	);
+	chunks_options.SplatNearestNeighbour = uvec2(
+		section.at("splatSizeX").to<unsigned int>(),
+		section.at("splatSizeZ").to<unsigned int>()
+	);
 	chunks_options.RenderDistance = uvec2(
 		section.at("renderedSizeX").to<unsigned int>(),
 		section.at("renderedSizeZ").to<unsigned int>()

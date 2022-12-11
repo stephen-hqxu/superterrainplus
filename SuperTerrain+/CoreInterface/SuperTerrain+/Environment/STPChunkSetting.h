@@ -34,6 +34,9 @@ namespace SuperTerrainPlus::STPEnvironment {
 		//Specify the number of nearest neighbour chunk around the centre chunk during heightmap erosion and allows erosion happens outside the central chunk.
 		//This allows erosion to work in a *free-slip* manner, allowing water droplet to travel beyond the centre chunk to avoid chunk edge artefact.
 		glm::uvec2 ErosionNearestNeighbour;
+		//Specify the number of nearest neighbour chunk around the centre chunk during generation of terrain texture splatmap.
+		//This allows accessing pixels beyond the generating chunk on the rendering buffer.
+		glm::uvec2 SplatNearestNeighbour;
 		//Determine the X*Y number of chunk to be rendered surrounded by player, greater value gives further visible distance.
 		//It's highly recommend to use the squared rendering distance.
 		glm::uvec2 RenderDistance;

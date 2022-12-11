@@ -5,7 +5,7 @@
 #include <algorithm>
 
 template <class... Asc>
-inline SuperTerrainPlus::STPDiversity::STPLayer::STPLayer(const size_t cache_size, const Seed global_seed, const Seed salt, Asc* const ... ascendant) :
+inline SuperTerrainPlus::STPDiversity::STPLayer::STPLayer(const size_t cache_size, const Seed global_seed, const Seed salt, Asc* ... ascendant) :
 	STPLayer(sizeof...(Asc), cache_size, global_seed, salt) {
 	//make sure only STPLayer is supplied as template, error throws at compile time
 	static_assert(std::conjunction_v<std::is_base_of<STPLayer, Asc>...>, "Only STPLayer and its children are allowed as ascendant");

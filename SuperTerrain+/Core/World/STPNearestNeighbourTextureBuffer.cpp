@@ -145,7 +145,7 @@ inline unsigned int STPNearestNeighbourTextureBuffer<T, MM>::calcNeighbourPixel(
 
 //Explicit Instantiation
 #define NN_TEXTURE_BUFFER(TYPEA, TYPEB) \
-	template class STP_API STPNearestNeighbourTextureBuffer<TYPEA, STPNearestNeighbourTextureBufferMemoryMode::TYPEB>
+	template class STP_API SuperTerrainPlus::STPNearestNeighbourTextureBuffer<TYPEA, STPNearestNeighbourTextureBufferMemoryMode::TYPEB>
 NN_TEXTURE_BUFFER(float, WriteOnly);
 NN_TEXTURE_BUFFER(float, ReadWrite);
 NN_TEXTURE_BUFFER(Sample, ReadOnly);

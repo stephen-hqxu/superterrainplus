@@ -30,9 +30,15 @@ void STPChunkSetting::validate() const {
 	ASSERT_CHUNK(isPositiveui(this->ChunkSize));
 	ASSERT_CHUNK(isPositiveui(this->MapSize));
 	ASSERT_CHUNK(isPositived(this->ChunkScale));
-	//number validation
+	//nearest neighbour validation
+	ASSERT_CHUNK(isPositiveui(this->DiversityNearestNeighbour));
+	ASSERT_CHUNK(isPositiveui(this->ErosionNearestNeighbour));
+	ASSERT_CHUNK(isPositiveui(this->SplatNearestNeighbour));
+	ASSERT_CHUNK(isPositiveui(this->RenderDistance));
+
 	ASSERT_CHUNK(isOdd(this->DiversityNearestNeighbour));
 	ASSERT_CHUNK(isOdd(this->ErosionNearestNeighbour));
+	ASSERT_CHUNK(isOdd(this->SplatNearestNeighbour));
 	ASSERT_CHUNK(isOdd(this->RenderDistance));
 }
 

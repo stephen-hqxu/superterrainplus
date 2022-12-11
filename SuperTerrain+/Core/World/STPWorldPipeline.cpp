@@ -531,6 +531,8 @@ private:
 			//go to the next batch
 			batchPriority = chunkPri;
 		}
+		//wait for the last batch to complete
+		this->waitAllGenerationTasks();
 
 		//tell application which chunks have changed, besides chunks specified in the input
 		//because erosion may also modify neighbour chunks from the input
@@ -1013,17 +1015,8 @@ private:
 
 	//Record indices of chunks that need to have splatmap computed for the current task.
 	unordered_set<unsigned int> SplatmapComputeChunk;
-	constexpr static array<ivec2, 9u> NeighbourCoordinateOffset = {
-		ivec2(-1, -1),
-		ivec2( 0, -1),
-		ivec2(+1, -1),
-		ivec2(-1,  0),
-		ivec2( 0,  0),
-		ivec2(+1,  0),
-		ivec2(-1, +1),
-		ivec2( 0, +1),
-		ivec2(+1, +1)
-	};
+	//the neighbour offset for splatmap generation
+	const STPChunk::STPChunkNeighbourOffset SplatChunkNeighbourOffset;
 	//using the centre chunk as the origin, the relative offsets of all chunks in a render area
 	const STPChunk::STPChunkNeighbourOffset RenderChunkNeighbourOffset;
 
@@ -1076,6 +1069,27 @@ public:
 		}
 
 	} HeightmapIntersectionCache;
+
+	//result of union between the request response and force reload reply from the generator
+	struct STPResponseReloadUnionCache {
+	public:
+
+		//to avoid duplicate member in the union
+		unordered_set<ivec2, STPHashivec2> RRDictionary;
+		//the result set after union is applied
+		STPGeneratorManager::STPChunkRequestResponseEntry MergedResponse;
+
+		void reserve(const size_t renderCount) {
+			this->RRDictionary.reserve(renderCount);
+			this->MergedResponse.reserve(renderCount);
+		}
+
+		void clear() noexcept {
+			this->RRDictionary.clear();
+			this->MergedResponse.clear();
+		}
+
+	} HeightmapResponseUnionCache;
 	/* ------------------------------------------------------------------------------- */
 
 	STPConcurrentStreamManager Worker;
@@ -1104,6 +1118,7 @@ public:
 	*/
 	STPMemoryManager(STPWorldPipeline& pipeline) :
 		PipelineStream(pipeline.BufferStream.get()), ChunkSetting(pipeline.ChunkSetting),
+		SplatChunkNeighbourOffset(STPChunk::calcChunkNeighbourOffset(this->ChunkSetting.ChunkSize, this->ChunkSetting.SplatNearestNeighbour)),
 		RenderChunkNeighbourOffset(STPChunk::calcChunkNeighbourOffset(this->ChunkSetting.ChunkSize, this->ChunkSetting.RenderDistance)),
 		MemoryBuffer{ *this, *this }, isBackBufferMapped(false),
 		Worker(this->calcChunkCacheSize()),
@@ -1151,6 +1166,7 @@ public:
 		this->SplatmapInfoCache.reserve(chunkCount);
 		this->GeneratorRequestPayload.reserve(chunkCount);
 		this->HeightmapIntersectionCache.reserve(chunkCount);
+		this->HeightmapResponseUnionCache.reserve(chunkCount);
 	}
 
 	STPMemoryManager(const STPMemoryManager&) = delete;
@@ -1290,7 +1306,7 @@ public:
 				continue;
 			}
 			//for each neighbour of each computing chunk...
-			for (const ivec2 coord_offset : this->NeighbourCoordinateOffset) {
+			for (const ivec2 coord_offset : this->SplatChunkNeighbourOffset) {
 				//make sure the coordinate is in a valid render distance
 				if (const ivec2 current_coord = this->BackBuffer->calcLocalIndexCoordinate(chunkCoord + coord_offset);
 					this->BackBuffer->isLocalChunk(current_coord)) {
@@ -1405,6 +1421,45 @@ public:
 		return valid_chunk;
 	}
 
+	/**
+	 * @brief Clear all response reload union cache between primary response entry and force reload entry.
+	 * This function should be called once the buffer swapping has finished. 
+	*/
+	inline void clearAllRequestReloadUnionCache() noexcept {
+		this->HeightmapResponseUnionCache.clear();
+	}
+
+	/**
+	 * @brief Find the union between primary request response entry and force reload entry from the generator.
+	 * @param main_response The main request response.
+	 * @param force_reload The response from the generator that indicates some types of maps should be reloaded.
+	 * Provide null pointer if no entry needs to be reloaded.
+	 * @param union_cache The cache input for storing intermediate data.
+	 * @return The union result set of two array range.
+	 * Returns nullptr if the union result set is empty.
+	*/
+	const STPGeneratorManager::STPChunkRequestResponseEntry* unionRequestForceReloadEntry(
+		const STPGeneratorManager::STPChunkRequestResponseEntry& main_response,
+		const STPGeneratorManager::STPChunkRequestResponseEntry* const force_reload, STPResponseReloadUnionCache& union_cache) {
+		//union cache is not cleared automatically, it should be done for all response reload union cache once buffer swap happens
+		auto& [response_reload_dict, response_reload_result] = union_cache;
+
+		const auto unionResponse = [&d = response_reload_dict, &r = response_reload_result](const auto chunk_entry) {
+			if (d.emplace(chunk_entry->first).second) {
+				//entry is unique
+				r.emplace_back(chunk_entry);
+			}
+		};
+		//put all main response to the result set
+		for_each(main_response.cbegin(), main_response.cend(), unionResponse);
+		if (force_reload) {
+			//then, put the force reload entry in, if this entry exists
+			for_each(force_reload->cbegin(), force_reload->cend(), unionResponse);
+		}
+
+		return response_reload_result.empty() ? nullptr : &response_reload_result;
+	}
+
 };
 
 STPWorldPipeline::STPWorldPipeline(const STPPipelineSetup& setup) :
@@ -1472,6 +1527,34 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 			//synchronise the buffer before passing to the user
 			this->Memory->unmapBackBuffer();
 			this->Memory->swapBuffer();
+			//manually clear all response reload union cache
+			/*
+			Worth explaining why we should do this.
+			It is possible that a previous back buffer is not swapped if the centre position is changed while the loader is busy.
+			Once the loader is finished, loader proceeds to the new task; the old chunks in the back buffer is completely discarded.
+			Also the loader assumes that the data from the front buffer are always up-to-date.
+
+			Well this is not the case if the buffer is not swapped.
+			Imagine a case when the previous task generates top-row chunk in the render distance, and due to the nature of nearest neighbour logic,
+			the second row needs to be reloaded (assume nearest neighbour range is 3x3).
+			This will result in 1st and 2nd row of chunks to be reloaded to the back buffer.
+
+			Now let's move one row-chunk backward, so the previous 1st row becomes the 2nd, and so on...
+
+			But then, this old work on the back buffer is abandoned and never becomes the front buffer,
+			and the new task attempts to reuse chunk data from the front buffer, where the 3rd (was 2nd) row chunks are outdated.
+			The new task will only reload the 1st and 2nd row in the current range (corresponds to previously -1st and 1st row),
+			and ignore 3rd row (was 2nd row, which is outdated) because it is not in the nearest neighbour range.
+
+			If we don't change this request reload cache, we are telling the application to maintain a record for all previous chunks to be reloaded.
+			This will apparently reload the 1st, 2nd and 3rd row chunk in the previous example.
+
+			Another challenging case is when the new request goes back to where the front buffer was,
+			while the old request requires the 2nd (now 1st) row to be reloaded.
+			The new request will be empty because we will just copy everything from front buffer to the back buffer.
+			But the 1st row in the front buffer will be outdated, so we need to grab it from the database and recompute splatmap.
+			*/
+			this->Memory->clearAllRequestReloadUnionCache();
 			return STPWorldLoadStatus::Swapped;
 		}
 		return STPWorldLoadStatus::Unchanged;
@@ -1489,11 +1572,16 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 		//request chunk based on the chunk loading status
 		const STPGeneratorManager::STPChunkRequestPayload& requestPayload = mem_mgr.generateChunkRequestPayload();
 		const auto& [request_response, require_heightmap_reload] = gen_mgr.requestChunk(requestPayload);
+		//the main response and force reload response might be disjoint of each other
+		//now find the union set between the main response and the require heightmap reload
+		//after union, we can ensure both main response and force reload response are subset of the union result
+		const STPGeneratorManager::STPChunkRequestResponseEntry* const union_heightmap_reload =
+			mem_mgr.unionRequestForceReloadEntry(request_response, require_heightmap_reload, mem_mgr.HeightmapResponseUnionCache);
 		//find the valid subset for reloading chunk texture
 		//this response is different, there might be chunks that are outside the current render area
 		//need to filter out
-		const STPGeneratorManager::STPChunkRequestResponseEntry* const valid_heightmap_reload = require_heightmap_reload
-			? &mem_mgr.intersectRenderDistance(*require_heightmap_reload, mem_mgr.HeightmapIntersectionCache) : nullptr;
+		const STPGeneratorManager::STPChunkRequestResponseEntry* const valid_heightmap_reload = union_heightmap_reload
+			? &mem_mgr.intersectRenderDistance(*union_heightmap_reload, mem_mgr.HeightmapIntersectionCache) : nullptr;
 
 		//start auxiliary workers
 		stream_mgr.workersWaitMain(stream_main);

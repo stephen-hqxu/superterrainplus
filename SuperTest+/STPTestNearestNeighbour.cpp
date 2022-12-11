@@ -146,12 +146,12 @@ TEMPLATE_TEST_CASE_METHOD_SIG(NNBufferTester, "STPNearestNeighbourTextureBuffer 
 	GIVEN("A range of nearest neighbour chunks") {
 		//initialise the nearest-neighbour texture buffer and fill in with our initial zero data
 		//this initial data might be overwritten depends on the memory mode
-		CurrentTester::ChunkTexture_t TestData = CurrentTester::ZeroChunkData;
+		typename CurrentTester::ChunkTexture_t TestData = CurrentTester::ZeroChunkData;
 		T* TestDataRaw[CurrentTester::NNCount];
 		//extract it into raw pointer array
 		std::transform(TestData.begin(), TestData.end(), TestDataRaw, [](auto& chk) { return chk.data(); });
 		//create a texture buffer master
-		const CurrentTester::NNBuffer TestTextureBuffer(TestDataRaw, CurrentTester::NNInfo, { STPTestInformation::TestDeviceMemoryPool, 0 });
+		const typename CurrentTester::NNBuffer TestTextureBuffer(TestDataRaw, CurrentTester::NNInfo, { STPTestInformation::TestDeviceMemoryPool, 0 });
 
 		//test for different memory location
 		const auto ChosenLocation = GENERATE(values({
@@ -160,7 +160,7 @@ TEMPLATE_TEST_CASE_METHOD_SIG(NNBufferTester, "STPNearestNeighbourTextureBuffer 
 		}));
 		WHEN("Texture from all nearest neighbour chunks are merged into a large buffer") {
 			//we use a optional to control the lifetime of the merged buffer
-			auto TestDataMergedMaster = make_optional<const CurrentTester::NNBuffer::STPMergedBuffer>(TestTextureBuffer, ChosenLocation);
+			auto TestDataMergedMaster = make_optional<const typename CurrentTester::NNBuffer::STPMergedBuffer>(TestTextureBuffer, ChosenLocation);
 			const auto& TestDataMerged = *TestDataMergedMaster;
 
 			THEN("The memory of merged buffer should be consistent with the original content and memory mode specification") {
