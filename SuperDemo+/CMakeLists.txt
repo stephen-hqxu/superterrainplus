@@ -25,14 +25,55 @@ find_package(glfw3 3 REQUIRED CONFIG)
 # add all demo program code
 # header and source code will be placed together
 add_executable(${STP_DEMO_PROGRAM}
-World/Layers/STPAllLayers.cpp
+STPStart.cpp
+# /Helpers
+Helpers/STPTerrainParaLoader.cpp
+Helpers/STPTextureStorage.cpp
+# /World/Biomes
 World/Biomes/STPBiomefieldGenerator.cpp
 World/Biomes/STPCommonCompiler.cpp
 World/Biomes/STPSplatmapGenerator.cpp
-Helpers/STPTerrainParaLoader.cpp
-Helpers/STPTextureStorage.cpp
+# /World/Layers
+World/Layers/STPAllLayers.cpp
+# /World
 World/STPWorldManager.cpp
-STPStart.cpp
+)
+
+target_sources(${STP_DEMO_PROGRAM} PRIVATE
+# /Helpers
+Helpers/STPTerrainParaLoader.h
+Helpers/STPTextureStorage.h
+# /World/Biomes
+World/Biomes/STPBiome.hpp
+World/Biomes/STPBiomefieldGenerator.h
+World/Biomes/STPBiomeProperty.hpp
+World/Biomes/STPBiomeRegistry.h
+World/Biomes/STPCommonCompiler.h
+World/Biomes/STPSplatmapGenerator.h
+# /World/Layers
+World/Layers/STPAllLayers.h
+World/Layers/STPBaseBiomeLayer.h
+World/Layers/STPClimateLayer.h
+World/Layers/STPContinentLayer.h
+World/Layers/STPCrossLayer.h
+World/Layers/STPDeepOceanLayer.h
+World/Layers/STPEaseEdgeLayer.h
+World/Layers/STPEdgeBiomeLayer.h
+World/Layers/STPHillsLayer.h
+World/Layers/STPIslandLayer.h
+World/Layers/STPLandLayer.h
+World/Layers/STPNoiseLayer.h
+World/Layers/STPNoiseToRiverLayer.h
+World/Layers/STPOceanTemperatureLayer.h
+World/Layers/STPRiverErodeLayer.h
+World/Layers/STPRiverMixLayer.h
+World/Layers/STPScaleLayer.h
+World/Layers/STPSmoothScaleLayer.h
+World/Layers/STPVoronoiLayer.h
+World/Layers/STPXCrossLayer.h
+# /World
+World/STPWorldManager.h
+World/STPWorldManager.inl
 )
 
 if(MSVC)

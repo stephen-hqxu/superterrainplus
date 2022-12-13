@@ -1,9 +1,33 @@
-cff-version: 1.2.0
-title: "SuperTerrain+: A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering"
-message: "If you use this software and/or originally developed algorithms from this project, please cite this as follows."
 authors:
   - family-names: "Xu"
     given-names: "Stephen Haoqian"
-type: software
+    alias: shxu
+cff-version: 1.2.0
 date-released: 2020-07-11
-url: "https://github.com/stephen-hqxu/superterrainplus"
+keywords:
+  - "computer graphics"
+  - "procedural generation"
+  - "terrain generation"
+  - "real time rendering"
+  - "photorealistic rendering"
+  - "virtual reality"
+license: MIT
+message: "If you use this software and/or originally developed algorithms from this project, please cite this as follows. Please also see the credit section for references used in this work."
+preferred-citation:
+  authors:
+    - family-names: "Hague"
+      given-names: "Andrew"
+    - family-names: "Xu"
+      given-names: "Stephen Haoqian"
+  commit: "7ae8117ba423eee1c190600955b9155c06107bcf"
+  department: "Department of Computer Science"
+  institution:
+    name: "University of Warwick"
+  month: 5
+  thesis-type: "Master Thesis"
+  title: "SuperTerrain+: A real-time procedural 3D infinite terrain engine with geographical features and photorealistic rendering"
+  type: thesis
+  year: 2022
+repository-code: "https://github.com/stephen-hqxu/superterrainplus"
+title: "SuperTerrainPlus"
+type: software

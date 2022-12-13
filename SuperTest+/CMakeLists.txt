@@ -21,6 +21,7 @@ STPTestUtility.cpp
 # SuperAlgorithm+ test code
 STPTestHistogram.cpp
 STPTestINI.cpp
+STPTestLexer.cpp
 STPTestPermutation.cpp
 STPTestTDL.cpp
 )

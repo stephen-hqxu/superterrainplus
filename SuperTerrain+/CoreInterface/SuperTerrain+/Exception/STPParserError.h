@@ -4,8 +4,6 @@
 
 #include "STPFundamentalException.h"
 
-#include <vector>
-
 /**
  * @param desc A more detailed description of this error.
  * @param parser_name The name of the parser.
@@ -15,7 +13,7 @@
 
 //create a syntax error during parsing
 #define STP_PARSER_INVALID_SYNTAX_CREATE(DESC, PAR_NAME, TITLE, SRC_INFO) \
-STP_STANDARD_EXCEPTION_CREATE(STPParserError::STPInvalidSyntax, SRC_INFO, DESC, PAR_NAME TITLE)
+STP_STANDARD_EXCEPTION_CREATE(STPParserError::STPInvalidSyntax, SRC_INFO, DESC, PAR_NAME, TITLE)
 //create a semantic error during parsing
 #define STP_PARSER_SEMANTIC_ERROR_CREATE(DESC, PAR_NAME, TITLE) \
 STP_STANDARD_EXCEPTION_CREATE(STPParserError::STPSemanticError, DESC, PAR_NAME, TITLE)
@@ -55,11 +53,6 @@ namespace SuperTerrainPlus::STPException {
 			*/
 			const struct STPSourceInformation {
 			public:
-
-				//an array of possible legal tokens
-				std::vector<std::string> ExpectedToken;
-				//the token obtained at this parsing step
-				std::string ParsedToken;
 
 				std::string SourceName;
 				size_t Line, Column;

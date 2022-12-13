@@ -157,17 +157,10 @@ STPNumericDomainError::STPNumericDomainError(const char* const expression, const
 /* STPParserError.h */
 
 inline static string createParserInvalidSyntaxMessage(const STPParserError::STPInvalidSyntax::STPSourceInformation& info, const std::string& desc) {
-	const auto& [expected, got, src_name, line, col] = info;
+	const auto& [src_name, line, col] = info;
 	ostringstream msg;
 
-	msg << "In " << src_name << ": Line " << line << ", Column " << col << endl;
-	msg << "Was expecting:";
-	for (const auto& token : expected) {
-		msg << " \'" << token << '\'';
-	}
-	msg << endl;
-	msg << "Got: " << '\'' << got << '\'' << endl;
-
+	msg << src_name << ":(Line: " << line << ", Column: " << col << "):" << endl;
 	msg << desc << endl;
 
 	return msg.str();
