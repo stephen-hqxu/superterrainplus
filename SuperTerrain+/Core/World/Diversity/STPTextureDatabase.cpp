@@ -269,7 +269,7 @@ public:
 };
 
 STPTextureDatabase::STPTextureSplatBuilder::STPTextureSplatBuilder(
-	STPTextureDatabase::STPTextureDatabaseImpl* database) : Database(database) {
+	STPTextureDatabase& database) : Database(*database.Database) {
 	//setup database schema for splat builder
 	static constexpr string_view TextureSplatSchema =
 		"CREATE TABLE AltitudeStructure("
@@ -300,19 +300,14 @@ STPTextureDatabase::STPTextureSplatBuilder::STPTextureSplatBuilder(
 			");";
 
 	//create table
-	this->Database->createFromSchema(TextureSplatSchema);
+	this->Database.createFromSchema(TextureSplatSchema);
 }
-
-STPTextureDatabase::STPTextureSplatBuilder::STPTextureSplatBuilder(STPTextureSplatBuilder&&) noexcept = default;
-
-STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::STPTextureSplatBuilder::operator=(
-	STPTextureSplatBuilder&&) noexcept = default;
 
 void STPTextureDatabase::STPTextureSplatBuilder::addAltitude(
 	const Sample sample, const float upperBound, const STPTextureInformation::STPTextureID texture_id) {
 	static constexpr string_view AddAltitude = 
 		"INSERT INTO AltitudeStructure (ASID, Sample, UpperBound, TID) VALUES(?, ?, ?, ?)";
-	sqlite3_stmt* const altitude_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddAltitude, AddAltitude);
+	sqlite3_stmt* const altitude_stmt = this->Database.getStmt(STPTextureDatabaseImpl::AddAltitude, AddAltitude);
 
 	//insert new altitude configuration into altitude table
 	STP_CHECK_SQLITE3(sqlite3_bind_int(altitude_stmt, 1, static_cast<int>(STPTextureDatabaseImpl::GeneralIDAccumulator++)));
@@ -320,21 +315,21 @@ void STPTextureDatabase::STPTextureSplatBuilder::addAltitude(
 	STP_CHECK_SQLITE3(sqlite3_bind_double(altitude_stmt, 3, static_cast<double>(upperBound)));
 	STP_CHECK_SQLITE3(sqlite3_bind_int(altitude_stmt, 4, static_cast<int>(texture_id)));
 	//execute
-	this->Database->execStmt(altitude_stmt);
+	this->Database.execStmt(altitude_stmt);
 }
 
 size_t STPTextureDatabase::STPTextureSplatBuilder::altitudeSize() const {
 	static constexpr string_view GetAltitudeCount = 
 		"SELECT COUNT(ASID) FROM AltitudeStructure;";
 	
-	return this->Database->getInt(GetAltitudeCount);
+	return this->Database.getInt(GetAltitudeCount);
 }
 
 void STPTextureDatabase::STPTextureSplatBuilder::addGradient(const Sample sample, const float minGradient, const float maxGradient,
 	const float lowerBound, const float upperBound, const STPTextureInformation::STPTextureID texture_id) {
 	static constexpr string_view AddGradient =
 		"INSERT INTO GradientStructure (GSID, Sample, minGradient, maxGradient, LowerBound, UpperBound, TID) VALUES(?, ?, ?, ?, ?, ?, ?);";
-	sqlite3_stmt* const gradient_stmt = this->Database->getStmt(STPTextureDatabaseImpl::AddGradient, AddGradient);
+	sqlite3_stmt* const gradient_stmt = this->Database.getStmt(STPTextureDatabaseImpl::AddGradient, AddGradient);
 
 	//insert new gradient configuration into gradient table
 	STP_CHECK_SQLITE3(sqlite3_bind_int(gradient_stmt, 1, static_cast<int>(STPTextureDatabaseImpl::GeneralIDAccumulator++)));
@@ -345,32 +340,32 @@ void STPTextureDatabase::STPTextureSplatBuilder::addGradient(const Sample sample
 	STP_CHECK_SQLITE3(sqlite3_bind_double(gradient_stmt, 6, static_cast<double>(upperBound)));
 	STP_CHECK_SQLITE3(sqlite3_bind_int(gradient_stmt, 7, static_cast<int>(texture_id)));
 
-	this->Database->execStmt(gradient_stmt);
+	this->Database.execStmt(gradient_stmt);
 }
 
 size_t STPTextureDatabase::STPTextureSplatBuilder::gradientSize() const {
 	static constexpr string_view GetGradientCount = 
 		"SELECT COUNT(GSID) FROM GradientStructure;";
 	
-	return this->Database->getInt(GetGradientCount);
+	return this->Database.getInt(GetGradientCount);
 }
 
-STPTextureDatabase::STPDatabaseView::STPDatabaseView(const STPTextureDatabase& db) :
-	Database(db), Impl(db.Database.get()), SplatBuilder(db.SplatBuilder) {
+STPTextureDatabase::STPDatabaseView::STPDatabaseView(const STPTextureDatabase& db) noexcept :
+	Database(db), Impl(*db.Database), SplatBuilder(db.SplatBuilder) {
 
 }
 
 STPTextureDatabase::STPDatabaseView::STPAltitudeRecord STPTextureDatabase::STPDatabaseView::getAltitudes() const {
 	static constexpr string_view GetAltitude =
 		"SELECT Sample, UpperBound, TID FROM AltitudeStructure ORDER BY Sample ASC, UpperBound ASC;";
-	const STPTextureDatabaseImpl::STPSmartStmt smart_altitude_stmt = this->Impl->createStmt(GetAltitude);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_altitude_stmt = this->Impl.createStmt(GetAltitude);
 	sqlite3_stmt* const altitude_stmt = smart_altitude_stmt.get();
 	STPAltitudeRecord altitude_rec;
 	//preallocate memory
 	altitude_rec.reserve(this->SplatBuilder.altitudeSize());
 
 	//structure the altitude records and add them into the vector
-	while (this->Impl->execStmt(altitude_stmt)) {
+	while (this->Impl.execStmt(altitude_stmt)) {
 		STPTextureInformation::STPAltitudeNode& newAlt =
 			altitude_rec.emplace_back(static_cast<Sample>(sqlite3_column_int(altitude_stmt, 0)), STPTextureInformation::STPAltitudeNode()).second;
 		newAlt.UpperBound = static_cast<float>(sqlite3_column_double(altitude_stmt, 1));
@@ -383,14 +378,14 @@ STPTextureDatabase::STPDatabaseView::STPAltitudeRecord STPTextureDatabase::STPDa
 STPTextureDatabase::STPDatabaseView::STPGradientRecord STPTextureDatabase::STPDatabaseView::getGradients() const {
 	static constexpr string_view GetGradient =
 		"SELECT Sample, minGradient, maxGradient, LowerBound, UpperBound, TID FROM GradientStructure ORDER BY Sample ASC;";
-	const STPTextureDatabaseImpl::STPSmartStmt smart_gradient_stmt = this->Impl->createStmt(GetGradient);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_gradient_stmt = this->Impl.createStmt(GetGradient);
 	sqlite3_stmt* const gradient_stmt = smart_gradient_stmt.get();
 	STPGradientRecord gradient_rec;
 	//preallocate memory
 	gradient_rec.reserve(this->SplatBuilder.gradientSize());
 
 	//structure then add
-	while (this->Impl->execStmt(gradient_stmt)) {
+	while (this->Impl.execStmt(gradient_stmt)) {
 		STPTextureInformation::STPGradientNode& newGra =
 			gradient_rec.emplace_back(static_cast<Sample>(sqlite3_column_int(gradient_stmt, 0)), STPTextureInformation::STPGradientNode()).second;
 		newGra.minGradient = static_cast<float>(sqlite3_column_double(gradient_stmt, 1));
@@ -415,13 +410,13 @@ STPTextureDatabase::STPDatabaseView::STPSampleRecord STPTextureDatabase::STPData
 		"LEFT OUTER JOIN (SELECT Sample, Count(Sample) AS AltCount FROM AltitudeStructure GROUP BY Sample) A ON A.Sample = P.Sample "
 		"LEFT OUTER JOIN (SELECT Sample, Count(Sample) AS GraCount FROM GradientStructure GROUP BY Sample) G ON G.Sample = P.Sample "
 		"ORDER BY P.Sample ASC;";
-	const STPTextureDatabaseImpl::STPSmartStmt smart_affected_stmt = this->Impl->createStmt(GetAffectedSample);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_affected_stmt = this->Impl.createStmt(GetAffectedSample);
 	sqlite3_stmt* const affected_stmt = smart_affected_stmt.get();
 	STPSampleRecord sample_rec;
 	sample_rec.reserve(hint);
 
 	//insert into sample array
-	while (this->Impl->execStmt(affected_stmt)) {
+	while (this->Impl.execStmt(affected_stmt)) {
 		sample_rec.emplace_back(
 			static_cast<Sample>(sqlite3_column_int(affected_stmt, 0)),
 			static_cast<size_t>(sqlite3_column_int(affected_stmt, 1)),
@@ -440,14 +435,14 @@ STPTextureDatabase::STPDatabaseView::STPMapGroupRecord STPTextureDatabase::STPDa
 		"SELECT MG.MGID, COUNT(VM.MGID), MG.MapDescription FROM MapGroup MG "
 			"INNER JOIN ValidMap VM ON MG.MGID = VM.MGID "
 		"GROUP BY VM.MGID ORDER BY MG.MGID ASC;";
-	const STPTextureDatabaseImpl::STPSmartStmt smart_group_stmt = this->Impl->createStmt(GetAllGroup);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_group_stmt = this->Impl.createStmt(GetAllGroup);
 	sqlite3_stmt* const group_stmt = smart_group_stmt.get();
 	STPMapGroupRecord group_rc;
 	//estimate the size, the number of valid group must be less than or equal to the total number of group
 	group_rc.reserve(this->Database.mapGroupSize());
 
 	//loop through all group data and emplace them into a structured array
-	while (this->Impl->execStmt(group_stmt)) {
+	while (this->Impl.execStmt(group_stmt)) {
 		group_rc.emplace_back(
 			static_cast<STPTextureInformation::STPMapGroupID>(sqlite3_column_int(group_stmt, 0)),
 			static_cast<size_t>(sqlite3_column_int(group_stmt, 1)),
@@ -466,13 +461,13 @@ STPTextureDatabase::STPDatabaseView::STPTextureRecord STPTextureDatabase::STPDat
 			"INNER JOIN Texture T ON VM.TID = T.TID "
 			"INNER JOIN ViewGroup VG ON T.VGID = VG.VGID "
 		"ORDER BY VM.TID ASC;";
-	const STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl->createStmt(GetAllTexture);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl.createStmt(GetAllTexture);
 	sqlite3_stmt* const texture_stmt = smart_texture_stmt.get();
 	STPTextureRecord texture_rec;
 	//The number of valid texture ID must be less than or equal to the total number of registered texture
 	texture_rec.reserve(this->Database.textureSize());
 
-	while (this->Impl->execStmt(texture_stmt)) {
+	while (this->Impl.execStmt(texture_stmt)) {
 		//add texture ID into the array
 		texture_rec.emplace_back(
 			static_cast<STPTextureInformation::STPTextureID>(sqlite3_column_int(texture_stmt, 0)),
@@ -488,13 +483,13 @@ STPTextureDatabase::STPDatabaseView::STPTextureRecord STPTextureDatabase::STPDat
 STPTextureDatabase::STPDatabaseView::STPMapRecord STPTextureDatabase::STPDatabaseView::getValidMap() const {
 	static constexpr string_view GetAllTextureData =
 		"SELECT MGID, TID, Type, Data FROM ValidMap ORDER BY MGID ASC;";
-	const STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl->createStmt(GetAllTextureData);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl.createStmt(GetAllTextureData);
 	sqlite3_stmt* const texture_stmt = smart_texture_stmt.get();
 	STPMapRecord texture_rec;
 	//reserve data, since we are retrieving all texture data, the size is exact
 	texture_rec.reserve(this->Database.mapSize());
 
-	while (this->Impl->execStmt(texture_stmt)) {
+	while (this->Impl.execStmt(texture_stmt)) {
 		texture_rec.emplace_back(
 			static_cast<STPTextureInformation::STPMapGroupID>(sqlite3_column_int(texture_stmt, 0)),
 			static_cast<STPTextureInformation::STPTextureID>(sqlite3_column_int(texture_stmt, 1)),
@@ -512,13 +507,13 @@ STPTextureDatabase::STPDatabaseView::STPMapRecord STPTextureDatabase::STPDatabas
 STPTextureDatabase::STPDatabaseView::STPTextureTypeRecord STPTextureDatabase::STPDatabaseView::getValidMapType(const unsigned int hint) const {
 	static constexpr string_view GetAllType = 
 		"SELECT DISTINCT Type FROM ValidMap ORDER BY Type ASC;";
-	const STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl->createStmt(GetAllType);
+	const STPTextureDatabaseImpl::STPSmartStmt smart_texture_stmt = this->Impl.createStmt(GetAllType);
 	sqlite3_stmt* const texture_stmt = smart_texture_stmt.get();
 	STPTextureTypeRecord type_rec;
 	//reserve with hint
 	type_rec.reserve(hint);
 
-	while (this->Impl->execStmt(texture_stmt)) {
+	while (this->Impl.execStmt(texture_stmt)) {
 		type_rec.emplace_back(static_cast<STPTextureType>(sqlite3_column_int(texture_stmt, 0)));
 	}
 
@@ -527,7 +522,7 @@ STPTextureDatabase::STPDatabaseView::STPTextureTypeRecord STPTextureDatabase::ST
 	return type_rec;
 }
 
-STPTextureDatabase::STPTextureDatabase() : Database(make_unique<STPTextureDatabaseImpl>()), SplatBuilder(this->Database.get()) {
+STPTextureDatabase::STPTextureDatabase() : Database(make_unique<STPTextureDatabaseImpl>()), SplatBuilder(*this) {
 	//setup database schema for texture database
 	//no need to drop table since database is freshly created
 	static constexpr string_view TextureDatabaseSchema =
@@ -571,15 +566,13 @@ STPTextureDatabase::STPTextureDatabase() : Database(make_unique<STPTextureDataba
 
 STPTextureDatabase::STPTextureDatabase(STPTextureDatabase&&) noexcept = default;
 
-STPTextureDatabase& STPTextureDatabase::operator=(STPTextureDatabase&&) noexcept = default;
-
 STPTextureDatabase::~STPTextureDatabase() = default;
 
-STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::getSplatBuilder() {
-	return const_cast<STPTextureSplatBuilder&>(const_cast<const STPTextureDatabase*>(this)->getSplatBuilder());
+STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::splatBuilder() noexcept {
+	return this->SplatBuilder;
 }
 
-const STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::getSplatBuilder() const {
+const STPTextureDatabase::STPTextureSplatBuilder& STPTextureDatabase::splatBuilder() const noexcept {
 	return this->SplatBuilder;
 }
 
@@ -627,7 +620,7 @@ void STPTextureDatabase::removeViewGroup(const STPTextureInformation::STPViewGro
 	this->Database->removeInt(group_stmt, static_cast<int>(group_id));
 }
 
-STPTextureDatabase::STPDatabaseView STPTextureDatabase::visit() const {
+STPTextureDatabase::STPDatabaseView STPTextureDatabase::visit() const noexcept {
 	return STPDatabaseView(*this);
 }
 

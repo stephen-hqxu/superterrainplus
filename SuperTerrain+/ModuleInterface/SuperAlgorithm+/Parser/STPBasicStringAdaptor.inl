@@ -8,8 +8,8 @@
 #include <SuperTerrain+/Exception/STPParserError.h>
 
 template<class Str>
-template<class... Arg, typename>
-inline SuperTerrainPlus::STPAlgorithm::STPBasicStringAdaptor<Str>::STPBasicStringAdaptor(Arg&&... arg) : String(std::forward<Arg>(arg)...) {
+template<class... Arg, typename, bool IsNoexcept>
+inline SuperTerrainPlus::STPAlgorithm::STPBasicStringAdaptor<Str>::STPBasicStringAdaptor(Arg&&... arg) noexcept(IsNoexcept) : String(std::forward<Arg>(arg)...) {
 
 }
 
@@ -59,12 +59,13 @@ inline T SuperTerrainPlus::STPAlgorithm::STPBasicStringAdaptor<Str>::to() const 
 		using std::errc;
 		switch (ec) {
 		case errc::invalid_argument:
-			throw STP_PARSER_SEMANTIC_ERROR_CREATE("The target string \'"s + std::string(this->String)
+			throw STP_PARSER_SEMANTIC_ERROR_CREATE("The target string \'"s + string(this->String)
 					+ "\' does not have a numeric representation that can be converted"s,
 				StringLexicalConverterName, "invalid argument");
 		case errc::result_out_of_range:
 			throw STP_PARSER_SEMANTIC_ERROR_CREATE(
-				"The parsed value is not in the range representable by the type", StringLexicalConverterName, "result out of range");
+				"The value \'"s + string(this->String)
+				+ "\' is not in the range representable by the type"s, StringLexicalConverterName, "result out of range");
 		default:
 			//okay, no error
 			return value;

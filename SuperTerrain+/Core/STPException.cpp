@@ -30,6 +30,8 @@ using namespace std::string_literals;
 
 using namespace SuperTerrainPlus::STPException;
 
+constexpr static size_t SeparatorWidth = 80u;
+
 #define STP_EXCEPTION_SOURCE_INFO_DEF const char* const source, const char* const function, const int line
 #define STP_EXCEPTION_SOURCE_INFO_ARG source, function, line
 
@@ -62,8 +64,8 @@ STPFundamentalException::STPBasic::STPBasic(const string& description, STP_EXCEP
 
 	//add a fancy horizontal line
 	const size_t headerLength = this->Message.length();
-	this->Message.reserve(headerLength * 2u + 1u + this->Description.length());
-	this->Message.append(headerLength, '-');
+	this->Message.reserve(headerLength + SeparatorWidth + 1u + this->Description.length());
+	this->Message.append(SeparatorWidth, '-');
 	this->Message += '\n';
 
 	this->Message.append(this->Description);
@@ -79,13 +81,13 @@ STPFundamentalException::STPAssertion::STPAssertion(const char* const expression
 	//format the message
 	string assertionMsg;
 	const string_view expr(expression);
-	assertionMsg.reserve(assertionHeader.length() + expr.length() * 2u + 2u);
+	assertionMsg.reserve(assertionHeader.length() + expr.length() + SeparatorWidth + 2u);
 	//put the message in the front
 	assertionMsg.append(assertionHeader);
 	assertionMsg.append(expr);
 
 	assertionMsg += '\n';
-	assertionMsg.append(expr.length(), '.');
+	assertionMsg.append(SeparatorWidth, '.');
 	assertionMsg += '\n';
 
 	//add to the original message

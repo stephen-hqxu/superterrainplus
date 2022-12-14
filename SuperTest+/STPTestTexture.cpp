@@ -34,7 +34,7 @@ bool operator==(const STPTextureDatabase::STPViewGroupDescription& v1, const STP
 
 SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture information and retrieve whenever needed",
 	"[Diversity][Texture][STPTextureDatabase]") {
-	auto& Splat = this->getSplatBuilder();
+	auto& Splat = this->splatBuilder();
 
 	GIVEN("A texture database") {
 		static constexpr unsigned char DummyTexture[] = { 0u, 1u, 2u, 3u };

@@ -3,6 +3,7 @@
 #include <catch2/catch_template_test_macros.hpp>
 //Matcher
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 
 //SuperAlgorithm+/Parser
 #include <SuperAlgorithm+/Parser/STPBasicStringAdaptor.h>
@@ -28,6 +29,7 @@ namespace STPParserError = SuperTerrainPlus::STPException::STPParserError;
 
 TEMPLATE_TEST_CASE("STPBasicStringAdaptor can convert between string and desired types",
 	"[AlgorithmHost][STPBasicStringAdaptor]", string, string_view) {
+	using namespace Catch::Matchers;
 	typedef STPBasicStringAdaptor<TestType> CurrentSA;
 
 	GIVEN("Some string representations of values that are not valid to be converted") {
@@ -44,8 +46,8 @@ TEMPLATE_TEST_CASE("STPBasicStringAdaptor can convert between string and desired
 				CHECK((*String2 == TestType(OverflowChar)));
 
 				AND_THEN("They cannot be converted to desired types") {
-					CHECK_THROWS_AS(String1.to<unsigned int>(), STPParserError::STPSemanticError);
-					CHECK_THROWS_AS(String2.to<unsigned char>(), STPParserError::STPSemanticError);
+					CHECK_THROWS_WITH(String1.to<unsigned int>(), ContainsSubstring(HelloWorld));
+					CHECK_THROWS_WITH(String2.to<unsigned char>(), ContainsSubstring(OverflowChar));
 				}
 
 			}
@@ -63,7 +65,17 @@ TEMPLATE_TEST_CASE("STPBasicStringAdaptor can convert between string and desired
 			THEN("The corresponded values can be converted from the adaptors") {
 				CHECK(String1.to<unsigned short>() == numeric_limits<unsigned short>::max());
 				CHECK_THAT(String2.to<double>(), Catch::Matchers::WithinAbs(3.1415, 1e-5));
-				CHECK(String3.to<bool>() == false);
+				CHECK_FALSE(String3.to<bool>());
+			}
+
+			AND_WHEN("The string adaptors are copied or moved") {
+				const CurrentSA StringCpy(String1), StringMov(std::move(String3));
+
+				THEN("They functions exactly the same as the original copy") {
+					CHECK((*StringCpy == *String1));
+					CHECK_FALSE(StringMov.to<bool>());
+				}
+
 			}
 
 		}
@@ -97,7 +109,7 @@ STP_LEXER_DEFINE_FUNCTION_TOKEN(PureNumberToken) {
 
 SCENARIO("STPLexer can tokenise a string based on application-defined tokens", "[AlgorithmHost][STPLexer]") {
 	namespace LT = STPLexerToken;
-	typedef tuple<LT::Equal, LT::Comma, LT::Semicolon, LT::Null> TestAtomToken;
+	typedef tuple<LT::Equal, LT::Comma, LT::Semicolon> TestAtomToken;
 	typedef tuple<PureStringToken, PureNumberToken> TestFuncToken;
 	//define our lexer
 	typedef STPLexer<TestAtomToken, TestFuncToken> SimpleVariableLexer;
@@ -105,7 +117,7 @@ SCENARIO("STPLexer can tokenise a string based on application-defined tokens", "
 
 	GIVEN("A string source with invalid token by definition of the lexer") {
 		//we don't have a colon token
-		constexpr static string_view InvalidTokenSource = "0:chicken", BrokenSourceName = "TheBrokenCode.bad";
+		constexpr static char InvalidTokenSource[] = "0:chicken", BrokenSourceName[] = "TheBrokenCode.bad";
 		SimpleVariableLexer Lexer(InvalidTokenSource, LexerName, BrokenSourceName);
 
 		WHEN("The lexer is attempting to analyse it") {
@@ -120,8 +132,8 @@ SCENARIO("STPLexer can tokenise a string based on application-defined tokens", "
 	}
 
 	GIVEN("A string source to be parsed and a defined lexer") {
-		constexpr static string_view Source = "int myNumber = 3;\nshort numA=1,numB =4, numC= 1 ;",
-			SourceName = "TheSourceOfPi.magic";
+		constexpr static char Source[] = "int myNumber = 3;\nshort numA=1,numB =4, numC= 1 ;";
+		constexpr static string_view SourceName = "TheSourceOfPi.magic";
 		SimpleVariableLexer Lexer(Source, LexerName, SourceName);
 
 		THEN("The information of the lexer and source can be retrieved") {
@@ -159,6 +171,14 @@ SCENARIO("STPLexer can tokenise a string based on application-defined tokens", "
 				}
 
 				REQUIRE(ParsedOutput.to<unsigned int>() == ExpectedOutput);
+
+				AND_THEN("The lexer only returns null token when the source reaches the end") {
+					//loop it for some iterations for robustness
+					for (int i = 0; i < 10; i++) {
+						REQUIRE_NOTHROW(Lexer.expect<LT::Null>());
+					}
+				}
+
 			}
 
 		}

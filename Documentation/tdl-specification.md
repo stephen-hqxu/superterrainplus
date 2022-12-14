@@ -6,7 +6,7 @@ Here is an example:
 
 ```css
 
-#texture [redrock, grass, mossrock, sand, soil, darkrock];
+#texture [redrock, grass, mossrock, sand, soil, darkrock]
 
 #group view {
 	redrock, mossrock, darkrock, sand, soil := (40u, 20u, 10u),
@@ -37,7 +37,9 @@ A directive is a controlling command. A directive always begins with a dash symb
 
 ## Texture
 
-A texture directive allows user to declare texture variables. A texture variable is consist of pure alphabets, no other symbols are allowed. The scope of declared texture variables start from the time they are declared until the end of the file. Variables should be declared in squared bracket `[]`; the texture directive is ended with a semi-colon `;`.
+A texture directive allows user to declare texture variables. A texture variable is consist of pure alphabets, no other symbols are allowed. The scope of declared texture variables start from the time they are declared until the end of the file. Variables should be declared in squared bracket `[]`.
+
+> From [v0.15.10](https://github.com/stephen-hqxu/superterrainplus/releases/tag/v0.15.10), texture directive no longer ends with `;`.
 
 More than one texture variable can be declared in the same texture directive. To do this, separate each variable by a comma `,`.
 
@@ -47,7 +49,7 @@ An example shows a declaration of two texture variables, `snow` and `dirt`:
 
 ```markdown
 
-#texture [snow, dirt];
+#texture [snow, dirt]
 
 ```
 
@@ -55,15 +57,14 @@ This is completely equivalent to the following codes:
 
 ```markdown
 
-#texture [snow];
-#texture [dirt];
+#texture [snow]
+#texture [dirt]
 
 OR
 
-#texture [snow, snow, dirt];
+#texture [snow, snow, dirt]
 
 ```
-
 
 ## Rule
 

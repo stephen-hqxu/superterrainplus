@@ -13,17 +13,18 @@
 #include <limits>
 #include <utility>
 
-//declare a new function token that matches using a function, given the function name and the token ID
-//the symbol value is the name for this token and is purely for debugging purposes as a function token, it should be a compile-time string literal,
-//and it can be printed to the console when any lexer error is encountered
+//Declare a new function token that matches using a function, given the function name and the token ID.
+//The symbol value is the name for this token and is purely for debugging purposes as a function token, it should be a compile-time string literal,
+//and it can be printed to the console when any lexer error is encountered.
 #define STP_LEXER_DECLARE_FUNCTION_TOKEN(NAME, TOK_ID, SYMB) struct NAME { \
 public: \
 	constexpr static SuperTerrainPlus::STPAlgorithm::STPLexerToken::STPTokenID ID = TOK_ID; \
 	constexpr static char Representation[] = "<" SYMB ">"; \
 	size_t operator()(const char*) const; \
 };
-//define the function token matching function, the name should also include any namespace, if defined within any
-//the function should return the length of string into the sequence that matches
+//Define the function token matching function, the name should also include any namespace, if defined within any.
+//The function should return the length of string into the sequence that matches.
+//The length of the substring should not go past the null terminator of the source string, otherwise UB.
 #define STP_LEXER_DEFINE_FUNCTION_TOKEN(NAME) size_t NAME::operator()(const char* const sequence) const
 
 namespace SuperTerrainPlus::STPAlgorithm {
@@ -43,8 +44,9 @@ namespace SuperTerrainPlus::STPAlgorithm {
 #define DEF_ATOM_TOKEN(NAME, SYMB) struct NAME { \
 public: \
 	constexpr static STPTokenID ID = static_cast<STPTokenID>(SYMB); \
-	constexpr static char Representation = SYMB; \
-}
+	constexpr static char Character = SYMB; \
+	constexpr static char Representation[] = #SYMB; \
+	}
 		//control
 		DEF_ATOM_TOKEN(Null, '\0');
 
@@ -142,10 +144,9 @@ public: \
 			/**
 			 * @brief Create a new token.
 			 * @param id The ID of this token.
-			 * @param beg The beginning iterator of this token.
-			 * @param count The number of character this token contains.
+			 * @param lexeme The string view of the lexeme captured by this token.
 			*/
-			STPToken(STPLexerToken::STPTokenID, const char*, size_t);
+			STPToken(STPLexerToken::STPTokenID, std::string_view) noexcept;
 
 			~STPToken() = default;
 
@@ -167,10 +168,10 @@ public: \
 			 * @return True if this token has the same token ID as the lexer token.
 			*/
 			template<class Tok>
-			bool operator==(const Tok&) const noexcept;
+			bool operator==(Tok&&) const noexcept;
 			//@see operator==()
 			template<class Tok>
-			bool operator!=(const Tok&) const noexcept;
+			bool operator!=(Tok&&) const noexcept;
 
 		};
 
@@ -208,21 +209,21 @@ public: \
 		 * @param length The length of the sequence from the current sequence.
 		 * @return A token.
 		*/
-		STPToken createToken(STPLexerToken::STPTokenID, size_t = 1u);
+		STPToken createToken(STPLexerToken::STPTokenID, size_t = 1u) noexcept;
 
 		/**
 		 * @brief Correct the lexer stats, such as line and character number.
 		 * Use this when the token lexeme contains a long string and may potentially contain newline character.
 		 * @param token The input token based on which will be adjusted accordingly.
 		*/
-		void correctStats(const STPToken&);
+		void correctStats(const STPToken&) noexcept;
 
 		/**
 		 * @brief Attempt to find the next atomic token.
 		 * @return The next atomic token.
 		 * Also returns an empty token if no match is found.
 		*/
-		STPToken nextAtomicToken();
+		STPToken nextAtomicToken() noexcept;
 
 		/**
 		 * @brief Attempt to find the next functional token.
@@ -232,14 +233,14 @@ public: \
 		 * Or an empty token if no match is found.
 		*/
 		template<class First, class... Rest>
-		STPToken nextFunctionToken();
+		STPToken nextFunctionToken() noexcept;
 
 		/**
 		 * @brief Find the next token.
 		 * @return The next matched token.
 		 * Returns empty token if no match is found.
 		*/
-		STPToken next();
+		STPToken next() noexcept;
 
 	public:
 
@@ -250,12 +251,14 @@ public: \
 
 		/**
 		 * @brief Initialise the double-token lexer instance.
-		 * @param input The input string to be tokenised.
+		 * @param input The pointer to the source code to be parsed. The source string should be null-terminated.
+		 * The lexer does not own the string, the memory of the original string should be managed by the user, 
+		 * until the current instance and all returned view of string from the current instance to the user are destroyed.
 		 * @param lexer_name The name of the lexer or parser using this general-purpose lexer.
 		 * @param source_name The name of the source file.
 		 * This is optional, just to make debugging easier.
 		*/
-		STPLexer(const std::string_view&, const std::string_view&, const std::string_view& = "<unknown source name>") noexcept;
+		STPLexer(const char*, const std::string_view&, const std::string_view& = "<unknown source name>") noexcept;
 
 		~STPLexer() = default;
 
@@ -269,6 +272,7 @@ public: \
 		/**
 		 * @brief Expect the next token to be a given list of possible tokens.
 		 * @tparam ExpTok... The collection of token expected.
+		 * If not expected token is given, the matching always passes and returns the next valid token found.
 		 * @return The first matched token.
 		 * If the next token does not match any of the expected, an exception will be generated.
 		*/

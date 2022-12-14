@@ -73,21 +73,13 @@ namespace SuperTerrainPlus::STPDiversity {
 			friend class STPTextureDatabase;
 
 			//A database from the parent texture database
-			STPTextureDatabase::STPTextureDatabaseImpl* Database;
+			STPTextureDatabase::STPTextureDatabaseImpl& Database;
 
 			/**
 			 * @brief Init STPTextureSplatBuilder.
-			 * @database The pointer to the texture database
+			 * @param database The pointer to the texture database.
 			*/
-			STPTextureSplatBuilder(STPTextureDatabase::STPTextureDatabaseImpl*);
-
-			STPTextureSplatBuilder(const STPTextureSplatBuilder&) = delete;
-
-			STPTextureSplatBuilder(STPTextureSplatBuilder&&) noexcept;
-
-			STPTextureSplatBuilder& operator=(const STPTextureSplatBuilder&) = delete;
-
-			STPTextureSplatBuilder& operator=(STPTextureSplatBuilder&&) noexcept;
+			STPTextureSplatBuilder(STPTextureDatabase&);
 
 			~STPTextureSplatBuilder() = default;
 
@@ -128,7 +120,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		};
 
 		/**
-		 * @brief STPDatabaseView is a visitor to a database instance, and allows quering large result sets from database.
+		 * @brief STPDatabaseView is a visitor to a database instance, and allows querying large result sets from database.
 		*/
 		class STP_API STPDatabaseView {
 		public:
@@ -139,7 +131,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		private:
 
 			//The pointer from the database, store them just for convenience
-			STPTextureDatabase::STPTextureDatabaseImpl* const Impl;
+			STPTextureDatabase::STPTextureDatabaseImpl& Impl;
 			const STPTextureDatabase::STPTextureSplatBuilder& SplatBuilder;
 
 		public:
@@ -179,15 +171,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @brief Init STPDatabaseView with a database instance
 			 * @param db The pointer to the database. Note that the database view is a non-owning object of database, all copy operations will be shallow.
 			*/
-			STPDatabaseView(const STPTextureDatabase&);
-
-			STPDatabaseView(const STPDatabaseView&) = default;
-
-			STPDatabaseView(STPDatabaseView&&) = default;
-
-			STPDatabaseView& operator=(const STPDatabaseView&) = default;
-
-			STPDatabaseView& operator=(STPDatabaseView&&) = default;
+			STPDatabaseView(const STPTextureDatabase&) noexcept;
 
 			~STPDatabaseView() = default;
 
@@ -272,27 +256,27 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		STPTextureDatabase& operator=(const STPTextureDatabase&) = delete;
 
-		STPTextureDatabase& operator=(STPTextureDatabase&&) noexcept;
+		STPTextureDatabase& operator=(STPTextureDatabase&&) = delete;
 
 		~STPTextureDatabase();
 
 		/**
-		 * @brief Get the pointer to splat builder to configure terrain splating.
-		 * @return The pointer to splat builder managed by the texture database
+		 * @brief Get the pointer to splat builder to configure terrain splatting.
+		 * @return The pointer to splat builder managed by the texture database.
 		*/
-		STPTextureSplatBuilder& getSplatBuilder();
+		STPTextureSplatBuilder& splatBuilder() noexcept;
 
 		/**
-		 * @brief Get the pointer to splat builder to configure terrain splating.
-		 * @return The pointer to splat builder managed by the texture database
+		 * @brief Get the pointer to splat builder to configure terrain splatting.
+		 * @return The pointer to splat builder managed by the texture database.
 		*/
-		const STPTextureSplatBuilder& getSplatBuilder() const;
+		const STPTextureSplatBuilder& splatBuilder() const noexcept;
 
 		/**
-		 * @brief Get the database view
-		 * @return The database view object
+		 * @brief Get the database view.
+		 * @return The database view object.
 		*/
-		STPDatabaseView visit() const;
+		STPDatabaseView visit() const noexcept;
 
 		/**
 		 * @brief Insert a new texture map group into the texture database.

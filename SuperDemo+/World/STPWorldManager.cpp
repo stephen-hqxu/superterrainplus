@@ -23,7 +23,7 @@
 using namespace STPDemo;
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
-using STPAlgorithm::STPTextureDefinitionLanguage;
+namespace TDL = SuperTerrainPlus::STPAlgorithm::STPTextureDefinitionLanguage;
 
 using std::invalid_argument;
 using std::make_optional;
@@ -140,9 +140,9 @@ public:
 		this->x1024_r = this->Database.addMapGroup(tex_desc);
 
 		const string rawTDL = STPFile::read(STPWorldSplattingAgent::TDLFilename);
-		const STPTextureDefinitionLanguage TDLParser(rawTDL);
+		const TDL::STPResult textureRuleResult = TDL::read(rawTDL.c_str(), STPWorldSplattingAgent::TDLFilename);
 		//build texture splatting rules
-		const STPTextureDefinitionLanguage::STPTextureVariable textureName = TDLParser(this->Database);
+		const TDL::STPResult::STPTextureVariable textureName = textureRuleResult.load(this->Database);
 		//build database with texture data
 		for (unsigned int i = 0u; i < STPWorldSplattingAgent::TextureCount; i++) {
 			//grab the texture ID using the texture name

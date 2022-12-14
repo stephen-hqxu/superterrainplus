@@ -1,4 +1,4 @@
-#texture [gravel, dirt, grass, stone];
+#texture [gravel, dirt, grass, stone]
 
 #group view {
 	gravel, dirt, grass := (40u, 20u, 5u),

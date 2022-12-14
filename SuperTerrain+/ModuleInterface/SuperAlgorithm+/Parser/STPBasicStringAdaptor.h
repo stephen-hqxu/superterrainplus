@@ -40,8 +40,9 @@ namespace SuperTerrainPlus::STPAlgorithm {
 
 		//in-place construction of the underlying string
 		//avoid overloading matching if a copy or move constructor should be called
-		template<class... Arg, typename = std::enable_if_t<std::is_constructible_v<Str, Arg...>>>
-		STPBasicStringAdaptor(Arg&&...);
+		template<class... Arg, typename = std::enable_if_t<std::is_constructible_v<Str, Arg...>>,
+			bool IsNoexcept = std::is_nothrow_constructible_v<Str, Arg...>>
+		STPBasicStringAdaptor(Arg&&...) noexcept(IsNoexcept);
 
 		~STPBasicStringAdaptor() = default;
 

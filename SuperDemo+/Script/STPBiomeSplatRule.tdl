@@ -1,4 +1,4 @@
-#texture [redrock, grass, mossrock, sand, soil, darkrock];
+#texture [redrock, grass, mossrock, sand, soil, darkrock]
 
 #group view {
 	redrock, mossrock, darkrock, sand, soil := (40u, 20u, 10u),
