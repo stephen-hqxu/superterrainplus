@@ -39,7 +39,7 @@ A directive is a controlling command. A directive always begins with a dash symb
 
 A texture directive allows user to declare texture variables. A texture variable is consist of pure alphabets, no other symbols are allowed. The scope of declared texture variables start from the time they are declared until the end of the file. Variables should be declared in squared bracket `[]`.
 
-> From [v0.15.10](https://github.com/stephen-hqxu/superterrainplus/releases/tag/v0.15.10), texture directive no longer ends with `;`.
+> From [v0.15.11](https://github.com/stephen-hqxu/superterrainplus/releases/tag/v0.15.11), texture directive no longer ends with `;`.
 
 More than one texture variable can be declared in the same texture directive. To do this, separate each variable by a comma `,`.
 

@@ -18,6 +18,8 @@ Parser/STPBasicStringAdaptor.h
 Parser/STPBasicStringAdaptor.inl
 Parser/STPLexer.h
 Parser/STPLexer.inl
+Parser/STPRegularLanguage.h
+Parser/STPRegularLanguage.inl
 Parser/STPTextureDefinitionLanguage.h
 )
 

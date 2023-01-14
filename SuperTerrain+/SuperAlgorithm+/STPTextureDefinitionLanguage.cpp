@@ -57,7 +57,7 @@ namespace {
 inline STP_LEXER_DEFINE_FUNCTION_TOKEN(TDLIdentifier) {
 	size_t strPos = 0u;
 	//keep pushing pointer forward until we see a non-alphabet
-	while (std::isalpha(sequence[strPos])) {
+	while (std::isalpha(static_cast<unsigned char>(sequence[strPos]))) {
 		strPos++;
 	}
 	return strPos;
@@ -69,7 +69,7 @@ inline STP_LEXER_DEFINE_FUNCTION_TOKEN(TDLNumber) {
 	//we don't need to worry about invalid numeric format right now, for example 1.34.6ff54
 	//invalid number format will be captured by the string parser later
 	char c;
-	while (c = sequence[numPos], (std::isdigit(c) || c == '.' || c == 'f' || c == 'u')) {
+	while (c = sequence[numPos], (std::isdigit(static_cast<unsigned char>(c)) || c == '.' || c == 'f' || c == 'u')) {
 		numPos++;
 	}
 	return numPos;

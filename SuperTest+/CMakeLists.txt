@@ -23,6 +23,7 @@ STPTestHistogram.cpp
 STPTestINI.cpp
 STPTestLexer.cpp
 STPTestPermutation.cpp
+STPTestRegLang.cpp
 STPTestTDL.cpp
 )
 target_sources(${STP_UNIT_TEST} PRIVATE
