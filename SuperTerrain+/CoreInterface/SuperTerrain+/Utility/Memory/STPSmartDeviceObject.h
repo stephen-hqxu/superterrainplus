@@ -18,7 +18,7 @@ namespace SuperTerrainPlus {
 	namespace STPSmartDeviceObject {
 
 		//Internal implementation for STPSmartDeviceObject
-		namespace STPSmartDeviceObjectImpl {
+		namespace STPImplementation {
 
 			/**
 			 * @brief Destroys CUDA stream.
@@ -103,22 +103,22 @@ namespace SuperTerrainPlus {
 		}
 
 		//STPStream is a smartly managed CUDA stream object.
-		using STPStream = STPUniqueResource<cudaStream_t, nullptr, STPSmartDeviceObjectImpl::STPStreamDestroyer>;
+		using STPStream = STPUniqueResource<cudaStream_t, nullptr, STPImplementation::STPStreamDestroyer>;
 		//STPEvent is a smartly managed CUDA event object.
-		using STPEvent = STPUniqueResource<cudaEvent_t, nullptr, STPSmartDeviceObjectImpl::STPEventDestroyer>;
+		using STPEvent = STPUniqueResource<cudaEvent_t, nullptr, STPImplementation::STPEventDestroyer>;
 		//STPMemPool is a smartly managed CUDA memory pool object.
-		using STPMemPool = STPUniqueResource<cudaMemPool_t, nullptr, STPSmartDeviceObjectImpl::STPMemPoolDestroyer>;
+		using STPMemPool = STPUniqueResource<cudaMemPool_t, nullptr, STPImplementation::STPMemPoolDestroyer>;
 		//STPTexture is a smartly managed CUDA texture object.
-		using STPTexture = STPUniqueResource<cudaTextureObject_t, 0ull, STPSmartDeviceObjectImpl::STPTextureDestroyer>;
+		using STPTexture = STPUniqueResource<cudaTextureObject_t, 0ull, STPImplementation::STPTextureDestroyer>;
 		//STPSurface is a smartly managed CUDA surface object.
-		using STPSurface = STPUniqueResource<cudaSurfaceObject_t, 0ull, STPSmartDeviceObjectImpl::STPSurfaceDestroyer>;
+		using STPSurface = STPUniqueResource<cudaSurfaceObject_t, 0ull, STPImplementation::STPSurfaceDestroyer>;
 		//STPGraphicsResource is a smartly managed CUDA graphics resource.
-		using STPGraphicsResource = STPUniqueResource<cudaGraphicsResource_t, nullptr, STPSmartDeviceObjectImpl::STPGraphicsResourceUnregisterer>;
+		using STPGraphicsResource = STPUniqueResource<cudaGraphicsResource_t, nullptr, STPImplementation::STPGraphicsResourceUnregisterer>;
 
 		//STPGLTextureObject is a smartly managed GL texture object.
-		using STPGLTextureObject = STPUniqueResource<STPOpenGL::STPuint, 0u, STPSmartDeviceObjectImpl::STPGLTextureDeleter>;
+		using STPGLTextureObject = STPUniqueResource<STPOpenGL::STPuint, 0u, STPImplementation::STPGLTextureDeleter>;
 		//STPGLBindlessTextureHandle is a smartly managed GL bindless texture handle to texture object.
-		using STPGLBindlessTextureHandle = STPUniqueResource<STPOpenGL::STPuint64, 0ull, STPSmartDeviceObjectImpl::STPGLTextureHandleUnresidenter>;
+		using STPGLBindlessTextureHandle = STPUniqueResource<STPOpenGL::STPuint64, 0ull, STPImplementation::STPGLTextureHandleUnresidenter>;
 
 		/**
 		 * @brief Create a new CUDA stream.

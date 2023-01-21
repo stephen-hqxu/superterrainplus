@@ -67,7 +67,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		 * This name will appear in the error message if any error is encountered during reading.
 		 * @return The parsed result, whose string memory is a view of the input source code.
 		*/
-		STP_ALGORITHM_HOST_API STPResult read(const char*, const std::string_view&);
+		STP_ALGORITHM_HOST_API STPResult read(const std::string_view&, const std::string_view&);
 
 	}
 

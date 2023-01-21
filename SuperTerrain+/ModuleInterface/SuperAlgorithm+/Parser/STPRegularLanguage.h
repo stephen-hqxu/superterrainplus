@@ -29,20 +29,28 @@ namespace SuperTerrainPlus::STPAlgorithm {
 
 		}
 
+		//A special matching length indicating no match.
+		inline constexpr size_t NoMatch = std::numeric_limits<size_t>::max();
+
+		//This is the entry function for each operator.
+		//Given a sequence, return the length of matching starting.
+		//Return a special value *NoMatch* if there is no match.
+#define DECLARE_REGLANG_MATCHER static size_t match(const std::string_view&) noexcept
+
 		/**
-		 * @brief Special operators used by the list matching operator.
+		 * @brief STPCharacterClass matches any character that appears in the class.
 		*/
-		namespace STPListElement {
+		namespace STPCharacterClass {
 
 			/**
-			 * @brief Add a single character to the matching list.
+			 * @brief Add a single character to the character class.
 			 * @param C The character to be added.
 			*/
 			template<char C>
 			struct Atomic { };
 
 			/**
-			 * @brief Add a range of character to the matching list.
+			 * @brief Add a range of character to the character class.
 			 * The range is based on ASCII, and close-end for both sides.
 			 * @param First The first character in the range.
 			 * @param Last The last character in the range.
@@ -51,32 +59,115 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			struct Range {
 			
 				static_assert(First < Last, "The starting character should be strictly less than the ending character. "
-					"If they are the same, consider using atomic list element.");
+					"If they are the same, consider using atomic class member.");
 
 			};
 
 			/**
-			 * @brief Match character(s) not presenting in the list.
-			 * @tparam L... The list elements should be excluded.
+			 * @brief Add character(s) to the character class, that are complement to all character class members provided.
+			 * This essentially excludes all characters that appears.
+			 * @tparam C... A number of character class members to be excluded.
 			*/
-			template<class... L>
+			template<class... C>
 			struct Except {
 			
-				static_assert(sizeof...(L) > 0u, "The number of character class for an except list operator must be positive.");
+				static_assert(sizeof...(C) > 0u, "The number of characters to be excluded must be positive.");
 			
+			};
+
+			/**
+			 * @brief Match a character if any of the character is specified in the character class.
+			 * @tparam CM... A collection of character class member.
+			*/
+			template<class... CM>
+			struct Class {
+			private:
+
+				static_assert(sizeof...(CM) > 0u, "The number of character class member must be positive.");
+
+				/**
+				 * @brief Match one character class member.
+				 * @tparam M The type of class member.
+				*/
+				template<class M>
+				struct MemberSpecification;
+
+				//Given a character input, search if the character class contains this character.
+#define DECLARE_CLASS_MEMBER_CONTAINS static bool contains(char) noexcept
+
+				//specialisation for each character class type
+				template<char C>
+				struct MemberSpecification<STPCharacterClass::Atomic<C>> {
+				public:
+
+					DECLARE_CLASS_MEMBER_CONTAINS;
+			
+				};
+
+				template<char First, char Last>
+				struct MemberSpecification<STPCharacterClass::Range<First, Last>> {
+				public:
+
+					DECLARE_CLASS_MEMBER_CONTAINS;
+
+				};
+
+				template<class... C>
+				struct MemberSpecification<STPCharacterClass::Except<C...>> {
+				public:
+
+					DECLARE_CLASS_MEMBER_CONTAINS;
+
+				};
+
+#undef DECLARE_CLASS_MEMBER_CONTAINS
+
+			public:
+
+				DECLARE_REGLANG_MATCHER;
+		
 			};
 
 		}
 
-		//A special matching length indicating no match.
-		constexpr static size_t NoMatch = std::numeric_limits<size_t>::max();
-		//Special value for matching unlimited number of maximum number of repetition.
-		constexpr static size_t Unlimited = NoMatch;
+		/**
+		 * @brief STPQuantifier allows repeating a matching expression for some number of time.
+		 * All quantifiers are lazy.
+		*/
+		namespace STPQuantifier {
 
-		//This is the entry function for each operator.
-		//Given a sequence, return the length of matching starting.
-		//Return a special value *NoMatch* if there is no match.
-#define DECLARE_REGLANG_MATCHER static size_t match(const std::string_view&) noexcept
+			//Special value for matching unlimited number of maximum number of repetition.
+			inline constexpr size_t Unlimited = NoMatch;
+
+			/**
+			 * @brief Match an expression for a repeated range of numbers of time.
+			 * A match is considered if the number of repetition falls in the bound.
+			 * The bound of repetition is close-end for both sides.
+			 * @tparam Expr The expression to be repeated.
+			 * @param Min The minimum number of encountering.
+			 * @param Max The maximum number of encountering
+			*/
+			template<class Expr, size_t Min, size_t Max = Min>
+			struct Repeat {
+			public:
+
+				static_assert(Min <= Max, "The minimum number of repetition should be no greater than the maximum");
+
+				DECLARE_REGLANG_MATCHER;
+
+			};
+
+			//Match an expression between zero and one time.
+			template<class Expr>
+			using Maybe = Repeat<Expr, 0u, 1u>;
+			//Match an expression between zero and unlimited times.
+			template<class Expr>
+			using MaybeMany = Repeat<Expr, 0u, STPQuantifier::Unlimited>;
+			//Match an expression between one and unlimited times.
+			template<class Expr>
+			using StrictMany = Repeat<Expr, 1u, STPQuantifier::Unlimited>;
+
+		}
 
 		/**
 		 * @brief Match any one character.
@@ -100,78 +191,6 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			constexpr static size_t LiteralLength = L.length();
 
 			static_assert(Literal::LiteralLength > 0u, "The matching literal should not be empty");
-
-			DECLARE_REGLANG_MATCHER;
-
-		};
-
-		/**
-		 * @brief Match a sequence of input character if any of the character is specified in the list.
-		 * @tparam ...LE A collection of list element.
-		 * @see STPListElement
-		*/
-		template<class... LE>
-		struct List {
-		private:
-
-			static_assert(sizeof...(LE) > 0u, "The number of character class in a list operator must be positive.");
-
-			/**
-			 * @brief Match one list element.
-			 * @tparam E The type of list element.
-			*/
-			template<class E>
-			struct ElementSpecification;
-
-			//Given a character input, search if the list element contains this character.
-#define DECLARE_LIST_ELEMENT_CONTAINS static bool contains(char) noexcept
-
-			//specialisation for each list element type
-			template<char C>
-			struct ElementSpecification<STPListElement::Atomic<C>> {
-			public:
-
-				DECLARE_LIST_ELEMENT_CONTAINS;
-			
-			};
-
-			template<char First, char Last>
-			struct ElementSpecification<STPListElement::Range<First, Last>> {
-			public:
-
-				DECLARE_LIST_ELEMENT_CONTAINS;
-
-			};
-
-			template<class... L>
-			struct ElementSpecification<STPListElement::Except<L...>> {
-			public:
-
-				DECLARE_LIST_ELEMENT_CONTAINS;
-
-			};
-
-#undef DECLARE_LIST_ELEMENT_CONTAINS
-
-		public:
-
-			DECLARE_REGLANG_MATCHER;
-		
-		};
-
-		/**
-		 * @brief Match an expression for a repeated range of numbers of time.
-		 * A match is considered if the number of repetition falls in the bound.
-		 * The bound of repetition is close-end for both sides.
-		 * @tparam Expr The expression to be repeated.
-		 * @param Min The minimum number of encountering.
-		 * @param Max The maximum number of encountering
-		*/
-		template<class Expr, size_t Min, size_t Max = Min>
-		struct Repeat {
-		public:
-
-			static_assert(Min <= Max, "The minimum number of repetition should be no greater than the maximum");
 
 			DECLARE_REGLANG_MATCHER;
 

@@ -15,14 +15,14 @@
 //String
 #include <string>
 #include <string_view>
-#include <cctype>
 
+#include <array>
 #include <limits>
 
+using std::numeric_limits;
 using std::string;
 using std::string_view;
-using std::tuple;
-using std::numeric_limits;
+using std::array;
 
 using namespace SuperTerrainPlus::STPAlgorithm;
 namespace STPParserError = SuperTerrainPlus::STPException::STPParserError;
@@ -84,101 +84,127 @@ TEMPLATE_TEST_CASE("STPBasicStringAdaptor can convert between string and desired
 
 }
 
-//define function token
+namespace RL = STPRegularLanguage;
+namespace CC = RL::STPCharacterClass;
+
+using EOS = STPLexical::EndOfSequence;
+
 namespace {
-	template<class Func>
-	inline size_t simpleMatch(Func&& f, const char* const sequence) {
-		size_t pos = 0u;
-		while (std::forward<Func>(f)(sequence[pos])) {
-			pos++;
-		}
-		return pos;
-	}
+	using RL::STPQuantifier::StrictMany;
 
-	STP_LEXER_DECLARE_FUNCTION_TOKEN(PureStringToken, 6666u, "Pure String");
-	STP_LEXER_DECLARE_FUNCTION_TOKEN(PureNumberToken, 8888u, "Pure Number");
+	constexpr string_view Terminator = ";", Space = " ", Newline = "\n",
+		Right = ">", Left = "<", SymbA = "a", SymbB = "b";
+
+	using OnlyA = StrictMany<RL::Literal<SymbA>>;
+	using OnlyB = StrictMany<RL::Literal<SymbB>>;
+	using AorB = StrictMany<CC::Class<CC::Atomic<'a'>, CC::Atomic<'b'>>>;
+
+	//test different actions
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(WithinData, 7777u, Collect, CC::Class<CC::Except<CC::Atomic<';'>>>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(DataLineEnd, 8888u, Consume, RL::Literal<Terminator>);
+
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(SkipSpace, 16666u, Discard, RL::Literal<Space>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(SimpleSymbol, 17777u, Consume, AorB);
+
+	STP_LEXER_CREATE_LEXICAL_STATE(StateData, 66u, WithinData, DataLineEnd);
+	STP_LEXER_CREATE_LEXICAL_STATE(StateSymbol, 77u, SkipSpace, SimpleSymbol);
+
+	//test lexical state switch
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(CharA, 998u, Consume, OnlyA);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(CharB, 999u, Consume, OnlyB);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(ToStateB, 13u, Discard, RL::Literal<Right>, 13u);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(ToStateA, 14u, Discard, RL::Literal<Left>, 0u);
+
+	STP_LEXER_CREATE_LEXICAL_STATE(StateA, 0u, CharA, ToStateB);
+	STP_LEXER_CREATE_LEXICAL_STATE(StateB, 13u, CharB, ToStateA);
 }
 
-STP_LEXER_DEFINE_FUNCTION_TOKEN(PureStringToken) {
-	return simpleMatch(isalpha, sequence);
-}
+SCENARIO("STPLexer can perform basic lexical operations", "[AlgorithmHost][STPLexer]") {
 
-STP_LEXER_DEFINE_FUNCTION_TOKEN(PureNumberToken) {
-	return simpleMatch(isdigit, sequence);
-}
+	GIVEN("A lexer defined with a state with some token expressions") {
+		constexpr static string_view LexerName = "Test Lexical Action";
+		typedef STPLexer<StateData> DataLexer;
+		typedef STPLexer<StateSymbol> SymbolLexer;
 
-SCENARIO("STPLexer can tokenise a string based on application-defined tokens", "[AlgorithmHost][STPLexer]") {
-	namespace LT = STPLexerToken;
-	typedef tuple<LT::Equal, LT::Comma, LT::Semicolon> TestAtomToken;
-	typedef tuple<PureStringToken, PureNumberToken> TestFuncToken;
-	//define our lexer
-	typedef STPLexer<TestAtomToken, TestFuncToken> SimpleVariableLexer;
-	constexpr static string_view LexerName = "Test Simple Variable Lexer";
-
-	GIVEN("A string source with invalid token by definition of the lexer") {
-		//we don't have a colon token
-		constexpr static char InvalidTokenSource[] = "0:chicken", BrokenSourceName[] = "TheBrokenCode.bad";
-		SimpleVariableLexer Lexer(InvalidTokenSource, LexerName, BrokenSourceName);
-
-		WHEN("The lexer is attempting to analyse it") {
+		WHEN("A string source with invalid token by definition of the lexer") {
+			//there is no ending symbol
+			constexpr static char InvalidTokenSource[] = "chicken", BrokenSourceName[] = "TheBrokenCode.bad";
+			DataLexer Lexer(InvalidTokenSource, LexerName, BrokenSourceName);
 
 			THEN("The lexer fails due to appearance of a undefined token") {
-				REQUIRE(Lexer.expect<PureNumberToken>());
-				REQUIRE_THROWS_AS(Lexer.expect<PureStringToken>(), STPParserError::STPInvalidSyntax);
+				REQUIRE_THROWS_AS(Lexer.expect<DataLineEnd>(), STPParserError::STPInvalidSyntax);
+			}
+
+		}
+
+		WHEN("Simple valid inputs are supplied") {
+			constexpr static string_view Data = "hello, world!;", Symbol = "aa ab ba bb",
+				DataName = "Data.txt", SymbolName = "SymbolList.txt";
+			DataLexer LexerA(Data, LexerName, DataName);
+			SymbolLexer LexerB(Symbol, LexerName, SymbolName);
+
+			THEN("The lexer can analyse the input and provide the token stream with the `expect` expression") {
+				//test each lexer
+				CHECK((**LexerA.expect<DataLineEnd>() == Data));
+				
+				//---------------------------------
+				constexpr static array<string_view, 4u> SymbolToken = { "aa", "ab", "ba", "bb" };
+				for (const auto& token : SymbolToken) {
+					CHECK((**LexerB.expect<SimpleSymbol>() == token));
+				}
+
+				AND_THEN("The lexer only returns null token when the source reaches the end") {
+					//loop it for some iterations for robustness
+					for (int i = 0; i < 4; i++) {
+						CHECK_NOTHROW(LexerA.expect<EOS>());
+						CHECK_NOTHROW(LexerB.expect<EOS>());
+					}
+				}
+
+			}
+
+			AND_WHEN("The lexer has been provided with empty `expect` expression") {
+
+				THEN("The lexer always returns the valid token") {
+					CHECK(LexerA.expect() == DataLineEnd {});
+				}
+
 			}
 
 		}
 
 	}
 
-	GIVEN("A string source to be parsed and a defined lexer") {
-		constexpr static char Source[] = "int myNumber = 3;\nshort numA=1,numB =4, numC= 1 ;";
-		constexpr static string_view SourceName = "TheSourceOfPi.magic";
-		SimpleVariableLexer Lexer(Source, LexerName, SourceName);
+	GIVEN("A lexer defined multiple states with tokens that switch in-between these states") {
+		constexpr static string_view LexerName = "Test Lexical State";
+		typedef STPLexer<StateA, StateB> SymbolSwitchLexer;
 
-		THEN("The information of the lexer and source can be retrieved") {
-			CHECK((Lexer.LexerName == LexerName));
-			CHECK((Lexer.SourceName == SourceName));
-		}
+		WHEN("Slightly more complex inputs are supplied") {
+			constexpr static string_view Input = "aaaaaa>bbb<a", InputName = "SymbolWithStateSwitch.txt";
+			SymbolSwitchLexer Lexer(Input, LexerName, InputName);
 
-		WHEN("The application is going to conduct lexicological analysis") {
-			constexpr static unsigned int ExpectedOutput = 3141u;
+			THEN("The lexer can still analyse with the correct state switching") {
+				//start from the first state
+				CHECK(Lexer.CurrentState == StateA::LexicalStateID);
+				CHECK((**Lexer.expect<CharA>() == "aaaaaa"));
 
-			THEN("The lexer can outputs the correct stream of tokens") {
-				STPStringAdaptor ParsedOutput;
-				ParsedOutput->reserve(4u);
-				//parse variable
-				const auto parseKeyValPair = [&output = ParsedOutput, &lexer = Lexer]() -> void {
-					lexer.expect<PureStringToken>();
-					lexer.expect<LT::Equal>();
-					output->append(lexer.expect<PureNumberToken>()->to<string>());
-				};
+				//state switch symbols should be ignored
+				CHECK_NOTHROW((**Lexer.expect<CharB>() == "bbb"));
+				//state should have been switched
+				CHECK(Lexer.CurrentState == StateB::LexicalStateID);
 
-				while (true) {
-					if (Lexer.expect<PureStringToken, LT::Null>() == LT::Null {}) {
-						//end of the string source
-						break;
-					}
-					parseKeyValPair();
+				//now switch back
+				CHECK((**Lexer.expect<CharA>() == "a"));
+				CHECK(Lexer.CurrentState == StateA::LexicalStateID);
 
-					while (true) {
-						if (Lexer.expect<LT::Semicolon, LT::Comma>() == LT::Semicolon {}) {
-							//next variable declaration start
-							break;
-						}
-						parseKeyValPair();
-					}
-				}
+				CHECK_NOTHROW(Lexer.expect<EOS>());
+			}
 
-				REQUIRE(ParsedOutput.to<unsigned int>() == ExpectedOutput);
+			AND_THEN("The lexer cannot match tokens that are not in the same state") {
+				constexpr static string_view BadInput = "bb";
+				SymbolSwitchLexer LexerBad(BadInput, LexerName, InputName);
 
-				AND_THEN("The lexer only returns null token when the source reaches the end") {
-					//loop it for some iterations for robustness
-					for (int i = 0; i < 10; i++) {
-						REQUIRE_NOTHROW(Lexer.expect<LT::Null>());
-					}
-				}
-
+				CHECK_THROWS_AS(LexerBad.expect(), STPParserError::STPInvalidSyntax);
 			}
 
 		}

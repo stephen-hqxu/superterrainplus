@@ -4,23 +4,23 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
 template<typename T>
-inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPPinnedMemoryDeleter<T>::operator()(T* const ptr) const {
+inline void SuperTerrainPlus::STPSmartDeviceMemory::STPImplementation::STPPinnedMemoryDeleter<T>::operator()(T* const ptr) const {
 	STP_CHECK_CUDA(cudaFreeHost(ptr));
 }
 
 template<typename T>
-inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPDeviceMemoryDeleter<T>::operator()(T* const ptr) const {
+inline void SuperTerrainPlus::STPSmartDeviceMemory::STPImplementation::STPDeviceMemoryDeleter<T>::operator()(T* const ptr) const {
 	STP_CHECK_CUDA(cudaFree(ptr));
 }
 
 template<typename T>
-inline SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<T>::STPStreamedDeviceMemoryDeleter
+inline SuperTerrainPlus::STPSmartDeviceMemory::STPImplementation::STPStreamedDeviceMemoryDeleter<T>::STPStreamedDeviceMemoryDeleter
 	(const cudaStream_t stream) : Stream(stream) {
 	
 }
 
 template<typename T>
-inline void SuperTerrainPlus::STPSmartDeviceMemory::STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<T>::operator()
+inline void SuperTerrainPlus::STPSmartDeviceMemory::STPImplementation::STPStreamedDeviceMemoryDeleter<T>::operator()
 	(T* const ptr) const {
 	STP_CHECK_CUDA(cudaFreeAsync(ptr, *this->Stream));
 }
@@ -32,12 +32,12 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPit
 
 template<typename T>
 inline SuperTerrainPlus::STPSmartDeviceMemory::STPPitchedDeviceMemory<T>::STPPitchedDeviceMemory
-	(STPSmartDeviceMemoryImpl::NoArray<T>* const ptr, const size_t pitch) :
+	(STPImplementation::NoArray<T>* const ptr, const size_t pitch) :
 	STPDeviceMemory<T>(ptr), Pitch(pitch) {
 	
 }
 
-#define TYPE_SANITISE using U = STPSmartDeviceMemoryImpl::NoArray<T>; \
+#define TYPE_SANITISE using U = STPImplementation::NoArray<T>; \
 U* cache
 
 template<typename T>
@@ -67,7 +67,7 @@ inline SuperTerrainPlus::STPSmartDeviceMemory::STPStreamedDeviceMemory<T> SuperT
 	//allocate using the pool
 	STP_CHECK_CUDA(cudaMallocFromPoolAsync(&cache, sizeof(U) * size, memPool, stream));
 	//init the streamed deleter
-	return STPStreamedDeviceMemory<T>(cache, STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<U>(stream));
+	return STPStreamedDeviceMemory<T>(cache, STPImplementation::STPStreamedDeviceMemoryDeleter<U>(stream));
 }
 
 template<typename T>

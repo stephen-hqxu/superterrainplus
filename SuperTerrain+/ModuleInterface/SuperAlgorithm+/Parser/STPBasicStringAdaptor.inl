@@ -9,7 +9,7 @@
 
 template<class Str>
 template<class... Arg, typename, bool IsNoexcept>
-inline SuperTerrainPlus::STPAlgorithm::STPBasicStringAdaptor<Str>::STPBasicStringAdaptor(Arg&&... arg) noexcept(IsNoexcept) : String(std::forward<Arg>(arg)...) {
+constexpr SuperTerrainPlus::STPAlgorithm::STPBasicStringAdaptor<Str>::STPBasicStringAdaptor(Arg&&... arg) noexcept(IsNoexcept) : String(std::forward<Arg>(arg)...) {
 
 }
 

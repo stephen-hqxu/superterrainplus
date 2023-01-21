@@ -11,7 +11,7 @@ using namespace SuperTerrainPlus;
 
 /* STPStream */
 
-void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPStreamDestroyer::operator()(const cudaStream_t stream) const {
+void STPSmartDeviceObject::STPImplementation::STPStreamDestroyer::operator()(const cudaStream_t stream) const {
 	STP_CHECK_CUDA(cudaStreamDestroy(stream));
 }
 
@@ -29,7 +29,7 @@ STPSmartDeviceObject::STPStream STPSmartDeviceObject::makeStream(const unsigned 
 
 /* STPEvent */
 
-void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPEventDestroyer::operator()(const cudaEvent_t event) const {
+void STPSmartDeviceObject::STPImplementation::STPEventDestroyer::operator()(const cudaEvent_t event) const {
 	STP_CHECK_CUDA(cudaEventDestroy(event));
 }
 
@@ -41,7 +41,7 @@ STPSmartDeviceObject::STPEvent STPSmartDeviceObject::makeEvent(const unsigned in
 
 /* STPMemPool */
 
-void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPMemPoolDestroyer::operator()(const cudaMemPool_t mem_pool) const {
+void STPSmartDeviceObject::STPImplementation::STPMemPoolDestroyer::operator()(const cudaMemPool_t mem_pool) const {
 	STP_CHECK_CUDA(cudaMemPoolDestroy(mem_pool));
 }
 
@@ -53,7 +53,7 @@ STPSmartDeviceObject::STPMemPool STPSmartDeviceObject::makeMemPool(const cudaMem
 
 /* STPTexture */
 
-void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPTextureDestroyer::operator()(const cudaTextureObject_t texture) const {
+void STPSmartDeviceObject::STPImplementation::STPTextureDestroyer::operator()(const cudaTextureObject_t texture) const {
 	STP_CHECK_CUDA(cudaDestroyTextureObject(texture));
 }
 
@@ -66,7 +66,7 @@ STPSmartDeviceObject::STPTexture STPSmartDeviceObject::makeTexture(
 
 /* STPSurface */
 
-void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPSurfaceDestroyer::operator()(const cudaSurfaceObject_t surface) const {
+void STPSmartDeviceObject::STPImplementation::STPSurfaceDestroyer::operator()(const cudaSurfaceObject_t surface) const {
 	STP_CHECK_CUDA(cudaDestroySurfaceObject(surface));
 }
 
@@ -78,7 +78,7 @@ STPSmartDeviceObject::STPSurface STPSmartDeviceObject::makeSurface(const cudaRes
 
 /* STPGraphicsResource */
 
-void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPGraphicsResourceUnregisterer::operator()(const cudaGraphicsResource_t resource) const {
+void STPSmartDeviceObject::STPImplementation::STPGraphicsResourceUnregisterer::operator()(const cudaGraphicsResource_t resource) const {
 	STP_CHECK_CUDA(cudaGraphicsUnregisterResource(resource));
 }
 
@@ -97,7 +97,7 @@ STPSmartDeviceObject::STPGraphicsResource STPSmartDeviceObject::makeGLImageResou
 
 /* STPGLTextureObject */
 
-void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPGLTextureDeleter::operator()(const STPOpenGL::STPuint tbo) const noexcept {
+void STPSmartDeviceObject::STPImplementation::STPGLTextureDeleter::operator()(const STPOpenGL::STPuint tbo) const noexcept {
 	glDeleteTextures(1u, &tbo);
 }
 
@@ -109,7 +109,7 @@ STPSmartDeviceObject::STPGLTextureObject STPSmartDeviceObject::makeGLTextureObje
 
 /* STPGLBindlessTextureHandle */
 
-void STPSmartDeviceObject::STPSmartDeviceObjectImpl::STPGLTextureHandleUnresidenter::operator()(const STPOpenGL::STPuint64 tHandle) const noexcept {
+void STPSmartDeviceObject::STPImplementation::STPGLTextureHandleUnresidenter::operator()(const STPOpenGL::STPuint64 tHandle) const noexcept {
 	glMakeTextureHandleNonResidentARB(tHandle);
 }
 

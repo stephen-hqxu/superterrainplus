@@ -14,6 +14,8 @@
 #define STP_MM_BIT8(D, C, B, A) _MM_SHUFFLE(A, B, C, D)
 #endif
 
+#include <cstdint>
+
 namespace SuperTerrainPlus {
 
 	/**
@@ -28,7 +30,7 @@ namespace SuperTerrainPlus {
 	namespace STPAlgebraCommon {
 
 		//The default alignment of the SSE and AVX instruction set
-		constexpr static uintptr_t SSEAlignment = alignof(__m128),
+		inline constexpr std::uintptr_t SSEAlignment = alignof(__m128),
 			AVXAlignment = alignof(__m256d);
 
 		/**
@@ -36,7 +38,7 @@ namespace SuperTerrainPlus {
 		 * @param addr The address to be checked.
 		 * @return True if the address is properly aligned, false otherwise.
 		*/
-		inline bool isAVXAligned(const void*) noexcept;
+		bool isAVXAligned(const void*) noexcept;
 
 	}
 

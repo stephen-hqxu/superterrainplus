@@ -13,7 +13,8 @@ using std::string_view;
 
 namespace {
 	namespace RL = STPRegularLanguage;
-	namespace LE = RL::STPListElement;
+	namespace CC = RL::STPCharacterClass;
+	namespace Q = RL::STPQuantifier;
 	using RL::NoMatch;
 
 	namespace SimpleMatcher {
@@ -25,13 +26,13 @@ namespace {
 		using MatchLiteralA = RL::Literal<StringA>;
 		using MatchLiteralB = RL::Literal<StringB>;
 		//character class operator
-		using MatchAorB = RL::List<LE::Atomic<'a'>, LE::Atomic<'b'>>;
-		using MatchUpper = RL::List<LE::Range<'A', 'Z'>>;
-		using MatchSymbol = RL::List<LE::Except<LE::Range<'0', '9'>, LE::Range<'a', 'z'>, LE::Range<'A', 'Z'>>>;
+		using MatchAorB = CC::Class<CC::Atomic<'a'>, CC::Atomic<'b'>>;
+		using MatchUpper = CC::Class<CC::Range<'A', 'Z'>>;
+		using MatchSymbol = CC::Class<CC::Except<CC::Range<'0', '9'>, CC::Range<'a', 'z'>, CC::Range<'A', 'Z'>>>;
 		//repeat operator
-		using MatchMaybeA = RL::Repeat<MatchLiteralA, 0u, 1u>;
-		using MatchAtLeast2A = RL::Repeat<MatchLiteralA, 2u, RL::Unlimited>;
-		using Match5A = RL::Repeat<MatchLiteralA, 5u>;
+		using MatchMaybeA = Q::Repeat<MatchLiteralA, 0u, 1u>;
+		using MatchAtLeast2A = Q::Repeat<MatchLiteralA, 2u, Q::Unlimited>;
+		using Match5A = Q::Repeat<MatchLiteralA, 5u>;
 		//alternative operator
 		using MatchAorBAlt = RL::Alternative<MatchLiteralA, MatchLiteralB>;
 		//sequence operator
@@ -69,16 +70,16 @@ namespace {
 
 		//match like "01ad", 0 can be omitted
 		using FourHexDigit =
-			RL::Repeat<
-				RL::List<
-					LE::Range<'0', '9'>,
-					LE::Range<'a', 'f'>
+			Q::Repeat<
+				CC::Class<
+					CC::Range<'0', '9'>,
+					CC::Range<'a', 'f'>
 				>,
 				1u, 4u
 			>;
 		//match like ":01ad", does not allow omitting empty group
 		using MiddleGroup =
-			RL::Repeat<
+			Q::Repeat<
 				RL::Sequence<
 					RL::Literal<GroupSeparator>,
 					FourHexDigit
@@ -121,12 +122,11 @@ namespace {
 		using SpaceLiteral =
 			RL::Literal<Space>;
 		using MaybeConst =
-			RL::Repeat<
+			Q::Maybe<
 				RL::Sequence<
 					RL::Literal<QualConst>,
 					SpaceLiteral
-				>,
-				0u, 1u
+				>
 			>;
 		using Type =
 			RL::Alternative<
@@ -138,20 +138,18 @@ namespace {
 				MaybeConst,
 				Type,
 				SpaceLiteral,
-				RL::Repeat<
-					RL::List<
-						LE::Range<'a', 'z'>
-					>,
-					1u, RL::Unlimited
+				Q::StrictMany<
+					CC::Class<
+						CC::Range<'a', 'z'>
+					>
 				>,//variable name
 				SpaceLiteral,
 				RL::Literal<Equal>,
 				SpaceLiteral,
-				RL::Repeat<
-					RL::List<
-						LE::Range<'0', '9'>
-					>,
-					1u, RL::Unlimited
+				Q::StrictMany<
+					CC::Class<
+						CC::Range<'0', '9'>
+					>
 				>//value
 			>;
 	}

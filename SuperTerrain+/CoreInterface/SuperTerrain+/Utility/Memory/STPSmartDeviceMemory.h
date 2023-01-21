@@ -19,11 +19,15 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief Inline implementation for template function of smart device memory.
 		*/
-		namespace STPSmartDeviceMemoryImpl {
+		namespace STPImplementation {
 
 			//Treat array as a regular type since cudaFree() treats array like normal pointer
 			template<typename T>
 			using NoArray = std::remove_all_extents_t<T>;
+
+			//The managed memory unit for different type of device memory.
+			template<class T, template<class> class Del>
+			using STPMemoryManager = std::unique_ptr<STPImplementation::NoArray<T>, Del<STPImplementation::NoArray<T>>>;
 
 			//Delete pinned host memory using cudaFreeHost();
 			template<typename T>
@@ -65,30 +69,18 @@ namespace SuperTerrainPlus {
 		//STPPinnedMemory is a pinned host memory version of std::unique_ptr.
 		//The deleter utilises cudaFreeHost()
 		template<typename T>
-		using STPPinnedMemory =
-			std::unique_ptr<
-				STPSmartDeviceMemoryImpl::NoArray<T>,
-				STPSmartDeviceMemoryImpl::STPPinnedMemoryDeleter<STPSmartDeviceMemoryImpl::NoArray<T>>
-			>;
+		using STPPinnedMemory = STPImplementation::STPMemoryManager<T, STPImplementation::STPPinnedMemoryDeleter>;
 
 		//STPDeviceMemory is a normal device memory version of std::unique_ptr.
 		//The deleter utilises cudaFree()
 		template<typename T>
-		using STPDeviceMemory =
-			std::unique_ptr<
-				STPSmartDeviceMemoryImpl::NoArray<T>,
-				STPSmartDeviceMemoryImpl::STPDeviceMemoryDeleter<STPSmartDeviceMemoryImpl::NoArray<T>>
-			>;
+		using STPDeviceMemory = STPImplementation::STPMemoryManager<T, STPImplementation::STPDeviceMemoryDeleter>;
 
 		//STPStreamedDeviceMemory is a stream-ordered device memory deleter.
 		//The deleter utilises cudaFreeAsync()
 		//However the caller should guarantee the availability of the stream when the memory is destroyed
 		template<typename T>
-		using STPStreamedDeviceMemory = 
-			std::unique_ptr<
-				STPSmartDeviceMemoryImpl::NoArray<T>,
-				STPSmartDeviceMemoryImpl::STPStreamedDeviceMemoryDeleter<STPSmartDeviceMemoryImpl::NoArray<T>>
-			>;
+		using STPStreamedDeviceMemory = STPImplementation::STPMemoryManager<T, STPImplementation::STPStreamedDeviceMemoryDeleter>;
 
 		/**
 		 * @brief STPPitchedDeviceMemory is a managed device memory with pitch.
@@ -110,7 +102,7 @@ namespace SuperTerrainPlus {
 			 * @param ptr The pitched device pointer.
 			 * @param pitch The pointer pitch.
 			*/
-			STPPitchedDeviceMemory(STPSmartDeviceMemoryImpl::NoArray<T>*, size_t);
+			STPPitchedDeviceMemory(STPImplementation::NoArray<T>*, size_t);
 
 			STPPitchedDeviceMemory(STPPitchedDeviceMemory&&) noexcept = default;
 

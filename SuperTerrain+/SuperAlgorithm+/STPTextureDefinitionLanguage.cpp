@@ -4,7 +4,6 @@
 //Error
 #include <SuperTerrain+/Exception/STPParserError.h>
 
-#include <cctype>
 #include <sstream>
 
 #include <algorithm>
@@ -12,7 +11,6 @@
 #include <optional>
 #include <utility>
 
-using std::tuple;
 using std::string_view;
 using std::ostringstream;
 using std::vector;
@@ -31,48 +29,93 @@ using SuperTerrainPlus::STPDiversity::STPTextureDatabase;
 
 using namespace SuperTerrainPlus::STPAlgorithm;
 
-namespace LT = STPLexerToken;
-
 //the name of our TDL parser
 constexpr static char TDLParserName[] = "SuperTerrain+ Texture Definition Language";
 
 //define our TDL lexer
 namespace {
-	//a string identifier in TDL
-	STP_LEXER_DECLARE_FUNCTION_TOKEN(TDLIdentifier, 1000u, "TDL Identifier");
-	//a numeric value in TDL, can be integer or decimal, and contains literal suffix
-	STP_LEXER_DECLARE_FUNCTION_TOKEN(TDLNumber, 1001u, "TDL Number");
+	namespace RL = STPRegularLanguage;
+	namespace CC = RL::STPCharacterClass;
 
-	typedef tuple<LT::LeftSquare, LT::RightSquare,
-		LT::LeftCurly, LT::RightCurly,
-		LT::LeftRound, LT::RightRound,
-		LT::Hash, LT::Comma, LT::Minus, LT::GreaterThan, LT::Colon, LT::Equal> STPTDLAtomicToken;
+	template<const string_view& S>
+	using Lit = RL::Literal<S>;
 
-	typedef tuple<TDLIdentifier, TDLNumber> STPTDLFunctionToken;
+	constexpr string_view DirControl = "#", DirTexture = "texture", DirGroup = "group", DirRule = "rule",
+		GroupView = "view",
+		RuleAlt = "altitude", RuleGra = "gradient",
+		TexStart = "[", TexEnd = "]", DirStart = "{", DirEnd = "}", ParamStart = "(", ParamEnd = ")",
+		OpAssignment = ":=", OpRightArrow = "->", OpComma = ",",
+		NumDecimal = ".";
+
+	//ignore
+	using SkipSpace = CC::Class<CC::Atomic<' '>, CC::Atomic<'\n'>, CC::Atomic<'\t'>>;
+	
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(SpaceNewlineInsensitive, 0xABCDu, Discard, SkipSpace);
+
+	//directive
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(DirectiveControl, 0x00u, Consume, Lit<DirControl>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(DirectiveTexture, 0x01u, Consume, Lit<DirTexture>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(DirectiveGroup, 0x02u, Consume, Lit<DirGroup>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(DirectiveRule, 0x03u, Consume, Lit<DirRule>);
+	//sub directive
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(DirectiveGroupView, 0x0Au, Consume, Lit<GroupView>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(DirectiveRuleAltitude, 0x0Bu, Consume, Lit<RuleAlt>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(DirectiveRuleGradient, 0x0Cu, Consume, Lit<RuleGra>);
+
+	//block scope
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(TextureBlockStart, 0x10u, Consume, Lit<TexStart>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(TextureBlockEnd, 0x11u, Consume, Lit<TexEnd>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(DirectiveBlockStart, 0x12u, Consume, Lit<DirStart>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(DirectiveBlockEnd, 0x13u, Consume, Lit<DirEnd>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(ParameterBlockStart, 0x14u, Consume, Lit<ParamStart>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(ParameterBlockEnd, 0x15u, Consume, Lit<ParamEnd>);
+
+	//operator
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(Assignment, 0x20u, Consume, Lit<OpAssignment>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(MapTo, 0x21u, Consume, Lit<OpRightArrow>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(Separator, 0x22u, Consume, Lit<OpComma>);
+
+	using RL::STPQuantifier::Maybe;
+	using RL::STPQuantifier::StrictMany;
+	//special matcher
+	template<char Suf>
+	using MaybeSuffix = Maybe<CC::Class<CC::Atomic<Suf>>>;//numeric suffix is optional
+	using MatchIdentifier =
+		StrictMany<
+			CC::Class<
+				CC::Atomic<'_'>,
+				CC::Range<'a', 'z'>
+			>
+		>;
+	using Number =
+		StrictMany<
+			CC::Class<
+				CC::Range<'0', '9'>
+			>
+		>;
+	using MatchInteger = RL::Sequence<Number, MaybeSuffix<'u'>>;
+	//we force to use standard floating point declaration to make things easier, such that format such as .1 or 0f are not allowed
+	using MatchFloat = RL::Sequence<Number, Lit<NumDecimal>, Number, MaybeSuffix<'f'>>;
+	
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(TDLIdentifier, 0x30u, Consume, MatchIdentifier);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(TDLUnsignedInteger, 0x31u, Consume, MatchInteger);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(TDLFloat, 0x32u, Consume, MatchFloat);
+
+	//state
+	STP_LEXER_CREATE_LEXICAL_STATE(TDLMainState, 0x88u,
+		SpaceNewlineInsensitive,
+		//---
+		DirectiveControl, DirectiveTexture, DirectiveGroup, DirectiveRule,
+		DirectiveGroupView, DirectiveRuleAltitude, DirectiveRuleGradient,
+		//---
+		TextureBlockStart, TextureBlockEnd, DirectiveBlockStart, DirectiveBlockEnd, ParameterBlockStart, ParameterBlockEnd,
+		//---
+		Assignment, MapTo, Separator,
+		//---
+		TDLIdentifier, TDLUnsignedInteger, TDLFloat);
 
 	//the lexer for TDL
-	typedef STPLexer<STPTDLAtomicToken, STPTDLFunctionToken> STPTDLLexer;
-}
-
-inline STP_LEXER_DEFINE_FUNCTION_TOKEN(TDLIdentifier) {
-	size_t strPos = 0u;
-	//keep pushing pointer forward until we see a non-alphabet
-	while (std::isalpha(static_cast<unsigned char>(sequence[strPos]))) {
-		strPos++;
-	}
-	return strPos;
-}
-
-inline STP_LEXER_DEFINE_FUNCTION_TOKEN(TDLNumber) {
-	size_t numPos = 0u;
-	//we need to be able to identify floating point number
-	//we don't need to worry about invalid numeric format right now, for example 1.34.6ff54
-	//invalid number format will be captured by the string parser later
-	char c;
-	while (c = sequence[numPos], (std::isdigit(static_cast<unsigned char>(c)) || c == '.' || c == 'f' || c == 'u')) {
-		numPos++;
-	}
-	return numPos;
+	typedef STPLexer<TDLMainState> STPTDLLexer;
 }
 
 using STPTextureDefinitionLanguage::STPResult;
@@ -88,7 +131,7 @@ static void checkTextureDeclared(const STPTDLLexer& lexer, STPResult& result, co
 
 static void processTexture(STPTDLLexer& lexer, STPResult& result) {
 	//declare some texture variables for texture ID
-	lexer.expect<LT::LeftSquare>();
+	lexer.expect<TextureBlockStart>();
 
 	while (true) {
 		const string_view textureName = **lexer.expect<TDLIdentifier>();
@@ -96,7 +139,7 @@ static void processTexture(STPTDLLexer& lexer, STPResult& result) {
 		//initially the texture has no view information
 		result.DeclaredTexture.emplace(textureName, STPResult::UnreferencedIndex);
 
-		if (lexer.expect<LT::Comma, LT::RightSquare>() == LT::RightSquare {}) {
+		if (lexer.expect<Separator, TextureBlockEnd>() == TextureBlockEnd {}) {
 			//no more texture
 			break;
 		}
@@ -106,56 +149,50 @@ static void processTexture(STPTDLLexer& lexer, STPResult& result) {
 
 static void processRule(STPTDLLexer& lexer, STPResult& result) {
 	//define a rule
-	const string_view rule_type = **lexer.expect<TDLIdentifier>();
-	lexer.expect<LT::LeftCurly>();
+	const STPTDLLexer::STPToken rule_type = lexer.expect<DirectiveRuleAltitude, DirectiveRuleGradient>();
+	lexer.expect<DirectiveBlockStart>();
 
 	while (true) {
 		//we got a sample ID
-		const Sample rule4Sample = lexer.expect<TDLNumber>()->to<Sample>();
-		lexer.expect<LT::Colon>();
-		lexer.expect<LT::Equal>();
-		lexer.expect<LT::LeftRound>();
+		const Sample rule4Sample = lexer.expect<TDLUnsignedInteger>()->to<Sample>();
+		lexer.expect<Assignment>();
+		lexer.expect<ParameterBlockStart>();
 
 		//start parsing rule
 		while (true) {
 			//check which type of type we are parsing
-			if (rule_type == "altitude") {
-				const float altitude = lexer.expect<TDLNumber>()->to<float>();
-				lexer.expect<LT::Minus>();
-				lexer.expect<LT::GreaterThan>();
+			if (rule_type == DirectiveRuleAltitude {}) {
+				const float altitude = lexer.expect<TDLFloat>()->to<float>();
+				lexer.expect<MapTo>();
 				const string_view map2Texture = **lexer.expect<TDLIdentifier>();
 				checkTextureDeclared(lexer, result, map2Texture);
 
 				//store an altitude rule
 				result.Altitude.emplace_back(rule4Sample, altitude, map2Texture);
-			} else if (rule_type == "gradient") {
-				const float minG = lexer.expect<TDLNumber>()->to<float>();
-				lexer.expect<LT::Comma>();
-				const float maxG = lexer.expect<TDLNumber>()->to<float>();
-				lexer.expect<LT::Comma>();
-				const float LB = lexer.expect<TDLNumber>()->to<float>();
-				lexer.expect<LT::Comma>();
-				const float UB = lexer.expect<TDLNumber>()->to<float>();
-				lexer.expect<LT::Minus>();
-				lexer.expect<LT::GreaterThan>();
+			} else if (rule_type == DirectiveRuleGradient {}) {
+				const float minG = lexer.expect<TDLFloat>()->to<float>();
+				lexer.expect<Separator>();
+				const float maxG = lexer.expect<TDLFloat>()->to<float>();
+				lexer.expect<Separator>();
+				const float LB = lexer.expect<TDLFloat>()->to<float>();
+				lexer.expect<Separator>();
+				const float UB = lexer.expect<TDLFloat>()->to<float>();
+				lexer.expect<MapTo>();
 				const string_view map2Texture = **lexer.expect<TDLIdentifier>();
 				checkTextureDeclared(lexer, result, map2Texture);
 
 				//store a gradient rule
 				result.Gradient.emplace_back(rule4Sample, minG, maxG, LB, UB, map2Texture);
-			} else {
-				ostringstream msg;
-				msg << "Rule type \'" << rule_type << "\' is not recognised." << endl;
-				lexer.throwSyntaxError(msg.str(), "unrecognised rule type");
 			}
+			//else? the lexer will handle the exception for us :)
 
-			if (lexer.expect<LT::Comma, LT::RightRound>() == LT::RightRound {}) {
+			if (lexer.expect<Separator, ParameterBlockEnd>() == ParameterBlockEnd {}) {
 				//no more rule setting
 				break;
 			}
 		}
 
-		if (lexer.expect<LT::Comma, LT::RightCurly>() == LT::RightCurly {}) {
+		if (lexer.expect<Separator, DirectiveBlockEnd>() == DirectiveBlockEnd {}) {
 			//no more rule
 			break;
 		}
@@ -164,8 +201,8 @@ static void processRule(STPTDLLexer& lexer, STPResult& result) {
 
 static void processGroup(STPTDLLexer& lexer, STPResult& result) {
 	//the declared type of this group
-	const string_view group_type = **lexer.expect<TDLIdentifier>();
-	lexer.expect<LT::LeftCurly>();
+	const STPTDLLexer::STPToken group_type = lexer.expect<DirectiveGroupView>();
+	lexer.expect<DirectiveBlockStart>();
 
 	//record all textures to be added to a new group,
 	//always make sure data being parsed are valid before adding to the parsing memory.
@@ -180,30 +217,25 @@ static void processGroup(STPTDLLexer& lexer, STPResult& result) {
 			const string_view& assignedTexture = texture_in_group.emplace_back(**lexer.expect<TDLIdentifier>());
 			checkTextureDeclared(lexer, result, assignedTexture);
 
-			if (lexer.expect<LT::Comma, LT::Colon>() == LT::Colon {}) {
+			if (lexer.expect<Separator, Assignment>() == Assignment {}) {
 				//no more texture to be assigned to this group
 				break;
 			}
 		}
-		lexer.expect<LT::Equal>();
 
 		//beginning of a group definition tuple
-		lexer.expect<LT::LeftRound>();
-		if (group_type == "view") {
+		lexer.expect<ParameterBlockStart>();
+		if (group_type == DirectiveGroupView {}) {
 			STPTextureDatabase::STPViewGroupDescription& view = result.DeclaredViewGroup.emplace_back();
 
-			view.PrimaryScale = lexer.expect<TDLNumber>()->to<unsigned int>();
-			lexer.expect<LT::Comma>();
-			view.SecondaryScale = lexer.expect<TDLNumber>()->to<unsigned int>();
-			lexer.expect<LT::Comma>();
-			view.TertiaryScale = lexer.expect<TDLNumber>()->to<unsigned int>();
-		} else {
-			ostringstream msg;
-			msg << "Group type \'" << group_type << "\' is not recognised." << endl;
-			lexer.throwSyntaxError(msg.str(), "unrecognised group type");
+			view.PrimaryScale = lexer.expect<TDLUnsignedInteger>()->to<unsigned int>();
+			lexer.expect<Separator>();
+			view.SecondaryScale = lexer.expect<TDLUnsignedInteger>()->to<unsigned int>();
+			lexer.expect<Separator>();
+			view.TertiaryScale = lexer.expect<TDLUnsignedInteger>()->to<unsigned int>();
 		}
 		//end of a group definition tuple
-		lexer.expect<LT::RightRound>();
+		lexer.expect<ParameterBlockEnd>();
 
 		//assign texture with group index
 		std::for_each(texture_in_group.cbegin(), texture_in_group.cend(),
@@ -213,38 +245,33 @@ static void processGroup(STPTDLLexer& lexer, STPResult& result) {
 				texture_table[name] = view_group_index;
 			});
 
-		if (lexer.expect<LT::Comma, LT::RightCurly>() == LT::RightCurly {}) {
+		if (lexer.expect<Separator, DirectiveBlockEnd>() == DirectiveBlockEnd {}) {
 			//end of group
 			break;
 		}
 	}
 }
 
-STPResult STPTextureDefinitionLanguage::read(const char* const source, const string_view& source_name) {
+STPResult STPTextureDefinitionLanguage::read(const string_view& source, const string_view& source_name) {
 	STPTDLLexer lexer(source, TDLParserName, source_name);
 
 	STPResult result;
 	//start doing lexical analysis and parsing
 	while (true) {
 		//check while identifier is it
-		if (lexer.expect<LT::Hash, LT::Null>() == LT::Null {}) {
+		if (lexer.expect<DirectiveControl, STPLexical::EndOfSequence>() == STPLexical::EndOfSequence {}) {
 			//end of file
 			break;
 		}
-		const string_view operation = **lexer.expect<TDLIdentifier>();
+		const STPTDLLexer::STPToken operation = lexer.expect<DirectiveTexture, DirectiveRule, DirectiveGroup>();
 
 		//depends on operations, we process them differently
-		if (operation == "texture") {
+		if (operation == DirectiveTexture {}) {
 			processTexture(lexer, result);
-		} else if (operation == "rule") {
+		} else if (operation == DirectiveRule {}) {
 			processRule(lexer, result);
-		} else if (operation == "group") {
+		} else if (operation == DirectiveGroup {}) {
 			processGroup(lexer, result);
-		} else {
-			//invalid operation
-			ostringstream msg;
-			msg << "Directive \'" << operation << "\' is undefined by Texture Definition Language." << endl;
-			lexer.throwSyntaxError(msg.str(), "unknown operation");
 		}
 	}
 
@@ -277,7 +304,8 @@ STPResult::STPTextureVariable STPTextureDefinitionLanguage::STPResult::load(STPD
 
 	//requesting texture
 	//assign each variable with those texture ID
-	for_each(this->DeclaredTexture.cbegin(), this->DeclaredTexture.cend(), [&database, &varDic, id_lookup = ViewGroupIDLookup.get()](const auto& texture) {
+	for_each(this->DeclaredTexture.cbegin(), this->DeclaredTexture.cend(),
+		[&database, &varDic, id_lookup = ViewGroupIDLookup.get()](const auto& texture) {
 		const auto& [texture_name, view_group_index] = texture;
 		//we have already checked the view group index at the end of parsing, so it must be valid
 		const TI::STPViewGroupID view_group_id = id_lookup[view_group_index];

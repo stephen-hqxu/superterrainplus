@@ -106,12 +106,12 @@ SCENARIO("TDL interpreter parses a TDL script", "[AlgorithmHost][Texture][STPTex
 			constexpr char BrokenTDL7[] = "#texture [x] #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(888888888888888888888888888888888888888.8f -> x)}";
 
 			THEN("TDL interpreter should report the mistakes and expected syntax") {
-				CHECK_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("}"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring(","));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring("-"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL4), ContainsSubstring("#"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("DirectiveBlockEnd"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring("Separator"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring("MapTo"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL4), ContainsSubstring("DirectiveControl"));
 				CHECK_THROWS_WITH(tryParse(BrokenTDL5), ContainsSubstring("InvalidToken"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL6), ContainsSubstring(")"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL6), ContainsSubstring("ParameterBlockEnd"));
 				CHECK_THROWS_WITH(tryParse(BrokenTDL7), ContainsSubstring("8.8f"));
 			}
 
@@ -125,8 +125,10 @@ SCENARIO("TDL interpreter parses a TDL script", "[AlgorithmHost][Texture][STPTex
 
 			THEN("TDL interpreter should report the incorrect semantic") {
 				CHECK_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("y"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring("altitude") && ContainsSubstring("Directive"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring("hey") && ContainsSubstring("Group type"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring("altitude")
+					&& ContainsSubstring("DirectiveRule") && ContainsSubstring("DirectiveRuleAltitude"));
+				CHECK_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring("hey")
+					&& ContainsSubstring("DirectiveGroupView") && ContainsSubstring("TDLIdentifier"));
 				CHECK_THROWS_WITH(tryParse(BrokenTDL4), ContainsSubstring("y"));
 			}
 

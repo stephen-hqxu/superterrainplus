@@ -12,7 +12,7 @@ namespace SuperTerrainPlus {
 		/**
 		 * @brief Inline implementation of template function for hash combiner.
 		*/
-		namespace STPHashCombineImpl {
+		namespace STPImplementation {
 
 			//TODO: change to template lambda and put it inside combine()
 			/**

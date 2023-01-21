@@ -21,59 +21,46 @@ inline bool NAMESPACE_REGLANG::STPDetail::matchExpression(std::string_view& sequ
 }
 
 /* ------------------------------------------------------------------------------------------------------------------- */
-
 #define DEFINE_REGLANG_MATCHER(OP) \
 inline size_t NAMESPACE_REGLANG::OP::match(const std::string_view& sequence) noexcept
 #define OP_COMMA ,
 
-DEFINE_REGLANG_MATCHER(Any) {
-	//as long as the input is not empty, always match a character.
-	return sequence.empty() ? STPRegularLanguage::NoMatch : 1u;
-}
+/* ----------------------------------- Character Class ----------------------------------------- */
+#define DEFINE_CLASS_MEMBER_CONTAINS(TEMP_ARG, LE_OP) template<class... CM> template<TEMP_ARG> \
+inline bool NAMESPACE_REGLANG::STPCharacterClass::Class<CM...>::MemberSpecification< \
+	NAMESPACE_REGLANG::STPCharacterClass::LE_OP>::contains(const char right) noexcept
 
-template<const std::string_view& L>
-DEFINE_REGLANG_MATCHER(Literal<L>) {
-	//TODO: use starts_with() in C++ 20
-
-	//find() is too slow, use substr() and string compare; see their complexity on the specification
-	//basically we want to match from the start of the input if it equals the literal
-	//consider it as match if the prefix substring from the input is exactly the same as the literal
-	return sequence.substr(0u, Literal::LiteralLength) == L ? Literal::LiteralLength : STPRegularLanguage::NoMatch;
-}
-
-#define DEFINE_LIST_ELEMENT_CONTAINS(TEMP_ARG, LE_OP) template<class... LE> template<TEMP_ARG> \
-inline bool NAMESPACE_REGLANG::List<LE...>::ElementSpecification<NAMESPACE_REGLANG::STPListElement::LE_OP>::contains(const char right) noexcept
-
-DEFINE_LIST_ELEMENT_CONTAINS(char C, Atomic<C>) {
+DEFINE_CLASS_MEMBER_CONTAINS(char C, Atomic<C>) {
 	//simple equality check
 	return right == C;
 }
 
-DEFINE_LIST_ELEMENT_CONTAINS(char First OP_COMMA char Last, Range<First OP_COMMA Last>) {
+DEFINE_CLASS_MEMBER_CONTAINS(char First OP_COMMA char Last, Range<First OP_COMMA Last>) {
 	//range check, remember the range is inclusive on both ends
 	return right >= First && right <= Last;
 }
 
-DEFINE_LIST_ELEMENT_CONTAINS(class... L, Except<L...>) {
+DEFINE_CLASS_MEMBER_CONTAINS(class... C, Except<C...>) {
 	//just negate the matching result
-	return !(List::ElementSpecification<L>::contains(right) || ...);
+	return !(Class::MemberSpecification<C>::contains(right) || ...);
 }
 
-#undef DEFINE_LIST_ELEMENT_CONTAINS
+#undef DEFINE_CLASS_MEMBER_CONTAINS
 
-template<class... LE>
-DEFINE_REGLANG_MATCHER(List<LE...>) {
+template<class... CM>
+DEFINE_REGLANG_MATCHER(STPCharacterClass::Class<CM...>) {
 	//sanity check
 	if (sequence.empty()) {
 		return STPRegularLanguage::NoMatch;
 	}
 	const char c = sequence.front();
-	//check this character in the list of characters
-	return (List::ElementSpecification<LE>::contains(c) || ...) ? 1u : STPRegularLanguage::NoMatch;
+	//check this character in the class of characters
+	return (Class::MemberSpecification<CM>::contains(c) || ...) ? 1u : STPRegularLanguage::NoMatch;
 }
 
+/* -------------------------------------------- Quantifier --------------------------------------- */
 template<class Expr, size_t Min, size_t Max>
-DEFINE_REGLANG_MATCHER(Repeat<Expr OP_COMMA Min OP_COMMA Max>) {
+DEFINE_REGLANG_MATCHER(STPQuantifier::Repeat<Expr OP_COMMA Min OP_COMMA Max>) {
 	//create a copy for manipulation during the repeat matching
 	std::string_view remainingSeq(sequence);
 	size_t totalLength = 0u;
@@ -89,6 +76,23 @@ DEFINE_REGLANG_MATCHER(Repeat<Expr OP_COMMA Min OP_COMMA Max>) {
 
 	//check if the number of repetition satisfies the requirement
 	return num_rep >= Min ? totalLength : STPRegularLanguage::NoMatch;
+}
+
+/* ------------------------------------------------------------------------------------------------ */
+
+DEFINE_REGLANG_MATCHER(Any) {
+	//as long as the input is not empty, always match a character.
+	return sequence.empty() ? STPRegularLanguage::NoMatch : 1u;
+}
+
+template<const std::string_view& L>
+DEFINE_REGLANG_MATCHER(Literal<L>) {
+	//TODO: use starts_with() in C++ 20
+
+	//find() is too slow, use substr() and string compare; see their complexity on the specification
+	//basically we want to match from the start of the input if it equals the literal
+	//consider it as match if the prefix substring from the input is exactly the same as the literal
+	return sequence.substr(0u, Literal::LiteralLength) == L ? Literal::LiteralLength : STPRegularLanguage::NoMatch;
 }
 
 template<class... Expr>
