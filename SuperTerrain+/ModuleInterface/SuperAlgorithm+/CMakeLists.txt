@@ -6,16 +6,11 @@ STPPermutationGenerator.h
 STPSimplexNoiseSetting.h
 STPSingleHistogram.hpp
 STPSingleHistogramFilter.h
-# /Parser/INI
-Parser/INI/STPINIBasicString.h
-Parser/INI/STPINIBasicString.inl
-Parser/INI/STPINIReader.h
-Parser/INI/STPINISection.hpp
-Parser/INI/STPINIStorage.hpp
-Parser/INI/STPINIWriter.h
 # /Parser
 Parser/STPBasicStringAdaptor.h
 Parser/STPBasicStringAdaptor.inl
+Parser/STPINIData.hpp
+Parser/STPINIParser.h
 Parser/STPLexer.h
 Parser/STPLexer.inl
 Parser/STPRegularLanguage.h

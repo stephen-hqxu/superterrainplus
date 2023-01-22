@@ -8,8 +8,8 @@
 using namespace STPDemo;
 using namespace SuperTerrainPlus;
 
-using STPAlgorithm::STPINIStorageView;
-using STPAlgorithm::STPINISectionView;
+using STPAlgorithm::STPINIData::STPINIStorageView;
+using STPAlgorithm::STPINIData::STPINISectionView;
 
 using std::string_view;
 using std::pair;

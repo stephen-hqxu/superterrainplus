@@ -27,7 +27,7 @@
 //GL helper
 #include <SuperRealism+/Utility/STPDebugCallback.h>
 //INI Utility
-#include <SuperAlgorithm+/Parser/INI/STPINIReader.h>
+#include <SuperAlgorithm+/Parser/STPINIParser.h>
 
 //SuperDemo+
 #include "./Helpers/STPTerrainParaLoader.h"
@@ -82,8 +82,7 @@ using glm::radians;
 using glm::identity;
 using glm::normalize;
 
-using SuperTerrainPlus::STPAlgorithm::STPINIStorageView;
-using SuperTerrainPlus::STPAlgorithm::STPINISectionView;
+using namespace SuperTerrainPlus::STPAlgorithm::STPINIData;
 
 namespace STPStart {
 
@@ -181,10 +180,9 @@ namespace STPStart {
 					//do not proceed if it fails
 					std::terminate();
 				}
-				//TODO: TDL parser temporarily throws runtime error
-			} catch (const std::runtime_error& se) {
+			} catch (const STPException::STPParserError::STPBasic& pe) {
 				//catch parser error
-				cerr << se.what() << endl;
+				cerr << pe.what() << endl;
 				std::terminate();
 			}
 
@@ -710,22 +708,22 @@ namespace STPStart {
 }
 
 int main() {
-	using SuperTerrainPlus::STPAlgorithm::STPINIReader;
 	namespace File = SuperTerrainPlus::STPFile;
+	namespace INIParser = SuperTerrainPlus::STPAlgorithm::STPINIParser;
+
 	//read configuration
 	const string engineData = File::read("./Engine.ini"),
 		biomeData = File::read("./Biome.ini");
 	//get INI
-	optional<const STPINIReader> engineINIReader, biomeINIReader;
+	INIParser::STPINIReaderResult engineINIReader, biomeINIReader;
 	try {
-		engineINIReader.emplace(engineData);
-		biomeINIReader.emplace(biomeData);
-		//TODO: INI parser temporarily throws runtime error
-	} catch (const std::runtime_error& se) {
-		cerr << se.what() << endl;
+		engineINIReader = INIParser::read(engineData, "Engine INI Data");
+		biomeINIReader = INIParser::read(biomeData, "Biome INI Data");
+	} catch (const SuperTerrainPlus::STPException::STPParserError::STPBasic& pe) {
+		cerr << pe.what() << endl;
 		return -1;
 	}
-	const STPINIStorageView& engineINI(**engineINIReader), &biomeINI(**biomeINIReader);
+	const STPINIStorageView& engineINI(engineINIReader.Storage), &biomeINI(biomeINIReader.Storage);
 
 	//engine setup
 	//because GLFW callback uses camera, so we need to setup camera first

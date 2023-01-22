@@ -116,6 +116,8 @@ inline std::string_view NAMESPACE_LEXER_NAME::pop(const size_t count) {
 		this->Line += newlineCount;
 		//find the new character position in the current line, if newline exists
 		this->Character = lexeme.length() - lexeme.find_last_of('\n');
+	} else {
+		this->Character += lexeme.length();
 	}
 
 	return lexeme;

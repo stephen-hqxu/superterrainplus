@@ -1,275 +1,175 @@
-#include <SuperAlgorithm+/Parser/INI/STPINIReader.h>
-#include <SuperAlgorithm+/Parser/INI/STPINIWriter.h>
+#include <SuperAlgorithm+/Parser/STPINIParser.h>
+#include <SuperAlgorithm+/Parser/STPLexer.h>
 
-//Error
-//#include <SuperTerrain+/Exception/STPParserError.h>
+#include <cassert>
 
-#include <optional>
-#include <sstream>
-
-#include <utility>
-
-using std::optional;
-using std::make_optional;
-using std::nullopt;
 using std::string_view;
-using std::pair;
-using std::make_pair;
-using std::ostringstream;
-
-using std::endl;
 
 using namespace SuperTerrainPlus::STPAlgorithm;
 
-/* ======================================= STPINIReader.h ====================================== */
+constexpr static char INIReaderName[] = "SuperTerrain+ MS INI Reader";
 
-class STPINIReader::STPINIReaderImpl {
-private:
+//define an INI lexer
+namespace {
+	namespace RL = STPRegularLanguage;
+	namespace CC = RL::STPCharacterClass;
 
-	//white space sequence identifier
-	constexpr static string_view WhiteSpace = " \n\r\t\f\v";
+	constexpr string_view SecStart = "[", SecEnd = "]", KVSeparator = "=", Newline = "\n";
 
-	const string_view Str;
-	//The current parsing line number
-	size_t Line;
-	//The character sequence referencing the string
-	const char* Sequence;
+	using EmptyLine =
+		CC::Class<
+			CC::Atomic<' '>,
+			CC::Atomic<'\n'>
+		>;
+	using CmtStart = CC::Class<CC::Atomic<'#'>, CC::Atomic<';'>>;
+	using KVStart =
+		//the first character should not be any of the control symbol
+		CC::Class<
+			CC::Except<
+				CC::Atomic<'['>,
+				CC::Atomic<'#'>,
+				CC::Atomic<';'>,
+				CC::Atomic<'='>
+			>
+		>;
+	using MatchSecName =
+		RL::STPQuantifier::StrictMany<
+			CC::Class<
+				CC::Except<
+					CC::Atomic<'\n'>,
+					CC::Atomic<']'>
+				>
+			>
+		>;
+	using MatchKey =
+		RL::STPQuantifier::MaybeMany<
+			CC::Class<
+				CC::Except<
+					CC::Atomic<'='>,
+					CC::Atomic<'\n'>
+				>
+			>
+		>;
+	using NextLine = RL::Literal<Newline>;
+	using NotNextLine = CC::Class<CC::Except<CC::Atomic<'\n'>>>;
+
+	/* --------------------------------------------- main state ------------------------------------------------- */
+	//this state detects what type of line we are currently at
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(MasterSkipEmptyLine, 0xFEDCu, Discard, EmptyLine);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(SectionLineStart, 0x00u, Consume, RL::Literal<SecStart>, 0xAAu);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(KeyValueLineStart, 0x10u, Collect, KVStart, 0xBBu);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(CommentLineStart, 0x20u, Discard, CmtStart, 0xCCu);
+
+	/* ---------------------------------------- section name matching ------------------------------------------------ */
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(SectionName, 0x01u, Consume, MatchSecName);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(SectionLineClosing, 0x02u, Consume, RL::Literal<SecEnd>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(SectionLineEnd, 0x03u, Consume, NextLine, 0x00u);//end of section declaration line
+
+	/* ----------------------------------------- key-value matching ----------------------------------------------- */
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(KeyName, 0x11u, Consume, MatchKey);
+	//the key lexeme will contain the delimiter at the end, remember to remove it during parsing
+	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(KeyValueSeparator, 0x12u, Consume, RL::Literal<KVSeparator>, 0xDDu);//switch to value state
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(ValueName, 0x13u, Consume, RL::STPQuantifier::MaybeMany<NotNextLine>);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(KeyValueLineEnd, 0x14u, Consume, NextLine, 0x00u);//end of key-value line
+
+	/* ----------------------------------------- comment matching ---------------------------------------------------- */
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(DiscardComment, 0x21u, Collect, NotNextLine);
+	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(CommentLineEnd, 0x22u, Discard, NextLine, 0x00u);//end of comment line
+
+	/* ----------------------------------------------------------------------------------------------------------------- */
+	STP_LEXER_CREATE_LEXICAL_STATE(INIMasterState, 0x00u, MasterSkipEmptyLine, SectionLineStart, KeyValueLineStart, CommentLineStart);
+	STP_LEXER_CREATE_LEXICAL_STATE(INISectionState, 0xAAu, SectionName, SectionLineClosing, SectionLineEnd);
+	STP_LEXER_CREATE_LEXICAL_STATE(INIKeyState, 0xBBu, KeyName, KeyValueSeparator);
+	//--- sub-state to match value
+	STP_LEXER_CREATE_LEXICAL_STATE(INIValueState, 0xDDu, ValueName, KeyValueLineEnd);
+	//---
+	STP_LEXER_CREATE_LEXICAL_STATE(INICommentState, 0xCCu, DiscardComment, CommentLineEnd);
+
+	typedef STPLexer<INIMasterState, INISectionState, INIKeyState, INIValueState, INICommentState> STPINILexer;
+}
+
+//Remove white space from both ends
+static string_view doubleTrim(const string_view& s) noexcept {
+	constexpr static string_view WhiteSpace = " \f\n\r\t\v";
 
 	//Remove all leading white space
-	inline static string_view ltrim(const string_view& s) {
-		const size_t start = s.find_first_not_of(STPINIReaderImpl::WhiteSpace);
+	constexpr static auto ltrim = [](const string_view& s) constexpr noexcept -> string_view {
+		const size_t start = s.find_first_not_of(WhiteSpace);
 		return start == string_view::npos ? string_view() : s.substr(start);
-	}
-
+	};
 	//Remove all trailing white space
-	inline static string_view rtrim(const string_view& s) {
-		const size_t end = s.find_last_not_of(STPINIReaderImpl::WhiteSpace);
-		return end == string_view::npos ? string_view() : s.substr(0, end + 1);
-	}
+	constexpr static auto rtrim = [](const string_view& s) constexpr noexcept -> string_view {
+		const size_t end = s.find_last_not_of(WhiteSpace);
+		return end == string_view::npos ? string_view() : s.substr(0u, end + 1u);
+	};
 
-	//Remove white space from both ends
-	inline static string_view doubleTrim(const string_view& s) {
-		return STPINIReaderImpl::rtrim(STPINIReaderImpl::ltrim(s));
-	}
+	return rtrim(ltrim(s));
+}
 
-public:
+using STPINIParser::STPINIReaderResult;
 
-	/**
-	 * @brief Initialise an implementation of INI reader.
-	 * @param str The pointer to the INI string.
-	*/
-	STPINIReaderImpl(const string_view& str) : Str(str), Line(0u), Sequence(this->Str.data()) {
+STPINIReaderResult STPINIParser::read(const string_view& ini, const string_view& ini_name) {
+	STPINILexer lexer(ini, ini_name, INIReaderName);
 
-	}
+	STPINIReaderResult result;
+	size_t currentSecIdx = std::numeric_limits<size_t>::max(), currentPropIdx = 0u;
+	const auto addSection = [&result, &secIdx = currentSecIdx, &propIdx = currentPropIdx](const string_view& sec_name) -> STPINIData::STPINISectionView& {
+		auto& [storage, section_order, property_order] = result;
 
-	STPINIReaderImpl(const STPINIReaderImpl&) = delete;
+		//add new order table
+		//section index starts from 0, and all properties added later will use this section index
+		section_order.try_emplace(sec_name, ++secIdx);
+		property_order.emplace_back();
+		//reset property counter in a new section
+		propIdx = 0u;
 
-	STPINIReaderImpl(STPINIReaderImpl&&) = delete;
+		//insert a new section
+		return storage.try_emplace(sec_name).first->second;
+	};
 
-	STPINIReaderImpl& operator=(const STPINIReaderImpl&) = delete;
+	//start with global section, which is unnamed
+	STPINIData::STPINISectionView* current_sec = &addSection("");
+	while (true) {
+		//check what type of line we are currently at
+		const STPINILexer::STPToken line_tok = lexer.expect<SectionLineStart, KeyName, STPLexical::EndOfSequence>();
 
-	STPINIReaderImpl& operator=(STPINIReaderImpl&&) = delete;
-
-	~STPINIReaderImpl() = default;
-
-	/**
-	 * @brief Read the next line in the raw INI string sequence.
-	 * @return The view of the line.
-	 * If there is no more line available, return null.
-	*/
-	optional<string_view> getLine() {
-		const char* const start = this->Sequence;
-		if (*start == '\0') {
-			//end of the string, return null
-			return nullopt;
-		}
-
-		while (true) {
-			switch (*this->Sequence) {
-			case '\n':
-				//for new line delimiter, discard this character and advance then return
-				this->Sequence++;
-				this->Line++;
-				[[fallthrough]];
-			case '\0':
-				//for end of file, do not advance to the next character
-
-				//TODO: C++20 allows creating a view from first and last pointer
-				return STPINIReaderImpl::doubleTrim(string_view(start, this->Sequence - start));
-			default:
-				//advance
-				this->Sequence++;
-			}
-		}
-	}
-
-	/**
-	 * @brief Parse the line that contain section name.
-	 * @param line - The current line of the INI.
-	 * @return The name of that section, or empty view if there is a syntax error.
-	*/
-	inline string_view parseSection(string_view line) {
-		//[section]
-		//we only need to remove the surrounding bracket
-		if (line.front() != '[' || line.back() != ']') {
-			//incomplete bracket, syntax error
-			return string_view();
-		}
-		return STPINIReaderImpl::doubleTrim(line.substr(1u, line.length() - 2u));
-	}
-
-	/**
-	 * @brief Parse the current line into a property.
-	 * @param line - The current line of the INI.
-	 * @return The key-value pair of the current line, or null if there is a syntax error.
-	*/
-	inline optional<pair<string_view, string_view>> parseProperty(const string_view& line) {
-		//key=value
-		//we only need to find the location of the `=`
-		const size_t loc = line.find_first_of('=');
-		if (loc == string_view::npos) {
-			//not found
-			return nullopt;
-		}
-		//substring to get the key and value
-		return make_pair(STPINIReaderImpl::doubleTrim(line.substr(0u, loc)), STPINIReaderImpl::doubleTrim(line.substr(loc + 1u)));
-	}
-
-	/**
-	 * @brief Create an initial error message.
-	 * @param ss The pointer to the output string stream.
-	 * @param error_type User specified error type message.
-	 * @return The input string stream.
-	*/
-	inline ostringstream& createInitialErrorMessage(ostringstream& ss, const char* error_type) {
-		ss << "SuperTerrain+ INI Reader(" << this->Line << "):" << error_type << endl;
-		return ss;
-	}
-
-};
-
-STPINIReader::STPINIReader(const string_view& ini_str) {
-	STPINIReaderImpl reader(ini_str);
-
-	optional<string_view> line;
-	//start with unnamed section
-	STPINISectionView* current_sec = &this->addSection("");
-	while ((line = reader.getLine())) {
-		if (line->empty()) {
-			//skip empty line
-			continue;
-		}
-
-		//otherwise we check the starting point of the line to determine what we are going to do
-		switch (line->front()) {
-		case '[':
-		{
-			//section
-			const string_view next_sec = reader.parseSection(*line);
-			if (next_sec.empty()) {
-				//syntax error
-				ostringstream msg;
-				reader.createInitialErrorMessage(msg, "invalid section")
-					<< "Line value \'" << *line << "\' that is supposed to be a section cannot be parsed." << endl;
-				
-				throw std::runtime_error(msg.str().c_str());
+		if (line_tok == SectionLineStart {}) {
+			//a new section, need to find the section name
+			const string_view section_name = doubleTrim(**lexer.expect<SectionName>());
+			if (section_name.empty()) {
+				lexer.throwSyntaxError("The section name is empty", "empty section");
 			}
 
 			//start a new section
-			current_sec = &this->addSection(next_sec);
-		}
-			break;
+			current_sec = &addSection(section_name);
 
-		case '#':
-		case ';':
-			//comment, skip
-			break;
+			//closing section
+			lexer.expect<SectionLineClosing>();
+		} else if (line_tok == KeyName {}) {
+			//it is a key-value property string
+			//key
+			const string_view key_name = doubleTrim(**line_tok);
+			//by our lexer grammar this should not happen
+			assert(!key_name.empty());
 
-		default:
-		{
-			//property
-			const auto next_prop = reader.parseProperty(*line);
-			if (!next_prop.has_value()) {
-				//syntax error
-				ostringstream msg;
-				reader.createInitialErrorMessage(msg, "invalid property")
-					<< "Line value \'" << *line << "\' that is supposed to be a property cannot be parsed." << endl;
+			lexer.expect<KeyValueSeparator>();
 
-				throw std::runtime_error(msg.str().c_str());
-			}
-			const auto& [key, value] = *next_prop;
+			//value
+			const string_view value_name = doubleTrim(**lexer.expect<ValueName>());
+			//similarly
+			assert(!value_name.empty());
 
-			//note that if the key is duplicated, a new value will be written in anyway, such that the old value is discarded
-			(*current_sec)[key] = STPINIStringView(value);
-		}
+			current_sec->try_emplace(key_name, value_name);
+			result.PropertyOrder[currentSecIdx].try_emplace(key_name, currentPropIdx++);
+		} else {
+			//end of parsing input
+			assert(line_tok == STPLexical::EndOfSequence {});
 			break;
 		}
+		
+		//next line
+		//if we are at the end of input, the lexer will always return the EOS special token
+		lexer.expect<SectionLineEnd, KeyValueLineEnd, STPLexical::EndOfSequence>();
 	}
-}
-
-inline STPINISectionView& STPINIReader::addSection(const string_view& sec_name) {
-	return this->Data.try_emplace(sec_name).first->second;
-}
-
-const STPINIStorageView& STPINIReader::operator*() const {
-	return this->Data;
-}
-
-/* ====================================== STPINIWriter.h ========================================= */
-
-using std::string;
-
-STPINIWriter::STPINIWriter(const STPINIStorageView& storage, STPWriterFlag flag) {
-	//process flags
-	static constexpr auto readFlag = [](STPWriterFlag op, STPWriterFlag against) constexpr -> bool {
-		return (op & against) != 0u;
-	};
-	const bool control[3] = {
-		readFlag(flag, STPINIWriter::SectionNewline),
-		readFlag(flag, STPINIWriter::SpaceAroundAssignment),
-		readFlag(flag, STPINIWriter::SpaceAroundSectionName)
-	};
-	const string_view equalMark = (control[1] ? " = " : "="),
-		leftSqBracket = (control[2] ? "[ " : "["),
-		rightSqBracket = (control[2] ? " ]" : "]");
-
-	//prepare output
-	ostringstream output;
-	auto writeSection = [&output, &equalMark](const STPINISectionView& section) -> void {
-		for (const auto& [key, value] : section) {
-			output << key << equalMark << value.String << endl;
-		}
-	};
-
-	//output unnamed section first, since unnamed section should start at first line
-	auto it = storage.find("");
-	if (it != storage.cend() && !it->second.empty()) {
-		writeSection(it->second);
-	}
-
-	//iterate over the rest of sections
-	for (const auto& [name, section] : storage) {
-		if (name == "") {
-			//do not output default section since we have done it.
-			continue;
-		}
-
-		if (control[0]) {
-			//new line between each section
-			output << endl;
-		}
-
-		//output section declare line
-		output << leftSqBracket << name << rightSqBracket << endl;
-
-		//iterate over the properties
-		writeSection(section);
-	}
-
-	this->Data = output.str();
-	this->Data.shrink_to_fit();
-}
-
-const string& STPINIWriter::operator*() const {
-	return this->Data;
+	return result;
 }

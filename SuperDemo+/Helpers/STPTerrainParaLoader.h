@@ -3,7 +3,7 @@
 #define _STP_HEIGHTFIELD_PARA_LOADER_H_
 
 //INI
-#include <SuperAlgorithm+/Parser/INI/STPINIStorage.hpp>
+#include <SuperAlgorithm+/Parser/STPINIData.hpp>
 
 //Settings
 #include <SuperTerrain+/Environment/STPChunkSetting.h>
@@ -33,14 +33,15 @@ namespace STPDemo {
 		 * @param section The INI section that contains the 2d terrain rendering parameters
 		 * @return The terrain rendering parameters, if certain parameters are missing in the section, exception will be thrown
 		*/
-		SuperTerrainPlus::STPEnvironment::STPMeshSetting getRenderingSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
+		SuperTerrainPlus::STPEnvironment::STPMeshSetting getRenderingSetting(const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
 
 		/**
 		 * @brief Load the chunk and rendering settings for procedural terrain
 		 * @param section The INI section that contains the 2d terrain rendering parameters
 		 * @return The chunk manager rendering parameters, if certain parameters are missing in the section, exception will be thrown
 		*/
-		SuperTerrainPlus::STPEnvironment::STPChunkSetting getChunkSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
+		SuperTerrainPlus::STPEnvironment::STPChunkSetting getChunkSetting(
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
 
 		/**
 		 * @brief Load the launch settings for terrain.
@@ -48,14 +49,16 @@ namespace STPDemo {
 		 * @param slipRange The size of the free-slip range of the erosion
 		 * @return The launch parameter, if certain parameters are missing in the section, exception will be thrown
 		*/
-		SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting getGeneratorSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
+		SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting getGeneratorSetting(
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
 
 		/**
 		 * @brief Load the simplex noise setting.
 		 * @param section The INI section that contains the launch parameter
 		 * @return The noise parameter, if certain parameters are missing in the section, exception will be thrown
 		*/
-		SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting getSimplexSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
+		SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting getSimplexSetting(
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
 
 		/**
 		 * @brief Load the settings for procedural sky rendering.
@@ -63,28 +66,31 @@ namespace STPDemo {
 		 * @return Setting for sun and atmosphere.
 		*/
 		std::pair<SuperTerrainPlus::STPEnvironment::STPSunSetting, SuperTerrainPlus::STPEnvironment::STPAtmosphereSetting>
-			getSkySetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
+			getSkySetting(const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
 
 		/**
 		 * @brief Load the settings for procedural starfield rendering.
 		 * @param section The INI section contains the star settings.
 		 * @return Setting for starfield.
 		*/
-		SuperTerrainPlus::STPEnvironment::STPStarfieldSetting getStarfieldSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
+		SuperTerrainPlus::STPEnvironment::STPStarfieldSetting getStarfieldSetting(
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
 
 		/**
 		 * @brief Load the settings for procedural aurora rendering.
 		 * @param section The INI section.
 		 * @return Aurora setting.
 		*/
-		SuperTerrainPlus::STPEnvironment::STPAuroraSetting getAuroraSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
+		SuperTerrainPlus::STPEnvironment::STPAuroraSetting getAuroraSetting(
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
 
 		/**
 		 * @brief Load the settings for ambient occlusion.
 		 * @param section The INI section that contains the AO setting.
 		 * @return The AO setting.
 		*/
-		SuperTerrainPlus::STPEnvironment::STPOcclusionKernelSetting getAOSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
+		SuperTerrainPlus::STPEnvironment::STPOcclusionKernelSetting getAOSetting(
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
 
 		/**
 		 * @brief Load the settings for water rendering.
@@ -92,20 +98,22 @@ namespace STPDemo {
 		 * @param altitude The altitude of the terrain.
 		 * @return The water setting.
 		*/
-		SuperTerrainPlus::STPEnvironment::STPWaterSetting getWaterSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&, float);
+		SuperTerrainPlus::STPEnvironment::STPWaterSetting getWaterSetting(
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, float);
 
 		/**
 		 * @brief Load the settings for BSDF rendering.
 		 * @param section The INI section contains BSDF settings.
 		 * @return The BSDF setting.
 		*/
-		SuperTerrainPlus::STPEnvironment::STPBidirectionalScatteringSetting getBSDFSetting(const SuperTerrainPlus::STPAlgorithm::STPINISectionView&);
+		SuperTerrainPlus::STPEnvironment::STPBidirectionalScatteringSetting getBSDFSetting(
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
 
 		/**
 		 * @brief Load all biome parameters into STPBiomeRegistry
 		 * @param biomeini The INI file for the biome config
 		*/
-		void loadBiomeParameters(const SuperTerrainPlus::STPAlgorithm::STPINIStorageView&);
+		void loadBiomeParameters(const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINIStorageView&);
 
 	}
 }

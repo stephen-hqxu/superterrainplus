@@ -382,7 +382,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		 * @tparam ExpTokExpr... The collection of lexical token expression expected, for which it will be used to compare against any matched token.
 		 * If no expected token is given, the matching always passes and returns the next valid token found.
 		 * @return The first matched token.
-		 * If the next token does not match any of the expected, an exception will be generated.
+		 * If the next token does not match any of the expected, or an invalid token is encountered, an exception will be generated.
 		*/
 		template<class... ExpTokExpr>
 		STPToken expect();
