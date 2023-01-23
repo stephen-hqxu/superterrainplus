@@ -6,15 +6,16 @@ STPPermutationGenerator.h
 STPSimplexNoiseSetting.h
 STPSingleHistogram.hpp
 STPSingleHistogramFilter.h
+# /Parser/Framework
+Parser/Framework/STPBasicStringAdaptor.h
+Parser/Framework/STPBasicStringAdaptor.inl
+Parser/Framework/STPLexer.h
+Parser/Framework/STPLexer.inl
+Parser/Framework/STPRegularLanguage.h
+Parser/Framework/STPRegularLanguage.inl
 # /Parser
-Parser/STPBasicStringAdaptor.h
-Parser/STPBasicStringAdaptor.inl
 Parser/STPINIData.hpp
 Parser/STPINIParser.h
-Parser/STPLexer.h
-Parser/STPLexer.inl
-Parser/STPRegularLanguage.h
-Parser/STPRegularLanguage.inl
 Parser/STPTextureDefinitionLanguage.h
 )
 

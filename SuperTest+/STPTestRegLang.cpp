@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 //SuperAlgorithm+Host/Parser
-#include <SuperAlgorithm+/Parser/STPRegularLanguage.h>
+#include <SuperAlgorithm+/Parser/Framework/STPRegularLanguage.h>
 
 //String
 #include <string_view>

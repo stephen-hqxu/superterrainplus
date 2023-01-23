@@ -6,8 +6,8 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 //SuperAlgorithm+/Parser
-#include <SuperAlgorithm+/Parser/STPBasicStringAdaptor.h>
-#include <SuperAlgorithm+/Parser/STPLexer.h>
+#include <SuperAlgorithm+/Parser/Framework/STPBasicStringAdaptor.h>
+#include <SuperAlgorithm+/Parser/Framework/STPLexer.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPParserError.h>
@@ -39,15 +39,15 @@ TEMPLATE_TEST_CASE("STPBasicStringAdaptor can convert between string and desired
 			const CurrentSA String1(HelloWorld), String2(OverflowChar);
 
 			THEN("Then can be used as normal string") {
-				CHECK((String1.to<string_view>() == string_view(HelloWorld)));
-				CHECK((String1.to<string>() == string(HelloWorld)));
+				CHECK((String1.template to<string_view>() == string_view(HelloWorld)));
+				CHECK((String1.template to<string>() == string(HelloWorld)));
 
 				CHECK((*String1 == TestType(HelloWorld)));
 				CHECK((*String2 == TestType(OverflowChar)));
 
 				AND_THEN("They cannot be converted to desired types") {
-					CHECK_THROWS_WITH(String1.to<unsigned int>(), ContainsSubstring(HelloWorld));
-					CHECK_THROWS_WITH(String2.to<unsigned char>(), ContainsSubstring(OverflowChar));
+					CHECK_THROWS_WITH(String1.template to<unsigned int>(), ContainsSubstring(HelloWorld));
+					CHECK_THROWS_WITH(String2.template to<unsigned char>(), ContainsSubstring(OverflowChar));
 				}
 
 			}
@@ -63,9 +63,9 @@ TEMPLATE_TEST_CASE("STPBasicStringAdaptor can convert between string and desired
 			const CurrentSA String1(UShortMax), String2(DoublePi), String3(BoolFalse);
 
 			THEN("The corresponded values can be converted from the adaptors") {
-				CHECK(String1.to<unsigned short>() == numeric_limits<unsigned short>::max());
-				CHECK_THAT(String2.to<double>(), Catch::Matchers::WithinAbs(3.1415, 1e-5));
-				CHECK_FALSE(String3.to<bool>());
+				CHECK(String1.template to<unsigned short>() == numeric_limits<unsigned short>::max());
+				CHECK_THAT(String2.template to<double>(), Catch::Matchers::WithinAbs(3.1415, 1e-5));
+				CHECK_FALSE(String3.template to<bool>());
 			}
 
 			AND_WHEN("The string adaptors are copied or moved") {
@@ -73,7 +73,7 @@ TEMPLATE_TEST_CASE("STPBasicStringAdaptor can convert between string and desired
 
 				THEN("They functions exactly the same as the original copy") {
 					CHECK((*StringCpy == *String1));
-					CHECK_FALSE(StringMov.to<bool>());
+					CHECK_FALSE(StringMov.template to<bool>());
 				}
 
 			}

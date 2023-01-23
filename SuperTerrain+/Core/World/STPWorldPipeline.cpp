@@ -630,7 +630,6 @@ public:
 	 * The response result will be available until the next initiation of request.
 	*/
 	const STPChunkRequestResponse& requestChunk(const STPChunkRequestPayload& request) {
-		const size_t requestCount = request.size();
 		//request data
 		this->ChunkRequestCache.clear();
 		auto& [generation_entry] = this->ChunkRequestCache;

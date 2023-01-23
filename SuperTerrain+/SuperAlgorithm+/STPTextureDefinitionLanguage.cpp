@@ -1,5 +1,5 @@
 #include <SuperAlgorithm+/Parser/STPTextureDefinitionLanguage.h>
-#include <SuperAlgorithm+/Parser/STPLexer.h>
+#include <SuperAlgorithm+/Parser/Framework/STPLexer.h>
 
 //Error
 #include <SuperTerrain+/Exception/STPParserError.h>

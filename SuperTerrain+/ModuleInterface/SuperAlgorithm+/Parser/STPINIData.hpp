@@ -2,7 +2,7 @@
 #ifndef _STP_INI_DATA_HPP_
 #define _STP_INI_DATA_HPP_
 
-#include "STPBasicStringAdaptor.h"
+#include "./Framework/STPBasicStringAdaptor.h"
 
 #include <unordered_map>
 

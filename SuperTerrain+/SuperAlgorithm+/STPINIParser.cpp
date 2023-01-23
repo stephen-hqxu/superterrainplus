@@ -1,5 +1,5 @@
 #include <SuperAlgorithm+/Parser/STPINIParser.h>
-#include <SuperAlgorithm+/Parser/STPLexer.h>
+#include <SuperAlgorithm+/Parser/Framework/STPLexer.h>
 
 #include <cassert>
 
