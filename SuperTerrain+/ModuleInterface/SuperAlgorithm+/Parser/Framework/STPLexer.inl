@@ -12,14 +12,15 @@
 #define LEXER_TEMPLATE template<class... LexState>
 #define NAMESPACE_LEXER_NAME SuperTerrainPlus::STPAlgorithm::STPLexer<LexState...>
 
+/* ------------------------------------------------------- Token ---------------------------------------------------------- */
 LEXER_TEMPLATE
-constexpr NAMESPACE_LEXER_NAME::STPToken::STPToken() noexcept : Name(STPToken::Nameless), TokenID(STPLexical::NullTokenID) {
+constexpr NAMESPACE_LEXER_NAME::STPToken::STPToken() noexcept : Name(&STPToken::Nameless), TokenID(STPLexical::NullTokenID) {
 
 }
 
 LEXER_TEMPLATE
 constexpr NAMESPACE_LEXER_NAME::STPToken::STPToken(const std::string_view& name, const STPLexical::STPTokenID id, const std::string_view lexeme) noexcept :
-	Name(name), TokenID(id), Lexeme(lexeme) {
+	Name(&name), TokenID(id), Lexeme(lexeme) {
 
 }
 
@@ -56,12 +57,63 @@ inline bool NAMESPACE_LEXER_NAME::STPToken::operator!=(TokExpr) const noexcept {
 	return !this->operator==(TokExpr {});
 }
 
+/* --------------------------------------------------- Lexical State -------------------------------------- */
 LEXER_TEMPLATE
-inline NAMESPACE_LEXER_NAME::STPLexer(
-	const std::string_view input, const std::string_view lexer_name, const std::string_view source_name) noexcept :
-	Sequence(input), Line(1u), Character(1u), LexerName(lexer_name), SourceName(source_name),
+constexpr NAMESPACE_LEXER_NAME::STPLexicalState::STPLexicalState() noexcept :
 	//get the state ID of the first state
-	CurrentState(std::tuple_element<0u, STPLexer::LexicalStateCollection>::type::LexicalStateID) {
+	StateID(std::tuple_element<0u, STPLexer::LexicalStateCollection>::type::LexicalStateID), StateIndex(0u) {
+
+}
+
+LEXER_TEMPLATE
+template<class... E>
+constexpr size_t NAMESPACE_LEXER_NAME::STPLexicalState::toStateIndex(const STPLexical::STPStateID state, std::tuple<E...>) noexcept {
+	//compile-time linear search for the index
+	size_t index = std::numeric_limits<size_t>::max();
+	//search using fold expression; make it volatile to prevent compiler from optimising it away
+	//this expression should always be true
+	[[maybe_unused]] const volatile bool isValidStateID = ((index = E::Index, state == E::ID) || ...);
+	return index;
+}
+
+LEXER_TEMPLATE
+constexpr size_t NAMESPACE_LEXER_NAME::STPLexicalState::toStateIndex(const STPLexical::STPStateID state) noexcept {
+	return STPLexicalState::toStateIndex(state, STPLexicalState::LexicalStateCollectionIDMap {});
+}
+
+LEXER_TEMPLATE
+inline typename NAMESPACE_LEXER_NAME::STPLexicalState& NAMESPACE_LEXER_NAME::STPLexicalState::operator=(const STPLexical::STPStateID id) noexcept {
+	//update the state ID
+	this->StateID = id;
+	//update the index
+	this->StateIndex = STPLexicalState::toStateIndex(id);
+
+	return *this;
+}
+
+LEXER_TEMPLATE
+template<class State>
+inline typename NAMESPACE_LEXER_NAME::STPLexicalState& NAMESPACE_LEXER_NAME::STPLexicalState::operator=(State) noexcept {
+	(*this) = State::LexicalStateID;
+	return *this;
+}
+
+LEXER_TEMPLATE
+inline NAMESPACE_LEXER_NAME::STPLexicalState::operator SuperTerrainPlus::STPAlgorithm::STPLexical::STPStateID() const noexcept {
+	return this->StateID;
+}
+
+LEXER_TEMPLATE
+inline size_t NAMESPACE_LEXER_NAME::STPLexicalState::index() const noexcept {
+	return this->StateIndex;
+}
+
+/* --------------------------------------------------------------------------------------------------------- */
+
+LEXER_TEMPLATE
+inline NAMESPACE_LEXER_NAME::STPLexer(const std::string_view input, const std::string_view lexer_name,
+	const std::string_view source_name, const STPLexical::STPBehaviour& behaviour) noexcept :
+	Behaviour(behaviour), Sequence(input), Line(1u), Character(1u), LexerName(lexer_name), SourceName(source_name) {
 
 }
 
@@ -80,8 +132,7 @@ template<class... ExpTokExpr>
 inline void NAMESPACE_LEXER_NAME::throwUnexpectedTokenError(const STPToken& got_token) const {
 	constexpr static auto AllStateName = std::array { LexState::Representation... };
 	//get current state name
-	const std::string_view& stateName =
-		AllStateName[STPLexer::toStateIndex(this->CurrentState, STPLexer::LexicalStateCollectionIDMap {})];
+	const std::string_view& stateName = AllStateName[this->LexicalState.index()];
 
 	//compose error message
 	using std::endl;
@@ -96,7 +147,7 @@ inline void NAMESPACE_LEXER_NAME::throwUnexpectedTokenError(const STPToken& got_
 	} else {
 		((err << '<' << STPLexer::getTokenName<ExpTokExpr>() << "> "), ...) << endl;
 	}
-	err << "Got token \'" << got_token.Name << "\' with token ID: " << got_token.TokenID
+	err << "Got token \'" << *got_token.Name << "\' with token ID: " << got_token.TokenID
 		<< ", and matched string: " << ((*got_token)->empty() ? "<empty matching>" : *got_token.Lexeme) << endl;
 
 	this->throwSyntaxError(err.str(), "unexpected token");
@@ -109,13 +160,14 @@ inline std::string_view NAMESPACE_LEXER_NAME::pop(const size_t count) {
 	const string_view lexeme = this->Sequence.substr(0u, count);
 	this->Sequence.remove_prefix(count);
 
+	const auto [lineBreaker] = this->Behaviour;
 	//line and character number correction
 	//find the number of newline symbol from the matched sequence
-	if (const size_t newlineCount = std::count(lexeme.cbegin(), lexeme.cend(), '\n');
+	if (const size_t newlineCount = std::count(lexeme.cbegin(), lexeme.cend(), lineBreaker);
 		newlineCount > 0u) {
 		this->Line += newlineCount;
 		//find the new character position in the current line, if newline exists
-		this->Character = lexeme.length() - lexeme.find_last_of('\n');
+		this->Character = lexeme.length() - lexeme.find_last_of(lineBreaker);
 	} else {
 		this->Character += lexeme.length();
 	}
@@ -132,7 +184,7 @@ inline auto NAMESPACE_LEXER_NAME::nextAtState(const std::string_view sequence) n
 	constexpr static auto ExpressionFromAllState =
 		std::make_tuple(STPLexer::getTokenExpressionData(typename LexState::TokenExpressionCollection {})...);
 	//get state information
-	constexpr static size_t CurrentStateIndex = STPLexer::toStateIndex(S, STPLexer::LexicalStateCollectionIDMap {});
+	constexpr static size_t CurrentStateIndex = STPLexicalState::toStateIndex(S);
 	using CurrentState = tuple_element_t<CurrentStateIndex, STPLexer::LexicalStateCollection>;
 	using CurrentTokenExpression = typename CurrentState::TokenExpressionCollection;
 	using CurrentTokenExpressionDataType = typename tuple_element_t<CurrentStateIndex, decltype(ExpressionFromAllState)>::value_type;
@@ -172,19 +224,19 @@ inline typename NAMESPACE_LEXER_NAME::STPToken NAMESPACE_LEXER_NAME::next() {
 	constexpr static auto AllExpressionMatcher = STPLexer::instantiateStateMatcher(STPLexer::LexicalStateCollectionID {});
 	using std::string_view;
 
-	if (this->Sequence.empty()) {
-		constexpr static STPToken EndOfSequenceToken = STPToken(STPLexer::getTokenName<STPLexical::EndOfSequence>(),
-			STPLexical::EndOfSequenceTokenID, string_view());
-		return EndOfSequenceToken;
-	}
-
-	size_t stateIndex = STPLexer::toStateIndex(this->CurrentState, STPLexer::LexicalStateCollectionIDMap {});
 	//2 counters to record the lexeme prefix for different lexical actions
 	size_t prefix_begin = 0u, remainder_begin = 0u;
 	while (true) {
+		const string_view remainderSeq = this->Sequence.substr(remainder_begin);
+		//check if there is anything remaining to be matched in every loop cycle
+		if (remainderSeq.empty()) {
+			constexpr static STPToken EndOfSequenceToken = STPToken(STPLexer::getTokenName<STPLexical::EndOfSequence>(),
+				STPLexical::EndOfSequenceTokenID, string_view());
+			return EndOfSequenceToken;
+		}
+
 		//look for the current state matching function and match it on the remainder sequence (whole sequence with prefixed removed)
-		const auto [match_length, token_data] =
-			AllExpressionMatcher[stateIndex](this->Sequence.substr(remainder_begin));
+		const auto [match_length, token_data] = AllExpressionMatcher[this->LexicalState.index()](remainderSeq);
 		if (!token_data) {
 			constexpr static STPToken NullToken;
 			//no valid match found
@@ -194,8 +246,9 @@ inline typename NAMESPACE_LEXER_NAME::STPToken NAMESPACE_LEXER_NAME::next() {
 		//a valid matching is found
 		const auto& [token_string, token_id, token_action, token_next_state] = *token_data;
 		//update lexical state, if necessary
-		const bool hasStateChanged =
-			token_next_state == STPLexical::NullStateID ? false : (this->CurrentState = token_next_state, true);
+		if (token_next_state != STPLexical::NullStateID) {
+			this->LexicalState = token_next_state;
+		}
 
 		//update sequence length
 		remainder_begin += match_length;
@@ -210,11 +263,6 @@ inline typename NAMESPACE_LEXER_NAME::STPToken NAMESPACE_LEXER_NAME::next() {
 		case LA::Collect:
 			//concatenate the matched string to the previous matching; then keep going
 			//basically we don't need to do anything
-			
-			if (hasStateChanged) {
-				//update the state index record
-				stateIndex = STPLexer::toStateIndex(token_next_state, STPLexer::LexicalStateCollectionIDMap {});
-			}
 			break;
 		case LA::Consume:
 			//consume all matched string (including non-discarded prefix) and create a new token

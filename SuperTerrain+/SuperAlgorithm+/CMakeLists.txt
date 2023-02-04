@@ -1,6 +1,7 @@
 # host-side shared library
 set(STP_ALGORITHM_HOST_ENGINE_SOURCE
 STPAlgorithmEnvironment.cpp
+STPCommandLineParser.cpp
 STPINIParser.cpp
 STPPermutationGenerator.cpp
 STPSingleHistogramFilter.cpp

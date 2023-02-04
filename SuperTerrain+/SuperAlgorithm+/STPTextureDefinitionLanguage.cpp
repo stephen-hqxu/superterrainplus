@@ -120,12 +120,12 @@ namespace {
 
 using STPTextureDefinitionLanguage::STPResult;
 
-static void checkTextureDeclared(const STPTDLLexer& lexer, STPResult& result, const string_view& texture) {
+static void checkTextureDeclared(STPResult& result, const string_view& texture) {
 	if (result.DeclaredTexture.find(texture) == result.DeclaredTexture.cend()) {
 		//texture variable not found, throw error
 		ostringstream msg;
 		msg << "Texture \'" << texture << "\' is not declared before it is being referenced." << endl;
-		lexer.throwSyntaxError(msg.str(), "unknown texture");
+		throw STP_PARSER_SEMANTIC_ERROR_CREATE(msg.str(), TDLParserName, "unknown texture");
 	}
 }
 
@@ -165,7 +165,7 @@ static void processRule(STPTDLLexer& lexer, STPResult& result) {
 				const float altitude = lexer.expect<TDLFloat>()->to<float>();
 				lexer.expect<MapTo>();
 				const string_view map2Texture = **lexer.expect<TDLIdentifier>();
-				checkTextureDeclared(lexer, result, map2Texture);
+				checkTextureDeclared(result, map2Texture);
 
 				//store an altitude rule
 				result.Altitude.emplace_back(rule4Sample, altitude, map2Texture);
@@ -179,7 +179,7 @@ static void processRule(STPTDLLexer& lexer, STPResult& result) {
 				const float UB = lexer.expect<TDLFloat>()->to<float>();
 				lexer.expect<MapTo>();
 				const string_view map2Texture = **lexer.expect<TDLIdentifier>();
-				checkTextureDeclared(lexer, result, map2Texture);
+				checkTextureDeclared(result, map2Texture);
 
 				//store a gradient rule
 				result.Gradient.emplace_back(rule4Sample, minG, maxG, LB, UB, map2Texture);
@@ -215,7 +215,7 @@ static void processGroup(STPTDLLexer& lexer, STPResult& result) {
 		//for each texture name assigned to this group
 		while (true) {
 			const string_view& assignedTexture = texture_in_group.emplace_back(**lexer.expect<TDLIdentifier>());
-			checkTextureDeclared(lexer, result, assignedTexture);
+			checkTextureDeclared(result, assignedTexture);
 
 			if (lexer.expect<Separator, Assignment>() == Assignment {}) {
 				//no more texture to be assigned to this group

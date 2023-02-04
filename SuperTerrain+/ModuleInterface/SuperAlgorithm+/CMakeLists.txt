@@ -14,6 +14,8 @@ Parser/Framework/STPLexer.inl
 Parser/Framework/STPRegularLanguage.h
 Parser/Framework/STPRegularLanguage.inl
 # /Parser
+Parser/STPCommandLineParser.h
+Parser/STPCommandLineParser.inl
 Parser/STPINIData.hpp
 Parser/STPINIParser.h
 Parser/STPTextureDefinitionLanguage.h

@@ -185,17 +185,17 @@ SCENARIO("STPLexer can perform basic lexical operations", "[AlgorithmHost][STPLe
 
 			THEN("The lexer can still analyse with the correct state switching") {
 				//start from the first state
-				CHECK(Lexer.CurrentState == StateA::LexicalStateID);
+				CHECK(Lexer.LexicalState == StateA::LexicalStateID);
 				CHECK((**Lexer.expect<CharA>() == "aaaaaa"));
 
 				//state switch symbols should be ignored
 				CHECK_NOTHROW((**Lexer.expect<CharB>() == "bbb"));
 				//state should have been switched
-				CHECK(Lexer.CurrentState == StateB::LexicalStateID);
+				CHECK(Lexer.LexicalState == StateB::LexicalStateID);
 
 				//now switch back
 				CHECK((**Lexer.expect<CharA>() == "a"));
-				CHECK(Lexer.CurrentState == StateA::LexicalStateID);
+				CHECK(Lexer.LexicalState == StateA::LexicalStateID);
 
 				CHECK_NOTHROW(Lexer.expect<EOS>());
 			}

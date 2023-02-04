@@ -91,6 +91,24 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			Consume = 0xCCu
 		};
 
+		/**
+		 * @brief STPBehaviour specifies user-defined behaviour of the lexer.
+		*/
+		struct STPBehaviour {
+		public:
+
+			//The character that indicates end of a line.
+			//Default: \n
+			char NewlineDelimiter = '\n';
+			//The number of space a tabulator character occupies.
+			//This option can be used to specify the way to count the horizontal character position.
+			//Column mode multiplies counts by TAB width for every tabulator character.
+			//Character mode counts every character as one.
+			//Default: 1
+			//size_t TabulationWidth = 1u;
+
+		};
+
 	}
 
 	/**
@@ -165,45 +183,6 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		static_assert(STPLexer::isIDValid(LexicalTokenExpressionCollectionID {}, std::min(STPLexical::NullTokenID, STPLexical::EndOfSequenceTokenID)),
 			"There are lexical token expressions defined in this lexer whose IDs are not unique and/or equal to any reserved value");
 
-		/* -------------------------------------------------------------------------------------------------- */
-		//store a map entry
-		template<STPLexical::STPStateID V, size_t I>
-		struct STPStateIDMapEntry {
-			//state ID
-			constexpr static auto ID = V;
-			//index in the map for this state ID
-			constexpr static auto Index = I;
-		};
-
-		//build a compile-time reverse lookup table for state ID and index into the state collection
-		template<class, class>
-		struct buildStateIDMap;
-
-		template<typename IDType, IDType... V, size_t... I>
-		struct buildStateIDMap<std::integer_sequence<IDType, V...>, std::index_sequence<I...>> {
-			using Map = std::tuple<STPStateIDMapEntry<V, I>...>;
-		};
-		//convert from lexical state ID to index in the parameter pack
-		using LexicalStateCollectionIDMap =
-			typename buildStateIDMap<LexicalStateCollectionID, std::make_index_sequence<sizeof...(LexState)>>::Map;
-
-		/**
-		 * @brief Convert from lexical state ID to the index in the collection.
-		 * @param E All state entries in the map.
-		 * @param state The state ID to be converted. The behaviour is undefined if the state ID is not an ID belongs
-		 * to a state defined in this lexer.
-		 * @return The lexical state index.
-		*/
-		template<class... E>
-		constexpr static size_t toStateIndex(const STPLexical::STPStateID state, std::tuple<E...>) noexcept {
-			//compile-time linear search for the index
-			size_t index = std::numeric_limits<size_t>::max();
-			//search using fold expression; make it volatile to prevent compiler from optimising it away
-			//this expression should always be true
-			[[maybe_unused]] const volatile bool isValidStateID = ((index = E::Index, state == E::ID) || ...);
-			return index;
-		}
-
 		/* --------------------------------------------------------------------------------------------- */
 		//extract token expressions from one state into a more accessible data structure
 		template<class... T>
@@ -244,11 +223,11 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		public:
 
 			//the name given by user from matched token expression
-			const std::string_view& Name;
+			const std::string_view* Name;
 			//the ID of the token recognised.
-			const STPLexical::STPTokenID TokenID;
+			STPLexical::STPTokenID TokenID;
 			//the string representation of this token.
-			const STPStringViewAdaptor Lexeme;
+			STPStringViewAdaptor Lexeme;
 
 			/**
 			 * @brief Create a default token, which is invalid.
@@ -292,6 +271,9 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		};
 
 	private:
+
+		//The lexical behaviour of the lexer.
+		const STPLexical::STPBehaviour Behaviour;
 
 		//A string input containing a sequence of null-terminated characters to be parsed.
 		std::string_view Sequence;
@@ -350,10 +332,91 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		//A source name for debugging purposes.
 		const std::string_view SourceName;
 
-		//The current lexical state the lexer is operating at.
-		//This state will be initialised as the state appears as the first lexical state in the state collection.
-		//State can be modified manually, or by matched token.
-		STPLexical::STPStateID CurrentState;
+		/**
+		 * @brief Record the current lexical state the lexer is operating at.
+		 * This state will be initialised as the state appears as the first lexical state in the state collection.
+		 * State can be modified manually, or by matched token.
+		*/
+		class STPLexicalState {
+		private:
+
+			//store a map entry
+			template<STPLexical::STPStateID V, size_t I>
+			struct STPStateIDMapEntry {
+				//state ID
+				constexpr static auto ID = V;
+				//index in the map for this state ID
+				constexpr static auto Index = I;
+			};
+
+			//build a compile-time reverse lookup table for state ID and index into the state collection
+			template<class, class>
+			struct buildStateIDMap;
+
+			template<typename IDType, IDType... V, size_t... I>
+			struct buildStateIDMap<std::integer_sequence<IDType, V...>, std::index_sequence<I...>> {
+				using Map = std::tuple<STPStateIDMapEntry<V, I>...>;
+			};
+			//convert from lexical state ID to index in the parameter pack
+			using LexicalStateCollectionIDMap =
+				typename buildStateIDMap<LexicalStateCollectionID, std::make_index_sequence<sizeof...(LexState)>>::Map;
+
+			/**
+			 * @brief Convert from lexical state ID to the index in the collection.
+			 * @param E All state entries in the map.
+			 * @param state The state ID to be converted. The behaviour is undefined if the state ID is not an ID belongs
+			 * to a state defined in this lexer.
+			 * @return The lexical state index.
+			*/
+			template<class... E>
+			constexpr static size_t toStateIndex(STPLexical::STPStateID, std::tuple<E...>) noexcept;
+
+			/* -------------------------------------------------------------------------------------------------- */
+			//ID of current lexical state
+			STPLexical::STPStateID StateID;
+			//computed automatically from the state ID
+			size_t StateIndex;
+
+		public:
+
+			//initialise the lexical state by using the first state declared in the collection/
+			constexpr STPLexicalState() noexcept;
+
+			~STPLexicalState() = default;
+
+			//An overloaded version of the state index conversion function.
+			//@see toStateIndex()
+			constexpr static size_t toStateIndex(STPLexical::STPStateID) noexcept;
+
+			/**
+			 * @brief Set the current lexical state with a lexical state ID.
+			 * @param id The ID of the next lexical state.
+			 * @return This
+			*/
+			STPLexicalState& operator=(STPLexical::STPStateID) noexcept;
+
+			/**
+			 * @brief Set the current lexical state with a lexical state object.
+			 * @tparam State The lexical state object to be set to.
+			 * @param state The instance of the lexical state object.
+			 * @return This
+			*/
+			template<class State>
+			STPLexicalState& operator=(State) noexcept;
+
+			/**
+			 * @brief Get the ID to the current lexical state.
+			 * @return The ID of the current lexical state.
+			*/
+			operator STPLexical::STPStateID() const noexcept;
+
+			/**
+			 * @brief Get the index to the current lexical state.
+			 * @return The index to the current lexical state.
+			*/
+			size_t index() const noexcept;
+
+		} LexicalState;
 
 		/**
 		 * @brief Initialise a lexer instance.
@@ -362,9 +425,19 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		 * until the current instance and all returned view of string from the current instance to the user are destroyed.
 		 * @param lexer_name The name of the lexer or parser using this general-purpose lexer.
 		 * @param source_name The name of the source file.
-		 * This is optional, just to make debugging easier.
+		 * This can be empty, just to make debugging easier.
+		 * @param behaviour Specify the lexical behaviour for this lexer.
 		*/
-		STPLexer(std::string_view, std::string_view, std::string_view = "<unknown source name>") noexcept;
+		STPLexer(std::string_view, std::string_view, std::string_view,
+			const STPLexical::STPBehaviour& = STPLexical::STPBehaviour {}) noexcept;
+
+		STPLexer(const STPLexer&) = delete;
+
+		STPLexer(STPLexer&&) = delete;
+
+		STPLexer& operator=(const STPLexer&) = delete;
+
+		STPLexer& operator=(STPLexer&&) = delete;
 
 		~STPLexer() = default;
 
