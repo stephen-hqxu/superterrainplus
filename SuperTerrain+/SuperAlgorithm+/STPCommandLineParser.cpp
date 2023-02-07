@@ -8,6 +8,7 @@
 #include <queue>
 #include <unordered_set>
 #include <unordered_map>
+#include <optional>
 
 //Stream
 #include <sstream>
@@ -23,7 +24,7 @@ using std::queue;
 using std::unordered_set;
 using std::unordered_map;
 using std::pair;
-using std::tuple;
+using std::optional;
 
 using std::string;
 using std::string_view;
@@ -35,7 +36,7 @@ using std::endl;
 using std::for_each;
 using std::forward;
 using std::make_pair;
-using std::make_tuple;
+using std::make_optional;
 using std::setw;
 
 using namespace SuperTerrainPlus::STPAlgorithm;
@@ -64,15 +65,17 @@ namespace {
 
 	constexpr string_view ShortOptionKey = "-", LongOptionKey = "--", OptionEndSymbol = "=";
 
-	using OptionCharacter = CC::Range<'a', 'z'>;
+	using OptionCharacterLower = CC::Range<'a', 'z'>;
+	using OptionCharacterUpper = CC::Range<'A', 'Z'>;
 	using DelimiterCharacter = CC::Atomic<ArgumentDelimiter>;
 	//---
-	using ShortOptionString = CC::Class<OptionCharacter>;
+	using ShortOptionString = CC::Class<OptionCharacterLower, OptionCharacterUpper>;
 	using LongOptionString =
 		RL::STPQuantifier::StrictMany<
 			CC::Class<
 				CC::Atomic<'-'>,
-				OptionCharacter
+				OptionCharacterLower,
+				OptionCharacterUpper
 			>
 		>;
 
@@ -87,22 +90,20 @@ namespace {
 		RL::STPQuantifier::MaybeMany<CC::Class<CC::Except<DelimiterCharacter>>>, 0x66u);
 
 	/* ---------------------------------------------- option -------------------------------------------------- */
-	//--- short
-	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(ShortOptionName, 0xB0u, Consume, ShortOptionString, 0x7Du);
-	//--- long
-	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(LongOptionName, 0xB1u, Consume, LongOptionString, 0x7Du);
-	//--- end
+	//--- long option
+	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(LongOptionName, 0xBFu, Consume, LongOptionString, 0x7Eu);
+	//--- regular option, this allows putting multiple short options together without specifying control symbols
+	STP_LEXER_CREATE_TOKEN_EXPRESSION(ShortOptionName, 0xB1u, Consume, ShortOptionString);
 	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(OptionEndCompact, 0xB2u, Consume, RL::Literal<OptionEndSymbol>, 0x66u);
 	STP_LEXER_CREATE_TOKEN_EXPRESSION_SWITCH_STATE(OptionEndSpread, 0xB3u, Consume, CC::Class<DelimiterCharacter>, 0x66u);
 
 	/* -------------------------------------------------------------------------------------------------------------------- */
 	STP_LEXER_CREATE_LEXICAL_STATE(CmdGlobalState, 0x66u, CommandSeparator, ShortOptionControl, LongOptionControl, ValueControl);
 	STP_LEXER_CREATE_LEXICAL_STATE(CmdValueState, 0x6Fu, ValueName);
-	STP_LEXER_CREATE_LEXICAL_STATE(CmdShortOptionState, 0x7Eu, ShortOptionName);
 	STP_LEXER_CREATE_LEXICAL_STATE(CmdLongOptionState, 0x7Fu, LongOptionName);
-	STP_LEXER_CREATE_LEXICAL_STATE(CmdOptionEndState, 0x7Du, OptionEndCompact, OptionEndSpread);
+	STP_LEXER_CREATE_LEXICAL_STATE(CmdRegularOptionState, 0x7Eu, ShortOptionName, OptionEndCompact, OptionEndSpread);
 
-	typedef STPLexer<CmdGlobalState, CmdValueState, CmdShortOptionState, CmdLongOptionState, CmdOptionEndState> STPCmdLexer;
+	typedef STPLexer<CmdGlobalState, CmdValueState, CmdLongOptionState, CmdRegularOptionState> STPCmdLexer;
 }
 
 namespace STPInternal = STPCommandLineParser::STPInternal;
@@ -114,9 +115,9 @@ typedef queue<STPStringViewAdaptor> STPReceivedPositional;
 typedef unordered_map<string_view, const STPInternal::STPBaseOption*> STPOptionTable;
 //A subset of the option table, storing positional options based on their precedence.
 typedef vector<const STPInternal::STPBaseOption*> STPPositionalOptionTable;
-//The name of the option from the command line, the pointer of the option configuration of the next option,
+//The pointer of the option configuration of the next option,
 //and a boolean value specifies if this option uses DSV argument format.
-typedef tuple<string_view, const STPInternal::STPBaseOption*, bool> STPOptionResult;
+typedef optional<pair<const STPInternal::STPBaseOption*, bool>> STPOptionResult;
 
 /**
  * @brief Apply a function for each of the non-empty option name.
@@ -134,28 +135,82 @@ inline static void applyOptionName(const STPInternal::STPBaseOption& option, Fun
 	}
 }
 
+/**
+ * @brief Print an option by its name to the stream.
+ * @param stream The stream to be printed to.
+ * @param option The option to be printed.
+ * @param separator The separator to separate the long name and short name, if both are defined.
+ * @return The stream.
+*/
+static ostream& displayOption(ostream& stream, const STPInternal::STPBaseOption& option, const char separator = ',') {
+	//use separator if both option names are defined
+	const bool useSeparator = !option.ShortName.empty() && !option.LongName.empty();
+
+	if (!option.ShortName.empty()) {
+		stream << '-' << option.ShortName;
+	}
+	if (useSeparator) {
+		stream << separator;
+	}
+	if (!option.LongName.empty()) {
+		stream << "--" << option.LongName;
+	}
+
+	return stream;
+}
+
 void STPCommandLineParser::validate(const STPInternal::STPBaseCommand& command) {
 	//precondition
 	STP_ASSERTION_VALIDATION(!command.isGroup(), "The top level command must not be a group");
 
 	const auto validateCurrentOption = [](const STPInternal::STPBaseOption& option) -> void {
-		STP_ASSERTION_VALIDATION(!option.ShortName.empty() && !option.LongName.empty(),
+		const auto messageOptionError = [&option](const char* const extra_msg) -> string {
+			ostringstream msg;
+			msg << "Validation failure for option \'";
+			displayOption(msg, option) << '\'' << endl;
+			msg << extra_msg;
+			
+			return msg.str();
+		};
+
+		const auto isNameValid = [](const size_t matchLength, const string_view& name) -> bool {
+			//we need to make sure the entire option name is an exact match of the expression
+			return name.empty() || (matchLength != RL::NoMatch && matchLength == name.length());
+		};
+		const string_view &shortName = option.ShortName,
+			&longName = option.LongName;
+		const size_t shortMatch = ShortOptionString::match(shortName),
+			longMatch = LongOptionString::match(longName);
+
+		STP_ASSERTION_VALIDATION(!(shortName.empty() && longName.empty()),
 			"At least one of the option name should be specified");
-		//we need to make sure the entire option name is an exact match of the expression
-		STP_ASSERTION_VALIDATION(ShortOptionString::match(option.ShortName) == option.ShortName.length(),
-			"The format of short option name is invalid");
-		STP_ASSERTION_VALIDATION(LongOptionString::match(option.LongName) == option.LongName.length(),
-			"The format of long option name is invalid");
+		STP_ASSERTION_VALIDATION(isNameValid(shortMatch, shortName) || isNameValid(longMatch, longName),
+			messageOptionError("The format of one of the option name is invalid"));
 
 		const auto [min, max] = option.ArgumentCount;
-		STP_ASSERTION_NUMERIC_DOMAIN(min <= max, "The minimum number of argument must be no greater than the maximum");
+		STP_ASSERTION_NUMERIC_DOMAIN(min <= max, messageOptionError("The minimum number of argument must be no greater than the maximum"));
 	};
 	//does not include descendant commands and options
-	const auto validateCurrentCommand = [](const STPInternal::STPBaseCommand& command) -> void {
+	const auto validateCurrentCommand = [root = &command](const STPInternal::STPBaseCommand& command) -> void {
+		const auto messageCommandError = [&command](const char* const extra_msg) -> string {
+			ostringstream msg;
+			msg << "Validation failure for command: \'" << command.Name << '\'' << endl;
+			msg << extra_msg;
+
+			return msg.str();
+		};
+
 		STP_ASSERTION_VALIDATION(!command.Name.empty(), "Name of any command or group must be non-empty");
+		if (command.isSubcommand() && &command != root) {
+			//root command does not matter, because we don't need to specify its name from the command line
+			//use the same name convention for the subcommand as the long option name
+			const size_t subcommandNameMatch = LongOptionString::match(command.Name);
+			STP_ASSERTION_VALIDATION(subcommandNameMatch != RL::NoMatch && subcommandNameMatch == command.Name.length(),
+				messageCommandError("The format of the subcommand name is invalid"));
+		}
 
 		const auto [min, max] = command.OptionCount;
-		STP_ASSERTION_NUMERIC_DOMAIN(min <= max, "The minimum number of option must be no greater than the maximum");
+		STP_ASSERTION_NUMERIC_DOMAIN(min <= max, messageCommandError("The minimum number of option must be no greater than the maximum"));
 	};
 	//detect if any option name is duplicate within the current subcommand level
 	//this also includes all groups in the current level
@@ -268,7 +323,7 @@ static pair<vector<const STPInternal::STPBaseCommand*>, STPCmdLexer::STPToken> f
 	vector<const STPInternal::STPBaseCommand*> commandPath;
 	commandPath.push_back(&root);
 
-	const auto createResult = [&commandPath](const STPCmdLexer::STPToken& token) noexcept -> auto{
+	const auto createResult = [&commandPath](const STPCmdLexer::STPToken& token) noexcept -> auto {
 		return make_pair(std::move(commandPath), token);
 	};
 	//Basically we want to consume as many subcommand token as many as we can,
@@ -360,49 +415,45 @@ static void splitArgument(string_view argument, const STPInternal::STPBaseOption
 
 /**
  * @brief Read the next option.
- * @param lexer The lexer.
+ * @param option_name The name of the next option.
  * @param defined_option All valid options defined by the rule.
  * @return The option parsing result.
 */
-static STPOptionResult readOption(STPCmdLexer& lexer, const STPOptionTable& defined_option) {
-	const string_view option_name = **lexer.expect<ShortOptionName, LongOptionName>();
-
+static const STPInternal::STPBaseOption& readOption(const string_view option_name, const STPOptionTable& defined_option) {
 	const auto it = defined_option.find(option_name);
 	if (it == defined_option.cend()) {
 		ostringstream err;
 		err << "Option \'" << option_name << "\' is undefined" << endl;
-		throw STP_PARSER_SEMANTIC_ERROR_CREATE(err.str(), CmdParserName, "unknown option");
+		throw CMD_PARSER_SEMANTIC_ERROR(err.str(), "unknown option");
 	}
 
 	//see if this option uses delimiter separated value
 	const STPInternal::STPBaseOption& current_option = *it->second;
-	const bool isDSV = lexer.expect<OptionEndCompact, OptionEndSpread>() == OptionEndCompact {};
-
 	if (current_option.Result.IsUsed) {
 		ostringstream err;
 		err << "Option \'" << option_name << "\' has already been specified, duplicate option is prohibited" << endl;
-		throw STP_PARSER_SEMANTIC_ERROR_CREATE(err.str(), CmdParserName, "duplicate option");
+		throw CMD_PARSER_SEMANTIC_ERROR(err.str(), "duplicate option");
 	}
-	return make_tuple(option_name, &current_option, isDSV);
+
+	return current_option;
 }
 
 /**
  * @brief Save the current state into the options, with validation.
- * @param cmd_name The current name of the option parsed from the command line, this is for debug purposes.
  * @param option The current option setting.
  * @param argument The array of arguments ready to be stored into the option.
 */
-static void saveOption(const string_view& cmd_name, const STPInternal::STPBaseOption& option,
-	const STPInternal::STPBaseOption::STPReceivedArgument& argument) {
+static void saveOption(const STPInternal::STPBaseOption& option, const STPInternal::STPBaseOption::STPReceivedArgument& argument) {
 	const auto [min, max] = option.ArgumentCount;
 
 	//verify if number of argument meets the requirement
 	if (const size_t count = argument.size();
 		count < min || count > max) {
 		ostringstream err;
-		err << "Option \'" << cmd_name << "\' expects minimum of " << min << " argument(s) and maximum of " << max
+		err << "Option \'";
+		displayOption(err, option) << "\' expects minimum of " << min << " argument(s) and maximum of " << max
 			<< " argument(s), but " << count << " argument(s) was/were encountered" << endl;
-		throw STP_PARSER_SEMANTIC_ERROR_CREATE(err.str(), CmdParserName, "incorrect argument count");
+		throw CMD_PARSER_SEMANTIC_ERROR(err.str(), "incorrect argument count");
 	}
 
 	//okay, convert input to desired value
@@ -414,8 +465,7 @@ static void saveOption(const string_view& cmd_name, const STPInternal::STPBaseOp
 /**
  * @brief Read the next value.
  * @param current_option The current option state.
- * If the option setting pointer is null, it indicates there is no current option, and so values are treated as
- * positional.
+ * If current option state is null, it indicates there is no current option, and so values are treated as positional.
  * @param current_value The current value string.
  * @param positional The storage for position arguments.
  * @param argument The storage for the option argument.
@@ -423,13 +473,18 @@ static void saveOption(const string_view& cmd_name, const STPInternal::STPBaseOp
 */
 static bool readValue(const STPOptionResult& current_option, const STPStringViewAdaptor& current_value,
 	STPReceivedPositional& positional, STPInternal::STPBaseOption::STPReceivedArgument& argument) {
-	const auto& [cmd_name, option_setting, use_dsv] = current_option;
-
-	if (!option_setting) {
-		//no currently active option, treat it as a positional argument
+	if (const bool isPositional = !current_option;
+		isPositional || argument.size() >= current_option->first->ArgumentCount.Max) {
+		//no currently active option, or we got enough maximum number of argument for this option
+		//then halt and treat it as a positional argument
 		positional.push(current_value);
-		return false;
+		//do not reset the state if it was a positional argument
+		//because we need to save the previous state first (after this function returns),
+		//and there is no state to be saved for a positional
+		return !isPositional;
 	}
+
+	const auto [option_setting, use_dsv] = *current_option;
 	//otherwise it is an option argument
 	if (use_dsv) {
 		splitArgument(*current_value, *option_setting, argument);
@@ -439,10 +494,6 @@ static bool readValue(const STPOptionResult& current_option, const STPStringView
 	}
 	//arguments are spread out
 	argument.push_back(current_value);
-	if (argument.size() >= option_setting->ArgumentCount.Max) {
-		//we got enough maximum number of argument for this option, halt
-		return true;
-	}
 	return false;
 }
 
@@ -453,33 +504,64 @@ static bool readValue(const STPOptionResult& current_option, const STPStringView
  * @param registered_option The registered options in the current command.
  * @return All positional arguments recognised from the input.
 */
-static STPReceivedPositional readCommand(STPCmdLexer& lexer, STPCmdLexer::STPToken current_tok,
-	const STPOptionTable& registered_option) {
+static STPReceivedPositional readCommand(STPCmdLexer& lexer, STPCmdLexer::STPToken current_tok, const STPOptionTable& registered_option) {
 	//all positional arguments from the input
 	STPReceivedPositional readPositional;
 	//argument for each option; cleared after each option is parsed
 	STPInternal::STPBaseOption::STPReceivedArgument readArgument;
 
-	STPOptionResult current_option {};
-	const auto& [cmd_name, option_setting, use_dsv] = current_option;
+	STPOptionResult current_option;
+	//undefined behaviour if the current option state is empty
+	const auto fastSaveOption = [&current_option, &readArgument]() -> void {
+		saveOption(*current_option->first, readArgument);
+	};
+	const auto readMultipleOption = [&current_option, &fastSaveOption, &readArgument, &lexer, &registered_option]() -> void {
+		string_view nextOptionName = **lexer.expect<ShortOptionName, LongOptionName>();
+		while (true) {
+			//save the previous option, if we were reading an option previously
+			if (current_option) {
+				fastSaveOption();
+			}
+			//delete old values and prepare for the next option
+			readArgument.clear();
+
+			//enter the next option state
+			const STPInternal::STPBaseOption& next_option = readOption(nextOptionName, registered_option);
+			//check if short options are specified together, or it is the end of option statement
+			const STPCmdLexer::STPToken end_option_token = lexer.expect<OptionEndCompact, OptionEndSpread, ShortOptionName>();
+			//is delimiter separated value
+			const bool isDSV = end_option_token == OptionEndCompact {};
+			if (isDSV && !next_option.supportDelimiter()) {
+				ostringstream err;
+				err << "The specified option \'" << nextOptionName
+					<< "\' does not support supplying argument using delimiter style" << endl;
+				lexer.throwSyntaxError(err.str(), "unsupported expression");
+			}
+
+			//create new option state
+			current_option.emplace(&next_option, isDSV);
+
+			if (end_option_token != ShortOptionName {}) {
+				break;
+			}
+			//a new option is encountered
+			nextOptionName = **end_option_token;
+		}
+	};
+
 	do {
 		//start from the token provided in the function argument
 		//then grab from the command line
 		if (current_tok == ShortOptionControl {} || current_tok == LongOptionControl {}) {
-			//save the previous option, if we were reading an option previously
-			if (option_setting) {
-				saveOption(cmd_name, *option_setting, readArgument);
-			}
-			//read the next option
-			current_option = readOption(lexer, registered_option);
-
-			//delete old values and prepare for the next option
-			readArgument.clear();
+			readMultipleOption();
 		} else if (current_tok == ValueName {}) {
 			//option value, or positional argument if we are not currently parsing any option
 			if (readValue(current_option, *current_tok, readPositional, readArgument)) {
+				//save previous state
+				assert(current_option);
+				fastSaveOption();
 				//leave parsing the current option
-				current_option = {};
+				current_option.reset();
 			}
 			lexer.expect<CommandSeparator>();
 		} else {
@@ -488,12 +570,13 @@ static STPReceivedPositional readCommand(STPCmdLexer& lexer, STPCmdLexer::STPTok
 			break;
 		}
 		
+		//grab the next option from the stream as usual
 		current_tok = expectCommandSectionStart(lexer);
 	} while (true);
 	
 	//save remaining arguments from the last option (if any)
-	if (option_setting) {
-		saveOption(cmd_name, *option_setting, readArgument);
+	if (current_option) {
+		fastSaveOption();
 	}
 	return readPositional;
 }
@@ -591,10 +674,10 @@ static bool postValidation(const STPInternal::STPBaseCommand& root) {
 			const bool used = opt->Result.IsUsed;
 
 			//only invalid if it is a required option but not provided
-			if (used || !opt->Require) {
+			if (!used && opt->Require) {
 				ostringstream err;
-				err << "Option \'" << (opt->LongName.empty() ? opt->ShortName : opt->LongName)
-					<< "\' is required but not provided in the command line" << endl;
+				err << "Option \'";
+				displayOption(err, *opt) << "\' is required but not provided in the command line" << endl;
 				throw CMD_PARSER_SEMANTIC_ERROR(err.str(), "option not provided");
 			}
 			if (used) {
@@ -620,15 +703,9 @@ static bool postValidation(const STPInternal::STPBaseCommand& root) {
 				<< max << " active option(s), but " << usedOption << " option(s) was/were encountered" << endl;
 			throw CMD_PARSER_SEMANTIC_ERROR(err.str(), "incorrect active option count");
 		}
-		//push the result depends on the usage of the group
-		const bool groupUsed = usedOption > 0u;
-		if (groupUsed || !currentGroup->Require) {
-			ostringstream err;
-			err << "Group \'" << currentGroup->Name << "\' is required but no child option is active" << endl;
-			throw CMD_PARSER_SEMANTIC_ERROR(err.str(), "group not provided");
-		}
 
-		childGroupResult.push(groupUsed);
+		//push the result depends on the usage of the group
+		childGroupResult.push(usedOption > 0u);
 	}
 
 	//there should be left with the result from the root
@@ -675,9 +752,9 @@ static void printNameDescription(ostream& stream, const string_view& name, const
 
 	//format description
 	if (!description.empty()) {
-		//add one to compensate for the linefeed character
-		const streamsize indented_width = indent + width + 1;
+		const streamsize indented_width = indent + width;
 		//wrap the description to the next line if the name is too long
+		//use >= to make sure at least one space is between the name and description, so it is "auto spaced"
 		if (static_cast<streamsize>(name.length()) >= width) {
 			stream << '\n' << setw(indented_width) << '\0';
 		}
@@ -692,43 +769,60 @@ static void printNameDescription(ostream& stream, const string_view& name, const
 	stream << endl;
 }
 
-static string formatOptionName(const STPInternal::STPBaseOption& option, const char* const separator) {
+inline static void formatCountRequirement(ostream& stream, const STPInternal::STPCountRequirement& count) {
+	const auto [min, max] = count;
+	if (min == max) {
+		stream << '{' << min << '}';
+	} else {
+		stream << '{' << min << ',' << max << '}';
+	}
+}
+
+template<bool Summary>
+static string formatOptionName(const STPInternal::STPBaseOption& option, const char separator) {
 	ostringstream stream;
-	const bool useSquareBracket = !option.Require,
-		useSeparator = !option.ShortName.empty() && !option.LongName.empty();
+	const bool isOptional = !option.Require,
+		isPositional = option.isPositional();
 
-	if (useSquareBracket) {
-		stream << '[';
-	}
-
-	if (!option.ShortName.empty()) {
-		stream << '-' << option.ShortName;
-	}
-	if (useSeparator) {
-		stream << separator;
-	}
-	if (!option.LongName.empty()) {
-		stream << "--" << option.LongName;
+	if constexpr (Summary) {
+		if (isOptional) {
+			stream << '[';
+		}
+		if (isPositional) {
+			stream << '<';
+		}
 	}
 
-	if (useSquareBracket) {
-		stream << ']';
+	displayOption(stream, option, separator);
+
+	if constexpr (Summary) {
+		if (isPositional) {
+			stream << '>';
+		}
+		if (isOptional) {
+			stream << ']';
+		}
+	} else {
+		if (isPositional) {
+			//print positional precedence
+			stream << "(:" << option.PositionalPrecedence << ')';
+		}
+		if (option.supportDelimiter()) {
+			//tell user about the limiter if specified
+			stream << '[' << option.Delimiter << ']';
+		}
+		formatCountRequirement(stream, option.ArgumentCount);
 	}
 	return stream.str();
 }
 
-static string formatGroupName(const STPInternal::STPBaseCommand& group) {
+template<bool Summary>
+inline static string formatGroupName(const STPInternal::STPBaseCommand& group) {
 	ostringstream stream;
-	const bool useSquareBracket = !group.Require;
-
-	if (useSquareBracket) {
-		stream << '[';
-	}
 	stream << '(' << (group.Name.empty() ? "unnamed group" : group.Name) << ')';
-	if (useSquareBracket) {
-		stream << ']';
+	if constexpr (!Summary) {
+		formatCountRequirement(stream, group.OptionCount);
 	}
-
 	return stream.str();
 }
 
@@ -749,13 +843,13 @@ static string formatSummary(const STPInternal::STPBaseCommand& root, const strea
 
 	//print options first
 	const auto& option = root.option();
-	for_each(option.begin(), option.end(), [&smartPrinter](const auto* const opt) { smartPrinter(formatOptionName(*opt, " | ")); });
+	for_each(option.begin(), option.end(), [&smartPrinter](const auto* const opt) { smartPrinter(formatOptionName<true>(*opt, '|')); });
 
 	//then print groups, but do not expand
 	const auto& command = root.command();
 	for_each(command.begin(), command.end(), [&smartPrinter](const auto* const cmd) {
 		if (cmd->isGroup()) {
-			smartPrinter(formatGroupName(*cmd));
+			smartPrinter(formatGroupName<true>(*cmd));
 		}
 	});
 
@@ -765,20 +859,23 @@ static string formatSummary(const STPInternal::STPBaseCommand& root, const strea
 static void printOptionBlock(ostream& stream, const STPInternal::STPBaseCommand& group,
 	const streamsize base_indent, const streamsize nested_indent, const streamsize width) {
 	const auto& option = group.option();
-	if (option.size() > 0u) {
-		printIndentation(stream, base_indent);
-		stream << "Option: " << endl;
-		for_each(option.begin(), option.end(), [&stream, nested_indent, width](const auto* const opt) {
-			printNameDescription(stream, formatOptionName(*opt, ", "), opt->Description, nested_indent, width);
-		});
+	if (option.size() == 0u) {
+		//no option in this group
+		return;
 	}
+
+	printIndentation(stream, base_indent);
+	stream << "Option: " << endl;
+	for_each(option.begin(), option.end(), [&stream, nested_indent, width](const auto* const opt) {
+		printNameDescription(stream, formatOptionName<false>(*opt, ','), opt->Description, nested_indent, width);
+	});
 }
 
 static void printGroupHeader(ostream& stream, const STPInternal::STPBaseCommand& group,
 	const streamsize base_indent, const streamsize nested_indent, const streamsize width) {
 	//indent value is always positive
 	printIndentation(stream, base_indent);
-	string groupName = formatGroupName(group);
+	string groupName = formatGroupName<false>(group);
 	stream << "Option Group: " << groupName << endl;
 	
 	if (!group.Description.empty()) {
@@ -786,9 +883,9 @@ static void printGroupHeader(ostream& stream, const STPInternal::STPBaseCommand&
 		stream << group.Description << endl;
 	}
 	//print group definition
-	groupName += " := ";
+	groupName += " :=";
 	//basically, we want to align the summary by the last character in the group name string
-	printNameDescription(stream, groupName, formatSummary(group, width), nested_indent, groupName.length());
+	printNameDescription(stream, groupName, formatSummary(group, width), nested_indent, groupName.length() + 1u);
 }
 
 static void printGroupBlock(ostream& stream, const STPInternal::STPBaseCommand& root,
@@ -825,9 +922,13 @@ static void printGroupBlock(ostream& stream, const STPInternal::STPBaseCommand& 
 }
 
 static void printSubcommandBlock(ostream& stream, const STPInternal::STPBaseCommand& root, const streamsize width) {
+	const auto& command = root.command();
+	if (std::count_if(command.begin(), command.end(), [](const auto* const cmd) { return cmd->isSubcommand(); }) == 0u) {
+		return;
+	}
+
 	stream << "Subcommand: " << endl;
-	const auto& it = root.command();
-	for_each(it.begin(), it.end(), [&](const auto* const sub) {
+	for_each(command.begin(), command.end(), [&](const auto* const sub) {
 		if (sub->isSubcommand()) {
 			//no indentation is needed for the root command
 			printNameDescription(stream, sub->Name, sub->Description, 0, width);
@@ -849,13 +950,15 @@ ostream& STPCommandLineParser::operator<<(ostream& stream, const STPHelpPrinter&
 	//print usage line
 	{
 		ostringstream usage;
-		usage << "Usage: " << appName << ' ';
+		usage << "Synopsis: " << appName;
 		//print subcommand tree, skip the root command
-		for_each(commandPath.cbegin() + 1u, commandPath.cend(), [&stream](const auto* const cmd) { stream << cmd->Name << ' '; });
+		for_each(commandPath.cbegin() + 1u, commandPath.cend(), [&stream](const auto* const cmd) { stream << ' ' << cmd->Name; });
+		//append a count information at the end
+		formatCountRequirement(usage, workingCommand.OptionCount);
 
 		const string usageContent = usage.str();
 		//there is no indentation at the beginning of the help message
-		printNameDescription(stream, usageContent, formatSummary(workingCommand, lineWidth), 0, usageContent.length());
+		printNameDescription(stream, usageContent, formatSummary(workingCommand, lineWidth), 0, usageContent.length() + 1u);
 	}
 	//add an extra newline
 	stream << endl;
@@ -864,6 +967,34 @@ ostream& STPCommandLineParser::operator<<(ostream& stream, const STPHelpPrinter&
 	printGroupBlock(stream, workingCommand, indentWidth, lineWidth);
 	printSubcommandBlock(stream, workingCommand, lineWidth);
 
+	stream << endl;
+	//print syntax line
+	{
+		const auto printSyntaxLine = [&stream, indentWidth, lineWidth](const string_view notation, const string_view desc) -> void {
+			printNameDescription(stream, notation, desc, indentWidth, lineWidth);
+		};
+
+		stream << "Notation and Syntax: " << endl;
+		printSyntaxLine("[--option]",
+			"A squared bracket enclosed option is optional");
+		printSyntaxLine("<option>",
+			"A positional argument, for which option name can be omitted\nbut is order sensitive");
+		printSyntaxLine("(group)",
+			"A round bracket enclosed name is a group");
+		printSyntaxLine("--long-option,-o",
+			"An option might be specified by\neither a long option name or short option name, if any defined");
+		printSyntaxLine("-abc",
+			"Multiple short options without argument can be combined together");
+		printSyntaxLine("--option=arg1,arg2",
+			"Arguments can be specified with delimiters");
+		printSyntaxLine("(:N)",
+			"A positional argument with precedence of \'N\'");
+		printSyntaxLine("[,]",
+			"This option supports delimiter separated value with specified delimiter,\nenclosed in the squared bracket");
+		printSyntaxLine("{n,m}",
+			"A subcommand/group or option requires\nat least 'n' and at most 'm' number of option or argument;\n"
+			"If 'n' equals 'm', then extra duplicate number is omitted");
+	}
 	stream << endl;
 	return stream;
 }

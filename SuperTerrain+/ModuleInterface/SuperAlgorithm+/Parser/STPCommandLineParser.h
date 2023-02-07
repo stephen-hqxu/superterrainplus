@@ -149,6 +149,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				bool Require;
 
 				//Specifies the delimiter if the arguments are provided using a delimiter style.
+				//Define delimiter as the null character to disable delimiter style.
 				char Delimiter;
 
 				//Result set by the parser. They should be left as default value by the application before parsing.
@@ -176,6 +177,12 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				*/
 				bool isPositional() const noexcept;
 
+				/**
+				 * @brief Check if the current option supports specifying arguments using delimiter.
+				 * @return True if it supports.
+				*/
+				bool supportDelimiter() const noexcept;
+
 			};
 
 			/**
@@ -193,9 +200,6 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				//Each parsed group is counted as 1 regardless of how many options have been recognised within.
 				STPCountRequirement OptionCount;
 
-				//Specify if this subcommand or group is required.
-				//Ignored if the command if the root.
-				bool Require;
 				//Specify if this command is a group rather than a subcommand.
 				//A group inherits everything from its parent command.
 				//A group cannot contain any subcommand, which will be simply ignored without notice.

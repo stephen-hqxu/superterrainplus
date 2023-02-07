@@ -4,7 +4,6 @@
 //Exception
 #include <SuperTerrain+/Exception/STPValidationFailed.h>
 
-#include <memory>
 #include <algorithm>
 
 #define NAMESPACE_CMD_NAME SuperTerrainPlus::STPAlgorithm::STPCommandLineParser
@@ -21,12 +20,12 @@ constexpr void NAMESPACE_CMD_NAME::STPInternal::STPCountRequirement::set(const s
 
 TREE_BRANCH_TEMPLATE
 inline const T* TREE_BRANCH_NAME::begin() const noexcept {
-	return std::addressof(*this->Leaf.cbegin());
+	return this->Leaf.data();
 }
 
 TREE_BRANCH_TEMPLATE
 inline const T* TREE_BRANCH_NAME::end() const noexcept {
-	return std::addressof(*this->Leaf.cend());
+	return this->Leaf.data() + this->Leaf.size();
 }
 
 TREE_BRANCH_TEMPLATE
@@ -65,6 +64,10 @@ inline bool NAMESPACE_CMD_NAME::STPInternal::STPBaseOption::isPositional() const
 	return this->PositionalPrecedence > 0u;
 }
 
+inline bool NAMESPACE_CMD_NAME::STPInternal::STPBaseOption::supportDelimiter() const noexcept {
+	return this->Delimiter != '\0';
+}
+
 #define OPTION_CONVERT(TEMP) inline void NAMESPACE_CMD_NAME::STPOption<TEMP>::convert([[maybe_unused]] const STPReceivedArgument& rx_arg) const
 
 template<class BT>
@@ -94,7 +97,7 @@ OPTION_CONVERT(std::vector<VT>) {
 	//convert each argument
 	//we assume each type is a basic convertible type, not something like a vector of vector
 	//so we can avoid recursive check
-	std::transform(rx_arg.cbegin(), rx_arg.cend(), this->Variable->cbegin(), [](const auto& arg) { return arg.to<VT>(); });
+	std::transform(rx_arg.cbegin(), rx_arg.cend(), this->Variable->begin(), [](auto& arg) { return arg.template to<VT>(); });
 }
 
 template<class... TT>
@@ -104,7 +107,7 @@ OPTION_CONVERT(std::tuple<TT...>) {
 
 	//TODO: capture `auto` as template argument in C++ 20 so it's less verbose
 	auto convertOne = [i = static_cast<size_t>(0u), &rx_arg](auto& dst) mutable -> void {
-		dst = rx_arg[i++].to<std::remove_reference_t(decltype(dst))>();
+		dst = rx_arg[i++].to<std::remove_reference_t<decltype(dst)>>();
 	};
 	//iterate over each element in the tuple
 	std::apply([&convertOne](auto&... arg) { (convertOne(arg), ...); }, *this->Variable);
