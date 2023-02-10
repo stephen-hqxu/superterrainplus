@@ -17,6 +17,7 @@
 
 #include <cassert>
 #include <utility>
+#include <functional>
 
 using std::vector;
 using std::stack;
@@ -32,11 +33,12 @@ using std::ostringstream;
 using std::ostream;
 using std::streamsize;
 
+using std::count_if;
 using std::endl;
 using std::for_each;
 using std::forward;
-using std::make_pair;
 using std::make_optional;
+using std::make_pair;
 using std::setw;
 
 using namespace SuperTerrainPlus::STPAlgorithm;
@@ -184,7 +186,7 @@ void STPCommandLineParser::validate(const STPInternal::STPBaseCommand& command) 
 
 		STP_ASSERTION_VALIDATION(!(shortName.empty() && longName.empty()),
 			"At least one of the option name should be specified");
-		STP_ASSERTION_VALIDATION(isNameValid(shortMatch, shortName) || isNameValid(longMatch, longName),
+		STP_ASSERTION_VALIDATION(isNameValid(shortMatch, shortName) && isNameValid(longMatch, longName),
 			messageOptionError("The format of one of the option name is invalid"));
 
 		const auto [min, max] = option.ArgumentCount;
@@ -347,6 +349,7 @@ static pair<vector<const STPInternal::STPBaseCommand*>, STPCmdLexer::STPToken> f
 
 		//found, keep descending the hierarchy
 		commandPath.push_back(*it);
+		lexer.expect<CommandSeparator>();
 	}
 }
 
@@ -515,45 +518,56 @@ static STPReceivedPositional readCommand(STPCmdLexer& lexer, STPCmdLexer::STPTok
 	const auto fastSaveOption = [&current_option, &readArgument]() -> void {
 		saveOption(*current_option->first, readArgument);
 	};
-	const auto readMultipleOption = [&current_option, &fastSaveOption, &readArgument, &lexer, &registered_option]() -> void {
-		string_view nextOptionName = **lexer.expect<ShortOptionName, LongOptionName>();
-		while (true) {
-			//save the previous option, if we were reading an option previously
-			if (current_option) {
-				fastSaveOption();
-			}
-			//delete old values and prepare for the next option
-			readArgument.clear();
-
-			//enter the next option state
-			const STPInternal::STPBaseOption& next_option = readOption(nextOptionName, registered_option);
-			//check if short options are specified together, or it is the end of option statement
-			const STPCmdLexer::STPToken end_option_token = lexer.expect<OptionEndCompact, OptionEndSpread, ShortOptionName>();
-			//is delimiter separated value
-			const bool isDSV = end_option_token == OptionEndCompact {};
-			if (isDSV && !next_option.supportDelimiter()) {
-				ostringstream err;
-				err << "The specified option \'" << nextOptionName
-					<< "\' does not support supplying argument using delimiter style" << endl;
-				lexer.throwSyntaxError(err.str(), "unsupported expression");
-			}
-
-			//create new option state
-			current_option.emplace(&next_option, isDSV);
-
-			if (end_option_token != ShortOptionName {}) {
-				break;
-			}
-			//a new option is encountered
-			nextOptionName = **end_option_token;
+	const auto readOneOption = [&current_option, &fastSaveOption, &readArgument, &lexer, &registered_option]
+		(const auto& expect_end_option, const string_view& nextOptionName) -> auto {
+		//save the previous option, if we were reading an option previously
+		if (current_option) {
+			fastSaveOption();
 		}
+		//delete old values and prepare for the next option
+		readArgument.clear();
+
+		//enter the next option state
+		const STPInternal::STPBaseOption& next_option = readOption(nextOptionName, registered_option);
+		//check if short options are specified together, or it is the end of option statement
+		const STPCmdLexer::STPToken end_option_token = expect_end_option();
+		//is delimiter separated value
+		const bool isDSV = end_option_token == OptionEndCompact {};
+		if (isDSV && !next_option.supportDelimiter()) {
+			ostringstream err;
+			err << "The specified option \'" << nextOptionName
+				<< "\' does not support supplying argument using delimiter style" << endl;
+			lexer.throwSyntaxError(err.str(), "unsupported expression");
+		}
+
+		//create new option state
+		current_option.emplace(&next_option, isDSV);
+
+		return end_option_token;
 	};
+	using std::bind;
+	const auto expectNextShortOption = bind(&STPCmdLexer::expect<OptionEndCompact, OptionEndSpread, ShortOptionName>, &lexer);
+	const auto expectNextLongOption = bind(&STPCmdLexer::expect<OptionEndCompact, OptionEndSpread>, &lexer);
 
 	do {
 		//start from the token provided in the function argument
 		//then grab from the command line
-		if (current_tok == ShortOptionControl {} || current_tok == LongOptionControl {}) {
-			readMultipleOption();
+		if (current_tok == ShortOptionControl {}) {
+			string_view short_name = **lexer.expect<ShortOptionName>();
+			//loop to consume all short options
+			while (true) {
+				const STPCmdLexer::STPToken short_token = readOneOption(expectNextShortOption, short_name);
+
+				if (short_token != ShortOptionName {}) {
+					break;
+				}
+				//a new option is encountered
+				short_name = **short_token;
+			}
+		} else if (current_tok == LongOptionControl {}) {
+			//long option is rather straight-forward
+			const string_view long_name = **lexer.expect<LongOptionName>();
+			readOneOption(expectNextLongOption, long_name);
 		} else if (current_tok == ValueName {}) {
 			//option value, or positional argument if we are not currently parsing any option
 			if (readValue(current_option, *current_tok, readPositional, readArgument)) {
@@ -661,7 +675,10 @@ static bool postValidation(const STPInternal::STPBaseCommand& root) {
 		if (nextChild_it != currentGroup->command().end()) {
 			const STPInternal::STPBaseCommand* const nextChild = *nextChild_it;
 
-			groupStack.emplace(nextChild, nextChild->command().begin());
+			if (nextChild->isGroup()) {
+				//ignore child subcommand, since we are not parsing them, they are independent to the current hierarchy
+				groupStack.emplace(nextChild, nextChild->command().begin());
+			}
 			nextChild_it++;
 			continue;
 		}
@@ -686,7 +703,9 @@ static bool postValidation(const STPInternal::STPBaseCommand& root) {
 		}
 		//group validation
 		//it can either means there is no child group, or all child groups have done validation and we can fetch their result
-		const size_t child_count = currentGroup->command().size();
+		const auto& current_group_child = currentGroup->command();
+		const size_t child_count = count_if(current_group_child.begin(), current_group_child.end(),
+			[](const auto* const cmd) { return cmd->isGroup(); });
 		for (size_t i = 0u; i < child_count; i++) {
 			if (childGroupResult.top()) {
 				//each used group counts as 1
@@ -734,8 +753,21 @@ STPCommandLineParser::STPParseResult STPCommandLineParser::parse(const string& a
 	//handle positional inputs at the end
 	allocatePositional(parsedPositional, positionalTable);
 
+	using std::exception_ptr;
+	using std::current_exception;
+	bool commandParsed = false;
+	exception_ptr validationException;
+	try {
+		commandParsed = postValidation(root);
+	} catch (...) {
+		validationException = current_exception();
+	}
+
 	//validate if all parsing requirements are satisfied
-	return STPCommandLineParser::STPParseResult { appName, std::move(commandPath), postValidation(root) };
+	return STPCommandLineParser::STPParseResult {
+		{ appName, std::move(commandPath) },
+		 validationException, commandParsed
+	};
 }
 
 inline static void printIndentation(ostream& stream, const streamsize indent) {
@@ -771,11 +803,23 @@ static void printNameDescription(ostream& stream, const string_view& name, const
 
 inline static void formatCountRequirement(ostream& stream, const STPInternal::STPCountRequirement& count) {
 	const auto [min, max] = count;
+
+	//min number block
+	stream << '{' << min;
 	if (min == max) {
-		stream << '{' << min << '}';
-	} else {
-		stream << '{' << min << ',' << max << '}';
+		//ignore duplicate number if they are the same
+		stream << '}';
+		return;
 	}
+
+	//max number block
+	stream << ',';
+	if (count.isMaxUnlimited()) {
+		stream << "...";
+	} else {
+		stream << max;
+	}
+	stream << '}';
 }
 
 template<bool Summary>
@@ -837,7 +881,7 @@ static string formatSummary(const STPInternal::STPBaseCommand& root, const strea
 			stream << '\n';
 			cumWidth = 0u;
 		}
-		stream << content;
+		stream << content << ' ';
 		cumWidth += content.length();
 	};
 
@@ -921,24 +965,24 @@ static void printGroupBlock(ostream& stream, const STPInternal::STPBaseCommand& 
 	}
 }
 
-static void printSubcommandBlock(ostream& stream, const STPInternal::STPBaseCommand& root, const streamsize width) {
+static void printSubcommandBlock(ostream& stream, const STPInternal::STPBaseCommand& root, const streamsize indent, const streamsize width) {
 	const auto& command = root.command();
-	if (std::count_if(command.begin(), command.end(), [](const auto* const cmd) { return cmd->isSubcommand(); }) == 0u) {
+	if (count_if(command.begin(), command.end(), [](const auto* const cmd) { return cmd->isSubcommand(); }) == 0u) {
 		return;
 	}
 
 	stream << "Subcommand: " << endl;
-	for_each(command.begin(), command.end(), [&](const auto* const sub) {
+	for_each(command.begin(), command.end(), [&stream, indent, width](const auto* const sub) {
 		if (sub->isSubcommand()) {
 			//no indentation is needed for the root command
-			printNameDescription(stream, sub->Name, sub->Description, 0, width);
+			printNameDescription(stream, sub->Name, sub->Description, indent, width);
 		}
 	});
 }
 
 ostream& STPCommandLineParser::operator<<(ostream& stream, const STPHelpPrinter& command_printer) {
 	const auto [parse_result, indent_raw, line_width_raw] = command_printer;
-	const auto& [appName, commandPath, non_empty_cmd] = *parse_result;
+	const auto& [appName, commandPath] = *parse_result;
 	//consistent with the type of the API, although I generally hate using signed type when it is not necessary...
 	const streamsize indentWidth = static_cast<streamsize>(indent_raw),
 		lineWidth = static_cast<streamsize>(line_width_raw);
@@ -952,7 +996,7 @@ ostream& STPCommandLineParser::operator<<(ostream& stream, const STPHelpPrinter&
 		ostringstream usage;
 		usage << "Synopsis: " << appName;
 		//print subcommand tree, skip the root command
-		for_each(commandPath.cbegin() + 1u, commandPath.cend(), [&stream](const auto* const cmd) { stream << ' ' << cmd->Name; });
+		for_each(commandPath.cbegin() + 1u, commandPath.cend(), [&usage](const auto* const cmd) { usage << ' ' << cmd->Name; });
 		//append a count information at the end
 		formatCountRequirement(usage, workingCommand.OptionCount);
 
@@ -965,7 +1009,7 @@ ostream& STPCommandLineParser::operator<<(ostream& stream, const STPHelpPrinter&
 
 	printOptionBlock(stream, workingCommand, 0, indentWidth, lineWidth);
 	printGroupBlock(stream, workingCommand, indentWidth, lineWidth);
-	printSubcommandBlock(stream, workingCommand, lineWidth);
+	printSubcommandBlock(stream, workingCommand, indentWidth, lineWidth);
 
 	stream << endl;
 	//print syntax line
@@ -993,7 +1037,8 @@ ostream& STPCommandLineParser::operator<<(ostream& stream, const STPHelpPrinter&
 			"This option supports delimiter separated value with specified delimiter,\nenclosed in the squared bracket");
 		printSyntaxLine("{n,m}",
 			"A subcommand/group or option requires\nat least 'n' and at most 'm' number of option or argument;\n"
-			"If 'n' equals 'm', then extra duplicate number is omitted");
+			"If 'n' equals 'm', then extra duplicate number is omitted\n"
+			"If 'm' is unlimited, 'm' value is replaced by '...'");
 	}
 	stream << endl;
 	return stream;

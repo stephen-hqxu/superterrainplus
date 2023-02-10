@@ -19,6 +19,7 @@ STPTestRTC.cpp
 STPTestTexture.cpp
 STPTestUtility.cpp
 # SuperAlgorithm+ test code
+STPTestCmdParser.cpp
 STPTestHistogram.cpp
 STPTestINI.cpp
 STPTestLexer.cpp

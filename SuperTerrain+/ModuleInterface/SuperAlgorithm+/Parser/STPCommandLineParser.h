@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <type_traits>
+#include <exception>
 
 namespace SuperTerrainPlus::STPAlgorithm {
 
@@ -36,10 +37,28 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				size_t Min, Max;
 
 				/**
+				 * @brief Default initialise the count value to all zero.
+				*/
+				constexpr STPCountRequirement() noexcept;
+
+				~STPCountRequirement() = default;
+
+				/**
 				 * @brief Set the range to a fixed number.
 				 * @param num The number to be set, such that min = max = num.
 				*/
 				constexpr void set(size_t) noexcept;
+
+				/**
+				 * @brief Set the maximum number of count to be unlimited.
+				*/
+				constexpr void unlimitedMax() noexcept;
+
+				/**
+				 * @brief Check if the max value is unlimited.
+				 * @return True if max is unlimited.
+				*/
+				constexpr bool isMaxUnlimited() const noexcept;
 
 			};
 
@@ -48,7 +67,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 
 			/**
 			 * @brief STPBaseTreeBranch is a visitor to different type of tree branch with different size.
-			 * @tparam T The type of the tree branch.
+			 * @tparam T The type of the leaf.
 			*/
 			template<class T>
 			class STPBaseTreeBranch {
@@ -86,23 +105,10 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				STPTreeBranch() = default;
 
 				/**
-				 * @brief Initialise the tree branch with reference to type, and store their pointers.
-				 * @tparam Node... The derived type of each node.
-				 * @param n... Reference of each node.
+				 * @brief Create the tree branch by directly initialising from an array of child nodes.
+				 * @param leaf A array of child nodes.
 				*/
-				template<class... Node, typename =
-					std::enable_if_t<
-						std::conjunction_v<
-							std::is_base_of<
-								std::remove_pointer_t<T>,
-								Node
-							>...
-						>
-					>
-				>
-				STPTreeBranch(const Node&... n) noexcept : Leaf { &n... } {
-
-				}
+				constexpr STPTreeBranch(std::array<T, N>) noexcept;
 
 				~STPTreeBranch() override = default;
 
@@ -111,6 +117,10 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				size_t size() const noexcept override;
 
 			};
+			template<size_t N>
+			using STPOptionTreeBranch = STPTreeBranch<const STPBaseOption*, N>;
+			template<size_t N>
+			using STPCommandTreeBranch = STPTreeBranch<const STPBaseCommand*, N>;
 
 			/**
 			 * @brief STPBaseOption defines an option and its common properties in the command line.
@@ -139,25 +149,25 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				//A precedence specifies their order, and lower number gets higher precedence.
 				//If the precedence is zero, this option is treated as a standard, non-positional option.
 				//If any two positional options in the same subcommand come with the same, non-zero precedence, the order is unspecified.
-				unsigned int PositionalPrecedence;
+				unsigned int PositionalPrecedence = 0u;
 				//Specifies, if any not-the-last positional options should take positional arguments in a greedy way,
 				//such that it will take as many arguments as it can as defined in the variable how many it can take at max.
 				//Otherwise positional arguments are taken in a lazy manner, i.e., as few as possible.
 				//This option has no effect for non-positional argument.
-				bool PositionalGreedy;
+				bool PositionalGreedy = true;
 				//Set to true to enforce that this option is expected from the command line.
-				bool Require;
+				bool Require = false;
 
 				//Specifies the delimiter if the arguments are provided using a delimiter style.
 				//Define delimiter as the null character to disable delimiter style.
-				char Delimiter;
+				char Delimiter = '\0';
 
 				//Result set by the parser. They should be left as default value by the application before parsing.
 				mutable struct {
 				public:
 
 					//True if the option has been parsed successfully from the command line.
-					bool IsUsed;
+					bool IsUsed = false;
 
 				} Result;
 
@@ -205,7 +215,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				//A group cannot contain any subcommand, which will be simply ignored without notice.
 				//Otherwise, this is considered as a subcommand that is totally independent with its parent.
 				//A subcommand needs to be specified by its name in the command line.
-				bool IsGroup;
+				bool IsGroup = false;
 
 				STPBaseCommand() = default;
 
@@ -233,11 +243,6 @@ namespace SuperTerrainPlus::STPAlgorithm {
 
 		}
 
-		template<size_t N>
-		using STPOptionTreeBranch = STPInternal::STPTreeBranch<const STPInternal::STPBaseOption*, N>;
-		template<size_t N>
-		using STPCommandTreeBranch = STPInternal::STPTreeBranch<const STPInternal::STPBaseCommand*, N>;
-
 #define OPTION_CLASS_BASE_MEMBER \
 STPOption() = default; \
 ~STPOption() override = default; \
@@ -245,7 +250,7 @@ using STPBaseOption::STPReceivedArgument; \
 void convert(const STPReceivedArgument&) const override
 
 #define OPTION_CLASS_MEMBER(VAR_TYPE) \
-mutable VAR_TYPE Variable; \
+VAR_TYPE Variable = nullptr; \
 OPTION_CLASS_BASE_MEMBER
 		
 		/**
@@ -278,7 +283,7 @@ OPTION_CLASS_BASE_MEMBER
 
 			//If the flag appears on the command line without argument, this is the value set to the binding variable.
 			//Otherwise the variable is set to the argument parsed from the command line.
-			bool InferredValue;
+			bool InferredValue = true;
 
 			OPTION_CLASS_MEMBER(bool*);
 
@@ -308,14 +313,31 @@ OPTION_CLASS_BASE_MEMBER
 		*/
 		template<size_t ON, size_t CN>
 		struct STPCommand : public STPInternal::STPBaseCommand {
+		private:
+
+			//convert tuple of reference to derived tree branch to pointers of base tree branch
+			template<class Base, typename TupLeaf>
+			auto toTreeBranch(const TupLeaf&) noexcept;
+
 		public:
 
 			//Defines all options.
-			STPOptionTreeBranch<ON> Option;
+			STPInternal::STPOptionTreeBranch<ON> Option;
 			//Defines all subcommands and groups.
-			STPCommandTreeBranch<CN> Command;
+			STPInternal::STPCommandTreeBranch<CN> Command;
 
 			STPCommand() = default;
+
+			/**
+			 * @brief Create a command with its option and command members.
+			 * This can automatically deduce the size of the tree branches.
+			 * @tparam Opt... The type of each derived option.
+			 * @tparam Cmd... The type of each derived command.
+			 * @param tup_option Tuple of reference to options.
+			 * @param tup_command Tuple of reference to command, can be group or subcommand.
+			*/
+			template<class... Opt, class... Cmd>
+			STPCommand(std::tuple<Opt&...>, std::tuple<Cmd&...>) noexcept;
 
 			~STPCommand() override = default;
 
@@ -323,6 +345,8 @@ OPTION_CLASS_BASE_MEMBER
 			const STPInternal::STPBaseCommandTreeBranch& command() const noexcept override;
 
 		};
+		template<class... Opt, class... Cmd>
+		STPCommand(std::tuple<Opt&...>, std::tuple<Cmd&...>) -> STPCommand<sizeof...(Opt), sizeof...(Cmd)>;
 
 		/**
 		 * @brief STPParseResult contains return value from the command line parser.
@@ -330,15 +354,26 @@ OPTION_CLASS_BASE_MEMBER
 		struct STPParseResult {
 		public:
 
-			//The name of the program, which appears as the first value in the command line option.
-			std::string_view ProgramName;
-			//The sequence of subcommands recognised from the command line.
-			std::vector<const STPInternal::STPBaseCommand*> CommandPath;
+			/**
+			 * @brief STPHelpPrinterData contains information from the parser to print the help message.
+			*/
+			struct STPHelpPrinterData {
+				//The name of the program, which appears as the first value in the command line option.
+				std::string_view ProgramName;
+				//The sequence of subcommands recognised from the command line.
+				std::vector<const STPInternal::STPBaseCommand*> CommandPath;
+			} HelpData;
+
+			//Parsing results are all stored to each option, but the requirements may not be satisfied.
+			//This contains the status of the post-parsing validation.
+			//Pointer is null is validation is successful, otherwise it contains the exception generated.
+			//Separating validation exception allows application to make certain adjustment,
+			//for example ignore post-validation if some overriding options are specified, e.g., help option.
+			std::exception_ptr ValidationStatus;
 			//A boolean value specifies if the parser has parsed any option.
 			//False if there is no command line option specified in the input.
 			bool NonEmptyCommandLine;
 			
-
 		};
 
 		/**
@@ -349,7 +384,7 @@ OPTION_CLASS_BASE_MEMBER
 		public:
 
 			//The return value from the parser.
-			const STPParseResult* ParseResult;
+			const STPParseResult::STPHelpPrinterData* PrinterData;
 
 			//The number of space put before printing each option.
 			size_t IndentationWidth;

@@ -5,18 +5,36 @@
 #include <SuperTerrain+/Exception/STPValidationFailed.h>
 
 #include <algorithm>
+#include <limits>
 
 #define NAMESPACE_CMD_NAME SuperTerrainPlus::STPAlgorithm::STPCommandLineParser
 
 /* ---------------------------- count ---------------------------- */
+constexpr NAMESPACE_CMD_NAME::STPInternal::STPCountRequirement::STPCountRequirement() noexcept : Min(0u), Max(0u) {
+
+}
+
 constexpr void NAMESPACE_CMD_NAME::STPInternal::STPCountRequirement::set(const size_t num) noexcept {
 	this->Min = num;
 	this->Max = num;
 }
 
+constexpr void NAMESPACE_CMD_NAME::STPInternal::STPCountRequirement::unlimitedMax() noexcept {
+	this->Max = std::numeric_limits<size_t>::max();
+}
+
+constexpr bool NAMESPACE_CMD_NAME::STPInternal::STPCountRequirement::isMaxUnlimited() const noexcept {
+	return this->Max == std::numeric_limits<size_t>::max();
+}
+
 /* ---------------------------- tree ----------------------------- */
 #define TREE_BRANCH_TEMPLATE template<class T, size_t N>
 #define TREE_BRANCH_NAME NAMESPACE_CMD_NAME::STPInternal::STPTreeBranch<T, N>
+
+TREE_BRANCH_TEMPLATE
+constexpr TREE_BRANCH_NAME::STPTreeBranch(const std::array<T, N> leaf) noexcept : Leaf(leaf) {
+
+}
 
 TREE_BRANCH_TEMPLATE
 inline const T* TREE_BRANCH_NAME::begin() const noexcept {
@@ -46,6 +64,22 @@ inline bool NAMESPACE_CMD_NAME::STPInternal::STPBaseCommand::isSubcommand() cons
 
 #define COMMAND_TEMPLATE template<size_t ON, size_t CN>
 #define COMMAND_NAME NAMESPACE_CMD_NAME::STPCommand<ON, CN>
+
+COMMAND_TEMPLATE
+template<class... Opt, class... Cmd>
+inline COMMAND_NAME::STPCommand(const std::tuple<Opt&...> tup_option, const std::tuple<Cmd&...> tup_command) noexcept :
+	Option(STPCommand::toTreeBranch<STPInternal::STPBaseOption>(tup_option)),
+	Command(STPCommand::toTreeBranch<STPInternal::STPBaseCommand>(tup_command)) {
+
+}
+
+COMMAND_TEMPLATE
+template<class Base, typename TupLeaf>
+inline auto COMMAND_NAME::toTreeBranch(const TupLeaf& tup_leaf) noexcept {
+	return std::apply([](const auto&... leaf)
+		//specify the array type parameter, so it works if tuple if empty
+		{ return std::array<const Base*, std::tuple_size_v<TupLeaf>> { &static_cast<const Base&>(leaf)... }; }, tup_leaf);
+}
 
 COMMAND_TEMPLATE
 inline const NAMESPACE_CMD_NAME::STPInternal::STPBaseOptionTreeBranch& COMMAND_NAME::option() const noexcept {
@@ -103,7 +137,7 @@ OPTION_CONVERT(std::vector<VT>) {
 template<class... TT>
 OPTION_CONVERT(std::tuple<TT...>) {
 	STP_ASSERTION_VALIDATION(rx_arg.size() == std::tuple_size_v<std::tuple<TT...>>,
-		"The number of argument must equal to the number of space in a space");
+		"The number of argument must equal to the number of element in the binding tuple variable");
 
 	//TODO: capture `auto` as template argument in C++ 20 so it's less verbose
 	auto convertOne = [i = static_cast<size_t>(0u), &rx_arg](auto& dst) mutable -> void {
