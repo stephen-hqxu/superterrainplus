@@ -47,34 +47,23 @@ namespace Cmd = STPCommandLineParser;
 #define THROW_AS_PARSER_ERROR(EXPR) REQUIRE_THROWS_AS(EXPR, STPException::STPParserError::STPBasic)
 #define COMPARE_FLOAT(VALUE, TARGET) CHECK_THAT(VALUE, Catch::Matchers::WithinRel(TARGET, std::numeric_limits<float>::epsilon() * 500.0f))
 
-template<template<typename> class O, typename BT>
-static void bindVariable(O<BT>& option, BT& variable) {
-	option.Variable = &variable;
-}
-
 SCENARIO("STPCommandLineParser user-defined data structure can perform certain operations", "[AlgorithmHost][STPCommandLineParser]") {
 
 	GIVEN("A number of options with binding variable") {
 		Cmd::STPOption<void> VoidOption;
 
 		bool BoolValue = true;
-		Cmd::STPOption<bool> BoolOption;
+		Cmd::STPOption BoolOption(BoolValue);
 		BoolOption.InferredValue = false;
-		bindVariable(BoolOption, BoolValue);
 
 		float FloatValue = 0.0f;
-		Cmd::STPOption<float> FloatOption;
-		bindVariable(FloatOption, FloatValue);
+		Cmd::STPOption FloatOption(FloatValue);
 
-		typedef vector<unsigned int> STPArrayOption;
-		STPArrayOption ArrayValue;
-		Cmd::STPOption<STPArrayOption> ArrayIntOption;
-		bindVariable(ArrayIntOption, ArrayValue);
+		vector<unsigned int> ArrayValue;
+		Cmd::STPOption ArrayIntOption(ArrayValue);
 
-		typedef tuple<bool, float, unsigned int> STPTupleOption;
-		STPTupleOption TupleValue = make_tuple(false, 0.0f, 0u);
-		Cmd::STPOption<STPTupleOption> TupleOption;
-		bindVariable(TupleOption, TupleValue);
+		tuple<bool, float, unsigned int> TupleValue = make_tuple(false, 0.0f, 0u);
+		Cmd::STPOption TupleOption(TupleValue);
 
 		constexpr static STPStringViewAdaptor BoolString = "false", FloatString = "3.14f",
 			ArrayElementValue = "666u", TupleOne = "true", TupleTwo = "-2.71f", TupleThree = "888u";
@@ -122,8 +111,7 @@ class CmdParserTester {
 private:
 
 	auto createHelp(bool& use_help) noexcept {
-		Cmd::STPOption<bool> OptHelp;
-		OptHelp.Variable = &use_help;
+		Cmd::STPOption OptHelp(use_help);
 		OptHelp.InferredValue = true;
 		OptHelp.ShortName = "h";
 		OptHelp.LongName = "help";
@@ -167,20 +155,18 @@ protected:
 		bool ClonePrintHelp = false;
 		const auto CloneHelp = this->createHelp(ClonePrintHelp);
 
-		Cmd::STPOption<string_view> CloneRepo;
+		Cmd::STPOption CloneRepo(this->CloneRepoName);
 		CloneRepo.LongName = "repo";
 		CloneRepo.Description = "Clone a remote repository to local hard drive";
 		CloneRepo.ArgumentCount.set(1u);
 		CloneRepo.PositionalPrecedence = 1u;
 		CloneRepo.Require = true;
-		CloneRepo.Variable = &this->CloneRepoName;
 
-		Cmd::STPOption<unsigned int> CloneDepth;
+		Cmd::STPOption CloneDepth(this->CloneDepthValue);
 		CloneDepth.LongName = "depth";
 		CloneDepth.Description = "Specify the number of commit to be clone, starting from HEAD";
 		CloneDepth.Delimiter = ',';
 		CloneDepth.ArgumentCount.set(1u);
-		CloneDepth.Variable = &this->CloneDepthValue;
 
 		Cmd::STPCommand CloneCommand(tie(CloneHelp, CloneRepo, CloneDepth), tie());
 		CloneCommand.Name = "clone";
@@ -192,13 +178,12 @@ protected:
 		bool PullPrintHelp = false;
 		const auto PullHelp = this->createHelp(PullPrintHelp);
 
-		Cmd::STPOption<string_view> PullOrigin;
+		Cmd::STPOption PullOrigin(this->PullOriginName);
 		PullOrigin.ShortName = "o";
 		PullOrigin.Description = "Fetch latest commits from the origin";
 		PullOrigin.ArgumentCount.set(1u);
 		PullOrigin.PositionalPrecedence = 1u;
 		PullOrigin.Require = true;
-		PullOrigin.Variable = &this->PullOriginName;
 
 		auto PullBranch = PullOrigin;
 		PullBranch.ShortName = "b";
@@ -226,14 +211,13 @@ protected:
 		AddVerbose.LongName = "verbose";
 		AddVerbose.Description = "Show diagnostic information when executing add command";
 
-		Cmd::STPOption<string_view> AddOneFile;
+		Cmd::STPOption AddOneFile(this->AddOneFileName);
 		AddOneFile.LongName = "file";
 		AddOneFile.ShortName = "f";
 		AddOneFile.Description = "Stage changes for one file";
 		AddOneFile.ArgumentCount.set(1u);
-		AddOneFile.Variable = &this->AddOneFileName;
 
-		Cmd::STPOption<vector<string_view>> AddAllFile;
+		Cmd::STPOption AddAllFile(this->AddAllFileName);
 		AddAllFile.LongName = "all-file";
 		AddAllFile.Description = "Add a list of all files to staged changes";
 		AddAllFile.Delimiter = '|';
@@ -241,7 +225,6 @@ protected:
 		AddAllFile.ArgumentCount.unlimitedMax();
 		AddAllFile.PositionalPrecedence = 1u;
 		AddAllFile.PositionalGreedy = true;
-		AddAllFile.Variable = &this->AddAllFileName;
 
 		Cmd::STPCommand AddFileGroup(tie(AddOneFile, AddAllFile), tie());
 		AddFileGroup.Name = "add-file";
@@ -258,11 +241,10 @@ protected:
 		bool CommitPrintHelp = false;
 		const auto CommitHelp = this->createHelp(CommitPrintHelp);
 
-		Cmd::STPOption<string_view> CommitMessage;
+		Cmd::STPOption CommitMessage(this->CommitMessageValue);
 		CommitMessage.ShortName = "m";
 		CommitMessage.Description = "Add optional message to be displayed in the commit log";
 		CommitMessage.ArgumentCount.set(1u);
-		CommitMessage.Variable = &this->CommitMessageValue;
 
 		Cmd::STPCommand CommitCommand(tie(CommitHelp, CommitMessage), tie());
 		CommitCommand.Name = "commit";
@@ -290,7 +272,7 @@ protected:
 		
 		//ignore validation error if we need to print help and exit
 		if (help_stream && (ClonePrintHelp || PullPrintHelp || AddPrintHelp || CommitPrintHelp || GitPrintHelp)) {
-			const Cmd::STPHelpPrinter Printer { &ParseResult.HelpData, 4u, 40u };
+			const Cmd::STPHelpPrinter Printer { &ParseResult.HelpData, 4u, 60u, 40u };
 			*help_stream << Printer;
 		} else if (const auto& Validation = ParseResult.ValidationStatus;
 			Validation) {
@@ -329,14 +311,12 @@ SCENARIO_METHOD(CmdParserTester, "STPCommandLineParser can parsed command line b
 
 	GIVEN("An ill-formed application") {
 		bool FlagValue = false;
-		Cmd::STPOption<bool> Flag;
+		Cmd::STPOption Flag(FlagValue);
 		Flag.ShortName = "f";
-		Flag.Variable = &FlagValue;
 
 		unsigned int IntValue = 0u;
-		Cmd::STPOption<unsigned int> IntOption;
+		Cmd::STPOption IntOption(IntValue);
 		IntOption.LongName = "data";
-		IntOption.Variable = &IntValue;
 		IntOption.ArgumentCount.set(1u);
 
 		Cmd::STPCommand Group(tie(Flag), tie());

@@ -103,6 +103,10 @@ inline bool NAMESPACE_CMD_NAME::STPInternal::STPBaseOption::supportDelimiter() c
 }
 
 #define OPTION_CONVERT(TEMP) inline void NAMESPACE_CMD_NAME::STPOption<TEMP>::convert([[maybe_unused]] const STPReceivedArgument& rx_arg) const
+#define OPTION_CTOR(TEMP) inline NAMESPACE_CMD_NAME::STPOption<TEMP>::STPOption(TEMP& v) : Variable(&v)
+
+template<class BT>
+OPTION_CTOR(BT) { }
 
 template<class BT>
 OPTION_CONVERT(BT) {
@@ -116,6 +120,8 @@ OPTION_CONVERT(void) {
 	//do nothing
 }
 
+OPTION_CTOR(bool) { }
+
 OPTION_CONVERT(bool) {
 	STP_ASSERTION_VALIDATION(rx_arg.size() <= 1u, "The number of argument in a flag option must be no more than one");
 	
@@ -123,6 +129,9 @@ OPTION_CONVERT(bool) {
 	//a flag does not have any argument, simply assign from its inferred value
 	*this->Variable = rx_arg.size() == 1u ? rx_arg.front().to<bool>() : this->InferredValue;
 }
+
+template<class VT>
+OPTION_CTOR(std::vector<VT>) { }
 
 template<class VT>
 OPTION_CONVERT(std::vector<VT>) {
@@ -133,6 +142,9 @@ OPTION_CONVERT(std::vector<VT>) {
 	//so we can avoid recursive check
 	std::transform(rx_arg.cbegin(), rx_arg.cend(), this->Variable->begin(), [](auto& arg) { return arg.template to<VT>(); });
 }
+
+template<class... TT>
+OPTION_CTOR(std::tuple<TT...>) { }
 
 template<class... TT>
 OPTION_CONVERT(std::tuple<TT...>) {
@@ -147,8 +159,8 @@ OPTION_CONVERT(std::tuple<TT...>) {
 	std::apply([&convertOne](auto&... arg) { (convertOne(arg), ...); }, *this->Variable);
 }
 
+#undef OPTION_CTOR
 #undef OPTION_CONVERT
-#undef CHECK_BINDING
 /* --------------------------------------------------------------------------------------------------------------- */
 
 #undef NAMESPACE_CMD_NAME

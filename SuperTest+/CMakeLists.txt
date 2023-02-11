@@ -1,8 +1,7 @@
 set(STP_UNIT_TEST "SuperTest+")
 set(STP_CONSOLE_REPORTER "stp_console")
 
-# minimum catch2 v3.0
-find_package(Catch2 3 REQUIRED CONFIG)
+find_package(Catch2 3.3 REQUIRED CONFIG)
 
 # unit test codes
 add_executable(${STP_UNIT_TEST}

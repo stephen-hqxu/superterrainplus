@@ -870,11 +870,11 @@ inline static string formatGroupName(const STPInternal::STPBaseCommand& group) {
 	return stream.str();
 }
 
-static string formatSummary(const STPInternal::STPBaseCommand& root, const streamsize width) {
+static string formatSummary(const STPInternal::STPBaseCommand& root, const streamsize summary_width) {
 	ostringstream stream;
 	//print the content with line wrapping
 	auto smartPrinter = [cumWidth = static_cast<size_t>(0u), &stream,
-		width_us = static_cast<size_t>(width)](const string content) mutable -> void {
+		width_us = static_cast<size_t>(summary_width)](const string content) mutable -> void {
 		//this does not work if the content is greater than the width of the line, but we don't want to break up the content
 		if (content.length() + cumWidth > width_us) {
 			//line overfilled, break the line
@@ -901,7 +901,7 @@ static string formatSummary(const STPInternal::STPBaseCommand& root, const strea
 }
 
 static void printOptionBlock(ostream& stream, const STPInternal::STPBaseCommand& group,
-	const streamsize base_indent, const streamsize nested_indent, const streamsize width) {
+	const streamsize base_indent, const streamsize nested_indent, const streamsize detail_width) {
 	const auto& option = group.option();
 	if (option.size() == 0u) {
 		//no option in this group
@@ -910,13 +910,13 @@ static void printOptionBlock(ostream& stream, const STPInternal::STPBaseCommand&
 
 	printIndentation(stream, base_indent);
 	stream << "Option: " << endl;
-	for_each(option.begin(), option.end(), [&stream, nested_indent, width](const auto* const opt) {
+	for_each(option.begin(), option.end(), [&stream, nested_indent, width = detail_width](const auto* const opt) {
 		printNameDescription(stream, formatOptionName<false>(*opt, ','), opt->Description, nested_indent, width);
 	});
 }
 
 static void printGroupHeader(ostream& stream, const STPInternal::STPBaseCommand& group,
-	const streamsize base_indent, const streamsize nested_indent, const streamsize width) {
+	const streamsize base_indent, const streamsize nested_indent, const streamsize summary_width) {
 	//indent value is always positive
 	printIndentation(stream, base_indent);
 	string groupName = formatGroupName<false>(group);
@@ -929,11 +929,11 @@ static void printGroupHeader(ostream& stream, const STPInternal::STPBaseCommand&
 	//print group definition
 	groupName += " :=";
 	//basically, we want to align the summary by the last character in the group name string
-	printNameDescription(stream, groupName, formatSummary(group, width), nested_indent, groupName.length() + 1u);
+	printNameDescription(stream, groupName, formatSummary(group, summary_width), nested_indent, groupName.length() + 1u);
 }
 
 static void printGroupBlock(ostream& stream, const STPInternal::STPBaseCommand& root,
-	const streamsize indent, const streamsize width) {
+	const streamsize indent, const streamsize detail_width, const streamsize summary_width) {
 	//print options in each group using DFS, also records the depth of the current node
 	stack<pair<const STPInternal::STPBaseCommand*, streamsize>> groupStack;
 
@@ -956,23 +956,23 @@ static void printGroupBlock(ostream& stream, const STPInternal::STPBaseCommand& 
 			option_indent = indent * (depth + 2);
 
 		//print group title
-		printGroupHeader(stream, *group, base_indent, group_indent, width);
+		printGroupHeader(stream, *group, base_indent, group_indent, summary_width);
 		//print my options
-		printOptionBlock(stream, *group, group_indent, option_indent, width);
+		printOptionBlock(stream, *group, group_indent, option_indent, detail_width);
 
 		//trace my child group
 		traceGroup(*group, depth + 1);
 	}
 }
 
-static void printSubcommandBlock(ostream& stream, const STPInternal::STPBaseCommand& root, const streamsize indent, const streamsize width) {
+static void printSubcommandBlock(ostream& stream, const STPInternal::STPBaseCommand& root, const streamsize indent, const streamsize detail_width) {
 	const auto& command = root.command();
 	if (count_if(command.begin(), command.end(), [](const auto* const cmd) { return cmd->isSubcommand(); }) == 0u) {
 		return;
 	}
 
 	stream << "Subcommand: " << endl;
-	for_each(command.begin(), command.end(), [&stream, indent, width](const auto* const sub) {
+	for_each(command.begin(), command.end(), [&stream, indent, width = detail_width](const auto* const sub) {
 		if (sub->isSubcommand()) {
 			//no indentation is needed for the root command
 			printNameDescription(stream, sub->Name, sub->Description, indent, width);
@@ -981,16 +981,17 @@ static void printSubcommandBlock(ostream& stream, const STPInternal::STPBaseComm
 }
 
 ostream& STPCommandLineParser::operator<<(ostream& stream, const STPHelpPrinter& command_printer) {
-	const auto [parse_result, indent_raw, line_width_raw] = command_printer;
+	const auto [parse_result, indent_raw, summary_line_width_raw, detail_line_width_raw] = command_printer;
 	const auto& [appName, commandPath] = *parse_result;
 	//consistent with the type of the API, although I generally hate using signed type when it is not necessary...
 	const streamsize indentWidth = static_cast<streamsize>(indent_raw),
-		lineWidth = static_cast<streamsize>(line_width_raw);
+		summaryLineWidth = static_cast<streamsize>(summary_line_width_raw),
+		detailLineWidth = static_cast<streamsize>(detail_line_width_raw);
 	//the current operating command/subcommand is the last one in the path
 	const STPInternal::STPBaseCommand& workingCommand = *commandPath.back();
 
 	//print root information
-	stream << workingCommand.Description << endl;
+	stream << '\n' << workingCommand.Description << endl;
 	//print usage line
 	{
 		ostringstream usage;
@@ -1002,20 +1003,20 @@ ostream& STPCommandLineParser::operator<<(ostream& stream, const STPHelpPrinter&
 
 		const string usageContent = usage.str();
 		//there is no indentation at the beginning of the help message
-		printNameDescription(stream, usageContent, formatSummary(workingCommand, lineWidth), 0, usageContent.length() + 1u);
+		printNameDescription(stream, usageContent, formatSummary(workingCommand, summaryLineWidth), 0, usageContent.length() + 1u);
 	}
 	//add an extra newline
 	stream << endl;
 
-	printOptionBlock(stream, workingCommand, 0, indentWidth, lineWidth);
-	printGroupBlock(stream, workingCommand, indentWidth, lineWidth);
-	printSubcommandBlock(stream, workingCommand, indentWidth, lineWidth);
+	printOptionBlock(stream, workingCommand, 0, indentWidth, detailLineWidth);
+	printGroupBlock(stream, workingCommand, indentWidth, detailLineWidth, summaryLineWidth);
+	printSubcommandBlock(stream, workingCommand, indentWidth, detailLineWidth);
 
 	stream << endl;
 	//print syntax line
 	{
-		const auto printSyntaxLine = [&stream, indentWidth, lineWidth](const string_view notation, const string_view desc) -> void {
-			printNameDescription(stream, notation, desc, indentWidth, lineWidth);
+		const auto printSyntaxLine = [&stream, indentWidth, width = detailLineWidth](const string_view notation, const string_view desc) -> void {
+			printNameDescription(stream, notation, desc, indentWidth, width);
 		};
 
 		stream << "Notation and Syntax: " << endl;

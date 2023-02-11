@@ -250,7 +250,8 @@ using STPBaseOption::STPReceivedArgument; \
 void convert(const STPReceivedArgument&) const override
 
 #define OPTION_CLASS_MEMBER(VAR_TYPE) \
-VAR_TYPE Variable = nullptr; \
+STPOption(VAR_TYPE&); \
+VAR_TYPE* Variable = nullptr; \
 OPTION_CLASS_BASE_MEMBER
 		
 		/**
@@ -265,7 +266,7 @@ OPTION_CLASS_BASE_MEMBER
 		struct STPOption : public STPInternal::STPBaseOption {
 		public:
 
-			OPTION_CLASS_MEMBER(BT*);
+			OPTION_CLASS_MEMBER(BT);
 
 		};
 		//No binding variable.
@@ -285,7 +286,7 @@ OPTION_CLASS_BASE_MEMBER
 			//Otherwise the variable is set to the argument parsed from the command line.
 			bool InferredValue = true;
 
-			OPTION_CLASS_MEMBER(bool*);
+			OPTION_CLASS_MEMBER(bool);
 
 		};
 		//A specialisation of the option whose binding variable is a vector.
@@ -293,7 +294,7 @@ OPTION_CLASS_BASE_MEMBER
 		struct STPOption<std::vector<VT>> : public STPInternal::STPBaseOption {
 		public:
 
-			OPTION_CLASS_MEMBER(std::vector<VT>*);
+			OPTION_CLASS_MEMBER(std::vector<VT>);
 
 		};
 		//A specialisation of the option whose binding variable is a tuple.
@@ -301,7 +302,7 @@ OPTION_CLASS_BASE_MEMBER
 		struct STPOption<std::tuple<TT...>> : public STPInternal::STPBaseOption {
 		public:
 
-			OPTION_CLASS_MEMBER(std::tuple<TT...>*);
+			OPTION_CLASS_MEMBER(std::tuple<TT...>);
 
 		};
 
@@ -388,8 +389,10 @@ OPTION_CLASS_BASE_MEMBER
 
 			//The number of space put before printing each option.
 			size_t IndentationWidth;
-			//Specifies the maximum number of character a line can hold.
-			size_t MaxLineWidth;
+			//Specifies the number of character for a summary line.
+			size_t SummaryLineWidth;
+			//Specifies the number of character a detail usage message line can hold.
+			size_t DetailLineWidth;
 
 		};
 

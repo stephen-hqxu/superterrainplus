@@ -25,8 +25,10 @@ find_package(glfw3 3 REQUIRED CONFIG)
 # add all demo program code
 # header and source code will be placed together
 add_executable(${STP_DEMO_PROGRAM}
+STPMasterRenderer.cpp
 STPStart.cpp
 # /Helpers
+Helpers/STPCommandLineOption.cpp
 Helpers/STPTerrainParaLoader.cpp
 Helpers/STPTextureStorage.cpp
 # /World/Biomes
@@ -40,7 +42,9 @@ World/STPWorldManager.cpp
 )
 
 target_sources(${STP_DEMO_PROGRAM} PRIVATE
+STPMasterRenderer.h
 # /Helpers
+Helpers/STPCommandLineOption.h
 Helpers/STPTerrainParaLoader.h
 Helpers/STPTextureStorage.h
 # /World/Biomes
