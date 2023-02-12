@@ -4,6 +4,7 @@
 
 //Data
 #include <tuple>
+#include <optional>
 
 namespace STPDemo {
 
@@ -24,9 +25,13 @@ namespace STPDemo {
 			//Specify the X and Y rendering resolution of the displayed window.
 			//This value is ignored if run under full-screen.
 			std::tuple<unsigned int, unsigned int> WindowResolution;
-			//True to make the application run at full-screen mode.
+			//To make the application run at full-screen mode.
 			//The rendering resolution will be on native resolution.
-			bool UseFullScreen;
+			//The value will be the index to the monitor to use, or no value if don't use full screen mode.
+			std::optional<unsigned int> UseFullScreen;
+			//The rendering FPS limit.
+			//Not specifying this option, or an option with non-positive value will make the program to use the default FPS.
+			std::optional<double> FrameRate;
 
 		};
 

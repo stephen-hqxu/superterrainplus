@@ -4,6 +4,8 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
+//Matcher
+#include <catch2/matchers/catch_matchers_container_properties.hpp>
 
 //SuperTerrain+/SuperTerrain+/World/Diversity/Texture
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureDatabase.h>
@@ -17,6 +19,8 @@ using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPDiversity;
 
 using glm::uvec2;
+
+using Catch::Matchers::SizeIs;
 
 bool operator==(const STPTextureDatabase::STPMapGroupDescription& v1, const STPTextureDatabase::STPMapGroupDescription& v2) {
 	return v1.Dimension == v2.Dimension && 
@@ -333,7 +337,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get all altitude rules
 						const auto AltRec = BatchVisitor.getAltitudes();
-						CHECK(AltRec.size() == 4u);
+						CHECK_THAT(AltRec, SizeIs(4u));
 						//check for ordering
 						const auto [sample, node] = AltRec[2];
 						CHECK(sample == 66u);
@@ -343,7 +347,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get all gradient rules
 						const auto GraRec = BatchVisitor.getGradients();
-						CHECK(GraRec.size() == 2u);
+						CHECK_THAT(GraRec, SizeIs(2u));
 						//pick some data for checking
 						const auto [sample, node] = GraRec[0];
 						CHECK(sample == 66u);
@@ -354,7 +358,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get samples that have been added with rules
 						const auto SampleRec = BatchVisitor.getValidSample(2u);
-						CHECK(SampleRec.size() == 2u);
+						CHECK_THAT(SampleRec, SizeIs(2u));
 						const auto [sample, alt_count, gra_count] = SampleRec[1];
 						CHECK(sample == 66u);
 						CHECK(alt_count == 2u);
@@ -365,7 +369,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get group that has any map being used by any valid texture
 						const auto GroupRec = BatchVisitor.getValidMapGroup();
-						CHECK(GroupRec.size() == 3u);
+						CHECK_THAT(GroupRec, SizeIs(3u));
 						const auto& [id, data_count, desc] = GroupRec[0];
 						CHECK(id == MapGroup[2]);
 						CHECK(data_count == 3u);
@@ -374,7 +378,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get textures that are referenced by any rule
 						const auto TexRec = BatchVisitor.getValidTexture();
-						CHECK(TexRec.size() == 3u);
+						CHECK_THAT(TexRec, SizeIs(3u));
 						CHECK(TexRec[0].first == Tex[2]);
 						CHECK((TexRec[0].second == small_scale));
 
@@ -387,7 +391,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get maps that are used by valid texture
 						const auto MapRec = BatchVisitor.getValidMap();
-						CHECK(MapRec.size() == 6u);
+						CHECK_THAT(MapRec, SizeIs(6u));
 						const auto [group, tex, type, data] = MapRec[3];
 						const unsigned char* data_uc = reinterpret_cast<const unsigned char*>(data);
 						CHECK(group == MapGroup[3]);
@@ -398,7 +402,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 					{
 						//get types that are used by any rule
 						const auto TypeRec = BatchVisitor.getValidMapType(3u);
-						CHECK(TypeRec.size() == 3u);
+						CHECK_THAT(TypeRec, SizeIs(3u));
 						CHECK(TypeRec[1] == STPTextureType::Normal);
 						CHECK(TypeRec[2] == STPTextureType::Roughness);
 					}

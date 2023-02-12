@@ -86,6 +86,9 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				//the number of node of a branch
 				virtual size_t size() const noexcept = 0;
 
+				//check if the container is empty
+				virtual bool empty() const noexcept = 0;
+
 			};
 			typedef STPBaseTreeBranch<const STPBaseOption*> STPBaseOptionTreeBranch;
 			typedef STPBaseTreeBranch<const STPBaseCommand*> STPBaseCommandTreeBranch;
@@ -115,6 +118,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				const T* begin() const noexcept override;
 				const T* end() const noexcept override;
 				size_t size() const noexcept override;
+				bool empty() const noexcept override;
 
 			};
 			template<size_t N>
@@ -192,6 +196,12 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				 * @return True if it supports.
 				*/
 				bool supportDelimiter() const noexcept;
+
+				/**
+				 * @brief Check if the current option is used in the command line, i.e., user has specified this option.
+				 * @return True if the option is used.
+				*/
+				bool used() const noexcept;
 
 			};
 
@@ -374,6 +384,13 @@ OPTION_CLASS_BASE_MEMBER
 			//A boolean value specifies if the parser has parsed any option.
 			//False if there is no command line option specified in the input.
 			bool NonEmptyCommandLine;
+
+			/**
+			 * @brief Get the pointer to command that appears as the last subcommand in the command line.
+			 * This was the subcommand branch the parser worked on.
+			 * @return The pointer to the command branch.
+			*/
+			const STPInternal::STPBaseCommand& commandBranch() const noexcept;
 			
 		};
 

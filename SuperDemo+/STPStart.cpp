@@ -26,14 +26,16 @@
 //System
 #include <iostream>
 #include <optional>
+#include <tuple>
 
 //GLM
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/trigonometric.hpp>
 
-using std::make_optional;
+using std::make_tuple;
 using std::optional;
+using std::tuple;
 using std::string;
 using std::string_view;
 
@@ -84,7 +86,6 @@ namespace {
 
 	/* ------------------------------ callback functions ----------------------------------- */
 	GLFWwindow* GLCanvas = nullptr;
-	GLFWmonitor* GLMonitor = nullptr;
 	dvec2 LastRotation;
 
 	void reshape(const unsigned int width, const unsigned int height) {
@@ -99,11 +100,11 @@ namespace {
 		}
 	}
 
-	void frame_resized(GLFWwindow*, const int w, const int h) {
+	inline void resizeWindowCallback(GLFWwindow*, const int w, const int h) {
 		reshape(static_cast<unsigned int>(w), static_cast<unsigned int>(h));
 	}
 
-	inline void cursor_moved(GLFWwindow*, const double X, const double Y) {
+	inline void moveCursorCallback(GLFWwindow*, const double X, const double Y) {
 		//we reverse Y since Y goes from bottom to top (from negative axis to positive)
 		const dvec2 currentPos = dvec2(X, Y);
 		const dvec2 offset = dvec2(currentPos.x - LastRotation.x, LastRotation.y - currentPos.y);
@@ -113,7 +114,7 @@ namespace {
 		LastRotation = currentPos;
 	}
 
-	inline void scrolled(GLFWwindow*, double, const double Yoffset) {
+	inline void scrollWheelCallback(GLFWwindow*, double, const double Yoffset) {
 		//we only need vertical scroll
 		MainCamera->zoom(-Yoffset);
 	}
@@ -147,16 +148,47 @@ namespace {
 	/* ------------------------------ framework setup ----------------------------------- */
 
 	/**
+	 * @brief Get the active monitor.
+	 * @param index The monitor index.
+	 * @return The pointer to the monitor, or null if error occurs.
+	*/
+	GLFWmonitor* getGLFWMonitor(const unsigned int index) {
+		int total;
+		GLFWmonitor* const* const allMonitor = glfwGetMonitors(&total);
+		if (index >= static_cast<unsigned int>(total)) {
+			//make sure index is valid
+			cerr << "Monitor index is not valid, the number of monitor found is " << total << endl;
+			cerr << "Switch to windowed mode automatically" << endl;
+			return nullptr;
+		}
+
+		//get the target monitor
+		return allMonitor[index];
+	}
+
+	/**
 	 * @brief Initialise GLFW engine.
-	 * @param canvasDimXY Specifies the dimension of the window/canvas.
+	 * @param canvasDim Specifies the dimension of the window/canvas.
+	 * This dimension might get modified to get the best display quality and performance.
+	 * @param monitor Specifies the monitor to use for full screen display.
+	 * Null to use windowed mode.
 	 * @return True if the GLFW window has been created.
 	*/
-	bool createGLFWWindow(const unsigned int canvasDimX, const unsigned int canvasDimY) {
-		//Initialisation
-		if (glfwInit() == GLFW_FALSE) {
-			cerr << "Unable to Init GLFW." << endl;
-			return false;
-		}
+	bool createGLFWWindow(tuple<unsigned int, unsigned int>& canvasDim, GLFWmonitor* const monitor) {
+		//get monitor setting, if any
+		const auto getMonitorSetting = [&canvasDim, monitor]() noexcept -> auto {
+			const GLFWvidmode* const monitorSetting = monitor ? glfwGetVideoMode(monitor) : nullptr;
+
+			if (monitorSetting) {
+				//also change the rendering resolution
+				canvasDim = make_tuple(monitorSetting->width, monitorSetting->height);
+				return make_tuple(
+					monitorSetting->redBits, monitorSetting->greenBits, monitorSetting->blueBits, monitorSetting->refreshRate);
+			}
+			//otherwise use our default value
+			return make_tuple(8, 8, 8, GLFW_DONT_CARE);
+		};
+
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);//we are running at OpenGL 4.6
@@ -170,18 +202,21 @@ namespace {
 		glfwWindowHint(GLFW_CONTEXT_NO_ERROR, GLFW_TRUE);
 #endif
 
+		const auto [bit_r, bit_g, bit_b, refresh_rate] = getMonitorSetting();
 		//rendering preferences
-		glfwWindowHint(GLFW_RED_BITS, 8);
-		glfwWindowHint(GLFW_GREEN_BITS, 8);
-		glfwWindowHint(GLFW_BLUE_BITS, 8);
+		glfwWindowHint(GLFW_RED_BITS, bit_r);
+		glfwWindowHint(GLFW_GREEN_BITS, bit_g);
+		glfwWindowHint(GLFW_BLUE_BITS, bit_b);
 		glfwWindowHint(GLFW_ALPHA_BITS, 8);
+		glfwWindowHint(GLFW_REFRESH_RATE, refresh_rate);
 		//fragment tests are unused on default framebuffer
 		glfwWindowHint(GLFW_DEPTH_BITS, 0);
 		glfwWindowHint(GLFW_STENCIL_BITS, 0);
 		glfwWindowHint(GLFW_SAMPLES, 0);
 
 		//creation of the rendering window
-		GLCanvas = glfwCreateWindow(canvasDimX, canvasDimY, "SuperTerrain+ Demo", GLMonitor, nullptr);
+		const auto [dimX, dimY] = canvasDim;
+		GLCanvas = glfwCreateWindow(dimX, dimY, "SuperTerrain+ Demo", monitor, nullptr);
 		if (GLCanvas == nullptr) {
 			cerr << "Unable to create GLFWwindow instance." << endl;
 			return false;
@@ -197,9 +232,9 @@ namespace {
 		//hiding the cursor
 		glfwSetInputMode(GLCanvas, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		//call back functions
-		glfwSetFramebufferSizeCallback(GLCanvas, frame_resized);
-		glfwSetCursorPosCallback(GLCanvas, cursor_moved);
-		glfwSetScrollCallback(GLCanvas, scrolled);
+		glfwSetFramebufferSizeCallback(GLCanvas, resizeWindowCallback);
+		glfwSetCursorPosCallback(GLCanvas, moveCursorCallback);
+		glfwSetScrollCallback(GLCanvas, scrollWheelCallback);
 
 		glfwGetCursorPos(GLCanvas, &LastRotation.x, &LastRotation.y);
 
@@ -212,7 +247,7 @@ namespace {
 	 * @brief Create glad context, making the current running thread available to OpenGL
 	*/
 	void initSTP() {
-		const auto proc_addr = reinterpret_cast<GLADloadproc>(glfwGetProcAddress);
+		const auto proc_addr = reinterpret_cast<SuperTerrainPlus::STPEngineInitialiser::STPGLProc>(glfwGetProcAddress);
 		//when we are using shared library build in GLAD, the GLAD context is shared to all libraries that are linked to it.
 		//CUDA context init on device 0 (only one GPU)
 		//if it fails, exception is generated
@@ -224,7 +259,7 @@ namespace {
 	/**
 	 * @brief Terminate the engine and exit.
 	*/
-	void clearup() {
+	void cleanUp() noexcept {
 		//make sure pipeline is deleted before the context is destroyed
 		MasterEngine.reset();
 
@@ -252,8 +287,6 @@ int main(const int argc, const char* argv[]) {
 		return -1;
 	}
 
-	const auto [canvasDimX, canvasDimY] = commandLineOption.WindowResolution;
-
 	/* --------------------- read configuration -------------------- */
 	const string engineData = File::read("./Engine.ini"),
 		biomeData = File::read("./Biome.ini");
@@ -268,21 +301,36 @@ int main(const int argc, const char* argv[]) {
 	}
 	const STPINIStorageView& engineINI(engineINIReader.Storage), &biomeINI(biomeINIReader.Storage);
 
-	/* ----------------------------------------------------------------- */
-
-	//engine setup
-	//because GLFW callback uses camera, so we need to setup camera first
-	if (!(createGLFWWindow(canvasDimX, canvasDimY))) {
-		//error
-		clearup();
+	/* --------------------------- engine setup ------------------------------- */
+	if (glfwInit() == GLFW_FALSE) {
+		cerr << "Unable to initialise GLFW library" << endl;
 		return -1;
 	}
-	initSTP();
+	//we may modify the resolution based on whether we are using windowed or full screen mode
+	if (const auto& useFS = commandLineOption.UseFullScreen;
+		!(createGLFWWindow(commandLineOption.WindowResolution, useFS ? getGLFWMonitor(*useFS) : nullptr))) {
+		//error
+		cleanUp();
+		return -1;
+	}
+
+	try {
+		initSTP();
+	} catch (const std::exception& e) {
+		cerr << "Unable to initialise SuperTerrain+ library" << endl;
+		cerr << e.what() << endl;
+		return -1;
+	}
+
 	//welcome
 	cout << File::read("./Resource/welcome.txt") << endl;
 	cout << "OpenGL Version: " << glGetString(GL_VERSION) << endl;
 	cout << "OpenGL Vendor: " << glGetString(GL_VENDOR) << endl;
 	cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << '\n' << endl;
+
+	const auto [canvasDimX, canvasDimY] = commandLineOption.WindowResolution;
+
+	/* -------------------------------------------------------------------- */
 
 	//capture any error from the GL callback
 	bool shouldApplicationHalt = false;
@@ -332,12 +380,12 @@ int main(const int argc, const char* argv[]) {
 		MasterEngine->setGamma(engineINI.at("Global").at("gamma").to<float>());
 	} catch (const std::exception& e) {
 		cerr << e.what() << endl;
-		clearup();
+		cleanUp();
 		return -1;
 	}
 
 	//rendering loop
-	const double FPS = engineINI.at("").at("FPS").to<double>();
+	const double FPS = commandLineOption.FrameRate.value_or(engineINI.at("").at("FPS").to<double>());
 	double currentTime = 0.0, lastTime = 0.0, deltaTime = 0.0;
 	cout << "Start..." << endl;
 	while (!glfwWindowShouldClose(GLCanvas)) {
@@ -362,7 +410,7 @@ int main(const int argc, const char* argv[]) {
 			MasterEngine->render(currentTime, deltaTime);
 		} catch (const std::exception& e) {
 			cerr << e.what() << endl;
-			clearup();
+			cleanUp();
 			return -1;
 		}
 
@@ -375,7 +423,7 @@ int main(const int argc, const char* argv[]) {
 	//termination
 	cout << "Terminated, waiting for clear up..." << endl;
 
-	clearup();
+	cleanUp();
 
 	cout << "Done... Program now exit." << endl;
 	return 0;

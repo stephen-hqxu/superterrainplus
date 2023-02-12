@@ -3,11 +3,15 @@
 //Generator
 #include <catch2/generators/catch_generators_range.hpp>
 //Matcher
+#include <catch2/matchers/catch_matchers_container_properties.hpp>
+#include <catch2/matchers/catch_matchers_exception.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 //SuperAlgorithm+/Parser/INI
 #include <SuperAlgorithm+/Parser/STPINIParser.h>
+
+#include <SuperTerrain+/Exception/STPParserError.h>
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
@@ -20,9 +24,11 @@ constexpr static string_view TestINIFilename = "./TestData/Data.ini";
 namespace STPFile = SuperTerrainPlus::STPFile;
 using namespace SuperTerrainPlus::STPAlgorithm;
 
-using namespace Catch::Matchers;
+using Catch::Matchers::ContainsSubstring;
+using Catch::Matchers::SizeIs;
+using Catch::Matchers::MessageMatches;
 
-SCENARIO("INI reader can parsed all values correctly", "[AlgorithmHost][INI][STPINIReader]") {
+SCENARIO("INI reader can parsed all values correctly", "[AlgorithmHost][STPINIReader]") {
 	STPINIParser::STPINIReaderResult Result;
 	const auto& [Storage, SecOrder, PropOrder] = Result;
 
@@ -41,10 +47,10 @@ SCENARIO("INI reader can parsed all values correctly", "[AlgorithmHost][INI][STP
 					const auto& DietSec = Storage.at("Diet");
 					const auto& MakeSoundSec = Storage.at("Make Sound");
 
-					REQUIRE(Storage.size() == 3u);
-					REQUIRE(NamelessSec.size() == 3u);
-					REQUIRE(DietSec.size() == 4u);
-					REQUIRE(MakeSoundSec.size() == 6u);
+					REQUIRE_THAT(Storage, SizeIs(3u));
+					REQUIRE_THAT(NamelessSec, SizeIs(3u));
+					REQUIRE_THAT(DietSec, SizeIs(4u));
+					REQUIRE_THAT(MakeSoundSec, SizeIs(6u));
 
 					CHECK((NamelessSec.at("day").String == "Monday"));
 					CHECK((NamelessSec.at("weather").String == "sunny"));
@@ -77,6 +83,9 @@ SCENARIO("INI reader can parsed all values correctly", "[AlgorithmHost][INI][STP
 
 	}
 
+#define CHECK_INI_ERROR(INPUT, MAT) CHECK_THROWS_MATCHES(tryRead(INPUT), \
+	SuperTerrainPlus::STPException::STPParserError::STPInvalidSyntax, MessageMatches(MAT))
+
 	GIVEN("A raw INI string which does not comply with INI syntax") {
 		const auto tryRead = [&Result](const char* const src) {
 			constexpr static string_view BrokenINIFilename = "BrokenData.ini";
@@ -88,8 +97,8 @@ SCENARIO("INI reader can parsed all values correctly", "[AlgorithmHost][INI][STP
 		WHEN("It is fed into the INI parser") {
 
 			THEN("It reports error") {
-				CHECK_THROWS_WITH(tryRead(BrokenINI1), ContainsSubstring("SectionLineClosing"));
-				CHECK_THROWS_WITH(tryRead(BrokenINI2), ContainsSubstring("KeyValueSeparator"));
+				CHECK_INI_ERROR(BrokenINI1, ContainsSubstring("SectionLineClosing"));
+				CHECK_INI_ERROR(BrokenINI2, ContainsSubstring("KeyValueSeparator"));
 			}
 
 		}

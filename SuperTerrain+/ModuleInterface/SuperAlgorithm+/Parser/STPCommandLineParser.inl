@@ -51,6 +51,11 @@ inline size_t TREE_BRANCH_NAME::size() const noexcept {
 	return this->Leaf.size();
 }
 
+TREE_BRANCH_TEMPLATE
+inline bool TREE_BRANCH_NAME::empty() const noexcept {
+	return this->Leaf.empty();
+}
+
 #undef TREE_BRANCH_NAME
 #undef TREE_BRANCH_TEMPLATE
 /* --------------------------- command ------------------------------ */
@@ -102,6 +107,10 @@ inline bool NAMESPACE_CMD_NAME::STPInternal::STPBaseOption::supportDelimiter() c
 	return this->Delimiter != '\0';
 }
 
+inline bool NAMESPACE_CMD_NAME::STPInternal::STPBaseOption::used() const noexcept {
+	return this->Result.IsUsed;
+}
+
 #define OPTION_CONVERT(TEMP) inline void NAMESPACE_CMD_NAME::STPOption<TEMP>::convert([[maybe_unused]] const STPReceivedArgument& rx_arg) const
 #define OPTION_CTOR(TEMP) inline NAMESPACE_CMD_NAME::STPOption<TEMP>::STPOption(TEMP& v) : Variable(&v)
 
@@ -110,10 +119,13 @@ OPTION_CTOR(BT) { }
 
 template<class BT>
 OPTION_CONVERT(BT) {
-	STP_ASSERTION_VALIDATION(rx_arg.size() == 1u, "The number of argument in a single-argument option must be exactly one");
+	const size_t arg_count = rx_arg.size();
+	STP_ASSERTION_VALIDATION(arg_count <= 1u, "The number of argument in a single-argument option must be no more than one");
 
-	//just use our string tool to convert the argument
-	*this->Variable = rx_arg.front().to<BT>();
+	if (arg_count == 1u) {
+		//just use our string tool to convert the argument
+		*this->Variable = rx_arg.front().to<BT>();
+	}
 }
 
 OPTION_CONVERT(void) {
@@ -123,11 +135,12 @@ OPTION_CONVERT(void) {
 OPTION_CTOR(bool) { }
 
 OPTION_CONVERT(bool) {
-	STP_ASSERTION_VALIDATION(rx_arg.size() <= 1u, "The number of argument in a flag option must be no more than one");
+	const size_t arg_count = rx_arg.size();
+	STP_ASSERTION_VALIDATION(arg_count <= 1u, "The number of argument in a flag option must be no more than one");
 	
 	//if there is an argument, read directly from it
 	//a flag does not have any argument, simply assign from its inferred value
-	*this->Variable = rx_arg.size() == 1u ? rx_arg.front().to<bool>() : this->InferredValue;
+	*this->Variable = arg_count == 1u ? rx_arg.front().to<bool>() : this->InferredValue;
 }
 
 template<class VT>
@@ -161,6 +174,12 @@ OPTION_CONVERT(std::tuple<TT...>) {
 
 #undef OPTION_CTOR
 #undef OPTION_CONVERT
+/* -------------------------------------------------- result ----------------------------------------------------- */
+
+inline const NAMESPACE_CMD_NAME::STPInternal::STPBaseCommand& NAMESPACE_CMD_NAME::STPParseResult::commandBranch() const noexcept {
+	return *this->HelpData.CommandPath.back();
+}
+
 /* --------------------------------------------------------------------------------------------------------------- */
 
 #undef NAMESPACE_CMD_NAME

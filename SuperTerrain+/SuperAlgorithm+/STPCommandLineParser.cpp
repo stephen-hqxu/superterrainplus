@@ -432,7 +432,7 @@ static const STPInternal::STPBaseOption& readOption(const string_view option_nam
 
 	//see if this option uses delimiter separated value
 	const STPInternal::STPBaseOption& current_option = *it->second;
-	if (current_option.Result.IsUsed) {
+	if (current_option.used()) {
 		ostringstream err;
 		err << "Option \'" << option_name << "\' has already been specified, duplicate option is prohibited" << endl;
 		throw CMD_PARSER_SEMANTIC_ERROR(err.str(), "duplicate option");
@@ -474,8 +474,13 @@ static void saveOption(const STPInternal::STPBaseOption& option, const STPIntern
  * @param argument The storage for the option argument.
  * @return True if the current option state should be reset, i.e., leaving the current state.
 */
-static bool readValue(const STPOptionResult& current_option, const STPStringViewAdaptor& current_value,
+static bool readValue(const STPOptionResult& current_option, STPStringViewAdaptor current_value,
 	STPReceivedPositional& positional, STPInternal::STPBaseOption::STPReceivedArgument& argument) {
+	//make some escaping
+	if (!current_value->empty() && current_value->front() == '\\') {
+		current_value->remove_prefix(1u);
+	}
+
 	if (const bool isPositional = !current_option;
 		isPositional || argument.size() >= current_option->first->ArgumentCount.Max) {
 		//no currently active option, or we got enough maximum number of argument for this option
@@ -614,7 +619,7 @@ static void allocatePositional(STPReceivedPositional& positional, const STPPosit
 
 		const STPInternal::STPBaseOption& pos_opt = *pos_opt_ptr;
 		assert(pos_opt.isPositional());
-		if (pos_opt.Result.IsUsed) {
+		if (pos_opt.used()) {
 			//positional option might be specified as a non-positional option
 			//if it is used already, skip
 			continue;
@@ -688,7 +693,7 @@ static bool postValidation(const STPInternal::STPBaseCommand& root) {
 		size_t usedOption = 0u;
 		//validate options in the current group
 		for (const auto* const opt : currentGroup->option()) {
-			const bool used = opt->Result.IsUsed;
+			const bool used = opt->used();
 
 			//only invalid if it is a required option but not provided
 			if (!used && opt->Require) {
@@ -903,7 +908,7 @@ static string formatSummary(const STPInternal::STPBaseCommand& root, const strea
 static void printOptionBlock(ostream& stream, const STPInternal::STPBaseCommand& group,
 	const streamsize base_indent, const streamsize nested_indent, const streamsize detail_width) {
 	const auto& option = group.option();
-	if (option.size() == 0u) {
+	if (option.empty()) {
 		//no option in this group
 		return;
 	}
@@ -1012,35 +1017,5 @@ ostream& STPCommandLineParser::operator<<(ostream& stream, const STPHelpPrinter&
 	printGroupBlock(stream, workingCommand, indentWidth, detailLineWidth, summaryLineWidth);
 	printSubcommandBlock(stream, workingCommand, indentWidth, detailLineWidth);
 
-	stream << endl;
-	//print syntax line
-	{
-		const auto printSyntaxLine = [&stream, indentWidth, width = detailLineWidth](const string_view notation, const string_view desc) -> void {
-			printNameDescription(stream, notation, desc, indentWidth, width);
-		};
-
-		stream << "Notation and Syntax: " << endl;
-		printSyntaxLine("[--option]",
-			"A squared bracket enclosed option is optional");
-		printSyntaxLine("<option>",
-			"A positional argument, for which option name can be omitted\nbut is order sensitive");
-		printSyntaxLine("(group)",
-			"A round bracket enclosed name is a group");
-		printSyntaxLine("--long-option,-o",
-			"An option might be specified by\neither a long option name or short option name, if any defined");
-		printSyntaxLine("-abc",
-			"Multiple short options without argument can be combined together");
-		printSyntaxLine("--option=arg1,arg2",
-			"Arguments can be specified with delimiters");
-		printSyntaxLine("(:N)",
-			"A positional argument with precedence of \'N\'");
-		printSyntaxLine("[,]",
-			"This option supports delimiter separated value with specified delimiter,\nenclosed in the squared bracket");
-		printSyntaxLine("{n,m}",
-			"A subcommand/group or option requires\nat least 'n' and at most 'm' number of option or argument;\n"
-			"If 'n' equals 'm', then extra duplicate number is omitted\n"
-			"If 'm' is unlimited, 'm' value is replaced by '...'");
-	}
-	stream << endl;
 	return stream;
 }

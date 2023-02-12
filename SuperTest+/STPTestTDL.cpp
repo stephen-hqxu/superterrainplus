@@ -1,11 +1,13 @@
 //Catch2
 #include <catch2/catch_test_macros.hpp>
 //Matcher
-#include <catch2/matchers/catch_matchers.hpp>
+#include <catch2/matchers/catch_matchers_exception.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 //SuperAlgorithm+/Parser
 #include <SuperAlgorithm+/Parser/STPTextureDefinitionLanguage.h>
+
+#include <SuperTerrain+/Exception/STPParserError.h>
 
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
@@ -90,6 +92,11 @@ SCENARIO("TDL interpreter parses a TDL script", "[AlgorithmHost][Texture][STPTex
 
 	}
 
+#define CHECK_GENERIC_TDL_ERROR(INPUT, EXC, MAT) \
+	CHECK_THROWS_MATCHES(tryParse(INPUT), EXC, MessageMatches(MAT))
+#define CHECK_SYNTAX_ERROR(INPUT, MAT) CHECK_GENERIC_TDL_ERROR(INPUT, STPException::STPParserError::STPInvalidSyntax, MAT)
+#define CHECK_SEMANTIC_ERROR(INPUT, MAT) CHECK_GENERIC_TDL_ERROR(INPUT, STPException::STPParserError::STPSemanticError, MAT)
+
 	GIVEN("A TDL source with incorrect syntax and semantics") {
 		using namespace Catch::Matchers;
 		const auto tryParse = [](const char* const src) {
@@ -103,33 +110,34 @@ SCENARIO("TDL interpreter parses a TDL script", "[AlgorithmHost][Texture][STPTex
 			constexpr char BrokenTDL4[] = "#texture [x] #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(0.4f -> x)};";
 			constexpr char BrokenTDL5[] = "#texture [x] #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(0.4f $ x)}";
 			constexpr char BrokenTDL6[] = "#texture [x] #group view{x:=(1u,2u,3u} \n #rule altitude{0:=(0.4f -> x)}";
-			constexpr char BrokenTDL7[] = "#texture [x] #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(888888888888888888888888888888888888888.8f -> x)}";
+			constexpr char BrokenTDL7[] = "#texture [x] #group view{x:=(3u,2u,1u)} \n #altitude{0:=(0.9f -> x)";
+			constexpr char BrokenTDL8[] = "#texture [x] #group hey{x:=(3u,2u,1u)} \n #rule altitude{0:=(0.5f -> x)";
+			constexpr char BrokenTDL9[] = "#texture [x, y] #group view{x:=(3u,2u,1u)} \n #rule altitude{0:=(0.25f -> x)";
 
 			THEN("TDL interpreter should report the mistakes and expected syntax") {
-				CHECK_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("DirectiveBlockEnd"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring("Separator"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring("MapTo"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL4), ContainsSubstring("DirectiveControl"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL5), ContainsSubstring("InvalidToken"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL6), ContainsSubstring("ParameterBlockEnd"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL7), ContainsSubstring("8.8f"));
+				CHECK_SYNTAX_ERROR(BrokenTDL1, ContainsSubstring("DirectiveBlockEnd"));
+				CHECK_SYNTAX_ERROR(BrokenTDL2, ContainsSubstring("Separator"));
+				CHECK_SYNTAX_ERROR(BrokenTDL3, ContainsSubstring("MapTo"));
+				CHECK_SYNTAX_ERROR(BrokenTDL4, ContainsSubstring("DirectiveControl"));
+				CHECK_SYNTAX_ERROR(BrokenTDL5, ContainsSubstring("InvalidToken"));
+				CHECK_SYNTAX_ERROR(BrokenTDL6, ContainsSubstring("ParameterBlockEnd"));
+				CHECK_SYNTAX_ERROR(BrokenTDL7, ContainsSubstring("altitude")
+					&& ContainsSubstring("DirectiveRule") && ContainsSubstring("DirectiveRuleAltitude"));
+				CHECK_SYNTAX_ERROR(BrokenTDL8, ContainsSubstring("hey")
+					&& ContainsSubstring("DirectiveGroupView") && ContainsSubstring("TDLIdentifier"));
+				CHECK_SYNTAX_ERROR(BrokenTDL9, ContainsSubstring("y"));
 			}
 
 		}
 
 		WHEN("There is a semantic error") {
 			constexpr char BrokenTDL1[] = "#texture [x] #group view{x:=(3u,2u,1u)} \n #rule altitude{0:=(0.15f -> y)}";
-			constexpr char BrokenTDL2[] = "#texture [x] #group view{x:=(3u,2u,1u)} \n #altitude{0:=(0.9f -> x)";
-			constexpr char BrokenTDL3[] = "#texture [x] #group hey{x:=(3u,2u,1u)} \n #rule altitude{0:=(0.5f -> x)";
-			constexpr char BrokenTDL4[] = "#texture [x, y] #group view{x:=(3u,2u,1u)} \n #rule altitude{0:=(0.25f -> x)";
-
+			constexpr char BrokenTDL2[] = "#texture [x] #group view{x:=(1u,2u,3u)} \n #rule altitude{0:=(888888888888888888888888888888888888888.8f -> x)}";
+			
 			THEN("TDL interpreter should report the incorrect semantic") {
-				CHECK_THROWS_WITH(tryParse(BrokenTDL1), ContainsSubstring("y"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL2), ContainsSubstring("altitude")
-					&& ContainsSubstring("DirectiveRule") && ContainsSubstring("DirectiveRuleAltitude"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL3), ContainsSubstring("hey")
-					&& ContainsSubstring("DirectiveGroupView") && ContainsSubstring("TDLIdentifier"));
-				CHECK_THROWS_WITH(tryParse(BrokenTDL4), ContainsSubstring("y"));
+				CHECK_SEMANTIC_ERROR(BrokenTDL1, ContainsSubstring("y"));
+				CHECK_SEMANTIC_ERROR(BrokenTDL2, ContainsSubstring("8.8f"));
+				
 			}
 
 		}

@@ -5,6 +5,10 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
+//Matchers
+#include <catch2/matchers/catch_matchers_predicate.hpp>
+#include <catch2/matchers/catch_matchers_quantifiers.hpp>
+#include <catch2/matchers/catch_matchers_range_equals.hpp>
 
 //SuperTerrain+/World/Chunk
 #include <SuperTerrain+/World/Chunk/STPNearestNeighbourTextureBuffer.h>
@@ -32,7 +36,10 @@ using glm::uvec2;
 
 using std::array;
 using std::make_optional;
-using std::all_of;
+
+using Catch::Matchers::Predicate;
+using Catch::Matchers::AllMatch;
+using Catch::Matchers::RangeEquals;
 
 typedef STPNearestNeighbourTextureBufferMemoryMode NNTBMM;
 
@@ -83,6 +90,10 @@ private:
 		return MergedTex;
 	}
 
+	inline static bool equalsZero(const T num) noexcept {
+		return num == static_cast<T>(0);
+	}
+
 protected:
 
 	using NNBuffer = STPNearestNeighbourTextureBuffer<T, MM>;
@@ -109,22 +120,20 @@ protected:
 		std::copy(this->MergedTextureRef.cbegin(), this->MergedTextureRef.cend(), output.getHost());
 	}
 
-	inline bool compareChunkData(const ChunkTexture_t& chunk_data) const {
-		return std::equal(chunk_data.cbegin(), chunk_data.cend(), this->ChunkTextureRef.cbegin());
+	inline void compareChunkData(const ChunkTexture_t& chunk_data) const {
+		REQUIRE_THAT(chunk_data, RangeEquals(this->ChunkTextureRef));
 	}
 
-	inline static bool isChunkDataAllZero(const ChunkTexture_t& chunk_data) {
-		return all_of(chunk_data.cbegin(), chunk_data.cend(), [](const auto& chk) {
-			return all_of(chk.cbegin(), chk.cend(), [](const auto pix) { return pix == static_cast<T>(0); });
-		});
+	inline static void isChunkDataAllZero(const ChunkTexture_t& chunk_data) {
+		REQUIRE_THAT(chunk_data, AllMatch(AllMatch(Predicate<T>(typename NNBufferTester::equalsZero))));
 	}
 
-	inline static bool isMergedDataAllZero(const T* const merged_data) {
-		return all_of(merged_data, merged_data + NNBufferTester::MergedSize, [](const auto val) { return val == static_cast<T>(0); });
+	inline static void isMergedDataAllZero(const T* const merged_data) {
+		REQUIRE(std::all_of(merged_data, merged_data + NNBufferTester::MergedSize, typename NNBufferTester::equalsZero));
 	}
 
-	inline static bool isMergedDataAllZero(const MergedTexture_t& merged_data) {
-		return NNBufferTester::isMergedDataAllZero(merged_data.data());
+	inline static void isMergedDataAllZero(const MergedTexture_t& merged_data) {
+		REQUIRE_THAT(merged_data, AllMatch(Predicate<T>(typename NNBufferTester::equalsZero)));
 	}
 
 public:
@@ -176,13 +185,13 @@ TEMPLATE_TEST_CASE_METHOD_SIG(NNBufferTester, "STPNearestNeighbourTextureBuffer 
 					//we can examine the data if it is write only, because data are undefined
 					if constexpr (MM != NNTBMM::WriteOnly) {
 						//examine the content of merged buffer, we filled in all zeros initially
-						REQUIRE(CurrentTester::isMergedDataAllZero(CopiedMergedDevice));
+						CurrentTester::isMergedDataAllZero(CopiedMergedDevice);
 					}
 				}
 				CHECKED_ELSE(isDevice) {
 					//host memory can be read directly
 					if constexpr (MM != NNTBMM::WriteOnly) {
-						REQUIRE(CurrentTester::isMergedDataAllZero(TestDataMerged.getHost()));
+						CurrentTester::isMergedDataAllZero(TestDataMerged.getHost());
 					}
 				}
 

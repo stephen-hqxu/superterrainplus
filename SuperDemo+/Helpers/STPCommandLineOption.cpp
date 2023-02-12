@@ -10,6 +10,7 @@
 using std::string;
 using std::make_tuple;
 using std::tie;
+using std::nullopt;
 
 using std::cerr;
 using std::cout;
@@ -20,7 +21,7 @@ namespace Cmd = SuperTerrainPlus::STPAlgorithm::STPCommandLineParser;
 using namespace STPDemo;
 
 //The option loaded if there is no command line option supplied.
-constexpr static auto DefaultOption = STPCommandLineOption::STPResult { 2.0, make_tuple(1600u, 900u), false };
+constexpr static auto DefaultOption = STPCommandLineOption::STPResult { 2.0, make_tuple(1600u, 900u), nullopt, nullopt };
 
 //TODO: C++ 20: use designated initialiser to make list initialisation less verbose
 
@@ -57,7 +58,30 @@ STPCommandLineOption::STPResult STPCommandLineOption::read(const int argc, const
 	windowResolutionOption.ArgumentCount.set(2u);
 	windowResolutionOption.Delimiter = 'x';
 
-	Cmd::STPCommand starterCommand(tie(starterHelpOption, sprintSpeedOption, windowResolutionOption), tie());
+	unsigned int monitorIndex = 0;//default to index to the primary monitor
+	Cmd::STPOption fullScreenOption(monitorIndex);
+	fullScreenOption.LongName = "full-screen";
+	fullScreenOption.Description = "Run the application in full-screen mode.\n"
+		"Specify the index to the monitor to run,\nif unspecified, use primary monitor as default";
+	fullScreenOption.ArgumentCount.Max = 1u;
+
+	double fps = -1.0;
+	Cmd::STPOption fpsOption(fps);
+	fpsOption.LongName = "fps";
+	fpsOption.Description = "Set the frame per second during rendering";
+	fpsOption.ArgumentCount.set(1u);
+
+	Cmd::STPCommand resolutionGroup(tie(windowResolutionOption, fullScreenOption), tie());
+	resolutionGroup.Name = "frame-resolution";
+	resolutionGroup.Description = "Modifies the resolution of the rendering frame";
+	resolutionGroup.OptionCount.Max = 1u;
+	resolutionGroup.IsGroup = true;
+
+	Cmd::STPCommand starterCommand(tie(
+		starterHelpOption,
+		sprintSpeedOption,
+		fpsOption
+	), tie(resolutionGroup));
 	starterCommand.Name = "start";
 	starterCommand.Description = "Start the SuperTerrain+ demo application by running the real-time rendering of generated terrain";
 	starterCommand.OptionCount.unlimitedMax();
@@ -67,8 +91,8 @@ STPCommandLineOption::STPResult STPCommandLineOption::read(const int argc, const
 	try {
 		Cmd::validate(starterCommand);
 	} catch (...) {
-		cerr << "A validation error is encountered associated with the command line setting."
-			 << "This should not happen and must be a bug, please open an issue to resolve this." << endl;
+		cerr << "A validation error is encountered associated with the command line setting. "
+			"This should not happen and must be a bug, please open an issue to resolve this." << endl;
 		throw;
 	}
 #endif
@@ -77,13 +101,14 @@ STPCommandLineOption::STPResult STPCommandLineOption::read(const int argc, const
 
 	//handle help message printing
 	if (starterHelp) {
-		const Cmd::STPHelpPrinter print_help { &parser_output.HelpData, 4u, 60u, 30u };
+		const Cmd::STPHelpPrinter print_help { &parser_output.HelpData, 4u, 60u, 25u };
 		cout << print_help;
 		//safe exit
 		std::exit(0);
 	}
 	//handle exception
-	if (const std::exception_ptr& validation_error = parser_output.ValidationStatus; validation_error) {
+	if (const std::exception_ptr& validation_error = parser_output.ValidationStatus;
+		validation_error) {
 		std::rethrow_exception(validation_error);
 	}
 
@@ -91,6 +116,13 @@ STPCommandLineOption::STPResult STPCommandLineOption::read(const int argc, const
 	STP_ASSERTION_NUMERIC_DOMAIN(result.SprintSpeedMultiplier > 0.0, "The sprint speed must be strictly positive");
 	const auto [resX, resY] = result.WindowResolution;
 	STP_ASSERTION_NUMERIC_DOMAIN(resX > 0u && resY > 0u, "The window resolution must be strictly positive");
+	if (fullScreenOption.used()) {
+		result.UseFullScreen.emplace(monitorIndex);
+	}
+	if (fpsOption.used()) {
+		STP_ASSERTION_NUMERIC_DOMAIN(fps > 0.0, "The rendering frame rate must be strictly positive");
+		result.FrameRate.emplace(fps);
+	}
 
 	return result;
 }

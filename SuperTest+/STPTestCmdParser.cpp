@@ -1,8 +1,12 @@
 //Catch2
 #include <catch2/catch_test_macros.hpp>
 //Matcher
+#include <catch2/matchers/catch_matchers_container_properties.hpp>
+#include <catch2/matchers/catch_matchers_predicate.hpp>
+#include <catch2/matchers/catch_matchers_quantifiers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
+#include <catch2/matchers/catch_matchers_exception.hpp>
 //Generator
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
@@ -14,13 +18,13 @@
 //Error
 #include <SuperTerrain+/Exception/STPValidationFailed.h>
 #include <SuperTerrain+/Exception/STPParserError.h>
+#include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 #include <string>
-#include <string_view>
 #include <sstream>
 #include <limits>
-#include <algorithm>
 #include <exception>
+#include <algorithm>
 
 //Storage
 #include <array>
@@ -28,7 +32,6 @@
 #include <tuple>
 
 using std::string;
-using std::string_view;
 using std::ostringstream;
 using std::array;
 using std::vector;
@@ -37,17 +40,93 @@ using std::tuple;
 using std::tie;
 using std::make_tuple;
 
+using Catch::Matchers::SizeIs;
+using Catch::Matchers::IsEmpty;
+using Catch::Matchers::Equals;
 using Catch::Matchers::ContainsSubstring;
+using Catch::Matchers::AllMatch;
+using Catch::Matchers::Predicate;
+using Catch::Matchers::MessageMatches;
 
 using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPAlgorithm;
 namespace Cmd = STPCommandLineParser;
 
 #define THROW_AS_VALIDATION_ERROR(EXPR) REQUIRE_THROWS_AS(EXPR, STPException::STPValidationFailed)
-#define THROW_AS_PARSER_ERROR(EXPR) REQUIRE_THROWS_AS(EXPR, STPException::STPParserError::STPBasic)
+#define THROW_AS_PARSER_ERROR(EXPR) REQUIRE_THROWS_AS(EXPR, STPException::STPParserError::STPSemanticError)
 #define COMPARE_FLOAT(VALUE, TARGET) CHECK_THAT(VALUE, Catch::Matchers::WithinRel(TARGET, std::numeric_limits<float>::epsilon() * 500.0f))
 
 SCENARIO("STPCommandLineParser user-defined data structure can perform certain operations", "[AlgorithmHost][STPCommandLineParser]") {
+
+	GIVEN("Some random options and commands to be queried with their auxiliary functions") {
+		unsigned int IntData = 0u;
+		Cmd::STPOption Option(IntData);
+
+		Cmd::STPCommand Command(tie(Option), tie());
+
+		WHEN("Argument count is modified through helper functions") {
+			auto& OptionCount = Option.ArgumentCount;
+			auto& CommandCount = Command.OptionCount;
+
+			OptionCount.set(123u);
+			CommandCount.unlimitedMax();
+
+			THEN("The count variables are modified correctly") {
+				CHECK(OptionCount.Min == OptionCount.Max);
+				CHECK(OptionCount.Min == 123u);
+
+				CHECK(CommandCount.isMaxUnlimited());
+			}
+
+		}
+
+		WHEN("Option and command settings are accessed via their functions") {
+			
+			THEN("These functions return the default value") {
+				CHECK_FALSE(Option.isPositional());
+				CHECK_FALSE(Option.supportDelimiter());
+				CHECK_FALSE(Option.used());
+
+				CHECK_FALSE(Command.isGroup());
+				CHECK(Command.isSubcommand());
+			}
+
+			AND_WHEN("Their settings are modified") {
+				Option.PositionalPrecedence = 888u;
+				Option.Delimiter = '?';
+				Option.Result.IsUsed = true;
+
+				Command.IsGroup = true;
+
+				THEN("The functions return value corresponds to their current state") {
+					CHECK(Option.isPositional());
+					CHECK(Option.supportDelimiter());
+					CHECK(Option.used());
+
+					CHECK(Command.isGroup());
+					CHECK_FALSE(Command.isSubcommand());
+				}
+
+			}
+
+		}
+
+		WHEN("Command tree is requested") {
+			const auto& OptionTree = Command.option();
+			const auto& CommandTree = Command.command();
+
+			THEN("Tree container can be accessed through its functions") {
+				CHECK_THAT(OptionTree, SizeIs(1u));
+				CHECK_THAT(CommandTree, IsEmpty());
+
+				using std::distance;
+				CHECK(distance(OptionTree.begin(), OptionTree.end()) == 1u);
+				CHECK(distance(CommandTree.begin(), CommandTree.end()) == 0u);
+			}
+
+		}
+
+	}
 
 	GIVEN("A number of options with binding variable") {
 		Cmd::STPOption<void> VoidOption;
@@ -78,7 +157,7 @@ SCENARIO("STPCommandLineParser user-defined data structure can perform certain o
 
 				CHECK(BoolValue == false);
 				COMPARE_FLOAT(FloatValue, 3.14f);
-				CHECK(std::all_of(ArrayValue.cbegin(), ArrayValue.cend(), [](const auto num) { return num == 666u; }));
+				CHECK_THAT(ArrayValue, AllMatch(Predicate<unsigned int>([](const auto num) { return num == 666u; })));
 				const auto [t1, t2, t3] = TupleValue;
 				CHECK(t1 == true);
 				COMPARE_FLOAT(t2, -2.71f);
@@ -97,7 +176,6 @@ SCENARIO("STPCommandLineParser user-defined data structure can perform certain o
 
 				//incorrect number of argument
 				THROW_AS_VALIDATION_ERROR(BoolOption.convert({ BoolString, BoolString }));
-				THROW_AS_VALIDATION_ERROR(FloatOption.convert({ }));
 				THROW_AS_VALIDATION_ERROR(TupleOption.convert({ TupleOne }));
 			}
 
@@ -120,37 +198,24 @@ private:
 		return OptHelp;
 	}
 
-	void resetString() noexcept {
-		constexpr static auto reset = [](string_view& s) constexpr noexcept -> void {
-			s = string_view();
-		};
-		//just to prevent string view from holding dangling pointer
-		reset(this->CloneRepoName);
-		reset(this->PullOriginName);
-		reset(this->PullBranchName);
-		reset(this->AddOneFileName);
-		this->AddAllFileName.clear();
-		reset(this->CommitMessageValue);
-	}
-
 protected:
 
-	string CommandLineSource;
+	string SubcommandBranchName;
 
-	string_view CloneRepoName;
+	string CloneRepoName;
 	unsigned int CloneDepthValue;
 
-	string_view PullOriginName, PullBranchName;
+	string PullOriginName, PullBranchName;
 
 	bool AddVerboseValue;
-	string_view AddOneFileName;
-	vector<string_view> AddAllFileName;
+	string AddOneFileName;
+	vector<string> AddAllFileName;
 
-	string_view CommitMessageValue;
+	string CommitMessageValue;
 
 	//This command automatically manages the lifetime of the string argument
 	//Provide nullptr to the help stream to disable printing help message.
-	bool startParser(string&& argument, ostringstream* const help_stream = nullptr) {
+	bool startParser(string argument, ostringstream* const help_stream = nullptr) {
 		/* ------------------ clone ---------------------- */
 		bool ClonePrintHelp = false;
 		const auto CloneHelp = this->createHelp(ClonePrintHelp);
@@ -263,12 +328,11 @@ protected:
 		/* ------------------ execution ---------------- */
 		REQUIRE_NOTHROW(Cmd::validate(MiniGit));
 
-		this->resetString();
-		//copy the sourcing encoded command line data
-		this->CommandLineSource = std::move(argument);
-		const auto ParseResult = Cmd::parse(this->CommandLineSource, "SuperTerrain+ Command Line Parser Test", MiniGit);
+		const auto ParseResult = Cmd::parse(argument, "SuperTerrain+ Command Line Parser Test", MiniGit);
+		this->SubcommandBranchName = ParseResult.commandBranch().Name;
+
 		//inferred bool value based on if the option is used
-		this->AddVerboseValue = AddVerbose.Result.IsUsed;
+		this->AddVerboseValue = AddVerbose.used();
 		
 		//ignore validation error if we need to print help and exit
 		if (help_stream && (ClonePrintHelp || PullPrintHelp || AddPrintHelp || CommitPrintHelp || GitPrintHelp)) {
@@ -299,12 +363,15 @@ inline static string getEncodedArgument(const C* const... arg) {
 	return Cmd::encode(static_cast<int>(Argument.size()), Argument.data());
 }
 
-#define RUN_VALIDATION_MATCH(INPUT, MAT) CHECK_THROWS_WITH(Cmd::validate(INPUT), MAT)
+#define RUN_VALIDATION_GENERIC(INPUT, EXC, MAT) CHECK_THROWS_MATCHES(Cmd::validate(INPUT), EXC, MessageMatches(MAT))
+#define RUN_VALIDATION_MATCH(INPUT, MAT) RUN_VALIDATION_GENERIC(INPUT, STPException::STPValidationFailed, MAT)
+#define RUN_NUMERIC_MATCH(INPUT, MAT) RUN_VALIDATION_GENERIC(INPUT, STPException::STPNumericDomainError, MAT)
 
 #define RUN_PARSER(INPUT) CHECK(this->startParser(INPUT))
 
 #define RUN_PARSER_ERROR(INPUT) THROW_AS_PARSER_ERROR(this->startParser(INPUT))
-#define RUN_PARSER_ERROR_MATCH(INPUT, MAT) CHECK_THROWS_WITH(this->startParser(INPUT), MAT)
+#define RUN_PARSER_ERROR_MATCH(INPUT, MAT) CHECK_THROWS_MATCHES(this->startParser(INPUT), \
+	STPException::STPParserError::STPSemanticError, MessageMatches(MAT))
 
 SCENARIO_METHOD(CmdParserTester, "STPCommandLineParser can parsed command line based on application configuration",
 	"[AlgorithmHost][STPCommandLineParser]") {
@@ -336,12 +403,12 @@ SCENARIO_METHOD(CmdParserTester, "STPCommandLineParser can parsed command line b
 			}
 
 			THEN("Name of a (sub)command or group must not be empty") {
-				Root.Name = string_view();
+				Root.Name = {};
 				RUN_VALIDATION_MATCH(Root, ContainsSubstring("Name") && ContainsSubstring("non-empty"));
 			}
 
 			THEN("Option must have at least one non-empty name") {
-				Flag.ShortName = string_view();
+				Flag.ShortName = {};
 				RUN_VALIDATION_MATCH(Root, ContainsSubstring("option name"));
 			}
 
@@ -352,7 +419,7 @@ SCENARIO_METHOD(CmdParserTester, "STPCommandLineParser can parsed command line b
 
 			THEN("The range of count must be reasonable") {
 				Flag.ArgumentCount.Min = 123u;
-				RUN_VALIDATION_MATCH(Root,
+				RUN_NUMERIC_MATCH(Root,
 					ContainsSubstring("minimum") && ContainsSubstring("greater than") && ContainsSubstring("maximum"));
 			}
 
@@ -411,28 +478,33 @@ SCENARIO_METHOD(CmdParserTester, "STPCommandLineParser can parsed command line b
 				switch (Trial) {
 				case 0u:
 					RUN_PARSER(getEncodedArgument("commit", "-m", CommitMessage));
-					CHECK((this->CommitMessageValue == CommitMessage));
+					CHECK_THAT(this->SubcommandBranchName, Equals("commit"));
+					CHECK_THAT(this->CommitMessageValue, Equals(CommitMessage));
 					break;
 				case 1u:
 					RUN_PARSER(getEncodedArgument("add", "-vf", OneFileName));
+					CHECK_THAT(this->SubcommandBranchName, Equals("add"));
 					CHECK(this->AddVerboseValue);
-					CHECK((this->AddOneFileName == OneFileName));
+					CHECK_THAT(this->AddOneFileName, Equals(OneFileName));
 					break;
 				case 2u:
 					RUN_PARSER(getEncodedArgument("add", "--all-file=./source.h|./source.cpp|./source.inl"));
-					CHECK(this->AddAllFileName.size() == 3u);
-					CHECK((this->AddAllFileName[1] == "./source.cpp"));
+					CHECK_THAT(this->SubcommandBranchName, Equals("add"));
+					CHECK_THAT(this->AddAllFileName, SizeIs(3u));
+					CHECK_THAT(this->AddAllFileName[1], Equals("./source.cpp"));
 					CHECK_FALSE(this->AddVerboseValue);
 					break;
 				case 3u:
 					RUN_PARSER(getEncodedArgument("pull", "origin", "master"));
-					CHECK((this->PullOriginName == "origin"));
-					CHECK((this->PullBranchName == "master"));
+					CHECK_THAT(this->SubcommandBranchName, Equals("pull"));
+					CHECK_THAT(this->PullOriginName, Equals("origin"));
+					CHECK_THAT(this->PullBranchName, Equals("master"));
 					break;
 				case 4u:
 					RUN_PARSER(getEncodedArgument("clone", "--depth=5", CloneRepo));
+					CHECK_THAT(this->SubcommandBranchName, Equals("clone"));
 					CHECK(this->CloneDepthValue == 5u);
-					CHECK((this->CloneRepoName == CloneRepo));
+					CHECK_THAT(this->CloneRepoName, Equals(CloneRepo));
 					break;
 				default:
 					break;
