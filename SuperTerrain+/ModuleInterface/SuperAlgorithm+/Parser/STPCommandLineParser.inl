@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
 
 #define NAMESPACE_CMD_NAME SuperTerrainPlus::STPAlgorithm::STPCommandLineParser
 
@@ -138,9 +139,7 @@ OPTION_CONVERT(BT, Conv) {
 	}
 
 	BT variable {};
-	if (const STPInternal::STPConvertedArgumentCount convertedCount =
-			this->Converter(std::make_pair(rx_arg.cbegin(), rx_arg.cend()), variable);
-		!convertedCount || convertedCount != rx_arg.size()) {
+	if (this->Converter(std::make_pair(rx_arg.cbegin(), rx_arg.cend()), variable) != rx_arg.size()) {
 		STPInternal::STPBaseOption::throwConversionError("All arguments are expected to be consumed by the converter", rx_arg);
 	}
 
@@ -160,7 +159,7 @@ OPTION_SPEC_CONVERT(bool) {
 	}
 
 	bool variable;
-	const size_t convertedCount = this->Converter(std::make_pair(rx_arg.cbegin(), rx_arg.cend()), variable).value_or(0u);
+	const size_t convertedCount = this->Converter(std::make_pair(rx_arg.cbegin(), rx_arg.cend()), variable);
 
 	//if there is an argument, read directly from it
 	//a flag does not have any argument, simply assign from its inferred value
@@ -175,11 +174,10 @@ OPTION_SPEC_CONVERT(bool) {
 /* -------------------------------------------- argument converter ----------------------------------------------- */
 #define ARG_CONV_NAME NAMESPACE_CMD_NAME::STPInternal::STPArgumentConverter
 #define ARG_CONV_FUNC_DEF(TYPE) \
-inline NAMESPACE_CMD_NAME::STPInternal::STPConvertedArgumentCount ARG_CONV_NAME<TYPE>::operator()( \
-	const STPBaseOption::STPReceivedArgumentSpan& rx_arg, TYPE& var) const
+inline size_t ARG_CONV_NAME<TYPE>::operator()(const STPBaseOption::STPReceivedArgumentSpan& rx_arg, TYPE& var) const
 
 #define ARG_CONV_SPEC(TEMP, ARG) template<TEMP> struct ARG_CONV_NAME<ARG> { \
-	STPConvertedArgumentCount operator()(const STPBaseOption::STPReceivedArgumentSpan&, ARG&) const; \
+	size_t operator()(const STPBaseOption::STPReceivedArgumentSpan&, ARG&) const; \
 }; \
 template<TEMP> \
 ARG_CONV_FUNC_DEF(ARG)
@@ -191,7 +189,7 @@ ARG_CONV_FUNC_DEF(T) {
 	const auto [beg, end] = rx_arg;
 	if (beg == end) {
 		//we expect at least one argument
-		return std::nullopt;
+		return 0u;
 	}
 
 	//just use our string tool to convert the argument
@@ -203,8 +201,8 @@ ARG_CONV_FUNC_DEF(T) {
 ARG_CONV_SPEC(typename T, std::optional<T>) {
 	//convert the inner type
 	T inner {};
-	if (const STPConvertedArgumentCount converted = STPArgumentConverter<T> {}(rx_arg, inner);
-		converted && *converted > 0u) {
+	if (const size_t converted = STPArgumentConverter<T> {}(rx_arg, inner);
+		converted > 0u) {
 		var.emplace(std::move(inner));
 		return converted;
 	}
@@ -223,7 +221,7 @@ ARG_CONV_SPEC(typename T, std::vector<T>) {
 	//try to convert each inner argument
 	while (beg < end) {
 		T inner {};
-		const size_t converted = STPArgumentConverter<T> {}(std::make_pair(beg, end), inner).value_or(0u);
+		const size_t converted = STPArgumentConverter<T> {}(std::make_pair(beg, end), inner);
 		if (converted == 0u) {
 			//cannot be converted
 			break;
@@ -251,7 +249,7 @@ ARG_CONV_SPEC(typename... T, std::tuple<T...>) {
 		auto& [beg, end] = rx_arg;
 		ArgT argument {};
 		//we enforce that every tuple element must be assigned with a converted argument
-		const size_t converted = STPArgumentConverter<ArgT> {}(std::make_pair(beg, end), argument).value_or(0u);
+		const size_t converted = STPArgumentConverter<ArgT> {}(std::make_pair(beg, end), argument);
 		if (converted == 0u) {
 			return false;
 		}
@@ -269,7 +267,7 @@ ARG_CONV_SPEC(typename... T, std::tuple<T...>) {
 	std::apply([&convertOne, &allConoverted](auto&... arg) { allConoverted = (convertOne(arg) && ...); }, result);
 	//we require all elements in a tuple are converted
 	if (!allConoverted) {
-		return std::nullopt;
+		return 0u;
 	}
 	//if conversion goes well, clear all original values and copy the result in
 	var = move(result);

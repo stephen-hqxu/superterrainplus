@@ -4,6 +4,7 @@
 
 #include <string_view>
 #include <limits>
+#include <optional>
 
 namespace SuperTerrainPlus::STPAlgorithm {
 
@@ -29,13 +30,13 @@ namespace SuperTerrainPlus::STPAlgorithm {
 
 		}
 
-		//A special matching length indicating no match.
-		inline constexpr size_t NoMatch = std::numeric_limits<size_t>::max();
+		//The length of matched substring, or null if fail to match any.
+		typedef std::optional<size_t> STPMatchLength;
 
 		//This is the entry function for each operator.
 		//Given a sequence, return the length of matching starting.
 		//Return a special value *NoMatch* if there is no match.
-#define DECLARE_REGLANG_MATCHER static size_t match(const std::string_view&) noexcept
+#define DECLARE_REGLANG_MATCHER static STPMatchLength match(const std::string_view&) noexcept
 
 		/**
 		 * @brief STPCharacterClass matches any character that appears in the class.
@@ -137,7 +138,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		namespace STPQuantifier {
 
 			//Special value for matching unlimited number of maximum number of repetition.
-			inline constexpr size_t Unlimited = NoMatch;
+			inline constexpr size_t Unlimited = std::numeric_limits<size_t>::max();
 
 			/**
 			 * @brief Match an expression for a repeated range of numbers of time.

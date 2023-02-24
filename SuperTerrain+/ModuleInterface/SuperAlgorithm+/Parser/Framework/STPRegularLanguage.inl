@@ -8,11 +8,12 @@
 template<class Expr>
 inline bool NAMESPACE_REGLANG::STPDetail::matchExpression(std::string_view& sequence, size_t& total_length) noexcept {
 	//call the matching function for this expression
-	const size_t match_length = Expr::match(sequence);
-	if (match_length == STPRegularLanguage::NoMatch) {
+	const STPMatchLength match_result = Expr::match(sequence);
+	if (!match_result) {
 		//no valid matching found
 		return false;
 	}
+	const size_t match_length = *match_result;
 
 	//found a valid matching
 	total_length += match_length;
@@ -22,7 +23,7 @@ inline bool NAMESPACE_REGLANG::STPDetail::matchExpression(std::string_view& sequ
 
 /* ------------------------------------------------------------------------------------------------------------------- */
 #define DEFINE_REGLANG_MATCHER(OP) \
-inline size_t NAMESPACE_REGLANG::OP::match(const std::string_view& sequence) noexcept
+inline NAMESPACE_REGLANG::STPMatchLength NAMESPACE_REGLANG::OP::match(const std::string_view& sequence) noexcept
 #define OP_COMMA ,
 
 /* ----------------------------------- Character Class ----------------------------------------- */
@@ -49,13 +50,14 @@ DEFINE_CLASS_MEMBER_CONTAINS(class... C, Except<C...>) {
 
 template<class... CM>
 DEFINE_REGLANG_MATCHER(STPCharacterClass::Class<CM...>) {
+	using std::nullopt;
 	//sanity check
 	if (sequence.empty()) {
-		return STPRegularLanguage::NoMatch;
+		return nullopt;
 	}
 	const char c = sequence.front();
 	//check this character in the class of characters
-	return (Class::MemberSpecification<CM>::contains(c) || ...) ? 1u : STPRegularLanguage::NoMatch;
+	return (Class::MemberSpecification<CM>::contains(c) || ...) ? std::make_optional(1u) : nullopt;
 }
 
 /* -------------------------------------------- Quantifier --------------------------------------- */
@@ -75,14 +77,14 @@ DEFINE_REGLANG_MATCHER(STPQuantifier::Repeat<Expr OP_COMMA Min OP_COMMA Max>) {
 	}
 
 	//check if the number of repetition satisfies the requirement
-	return num_rep >= Min ? totalLength : STPRegularLanguage::NoMatch;
+	return num_rep >= Min ? std::make_optional(totalLength) : std::nullopt;
 }
 
 /* ------------------------------------------------------------------------------------------------ */
 
 DEFINE_REGLANG_MATCHER(Any) {
 	//as long as the input is not empty, always match a character.
-	return sequence.empty() ? STPRegularLanguage::NoMatch : 1u;
+	return sequence.empty() ? std::nullopt : std::make_optional(1u);
 }
 
 template<const std::string_view& L>
@@ -92,7 +94,7 @@ DEFINE_REGLANG_MATCHER(Literal<L>) {
 	//find() is too slow, use substr() and string compare; see their complexity on the specification
 	//basically we want to match from the start of the input if it equals the literal
 	//consider it as match if the prefix substring from the input is exactly the same as the literal
-	return sequence.substr(0u, Literal::LiteralLength) == L ? Literal::LiteralLength : STPRegularLanguage::NoMatch;
+	return sequence.substr(0u, Literal::LiteralLength) == L ? std::make_optional(Literal::LiteralLength) : std::nullopt;
 }
 
 template<class... Expr>
@@ -103,7 +105,7 @@ DEFINE_REGLANG_MATCHER(Alternative<Expr...>) {
 	//need to restore the state back to the original for ever sub-expression
 	if (!((currentSeq = sequence, matchLength = 0u, STPDetail::matchExpression<Expr>(currentSeq, matchLength)) || ...)) {
 		//none of the expression is successful?
-		return STPRegularLanguage::NoMatch;
+		return std::nullopt;
 	}
 	return matchLength;
 }
@@ -117,7 +119,7 @@ DEFINE_REGLANG_MATCHER(Sequence<Expr...>) {
 	//run through all expressions
 	if (!(STPDetail::matchExpression<Expr>(remainingSeq, totalLength) && ...)) {
 		//a valid match of the sequence says all sub-expression have match, if not the sequence has no match.
-		return STPRegularLanguage::NoMatch;
+		return std::nullopt;
 	}
 	return totalLength;
 }

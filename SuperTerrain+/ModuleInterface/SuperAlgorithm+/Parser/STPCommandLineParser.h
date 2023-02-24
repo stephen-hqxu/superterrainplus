@@ -10,7 +10,6 @@
 #include <array>
 #include <vector>
 #include <tuple>
-#include <optional>
 #include <utility>
 //String
 #include <string>
@@ -267,10 +266,6 @@ namespace SuperTerrainPlus::STPAlgorithm {
 
 			};
 
-			//The number of string argument converted to the specified type.
-			//Set to null to indicate to the application a conversion failure that can be handled.
-			typedef std::optional<size_t> STPConvertedArgumentCount;
-
 			/**
 			 * @brief STPArgumentConverter is a utility to convert a number of string arguments to binding variable.
 			 * The base version only supports conversion from fundamental types.
@@ -288,9 +283,9 @@ namespace SuperTerrainPlus::STPAlgorithm {
 				 * @return The number of argument converted.
 				 * @exception Any exception generated from the fundamental type conversion from `STPBasicStringAdaptor`.
 				 * This will happen if the argument has any syntactic error.
-				 * In other non-fatal, recoverable cases, use return value of null to indicate conversion failure.
+				 * In other non-fatal, recoverable cases, use return value of 0 to indicate nothing converted.
 				*/
-				STPConvertedArgumentCount operator()(const STPBaseOption::STPReceivedArgumentSpan&, T&) const;
+				size_t operator()(const STPBaseOption::STPReceivedArgumentSpan&, T&) const;
 
 			};
 			//A specialisation for void, which defines no converter because there is nothing to be converted.

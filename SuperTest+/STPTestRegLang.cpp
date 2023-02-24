@@ -10,12 +10,12 @@
 using namespace SuperTerrainPlus::STPAlgorithm;
 
 using std::string_view;
+using std::nullopt;
 
 namespace {
 	namespace RL = STPRegularLanguage;
 	namespace CC = RL::STPCharacterClass;
 	namespace Q = RL::STPQuantifier;
-	using RL::NoMatch;
 
 	namespace SimpleMatcher {
 
@@ -56,9 +56,9 @@ namespace {
 			"8d13:f8eb:1b3e:a973:4d2d:b216-decf:6a52",//wrong group separator
 			"hello world"
 		};
-		constexpr static size_t MatchLengthReference[] = {
+		constexpr static RL::STPMatchLength MatchLengthReference[] = {
 			Example[0].length(), Example[1].length(), Example[2].length(), Example[3].length(),
-			NoMatch, NoMatch, NoMatch, NoMatch, Example[8].length() - 5u, NoMatch, NoMatch
+			nullopt, nullopt, nullopt, nullopt, Example[8].length() - 5u, nullopt, nullopt
 		};
 		constexpr static bool ResultReference[] = {
 			true, true, true, true, false, false, false, false, false, false, false
@@ -107,9 +107,9 @@ namespace {
 			"short a : 0",//*:* is not defined
 			"short a =0"//no space
 		};
-		constexpr static size_t MatchLengthReference[] = {
+		constexpr static RL::STPMatchLength MatchLengthReference[] = {
 			Example[0].length(), Example[1].length(), Example[2].length(), Example[3].length(),
-			NoMatch, NoMatch, NoMatch, NoMatch, NoMatch, NoMatch
+			nullopt, nullopt, nullopt, nullopt, nullopt, nullopt
 		};
 		constexpr static bool ResultReference[] = {
 			true, true, true, true, false, false, false, false, false, false
@@ -156,15 +156,15 @@ namespace {
 }
 
 //we consider a match if the input and output are exactly the same in length
-inline constexpr static bool isValidMatch(const string_view& input, const size_t match_length) noexcept {
-	return match_length != STPRegularLanguage::NoMatch && match_length == input.length();
+inline constexpr static bool isValidMatch(const string_view& input, const RL::STPMatchLength& match_length) noexcept {
+	return match_length && *match_length == input.length();
 }
 
 #define RUN_MATCHER_TEST do { \
 	for (size_t i = 0u; i < ExampleCount; i++) { \
 		const string_view& example = Example[i]; \
-		const size_t match_length = Main::match(example); \
-		CHECK(isValidMatch(example, match_length) == ResultReference[i]); \
+		const RL::STPMatchLength match_length = Main::match(example); \
+		REQUIRE(isValidMatch(example, match_length) == ResultReference[i]); \
 		CHECK(match_length == MatchLengthReference[i]); \
 	} \
 } while (false)
@@ -198,12 +198,12 @@ SCENARIO("STPRegularLanguage can match string based on defined matching expressi
 				CHECK(MatchABAny::match("ab*") == 3u);
 
 				/* ---------------------- empty input --------------------- */
-				CHECK(MatchAny::match(EmptyString) == NoMatch);
-				CHECK(MatchLiteralA::match(EmptyString) == NoMatch);
-				CHECK(MatchAorB::match(EmptyString) == NoMatch);
-				CHECK(MatchMaybeA::match(EmptyString) == 0u);
-				CHECK(MatchAorBAlt::match(EmptyString) == NoMatch);
-				CHECK(MatchABAny::match(EmptyString) == NoMatch);
+				CHECK_FALSE(MatchAny::match(EmptyString));
+				CHECK_FALSE(MatchLiteralA::match(EmptyString));
+				CHECK_FALSE(MatchAorB::match(EmptyString));
+				CHECK(*MatchMaybeA::match(EmptyString) == 0u);
+				CHECK_FALSE(MatchAorBAlt::match(EmptyString));
+				CHECK_FALSE(MatchABAny::match(EmptyString));
 			}
 
 		}

@@ -14,8 +14,6 @@
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
 #include <SuperTerrain+/Utility/STPStringUtility.h>
-//Hash
-#include <SuperTerrain+/Utility/STPHashCombine.h>
 
 //System
 #include <optional>

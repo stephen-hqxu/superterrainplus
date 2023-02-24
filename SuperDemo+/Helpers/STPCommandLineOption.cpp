@@ -143,6 +143,10 @@ STPCommandLineOption::STPResult STPCommandLineOption::read(const int argc, const
 
 	const auto [resX, resY] = result.WindowResolution;
 	STP_ASSERTION_NUMERIC_DOMAIN(resX > 0u && resY > 0u, "The window resolution must be strictly positive");
+	if (fullScreenOption.used() && !result.UseFullScreen) {
+		//default to index to the primary monitor
+		result.UseFullScreen.emplace(0u);
+	}
 
 	return result;
 }

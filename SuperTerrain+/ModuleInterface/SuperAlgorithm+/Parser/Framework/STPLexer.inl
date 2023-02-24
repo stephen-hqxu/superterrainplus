@@ -192,24 +192,24 @@ inline auto NAMESPACE_LEXER_NAME::nextAtState(const std::string_view sequence) n
 	//get matching result
 	const auto matchResult = STPLexer::STPTokenExpressionUtility<CurrentTokenExpression>::match(sequence);
 
-	using ReturnPair = std::pair<const size_t, const CurrentTokenExpressionDataType* const>;
+	using ReturnPair = std::pair<const STPRegularLanguage::STPMatchLength, const CurrentTokenExpressionDataType* const>;
 	//run the token matching rule
 	//we want to match the longest sequence
 	//if there exists more than one longest token, take the one that is declared first
-	const auto max_length_it = std::max_element(matchResult.cbegin(), matchResult.cend(), [](const auto a, const auto b) {
-		//treat special length of NoMatch as an infinitely small value
+	const auto max_length_it = std::max_element(matchResult.cbegin(), matchResult.cend(), [](const auto& a, const auto& b) {
+		//treat special length of null as an infinitely small value
 		//this operator satisfies the *Compare* requirement
-		if (b == STPRegularLanguage::NoMatch) {
-			//also if (a == b == NoMatch)
+		if (!b) {
+			//also if (a == b == Null)
 			return false;
 		}
-		if (a == STPRegularLanguage::NoMatch) {
+		if (!a) {
 			return true;
 		}
-		return a < b;
+		return *a < *b;
 	});
-	if (max_length_it == matchResult.cend() || *max_length_it == STPRegularLanguage::NoMatch) {
-		constexpr static ReturnPair NullReturn(STPRegularLanguage::NoMatch, nullptr);
+	if (max_length_it == matchResult.cend() || !*max_length_it) {
+		constexpr static ReturnPair NullReturn(std::nullopt, nullptr);
 		//no valid matching is found
 		return NullReturn;
 	}
@@ -237,7 +237,7 @@ inline typename NAMESPACE_LEXER_NAME::STPToken NAMESPACE_LEXER_NAME::next() {
 
 		//look for the current state matching function and match it on the remainder sequence (whole sequence with prefixed removed)
 		const auto [match_length, token_data] = AllExpressionMatcher[this->LexicalState.index()](remainderSeq);
-		if (!token_data) {
+		if (!match_length) {
 			constexpr static STPToken NullToken;
 			//no valid match found
 			return NullToken;
@@ -251,7 +251,7 @@ inline typename NAMESPACE_LEXER_NAME::STPToken NAMESPACE_LEXER_NAME::next() {
 		}
 
 		//update sequence length
-		remainder_begin += match_length;
+		remainder_begin += *match_length;
 		//perform lexical action
 		//other than consume action, we need to keep looping through the matching process
 		using LA = STPLexical::STPAction;

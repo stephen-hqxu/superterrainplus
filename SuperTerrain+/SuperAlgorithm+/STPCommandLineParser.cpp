@@ -120,10 +120,7 @@ namespace {
 
 		inline size_t operator()(const STPOptionTypeName& type_name) const noexcept {
 			const auto& [is_short, opt_name] = type_name;
-
-			size_t value = 0u;
-			SuperTerrainPlus::STPHashCombine::combine(value, is_short, opt_name);
-			return value;
+			return SuperTerrainPlus::STPHashCombine::combine(0u, is_short, opt_name);
 		}
 
 	};
@@ -210,13 +207,13 @@ void STPCommandLineParser::validate(const STPInternal::STPBaseCommand& command) 
 			return msg.str();
 		};
 
-		const auto isNameValid = [](const size_t matchLength, const string_view& name) -> bool {
+		const auto isNameValid = [](const RL::STPMatchLength& matchLength, const string_view& name) -> bool {
 			//we need to make sure the entire option name is an exact match of the expression
-			return name.empty() || (matchLength != RL::NoMatch && matchLength == name.length());
+			return name.empty() || (matchLength && *matchLength == name.length());
 		};
 		const string_view &shortName = option.ShortName,
 			&longName = option.LongName;
-		const size_t shortMatch = ShortOptionString::match(shortName),
+		const RL::STPMatchLength shortMatch = ShortOptionString::match(shortName),
 			longMatch = LongOptionString::match(longName);
 
 		STP_ASSERTION_VALIDATION(!(shortName.empty() && longName.empty()),
@@ -241,8 +238,8 @@ void STPCommandLineParser::validate(const STPInternal::STPBaseCommand& command) 
 		if (command.isSubcommand() && &command != root) {
 			//root command does not matter, because we don't need to specify its name from the command line
 			//use the same name convention for the subcommand as the long option name
-			const size_t subcommandNameMatch = LongOptionString::match(command.Name);
-			STP_ASSERTION_VALIDATION(subcommandNameMatch != RL::NoMatch && subcommandNameMatch == command.Name.length(),
+			const RL::STPMatchLength subcommandNameMatch = LongOptionString::match(command.Name);
+			STP_ASSERTION_VALIDATION(subcommandNameMatch && *subcommandNameMatch == command.Name.length(),
 				messageCommandError("The format of the subcommand name is invalid"));
 		}
 
