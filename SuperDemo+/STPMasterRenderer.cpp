@@ -75,7 +75,6 @@ namespace INI = SuperTerrainPlus::STPAlgorithm::STPINIData;
 namespace Rdr = SuperTerrainPlus::STPRealism;
 //Environment
 namespace Env = SuperTerrainPlus::STPEnvironment;
-using SuperTerrainPlus::STPDiversity::Seed;
 
 using namespace STPDemo;
 
@@ -110,18 +109,6 @@ private:
 	//This time record the frametime from last frame that is not enough to round up to one tick
 	double FrametimeRemainer = 0.0;
 
-	//A simple seed mixing function
-	Seed CurrentSeed;
-
-	/**
-	 * @brief Get the nest seed value.
-	 * @return The next need value
-	*/
-	inline Seed getNextSeed() noexcept {
-		this->CurrentSeed = std::hash<Seed>()(this->CurrentSeed);
-		return this->CurrentSeed;
-	}
-
 	/**
 	 * @brief Send colour data to a light spectrum
 	 * @param spectrum The spectrum to send to.
@@ -135,20 +122,24 @@ private:
 public:
 
 	//same arguments as the master renderer
-	STPRendererData(const INI::STPINIStorageView& engine, const INI::STPINIStorageView& biome, Rdr::STPCamera& camera) :
-		engineINI(engine), biomeINI(biome), SceneMaterial(1u), ViewPosition(camera.cameraStatus().Position),
-		CurrentSeed(this->biomeINI.at("simplex").at("seed").to<Seed>()) {
+	STPRendererData(const INI::STPINIStorageView& engine, const INI::STPINIStorageView& biome, Rdr::STPCamera& camera,
+		const STPCommandLineOption::STPResult& cmd) :
+		engineINI(engine), biomeINI(biome), SceneMaterial(1u), ViewPosition(camera.cameraStatus().Position) {
+		//get the global seed
+		const auto seed = cmd.GeneratorSeed.value_or(engineINI.at("Global").at("seed").to<unsigned long long>());
+
 		//loading terrain parameters
-		const Env::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI.at("simplex"));
+		const Env::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI.at("simplex"), seed);
 		const Env::STPChunkSetting chunk_setting = STPTerrainParaLoader::getChunkSetting(this->engineINI.at("Generators"));
 		STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
-		const Env::STPHeightfieldSetting heightfield_setting = STPTerrainParaLoader::getGeneratorSetting(this->engineINI.at("2DTerrainINF"));
+		const Env::STPHeightfieldSetting heightfield_setting = STPTerrainParaLoader::getGeneratorSetting(this->engineINI.at("2DTerrainINF"), seed);
 
 		//setup world manager
 		try {
 			this->WorldManager.emplace(string(this->biomeINI.at("").at("texture_path_prefix").String), chunk_setting, simplex);
 
-			this->WorldManager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize, simplex.Seed);
+			this->WorldManager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize,
+				static_cast<SuperTerrainPlus::STPDiversity::Seed>(seed));
 			this->WorldManager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>
 				(this->WorldManager->SharedProgram, chunk_setting.MapSize, this->biomeINI.at("").at("interpolationRadius").to<unsigned int>());
 			this->WorldManager->attachTextureFactory<STPDemo::STPSplatmapGenerator>
@@ -230,7 +221,15 @@ public:
 			};
 
 			//sun
-			const auto [sun_setting, atmo_setting] = STPTerrainParaLoader::getSkySetting(this->engineINI.at("Sky"));
+			auto [sun_setting, atmo_setting] = STPTerrainParaLoader::getSkySetting(this->engineINI.at("Sky"));
+			//setting override
+			if (cmd.DayStart) {
+				sun_setting.DayStart = *cmd.DayStart;
+			}
+			if (cmd.YearStart) {
+				sun_setting.YearStart = *cmd.YearStart;
+			}
+
 			this->SunRenderer.emplace(sun_setting, 
 				make_pair(
 					normalize(vec3(1.0f, -0.1f, 0.0f)),
@@ -287,7 +286,7 @@ public:
 			};
 
 			this->StarfieldRenderer.emplace(starfield_model, skybox_renderer_init);
-			this->StarfieldRenderer->setStarfield(starfield_setting, static_cast<unsigned int>(this->getNextSeed()));
+			this->StarfieldRenderer->setStarfield(starfield_setting, static_cast<unsigned int>(seed));
 			this->RenderPipeline->add(*this->StarfieldRenderer);
 		}
 		{
@@ -332,7 +331,7 @@ public:
 			const Rdr::STPHeightfieldTerrain::STPTerrainShaderOption terrain_opt = {
 				this->ViewPosition,
 				uvec3(128u, 128u, 6u),
-				this->getNextSeed(),
+				seed,
 				Rdr::STPHeightfieldTerrain::STPNormalBlendingAlgorithm::BasisTransform
 			};
 			Env::STPTessellationSetting DepthTessSetting = mesh_setting.TessSetting;
@@ -372,7 +371,7 @@ public:
 			blur_kernel.Sharpness = ao_section.at("sharpness").to<float>();
 
 			//ambient occlusion
-			const Env::STPOcclusionKernelSetting ao_setting = STPTerrainParaLoader::getAOSetting(ao_section);
+			const Env::STPOcclusionKernelSetting ao_setting = STPTerrainParaLoader::getAOSetting(ao_section, seed);
 			Rdr::STPAmbientOcclusion::STPOcclusionKernel<Rdr::STPAmbientOcclusion::STPOcclusionAlgorithm::HBAO> ao_kernel(ao_setting);
 			//For SSAO
 			//ao_kernel.KernelSize = ao_section.at("kernel_size").to<unsigned int>();
@@ -505,8 +504,8 @@ public:
 };
 
 STPMasterRenderer::STPMasterRenderer(
-	const INI::STPINIStorageView& engine, const INI::STPINIStorageView& biome, Rdr::STPCamera& camera) :
-	Data(make_unique<STPRendererData>(engine, biome, camera)) {
+	const INI::STPINIStorageView& engine, const INI::STPINIStorageView& biome, Rdr::STPCamera& camera, const STPCommandLineOption::STPResult& cmd) :
+	Data(make_unique<STPRendererData>(engine, biome, camera, cmd)) {
 	
 }
 

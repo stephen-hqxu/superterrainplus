@@ -10,9 +10,9 @@ namespace SuperTerrainPlus::STPAlgorithm {
 	namespace STPAlgorithmDeviceInfo {
 		
 		//SuperAlgorithm+Device static library output path
-		constexpr static char DeviceLibrary[] = "$<TARGET_FILE:@STP_ALGORITHM_DEVICE_ENGINE@>";
+		inline constexpr char DeviceLibrary[] = "$<TARGET_FILE:@STP_ALGORITHM_DEVICE_ENGINE@>";
 		//SuperAlgorithm+Device include path
-		constexpr static char DeviceInclude[] = "@SuperAlgorithm+DeviceInclude@";
+		inline constexpr char DeviceInclude[] = "@SuperAlgorithm+DeviceInclude@";
 		
 	}
 

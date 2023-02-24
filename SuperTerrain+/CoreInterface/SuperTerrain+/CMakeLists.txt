@@ -81,3 +81,4 @@ set(STP_MAIN_ENGINE_INTERFACE ${STP_MAIN_ENGINE_INTERFACE} PARENT_SCOPE)
 
 # config file for the main engine
 setupConfigTemplate(${STP_MAIN_ENGINE} STPCoreInfo.h.in Include/STPCoreInfo.h STPCoreInfo.h)
+setupConfigTemplate(${STP_MAIN_ENGINE} STPVersion.h.in Include/STPVersion.h STPVersion.h)

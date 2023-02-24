@@ -373,7 +373,7 @@ int main(const int argc, const char* argv[]) {
 	SuperTerrainPlus::STPRealism::STPLogHandler::set(&RendererLogHandler);
 	//setup renderer
 	try {
-		MasterEngine.emplace(engineINI, biomeINI, *MainCamera);
+		MasterEngine.emplace(engineINI, biomeINI, *MainCamera, commandLineOption);
 
 		//allocate some memory
 		reshape(canvasDimX, canvasDimY);
@@ -385,7 +385,7 @@ int main(const int argc, const char* argv[]) {
 	}
 
 	//rendering loop
-	const double FPS = commandLineOption.FrameRate.value_or(engineINI.at("").at("FPS").to<double>());
+	const double FPS = engineINI.at("").at("FPS").to<double>();
 	double currentTime = 0.0, lastTime = 0.0, deltaTime = 0.0;
 	cout << "Start..." << endl;
 	while (!glfwWindowShouldClose(GLCanvas)) {

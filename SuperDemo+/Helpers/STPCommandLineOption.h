@@ -29,9 +29,15 @@ namespace STPDemo {
 			//The rendering resolution will be on native resolution.
 			//The value will be the index to the monitor to use, or no value if don't use full screen mode.
 			std::optional<unsigned int> UseFullScreen;
-			//The rendering FPS limit.
-			//Not specifying this option, or an option with non-positive value will make the program to use the default FPS.
-			std::optional<double> FrameRate;
+
+			//The seed value for the whole generator.
+			//If not specified, use the application's default.
+			std::optional<unsigned long long> GeneratorSeed;
+
+			//Set the starting time in a day at the beginning of the program.
+			std::optional<unsigned int> DayStart;
+			//Similarly, the start of year.
+			std::optional<unsigned int> YearStart;
 
 		};
 

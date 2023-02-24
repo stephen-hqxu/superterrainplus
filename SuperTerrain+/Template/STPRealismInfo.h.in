@@ -10,11 +10,11 @@ namespace SuperTerrainPlus::STPRealism {
 	namespace STPRealismInfo {
 		
 		//SuperRealism+ shader path
-		constexpr static char ShaderPath[] = "@SuperRealism+ShaderPath@";
+		inline constexpr char ShaderPath[] = "@SuperRealism+ShaderPath@";
 		//Nvidia OptiX API include directory
-		constexpr static char OptiXInclude[] = "@OptiX_INCLUDE_DIR@";
+		inline constexpr char OptiXInclude[] = "@OptiX_INCLUDE_DIR@";
 		//Nvidia OptiX API SDK sample directory
-		constexpr static char OptiXSDK[] = "@SuperRealism+OptiXSDK@";
+		inline constexpr char OptiXSDK[] = "@SuperRealism+OptiXSDK@";
 		
 	}
 

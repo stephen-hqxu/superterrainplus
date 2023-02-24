@@ -5,11 +5,12 @@
 //System
 #include <string_view>
 
-using namespace STPDemo;
-using namespace SuperTerrainPlus;
+namespace Env = SuperTerrainPlus::STPEnvironment;
 
-using STPAlgorithm::STPINIData::STPINIStorageView;
-using STPAlgorithm::STPINIData::STPINISectionView;
+using namespace STPDemo;
+
+using SuperTerrainPlus::STPAlgorithm::STPINIData::STPINIStorageView;
+using SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView;
 
 using std::string_view;
 using std::pair;
@@ -20,11 +21,11 @@ using glm::vec2;
 using glm::vec3;
 using glm::dvec3;
 
-STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const STPINISectionView& section) {
-	STPEnvironment::STPMeshSetting rendering_options = { };
-	STPEnvironment::STPTessellationSetting& tess_options = rendering_options.TessSetting;
-	STPEnvironment::STPMeshSetting::STPTextureRegionSmoothSetting& smooth_options = rendering_options.RegionSmoothSetting;
-	STPEnvironment::STPMeshSetting::STPTextureScaleDistanceSetting& scale_options = rendering_options.RegionScaleSetting;
+Env::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const STPINISectionView& section) {
+	Env::STPMeshSetting rendering_options = { };
+	Env::STPTessellationSetting& tess_options = rendering_options.TessSetting;
+	Env::STPMeshSetting::STPTextureRegionSmoothSetting& smooth_options = rendering_options.RegionSmoothSetting;
+	Env::STPMeshSetting::STPTextureScaleDistanceSetting& scale_options = rendering_options.RegionScaleSetting;
 
 	rendering_options.Strength = section.at("strength").to<float>();
 	rendering_options.Altitude = section.at("altitude").to<float>();
@@ -45,8 +46,8 @@ STPEnvironment::STPMeshSetting STPTerrainParaLoader::getRenderingSetting(const S
 	return rendering_options;
 }
 
-STPEnvironment::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const STPINISectionView& section) {
-	STPEnvironment::STPChunkSetting chunks_options = { };
+Env::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const STPINISectionView& section) {
+	Env::STPChunkSetting chunks_options = { };
 
 	chunks_options.MapSize = uvec2(
 		section.at("heightmap2DSizeX").to<unsigned int>(),
@@ -89,13 +90,13 @@ STPEnvironment::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const STPI
 	return chunks_options;
 }
 
-STPEnvironment::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(const STPINISectionView& section) {
+Env::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(const STPINISectionView& section, const unsigned long long generator_seed) {
 	//get the default settings
-	STPEnvironment::STPHeightfieldSetting launch_options = { };
-	STPEnvironment::STPRainDropSetting& raindrop_options = launch_options.Erosion;
+	Env::STPHeightfieldSetting launch_options = { };
+	Env::STPRainDropSetting& raindrop_options = launch_options.Erosion;
 	
 	//set the parameter one by one, enjoy :)
-	launch_options.Seed = section.at("seed").to<unsigned long long>();
+	launch_options.Seed = generator_seed;
 	raindrop_options.Inertia = section.at("inertia").to<float>();
 	raindrop_options.SedimentCapacityFactor = section.at("sediment_capacity_factor").to<float>();
 	raindrop_options.minSedimentCapacity = section.at("min_sediment_capacity").to<float>();
@@ -114,18 +115,18 @@ STPEnvironment::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(
 	return launch_options;
 }
 
-STPEnvironment::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplexSetting(const STPINISectionView& section) {
-	STPEnvironment::STPSimplexNoiseSetting noise_option = { };
+Env::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplexSetting(const STPINISectionView& section, const unsigned long long simplex_seed) {
+	Env::STPSimplexNoiseSetting noise_option = { };
 
-	noise_option.Seed = section.at("seed").to<unsigned long long>();
+	noise_option.Seed = simplex_seed;
 	noise_option.Distribution = section.at("distribution").to<unsigned int>();
 	noise_option.Offset = section.at("offset").to<double>();
 
 	return noise_option;
 }
 
-pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtmosphereSetting> STPTerrainParaLoader::getSkySetting(const STPINISectionView& section) {
-	STPEnvironment::STPSunSetting sun = { };
+pair<Env::STPSunSetting, Env::STPAtmosphereSetting> STPTerrainParaLoader::getSkySetting(const STPINISectionView& section) {
+	Env::STPSunSetting sun = { };
 	sun.DayLength = section.at("day_length").to<unsigned int>();
 	sun.DayStart = section.at("day_start").to<unsigned int>();
 	sun.YearLength = section.at("year_length").to<unsigned int>();
@@ -133,7 +134,7 @@ pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtmosphereSetting> STPTer
 	sun.Obliquity = section.at("axial_tilt").to<double>();
 	sun.Latitude = section.at("latitude").to<double>();
 
-	STPEnvironment::STPAtmosphereSetting atmo = { };
+	Env::STPAtmosphereSetting atmo = { };
 	atmo.SunIntensity = section.at("sun_intensity").to<float>();
 	atmo.PlanetRadius = section.at("planet_radius").to<float>();
 	atmo.AtmosphereRadius = section.at("atmoshpere_radius").to<float>();
@@ -155,8 +156,8 @@ pair<STPEnvironment::STPSunSetting, STPEnvironment::STPAtmosphereSetting> STPTer
 	return pair(sun, atmo);
 }
 
-STPEnvironment::STPStarfieldSetting STPTerrainParaLoader::getStarfieldSetting(const STPINISectionView& section) {
-	STPEnvironment::STPStarfieldSetting star = { };
+Env::STPStarfieldSetting STPTerrainParaLoader::getStarfieldSetting(const STPINISectionView& section) {
+	Env::STPStarfieldSetting star = { };
 
 	star.InitialLikelihood = section.at("init_likelihood").to<float>();
 	star.OctaveLikelihoodMultiplier = section.at("likelihood_mul").to<float>();
@@ -171,8 +172,8 @@ STPEnvironment::STPStarfieldSetting STPTerrainParaLoader::getStarfieldSetting(co
 	return star;
 }
 
-STPEnvironment::STPAuroraSetting STPTerrainParaLoader::getAuroraSetting(const STPINISectionView& section) {
-	STPEnvironment::STPAuroraSetting aurora = { };
+Env::STPAuroraSetting STPTerrainParaLoader::getAuroraSetting(const STPINISectionView& section) {
+	Env::STPAuroraSetting aurora = { };
 	auto& tri = aurora.Noise;
 	auto& main_fractal = tri.MainNoise, &distortion_fractal = tri.DistortionNoise;
 
@@ -202,10 +203,10 @@ STPEnvironment::STPAuroraSetting STPTerrainParaLoader::getAuroraSetting(const ST
 	return aurora;
 }
 
-STPEnvironment::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(const STPINISectionView& section) {
-	STPEnvironment::STPOcclusionKernelSetting ao_kernel = { };
+Env::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(const STPINISectionView& section, const unsigned long long ao_seed) {
+	Env::STPOcclusionKernelSetting ao_kernel = { };
 
-	ao_kernel.RandomSampleSeed = section.at("sample_seed").to<unsigned long long>();
+	ao_kernel.RandomSampleSeed = ao_seed;
 	ao_kernel.RotationVectorSize = uvec2(
 		section.at("rotation_vector_sizeX").to<unsigned int>(),
 		section.at("rotation_vector_sizeY").to<unsigned int>()
@@ -216,10 +217,10 @@ STPEnvironment::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(con
 	return ao_kernel;
 }
 
-STPEnvironment::STPWaterSetting STPTerrainParaLoader::getWaterSetting(const STPINISectionView& section, const float altitude) {
-	STPEnvironment::STPWaterSetting water = { };
-	STPEnvironment::STPTessellationSetting& water_tess = water.WaterMeshTess;
-	STPEnvironment::STPWaterSetting::STPWaterWaveSetting& water_wave = water.WaterWave;
+Env::STPWaterSetting STPTerrainParaLoader::getWaterSetting(const STPINISectionView& section, const float altitude) {
+	Env::STPWaterSetting water = { };
+	Env::STPTessellationSetting& water_tess = water.WaterMeshTess;
+	Env::STPWaterSetting::STPWaterWaveSetting& water_wave = water.WaterWave;
 
 	water_wave.InitialRotation = section.at("init_rotation").to<float>();
 	water_wave.InitialFrequency = section.at("init_frequency").to<float>();
@@ -254,8 +255,8 @@ STPEnvironment::STPWaterSetting STPTerrainParaLoader::getWaterSetting(const STPI
 	return water;
 }
 
-STPEnvironment::STPBidirectionalScatteringSetting STPTerrainParaLoader::getBSDFSetting(const STPINISectionView& section) {
-	STPEnvironment::STPBidirectionalScatteringSetting bsdf = { };
+Env::STPBidirectionalScatteringSetting STPTerrainParaLoader::getBSDFSetting(const STPINISectionView& section) {
+	Env::STPBidirectionalScatteringSetting bsdf = { };
 
 	bsdf.MaxRayDistance = section.at("max_ray_distance").to<float>();
 	bsdf.DepthBias = section.at("depth_bias").to<float>();
@@ -266,7 +267,7 @@ STPEnvironment::STPBidirectionalScatteringSetting STPTerrainParaLoader::getBSDFS
 }
 
 void STPTerrainParaLoader::loadBiomeParameters(const STPINIStorageView& biomeini) {
-	using namespace STPDiversity;
+	using namespace SuperTerrainPlus::STPDiversity;
 	namespace BR = STPDemo::STPBiomeRegistry;
 	const auto load = [&biomeini](STPDemo::STPBiome& biome, const string_view name) -> void {
 		const STPINISectionView& curr_biome = biomeini.at(name);

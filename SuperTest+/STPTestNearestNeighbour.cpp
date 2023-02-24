@@ -125,15 +125,15 @@ protected:
 	}
 
 	inline static void isChunkDataAllZero(const ChunkTexture_t& chunk_data) {
-		REQUIRE_THAT(chunk_data, AllMatch(AllMatch(Predicate<T>(typename NNBufferTester::equalsZero))));
+		REQUIRE_THAT(chunk_data, AllMatch(AllMatch(Predicate<T>(NNBufferTester::equalsZero))));
 	}
 
 	inline static void isMergedDataAllZero(const T* const merged_data) {
-		REQUIRE(std::all_of(merged_data, merged_data + NNBufferTester::MergedSize, typename NNBufferTester::equalsZero));
+		REQUIRE(std::all_of(merged_data, merged_data + NNBufferTester::MergedSize, NNBufferTester::equalsZero));
 	}
 
 	inline static void isMergedDataAllZero(const MergedTexture_t& merged_data) {
-		REQUIRE_THAT(merged_data, AllMatch(Predicate<T>(typename NNBufferTester::equalsZero)));
+		REQUIRE_THAT(merged_data, AllMatch(Predicate<T>(NNBufferTester::equalsZero)));
 	}
 
 public:

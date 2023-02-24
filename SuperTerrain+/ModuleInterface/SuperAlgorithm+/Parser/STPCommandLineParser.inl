@@ -1,32 +1,32 @@
 //TEMPLATE DEFINITION FOR COMMAND LINE PARSER
 #ifdef _STP_COMMAND_LINE_PARSER_H_
 
-//Exception
-#include <SuperTerrain+/Exception/STPValidationFailed.h>
-
 #include <algorithm>
 #include <limits>
 
 #define NAMESPACE_CMD_NAME SuperTerrainPlus::STPAlgorithm::STPCommandLineParser
 
 /* ---------------------------- count ---------------------------- */
-constexpr NAMESPACE_CMD_NAME::STPInternal::STPCountRequirement::STPCountRequirement() noexcept : Min(0u), Max(0u) {
+#define COUNT_REQ_NAME NAMESPACE_CMD_NAME::STPInternal::STPCountRequirement
+
+constexpr COUNT_REQ_NAME::STPCountRequirement() noexcept : Min(0u), Max(0u) {
 
 }
 
-constexpr void NAMESPACE_CMD_NAME::STPInternal::STPCountRequirement::set(const size_t num) noexcept {
+constexpr void COUNT_REQ_NAME::set(const size_t num) noexcept {
 	this->Min = num;
 	this->Max = num;
 }
 
-constexpr void NAMESPACE_CMD_NAME::STPInternal::STPCountRequirement::unlimitedMax() noexcept {
+constexpr void COUNT_REQ_NAME::unlimitedMax() noexcept {
 	this->Max = std::numeric_limits<size_t>::max();
 }
 
-constexpr bool NAMESPACE_CMD_NAME::STPInternal::STPCountRequirement::isMaxUnlimited() const noexcept {
+constexpr bool COUNT_REQ_NAME::isMaxUnlimited() const noexcept {
 	return this->Max == std::numeric_limits<size_t>::max();
 }
 
+#undef COUNT_REQ_NAME
 /* ---------------------------- tree ----------------------------- */
 #define TREE_BRANCH_TEMPLATE template<class T, size_t N>
 #define TREE_BRANCH_NAME NAMESPACE_CMD_NAME::STPInternal::STPTreeBranch<T, N>
@@ -59,13 +59,17 @@ inline bool TREE_BRANCH_NAME::empty() const noexcept {
 #undef TREE_BRANCH_NAME
 #undef TREE_BRANCH_TEMPLATE
 /* --------------------------- command ------------------------------ */
-inline bool NAMESPACE_CMD_NAME::STPInternal::STPBaseCommand::isGroup() const noexcept {
+#define BASE_COMMAND_NAME NAMESPACE_CMD_NAME::STPInternal::STPBaseCommand
+
+inline bool BASE_COMMAND_NAME::isGroup() const noexcept {
 	return this->IsGroup;
 }
 
-inline bool NAMESPACE_CMD_NAME::STPInternal::STPBaseCommand::isSubcommand() const noexcept {
+inline bool BASE_COMMAND_NAME::isSubcommand() const noexcept {
 	return !this->IsGroup;
 }
+
+#undef BASE_COMMAND_NAME
 
 #define COMMAND_TEMPLATE template<size_t ON, size_t CN>
 #define COMMAND_NAME NAMESPACE_CMD_NAME::STPCommand<ON, CN>
@@ -99,81 +103,183 @@ inline const NAMESPACE_CMD_NAME::STPInternal::STPBaseCommandTreeBranch& COMMAND_
 #undef COMMAND_NAME
 #undef COMMAND_TEMPLATE
 /* ------------------------------------------ option ------------------------------------------------------------ */
-inline bool NAMESPACE_CMD_NAME::STPInternal::STPBaseOption::isPositional() const noexcept {
+#define BASE_OPTION_NAME NAMESPACE_CMD_NAME::STPInternal::STPBaseOption
+
+inline bool BASE_OPTION_NAME::isPositional() const noexcept {
 	return this->PositionalPrecedence > 0u;
 }
 
-inline bool NAMESPACE_CMD_NAME::STPInternal::STPBaseOption::supportDelimiter() const noexcept {
+inline bool BASE_OPTION_NAME::supportDelimiter() const noexcept {
 	return this->Delimiter != '\0';
 }
 
-inline bool NAMESPACE_CMD_NAME::STPInternal::STPBaseOption::used() const noexcept {
+inline bool BASE_OPTION_NAME::used() const noexcept {
 	return this->Result.IsUsed;
 }
 
-#define OPTION_CONVERT(TEMP) inline void NAMESPACE_CMD_NAME::STPOption<TEMP>::convert([[maybe_unused]] const STPReceivedArgument& rx_arg) const
-#define OPTION_CTOR(TEMP) inline NAMESPACE_CMD_NAME::STPOption<TEMP>::STPOption(TEMP& v) : Variable(&v)
+#undef BASE_OPTION_NAME
 
-template<class BT>
-OPTION_CTOR(BT) { }
+#define OPTION_CONVERT(TEMP, CONV) inline void NAMESPACE_CMD_NAME::STPOption<TEMP, CONV>::convert([[maybe_unused]] const STPReceivedArgument& rx_arg) const
+#define OPTION_CTOR(TEMP, CONV) \
+inline NAMESPACE_CMD_NAME::STPOption<TEMP, CONV>::STPOption(TEMP& variable, Conv&& converter) : \
+	Converter(std::forward<Conv>(converter)), Variable(&variable)
 
-template<class BT>
-OPTION_CONVERT(BT) {
-	const size_t arg_count = rx_arg.size();
-	STP_ASSERTION_VALIDATION(arg_count <= 1u, "The number of argument in a single-argument option must be no more than one");
+#define OPTION_SPEC_CONVERT(TEMP) template<class Conv> OPTION_CONVERT(TEMP, Conv)
+#define OPTION_SPEC_CTOR(TEMP) template<class Conv> OPTION_CTOR(TEMP, Conv)
 
-	if (arg_count == 1u) {
-		//just use our string tool to convert the argument
-		*this->Variable = rx_arg.front().to<BT>();
+template<class BT, class Conv>
+OPTION_CTOR(BT, Conv) { }
+
+template<class BT, class Conv>
+OPTION_CONVERT(BT, Conv) {
+	if (rx_arg.empty()) {
+		//nothing to be converted
+		return;
 	}
+
+	BT variable {};
+	if (const STPInternal::STPConvertedArgumentCount convertedCount =
+			this->Converter(std::make_pair(rx_arg.cbegin(), rx_arg.cend()), variable);
+		!convertedCount || convertedCount != rx_arg.size()) {
+		STPInternal::STPBaseOption::throwConversionError("All arguments are expected to be consumed by the converter", rx_arg);
+	}
+
+	*this->Variable = std::move(variable);
 }
 
-OPTION_CONVERT(void) {
+OPTION_SPEC_CONVERT(void) {
 	//do nothing
 }
 
-OPTION_CTOR(bool) { }
+OPTION_SPEC_CTOR(bool) { }
 
-OPTION_CONVERT(bool) {
-	const size_t arg_count = rx_arg.size();
-	STP_ASSERTION_VALIDATION(arg_count <= 1u, "The number of argument in a flag option must be no more than one");
-	
+OPTION_SPEC_CONVERT(bool) {
+	if (rx_arg.size() > 1u) {
+		STPInternal::STPBaseOption::throwConversionError(
+			"The boolean binding variable specialisation can only accept at most one argument", rx_arg);
+	}
+
+	bool variable;
+	const size_t convertedCount = this->Converter(std::make_pair(rx_arg.cbegin(), rx_arg.cend()), variable).value_or(0u);
+
 	//if there is an argument, read directly from it
 	//a flag does not have any argument, simply assign from its inferred value
-	*this->Variable = arg_count == 1u ? rx_arg.front().to<bool>() : this->InferredValue;
+	*this->Variable = convertedCount == 1u ? variable : this->InferredValue;
 }
 
-template<class VT>
-OPTION_CTOR(std::vector<VT>) { }
-
-template<class VT>
-OPTION_CONVERT(std::vector<VT>) {
-	this->Variable->clear();
-	this->Variable->resize(rx_arg.size());
-	//convert each argument
-	//we assume each type is a basic convertible type, not something like a vector of vector
-	//so we can avoid recursive check
-	std::transform(rx_arg.cbegin(), rx_arg.cend(), this->Variable->begin(), [](auto& arg) { return arg.template to<VT>(); });
-}
-
-template<class... TT>
-OPTION_CTOR(std::tuple<TT...>) { }
-
-template<class... TT>
-OPTION_CONVERT(std::tuple<TT...>) {
-	STP_ASSERTION_VALIDATION(rx_arg.size() == std::tuple_size_v<std::tuple<TT...>>,
-		"The number of argument must equal to the number of element in the binding tuple variable");
-
-	//TODO: capture `auto` as template argument in C++ 20 so it's less verbose
-	auto convertOne = [i = static_cast<size_t>(0u), &rx_arg](auto& dst) mutable -> void {
-		dst = rx_arg[i++].to<std::remove_reference_t<decltype(dst)>>();
-	};
-	//iterate over each element in the tuple
-	std::apply([&convertOne](auto&... arg) { (convertOne(arg), ...); }, *this->Variable);
-}
+#undef OPTION_SPEC_CONVERT
+#undef OPTION_SPEC_CTOR
 
 #undef OPTION_CTOR
 #undef OPTION_CONVERT
+/* -------------------------------------------- argument converter ----------------------------------------------- */
+#define ARG_CONV_NAME NAMESPACE_CMD_NAME::STPInternal::STPArgumentConverter
+#define ARG_CONV_FUNC_DEF(TYPE) \
+inline NAMESPACE_CMD_NAME::STPInternal::STPConvertedArgumentCount ARG_CONV_NAME<TYPE>::operator()( \
+	const STPBaseOption::STPReceivedArgumentSpan& rx_arg, TYPE& var) const
+
+#define ARG_CONV_SPEC(TEMP, ARG) template<TEMP> struct ARG_CONV_NAME<ARG> { \
+	STPConvertedArgumentCount operator()(const STPBaseOption::STPReceivedArgumentSpan&, ARG&) const; \
+}; \
+template<TEMP> \
+ARG_CONV_FUNC_DEF(ARG)
+
+//base case for conversion of a single fundamental type
+//all specialisations will be recursive cases
+template<typename T>
+ARG_CONV_FUNC_DEF(T) {
+	const auto [beg, end] = rx_arg;
+	if (beg == end) {
+		//we expect at least one argument
+		return std::nullopt;
+	}
+
+	//just use our string tool to convert the argument
+	var = beg->to<T>();
+	return 1u;
+}
+
+//a wrapper type of optional
+ARG_CONV_SPEC(typename T, std::optional<T>) {
+	//convert the inner type
+	T inner {};
+	if (const STPConvertedArgumentCount converted = STPArgumentConverter<T> {}(rx_arg, inner);
+		converted && *converted > 0u) {
+		var.emplace(std::move(inner));
+		return converted;
+	}
+
+	//clear optional if there is nothing converted
+	var.reset();
+	return 0u;
+}
+
+//a vector, so can take variable number of argument
+ARG_CONV_SPEC(typename T, std::vector<T>) {
+	auto [beg, end] = rx_arg;
+	size_t convertedCount = 0u;
+
+	var.clear();
+	//try to convert each inner argument
+	while (beg < end) {
+		T inner {};
+		const size_t converted = STPArgumentConverter<T> {}(std::make_pair(beg, end), inner).value_or(0u);
+		if (converted == 0u) {
+			//cannot be converted
+			break;
+		}
+
+		var.emplace_back(std::move(inner));
+		beg += converted;
+		convertedCount += converted;
+	}
+	return convertedCount;
+}
+
+//a tuple, it has a fixed size
+ARG_CONV_SPEC(typename... T, std::tuple<T...>) {
+	using std::move;
+	
+	size_t convertedCount = 0u;
+	//return false to interrupt the loop
+	//force copy the argument as non-const
+	auto convertOne = [rx_arg = rx_arg, &convertedCount](auto& dst) mutable -> bool {
+		//TODO: capture `auto` as template argument in C++ 20 so it's less verbose
+		typedef std::remove_reference_t<decltype(dst)> ArgT;
+
+		//convert the current tuple element type
+		auto& [beg, end] = rx_arg;
+		ArgT argument {};
+		//we enforce that every tuple element must be assigned with a converted argument
+		const size_t converted = STPArgumentConverter<ArgT> {}(std::make_pair(beg, end), argument).value_or(0u);
+		if (converted == 0u) {
+			return false;
+		}
+
+		dst = move(argument);
+		beg += converted;
+		convertedCount += converted;
+		return true;
+	};
+
+	//we should maintain an origin copy to recover if conversion fails
+	std::tuple<T...> result {};
+	bool allConoverted = true;
+
+	std::apply([&convertOne, &allConoverted](auto&... arg) { allConoverted = (convertOne(arg) && ...); }, result);
+	//we require all elements in a tuple are converted
+	if (!allConoverted) {
+		return std::nullopt;
+	}
+	//if conversion goes well, clear all original values and copy the result in
+	var = move(result);
+	return convertedCount;
+}
+
+#undef ARG_CONV_SPEC
+
+#undef ARG_CONV_FUNC_DEF
+#undef ARG_CONV_NAME
 /* -------------------------------------------------- result ----------------------------------------------------- */
 
 inline const NAMESPACE_CMD_NAME::STPInternal::STPBaseCommand& NAMESPACE_CMD_NAME::STPParseResult::commandBranch() const noexcept {

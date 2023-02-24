@@ -30,12 +30,14 @@
 #include <array>
 #include <vector>
 #include <tuple>
+#include <optional>
 
 using std::string;
 using std::ostringstream;
 using std::array;
 using std::vector;
 using std::tuple;
+using std::optional;
 
 using std::tie;
 using std::make_tuple;
@@ -52,9 +54,9 @@ using namespace SuperTerrainPlus;
 using namespace SuperTerrainPlus::STPAlgorithm;
 namespace Cmd = STPCommandLineParser;
 
-#define THROW_AS_VALIDATION_ERROR(EXPR) REQUIRE_THROWS_AS(EXPR, STPException::STPValidationFailed)
 #define THROW_AS_PARSER_ERROR(EXPR) REQUIRE_THROWS_AS(EXPR, STPException::STPParserError::STPSemanticError)
 #define COMPARE_FLOAT(VALUE, TARGET) CHECK_THAT(VALUE, Catch::Matchers::WithinRel(TARGET, std::numeric_limits<float>::epsilon() * 500.0f))
+#define COMPARE_FLOAT_RESULT(VALUE, EXPECTED) CHECK_THAT(VALUE, Catch::Matchers::WithinULP(EXPECTED, 50ull))
 
 SCENARIO("STPCommandLineParser user-defined data structure can perform certain operations", "[AlgorithmHost][STPCommandLineParser]") {
 
@@ -129,54 +131,114 @@ SCENARIO("STPCommandLineParser user-defined data structure can perform certain o
 	}
 
 	GIVEN("A number of options with binding variable") {
-		Cmd::STPOption<void> VoidOption;
 
-		bool BoolValue = true;
-		Cmd::STPOption BoolOption(BoolValue);
-		BoolOption.InferredValue = false;
+		WHEN("Binding variables are simple types with single level of depth") {
+			Cmd::STPOption<void> VoidOption;
 
-		float FloatValue = 0.0f;
-		Cmd::STPOption FloatOption(FloatValue);
+			bool BoolValue = true;
+			Cmd::STPOption BoolOption(BoolValue);
+			BoolOption.InferredValue = false;
 
-		vector<unsigned int> ArrayValue;
-		Cmd::STPOption ArrayIntOption(ArrayValue);
+			float FloatValue = 0.0f;
+			Cmd::STPOption FloatOption(FloatValue);
 
-		tuple<bool, float, unsigned int> TupleValue = make_tuple(false, 0.0f, 0u);
-		Cmd::STPOption TupleOption(TupleValue);
+			vector<unsigned int> ArrayValue;
+			Cmd::STPOption ArrayIntOption(ArrayValue);
 
-		constexpr static STPStringViewAdaptor BoolString = "false", FloatString = "3.14f",
-			ArrayElementValue = "666u", TupleOne = "true", TupleTwo = "-2.71f", TupleThree = "888u";
-		WHEN("Valid parsed string are obtained") {
+			tuple<bool, float, unsigned int> TupleValue = make_tuple(false, 0.0f, 0u);
+			Cmd::STPOption TupleOption(TupleValue);
+
+			optional<unsigned int> OptionalValue;
+			Cmd::STPOption OptionalOption(OptionalValue);
 
 			THEN("Parsed string can be converted to corresponding binding variable") {
 				CHECK_NOTHROW(VoidOption.convert({}));
-				CHECK_NOTHROW(BoolOption.convert({ BoolString }));
-				CHECK_NOTHROW(FloatOption.convert({ FloatString }));
-				CHECK_NOTHROW(ArrayIntOption.convert({ 5u, ArrayElementValue }));
-				CHECK_NOTHROW(TupleOption.convert({ TupleOne, TupleTwo, TupleThree }));
+				CHECK_NOTHROW(BoolOption.convert({ "false" }));
+				CHECK_NOTHROW(FloatOption.convert({ "3.14f" }));
+				CHECK_NOTHROW(ArrayIntOption.convert({ 5u, "666u" }));
+				CHECK_NOTHROW(TupleOption.convert({ "true", "-2.71f", "888u" }));
+				CHECK_NOTHROW(OptionalOption.convert({ "12345u" }));
 
+				//-----------
+				//value check
 				CHECK(BoolValue == false);
 				COMPARE_FLOAT(FloatValue, 3.14f);
 				CHECK_THAT(ArrayValue, AllMatch(Predicate<unsigned int>([](const auto num) { return num == 666u; })));
+
 				const auto [t1, t2, t3] = TupleValue;
 				CHECK(t1 == true);
 				COMPARE_FLOAT(t2, -2.71f);
 				CHECK(t3 == 888u);
+
+				REQUIRE(OptionalValue);
+				CHECK(*OptionalValue == 12345u);
+
+				//-----------
+				//a separate test case for optional in case of empty argument
+				OptionalValue.reset();
+				CHECK_NOTHROW(OptionalOption.convert({}));
+				CHECK_FALSE(OptionalValue);
+			}
+
+			AND_WHEN("Invalid parsed string are encountered") {
+
+				THEN("Binding variable conversion fails") {
+					//invalid format
+					THROW_AS_PARSER_ERROR(BoolOption.convert({ "tu?re" }));
+					THROW_AS_PARSER_ERROR(FloatOption.convert({ "hello,world" }));
+
+					//incorrect number of argument
+					THROW_AS_PARSER_ERROR(BoolOption.convert({ "true", "false" }));
+					THROW_AS_PARSER_ERROR(TupleOption.convert({ "false" }));
+				}
+
 			}
 
 		}
 
-		WHEN("Invalid parsed string are encountered") {
-			constexpr static STPStringViewAdaptor BrokenBool = "tu?re", BrokenFloat = "hello,world";
+		WHEN("Binding variables are more complex with nested definitions") {
+			vector<tuple<float, float>> ArrayTwoFloatValue;
+			Cmd::STPOption ArrayTwoFloatOption(ArrayTwoFloatValue);
 
-			THEN("Binding variable conversion fails") {
-				//invalid format
-				THROW_AS_PARSER_ERROR(BoolOption.convert({ BrokenBool }));
-				THROW_AS_PARSER_ERROR(FloatOption.convert({ BrokenFloat }));
+			optional<tuple<unsigned int, bool>> OptionalTupleValue;
+			Cmd::STPOption OptionalTupleOption(OptionalTupleValue);
 
-				//incorrect number of argument
-				THROW_AS_VALIDATION_ERROR(BoolOption.convert({ BoolString, BoolString }));
-				THROW_AS_VALIDATION_ERROR(TupleOption.convert({ TupleOne }));
+			tuple<tuple<float, int>, float> ComplexTupleValue;
+			Cmd::STPOption ComplexTupleOption(ComplexTupleValue);
+
+			THEN("All nested types can be converted") {
+				constexpr static float Avogadro = 6.02f;
+
+				CHECK_NOTHROW(ArrayTwoFloatOption.convert({ "2.5f", "15.05f", "6.0f", "36.12f" }));
+				CHECK_NOTHROW(OptionalTupleOption.convert({ "1945u", "true" }));//the year ENIAC was invented
+				CHECK_NOTHROW(ComplexTupleOption.convert({ "6.625f", "-34", "6.28f" }));//Planck's constant
+
+				//-----------
+				//value check
+				for (const auto [a, result] : ArrayTwoFloatValue) {
+					COMPARE_FLOAT_RESULT(a * Avogadro, result);
+				}
+				REQUIRE(OptionalTupleValue);
+
+				const auto [t1, t2] = *OptionalTupleValue;
+				CHECK(t1 == 1945u);
+				CHECK(t2);
+
+				const auto [t3, u1] = ComplexTupleValue;
+				const auto [v1, v2] = t3;
+				CHECK(v1 == 6.625f);
+				CHECK(v2 == -34);
+				CHECK(u1 == 6.28f);
+			}
+
+			AND_WHEN("Nested binding variables are broken") {
+
+				THEN("Conversion fails immediately regardless of the nesting depth") {
+					THROW_AS_PARSER_ERROR(ArrayTwoFloatOption.convert({ "-1.2f", "2.4f", "-3.6f" }));
+					THROW_AS_PARSER_ERROR(OptionalTupleOption.convert({ "555u", "false", "0u" }));
+					THROW_AS_PARSER_ERROR(ComplexTupleOption.convert({ "888.88f" }));
+				}
+
 			}
 
 		}
@@ -529,6 +591,8 @@ SCENARIO_METHOD(CmdParserTester, "STPCommandLineParser can parsed command line b
 					ContainsSubstring("maximum of 1"));
 				RUN_PARSER_ERROR_MATCH(getEncodedArgument("add", "-v", "-v"),
 					ContainsSubstring("v") && ContainsSubstring("duplicate"));
+				RUN_PARSER_ERROR_MATCH(getEncodedArgument("add", "--v"),
+					ContainsSubstring("v") && ContainsSubstring("undefined"));
 				RUN_PARSER_ERROR(getEncodedArgument("clone", "--depth", "abc"));
 			}
 

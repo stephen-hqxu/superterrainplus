@@ -1,22 +1,24 @@
 #include <SuperAlgorithm+/Parser/STPCommandLineParser.h>
 #include <SuperAlgorithm+/Parser/Framework/STPLexer.h>
 
+#include <SuperTerrain+/Exception/STPValidationFailed.h>
 #include <SuperTerrain+/Exception/STPNumericDomainError.h>
+
+//Hash
+#include <SuperTerrain+/Utility/STPHashCombine.h>
 
 //Container
 #include <stack>
 #include <queue>
 #include <unordered_set>
 #include <unordered_map>
-#include <optional>
 
 //Stream
-#include <sstream>
 #include <iomanip>
 #include <ios>
+#include <sstream>
 
 #include <cassert>
-#include <utility>
 #include <functional>
 
 using std::vector;
@@ -106,15 +108,47 @@ namespace {
 	STP_LEXER_CREATE_LEXICAL_STATE(CmdRegularOptionState, 0x7Eu, ShortOptionName, OptionEndCompact, OptionEndSpread);
 
 	typedef STPLexer<CmdGlobalState, CmdValueState, CmdLongOptionState, CmdRegularOptionState> STPCmdLexer;
+
+	//The type for the table storing option names.
+	//The boolean specifies if it is a short option, the string specifies its name.
+	typedef pair<bool, string_view> STPOptionTypeName;
+	/**
+	 * @brief A hash function for option name and the type of the option.
+	*/
+	struct STPHashOptionTypeName {
+	public:
+
+		inline size_t operator()(const STPOptionTypeName& type_name) const noexcept {
+			const auto& [is_short, opt_name] = type_name;
+
+			size_t value = 0u;
+			SuperTerrainPlus::STPHashCombine::combine(value, is_short, opt_name);
+			return value;
+		}
+
+	};
 }
 
 namespace STPInternal = STPCommandLineParser::STPInternal;
+
+void STPInternal::STPBaseOption::throwConversionError(const char* const custom, const STPReceivedArgument& rx_arg) {
+	ostringstream error;
+
+	error << custom << endl;
+	error << "The following arguments received from the command line cannot be converted:" << endl;
+	for (const auto& arg : rx_arg) {
+		error << '\t' << *arg << endl;
+	}
+	error << "Please make sure the binding variable(s) is/are valid for the expected argument received" << endl;
+
+	throw CMD_PARSER_SEMANTIC_ERROR(error.str(), "argument conversion error");
+}
 
 //Positional arguments recognised from the command line.
 typedef queue<STPStringViewAdaptor> STPReceivedPositional;
 //Given the option name, either short or long, return the pointer to this option.
 //This includes options in the group. Subcommand options are ignored.
-typedef unordered_map<string_view, const STPInternal::STPBaseOption*> STPOptionTable;
+typedef unordered_map<STPOptionTypeName, const STPInternal::STPBaseOption*, STPHashOptionTypeName> STPOptionTable;
 //A subset of the option table, storing positional options based on their precedence.
 typedef vector<const STPInternal::STPBaseOption*> STPPositionalOptionTable;
 //The pointer of the option configuration of the next option,
@@ -123,17 +157,18 @@ typedef optional<pair<const STPInternal::STPBaseOption*, bool>> STPOptionResult;
 
 /**
  * @brief Apply a function for each of the non-empty option name.
- * @tparam Func A function that takes a pointer to constant string view as the non-empty name.
+ * @tparam Func A function that takes a bool and a pointer to constant string view as the non-empty name.
+ * The bool value indicates if this option is a short name.
  * @param option The option whose names should be checked and applied.
  * @param f The function to be applied.
 */
 template<class Func>
 inline static void applyOptionName(const STPInternal::STPBaseOption& option, Func&& f) {
 	if (!option.ShortName.empty()) {
-		forward<Func>(f)(option.ShortName);
+		forward<Func>(f)(true, option.ShortName);
 	}
 	if (!option.LongName.empty()) {
-		forward<Func>(f)(option.LongName);
+		forward<Func>(f)(false, option.LongName);
 	}
 }
 
@@ -258,7 +293,7 @@ void STPCommandLineParser::validate(const STPInternal::STPBaseCommand& command) 
 				validateCurrentOption(*opt);
 
 				//add option to table, or throw exception if name is duplicate
-				const auto addToTable = [&duplicateOption, &currentGroup](const string_view& name) -> void {
+				const auto addToTable = [&duplicateOption, &currentGroup](bool, const string_view& name) -> void {
 					const auto messageDuplicateOptionName = [](const string_view& option_name, const string_view& subcommand_name) -> string {
 						ostringstream err;
 						err << "Option \'" << option_name << "\' is not unique in command \'" << subcommand_name << '\'' << endl;
@@ -374,7 +409,7 @@ static pair<STPOptionTable, STPPositionalOptionTable> buildOptionTable(const STP
 		//add non-empty option name
 		const auto& member_option = current_group.option();
 		for_each(member_option.begin(), member_option.end(), [&table, &table_positional](const auto* opt) {
-			applyOptionName(*opt, [&table, opt](const auto& opt_name) { table.try_emplace(opt_name, opt); });
+			applyOptionName(*opt, [&table, opt](const bool is_short, const auto& opt_name) { table.try_emplace(make_pair(is_short, opt_name), opt); });
 			//add positional option separately
 			if (opt->isPositional()) {
 				table_positional.push_back(opt);
@@ -393,7 +428,8 @@ static pair<STPOptionTable, STPPositionalOptionTable> buildOptionTable(const STP
 	std::stable_sort(table_positional.begin(), table_positional.end(),
 		[](const auto* const a, const auto* const b) { return a->PositionalPrecedence < b->PositionalPrecedence; });
 
-	return make_pair(table, table_positional);
+	using std::move;
+	return make_pair(move(table), move(table_positional));
 }
 
 /**
@@ -418,15 +454,17 @@ static void splitArgument(string_view argument, const STPInternal::STPBaseOption
 
 /**
  * @brief Read the next option.
- * @param option_name The name of the next option.
+ * @param option_type_name Specifies if the option to read is a short option, and the name of the next option.
  * @param defined_option All valid options defined by the rule.
  * @return The option parsing result.
 */
-static const STPInternal::STPBaseOption& readOption(const string_view option_name, const STPOptionTable& defined_option) {
-	const auto it = defined_option.find(option_name);
+static const STPInternal::STPBaseOption& readOption(const STPOptionTypeName& option_type_name, const STPOptionTable& defined_option) {
+	const auto& [is_short, option_name] = option_type_name;
+
+	const auto it = defined_option.find(make_pair(is_short, option_name));
 	if (it == defined_option.cend()) {
 		ostringstream err;
-		err << "Option \'" << option_name << "\' is undefined" << endl;
+		err << (is_short ? "Short" : "Long") << " option \'" << option_name << "\' is undefined" << endl;
 		throw CMD_PARSER_SEMANTIC_ERROR(err.str(), "unknown option");
 	}
 
@@ -524,7 +562,9 @@ static STPReceivedPositional readCommand(STPCmdLexer& lexer, STPCmdLexer::STPTok
 		saveOption(*current_option->first, readArgument);
 	};
 	const auto readOneOption = [&current_option, &fastSaveOption, &readArgument, &lexer, &registered_option]
-		(const auto& expect_end_option, const string_view& nextOptionName) -> auto {
+		(const auto& expect_end_option, const STPOptionTypeName& nextOptionTypeName) -> auto {
+		const string_view& nextOptionName = nextOptionTypeName.second;
+
 		//save the previous option, if we were reading an option previously
 		if (current_option) {
 			fastSaveOption();
@@ -533,7 +573,7 @@ static STPReceivedPositional readCommand(STPCmdLexer& lexer, STPCmdLexer::STPTok
 		readArgument.clear();
 
 		//enter the next option state
-		const STPInternal::STPBaseOption& next_option = readOption(nextOptionName, registered_option);
+		const STPInternal::STPBaseOption& next_option = readOption(nextOptionTypeName, registered_option);
 		//check if short options are specified together, or it is the end of option statement
 		const STPCmdLexer::STPToken end_option_token = expect_end_option();
 		//is delimiter separated value
@@ -558,21 +598,21 @@ static STPReceivedPositional readCommand(STPCmdLexer& lexer, STPCmdLexer::STPTok
 		//start from the token provided in the function argument
 		//then grab from the command line
 		if (current_tok == ShortOptionControl {}) {
-			string_view short_name = **lexer.expect<ShortOptionName>();
+			STPOptionTypeName short_type_name = make_pair(true, **lexer.expect<ShortOptionName>());
 			//loop to consume all short options
 			while (true) {
-				const STPCmdLexer::STPToken short_token = readOneOption(expectNextShortOption, short_name);
+				const STPCmdLexer::STPToken short_token = readOneOption(expectNextShortOption, short_type_name);
 
 				if (short_token != ShortOptionName {}) {
 					break;
 				}
 				//a new option is encountered
-				short_name = **short_token;
+				short_type_name.second = **short_token;
 			}
 		} else if (current_tok == LongOptionControl {}) {
 			//long option is rather straight-forward
 			const string_view long_name = **lexer.expect<LongOptionName>();
-			readOneOption(expectNextLongOption, long_name);
+			readOneOption(expectNextLongOption, make_pair(false, long_name));
 		} else if (current_tok == ValueName {}) {
 			//option value, or positional argument if we are not currently parsing any option
 			if (readValue(current_option, *current_tok, readPositional, readArgument)) {

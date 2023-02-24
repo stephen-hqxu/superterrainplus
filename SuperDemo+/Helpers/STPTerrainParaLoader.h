@@ -45,20 +45,21 @@ namespace STPDemo {
 
 		/**
 		 * @brief Load the launch settings for terrain.
-		 * @param section The INI section that contains the launch parameter
-		 * @param slipRange The size of the free-slip range of the erosion
-		 * @return The launch parameter, if certain parameters are missing in the section, exception will be thrown
+		 * @param section The INI section that contains the launch parameter.
+		 * @param generator_seed The generator seed.
+		 * @return The launch parameter, if certain parameters are missing in the section, exception will be thrown.
 		*/
 		SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting getGeneratorSetting(
-			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, unsigned long long);
 
 		/**
-		 * @brief Load the simplex noise setting.
-		 * @param section The INI section that contains the launch parameter
-		 * @return The noise parameter, if certain parameters are missing in the section, exception will be thrown
+		 * @brief Load the simplex noise setting..
+		 * @param section The INI section that contains the launch parameter.
+		 * @param simplex_seed The simplex noise seed.
+		 * @return The noise parameter, if certain parameters are missing in the section, exception will be thrown.
 		*/
 		SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting getSimplexSetting(
-			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, unsigned long long);
 
 		/**
 		 * @brief Load the settings for procedural sky rendering.
@@ -87,10 +88,11 @@ namespace STPDemo {
 		/**
 		 * @brief Load the settings for ambient occlusion.
 		 * @param section The INI section that contains the AO setting.
+		 * @param ao_seed The ambient occlusion seed.
 		 * @return The AO setting.
 		*/
 		SuperTerrainPlus::STPEnvironment::STPOcclusionKernelSetting getAOSetting(
-			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, unsigned long long);
 
 		/**
 		 * @brief Load the settings for water rendering.

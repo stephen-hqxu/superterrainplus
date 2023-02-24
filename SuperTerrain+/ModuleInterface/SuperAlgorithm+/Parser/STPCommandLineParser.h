@@ -10,6 +10,8 @@
 #include <array>
 #include <vector>
 #include <tuple>
+#include <optional>
+#include <utility>
 //String
 #include <string>
 #include <string_view>
@@ -134,6 +136,20 @@ namespace SuperTerrainPlus::STPAlgorithm {
 
 				//Recognised arguments for the current option.
 				typedef std::vector<STPStringViewAdaptor> STPReceivedArgument;
+				//TODO: use span in C++ 20 on the received array of arguments
+				//Just to emulate a span for the vector type.
+				typedef std::pair<STPReceivedArgument::const_iterator, STPReceivedArgument::const_iterator> STPReceivedArgumentSpan;
+
+			protected:
+
+				/**
+				 * @brief Create an exception when a conversion error happens.
+				 * @param custom Some custom error message to be added.
+				 * @param rx_arg The pointer to the array of arguments that causes the problem.
+				*/
+				[[noreturn]] STP_ALGORITHM_HOST_API static void throwConversionError(const char*, const STPReceivedArgument&);
+
+			public:
 
 				//Specify the name of the option.
 				//A short name begins with a single control symbol, and can only be followed by one character.
@@ -251,7 +267,39 @@ namespace SuperTerrainPlus::STPAlgorithm {
 
 			};
 
+			//The number of string argument converted to the specified type.
+			//Set to null to indicate to the application a conversion failure that can be handled.
+			typedef std::optional<size_t> STPConvertedArgumentCount;
+
+			/**
+			 * @brief STPArgumentConverter is a utility to convert a number of string arguments to binding variable.
+			 * The base version only supports conversion from fundamental types.
+			 * This utility can be specialised to support more complex types.
+			 * @tparam T The type of the binding variable.
+			*/
+			template<typename T>
+			struct STPArgumentConverter {
+			public:
+
+				/**
+				 * @brief Invoke the argument converter.
+				 * @param rx_arg The pointer to an array of received arguments.
+				 * @param var The pointer to the binding variable output.
+				 * @return The number of argument converted.
+				 * @exception Any exception generated from the fundamental type conversion from `STPBasicStringAdaptor`.
+				 * This will happen if the argument has any syntactic error.
+				 * In other non-fatal, recoverable cases, use return value of null to indicate conversion failure.
+				*/
+				STPConvertedArgumentCount operator()(const STPBaseOption::STPReceivedArgumentSpan&, T&) const;
+
+			};
+			//A specialisation for void, which defines no converter because there is nothing to be converted.
+			template<>
+			struct STPArgumentConverter<void> { };
+
 		}
+
+#define OPTION_CLASS_DEF(TYPE) template<class Conv> struct STPOption<TYPE, Conv> : public STPInternal::STPBaseOption
 
 #define OPTION_CLASS_BASE_MEMBER \
 STPOption() = default; \
@@ -260,37 +308,38 @@ using STPBaseOption::STPReceivedArgument; \
 void convert(const STPReceivedArgument&) const override
 
 #define OPTION_CLASS_MEMBER(VAR_TYPE) \
-STPOption(VAR_TYPE&); \
+private: \
+const Conv Converter; \
+public: \
 VAR_TYPE* Variable = nullptr; \
+STPOption(VAR_TYPE&, Conv&& = Conv {}); \
 OPTION_CLASS_BASE_MEMBER
 		
 		/**
 		 * @brief STPOption allows binding variable to an option and parsed from the command line input.
+		 * The constructor can take a reference to the binding variable, and optionally the custom defined converter;
+		 * this can be used to deduce the class template.
 		 * @tparam BT The binding variable type. Can be any fundamental type, a vector type, or a tuple.
 		 * If the type if void, no binding variable is required.
 		 * If a binding variable is used, the pointer to the binding variable should be not null,
 		 * and its lifetime should be preserved until the end of the option's lifetime.
+		 * @tparam Conv The argument converter to be used, or using the default one if not provided.
 		 * @see STPBaseOption
 		*/
-		template<class BT>
+		template<class BT, class Conv = STPInternal::STPArgumentConverter<BT>>
 		struct STPOption : public STPInternal::STPBaseOption {
-		public:
 
 			OPTION_CLASS_MEMBER(BT);
 
 		};
 		//No binding variable.
-		template<>
-		struct STPOption<void> : public STPInternal::STPBaseOption {
-		public:
+		OPTION_CLASS_DEF(void) {
 
 			OPTION_CLASS_BASE_MEMBER;
 
 		};
 		//A specialisation for a flag.
-		template<>
-		struct STPOption<bool> : public STPInternal::STPBaseOption {
-		public:
+		OPTION_CLASS_DEF(bool) {
 
 			//If the flag appears on the command line without argument, this is the value set to the binding variable.
 			//Otherwise the variable is set to the argument parsed from the command line.
@@ -299,23 +348,8 @@ OPTION_CLASS_BASE_MEMBER
 			OPTION_CLASS_MEMBER(bool);
 
 		};
-		//A specialisation of the option whose binding variable is a vector.
-		template<class VT>
-		struct STPOption<std::vector<VT>> : public STPInternal::STPBaseOption {
-		public:
 
-			OPTION_CLASS_MEMBER(std::vector<VT>);
-
-		};
-		//A specialisation of the option whose binding variable is a tuple.
-		template<class... TT>
-		struct STPOption<std::tuple<TT...>> : public STPInternal::STPBaseOption {
-		public:
-
-			OPTION_CLASS_MEMBER(std::tuple<TT...>);
-
-		};
-
+#undef OPTION_CLASS_DEF
 #undef OPTION_CLASS_MEMBER
 #undef OPTION_CLASS_BASE_MEMBER
 

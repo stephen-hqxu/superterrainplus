@@ -6,6 +6,8 @@
 #include <SuperAlgorithm+/Parser/STPINIData.hpp>
 #include <SuperRealism+/Utility/STPCamera.h>
 
+#include "./Helpers/STPCommandLineOption.h"
+
 #include <glm/vec2.hpp>
 
 #include <memory>
@@ -31,9 +33,11 @@ namespace STPDemo {
 		 * @param engine The pointer to engine INI settings.
 		 * @param biome The pointer to biome INI settings.
 		 * @param camera The pointer to the perspective camera for the scene.
+		 * @param cmd The result from the command line parsing.
 		*/
 		STPMasterRenderer(const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINIStorageView&,
-			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINIStorageView&, SuperTerrainPlus::STPRealism::STPCamera&);
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINIStorageView&,
+			SuperTerrainPlus::STPRealism::STPCamera&, const STPCommandLineOption::STPResult&);
 
 		STPMasterRenderer(const STPMasterRenderer&) = delete;
 
