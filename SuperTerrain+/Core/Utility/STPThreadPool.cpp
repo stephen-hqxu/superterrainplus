@@ -3,7 +3,6 @@
 #include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 #include <algorithm>
-#include <utility>
 
 using std::thread;
 using std::unique_lock;

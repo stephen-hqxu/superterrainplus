@@ -77,6 +77,23 @@ protected:
 		}
 	}
 
+	//return the actual number of block sent
+	template<size_t NB = 2u>
+	unsigned int submitLoopWork(atomic<unsigned int>& counter, const unsigned int start, const unsigned int finish) {
+		const auto accumulateCount = [&counter](auto, const auto begin, const auto end) -> void {
+			counter += ThreadPoolTester::busyWork(end - begin);
+		};
+		//submit
+		auto LoopFuture = this->Pool->enqueueLoop<NB>(accumulateCount, start, finish);
+		//wait
+		return std::visit([](auto& result) {
+			for (auto& f : result) {
+				f.get();
+			}
+			return static_cast<unsigned int>(result.size());
+		}, LoopFuture);
+	}
+
 public:
 
 	ThreadPoolTester() : Pool(1u) {
@@ -97,7 +114,7 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded worklo
 
 	GIVEN("A valid thread pool object") {
 
-		WHEN("Some works need to be done") {
+		WHEN("Work can be done without generating any error") {
 
 			AND_WHEN("The work returns a value") {
 				const unsigned int Work = GENERATE(take(3u, random(0u, 6666u)));
@@ -134,6 +151,38 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded worklo
 				THEN("Work is done successfully with explicit thread pool synchronisation") {
 					this->Pool->waitAll();
 					REQUIRE(Flag);
+				}
+
+			}
+
+			AND_GIVEN("Some works that require running a loop of iterations to be parallelised into equal-sized blocks") {
+				atomic<unsigned int> Counter = 0u;
+
+				WHEN("The end index is less than the begin index, resulting in negative number of iteration") {
+
+					THEN("Loop parallelisation fails with an error") {
+						REQUIRE_THROWS_AS(this->submitLoopWork(Counter, 321u, 123u), STPException::STPNumericDomainError);
+					}
+
+				}
+
+				WHEN("The number of block is less than the number of iteration") {
+
+					THEN("Iteration is split evenly into blocks and run in parallel; the total number of iteration is the same") {
+						//deliberately using an iteration that is not divisible by the block count
+						REQUIRE(this->submitLoopWork<4u>(Counter, 0u, 57u) == 4u);
+						REQUIRE(Counter == 57u);
+					}
+
+				}
+
+				WHEN("The number of block is greater than the number of iteration") {
+
+					THEN("Only one block is launched; this block handles the entire iteration") {
+						REQUIRE(this->submitLoopWork<4u>(Counter, 0u, 3u) == 1u);
+						REQUIRE(Counter == 3u);
+					}
+
 				}
 
 			}

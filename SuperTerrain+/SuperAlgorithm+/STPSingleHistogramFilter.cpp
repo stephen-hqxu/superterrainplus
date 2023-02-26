@@ -11,7 +11,6 @@
 //Memory
 #include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
 
-
 //GLM
 #include <glm/vec2.hpp>
 
@@ -21,8 +20,6 @@
 #include <iterator>
 #include <algorithm>
 #include <type_traits>
-
-//Container
 #include <utility>
 
 #include <cstring>
@@ -41,304 +38,306 @@ using std::unique_ptr;
 using std::make_pair;
 using std::make_unique;
 
-/* Pinned memory allocator */
+namespace {
+	/**
+	 * @brief A pinned memory allocator.
+	 * @tparam T The type of data to be allocated.
+	*/
+	template<class T>
+	struct STPPinnedAllocator {
+	public:
 
-template<class T>
-struct STPPinnedAllocator {
-public:
+		typedef T value_type;
 
-	typedef T value_type;
+		inline T* allocate(const size_t size) const {
+			T* mem;
+			//note that the allocator-provided size is the number of object, not byte
+			STP_CHECK_CUDA(cudaMallocHost(&mem, size * sizeof(T)));
+			return mem;
+		}
 
-	T* allocate(const size_t size) const {
-		T* mem;
-		//note that the allocator-provided size is the number of object, not byte
-		STP_CHECK_CUDA(cudaMallocHost(&mem, size * sizeof(T)));
-		return mem;
-	}
+		inline void deallocate(T* const mem, const size_t) const {
+			STP_CHECK_CUDA(cudaFreeHost(mem));
+		}
 
-	void deallocate(T* const mem, const size_t) const {
-		STP_CHECK_CUDA(cudaFreeHost(mem));
-	}
-
-};
-
-/* Custom data structure */
-
-/**
- * @brief A simple implementation of std::vector.
- * After some profiling a custom data structure works better than the stl one due to its simplicity.
- * @tparam T The data type of the array list
-*/
-template<class T, class A = allocator<T>>
-class STPArrayList {
-public:
-
-	//The iterator for the array list
-	using STPArrayList_it = T*;
-	//The const iterator for the array list
-	using STPArrayList_cit = const T*;
-
-private:
-
-	static_assert(std::is_trivial_v<T>, "type must be a trivial type");
-	static_assert(std::is_trivially_destructible_v<T>, "type must be trivially destructible");
-
-	using RebindAlloc = typename allocator_traits<A>::template rebind_alloc<T>;
-	using AllocTr = allocator_traits<RebindAlloc>;
-
-	RebindAlloc arrayAllocator;
-
-	//Smart pointer that uses allocator to destroy
-	using unique_ptr_alloc = unique_ptr<T[], std::function<void(T*)>>;
-
-	//The data held by the array list, also denotes the beginning of the array
-	unique_ptr_alloc Begin;
-	//The pointer to the end of the array.
-	STPArrayList_it End;
-	//The pointer to the end of the internal storage array
-	STPArrayList_it Last;
+	};
 
 	/**
-	 * @brief Expand the internal storage capacity
-	 * @param new_capacity The new capacity
+	 * @brief A simple implementation of std::vector.
+	 * After some profiling a custom data structure works better than the stl one due to its simplicity.
+	 * @tparam T The data type of the array list
 	*/
-	void expand(size_t new_capacity) {
-		using std::bind;
-		using namespace std::placeholders;
-		//clamp the capacity, because a newly created array list might have zero capacity.
-		new_capacity = std::max(static_cast<size_t>(1u), new_capacity);
-		//the current size of the user array
-		const size_t current_size = this->size();
+	template<class T, class A = allocator<T>>
+	class STPArrayList {
+	public:
 
-		//allocate a cache
-		constexpr static auto deleter = [](T* const ptr, RebindAlloc alloc, const size_t size) constexpr -> void {
-			//ptr is trivially destructor so we don't need to call destroy
-			AllocTr::deallocate(alloc, ptr, size);
-		};
-		unique_ptr_alloc cache(AllocTr::allocate(this->arrayAllocator, new_capacity),
-			bind(deleter, _1, this->arrayAllocator, new_capacity));
+		//The iterator for the array list
+		using STPArrayList_it = T*;
+		//The const iterator for the array list
+		using STPArrayList_cit = const T*;
 
-		//copy will handle the case when begin == end
-		std::copy(this->cbegin(), this->cend(), cache.get());
+	private:
+
+		static_assert(std::is_trivial_v<T>, "type must be a trivial type");
+		static_assert(std::is_trivially_destructible_v<T>, "type must be trivially destructible");
+
+		using RebindAlloc = typename allocator_traits<A>::template rebind_alloc<T>;
+		using AllocTr = allocator_traits<RebindAlloc>;
+
+		RebindAlloc arrayAllocator;
+
+		//Smart pointer that uses allocator to destroy
+		using unique_ptr_alloc = unique_ptr<T[], std::function<void(T*)>>;
+
+		//The data held by the array list, also denotes the beginning of the array
+		unique_ptr_alloc Begin;
+		//The pointer to the end of the array.
+		STPArrayList_it End;
+		//The pointer to the end of the internal storage array
+		STPArrayList_it Last;
+
+		/**
+		 * @brief Expand the internal storage capacity
+		 * @param new_capacity The new capacity
+		*/
+		void expand(size_t new_capacity) {
+			using std::bind;
+			using namespace std::placeholders;
+			//clamp the capacity, because a newly created array list might have zero capacity.
+			new_capacity = std::max(static_cast<size_t>(1u), new_capacity);
+			//the current size of the user array
+			const size_t current_size = this->size();
+
+			//allocate a cache
+			constexpr static auto deleter = [](T* const ptr, RebindAlloc alloc, const size_t size) constexpr -> void {
+				//ptr is trivially destructor so we don't need to call destroy
+				AllocTr::deallocate(alloc, ptr, size);
+			};
+			unique_ptr_alloc cache(AllocTr::allocate(this->arrayAllocator, new_capacity),
+				bind(deleter, _1, this->arrayAllocator, new_capacity));
+
+			//copy will handle the case when begin == end
+			std::copy(this->cbegin(), this->cend(), cache.get());
 		
-		//reassign data
-		this->Begin = std::move(cache);
-		this->End = this->begin() + current_size;
-		this->Last = this->begin() + new_capacity;
-	}
-
-	/**
-	 * @brief Check if reallocation is needed for insert_back_n function
-	 * @param count The number of new elements are going to be inserted
-	*/
-	inline void insert_back_realloc_check(const size_t count) {
-		if (this->cend() + count > this->Last) {
-			//not enough room, reallocation
-			this->expand((this->size() + count) * 2u);
-		}
-	}
-
-	/**
-	 * @brief Insert count many elements at the end without initialisation
-	 * @param count The number of element to be inserted
-	*/
-	inline void insert_back_n(const size_t count) {
-		this->insert_back_realloc_check(count);
-
-		//simply move the end iterator ahead
-		this->End += count;
-	}
-
-public:
-
-	constexpr STPArrayList() noexcept : End(nullptr), Last(nullptr) {
-
-	}
-
-	STPArrayList(const STPArrayList&) = delete;
-
-	STPArrayList(STPArrayList&&) = delete;
-
-	STPArrayList& operator=(const STPArrayList&) = delete;
-
-	STPArrayList& operator=(STPArrayList&&) = delete;
-
-	~STPArrayList() = default;
-
-	/**
-	 * @brief Construct element in-place and put the newly constructed element at the end of the array list
-	 * @tparam ...Arg Argument list
-	 * @param ...arg All arguments to be used to construct the element
-	 * @return The reference to the new element
-	*/
-	template<class... Arg>
-	T& emplace_back(Arg&&... arg) {
-		//check if we have free capacity
-		if (this->End == this->Last) {
-			//no more free room, expand, capacity is clamped in the function
-			this->expand(this->capacity() * 2u);
+			//reassign data
+			this->Begin = std::move(cache);
+			this->End = this->begin() + current_size;
+			this->Last = this->begin() + new_capacity;
 		}
 
-		T& item = *this->end();
-		//this is actually pretty dangerous.
-		//if the type has non-trivial destructor and it will be called on the garbage data at the end iterator, which results in undefined behaviour.
-		//but it's fine since we are dealing with trivial type only
-		item = T(std::forward<Arg>(arg)...);
+		/**
+		 * @brief Check if reallocation is needed for insert_back_n function
+		 * @param count The number of new elements are going to be inserted
+		*/
+		inline void insert_back_realloc_check(const size_t count) {
+			if (this->cend() + count > this->Last) {
+				//not enough room, reallocation
+				this->expand((this->size() + count) * 2u);
+			}
+		}
+
+		/**
+		 * @brief Insert count many elements at the end without initialisation
+		 * @param count The number of element to be inserted
+		*/
+		inline void insert_back_n(const size_t count) {
+			this->insert_back_realloc_check(count);
+
+			//simply move the end iterator ahead
+			this->End += count;
+		}
+
+	public:
+
+		constexpr STPArrayList() noexcept : End(nullptr), Last(nullptr) {
+
+		}
+
+		STPArrayList(const STPArrayList&) = delete;
+
+		STPArrayList(STPArrayList&&) = delete;
+
+		STPArrayList& operator=(const STPArrayList&) = delete;
+
+		STPArrayList& operator=(STPArrayList&&) = delete;
+
+		~STPArrayList() = default;
+
+		/**
+		 * @brief Construct element in-place and put the newly constructed element at the end of the array list
+		 * @tparam ...Arg Argument list
+		 * @param ...arg All arguments to be used to construct the element
+		 * @return The reference to the new element
+		*/
+		template<class... Arg>
+		T& emplace_back(Arg&&... arg) {
+			//check if we have free capacity
+			if (this->End == this->Last) {
+				//no more free room, expand, capacity is clamped in the function
+				this->expand(this->capacity() * 2u);
+			}
+
+			T& item = *this->end();
+			//this is actually pretty dangerous.
+			//if the type has non-trivial destructor and it will be called on the garbage data at the end iterator, which results in undefined behaviour.
+			//but it's fine since we are dealing with trivial type only
+			item = T(std::forward<Arg>(arg)...);
 		
-		//finally push the end by 1
-		this->End++;
-		return item;
-	}
-
-	/**
-	 * @brief Insert count many elements at the end with initialisation
-	 * @param count The number of element to be inserted
-	 * @param value The value to be filled for every new element
-	 * @return The iterator to the last inserted element
-	*/
-	STPArrayList_it insert_back_n(const size_t count, const T& value) {
-		this->insert_back_realloc_check(count);
-
-		//init
-		std::fill(this->end(), this->end() + count, value);
-
-		this->End += count;
-
-		return this->end() - 1;
-	}
-
-	/**
-	 * @brief Erase the item pointed by the iterator
-	 * Erasure of an empty container is undefined behaviour
-	 * @param it The item to be erased
-	 * @return The iterator to the item following the iterator provided
-	*/
-	STPArrayList_it erase(const STPArrayList_it it) {
-		//we don't need to call the destructor since T is always trivially destructible
-
-		if (it < this->cend() - 1) {
-			//it's not the last element, we need to move the memory forward
-			//there's nothing to move if it's the last element, plus it may trigger undefined behaviour because end pointer should not be dereferenced
-			//move_start is out of the range of [first, last) so we are good to use
-			//no need to use std::move because T is known to be a PoD
-			std::copy(const_cast<STPArrayList_cit>(it) + 1, this->cend(), it);
+			//finally push the end by 1
+			this->End++;
+			return item;
 		}
+
+		/**
+		 * @brief Insert count many elements at the end with initialisation
+		 * @param count The number of element to be inserted
+		 * @param value The value to be filled for every new element
+		 * @return The iterator to the last inserted element
+		*/
+		STPArrayList_it insert_back_n(const size_t count, const T& value) {
+			this->insert_back_realloc_check(count);
+
+			//init
+			std::fill(this->end(), this->end() + count, value);
+
+			this->End += count;
+
+			return this->end() - 1;
+		}
+
+		/**
+		 * @brief Erase the item pointed by the iterator
+		 * Erasure of an empty container is undefined behaviour
+		 * @param it The item to be erased
+		 * @return The iterator to the item following the iterator provided
+		*/
+		STPArrayList_it erase(const STPArrayList_it it) {
+			//we don't need to call the destructor since T is always trivially destructible
+
+			if (it < this->cend() - 1) {
+				//it's not the last element, we need to move the memory forward
+				//there's nothing to move if it's the last element, plus it may trigger undefined behaviour because end pointer should not be dereferenced
+				//move_start is out of the range of [first, last) so we are good to use
+				//no need to use std::move because T is known to be a PoD
+				std::copy(const_cast<STPArrayList_cit>(it) + 1, this->cend(), it);
+			}
 		
-		//correct the internal iterator
-		this->End--;
-		return it;
-	}
-
-	/**
-	 * @brief Resize the array, either allocating more space or shrink it.
-	 * Since T is trivial, no initialisation will be done to save time.
-	 * @param new_size The new size for the array
-	*/
-	void resize(const size_t new_size) {
-		const size_t current_size = this->size();
-
-		if (new_size == current_size) {
-			//nothing needs to be done
-			return;
+			//correct the internal iterator
+			this->End--;
+			return it;
 		}
-		if (new_size < current_size) {
-			//simply move the end iterator by that many number
-			this->End = this->begin() + new_size;
-			return;
+
+		/**
+		 * @brief Resize the array, either allocating more space or shrink it.
+		 * Since T is trivial, no initialisation will be done to save time.
+		 * @param new_size The new size for the array
+		*/
+		void resize(const size_t new_size) {
+			const size_t current_size = this->size();
+
+			if (new_size == current_size) {
+				//nothing needs to be done
+				return;
+			}
+			if (new_size < current_size) {
+				//simply move the end iterator by that many number
+				this->End = this->begin() + new_size;
+				return;
+			}
+			if (new_size > current_size) {
+				//tricky, either just move the iterator ahead, or reallocation
+				this->insert_back_n(new_size - current_size);
+			}
 		}
-		if (new_size > current_size) {
-			//tricky, either just move the iterator ahead, or reallocation
-			this->insert_back_n(new_size - current_size);
+
+		/**
+		 * @brief Get the reference to the element in the index
+		 * @param index The index of the element to be retrieved
+		 * @return The reference.
+		 * If index is out-of-bound, return value is undefined.
+		*/
+		inline T& operator[](const size_t index) noexcept {
+			return this->Begin[index];
 		}
-	}
 
-	/**
-	 * @brief Get the reference to the element in the index
-	 * @param index The index of the element to be retrieved
-	 * @return The reference.
-	 * If index is out-of-bound, return value is undefined.
-	*/
-	inline T& operator[](const size_t index) noexcept {
-		return this->Begin[index];
-	}
+		/**
+		 * @brief Clear the internal storage of the array list.
+		 * Clear takes constant time as the array list only deals with trivial type
+		*/
+		inline void clear() noexcept {
+			//since the array list only holds trivially destructible type, we can simply move the pointer
+			this->End = this->begin();
+		}
 
-	/**
-	 * @brief Clear the internal storage of the array list.
-	 * Clear takes constant time as the array list only deals with trivial type
-	*/
-	inline void clear() noexcept {
-		//since the array list only holds trivially destructible type, we can simply move the pointer
-		this->End = this->begin();
-	}
+		/**
+		 * @brief Check if the array list is empty.
+		 * @return True if the array list is empty.
+		 * True denotes size equals zero
+		*/
+		inline bool empty() const noexcept {
+			return this->size() == 0u;
+		}
 
-	/**
-	 * @brief Check if the array list is empty.
-	 * @return True if the array list is empty.
-	 * True denotes size equals zero
-	*/
-	inline bool empty() const noexcept {
-		return this->size() == 0u;
-	}
+		/**
+		 * @brief Retrieve the number of element stored in the array list
+		 * @return The number of element
+		*/
+		inline size_t size() const noexcept {
+			return this->End - this->Begin.get();
+		}
 
-	/**
-	 * @brief Retrieve the number of element stored in the array list
-	 * @return The number of element
-	*/
-	inline size_t size() const noexcept {
-		return this->End - this->Begin.get();
-	}
+		/**
+		 * @brief Get the number of element can be held by the internal storage
+		 * @return The capacity
+		*/
+		inline size_t capacity() const noexcept {
+			return this->Last - this->Begin.get();
+		}
 
-	/**
-	 * @brief Get the number of element can be held by the internal storage
-	 * @return The capacity
-	*/
-	inline size_t capacity() const noexcept {
-		return this->Last - this->Begin.get();
-	}
+		/**
+		 * @brief Get the constant iterator to the beginning of the array list
+		 * @return The const iterator to the beginning of the array list
+		*/
+		inline STPArrayList_cit cbegin() const noexcept {
+			return this->Begin.get();
+		}
 
-	/**
-	 * @brief Get the constant iterator to the beginning of the array list
-	 * @return The const iterator to the beginning of the array list
-	*/
-	inline STPArrayList_cit cbegin() const noexcept {
-		return this->Begin.get();
-	}
+		/**
+		 * @brief Get the constant iterator to the end of the array list
+		 * @return The const iterator to the end of the array list
+		*/
+		inline STPArrayList_cit cend() const noexcept {
+			return this->End;
+		}
 
-	/**
-	 * @brief Get the constant iterator to the end of the array list
-	 * @return The const iterator to the end of the array list
-	*/
-	inline STPArrayList_cit cend() const noexcept {
-		return this->End;
-	}
+		/**
+		 * @brief Get the iterator to the beginning of the array list
+		 * @return The iterator to the beginning of the array list
+		*/
+		inline STPArrayList_it begin() noexcept {
+			return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T, A>*>(this)->cbegin());
+		}
 
-	/**
-	 * @brief Get the iterator to the beginning of the array list
-	 * @return The iterator to the beginning of the array list
-	*/
-	inline STPArrayList_it begin() noexcept {
-		return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T, A>*>(this)->cbegin());
-	}
+		/**
+		 * @brief Get the iterator to the end of the array list
+		 * @return The iterator to the end of the array list.
+		 * Note that dereferencing this iterator will result in undefined behaviour.
+		*/
+		inline STPArrayList_it end() noexcept {
+			return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T, A>*>(this)->cend());
+		}
 
-	/**
-	 * @brief Get the iterator to the end of the array list
-	 * @return The iterator to the end of the array list.
-	 * Note that dereferencing this iterator will result in undefined behaviour.
-	*/
-	inline STPArrayList_it end() noexcept {
-		return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T, A>*>(this)->cend());
-	}
+		/**
+		 * @brief Get the pointer to the first element in the array list.
+		 * @return The pointer to the first element.
+		 * If array list is empty, return nullptr
+		*/
+		inline T* data() noexcept {
+			return this->begin();
+		}
 
-	/**
-	 * @brief Get the pointer to the first element in the array list.
-	 * @return The pointer to the first element.
-	 * If array list is empty, return nullptr
-	*/
-	inline T* data() noexcept {
-		return this->begin();
-	}
-
-};
+	};
+}
 
 /* Private object implementations */
 
@@ -348,7 +347,7 @@ private:
 
 	//Choose pinned allocator or default allocator
 	template<class T>
-	using StrategicAlloc = typename std::conditional_t<Pinned, STPPinnedAllocator<T>, std::allocator<T>>;
+	using STPStrategicAlloc = typename std::conditional_t<Pinned, STPPinnedAllocator<T>, std::allocator<T>>;
 
 public:
 
@@ -365,9 +364,9 @@ public:
 	~STPHistogramBuffer() = default;
 
 	//All flatten bins in all histograms
-	STPArrayList<STPSingleHistogram::STPBin, StrategicAlloc<STPSingleHistogram::STPBin>> Bin;
+	STPArrayList<STPSingleHistogram::STPBin, STPStrategicAlloc<STPSingleHistogram::STPBin>> Bin;
 	//Get the bin starting index for a pixel in the flatten bin array
-	STPArrayList<unsigned int, StrategicAlloc<unsigned int>> HistogramStartOffset;
+	STPArrayList<unsigned int, STPStrategicAlloc<unsigned int>> HistogramStartOffset;
 
 	/**
 	 * @brief Clear containers in histogram buffer.
@@ -405,35 +404,7 @@ private:
 	private:
 
 		//Denotes there is no entry in the dictionary that corresponds to the index in bin
-		constexpr static unsigned int NO_ENTRY = std::numeric_limits<unsigned int>::max();
-
-		/**
-		 * @brief Get the bin for a biome sample.
-		 * If bin doesn't exist, a new bin is created.
-		 * @param sample The biome sample
-		 * @return The pointer to the biome bin
-		*/
-		STPSingleHistogram::STPBin& operator[](Sample sample) {
-			//check if the sample is in the dictionary
-			const int diff = static_cast<int>(this->Dictionary.size() - sample);
-
-			//get the biome using the index from dictionary
-			//if not we need to insert that many extra entries so we can use sample to index the dictionary directly
-			if (unsigned int& bin_index = diff <= 0
-					? *this->Dictionary.insert_back_n(static_cast<size_t>((-diff) + 1u), NO_ENTRY)
-					: this->Dictionary[sample];
-				bin_index == NO_ENTRY) {
-				//biome not exist, add and initialise
-				STPSingleHistogram::STPBin& bin = this->Bin.emplace_back();
-				bin.Item = sample;
-				bin.Data.Quantity = 0u;
-				//record the index in the bin and store to dictionary
-				bin_index = static_cast<unsigned int>(this->Bin.size()) - 1;
-				return bin;
-			} else {
-				return this->Bin[bin_index];
-			}
-		}
+		constexpr static unsigned int NoEntry = std::numeric_limits<unsigned int>::max();
 
 	public:
 
@@ -454,8 +425,30 @@ private:
 		 * @param sample The sample bin that will be operated on
 		 * @param count The number to increment
 		*/
-		inline void inc(const Sample sample, const unsigned int count) {
-			(*this)[sample].Data.Quantity += count;
+		void increment(const Sample sample, const unsigned int count) {
+			//Get the bin for a biome sample.
+			//If bin doesn't exist, a new bin is created.
+			//check if the sample is in the dictionary
+			const int diff = static_cast<int>(this->Dictionary.size() - sample);
+
+			//get the biome using the index from dictionary
+			//if not we need to insert that many extra entries so we can use sample to index the dictionary directly
+			if (unsigned int& bin_index = diff <= 0
+					? *this->Dictionary.insert_back_n(static_cast<size_t>((-diff) + 1u), STPAccumulator::NoEntry)
+					: this->Dictionary[sample];
+				bin_index == STPAccumulator::NoEntry) {
+				//biome not exist, add and initialise
+				STPSingleHistogram::STPBin& bin = this->Bin.emplace_back();
+				bin.Item = sample;
+				//record the index in the bin and store to dictionary
+				bin_index = static_cast<unsigned int>(this->Bin.size()) - 1;
+				
+				//set the count for the sample bin, all previous count in this bin was cleared to zero
+				bin.Data.Quantity = count;
+			} else {
+				//increment count
+				this->Bin[bin_index].Data.Quantity += count;
+			}
 		}
 
 		/**
@@ -466,7 +459,7 @@ private:
 		 * @param sample The sample bin that will be operated on
 		 * @param count The number to decrement
 		*/
-		void dec(const Sample sample, const unsigned int count) {
+		void decrement(const Sample sample, const unsigned int count) {
 			//our algorithm guarantees the bin has been increment by this sample before, so no check is needed
 			unsigned int& bin_index = this->Dictionary[sample];
 			unsigned int& quant = this->Bin[static_cast<unsigned int>(bin_index)].Data.Quantity;
@@ -474,25 +467,25 @@ private:
 			if (quant <= count) {
 				//update the dictionary entries linearly, basically it's a rehash in hash table
 				auto followed_index = this->Bin.erase(this->Bin.begin() + bin_index);
-				std::for_each(followed_index, this->Bin.end(), [&Dic = this->Dictionary](const auto& bin) {
+				std::for_each(followed_index, this->Bin.end(), [&dic = this->Dictionary](const auto& bin) {
 					//since all subsequent indices followed by the erased bin has been advanced forward by one block
 					//we need to subtract the indices recorded in dictionary for those entries by one.
-					Dic[bin.Item]--;
+					dic[bin.Item]--;
 				});
 
 				//bin will become empty, erase this bin and dictionary entry
-				bin_index = NO_ENTRY;
-				return;
+				bin_index = STPAccumulator::NoEntry;
+			} else {
+				//simply decrement the quantity otherwise
+				quant -= count;
 			}
-			//simply decrement the quantity otherwise
-			quant -= count;
 		}
 
 		/**
 		 * @brief Get the array of bins in the accumulator, this is useful for doing fast memory copy
 		 * @return Number of element in the bin and the pointer to the start of the bin array
 		*/
-		inline STPBinArray operator()() const noexcept {
+		inline STPBinArray iterator() const noexcept {
 			return make_pair(this->Bin.cbegin(), this->Bin.cend());
 		}
 
@@ -507,9 +500,10 @@ private:
 	};
 
 	//After some experiment, we found out 4 parallel workers is the sweet spot.
-	constexpr static unsigned char Parallelism = 4u;
+	constexpr static size_t Parallelism = 4u;
 	//A workplace is some available memory for a complete histogram generation
 	typedef pair<STPDefaultHistogramBuffer, STPAccumulator> STPWorkplace;
+	//Use unique pointer because it is very cheap to move
 	typedef unique_ptr<STPWorkplace[]> STPMemoryBlock;
 
 	/**
@@ -540,7 +534,7 @@ private:
 	*/
 	template<bool Normalise>
 	static void copyToBuffer(STPDefaultHistogramBuffer& target, STPAccumulator& acc) {
-		const auto [acc_beg, acc_end] = acc();
+		const auto [acc_beg, acc_end] = acc.iterator();
 		target.HistogramStartOffset.emplace_back(static_cast<unsigned int>(target.Bin.size()));
 
 		//instead of using the slow back_inserter, we can resize the array first
@@ -595,15 +589,15 @@ private:
 
 			//load the radius into accumulator
 			for (int j = -static_cast<int>(radius); j <= static_cast<int>(radius); j++) {
-				acc.inc(sample_map[ti + j * freeslip_rangeX], 1u);
+				acc.increment(sample_map[ti + j * freeslip_rangeX], 1u);
 			}
 			//copy the first pixel to buffer
 			STPSHFKernel::copyToBuffer<false>(target, acc);
 			//generate histogram
 			for (unsigned int j = 1u; j < dimensionY; j++) {
 				//load one pixel to the bottom while unloading one pixel from the top
-				acc.inc(sample_map[di], 1u);
-				acc.dec(sample_map[ui], 1u);
+				acc.increment(sample_map[di], 1u);
+				acc.decrement(sample_map[ui], 1u);
 
 				//copy the accumulator to buffer
 				STPSHFKernel::copyToBuffer<false>(target, acc);
@@ -627,7 +621,7 @@ private:
 	 * @param output_base The base start index from the beginning of output container for each thread for bin and histogram offset.
 	*/
 	static void copyToOutput(STPPinnedHistogramBuffer* const buffer, const STPDefaultHistogramBuffer& workplace_memory,
-		const unsigned char workplaceID, const uvec2 output_base) {
+		const size_t workplaceID, const uvec2 output_base) {
 		auto offset_base_it = buffer->HistogramStartOffset.begin() + output_base.y;
 		//caller should guarantee the output container has been allocated that many elements,
 		//we don't need to allocate memory here
@@ -688,7 +682,7 @@ private:
 				//indicate the size of the entire flatten Bin
 				for (unsigned int bin_index = bin_start; bin_index < bin_end; bin_index++) {
 					const STPSingleHistogram::STPBin& curr_bin = histogram_input->Bin[bin_index];
-					acc.inc(curr_bin.Item, curr_bin.Data.Quantity);
+					acc.increment(curr_bin.Item, curr_bin.Data.Quantity);
 				}
 			}
 			//copy the first pixel radius to buffer
@@ -706,7 +700,7 @@ private:
 						bin_end = *(bin_offset_r + 1);
 					for (unsigned int bin_index = bin_start; bin_index < bin_end; bin_index++) {
 						const STPSingleHistogram::STPBin& curr_bin = histogram_input->Bin[bin_index];
-						acc.inc(curr_bin.Item, curr_bin.Data.Quantity);
+						acc.increment(curr_bin.Item, curr_bin.Data.Quantity);
 					}
 				}
 				//discard histogram at the left pixel
@@ -715,7 +709,7 @@ private:
 						bin_end = *(bin_offset_l + 1);
 					for (unsigned int bin_index = bin_start; bin_index < bin_end; bin_index++) {
 						const STPSingleHistogram::STPBin& curr_bin = histogram_input->Bin[bin_index];
-						acc.dec(curr_bin.Item, curr_bin.Data.Quantity);
+						acc.decrement(curr_bin.Item, curr_bin.Data.Quantity);
 					}
 				}
 
@@ -761,11 +755,10 @@ public:
 	*/
 	void filter(const Sample* const sample_map, const STPNearestNeighbourInformation& nn_info,
 		STPPinnedHistogramBuffer* const histogram_output, const uvec2 central_chunk_index, const unsigned int radius) {
+		using std::array;
 		using std::future;
-		using std::cref;
-		using std::ref;
+		using std::get;
 
-		future<void> workgroup[STPSHFKernel::Parallelism];
 		//calculate central texture starting index
 		const uvec2 &dimension = nn_info.MapSize,
 			central_starting_coordinate = dimension * central_chunk_index;
@@ -773,14 +766,16 @@ public:
 		//request a working memory
 		STPMemoryBlock memoryBlock = this->MemoryBlockCache.requestObject();
 
-		auto sync_then_copy_to_output = [&filter_worker = this->FilterWorker,
-			histogram_output, &workgroup, &memoryBlock]() -> void {
-			size_t bin_total = 0u,
-				offset_total = 0u;
+		//wait for all filter workers to finish, then merge their results to one output
+		//the parallel version of the filter assume the problem size is big so the number iteration is greater than the thread count
+		const auto waitForWorker = [&filter_worker = this->FilterWorker,
+			histogram_output, &memoryBlock](array<future<void>, STPSHFKernel::Parallelism>& filterTask) -> void {
+			const size_t taskSize = filterTask.size();
+			size_t bin_total = 0u, offset_total = 0u;
 
 			//sync working threads and get the total length of all buffers
-			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
-				workgroup[w].get();
+			for (size_t w = 0u; w < taskSize; w++) {
+				filterTask[w].get();
 
 				//grab the buffer in the allocated workplace belongs to this thread
 				STPDefaultHistogramBuffer& curr_buffer = memoryBlock[w].first;
@@ -793,21 +788,20 @@ public:
 			histogram_output->Bin.resize(bin_total);
 			histogram_output->HistogramStartOffset.resize(offset_total);
 			uvec2 base(0u);
-			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
-				workgroup[w] = filter_worker.enqueue(STPSHFKernel::copyToOutput,
-					histogram_output, cref(memoryBlock[w].first), w, base);
-
-				//get the base index for the next worker, so each worker only copies buffer belongs to them to
-				//independent location
+			for (size_t w = 0u; w < taskSize; w++) {
+				//get the base index for the next worker, so each worker only copies buffer belongs to them to independent location
 				STPDefaultHistogramBuffer& curr_buffer = memoryBlock[w].first;
+
+				filterTask[w] = filter_worker.enqueue(STPSHFKernel::copyToOutput, histogram_output, std::cref(curr_buffer), w, base);
+
 				//bin_base
 				base.x += static_cast<unsigned int>(curr_buffer.Bin.size());
 				//offset_base
 				base.y += static_cast<unsigned int>(curr_buffer.HistogramStartOffset.size());
 			}
 			//sync
-			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
-				workgroup[w].get();
+			for (auto& block : filterTask) {
+				block.get();
 			}
 			//in vertical pass, each pixel needs to access the current offset, and the offset of the next pixel.
 			//insert one at the back to make sure the last pixel can read some valid data
@@ -824,44 +818,27 @@ public:
 			//our loop in the filter ends at less than (no equal).
 			//we had already make sure radius is an even number to ensure divisibility, also it's not too large to go out of memory bound.
 			const unsigned int width_start = central_starting_coordinate.x - radius,
-				total_width = dimension.x + 2u * radius,
-				width_step = total_width / STPSHFKernel::Parallelism;
-			uvec2 w_range(width_start, width_start + width_step);
-			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
-				workgroup[w] = this->FilterWorker.enqueue(STPSHFKernel::filterVertical, cref(sample_map),
-					nn_info.TotalMapSize.x, nn_info.MapSize.y, central_starting_coordinate.y, w_range,
-					ref(memoryBlock[w]), radius);
-				//increment
-				w_range.x = w_range.y;
-				if (w == STPSHFKernel::Parallelism - 2u) {
-					//calculate the range for the last thread, to ensure all remaining columns are all done by the last thread
-					w_range.y = width_start + total_width;
-				} else {
-					w_range.y += width_step;
-				}
-			}
+				width_end = width_start + dimension.x + 2u * radius;
+			auto verticalBlock = this->FilterWorker.enqueueLoop<STPSHFKernel::Parallelism>(
+				[sample_map, total_sizeX = nn_info.TotalMapSize.x, map_sizeY = dimension.y, vertical_start = central_starting_coordinate.y,
+					&memoryBlock, radius](const auto block_idx, const auto begin, const auto end) {
+					STPSHFKernel::filterVertical(sample_map, total_sizeX, map_sizeY,
+						vertical_start, uvec2(begin, end), memoryBlock[block_idx], radius);
+				}, width_start, width_end);
 			//sync get the total length of all buffers and copy buffer to output
-			sync_then_copy_to_output();
+			waitForWorker(get<1u>(verticalBlock));
 		}
 		//perform horizontal filter
 		{
 			//unlike vertical pass, we start from the first pixel of output from previous stage, and the output contains the halo histogram.
 			//height start from 0, output buffer has the same height as each texture, and 2 * radius addition to the horizontal width as halos.
-			const unsigned int height_step = dimension.y / STPSHFKernel::Parallelism;
-			uvec2 h_range(0u, height_step);
-			for (unsigned char w = 0u; w < STPSHFKernel::Parallelism; w++) {
-				workgroup[w] = this->FilterWorker.enqueue(STPSHFKernel::filterHorizontal,
-					histogram_output, cref(dimension), h_range, ref(memoryBlock[w]), radius);
-				//increment range
-				h_range.x = h_range.y;
-				if (w == STPSHFKernel::Parallelism - 2u) {
-					h_range.y = dimension.y;
-				} else {
-					h_range.y += height_step;
-				}
-			}
+			auto horizontalBlock = this->FilterWorker.enqueueLoop<STPSHFKernel::Parallelism>(
+				[histogram_output, &dimension, &memoryBlock, radius](
+					const auto block_idx, const auto begin, const auto end) {
+					STPSHFKernel::filterHorizontal(histogram_output, dimension, uvec2(begin, end), memoryBlock[block_idx], radius);
+				}, 0u, dimension.y);
 			//sync, do the same thing as what vertical did
-			sync_then_copy_to_output();
+			waitForWorker(get<1u>(horizontalBlock));
 		}
 
 		//finished, return working memory

@@ -243,7 +243,7 @@ ARG_CONV_SPEC(typename... T, std::tuple<T...>) {
 	//force copy the argument as non-const
 	auto convertOne = [rx_arg = rx_arg, &convertedCount](auto& dst) mutable -> bool {
 		//TODO: capture `auto` as template argument in C++ 20 so it's less verbose
-		typedef std::remove_reference_t<decltype(dst)> ArgT;
+		typedef std::decay_t<decltype(dst)> ArgT;
 
 		//convert the current tuple element type
 		auto& [beg, end] = rx_arg;
