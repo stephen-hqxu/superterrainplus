@@ -6,10 +6,15 @@
 #include <SuperTerrain+/World/Diversity/STPBiomeDefine.h>
 //Engine Components
 #include <SuperTerrain+/World/Chunk/STPNearestNeighbourInformation.hpp>
+#include <SuperTerrain+/Utility/STPThreadPool.h>
 //Single Histogram Data Structure
 #include "STPSingleHistogram.hpp"
 
+#include <utility>
 #include <memory>
+
+//GLM
+#include <glm/vec2.hpp>
 
 namespace SuperTerrainPlus::STPAlgorithm {
 
@@ -28,52 +33,82 @@ namespace SuperTerrainPlus::STPAlgorithm {
 	 * but once reused for repetitive filter calls little to no memory allocation should happen and performance will go to summit.
 	*/
 	class STP_ALGORITHM_HOST_API STPSingleHistogramFilter {
-	private:
-
-		/**
-		 * @brief STPHistogramBuffer resembles STPHistogram, unlike which, this is a compute buffer during generation instead of a data structure that
-		 * can be easily used by external environment directly.
-		 * @tparam Pinned True to use pinned memory allocator for the histogram buffer
-		*/
-		template<bool Pinned>
-		struct STPHistogramBuffer;
-
-		typedef STPHistogramBuffer<false> STPDefaultHistogramBuffer;
-		typedef STPHistogramBuffer<true> STPPinnedHistogramBuffer;
-
-		/**
-		 * @brief The default membered deleter for pinned histogram buffer that will be passed to external user
-		*/
-		struct STP_ALGORITHM_HOST_API STPPinnedHistogramBufferDeleter {
-		public:
-
-			void operator()(STPPinnedHistogramBuffer*) const;
-
-		};
-
-		/**
-		 * @brief STPSHFKernel is the implementation of the single histogram filter.
-		*/
-		class STPSHFKernel;
-		std::unique_ptr<STPSHFKernel> Kernel;
-
 	public:
 
 		/**
-		 * @brief An opaque pointer to the type STPHistogramBuffer.
-		 * Filter result from running the filter will be stored in the object.
-		 * Direct access to the underlying histogram is not available, but can be retrieved.
-		 * @see STPHistogramBuffer
+		 * @brief A STPFilterBuffer acts as an opaque memory unit for holding
+		 * intermediate filter result and the final output for the single histogram filter.
 		*/
-		typedef std::unique_ptr<STPPinnedHistogramBuffer, STPPinnedHistogramBufferDeleter> STPHistogramBuffer_t;
+		class STP_ALGORITHM_HOST_API STPFilterBuffer {
+		private:
+
+			friend class STPSingleHistogramFilter;
+
+			/**
+			 * @brief An opaque pointer to the internal data of the filter buffer.
+			*/
+			struct STPBufferMemory;
+			std::unique_ptr<STPBufferMemory> Memory;
+
+		public:
+
+			//The number of bin and offset in the current histogram memory, respectively.
+			typedef std::pair<size_t, size_t> STPHistogramSize;
+
+			/**
+			 * @brief Create a new filter buffer.
+			 * The created buffer contains is not bounded to any particular histogram filter instance.
+			 * It's recommended to reuse the buffer to avoid duplicate memory reallocation, if repeated execution to the filter is required.
+			*/
+			STPFilterBuffer();
+
+			STPFilterBuffer(const STPFilterBuffer&) = delete;
+
+			STPFilterBuffer(STPFilterBuffer&&) noexcept;
+
+			STPFilterBuffer& operator=(const STPFilterBuffer&) = delete;
+
+			STPFilterBuffer& operator=(STPFilterBuffer&&) noexcept;
+
+			~STPFilterBuffer();
+
+			/**
+			 * @brief Retrieve the underlying contents in the filter buffer and pass them as pointers in STPSingleHistogram.
+			 * @return The raw pointer to the histogram buffer. Note that the memory is bound to the current filter buffer and
+			 * is only available while the calling instance is valid.
+			 * @see STPSingleHistogram
+			*/
+			STPSingleHistogram readHistogram() const noexcept;
+
+			/**
+			 * @brief Get the size of the bin and offset.
+			 * @param input_dim The dimension of one input samplemap on a single chunk.
+			 * It is undefined behaviour if this dimension goes out of bound of the result,
+			 * this will happen if the dimension is different from the dimension parameter supplied when getting the filter result.
+			 * @return The histogram size information.
+			*/
+			STPHistogramSize size(const glm::uvec2&) const noexcept;
+
+		};
+
+	private:
+
+		//A multi-thread worker for concurrent per-pixel histogram generation
+		STPThreadPool FilterWorker;
 
 		/**
-		 * @brief Init single histogram filter.
+		 * @brief Run the filter in parallel.
+		 * @param sample_map The input sample map for filter.
+		 * @param nn_info The information about the nearest_neighbour logic applies to the samplemap.
+		 * @param filter_memory The filter buffer that will be for running the single histogram filter, and also output the final output.
+		 * @param central_chunk_index The local coordinate points to the central chunk within the range of nearest neighbour chunks.
+		 * @param radius The radius of the filter.
 		*/
-		STPSingleHistogramFilter();
+		void filterDistributed(const STPDiversity::Sample*, const STPNearestNeighbourInformation&, STPFilterBuffer::STPBufferMemory&, glm::uvec2, unsigned int);
 
-		//The destructor is default, but since we are using unique_ptr to some incomplete nested types, we need to hide the destructor.
-		~STPSingleHistogramFilter();
+	public:
+
+		STPSingleHistogramFilter();
 
 		STPSingleHistogramFilter(const STPSingleHistogramFilter&) = delete;
 
@@ -83,37 +118,21 @@ namespace SuperTerrainPlus::STPAlgorithm {
 
 		STPSingleHistogramFilter& operator=(STPSingleHistogramFilter&&) = delete;
 
-		/**
-		 * @brief Create a histogram buffer which holds the histogram after the filter execution.
-		 * The created histogram buffer contains a memory pool as well, and it's not bounded to any particular histogram filter instance.
-		 * It's recommended to reuse the buffer as well to avoid duplicate memory reallocation
-		 * @return The smart pointer to the histogram buffer. The buffer is managed by unique_ptr and will be freed automatically when destroyed
-		*/
-		static STPHistogramBuffer_t createHistogramBuffer();
+		~STPSingleHistogramFilter() = default;
 
 		/**
 		 * @brief Perform histogram filter on the input texture.
-		 * If there is a histogram returned and no destroyHistogram() is called, execution is thrown and no execution is launched.
 		 * @param samplemap The input samplemap. This is typically a merged nearest-neighbour samplemap.
 		 * The input texture must be aligned in row-major order, and must be a available on host memory space.
 		 * @param nn_info The information about the nearest-neighbour logic used by the samplemap.
-		 * @param histogram_output The histogram buffer where the final output will be stored
+		 * @param filter_buffer The filter buffer for execution of the filter and storing the final result.
 		 * @param radius The filter radius
 		 * @return The raw pointer resultant histogram of the execution.
 		 * Note that the memory stored in output histogram is managed by the pointer provided in histogram_output.
-		 * The same output can be retrieved later by calling function readHistogramBuffer()
-		 * @see readHistogramBuffer()
+		 * The same output can be retrieved later from the input filter buffer.
+		 * @see STPFilterBuffer
 		*/
-		STPSingleHistogram operator()(const STPDiversity::Sample*, const STPNearestNeighbourInformation&, const STPHistogramBuffer_t&, unsigned int);
-
-		/**
-		 * @brief Retrieve the underlying contents in the histogram buffer and pass them as pointers in STPSingleHistogram
-		 * @param buffer The pointer to the histogram buffer
-		 * @return The raw pointer to the histogram buffer. Note that the memory is bound to the buffer provided and
-		 * is only available while STPHistogramBuffer_t is valid.
-		 * @see STPSingleHistogram
-		*/
-		static STPSingleHistogram readHistogramBuffer(const STPHistogramBuffer_t&) noexcept;
+		STPSingleHistogram operator()(const STPDiversity::Sample*, const STPNearestNeighbourInformation&, STPFilterBuffer&, unsigned int);
 
 	};
 

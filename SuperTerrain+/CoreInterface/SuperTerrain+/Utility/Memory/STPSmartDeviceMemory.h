@@ -17,17 +17,14 @@ namespace SuperTerrainPlus {
 	namespace STPSmartDeviceMemory {
 
 		/**
-		 * @brief Inline implementation for template function of smart device memory.
+		 * @brief Internal implementation for template function of smart device memory.
 		*/
 		namespace STPImplementation {
 
-			//Treat array as a regular type since cudaFree() treats array like normal pointer
-			template<typename T>
-			using NoArray = std::remove_all_extents_t<T>;
-
 			//The managed memory unit for different type of device memory.
+			//We don't care about the array type, the deleter is the same for our application.
 			template<class T, template<class> class Del>
-			using STPMemoryManager = std::unique_ptr<STPImplementation::NoArray<T>, Del<STPImplementation::NoArray<T>>>;
+			using STPMemoryManager = std::unique_ptr<T, Del<std::remove_extent_t<T>>>;
 
 			//Delete pinned host memory using cudaFreeHost();
 			template<typename T>
@@ -102,7 +99,7 @@ namespace SuperTerrainPlus {
 			 * @param ptr The pitched device pointer.
 			 * @param pitch The pointer pitch.
 			*/
-			STPPitchedDeviceMemory(STPImplementation::NoArray<T>*, size_t);
+			STPPitchedDeviceMemory(typename STPDeviceMemory<T>::pointer, size_t);
 
 			STPPitchedDeviceMemory(STPPitchedDeviceMemory&&) noexcept = default;
 

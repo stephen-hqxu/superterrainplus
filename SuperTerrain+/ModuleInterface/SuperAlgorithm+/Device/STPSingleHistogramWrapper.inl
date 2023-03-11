@@ -15,7 +15,7 @@ __device__ inline void SuperTerrainPlus::STPAlgorithm::STPSingleHistogramWrapper
 		//get the pointer to the current bin
 		const STPSingleHistogram::STPBin& curr_bin = bin[bin_idx];
 		//call user defined function
-		std::forward<Func>(function)(curr_bin.Item, curr_bin.Data.Weight);
+		std::forward<Func>(function)(curr_bin.Item, curr_bin.Weight);
 	}
 }
 

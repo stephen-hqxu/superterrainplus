@@ -49,7 +49,7 @@ namespace STPDemo {
 
 		};
 		//A queue of histogram buffer
-		mutable SuperTerrainPlus::STPObjectPool<SuperTerrainPlus::STPAlgorithm::STPSingleHistogramFilter::STPHistogramBuffer_t,
+		SuperTerrainPlus::STPObjectPool<SuperTerrainPlus::STPAlgorithm::STPSingleHistogramFilter::STPFilterBuffer,
 			STPHistogramBufferCreator> BufferPool;
 
 		/**

@@ -14,6 +14,7 @@
 #include <SuperTerrain+/Utility/STPStringUtility.h>
 
 #include <array>
+#include <memory>
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -32,18 +33,26 @@ using glm::vec2;
 using glm::uvec2;
 using glm::value_ptr;
 
-/**
- * @brief STPCompilerLog contains allocated memory for compiler and linker logs
-*/
-struct STPCompilerLog {
-public:
+namespace {
+	/**
+	 * @brief STPCompilerLog contains allocated memory for compiler and linker logs
+	*/
+	struct STPCompilerLog {
+	public:
 
-	constexpr static size_t LogSize = 3072u;
+		constexpr static size_t LogSize = 8192u;
 
-	//Various of logs
-	char linker_info_log[LogSize], linker_error_log[LogSize];
-	char module_info_log[LogSize], module_error_log[LogSize];
-};
+		char LinkerInfo[LogSize], LinkerError[LogSize];
+		char ModuleInfo[LogSize], ModuleError[LogSize];
+
+		STPCompilerLog() noexcept : LinkerInfo {}, LinkerError {}, ModuleInfo {}, ModuleError {} {
+
+		}
+
+		~STPCompilerLog() = default;
+
+	};
+}
 
 #define HANDLE_COMPILE(FUNC) \
 STPDeviceRuntimeBinary::STPCompilationOutput output; \
@@ -158,7 +167,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 	//setup linker options
 	const STPDeviceRuntimeProgram::STPLinkerInformation::STPDataJitOption common_data_option = { };
 	STPDeviceRuntimeProgram::STPLinkerInformation linkInfo = { };
-	STPCompilerLog log = { };
+	std::unique_ptr<STPCompilerLog> log = std::make_unique<STPCompilerLog>();
 
 	linkInfo.LinkerOption
 #ifndef NDEBUG
@@ -170,9 +179,9 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		(CU_JIT_LTO, (void*)1)
 #endif
 		(CU_JIT_LOG_VERBOSE, (void*)1)
-		(CU_JIT_INFO_LOG_BUFFER, log.linker_info_log)
+		(CU_JIT_INFO_LOG_BUFFER, log->LinkerInfo)
 		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize)
-		(CU_JIT_ERROR_LOG_BUFFER, log.linker_error_log)
+		(CU_JIT_ERROR_LOG_BUFFER, log->LinkerError)
 		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize);
 	
 	//setup module options
@@ -182,9 +191,9 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 #else
 		(CU_JIT_LTO, (void*)1)
 #endif
-		(CU_JIT_INFO_LOG_BUFFER, log.module_info_log)
+		(CU_JIT_INFO_LOG_BUFFER, log->ModuleInfo)
 		(CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize)
-		(CU_JIT_ERROR_LOG_BUFFER, log.module_error_log)
+		(CU_JIT_ERROR_LOG_BUFFER, log->ModuleError)
 		(CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES, (void*)(uintptr_t)STPCompilerLog::LogSize);
 
 	constexpr static STPDeviceRuntimeProgram::STPBinaryType binaryType =
@@ -201,8 +210,8 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 
 	try {
 		this->GeneratorProgram = STPDeviceRuntimeProgram::link(linkInfo);
-		cout << log.linker_info_log << endl;
-		cout << log.module_info_log << endl;
+		cout << log->LinkerInfo << endl;
+		cout << log->ModuleInfo << endl;
 
 		//setup some variables
 		CUdeviceptr dimension, half_dimension, rendered_dimension, perm;
@@ -227,8 +236,8 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 		STP_CHECK_CUDA(cuMemcpyHtoD(perm, &(this->SimplexPermutation.Permutation), permSize));
 	} catch (const SuperTerrainPlus::STPException::STPCUDAError& error) {
 		cerr << error.what() << std::endl;
-		cerr << log.linker_error_log << endl;
-		cerr << log.module_error_log << endl;
+		cerr << log->LinkerError << endl;
+		cerr << log->ModuleError << endl;
 		std::terminate();
 	}
 }

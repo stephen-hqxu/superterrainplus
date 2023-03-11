@@ -1,4 +1,6 @@
 #include "STPBiomefieldGenerator.h"
+
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 //Biome
@@ -62,7 +64,7 @@ void STPBiomefieldGenerator::initGenerator() {
 using namespace SuperTerrainPlus::STPAlgorithm;
 
 inline auto STPBiomefieldGenerator::STPHistogramBufferCreator::operator()() const {
-	return STPSingleHistogramFilter::createHistogramBuffer();
+	return STPSingleHistogramFilter::STPFilterBuffer();
 }
 	
 void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBuffer& heightmap_buffer,
@@ -89,7 +91,7 @@ void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBu
 	const cudaStream_t stream = heightmap_buffer.DeviceMemInfo.second;
 
 	//histogram filter
-	STPSingleHistogramFilter::STPHistogramBuffer_t histogram_buffer = this->BufferPool.requestObject();
+	STPSingleHistogramFilter::STPFilterBuffer histogram_buffer = this->BufferPool.requestObject();
 	//start execution
 	//host to host memory copy is always synchronous, so the host memory should be available now
 	STPSingleHistogram histogram_h;
@@ -99,18 +101,19 @@ void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBu
 	histogram_h = this->biome_histogram(biomemap, biome_neighbour_info, histogram_buffer, this->InterpolationRadius);
 	//copy histogram to device
 	STPSingleHistogram histogram_d;
-	//calculate the size of allocation
-	const uvec2& biome_dimension = biome_neighbour_info.MapSize;
-	const unsigned int num_pixel_biomemap = biome_dimension.x * biome_dimension.y;
-	const size_t bin_size = histogram_h.HistogramStartOffset[num_pixel_biomemap] * sizeof(STPSingleHistogram::STPBin),
-		offset_size = (num_pixel_biomemap + 1u) * sizeof(unsigned int);
-	//the number of bin is the last element in the offset array
-	STP_CHECK_CUDA(cudaMallocFromPoolAsync(&histogram_d.Bin, bin_size, this->HistogramCacheDevice.get(), stream));
-	STP_CHECK_CUDA(cudaMallocFromPoolAsync(&histogram_d.HistogramStartOffset, offset_size, this->HistogramCacheDevice.get(), stream));
-	//and copy
-	STP_CHECK_CUDA(cudaMemcpyAsync(histogram_d.Bin, histogram_h.Bin, bin_size, cudaMemcpyHostToDevice, stream));
-	STP_CHECK_CUDA(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset, offset_size,
-		cudaMemcpyHostToDevice, stream));
+	//calculate the size of allocation, in number of element
+	const auto [bin_size, offset_size] = histogram_buffer.size(biome_neighbour_info.MapSize);
+	const STPSmartDeviceMemory::STPStreamedDeviceMemory<STPSingleHistogram::STPBin> bin_device =
+		STPSmartDeviceMemory::makeStreamedDevice<STPSingleHistogram::STPBin>(this->HistogramCacheDevice.get(), stream, bin_size);
+	const STPSmartDeviceMemory::STPStreamedDeviceMemory<unsigned int> offset_device =
+		STPSmartDeviceMemory::makeStreamedDevice<unsigned int>(this->HistogramCacheDevice.get(), stream, offset_size);
+	histogram_d.Bin = bin_device.get();
+	histogram_d.HistogramStartOffset = offset_device.get();
+	//and copy, remember to use byte size
+	STP_CHECK_CUDA(cudaMemcpyAsync(histogram_d.Bin, histogram_h.Bin,
+		bin_size * sizeof(STPSingleHistogram::STPBin), cudaMemcpyHostToDevice, stream));
+	STP_CHECK_CUDA(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset,
+		offset_size * sizeof(unsigned int), cudaMemcpyHostToDevice, stream));
 	//returning the buffer back to the pool, make sure all copies are done
 	STP_CHECK_CUDA(cudaStreamSynchronize(stream));
 	this->BufferPool.returnObject(move(histogram_buffer));
@@ -141,6 +144,4 @@ void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBu
 	//free histogram device memory
 	//STPBin is a POD-type so can be freed with no problem
 	//histogram_d will be recycled after, the pointer will reside in the stream
-	STP_CHECK_CUDA(cudaFreeAsync(histogram_d.Bin, stream));
-	STP_CHECK_CUDA(cudaFreeAsync(histogram_d.HistogramStartOffset, stream));
 }

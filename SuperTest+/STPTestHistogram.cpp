@@ -57,10 +57,10 @@ private:
 
 protected:
 
-	const STPSingleHistogramFilter::STPHistogramBuffer_t Buffer = STPSingleHistogramFilter::createHistogramBuffer();
+	STPSingleHistogramFilter::STPFilterBuffer Buffer = STPSingleHistogramFilter::STPFilterBuffer();
 
 	inline STPSingleHistogram execute(const unsigned int radius = 2u) {
-		return (*this)(HistogramTester::Texture, HistogramTester::Data, Buffer, radius);
+		return (*this)(HistogramTester::Texture, HistogramTester::Data, this->Buffer, radius);
 	}
 
 	void verifyHistogram(const STPSingleHistogram& result) {
@@ -91,7 +91,7 @@ protected:
 				const auto [item, weight] = Expected[counter + trial * 4];
 				REQUIRE(result.Bin[i].Item == item);
 				//because our numbers are weights, which are always less than one
-				REQUIRE_THAT(result.Bin[i].Data.Weight, Catch::Matchers::WithinRel(weight, std::numeric_limits<float>::epsilon() * 5.0f));
+				REQUIRE_THAT(result.Bin[i].Weight, Catch::Matchers::WithinRel(weight, std::numeric_limits<float>::epsilon() * 5.0f));
 			}
 		}
 	}

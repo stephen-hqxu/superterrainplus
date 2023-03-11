@@ -1,18 +1,10 @@
 #include <SuperAlgorithm+/STPSingleHistogramFilter.h>
 
-//CUDA
-#include <cuda_runtime.h>
-
+//Memory
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Exception/STPNumericDomainError.h>
-//Threading
-#include <SuperTerrain+/Utility/STPThreadPool.h>
-//Memory
-#include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
-
-//GLM
-#include <glm/vec2.hpp>
 
 //Utility
 #include <limits>
@@ -20,7 +12,6 @@
 #include <iterator>
 #include <algorithm>
 #include <type_traits>
-#include <utility>
 
 #include <cstring>
 
@@ -30,44 +21,43 @@ using SuperTerrainPlus::STPDiversity::Sample;
 using glm::vec2;
 using glm::uvec2;
 
-using std::allocator;
-using std::allocator_traits;
 using std::pair;
 using std::unique_ptr;
 
 using std::make_pair;
 using std::make_unique;
 
+//After some experiment, using 4 parallel workers is the sweet spot.
+constexpr static size_t shfParallelism = 4u;
+
+//TODO: use bit_cast instead in C++ 20
+/**
+ * @brief Perform a strict-aliasing conforming bitwise casting.
+ * @tparam To The destination type.
+ * @tparam From The source type.
+ * @param source The value to be cast.
+ * @return The destination value.
+*/
+template<typename To, typename From>
+inline static To castBit(const From source) noexcept {
+	using std::is_arithmetic;
+	static_assert(std::conjunction_v<is_arithmetic<To>, is_arithmetic<From>> && sizeof(To) == sizeof(From),
+		"The source and destination type must both be primitive and have the same size");
+
+	To dst;
+	std::memcpy(&dst, &source, sizeof(From));
+	return dst;
+}
+
+/* Implementation of custom data structure */
 namespace {
-	/**
-	 * @brief A pinned memory allocator.
-	 * @tparam T The type of data to be allocated.
-	*/
-	template<class T>
-	struct STPPinnedAllocator {
-	public:
-
-		typedef T value_type;
-
-		inline T* allocate(const size_t size) const {
-			T* mem;
-			//note that the allocator-provided size is the number of object, not byte
-			STP_CHECK_CUDA(cudaMallocHost(&mem, size * sizeof(T)));
-			return mem;
-		}
-
-		inline void deallocate(T* const mem, const size_t) const {
-			STP_CHECK_CUDA(cudaFreeHost(mem));
-		}
-
-	};
-
 	/**
 	 * @brief A simple implementation of std::vector.
 	 * After some profiling a custom data structure works better than the stl one due to its simplicity.
-	 * @tparam T The data type of the array list
+	 * @tparam T The data type of the array list.
+	 * @param Pinned Specifies if the memory allocation should use a pinned memory allocator.
 	*/
-	template<class T, class A = allocator<T>>
+	template<class T, bool Pinned>
 	class STPArrayList {
 	public:
 
@@ -81,16 +71,14 @@ namespace {
 		static_assert(std::is_trivial_v<T>, "type must be a trivial type");
 		static_assert(std::is_trivially_destructible_v<T>, "type must be trivially destructible");
 
-		using RebindAlloc = typename allocator_traits<A>::template rebind_alloc<T>;
-		using AllocTr = allocator_traits<RebindAlloc>;
+		//The type of memory for the array list.
+		typedef std::conditional_t<Pinned, SuperTerrainPlus::STPSmartDeviceMemory::STPPinnedMemory<T[]>, unique_ptr<T[]>> STPArrayListMemory;
+		
+		//The data held by the array list.
+		STPArrayListMemory Memory;
 
-		RebindAlloc arrayAllocator;
-
-		//Smart pointer that uses allocator to destroy
-		using unique_ptr_alloc = unique_ptr<T[], std::function<void(T*)>>;
-
-		//The data held by the array list, also denotes the beginning of the array
-		unique_ptr_alloc Begin;
+		//The beginning of the array.
+		STPArrayList_it Begin;
 		//The pointer to the end of the array.
 		STPArrayList_it End;
 		//The pointer to the end of the internal storage array
@@ -109,31 +97,24 @@ namespace {
 			const size_t current_size = this->size();
 
 			//allocate a cache
-			constexpr static auto deleter = [](T* const ptr, RebindAlloc alloc, const size_t size) constexpr -> void {
-				//ptr is trivially destructor so we don't need to call destroy
-				AllocTr::deallocate(alloc, ptr, size);
-			};
-			unique_ptr_alloc cache(AllocTr::allocate(this->arrayAllocator, new_capacity),
-				bind(deleter, _1, this->arrayAllocator, new_capacity));
-
-			//copy will handle the case when begin == end
-			std::copy(this->cbegin(), this->cend(), cache.get());
-		
-			//reassign data
-			this->Begin = std::move(cache);
-			this->End = this->begin() + current_size;
-			this->Last = this->begin() + new_capacity;
-		}
-
-		/**
-		 * @brief Check if reallocation is needed for insert_back_n function
-		 * @param count The number of new elements are going to be inserted
-		*/
-		inline void insert_back_realloc_check(const size_t count) {
-			if (this->cend() + count > this->Last) {
-				//not enough room, reallocation
-				this->expand((this->size() + count) * 2u);
+			STPArrayListMemory cache;
+			if constexpr (Pinned) {
+				cache = SuperTerrainPlus::STPSmartDeviceMemory::makePinned<T[]>(new_capacity);
+			} else {
+				cache = make_unique<T[]>(new_capacity);
 			}
+
+			//move data to the new memory
+			if (current_size > 0u) {
+				//there is a potential the pointer is null initially when there was no storage allocated
+				//need to check to make sure, even if size is 0
+				std::memcpy(cache.get(), this->Begin, current_size * sizeof(T));
+			}
+			//update our variables
+			this->Memory = std::move(cache);
+			this->Begin = this->Memory.get();
+			this->End = this->Begin + current_size;
+			this->Last = this->Begin + new_capacity;
 		}
 
 		/**
@@ -141,15 +122,17 @@ namespace {
 		 * @param count The number of element to be inserted
 		*/
 		inline void insert_back_n(const size_t count) {
-			this->insert_back_realloc_check(count);
-
+			if (this->End + count > this->Last) {
+				//not enough room, reallocation
+				this->expand(std::max(this->capacity() * 2u, this->size() + count));
+			}
 			//simply move the end iterator ahead
 			this->End += count;
 		}
 
 	public:
 
-		constexpr STPArrayList() noexcept : End(nullptr), Last(nullptr) {
+		inline STPArrayList() noexcept : Begin(nullptr), End(nullptr), Last(nullptr) {
 
 		}
 
@@ -167,25 +150,15 @@ namespace {
 		 * @brief Construct element in-place and put the newly constructed element at the end of the array list
 		 * @tparam ...Arg Argument list
 		 * @param ...arg All arguments to be used to construct the element
-		 * @return The reference to the new element
 		*/
 		template<class... Arg>
-		T& emplace_back(Arg&&... arg) {
-			//check if we have free capacity
-			if (this->End == this->Last) {
-				//no more free room, expand, capacity is clamped in the function
-				this->expand(this->capacity() * 2u);
-			}
+		inline void emplace_back(Arg&&... arg) {
+			this->insert_back_n(1u);
 
-			T& item = *this->end();
 			//this is actually pretty dangerous.
 			//if the type has non-trivial destructor and it will be called on the garbage data at the end iterator, which results in undefined behaviour.
 			//but it's fine since we are dealing with trivial type only
-			item = T(std::forward<Arg>(arg)...);
-		
-			//finally push the end by 1
-			this->End++;
-			return item;
+			*(this->End - 1u) = T { std::forward<Arg>(arg)... };
 		}
 
 		/**
@@ -195,14 +168,11 @@ namespace {
 		 * @return The iterator to the last inserted element
 		*/
 		STPArrayList_it insert_back_n(const size_t count, const T& value) {
-			this->insert_back_realloc_check(count);
+			this->insert_back_n(count);
 
-			//init
-			std::fill(this->end(), this->end() + count, value);
-
-			this->End += count;
-
-			return this->end() - 1;
+			//initialise
+			std::fill(this->End - count, this->End, value);
+			return this->End - 1;
 		}
 
 		/**
@@ -213,15 +183,13 @@ namespace {
 		*/
 		STPArrayList_it erase(const STPArrayList_it it) {
 			//we don't need to call the destructor since T is always trivially destructible
-
-			if (it < this->cend() - 1) {
+			if (it < this->End - 1) {
 				//it's not the last element, we need to move the memory forward
 				//there's nothing to move if it's the last element, plus it may trigger undefined behaviour because end pointer should not be dereferenced
 				//move_start is out of the range of [first, last) so we are good to use
 				//no need to use std::move because T is known to be a PoD
-				std::copy(const_cast<STPArrayList_cit>(it) + 1, this->cend(), it);
+				std::copy(it + 1, this->End, it);
 			}
-		
 			//correct the internal iterator
 			this->End--;
 			return it;
@@ -241,7 +209,7 @@ namespace {
 			}
 			if (new_size < current_size) {
 				//simply move the end iterator by that many number
-				this->End = this->begin() + new_size;
+				this->End = this->Begin + new_size;
 				return;
 			}
 			if (new_size > current_size) {
@@ -260,22 +228,18 @@ namespace {
 			return this->Begin[index];
 		}
 
+		//Similarly, but a constant version.
+		inline const T& operator[](const size_t index) const noexcept {
+			return this->Begin[index];
+		}
+
 		/**
 		 * @brief Clear the internal storage of the array list.
 		 * Clear takes constant time as the array list only deals with trivial type
 		*/
 		inline void clear() noexcept {
 			//since the array list only holds trivially destructible type, we can simply move the pointer
-			this->End = this->begin();
-		}
-
-		/**
-		 * @brief Check if the array list is empty.
-		 * @return True if the array list is empty.
-		 * True denotes size equals zero
-		*/
-		inline bool empty() const noexcept {
-			return this->size() == 0u;
+			this->End = this->Begin;
 		}
 
 		/**
@@ -283,7 +247,7 @@ namespace {
 		 * @return The number of element
 		*/
 		inline size_t size() const noexcept {
-			return this->End - this->Begin.get();
+			return this->End - this->Begin;
 		}
 
 		/**
@@ -291,7 +255,7 @@ namespace {
 		 * @return The capacity
 		*/
 		inline size_t capacity() const noexcept {
-			return this->Last - this->Begin.get();
+			return this->Last - this->Begin;
 		}
 
 		/**
@@ -299,7 +263,7 @@ namespace {
 		 * @return The const iterator to the beginning of the array list
 		*/
 		inline STPArrayList_cit cbegin() const noexcept {
-			return this->Begin.get();
+			return this->Begin;
 		}
 
 		/**
@@ -315,7 +279,7 @@ namespace {
 		 * @return The iterator to the beginning of the array list
 		*/
 		inline STPArrayList_it begin() noexcept {
-			return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T, A>*>(this)->cbegin());
+			return this->Begin;
 		}
 
 		/**
@@ -324,7 +288,7 @@ namespace {
 		 * Note that dereferencing this iterator will result in undefined behaviour.
 		*/
 		inline STPArrayList_it end() noexcept {
-			return const_cast<STPArrayList_it>(const_cast<const STPArrayList<T, A>*>(this)->cend());
+			return this->End;
 		}
 
 		/**
@@ -333,56 +297,73 @@ namespace {
 		 * If array list is empty, return nullptr
 		*/
 		inline T* data() noexcept {
-			return this->begin();
+			return this->Begin;
+		}
+
+		/**
+		 * @brief Perform a raw copy from a source array list to the current instance.
+		 * @tparam SrcT The element type of the source container.
+		 * @param source The pointer to the source container. The entire range from the source will be copied.
+		 * It is a undefined behaviour if the source is the same as the current instance.
+		 * @param my_offset The offset into the current container where the copy should start.
+		 * It is a undefined behaviour if size of the source container is greater than `end() - (begin() + offset)`.
+		*/
+		template<typename SrcT, bool SrcPin>
+		inline void copyFrom(const STPArrayList<SrcT, SrcPin>& source, const size_t my_offset) noexcept {
+			static_assert(sizeof(SrcT) == sizeof(T), "The element size of the source and the current array list are not the same");
+			std::memcpy(this->Begin + my_offset, source.cbegin(), source.size() * sizeof(T));
 		}
 
 	};
-}
 
-/* Private object implementations */
-
-template<bool Pinned>
-struct STPSingleHistogramFilter::STPHistogramBuffer {
-private:
-
-	//Choose pinned allocator or default allocator
-	template<class T>
-	using STPStrategicAlloc = typename std::conditional_t<Pinned, STPPinnedAllocator<T>, std::allocator<T>>;
-
-public:
-
-	STPHistogramBuffer() noexcept = default;
-
-	STPHistogramBuffer(const STPHistogramBuffer&) = delete;
-
-	STPHistogramBuffer(STPHistogramBuffer&&) = delete;
-
-	STPHistogramBuffer& operator=(const STPHistogramBuffer&) = delete;
-
-	STPHistogramBuffer& operator=(STPHistogramBuffer&&) = delete;
-
-	~STPHistogramBuffer() = default;
-
-	//All flatten bins in all histograms
-	STPArrayList<STPSingleHistogram::STPBin, STPStrategicAlloc<STPSingleHistogram::STPBin>> Bin;
-	//Get the bin starting index for a pixel in the flatten bin array
-	STPArrayList<unsigned int, STPStrategicAlloc<unsigned int>> HistogramStartOffset;
+	//The bin that uses un-normalised weight to store the quantity item in the bin.
+	//Only used during filter execution, should normalise the quantity before passing the result to user.
+	typedef STPSingleHistogram::STPGenericBin<unsigned int> STPUnnormalisedBin;
+	//This allows us to copy between 2 bins using simple memory copy.
+	static_assert(sizeof(STPUnnormalisedBin) == sizeof(STPSingleHistogram::STPBin),
+		"The platform does not guarantee the normalised and un-normalised bin are in the same size");
 
 	/**
-	 * @brief Clear containers in histogram buffer.
-	 * It doesn't guarantee to free up memory allocated inside, acting as memory pool which can be reused.
+	 * @brief STPHistogramBuffer resembles STPHistogram, unlike which, this is a compute buffer during generation instead of
+	 * a data structure that can be easily used by external environment directly.
+	 * @tparam Pinned True to use pinned memory allocator for the histogram buffer
 	*/
-	inline void clear() noexcept {
-		this->Bin.clear();
-		this->HistogramStartOffset.clear();
-	}
+	template<bool Pinned>
+	struct STPHistogramBuffer {
+	public:
 
-};
+		//All flatten bins in all histograms
+		STPArrayList<STPSingleHistogram::STPBin, Pinned> Bin;
+		//Get the bin starting index for a pixel in the flatten bin array
+		STPArrayList<unsigned int, Pinned> HistogramStartOffset;
 
-/* Single Histogram Filter implementation */
+		STPHistogramBuffer() noexcept = default;
 
-class STPSingleHistogramFilter::STPSHFKernel {
-private:
+		STPHistogramBuffer(const STPHistogramBuffer&) = delete;
+
+		STPHistogramBuffer(STPHistogramBuffer&&) = delete;
+
+		STPHistogramBuffer& operator=(const STPHistogramBuffer&) = delete;
+
+		STPHistogramBuffer& operator=(STPHistogramBuffer&&) = delete;
+
+		~STPHistogramBuffer() = default;
+
+		/**
+		 * @brief Clear containers in histogram buffer.
+		 * It doesn't guarantee to free up memory allocated inside, acting as memory pool which can be reused.
+		*/
+		inline void clear() noexcept {
+			this->Bin.clear();
+			this->HistogramStartOffset.clear();
+		}
+
+	};
+	
+	//Use during the filter operation for caching, therefore uses a cheaper page-free allocation.
+	typedef STPHistogramBuffer<false> STPInternalHistogramBuffer;
+	//Intended to be passed externally to the user, use a GPU-friendly page-locked allocation.
+	typedef STPHistogramBuffer<true> STPExternalHistogramBuffer;
 
 	/**
 	 * @brief Accumulator acts as a cache for each row or column iteration.
@@ -390,16 +371,20 @@ private:
 	 * out-of-range radius pixel and minus the right/up in-range radius pixel.
 	*/
 	class STPAccumulator {
+	private:
+
+		typedef STPArrayList<STPUnnormalisedBin, false> STPBinArray;
+
 	public:
 
 		//Use Sample as index, find the index in Bin for this sample
-		STPArrayList<unsigned int> Dictionary;
+		STPArrayList<unsigned int, false> Dictionary;
 		//Store the number of element
-		STPArrayList<STPSingleHistogram::STPBin> Bin;
+		STPBinArray Bin;
 
 		//Array of bins in accumulator
-		typedef STPArrayList<STPSingleHistogram::STPBin>::STPArrayList_cit STPBinIterator;
-		typedef pair<STPBinIterator, STPBinIterator> STPBinArray;
+		typedef STPBinArray::STPArrayList_cit STPBinIterator;
+		typedef pair<STPBinIterator, STPBinIterator> STPBinArrayRange;
 
 	private:
 
@@ -438,16 +423,12 @@ private:
 					: this->Dictionary[sample];
 				bin_index == STPAccumulator::NoEntry) {
 				//biome not exist, add and initialise
-				STPSingleHistogram::STPBin& bin = this->Bin.emplace_back();
-				bin.Item = sample;
+				this->Bin.emplace_back(sample, count);
 				//record the index in the bin and store to dictionary
 				bin_index = static_cast<unsigned int>(this->Bin.size()) - 1;
-				
-				//set the count for the sample bin, all previous count in this bin was cleared to zero
-				bin.Data.Quantity = count;
 			} else {
 				//increment count
-				this->Bin[bin_index].Data.Quantity += count;
+				this->Bin[bin_index].Weight += count;
 			}
 		}
 
@@ -462,7 +443,7 @@ private:
 		void decrement(const Sample sample, const unsigned int count) {
 			//our algorithm guarantees the bin has been increment by this sample before, so no check is needed
 			unsigned int& bin_index = this->Dictionary[sample];
-			unsigned int& quant = this->Bin[static_cast<unsigned int>(bin_index)].Data.Quantity;
+			unsigned int& quant = this->Bin[static_cast<unsigned int>(bin_index)].Weight;
 
 			if (quant <= count) {
 				//update the dictionary entries linearly, basically it's a rehash in hash table
@@ -485,7 +466,7 @@ private:
 		 * @brief Get the array of bins in the accumulator, this is useful for doing fast memory copy
 		 * @return Number of element in the bin and the pointer to the start of the bin array
 		*/
-		inline STPBinArray iterator() const noexcept {
+		inline STPBinArrayRange iterator() const noexcept {
 			return make_pair(this->Bin.cbegin(), this->Bin.cend());
 		}
 
@@ -499,387 +480,360 @@ private:
 
 	};
 
-	//After some experiment, we found out 4 parallel workers is the sweet spot.
-	constexpr static size_t Parallelism = 4u;
 	//A workplace is some available memory for a complete histogram generation
-	typedef pair<STPDefaultHistogramBuffer, STPAccumulator> STPWorkplace;
-	//Use unique pointer because it is very cheap to move
-	typedef unique_ptr<STPWorkplace[]> STPMemoryBlock;
+	typedef pair<STPInternalHistogramBuffer, STPAccumulator> STPWorkplace;
+}
 
-	/**
-	 * @brief STPMemoryBlockAllocator allocates a new memory block.
-	*/
-	struct STPMemoryBlockAllocator {
-	public:
+/* Single Histogram Filter implementation */
 
-		inline STPMemoryBlock operator()() const {
-			return make_unique<STPWorkplace[]>(STPSHFKernel::Parallelism);
-		}
+/**
+ * @brief Copy the content in accumulator to the histogram buffer.
+ * Caller should make sure Output buffer has been preallocated, the size equals to the sum of all thread buffers.
+ * @tparam Normalise True to normalise the histogram in accumulator before copying.
+ * After normalisation, STPBin.Data should use Weight rather than Quantity,
+ * and the sum of weight of all bins in the accumulator is 1.0f.
+ * @param target The target histogram buffer.
+ * @param acc The accumulator to be copied.
+*/
+template<bool Normalise>
+static void copyToBuffer(STPInternalHistogramBuffer& target, STPAccumulator& acc) {
+	target.HistogramStartOffset.emplace_back(static_cast<unsigned int>(target.Bin.size()));
 
-	};
-
-	//All available workplaces are expressed as queue of pointers.
-	STPObjectPool<STPMemoryBlock, STPMemoryBlockAllocator> MemoryBlockCache;
-	//A multi-thread worker for concurrent per-pixel histogram generation
-	STPThreadPool FilterWorker;
-
-	/**
-	 * @brief Copy the content in accumulator to the histogram buffer.
-	 * Caller should make sure Output buffer has been preallocated, the size equals to the sum of all thread buffers.
-	 * @tparam Normalise True to normalise the histogram in accumulator before copying.
-	 * After normalisation, STPBin.Data should use Weight rather than Quantity,
-	 * and the sum of weight of all bins in the accumulator is 1.0f.
-	 * @param target The target histogram buffer.
-	 * @param acc The accumulator to be copied.
-	*/
-	template<bool Normalise>
-	static void copyToBuffer(STPDefaultHistogramBuffer& target, STPAccumulator& acc) {
+	const size_t bin_size = acc.Bin.size(),
+		//the original starting offset of the destination bin
+		target_dest_offset = target.Bin.size();
+	target.Bin.resize(target_dest_offset + bin_size);
+	//copy bin
+	if constexpr (Normalise) {
 		const auto [acc_beg, acc_end] = acc.iterator();
-		target.HistogramStartOffset.emplace_back(static_cast<unsigned int>(target.Bin.size()));
-
-		//instead of using the slow back_inserter, we can resize the array first
-		const size_t bin_size = acc_end - acc_beg;
-		target.Bin.resize(target.Bin.size() + bin_size);
-		auto target_dest_begin = target.Bin.end() - bin_size;
-		//copy bin
-		if constexpr (Normalise) {
-			//sum everything in the accumulator
-			const float normFactor = 1.0f / static_cast<float>(std::accumulate(acc_beg, acc_end, 0u,
-				[](const unsigned int init, const STPSingleHistogram::STPBin& bin) { return init + bin.Data.Quantity; }));
-			std::transform(acc_beg, acc_end, target_dest_begin, [normFactor](auto bin) {
-				//we need to make a copy
-				bin.Data.Weight = bin.Data.Quantity * normFactor;
-				return bin;
-			});
-		} else {
-			//just copy the data
-			std::copy(acc_beg, acc_end, target_dest_begin);
-		}
+		//sum everything in the accumulator
+		const float normFactor = 1.0f / static_cast<float>(std::accumulate(acc_beg, acc_end, 0u,
+			[](const auto init, const auto& bin) { return init + bin.Weight; }));
+		//normalisation
+		std::transform(acc_beg, acc_end, target.Bin.begin() + target_dest_offset, [normFactor](const auto& bin) {
+			return STPSingleHistogram::STPBin { bin.Item, bin.Weight * normFactor };
+		});
+	} else {
+		//just copy the data, we have to use the low-level copy because they are not the same type
+		//we will make sure their sizes are the same
+		target.Bin.copyFrom(acc.Bin, target_dest_offset);
 	}
+}
 
-	/**
-	 * @brief Perform vertical pass histogram filter
-	 * @param sample_map The input sample map, usually it's biomemap.
-	 * @param freeslip_rangeX The number of row pixel in the free-slip range.
-	 * @param dimensionY The number of column pixel of the samplemap in one chunk.
-	 * @param vertical_start_offset The vertical starting offset on the texture.
-	 * The start offset should make the worker starts at the first y coordinate of the central texture.
-	 * @param w_range Denotes the width start and end that will be computed by the current function call.
-	 * The range should start from the halo (central image x index minus radius), and should use global index.
-	 * The range end applies as well (central image x index plus dimension plus radius)
-	 * @param workplace The pointer to the allocated working memory.
-	 * @param radius The radius of the filter.
-	*/
-	static void filterVertical(const Sample* const sample_map, const unsigned int freeslip_rangeX, const unsigned int dimensionY,
-		const unsigned int vertical_start_offset, const uvec2 w_range, STPWorkplace& workplace, const unsigned int radius) {
-		auto& [target, acc] = workplace;
-		//clear both
-		target.clear();
+/**
+ * @brief Perform vertical pass histogram filter
+ * @param sample_map The input sample map, usually it's biomemap.
+ * @param nn_rangeX The number of total row pixel in the nearest neighbour range.
+ * @param dimensionY The number of column pixel of the samplemap in one chunk.
+ * @param vertical_start_offset The vertical starting offset on the texture.
+ * The start offset should make the worker starts at the first y coordinate of the central texture.
+ * @param w_range Denotes the width start and end that will be computed by the current function call.
+ * The range should start from the halo (central image x index minus radius), and should use global index.
+ * The range end applies as well (central image x index plus dimension plus radius)
+ * @param workplace The pointer to the allocated working memory.
+ * @param radius The radius of the filter.
+*/
+static void filterVertical(const Sample* const sample_map, const unsigned int nn_rangeX, const unsigned int dimensionY,
+	const unsigned int vertical_start_offset, const uvec2 w_range, STPWorkplace& workplace, const unsigned int radius) {
+	auto& [target, acc] = workplace;
+	//clear both
+	target.clear();
+	acc.clear();
+
+	//we assume the radius never goes out of the nearest neighbour boundary
+	//we are traversing the a row-major sample_map column by column
+	for (unsigned int i = w_range.x; i < w_range.y; i++) {
+		//the target (current) pixel index
+		const unsigned int ti = i + vertical_start_offset * nn_rangeX;
+		//the pixel index of up-most radius (inclusive of the current radius)
+		unsigned int ui = ti - radius * nn_rangeX,
+			//the pixel index of down-most radius (exclusive of the current radius)
+			di = ti + (radius + 1u) * nn_rangeX;
+
+		//load the radius into accumulator
+		for (int j = -static_cast<int>(radius); j <= static_cast<int>(radius); j++) {
+			acc.increment(sample_map[ti + j * nn_rangeX], 1u);
+		}
+		//copy the first pixel to buffer
+		copyToBuffer<false>(target, acc);
+		//generate histogram
+		for (unsigned int j = 1u; j < dimensionY; j++) {
+			//load one pixel to the bottom while unloading one pixel from the top
+			acc.increment(sample_map[di], 1u);
+			acc.decrement(sample_map[ui], 1u);
+
+			//copy the accumulator to buffer
+			copyToBuffer<false>(target, acc);
+
+			//advance to the next central pixel
+			di += nn_rangeX;
+			ui += nn_rangeX;
+		}
+
+		//clear the accumulator
 		acc.clear();
+	}
+}
 
-		//we assume the radius never goes out of the free-slip boundary
-		//we are traversing the a row-major sample_map column by column
-		for (unsigned int i = w_range.x; i < w_range.y; i++) {
-			//the target (current) pixel index
-			const unsigned int ti = i + vertical_start_offset * freeslip_rangeX;
-			//the pixel index of up-most radius (inclusive of the current radius)
-			unsigned int ui = ti - radius * freeslip_rangeX,
-				 //the pixel index of down-most radius (exclusive of the current radius)
-				di = ti + (radius + 1u) * freeslip_rangeX;
+/**
+ * @brief Merge buffers from each thread into a large chunk of output data.
+ * It will perform offset correction for HistogramStartOffset.
+ * @param buffer The histogram buffer that will be merged to.
+ * @param workplace_memory The pointer to the thread memory where the buffer will be copied from.
+ * @param workplaceID The ID of the workplace in the department. Note that threadID 0 doesn't require offset correction.
+ * @param output_base The base start index from the beginning of output container for each thread for bin and histogram offset.
+*/
+static void copyToOutput(STPExternalHistogramBuffer& buffer, const STPInternalHistogramBuffer& workplace_memory,
+	const size_t workplaceID, const uvec2 output_base) {
+	//caller should guarantee the output container has been allocated that many elements,
+	//we don't need to allocate memory here
 
-			//load the radius into accumulator
-			for (int j = -static_cast<int>(radius); j <= static_cast<int>(radius); j++) {
-				acc.increment(sample_map[ti + j * freeslip_rangeX], 1u);
-			}
-			//copy the first pixel to buffer
-			STPSHFKernel::copyToBuffer<false>(target, acc);
-			//generate histogram
-			for (unsigned int j = 1u; j < dimensionY; j++) {
-				//load one pixel to the bottom while unloading one pixel from the top
-				acc.increment(sample_map[di], 1u);
-				acc.decrement(sample_map[ui], 1u);
-
-				//copy the accumulator to buffer
-				STPSHFKernel::copyToBuffer<false>(target, acc);
-
-				//advance to the next central pixel
-				di += freeslip_rangeX;
-				ui += freeslip_rangeX;
-			}
-
-			//clear the accumulator
-			acc.clear();
-		}
+	//copy histogram offset
+	if (workplaceID != 0u) {
+		const auto offset_base_it = buffer.HistogramStartOffset.begin() + output_base.y;
+		//do a offset correction first
+		//no need to do that for thread 0 since offset starts at zero
+		std::transform(workplace_memory.HistogramStartOffset.cbegin(), workplace_memory.HistogramStartOffset.cend(),
+			offset_base_it,
+			//get the starting index, so the current buffer connects to the previous buffer seamlessly
+			[bin_base = output_base.x](const auto offset) { return bin_base + offset; });
+	} else {
+		//direct copy for threadID 0
+		buffer.HistogramStartOffset.copyFrom(workplace_memory.HistogramStartOffset, output_base.y);
 	}
 
-	/**
-	 * @brief Merge buffers from each thread into a large chunk of output data.
-	 * It will perform offset correction for HistogramStartOffset.
-	 * @param buffer The histogram buffer that will be merged to.
-	 * @param workplace_memory The pointer to the thread memory where the buffer will be copied from.
-	 * @param workplaceID The ID of the workplace in the department. Note that threadID 0 doesn't require offset correction.
-	 * @param output_base The base start index from the beginning of output container for each thread for bin and histogram offset.
-	*/
-	static void copyToOutput(STPPinnedHistogramBuffer* const buffer, const STPDefaultHistogramBuffer& workplace_memory,
-		const size_t workplaceID, const uvec2 output_base) {
-		auto offset_base_it = buffer->HistogramStartOffset.begin() + output_base.y;
-		//caller should guarantee the output container has been allocated that many elements,
-		//we don't need to allocate memory here
+	//copy the bin
+	buffer.Bin.copyFrom(workplace_memory.Bin, output_base.x);
+}
 
-		//copy histogram offset
-		if (workplaceID != 0u) {
-			//do a offset correction first
-			//no need to do that for thread 0 since offset starts at zero
-			std::transform(workplace_memory.HistogramStartOffset.cbegin(), workplace_memory.HistogramStartOffset.cend(),
-				offset_base_it,
-				//get the starting index, so the current buffer connects to the previous buffer seamlessly
-				[bin_base = output_base.x](const auto offset) { return bin_base + offset; });
-		} else {
-			//direct copy for threadID 0
-			std::copy(workplace_memory.HistogramStartOffset.cbegin(),
-				workplace_memory.HistogramStartOffset.cend(), offset_base_it);
+/**
+ * @brief Perform horizontal pass histogram filter.
+ * The input is the ouput from horizontal pass
+ * @param histogram_input The output histogram buffer from the vertical pass
+ * @param dimension The dimension of one texture
+ * @param h_range Denotes the height start and end that will be computed by the current function call.
+ * The range should start from 0.
+ * The range end at the height of the texture
+ * @param workplace The pointer to the allocated working memory.
+ * @param radius The radius of the filter
+*/
+static void filterHorizontal(const STPExternalHistogramBuffer& histogram_input, const uvec2& dimension, const uvec2 h_range,
+	STPWorkplace& workplace, const unsigned int radius) {
+	auto& [target, acc] = workplace;
+	//make sure both of them are cleared (don't deallocate)
+	target.clear();
+	acc.clear();
+
+	//we use the output from vertical pass as "texture", and assume the output pixels are always available
+	//remind that the Output from vertical stage is a column-major matrix and we are traversing it row by row
+	for (unsigned int i = h_range.x; i < h_range.y; i++) {
+		//the target (current) pixel index
+		const unsigned int ti = i + radius * dimension.y;
+		//the pixel index of left-most radius (inclusive of the current radius)
+		unsigned int li = i /* ti - radius * dimension.y */,
+			//the pixel index of right-most radius (exclusive of the current radius)
+			ri = ti + (radius + 1u) * dimension.y;
+
+		//load radius strip for the first pixel into accumulator
+		for (int j = -static_cast<int>(radius); j <= static_cast<int>(radius); j++) {
+			auto bin_offset = histogram_input.HistogramStartOffset.cbegin() + (ti + j * dimension.y);
+			const unsigned int bin_start = *bin_offset,
+				bin_end = *(bin_offset + 1);
+			//it will be a bit tricky for the last pixel in the histogram since that's the last iterator in start
+			//offset array. we have emplaced one more offset at the end of HistogramStartOffset in Output to
+			//indicate the size of the entire flatten Bin
+			for (unsigned int bin_index = bin_start; bin_index < bin_end; bin_index++) {
+				const STPSingleHistogram::STPBin& curr_bin = histogram_input.Bin[bin_index];
+				acc.increment(curr_bin.Item, castBit<unsigned int>(curr_bin.Weight));
+			}
 		}
-
-		//copy the bin
-		std::copy(workplace_memory.Bin.cbegin(), workplace_memory.Bin.cend(), buffer->Bin.begin() + output_base.x);
-	}
-
-	/**
-	 * @brief Perform horizontal pass histogram filter.
-	 * The input is the ouput from horizontal pass
-	 * @param histogram_input The output histogram buffer from the vertical pass
-	 * @param dimension The dimension of one texture
-	 * @param h_range Denotes the height start and end that will be computed by the current function call.
-	 * The range should start from 0.
-	 * The range end at the height of the texture
-	 * @param workplace The pointer to the allocated working memory.
-	 * @param radius The radius of the filter
-	*/
-	static void filterHorizontal(STPPinnedHistogramBuffer* const histogram_input, const uvec2& dimension, const uvec2 h_range,
-		STPWorkplace& workplace, const unsigned int radius) {
-		auto& [target, acc] = workplace;
-		//make sure both of them are cleared (don't deallocate)
-		target.clear();
-		acc.clear();
-
-		//we use the output from vertical pass as "texture", and assume the output pixels are always available
-		//remind that the Output from vertical stage is a column-major matrix and we are traversing it row by row
-		for (unsigned int i = h_range.x; i < h_range.y; i++) {
-			//the target (current) pixel index
-			const unsigned int ti = i + radius * dimension.y;
-			//the pixel index of left-most radius (inclusive of the current radius)
-			unsigned int li = i /* ti - radius * dimension.y */,
-				//the pixel index of right-most radius (exclusive of the current radius)
-				ri = ti + (radius + 1u) * dimension.y;
-
-			//load radius strip for the first pixel into accumulator
-			for (int j = -static_cast<int>(radius); j <= static_cast<int>(radius); j++) {
-				auto bin_offset = histogram_input->HistogramStartOffset.cbegin() + (ti + j * dimension.y);
-				const unsigned int bin_start = *bin_offset,
-					bin_end = *(bin_offset + 1);
-				//it will be a bit tricky for the last pixel in the histogram since that's the last iterator in start
-				//offset array. we have emplaced one more offset at the end of HistogramStartOffset in Output to
-				//indicate the size of the entire flatten Bin
+		//copy the first pixel radius to buffer
+		//we can start normalising data on the go, the accumulator is complete for this pixel
+		copyToBuffer<true>(target, acc);
+		//generate histogram, starting from the second pixel, we only loop through the central texture
+		for (unsigned int j = 1u; j < dimension.x; j++) {
+			//load one pixel to the right while unloading one pixel from the left
+			auto bin_beg = histogram_input.HistogramStartOffset.cbegin();
+			auto bin_offset_r = bin_beg + ri,
+				bin_offset_l = bin_beg + li;
+			//collect histogram at the right pixel
+			{
+				const unsigned int bin_start = *bin_offset_r,
+					bin_end = *(bin_offset_r + 1);
 				for (unsigned int bin_index = bin_start; bin_index < bin_end; bin_index++) {
-					const STPSingleHistogram::STPBin& curr_bin = histogram_input->Bin[bin_index];
-					acc.increment(curr_bin.Item, curr_bin.Data.Quantity);
+					const STPSingleHistogram::STPBin& curr_bin = histogram_input.Bin[bin_index];
+					acc.increment(curr_bin.Item, castBit<unsigned int>(curr_bin.Weight));
 				}
 			}
-			//copy the first pixel radius to buffer
-			//we can start normalising data on the go, the accumulator is complete for this pixel
-			STPSHFKernel::copyToBuffer<true>(target, acc);
-			//generate histogram, starting from the second pixel, we only loop through the central texture
-			for (unsigned int j = 1u; j < dimension.x; j++) {
-				//load one pixel to the right while unloading one pixel from the left
-				auto bin_beg = histogram_input->HistogramStartOffset.cbegin();
-				auto bin_offset_r = bin_beg + ri,
-					bin_offset_l = bin_beg + li;
-				//collect histogram at the right pixel
-				{
-					const unsigned int bin_start = *bin_offset_r,
-						bin_end = *(bin_offset_r + 1);
-					for (unsigned int bin_index = bin_start; bin_index < bin_end; bin_index++) {
-						const STPSingleHistogram::STPBin& curr_bin = histogram_input->Bin[bin_index];
-						acc.increment(curr_bin.Item, curr_bin.Data.Quantity);
-					}
+			//discard histogram at the left pixel
+			{
+				const unsigned int bin_start = *bin_offset_l,
+					bin_end = *(bin_offset_l + 1);
+				for (unsigned int bin_index = bin_start; bin_index < bin_end; bin_index++) {
+					const STPSingleHistogram::STPBin& curr_bin = histogram_input.Bin[bin_index];
+					acc.decrement(curr_bin.Item, castBit<unsigned int>(curr_bin.Weight));
 				}
-				//discard histogram at the left pixel
-				{
-					const unsigned int bin_start = *bin_offset_l,
-						bin_end = *(bin_offset_l + 1);
-					for (unsigned int bin_index = bin_start; bin_index < bin_end; bin_index++) {
-						const STPSingleHistogram::STPBin& curr_bin = histogram_input->Bin[bin_index];
-						acc.decrement(curr_bin.Item, curr_bin.Data.Quantity);
-					}
-				}
-
-				//copy accumulator to buffer
-				STPSHFKernel::copyToBuffer<true>(target, acc);
-
-				//advance to the next central pixel
-				ri += dimension.y;
-				li += dimension.y;
 			}
 
-			//clear the accumulator before starting the next row
-			acc.clear();
+			//copy accumulator to buffer
+			copyToBuffer<true>(target, acc);
+
+			//advance to the next central pixel
+			ri += dimension.y;
+			li += dimension.y;
 		}
-	}
 
+		//clear the accumulator before starting the next row
+		acc.clear();
+	}
+}
+
+/* STPFilterBuffer */
+
+struct STPSingleHistogramFilter::STPFilterBuffer::STPBufferMemory {
 public:
 
-	/**
-	 * @brief Initialise a STPSHFKernel instance.
-	*/
-	STPSHFKernel() : FilterWorker(STPSHFKernel::Parallelism) {
-
-	}
-
-	STPSHFKernel(const STPSHFKernel&) = delete;
-
-	STPSHFKernel(STPSHFKernel&&) = delete;
-
-	STPSHFKernel& operator=(const STPSHFKernel&) = delete;
-
-	STPSHFKernel& operator=(STPSHFKernel&&) = delete;
-
-	~STPSHFKernel() = default;
-
-	/**
-	 * @brief Perform a complete histogram filter
-	 * @param sample_map The input sample map for filter.
-	 * @param nn_info The information about the nearest_neighbour logic applies to the samplemap.
-	 * @param histogram_output The histogram buffer that will be used as buffer, and also output the final output
-	 * @param central_chunk_index The local free-slip coordinate points to the central chunk.
-	 * @param radius The radius of the filter
-	*/
-	void filter(const Sample* const sample_map, const STPNearestNeighbourInformation& nn_info,
-		STPPinnedHistogramBuffer* const histogram_output, const uvec2 central_chunk_index, const unsigned int radius) {
-		using std::array;
-		using std::future;
-		using std::get;
-
-		//calculate central texture starting index
-		const uvec2 &dimension = nn_info.MapSize,
-			central_starting_coordinate = dimension * central_chunk_index;
-
-		//request a working memory
-		STPMemoryBlock memoryBlock = this->MemoryBlockCache.requestObject();
-
-		//wait for all filter workers to finish, then merge their results to one output
-		//the parallel version of the filter assume the problem size is big so the number iteration is greater than the thread count
-		const auto waitForWorker = [&filter_worker = this->FilterWorker,
-			histogram_output, &memoryBlock](array<future<void>, STPSHFKernel::Parallelism>& filterTask) -> void {
-			const size_t taskSize = filterTask.size();
-			size_t bin_total = 0u, offset_total = 0u;
-
-			//sync working threads and get the total length of all buffers
-			for (size_t w = 0u; w < taskSize; w++) {
-				filterTask[w].get();
-
-				//grab the buffer in the allocated workplace belongs to this thread
-				STPDefaultHistogramBuffer& curr_buffer = memoryBlock[w].first;
-				bin_total += curr_buffer.Bin.size();
-				offset_total += curr_buffer.HistogramStartOffset.size();
-			}
-
-			//copy thread buffer to output
-			//we don't need to clear the output, but rather we can resize it (items will get overwritten anyway)
-			histogram_output->Bin.resize(bin_total);
-			histogram_output->HistogramStartOffset.resize(offset_total);
-			uvec2 base(0u);
-			for (size_t w = 0u; w < taskSize; w++) {
-				//get the base index for the next worker, so each worker only copies buffer belongs to them to independent location
-				STPDefaultHistogramBuffer& curr_buffer = memoryBlock[w].first;
-
-				filterTask[w] = filter_worker.enqueue(STPSHFKernel::copyToOutput, histogram_output, std::cref(curr_buffer), w, base);
-
-				//bin_base
-				base.x += static_cast<unsigned int>(curr_buffer.Bin.size());
-				//offset_base
-				base.y += static_cast<unsigned int>(curr_buffer.HistogramStartOffset.size());
-			}
-			//sync
-			for (auto& block : filterTask) {
-				block.get();
-			}
-			//in vertical pass, each pixel needs to access the current offset, and the offset of the next pixel.
-			//insert one at the back to make sure the last pixel can read some valid data
-			histogram_output->HistogramStartOffset.emplace_back(static_cast<unsigned int>(histogram_output->Bin.size()));
-		};
-
-		//we perform vertical first as the input sample_map is a row-major matrix, after this stage the output buffer will be in column-major.
-		//then we perform horizontal filter on the output, so the final histogram will still be in row-major.
-		//It seems like breaking the cache locality on sample_map but benchmark shows there's no difference in performance.
-
-		//perform vertical filter
-		{
-			//we need to start from the left halo, and ends at the right halo, width of which is radius.
-			//our loop in the filter ends at less than (no equal).
-			//we had already make sure radius is an even number to ensure divisibility, also it's not too large to go out of memory bound.
-			const unsigned int width_start = central_starting_coordinate.x - radius,
-				width_end = width_start + dimension.x + 2u * radius;
-			auto verticalBlock = this->FilterWorker.enqueueLoop<STPSHFKernel::Parallelism>(
-				[sample_map, total_sizeX = nn_info.TotalMapSize.x, map_sizeY = dimension.y, vertical_start = central_starting_coordinate.y,
-					&memoryBlock, radius](const auto block_idx, const auto begin, const auto end) {
-					STPSHFKernel::filterVertical(sample_map, total_sizeX, map_sizeY,
-						vertical_start, uvec2(begin, end), memoryBlock[block_idx], radius);
-				}, width_start, width_end);
-			//sync get the total length of all buffers and copy buffer to output
-			waitForWorker(get<1u>(verticalBlock));
-		}
-		//perform horizontal filter
-		{
-			//unlike vertical pass, we start from the first pixel of output from previous stage, and the output contains the halo histogram.
-			//height start from 0, output buffer has the same height as each texture, and 2 * radius addition to the horizontal width as halos.
-			auto horizontalBlock = this->FilterWorker.enqueueLoop<STPSHFKernel::Parallelism>(
-				[histogram_output, &dimension, &memoryBlock, radius](
-					const auto block_idx, const auto begin, const auto end) {
-					STPSHFKernel::filterHorizontal(histogram_output, dimension, uvec2(begin, end), memoryBlock[block_idx], radius);
-				}, 0u, dimension.y);
-			//sync, do the same thing as what vertical did
-			waitForWorker(get<1u>(horizontalBlock));
-		}
-
-		//finished, return working memory
-		this->MemoryBlockCache.returnObject(std::move(memoryBlock));
-	}
+	//This is where all intermediate work stays, each worker gets their own workplace.
+	STPWorkplace WorkingMemory[shfParallelism];
+	//This is where the filter output resides at.
+	STPExternalHistogramBuffer OutputHistogram;
 
 };
 
+STPSingleHistogramFilter::STPFilterBuffer::STPFilterBuffer() : Memory(make_unique<STPBufferMemory>()) {
+
+}
+
+STPSingleHistogramFilter::STPFilterBuffer::STPFilterBuffer(STPFilterBuffer&&) noexcept = default;
+
+STPSingleHistogramFilter::STPFilterBuffer& STPSingleHistogramFilter::STPFilterBuffer::operator=(STPFilterBuffer&&) noexcept = default;
+
+STPSingleHistogramFilter::STPFilterBuffer::~STPFilterBuffer() = default;
+
+STPSingleHistogram STPSingleHistogramFilter::STPFilterBuffer::readHistogram() const noexcept {
+	STPExternalHistogramBuffer& histogram = this->Memory->OutputHistogram;
+	return STPSingleHistogram { histogram.Bin.data(), histogram.HistogramStartOffset.data() };
+}
+
+STPSingleHistogramFilter::STPFilterBuffer::STPHistogramSize STPSingleHistogramFilter::STPFilterBuffer::size(
+	const uvec2& input_dim) const noexcept {
+	const size_t num_pixel = input_dim.x * input_dim.y;
+	//the number of bin is the last element in the offset array
+	const size_t bin_size = this->Memory->OutputHistogram.HistogramStartOffset[num_pixel],
+		offset_size = (num_pixel + 1u);
+	return make_pair(bin_size, offset_size);
+}
+
 /* Single Histogram Filter main class */
 
-void STPSingleHistogramFilter::STPPinnedHistogramBufferDeleter::operator()(STPPinnedHistogramBuffer* const ptr) const {
-	std::default_delete<STPPinnedHistogramBuffer>()(ptr);
-}
-
-STPSingleHistogramFilter::STPSingleHistogramFilter() : Kernel(make_unique<STPSHFKernel>()) {
+STPSingleHistogramFilter::STPSingleHistogramFilter() : FilterWorker(shfParallelism) {
 
 }
 
-STPSingleHistogramFilter::~STPSingleHistogramFilter() = default;
+void STPSingleHistogramFilter::filterDistributed(const Sample* const sample_map,
+	const STPNearestNeighbourInformation& nn_info, STPFilterBuffer::STPBufferMemory& filter_memory,
+	const uvec2 central_chunk_index, const unsigned int radius) {
+	using std::array;
+	using std::future;
+	using std::get;
+	using std::ref;
+	using std::cref;
 
-STPSingleHistogramFilter::STPHistogramBuffer_t STPSingleHistogramFilter::createHistogramBuffer() {
-	//I hate to use `new` but unfortunately make_unique doesn't work with custom deleter...
-	return STPHistogramBuffer_t(new STPPinnedHistogramBuffer());
+	//calculate central texture starting index
+	const uvec2 dimension = nn_info.MapSize,
+		central_starting_coordinate = dimension * central_chunk_index;
+
+	auto& [memoryBlock, histogramOutput] = filter_memory;
+
+	//wait for all filter workers to finish, then merge their results to one output
+	//the parallel version of the filter assume the problem size is big so the number iteration is greater than the thread count
+	const auto waitForWorker = [&filter_worker = this->FilterWorker,
+		&memoryBlock, &histogramOutput](array<future<void>, shfParallelism>& filterTask) -> void {
+		const size_t taskSize = filterTask.size();
+		size_t bin_total = 0u, offset_total = 0u;
+
+		//sync working threads and get the total length of all buffers
+		for (size_t w = 0u; w < taskSize; w++) {
+			filterTask[w].get();
+
+			//grab the buffer in the allocated workplace belongs to this thread
+			STPInternalHistogramBuffer& curr_buffer = memoryBlock[w].first;
+			bin_total += curr_buffer.Bin.size();
+			offset_total += curr_buffer.HistogramStartOffset.size();
+		}
+
+		//copy thread buffer to output
+		//we don't need to clear the output, but rather we can resize it (items will get overwritten anyway)
+		histogramOutput.Bin.resize(bin_total);
+		histogramOutput.HistogramStartOffset.resize(offset_total);
+		uvec2 base(0u);
+		for (size_t w = 0u; w < taskSize; w++) {
+			//get the base index for the next worker, so each worker only copies buffer belongs to them to independent location
+			STPInternalHistogramBuffer& curr_buffer = memoryBlock[w].first;
+
+			filterTask[w] = filter_worker.enqueue(copyToOutput, ref(histogramOutput), cref(curr_buffer), w, base);
+
+			//bin_base
+			base.x += static_cast<unsigned int>(curr_buffer.Bin.size());
+			//offset_base
+			base.y += static_cast<unsigned int>(curr_buffer.HistogramStartOffset.size());
+		}
+		//sync
+		for (auto& block : filterTask) {
+			block.get();
+		}
+		//in vertical pass, each pixel needs to access the current offset, and the offset of the next pixel.
+		//insert one at the back to make sure the last pixel can read some valid data
+		histogramOutput.HistogramStartOffset.emplace_back(static_cast<unsigned int>(histogramOutput.Bin.size()));
+	};
+
+	//we perform vertical first as the input sample_map is a row-major matrix, after this stage the output buffer will be in column-major.
+	//then we perform horizontal filter on the output, so the final histogram will still be in row-major.
+	//It seems like breaking the cache locality on sample_map but benchmark shows there's no difference in performance.
+
+	//perform vertical filter
+	{
+		//we need to start from the left halo, and ends at the right halo, width of which is radius.
+		//our loop in the filter ends at less than (no equal).
+		//we had already make sure radius is an even number to ensure divisibility, also it's not too large to go out of memory bound.
+		const unsigned int width_start = central_starting_coordinate.x - radius,
+			width_end = width_start + dimension.x + 2u * radius;
+		auto verticalBlock = this->FilterWorker.enqueueLoop<shfParallelism>(
+			[sample_map, total_sizeX = nn_info.TotalMapSize.x, map_sizeY = dimension.y, vertical_start = central_starting_coordinate.y,
+				&memoryBlock, radius](const auto block_idx, const auto begin, const auto end) {
+				filterVertical(sample_map, total_sizeX, map_sizeY,
+					vertical_start, uvec2(begin, end), memoryBlock[block_idx], radius);
+			}, width_start, width_end);
+		//sync get the total length of all buffers and copy buffer to output
+		waitForWorker(get<1u>(verticalBlock));
+	}
+	//perform horizontal filter
+	{
+		//unlike vertical pass, we start from the first pixel of output from previous stage, and the output contains the halo histogram.
+		//height start from 0, output buffer has the same height as each texture, and 2 * radius addition to the horizontal width as halos.
+		auto horizontalBlock = this->FilterWorker.enqueueLoop<shfParallelism>(
+			[&histogramOutput, &dimension, &memoryBlock, radius](
+				const auto block_idx, const auto begin, const auto end) {
+				filterHorizontal(histogramOutput, dimension, uvec2(begin, end), memoryBlock[block_idx], radius);
+			}, 0u, dimension.y);
+		//sync, do the same thing as what vertical did
+		waitForWorker(get<1u>(horizontalBlock));
+	}
 }
 
 STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample* const samplemap, const STPNearestNeighbourInformation& nn_info, 
-	const STPHistogramBuffer_t& histogram_output, const unsigned int radius) {
+	STPFilterBuffer& filter_buffer, const unsigned int radius) {
 	//do some simple runtime check
 	//first make sure radius is an even number
 	STP_ASSERTION_NUMERIC_DOMAIN(radius > 0u && (radius & 0x01u) == 0x00u, "radius should be an positive even number");
-	//second make sure radius is not larger than the free-slip range
+	//second make sure radius is not larger than the nearest neighbour range
 	const uvec2 central_chunk_index = nn_info.ChunkNearestNeighbour / 2u,
 		halo_size = central_chunk_index * nn_info.MapSize;
-	STP_ASSERTION_NUMERIC_DOMAIN(radius <= halo_size.x && radius <= halo_size.y, "radius is too large and will overflow free-slip boundary");
+	STP_ASSERTION_NUMERIC_DOMAIN(radius <= halo_size.x && radius <= halo_size.y,
+		"radius is too large and will overflow nearest neighbour boundary");
 
 	//looks safe now, start the filter
-	this->Kernel->filter(samplemap, nn_info, histogram_output.get(), central_chunk_index, radius);
+	this->filterDistributed(samplemap, nn_info, *filter_buffer.Memory, central_chunk_index, radius);
 
-	return STPSingleHistogramFilter::readHistogramBuffer(histogram_output);
-}
-
-STPSingleHistogram STPSingleHistogramFilter::readHistogramBuffer(const STPHistogramBuffer_t& buffer) noexcept {
-	return STPSingleHistogram{ buffer->Bin.data(), buffer->HistogramStartOffset.data() };
+	return filter_buffer.readHistogram();
 }
