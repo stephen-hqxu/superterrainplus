@@ -127,7 +127,7 @@ STPCommandLineOption::STPResult STPCommandLineOption::read(const int argc, const
 	if (printVersion) {
 		namespace Ver = SuperTerrainPlus::STPVersion;
 
-		cout << "SuperTerrain+ Library, SuperDemo+ application" << endl;
+		cout << "SuperTerrain+ Library" << endl;
 		cout << "Version " << Ver::Major << '.' << Ver::Minor << '.' << Ver::Patch << endl;
 		std::exit(0);
 	}

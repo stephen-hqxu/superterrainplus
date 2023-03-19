@@ -9,6 +9,8 @@
 //GLM
 #include <glm/gtc/type_ptr.hpp>
 
+#include <cstring>
+
 using namespace STPDemo;
 using namespace SuperTerrainPlus;
 
@@ -19,7 +21,7 @@ using glm::value_ptr;
 using std::move;
 
 STPBiomefieldGenerator::STPBiomefieldGenerator(const STPCommonCompiler& program, const uvec2 dimension, const unsigned int interpolation_radius)
-	: STPDiversityGenerator(), MapSize(dimension), KernelProgram(program), InterpolationRadius(interpolation_radius) {
+	: STPDiversityGenerator(), MapSize(dimension), KernelProgram(program), InterpolationRadius(interpolation_radius), BufferPool(this->MapSize) {
 	//init our device generator
 	//our heightfield setting only available in OCEAN biome for now
 	this->initGenerator();
@@ -62,9 +64,15 @@ void STPBiomefieldGenerator::initGenerator() {
 }
 
 using namespace SuperTerrainPlus::STPAlgorithm;
+using FiltExec = STPSingleHistogramFilter::STPFilterBuffer::STPExecutionType;
+
+STPBiomefieldGenerator::STPHistogramBufferCreator::STPHistogramBufferCreator(const uvec2& mapDim) :
+	BufferExecution(mapDim.x * mapDim.y < 100'000u ? FiltExec::Serial : FiltExec::Parallel) {
+
+}
 
 inline auto STPBiomefieldGenerator::STPHistogramBufferCreator::operator()() const {
-	return STPSingleHistogramFilter::STPFilterBuffer();
+	return STPSingleHistogramFilter::STPFilterBuffer(this->BufferExecution);
 }
 	
 void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBuffer& heightmap_buffer,
@@ -92,44 +100,41 @@ void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBu
 
 	//histogram filter
 	STPSingleHistogramFilter::STPFilterBuffer histogram_buffer = this->BufferPool.requestObject();
-	//start execution
-	//host to host memory copy is always synchronous, so the host memory should be available now
-	STPSingleHistogram histogram_h;
-	//need to use biomemap neighbour information because we are generating histogram based on biome neighbours
-	const STPNearestNeighbourInformation& biome_neighbour_info = biomemap_buffer.NeighbourInfo;
+	const STPSingleHistogram histogram_h = this->GenerateBiomeHistogram(
+		biomemap, biomemap_buffer.NeighbourInfo, histogram_buffer, this->InterpolationRadius);
 
-	histogram_h = this->biome_histogram(biomemap, biome_neighbour_info, histogram_buffer, this->InterpolationRadius);
-	//copy histogram to device
-	STPSingleHistogram histogram_d;
+	/* ------------------------------------------ populate device memory ------------------------------------------- */
 	//calculate the size of allocation, in number of element
-	const auto [bin_size, offset_size] = histogram_buffer.size(biome_neighbour_info.MapSize);
+	const auto [bin_size, offset_size] = histogram_buffer.size();
 	const STPSmartDeviceMemory::STPStreamedDeviceMemory<STPSingleHistogram::STPBin> bin_device =
 		STPSmartDeviceMemory::makeStreamedDevice<STPSingleHistogram::STPBin>(this->HistogramCacheDevice.get(), stream, bin_size);
 	const STPSmartDeviceMemory::STPStreamedDeviceMemory<unsigned int> offset_device =
 		STPSmartDeviceMemory::makeStreamedDevice<unsigned int>(this->HistogramCacheDevice.get(), stream, offset_size);
-	histogram_d.Bin = bin_device.get();
-	histogram_d.HistogramStartOffset = offset_device.get();
+	
+	const STPSingleHistogram histogram_d { bin_device.get(), offset_device.get() };
 	//and copy, remember to use byte size
-	STP_CHECK_CUDA(cudaMemcpyAsync(histogram_d.Bin, histogram_h.Bin,
+	//safe to cast away const because the memory assigned (see above) are non-const
+	STP_CHECK_CUDA(cudaMemcpyAsync(const_cast<STPSingleHistogram::STPBin*>(histogram_d.Bin), histogram_h.Bin,
 		bin_size * sizeof(STPSingleHistogram::STPBin), cudaMemcpyHostToDevice, stream));
-	STP_CHECK_CUDA(cudaMemcpyAsync(histogram_d.HistogramStartOffset, histogram_h.HistogramStartOffset,
+	STP_CHECK_CUDA(cudaMemcpyAsync(const_cast<unsigned int*>(histogram_d.HistogramStartOffset), histogram_h.HistogramStartOffset,
 		offset_size * sizeof(unsigned int), cudaMemcpyHostToDevice, stream));
+	
 	//returning the buffer back to the pool, make sure all copies are done
 	STP_CHECK_CUDA(cudaStreamSynchronize(stream));
 	this->BufferPool.returnObject(move(histogram_buffer));
 
-	//launch kernel
+	/* -------------------------------------- launch kernel ----------------------------------------- */
 	const float2 gpu_offset = make_float2(offset.x, offset.y);
 	constexpr static size_t BufferSize = sizeof(heightmap) + sizeof(histogram_d) + sizeof(gpu_offset);
 	size_t buffer_size = BufferSize;
 	unsigned char buffer[BufferSize];
 
 	unsigned char* current_buffer = buffer;
-	memcpy(current_buffer, &heightmap, sizeof(heightmap));
+	std::memcpy(current_buffer, &heightmap, sizeof(heightmap));
 	current_buffer += sizeof(heightmap);
-	memcpy(current_buffer, &histogram_d, sizeof(histogram_d));
+	std::memcpy(current_buffer, &histogram_d, sizeof(histogram_d));
 	current_buffer += sizeof(histogram_d);
-	memcpy(current_buffer, &gpu_offset, sizeof(gpu_offset));
+	std::memcpy(current_buffer, &gpu_offset, sizeof(gpu_offset));
 
 	void* config[] = {
 		CU_LAUNCH_PARAM_BUFFER_POINTER, buffer,

@@ -12,6 +12,7 @@
 
 #include <utility>
 #include <memory>
+#include <variant>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -40,15 +41,41 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		 * intermediate filter result and the final output for the single histogram filter.
 		*/
 		class STP_ALGORITHM_HOST_API STPFilterBuffer {
+		public:
+
+			/**
+			 * @brief STPExecutionType specifies the type of execution where the filter buffer is intended for.
+			*/
+			enum class STPExecutionType : unsigned char {
+				Serial = 0x00u,
+				Parallel = 0xFF
+			};
+
 		private:
 
 			friend class STPSingleHistogramFilter;
 
 			/**
 			 * @brief An opaque pointer to the internal data of the filter buffer.
+			 * @param Exec Specifies the type of execution the buffer is used for.
 			*/
+			template<STPExecutionType Exec>
 			struct STPBufferMemory;
-			std::unique_ptr<STPBufferMemory> Memory;
+
+			//serial version of buffer memory
+			typedef STPBufferMemory<STPExecutionType::Serial> STPSerialBufferMemory;
+			//parallel version of buffer memory
+			typedef STPBufferMemory<STPExecutionType::Parallel> STPParallelBufferMemory;
+
+			//The memory holding the intermediate filter cache and the filter result, for single and multithreaded execution.
+			typedef std::variant<std::unique_ptr<STPParallelBufferMemory>, std::unique_ptr<STPSerialBufferMemory>> STPStrategicBufferMemory;
+			STPStrategicBufferMemory Memory;
+
+			/**
+			 * @brief Get the output histogram in the buffer memory.
+			 * @return The pointer to the output histogram.
+			*/
+			const auto& getOutput() const;
 
 		public:
 
@@ -59,8 +86,9 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			 * @brief Create a new filter buffer.
 			 * The created buffer contains is not bounded to any particular histogram filter instance.
 			 * It's recommended to reuse the buffer to avoid duplicate memory reallocation, if repeated execution to the filter is required.
+			 * @param execution_type Specifies type of execution.
 			*/
-			STPFilterBuffer();
+			STPFilterBuffer(STPFilterBuffer::STPExecutionType);
 
 			STPFilterBuffer(const STPFilterBuffer&) = delete;
 
@@ -78,33 +106,60 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			 * is only available while the calling instance is valid.
 			 * @see STPSingleHistogram
 			*/
-			STPSingleHistogram readHistogram() const noexcept;
+			STPSingleHistogram readHistogram() const;
 
 			/**
 			 * @brief Get the size of the bin and offset.
-			 * @param input_dim The dimension of one input samplemap on a single chunk.
-			 * It is undefined behaviour if this dimension goes out of bound of the result,
-			 * this will happen if the dimension is different from the dimension parameter supplied when getting the filter result.
 			 * @return The histogram size information.
 			*/
-			STPHistogramSize size(const glm::uvec2&) const noexcept;
+			STPHistogramSize size() const;
+
+			/**
+			 * @brief Check if the current filter buffer is specialise for parallel filter run.
+			 * @return True if the filter buffer is designed for parallel filter run.
+			*/
+			bool supportMultithread() const noexcept;
 
 		};
 
 	private:
 
+		/**
+		 * @brief STPFilterKernelData stored arguments required for the filter.
+		*/
+		struct STPFilterKernelData {
+		public:
+
+			//The input sample map for filter.
+			const STPDiversity::Sample* const SampleMap;
+			//The information about the nearest_neighbour logic applies to the sample-map.
+			const STPNearestNeighbourInformation& NeighbourInfo;
+			//The filter buffer that will be for running the single histogram filter, and also output the final output.
+			STPFilterBuffer& FilterMemory;
+			//The radius of the filter.
+			const unsigned int Radius;
+
+			//The coordinate of the first (top-left corner) pixel on the filtering sub-texture for the vertical pass.
+			const unsigned int VerticalStartingCoord;
+			//The X and Y range of the texture to be filtered during the vertical and horizontal pass.
+			const glm::uvec2 WidthRange, HeightRange;
+
+		};
+
 		//A multi-thread worker for concurrent per-pixel histogram generation
 		STPThreadPool FilterWorker;
 
 		/**
-		 * @brief Run the filter in parallel.
-		 * @param sample_map The input sample map for filter.
-		 * @param nn_info The information about the nearest_neighbour logic applies to the samplemap.
-		 * @param filter_memory The filter buffer that will be for running the single histogram filter, and also output the final output.
-		 * @param central_chunk_index The local coordinate points to the central chunk within the range of nearest neighbour chunks.
-		 * @param radius The radius of the filter.
+		 * @brief Run the filter in single thread.
+		 * @param data The filter kernel data.
 		*/
-		void filterDistributed(const STPDiversity::Sample*, const STPNearestNeighbourInformation&, STPFilterBuffer::STPBufferMemory&, glm::uvec2, unsigned int);
+		void filter(const STPFilterKernelData&);
+
+		/**
+		 * @brief Run the filter in parallel.
+		 * @param data The filter kernel data.
+		*/
+		void filterDistributed(const STPFilterKernelData&);
 
 	public:
 

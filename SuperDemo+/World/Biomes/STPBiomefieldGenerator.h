@@ -30,7 +30,7 @@ namespace STPDemo {
 		//The size of the generated heightmap
 		const glm::uvec2 MapSize;
 		//Generate a histogram to retrieve weights for biomes in a range
-		mutable SuperTerrainPlus::STPAlgorithm::STPSingleHistogramFilter biome_histogram;
+		mutable SuperTerrainPlus::STPAlgorithm::STPSingleHistogramFilter GenerateBiomeHistogram;
 
 		const STPCommonCompiler& KernelProgram;
 		//The entry global function to generate the heightmap
@@ -43,9 +43,22 @@ namespace STPDemo {
 		 * @brief STPHistogramBufferCreator creates a new single histogram buffer.
 		*/
 		struct STPHistogramBufferCreator {
+		private:
+
+			//Specifies type of buffer to be created.
+			const SuperTerrainPlus::STPAlgorithm::STPSingleHistogramFilter::STPFilterBuffer::STPExecutionType BufferExecution;
+
 		public:
 
 			auto operator()() const;
+
+			/**
+			 * @brief Initialise the histogram buffer creator.
+			 * @param mapDim The size of the map whose histogram to be generated.
+			*/
+			STPHistogramBufferCreator(const glm::uvec2&);
+
+			~STPHistogramBufferCreator() = default;
 
 		};
 		//A queue of histogram buffer
@@ -78,7 +91,7 @@ namespace STPDemo {
 
 		STPBiomefieldGenerator& operator=(STPBiomefieldGenerator&&) = delete;
 
-		~STPBiomefieldGenerator() = default;
+		~STPBiomefieldGenerator() override = default;
 
 		void operator()(const SuperTerrainPlus::STPNearestNeighbourFloatWTextureBuffer&,
 			const SuperTerrainPlus::STPNearestNeighbourSampleRTextureBuffer&, glm::vec2) override;

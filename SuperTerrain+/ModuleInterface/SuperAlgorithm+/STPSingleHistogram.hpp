@@ -41,11 +41,11 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		//All bins extracted from histogram, it's a flatten array of histograms for every pixel.
 		//The bins of the next histogram is connected to that of the previous histogram, such that memory is contiguous.
 		//The number of element this array contains is the number read from the last element in HistogramStartOffset.
-		STPBin* Bin;
+		const STPBin* Bin;
 		//The index of STPBin from the beginning of the linear array of the texture per-pixel histogram to reach the
 		//current pixel The number of element in this array is the same as the dimension (of one texture) in the input,
 		//plus one element at the end denotes the total size of the bin
-		unsigned int* HistogramStartOffset;
+		const unsigned int* HistogramStartOffset;
 
 	};
 
