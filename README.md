@@ -13,7 +13,7 @@
 	<img src="https://img.shields.io/badge/CUDA_11.7-76B900?style=flat&logo=nvidia&logoColor=white" />
 	<img src="https://img.shields.io/badge/OptiX_7.3-76B900?style=flat&logo=nvidia&logoColor=white" />
 	<img src="https://img.shields.io/badge/OpenGL_4.6-FFFFFF?style=flat&logo=opengl" />
-	<img src="https://img.shields.io/badge/CMake_3.18-064F8C?style=flat&logo=cmake&logoColor=white" />
+	<img src="https://img.shields.io/badge/CMake_3.20-064F8C?style=flat&logo=cmake&logoColor=white" />
 </p>
 
 Procedural content generation is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
@@ -115,14 +115,15 @@ Main engine:
 - [GLAD](https://github.com/Dav1dde/glad)
 - [SQLite3](https://www.sqlite.org/index.html)
 
-Additional dependencies for the demo application:
+Demo program:
 
 - [GLFW](https://github.com/glfw/glfw)
 - [stb_image.h](https://github.com/nothings/stb/blob/master/stb_image.h)
 
-Test library:
+Test program:
 
-- [Catch2 v3](https://github.com/catchorg/Catch2)
+- [Catch3](https://github.com/catchorg/Catch2)
+- [nanobench](https://github.com/martinus/nanobench)
 
 ## :building_construction: Project Structure
 
@@ -205,17 +206,18 @@ The following extensions are not required but will be made used by the engine au
 
 ### :gear: Build Instruction
 
-#### External Resources
+#### External Dependency
 
 To reduce the size of repository and keep everything clean, all external materials are not included in the commit.
 
 To simplify the setup process for the first-time build, the following resources are managed automatically by CMake and no additional setup is required. All the rest of the aforementioned dependencies are required to be installed on your computer.
 
-- Assets for the demo program
+- Assets such as texture
 - stb_image.h
-- GLAD
+- nanobench.h
+- Generated GLAD
 
-CMake will download the required files hosted on *GitHub Releases*, to directory `STPResourceCache` located at the root of your binary directory. The build system will not re-download them if they already exist; they may get updated in the future at one point, if your older version fails to compile or run, simply deleting the respective directory within `STPResourceCache` can purge the cache and will force a re-download next time the program is built.
+CMake will download the required files, from either *GitHub Releases* in this repository, or the respective repository of 3rd-party library, to a directory `STPResourceCache` located at the root of your binary directory. The build system will not re-download them if they already exist. The build system will automatically update these files whenever a newer version is available. Otherwise, if your older version fails to compile or run, simply deleting the respective directory within `STPResourceCache` can purge the cache and will force a re-download next time the program is built.
 
 #### Build
 

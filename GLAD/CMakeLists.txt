@@ -1,4 +1,5 @@
 project(GLAD
+VERSION 0.1.35
 LANGUAGES C
 DESCRIPTION "Multi-Language Vulkan/GL/GLES/EGL/GLX/WGL Loader-Generator based on the official specs."
 HOMEPAGE_URL "https://github.com/Dav1dde/glad"
@@ -8,7 +9,7 @@ HOMEPAGE_URL "https://github.com/Dav1dde/glad"
 include(DownloadResource)
 downloadResource(
 URL "https://github.com/stephen-hqxu/superterrainplus/releases/download/v0.13.7/GLAD.tar.gz"
-FILENAME "GLAD"
+FILENAME "GLAD-${PROJECT_VERSION}"
 EXTENSION ".tar.gz"
 LOCATION STP_GLAD_DIR
 EXTRACT

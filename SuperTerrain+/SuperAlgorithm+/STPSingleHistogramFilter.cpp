@@ -26,6 +26,8 @@ using std::array;
 using std::pair;
 using std::unique_ptr;
 
+using std::decay_t;
+
 using std::make_pair;
 using std::make_unique;
 using std::visit;
@@ -738,8 +740,11 @@ STPSingleHistogramFilter::STPFilterBuffer::STPHistogramSize STPSingleHistogramFi
 	return make_pair(histogram.Bin.size(), histogram.HistogramStartOffset.size());
 }
 
-bool STPSingleHistogramFilter::STPFilterBuffer::supportMultithread() const noexcept {
-	return this->Memory.index() == 0u;
+STPSingleHistogramFilter::STPFilterBuffer::STPExecutionType
+	STPSingleHistogramFilter::STPFilterBuffer::type() const noexcept {
+	//TODO: use template lambda in C++ 20 as well
+	return visit(
+		[](const auto& memory) { return decay_t<decltype(memory)>::element_type::ExecutionType; }, this->Memory);
 }
 
 /* Single Histogram Filter main class */
@@ -755,8 +760,8 @@ void STPSingleHistogramFilter::filter(const STPFilterKernelData& data) {
 	const uvec2& dimension = nn_info.MapSize;
 	//the filter memory might be single or multi-thread capable memory
 	//TODO: use template lambda in C++ 20
-	auto [memoryBlock, histogramOutput] = visit([](const auto& memory) {
-		typedef std::decay_t<decltype(memory)>::element_type BufferMemory;
+	auto [memoryBlock, histogramOutput] = visit([](const auto& memory) noexcept {
+		typedef decay_t<decltype(memory)>::element_type BufferMemory;
 		BufferMemory::STPWorkplace* workplace;
 
 		if constexpr (BufferMemory::ExecutionType == STPFilterBuffer::STPExecutionType::Parallel) {
@@ -883,7 +888,7 @@ STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample* const samp
 		start_coord.y, uvec2(width_start, width_end), uvec2(0u, dimension.y)
 	};
 	//choose filter procedure depends on the filter buffer type
-	if (filter_buffer.supportMultithread()
+	if (filter_buffer.type() == STPFilterBuffer::STPExecutionType::Parallel
 		&& dimension.x >= shfParallelism && dimension.y >= shfParallelism) {
 		//also need to make sure the map size is big enough so works can be distributed to that many thread
 		this->filterDistributed(filterData);

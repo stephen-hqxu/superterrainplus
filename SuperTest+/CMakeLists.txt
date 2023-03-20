@@ -3,10 +3,17 @@ set(STP_CONSOLE_REPORTER "stp_console")
 
 find_package(Catch2 3.3 REQUIRED CONFIG)
 
+include(DownloadResource)
+# benchmarking library by `nanobench`
+downloadResource(
+URL "https://raw.githubusercontent.com/martinus/nanobench/v4.3.11/src/include/nanobench.h"
+FILENAME "nanobench-4.3.11/nanobench"
+EXTENSION ".h"
+PATH STP_NANOBENCH_DIR
+)
+
 # unit test codes
 add_executable(${STP_UNIT_TEST}
-# Reporter/
-Reporter/STPConsoleReporter.cpp
 # Test engine starter
 STPTestMain.cpp
 # Main test code
@@ -25,7 +32,11 @@ STPTestLexer.cpp
 STPTestPermutation.cpp
 STPTestRegLang.cpp
 STPTestTDL.cpp
+# Setup/
+Setup/STPBenchmark.cpp
+Setup/STPConsoleReporter.cpp
 )
+
 target_sources(${STP_UNIT_TEST} PRIVATE
 STPTestInformation.h
 )
@@ -33,6 +44,10 @@ STPTestInformation.h
 if(MSVC)
 	set_target_properties(${STP_UNIT_TEST} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${STP_UNIT_TEST}>)
 endif()
+
+target_include_directories(${STP_UNIT_TEST}
+PRIVATE ${STP_NANOBENCH_DIR}
+)
 
 # link with the main program that needs to be tested and catch2
 target_link_libraries(${STP_UNIT_TEST}

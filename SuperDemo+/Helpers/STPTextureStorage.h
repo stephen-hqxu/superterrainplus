@@ -68,19 +68,19 @@ namespace STPDemo {
 		 * @brief Check if the texture container is empty.
 		 * @return True if there is no texture being stored in the texture storage.
 		*/
-		bool empty() const;
+		bool empty() const noexcept;
 
 		/**
 		 * @brief Get the property of the stored texture.
 		 * @return A vector of properties. Being width, height and number of channel for each component.
 		*/
-		const glm::ivec3& property() const;
+		const glm::ivec3& property() const noexcept;
 
 		/**
 		 * @brief Get the underlying texture data.
 		 * @return The pointer to the texture stored.
 		*/
-		const stbi_uc* texture() const;
+		const stbi_uc* texture() const noexcept;
 
 	};
 }

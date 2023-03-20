@@ -2,18 +2,17 @@ set(STP_DEMO_PROGRAM "SuperDemo+")
 
 # download external libraries and assets
 include(DownloadResource)
-# some external libraries
+# image reader by `stb`
 downloadResource(
-URL "https://github.com/stephen-hqxu/superterrainplus/releases/download/v0.13.7/External.tar.gz"
-FILENAME "External"
-EXTENSION ".tar.gz"
-LOCATION STP_EXTERNAL_DIR
-EXTRACT
+URL "https://raw.githubusercontent.com/nothings/stb/3ecc60f25ae1391cf6434578ece782afa1458b56/stb_image.h"
+FILENAME "stb_image-2.28/stb_image"
+EXTENSION ".h"
+PATH STP_STB_IMAGE_DIR
 )
 # resource
 downloadResource(
 URL "https://github.com/stephen-hqxu/superterrainplus/releases/download/v0.13.7/Resource.tar.gz"
-FILENAME "Resource"
+FILENAME "Resource-0.13.7"
 EXTENSION ".tar.gz"
 LOCATION STP_RESOURCE_DIR
 EXTRACT
@@ -85,12 +84,10 @@ if(MSVC)
 	set_target_properties(${STP_DEMO_PROGRAM} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${STP_DEMO_PROGRAM}>)
 endif()
 
-# CUDA related static libraries are added by public target
 target_include_directories(${STP_DEMO_PROGRAM}
-PRIVATE ${STP_EXTERNAL_DIR}
+PRIVATE ${STP_STB_IMAGE_DIR}
 )
 
-# when building a shared library, GLAD.c is not exported by the engine so we need to compile it twice
 target_link_libraries(${STP_DEMO_PROGRAM}
 PRIVATE glfw
 PRIVATE ${STP_GLAD} ${STP_MAIN_ENGINE} ${STP_ALGORITHM_HOST_ENGINE} ${STP_REALISM_ENGINE} ${STP_TEMPLATE_INCLUDE}

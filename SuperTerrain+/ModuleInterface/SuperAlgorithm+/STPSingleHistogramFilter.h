@@ -48,7 +48,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			*/
 			enum class STPExecutionType : unsigned char {
 				Serial = 0x00u,
-				Parallel = 0xFF
+				Parallel = 0xFFu
 			};
 
 		private:
@@ -115,10 +115,10 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			STPHistogramSize size() const;
 
 			/**
-			 * @brief Check if the current filter buffer is specialise for parallel filter run.
-			 * @return True if the filter buffer is designed for parallel filter run.
+			 * @brief Get the execution type of current filter buffer that is specialised for.
+			 * @return The execution type of the current filter buffer.
 			*/
-			bool supportMultithread() const noexcept;
+			STPFilterBuffer::STPExecutionType type() const noexcept;
 
 		};
 

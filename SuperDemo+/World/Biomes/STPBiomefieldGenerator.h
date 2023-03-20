@@ -56,7 +56,7 @@ namespace STPDemo {
 			 * @brief Initialise the histogram buffer creator.
 			 * @param mapDim The size of the map whose histogram to be generated.
 			*/
-			STPHistogramBufferCreator(const glm::uvec2&);
+			STPHistogramBufferCreator(const glm::uvec2&) noexcept;
 
 			~STPHistogramBufferCreator() = default;
 

@@ -1,10 +1,9 @@
 #include "STPTextureStorage.h"
 
-//Export Implementation
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <stdexcept>
+#include <SuperTerrain+/Exception/STPIOException.h>
 
 using namespace STPDemo;
 
@@ -17,24 +16,23 @@ void STPTextureStorage::STPTextureFreer::operator()(stbi_uc* const img) const {
 }
 
 STPTextureStorage::STPTextureStorage(const string& filename, const int comp) {
-	this->Property = ivec3();
 	stbi_uc* const texture = stbi_load(filename.c_str(), &this->Property.x, &this->Property.y, &this->Property.z, comp);
 	if (texture == nullptr) {
-		throw std::runtime_error("Unable to open file \'" + filename + "\'.");
+		throw STP_IO_EXCEPTION_CREATE("Unable to load image file \'" + filename + '\'');
 	}
 
 	//manage this texture memory
 	this->Texture = STPTextureMemmory(texture);
 }
 
-bool STPTextureStorage::empty() const {
+bool STPTextureStorage::empty() const noexcept {
 	return !static_cast<bool>(this->Texture);
 }
 
-const ivec3& STPTextureStorage::property() const {
+const ivec3& STPTextureStorage::property() const noexcept {
 	return this->Property;
 }
 
-const stbi_uc* STPTextureStorage::texture() const {
+const stbi_uc* STPTextureStorage::texture() const noexcept {
 	return this->Texture.get();
 }

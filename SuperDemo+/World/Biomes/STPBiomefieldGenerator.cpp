@@ -66,7 +66,7 @@ void STPBiomefieldGenerator::initGenerator() {
 using namespace SuperTerrainPlus::STPAlgorithm;
 using FiltExec = STPSingleHistogramFilter::STPFilterBuffer::STPExecutionType;
 
-STPBiomefieldGenerator::STPHistogramBufferCreator::STPHistogramBufferCreator(const uvec2& mapDim) :
+STPBiomefieldGenerator::STPHistogramBufferCreator::STPHistogramBufferCreator(const uvec2& mapDim) noexcept :
 	BufferExecution(mapDim.x * mapDim.y < 100'000u ? FiltExec::Serial : FiltExec::Parallel) {
 
 }
