@@ -1,7 +1,7 @@
 #include "./Script/STPCommonGenerator.cuh"
 
 //SuperAlgorithm+ Device library
-#include <STPSingleHistogramWrapper.cuh>
+#include <SuperAlgorithm+Device/STPSingleHistogramWrapper.cuh>
 
 //Biome parameters
 #include <STPBiomeProperty>

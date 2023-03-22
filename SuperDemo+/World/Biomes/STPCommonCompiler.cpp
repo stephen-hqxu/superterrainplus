@@ -1,6 +1,7 @@
 #include "STPCommonCompiler.h"
 #include <SuperTerrain+/STPCoreInfo.h>
-#include <SuperAlgorithm+/STPAlgorithmDeviceInfo.h>
+#include <SuperAlgorithm+Host/STPAlgorithmHostInfo.h>
+#include <SuperAlgorithm+Device/STPAlgorithmDeviceInfo.h>
 
 #include <SuperTerrain+/STPEngineInitialiser.h>
 
@@ -72,6 +73,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 	const auto commonSourceInfo = [capabilityOption = "-arch=sm_" + to_string(STPEngineInitialiser::architecture(0))]() {
 		using SuperTerrainPlus::STPStringUtility::concatCharArray;
 		constexpr static auto coreIncludeOption = concatCharArray("-I ", STPCoreInfo::CoreInclude);
+		constexpr static auto hostIncludeOption = concatCharArray("-I ", STPAlgorithm::STPAlgorithmHostInfo::HostInclude);
 		constexpr static auto deviceIncludeOption = concatCharArray("-I ", STPAlgorithm::STPAlgorithmDeviceInfo::DeviceInclude);
 
 		STPDeviceRuntimeBinary::STPSourceInformation info;
@@ -89,6 +91,7 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 #endif
 			//set include paths
 			[coreIncludeOption.data()]
+			[hostIncludeOption.data()]
 			[deviceIncludeOption.data()];
 
 		return info;

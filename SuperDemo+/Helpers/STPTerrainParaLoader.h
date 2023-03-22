@@ -3,12 +3,12 @@
 #define _STP_HEIGHTFIELD_PARA_LOADER_H_
 
 //INI
-#include <SuperAlgorithm+/Parser/STPINIData.hpp>
+#include <SuperAlgorithm+Host/Parser/STPINIData.hpp>
 
 //Settings
 #include <SuperTerrain+/Environment/STPChunkSetting.h>
 #include <SuperTerrain+/Environment/STPHeightfieldSetting.h>
-#include <SuperAlgorithm+/STPSimplexNoiseSetting.h>
+#include <SuperAlgorithm+Host/STPSimplexNoiseSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>
 #include <SuperRealism+/Environment/STPAtmosphereSetting.h>

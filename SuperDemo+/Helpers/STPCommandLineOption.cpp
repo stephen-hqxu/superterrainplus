@@ -2,7 +2,7 @@
 #include <SuperTerrain+/STPVersion.h>
 
 //Command Line Tool
-#include <SuperAlgorithm+/Parser/STPCommandLineParser.h>
+#include <SuperAlgorithm+Host/Parser/STPCommandLineParser.h>
 #include <SuperTerrain+/Exception/STPNumericDomainError.h>
 
 #include <iostream>

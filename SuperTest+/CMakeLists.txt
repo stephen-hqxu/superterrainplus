@@ -13,32 +13,50 @@ PATH STP_NANOBENCH_DIR
 )
 
 # unit test codes
-add_executable(${STP_UNIT_TEST}
-# Test engine starter
+add_executable(${STP_UNIT_TEST})
+
+set(STP_UNIT_TEST_HEADER
+STPTestInformation.h
+)
+
+set(STP_UNIT_TEST_SOURCE
 STPTestMain.cpp
-# Main test code
-STPTest2DBiome.cpp
-STPTest2DChunk.cpp
-STPTestAlgebra.cpp
-STPTestNearestNeighbour.cpp
-STPTestRTC.cpp
-STPTestTexture.cpp
-STPTestUtility.cpp
-# SuperAlgorithm+ test code
-STPTestCmdParser.cpp
-STPTestHistogram.cpp
-STPTestINI.cpp
-STPTestLexer.cpp
-STPTestPermutation.cpp
-STPTestRegLang.cpp
-STPTestTDL.cpp
-# Setup/
+# /Setup
 Setup/STPBenchmark.cpp
 Setup/STPConsoleReporter.cpp
+# /SuperAlgorithm+
+SuperAlgorithm+/STPTestCmdParser.cpp
+SuperAlgorithm+/STPTestHistogram.cpp
+SuperAlgorithm+/STPTestINI.cpp
+SuperAlgorithm+/STPTestLexer.cpp
+SuperAlgorithm+/STPTestPermutation.cpp
+SuperAlgorithm+/STPTestRegLang.cpp
+SuperAlgorithm+/STPTestTDL.cpp
+# /SuperTerrain+
+SuperTerrain+/STPTest2DBiome.cpp
+SuperTerrain+/STPTest2DChunk.cpp
+SuperTerrain+/STPTestAlgebra.cpp
+SuperTerrain+/STPTestNearestNeighbour.cpp
+SuperTerrain+/STPTestRTC.cpp
+SuperTerrain+/STPTestTexture.cpp
+SuperTerrain+/STPTestUtility.cpp
 )
 
 target_sources(${STP_UNIT_TEST} PRIVATE
-STPTestInformation.h
+${STP_UNIT_TEST_HEADER}
+${STP_UNIT_TEST_SOURCE}
+)
+
+# add file filter
+source_group(
+TREE ${CMAKE_CURRENT_SOURCE_DIR}
+PREFIX "Interface"
+FILES ${STP_UNIT_TEST_HEADER}
+)
+source_group(
+TREE ${CMAKE_CURRENT_SOURCE_DIR}
+PREFIX "Implementation"
+FILES ${STP_UNIT_TEST_SOURCE}
 )
 
 if(MSVC)

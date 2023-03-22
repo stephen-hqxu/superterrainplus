@@ -5,7 +5,7 @@
 namespace SuperTerrainPlus::STPAlgorithm {
 	
 	/**
-	 * @brief STPAlgorithmDeviceInfo contains file information for the algorithm device library to be used by runtime compilers.
+	 * @brief STPAlgorithmDeviceInfo contains information for the algorithm device library.
 	*/
 	namespace STPAlgorithmDeviceInfo {
 		

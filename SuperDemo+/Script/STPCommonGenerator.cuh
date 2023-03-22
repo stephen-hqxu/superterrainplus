@@ -2,7 +2,7 @@
 #define _STP_COMMON_GENERATOR_CUH_
 
 //Device Library
-#include <STPSimplexNoise.cuh>
+#include <SuperAlgorithm+Device/STPSimplexNoise.cuh>
 
 #ifndef __CUDACC_RTC__
 #error __FILE__ can only be compiled in NVRTC

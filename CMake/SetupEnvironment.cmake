@@ -17,9 +17,11 @@ if(MSVC)
 	# so we want the standard-conforming lambda
 	# TODO: this can be removed when the project is ported to C++ 20
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2 /Zc:lambda")
-	
-	set(STP_MSVC_WARNING "/wd4251 /wd4275") # disable warning about using stl in a dll project
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STP_MSVC_WARNING}")
+
+	# disable warning about using stl in a dll project
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275")
+	set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -err-no -diag-suppress 1388,1394 -Xcompiler /wd4251,/wd4275")
+
 	if(STP_ENABLE_WARNING)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 	endif()

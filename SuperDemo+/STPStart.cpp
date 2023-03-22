@@ -12,7 +12,7 @@
 #include <SuperRealism+/Utility/STPDebugCallback.h>
 
 //INI Utility
-#include <SuperAlgorithm+/Parser/STPINIParser.h>
+#include <SuperAlgorithm+Host/Parser/STPINIParser.h>
 
 //Demo Application
 #include "STPMasterRenderer.h"

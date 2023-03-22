@@ -8,7 +8,7 @@
 //Setting
 #include <SuperTerrain+/Environment/STPChunkSetting.h>
 //Generator
-#include <SuperAlgorithm+/STPPermutationGenerator.h>
+#include <SuperAlgorithm+Host/STPPermutationGenerator.h>
 
 //System
 #include <string>

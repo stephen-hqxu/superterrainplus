@@ -15,7 +15,7 @@
 #include "../Helpers/STPTextureStorage.h"
 //Texture Splatting
 #include <SuperTerrain+/World/Diversity/Texture/STPTextureDatabase.h>
-#include <SuperAlgorithm+/Parser/STPTextureDefinitionLanguage.h>
+#include <SuperAlgorithm+Host/Parser/STPTextureDefinitionLanguage.h>
 
 //GLAD
 #include <glad/glad.h>

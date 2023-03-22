@@ -10,7 +10,7 @@ namespace SuperTerrainPlus {
 	namespace STPCoreInfo {
 		
 		//SuperTerrain+ include path
-		inline constexpr char CoreInclude[] = "@STP_CORE_INCLUDE@";
+		inline constexpr char CoreInclude[] = "@SuperTerrain+Include@";
 		//Nvidia CUDA include directory.
 		inline constexpr char CUDAInclude[] = "@CUDAToolkit_INCLUDE_DIRS@";
 		

@@ -7,7 +7,7 @@
 #include "STPCommonCompiler.h"
 #include "STPBiome.hpp"
 //Biome Interpolation
-#include <SuperAlgorithm+/STPSingleHistogramFilter.h>
+#include <SuperAlgorithm+Host/STPSingleHistogramFilter.h>
 //Pool
 #include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
 

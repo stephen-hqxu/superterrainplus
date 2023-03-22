@@ -1,13 +1,22 @@
 set(STP_TEMPLATE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Template)
 set(STP_TEMPLATE_OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>TemplateInterface)
-set(STP_CORE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/CoreInterface)
-set(STP_MODULE_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/ModuleInterface)
-# a helper function to quickly setup config file
-function(setupConfigTemplate BuildTarget TemplateInput TemplateOutput ConfigFilename)
-	# config file information
-	set(SuperAlgorithm+DeviceInclude ${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE}/Device)
-	set(SuperRealism+ShaderPath ${STP_MODULE_INCLUDE}/${STP_REALISM_ENGINE}/Shader)
-	set(SuperRealism+OptiXSDK ${OptiX_INSTALL_DIR}/SDK)
+
+function(setupSourceGroup BuildTarget)
+	# get all source files for this target
+	get_target_property(TargetSource ${BuildTarget} SOURCES)
+
+	source_group(
+	TREE ${CMAKE_CURRENT_SOURCE_DIR}
+	FILES ${TargetSource}
+	)
+endfunction()
+
+# a helper function to quickly setup config file for a given target based on an input template
+function(setupConfigTemplate BuildTarget TemplateFilename)
+	# derive config filename based on the given template filename
+	set(TemplateInput "${TemplateFilename}.h.in")
+	set(ConfigFilename "${TemplateFilename}.h")
+	set(TemplateOutput "Template/${ConfigFilename}")
 
 	configure_file(${STP_TEMPLATE_DIR}/${TemplateInput} ${TemplateOutput} @ONLY)
 	file(GENERATE
@@ -16,39 +25,27 @@ function(setupConfigTemplate BuildTarget TemplateInput TemplateOutput ConfigFile
 	)
 endfunction()
 
-# add SuperTerrain+, add headers first because it passes header variables out
-add_subdirectory(${STP_CORE_INCLUDE}/${STP_MAIN_ENGINE})
-add_subdirectory(Core)
-# Add SuperAlgorithm+
-add_subdirectory(${STP_MODULE_INCLUDE}/${STP_ALGORITHM_ENGINE})
-add_subdirectory(${STP_ALGORITHM_ENGINE})
-# Add SuperRealism+
-add_subdirectory(${STP_MODULE_INCLUDE}/${STP_REALISM_ENGINE})
+# SuperTerrain+
+add_subdirectory(${STP_MAIN_ENGINE})
+# SuperAlgorithm+
+add_subdirectory(${STP_ALGORITHM_ENGINE}/Device)
+add_subdirectory(${STP_ALGORITHM_ENGINE}/Host)
+# SuperRealism+
 add_subdirectory(${STP_REALISM_ENGINE})
 
-# setup the template target
+# Template
 add_library(${STP_TEMPLATE_INCLUDE} INTERFACE)
-# configure file include
 target_include_directories(${STP_TEMPLATE_INCLUDE}
 INTERFACE ${STP_TEMPLATE_OUTPUT}
 )
 
-# dependencies
-target_include_directories(${STP_MAIN_ENGINE}
-PUBLIC ${STP_CORE_INCLUDE}
-)
-target_include_directories(${STP_ALGORITHM_HOST_ENGINE}
-PUBLIC ${STP_MODULE_INCLUDE}
-)
-target_include_directories(${STP_ALGORITHM_DEVICE_ENGINE} # algorithm device engine do not expose any external header in its public headers
+# algorithm device engine do not expose any external header in its public headers,
 # we only include some define symbols from the core engine, no implementations are used
-PRIVATE ${STP_CORE_INCLUDE} ${STP_MODULE_INCLUDE}
-)
-target_include_directories(${STP_REALISM_ENGINE}
-PUBLIC ${STP_MODULE_INCLUDE}
+target_include_directories(${STP_ALGORITHM_DEVICE_ENGINE} 
+PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${STP_MAIN_ENGINE}/Public" "${CMAKE_CURRENT_SOURCE_DIR}/${STP_ALGORITHM_ENGINE}/Host/Public"
 )
 
-# library dependencies
+# resolve library dependencies
 target_link_libraries(${STP_MAIN_ENGINE}
 # we don't need to link SuperAlgorithm+, this is a library left for developers
 # we do not plan to expose sqlite database in the header and to user, keep it private

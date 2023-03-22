@@ -23,24 +23,9 @@ find_package(glfw3 3 REQUIRED CONFIG)
 
 # add all demo program code
 # header and source code will be placed together
-add_executable(${STP_DEMO_PROGRAM}
-STPMasterRenderer.cpp
-STPStart.cpp
-# /Helpers
-Helpers/STPCommandLineOption.cpp
-Helpers/STPTerrainParaLoader.cpp
-Helpers/STPTextureStorage.cpp
-# /World/Biomes
-World/Biomes/STPBiomefieldGenerator.cpp
-World/Biomes/STPCommonCompiler.cpp
-World/Biomes/STPSplatmapGenerator.cpp
-# /World/Layers
-World/Layers/STPAllLayers.cpp
-# /World
-World/STPWorldManager.cpp
-)
+add_executable(${STP_DEMO_PROGRAM})
 
-target_sources(${STP_DEMO_PROGRAM} PRIVATE
+set(STP_DEMO_PROGRAM_HEADER
 STPMasterRenderer.h
 # /Helpers
 Helpers/STPCommandLineOption.h
@@ -77,6 +62,39 @@ World/Layers/STPXCrossLayer.h
 # /World
 World/STPWorldManager.h
 World/STPWorldManager.inl
+)
+
+set(STP_DEMO_PROGRAM_SOURCE
+STPMasterRenderer.cpp
+STPStart.cpp
+# /Helpers
+Helpers/STPCommandLineOption.cpp
+Helpers/STPTerrainParaLoader.cpp
+Helpers/STPTextureStorage.cpp
+# /World/Biomes
+World/Biomes/STPBiomefieldGenerator.cpp
+World/Biomes/STPCommonCompiler.cpp
+World/Biomes/STPSplatmapGenerator.cpp
+# /World/Layers
+World/Layers/STPAllLayers.cpp
+# /World
+World/STPWorldManager.cpp
+)
+
+target_sources(${STP_DEMO_PROGRAM} PRIVATE
+${STP_DEMO_PROGRAM_HEADER}
+${STP_DEMO_PROGRAM_SOURCE}
+)
+
+source_group(
+TREE ${CMAKE_CURRENT_SOURCE_DIR}
+PREFIX "Interface"
+FILES ${STP_DEMO_PROGRAM_HEADER}
+)
+source_group(
+TREE ${CMAKE_CURRENT_SOURCE_DIR}
+PREFIX "Implementation"
+FILES ${STP_DEMO_PROGRAM_SOURCE}
 )
 
 if(MSVC)

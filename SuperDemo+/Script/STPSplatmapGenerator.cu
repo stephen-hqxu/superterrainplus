@@ -21,7 +21,7 @@ constexpr static float
 #include "./Script/STPCommonGenerator.cuh"
 
 //SuperAlgorithm+ Device library
-#include <STPTextureSplatRuleWrapper.cuh>
+#include <SuperAlgorithm+Device/STPTextureSplatRuleWrapper.cuh>
 
 using namespace SuperTerrainPlus::STPAlgorithm;
 using SuperTerrainPlus::STPDiversity::Sample;

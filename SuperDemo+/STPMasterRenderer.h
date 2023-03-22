@@ -3,7 +3,7 @@
 #define _STP_MASTER_RENDERER_H_
 
 //Engine Component
-#include <SuperAlgorithm+/Parser/STPINIData.hpp>
+#include <SuperAlgorithm+Host/Parser/STPINIData.hpp>
 #include <SuperRealism+/Utility/STPCamera.h>
 
 #include "./Helpers/STPCommandLineOption.h"

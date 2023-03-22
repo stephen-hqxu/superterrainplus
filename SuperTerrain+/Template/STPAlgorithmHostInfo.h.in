@@ -1,0 +1,18 @@
+#pragma once
+#ifndef _STP_ALGORITHM_HOST_INFO_H_
+#define _STP_ALGORITHM_HOST_INFO_H_
+
+namespace SuperTerrainPlus::STPAlgorithm {
+	
+	/**
+	 * @brief STPAlgorithmHostInfo contains information regarding the algorithm host library.
+	*/
+	namespace STPAlgorithmHostInfo {
+		
+		//SuperAlgorithm+Host include path
+		inline constexpr char HostInclude[] = "@SuperAlgorithm+HostInclude@";
+		
+	}
+	
+}
+#endif//_STP_ALGORITHM_HOST_INFO_H_
