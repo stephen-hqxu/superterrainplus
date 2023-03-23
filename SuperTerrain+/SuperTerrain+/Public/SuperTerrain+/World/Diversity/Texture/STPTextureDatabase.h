@@ -10,7 +10,6 @@
 #include <string_view>
 //System
 #include <memory>
-#include <optional>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -341,7 +340,8 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * There is no requirement on the format of the name and it is user-defined.
 		 * @return The texture ID that can be used to reference the texture
 		*/
-		[[nodiscard]] STPTextureInformation::STPTextureID addTexture(STPTextureInformation::STPViewGroupID, const std::optional<std::string_view>& = std::nullopt);
+		[[nodiscard]] STPTextureInformation::STPTextureID addTexture(
+			STPTextureInformation::STPViewGroupID, const std::string_view& = std::string_view());
 
 		/**
 		 * @brief Remove a texture from the texture database. 

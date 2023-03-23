@@ -18,7 +18,6 @@ using std::make_unique;
 using std::string;
 using std::string_view;
 using std::unique_ptr;
-using std::optional;
 
 using glm::uvec2;
 
@@ -656,7 +655,7 @@ size_t STPTextureDatabase::viewGroupSize() const {
 }
 
 STPTextureInformation::STPTextureID STPTextureDatabase::addTexture(
-	const STPTextureInformation::STPViewGroupID group_id, const optional<std::string_view>& name) {
+	const STPTextureInformation::STPViewGroupID group_id, const string_view& name) {
 	static STPTextureInformation::STPTextureID TextureIDAccumulator = 10000u;
 
 	static constexpr string_view AddTexture =
@@ -665,8 +664,8 @@ STPTextureInformation::STPTextureID STPTextureDatabase::addTexture(
 
 	//request a bunch of texture IDs
 	STP_CHECK_SQLITE3(sqlite3_bind_int(texture_stmt, 1, static_cast<int>(TextureIDAccumulator)));
-	if (name.has_value()) {
-		STP_CHECK_SQLITE3(sqlite3_bind_text(texture_stmt, 2, name->data(), static_cast<int>(name->length() * sizeof(char)), SQLITE_TRANSIENT));
+	if (!name.empty()) {
+		STP_CHECK_SQLITE3(sqlite3_bind_text(texture_stmt, 2, name.data(), static_cast<int>(name.length() * sizeof(char)), SQLITE_TRANSIENT));
 	}
 	else {
 		STP_CHECK_SQLITE3(sqlite3_bind_null(texture_stmt, 2));

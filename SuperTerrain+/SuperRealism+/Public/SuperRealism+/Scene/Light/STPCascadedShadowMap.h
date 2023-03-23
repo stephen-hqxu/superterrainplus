@@ -66,9 +66,9 @@ namespace SuperTerrainPlus::STPRealism {
 		//CSM handles directional light rather than positional.
 		glm::vec3 LightDirection;
 
-		STPCamera::STPSubscriberBenefit FocusEventData;
 		//This light frustum should use absolute view distance.
 		const STPLightFrustum LightFrustum;
+		STPCamera::STPSubscriberStatus FocusEventData;
 		//Memory to where light space matrices should be stored
 		glm::mat4* LightSpaceMatrix;
 
@@ -108,13 +108,13 @@ namespace SuperTerrainPlus::STPRealism {
 
 		STPCascadedShadowMap(const STPCascadedShadowMap&) = delete;
 
-		STPCascadedShadowMap(STPCascadedShadowMap&&) noexcept;
+		STPCascadedShadowMap(STPCascadedShadowMap&&) noexcept = default;
 
 		STPCascadedShadowMap& operator=(const STPCascadedShadowMap&) = delete;
 
-		STPCascadedShadowMap& operator=(STPCascadedShadowMap&&) = delete;
+		STPCascadedShadowMap& operator=(STPCascadedShadowMap&&) noexcept = default;
 
-		~STPCascadedShadowMap();
+		~STPCascadedShadowMap() = default;
 
 		/**
 		 * @brief Update the direction of light.

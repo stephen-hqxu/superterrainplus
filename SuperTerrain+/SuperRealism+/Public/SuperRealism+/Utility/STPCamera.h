@@ -16,6 +16,7 @@
 
 //System
 #include <vector>
+#include <memory>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -67,6 +68,34 @@ namespace SuperTerrainPlus::STPRealism {
 
 		};
 
+		/**
+		 * @brief STPCameraUnsubscriber automatically unsubscribes a subscriber from the camera instance
+		 * once the subscriber benefit instance is destroyed.
+		*/
+		struct STPCameraUnsubscriber {
+		private:
+
+			STPCamera* Camera;
+
+		public:
+
+			/**
+			 * @brief Create a camera unsubscriber.
+			 * @param camera The pointer to the subscribing camera instance.
+			 * The camera must outlive the initialising unsubscriber.
+			*/
+			STPCameraUnsubscriber(STPCamera*) noexcept;
+
+			~STPCameraUnsubscriber() = default;
+
+			void operator()(STPSubscriberBenefit*) const;
+
+		};
+
+		//The instance of subscriber benefit held by the subscriber.
+		//Will automatically unsubscribe from the camera when destroyed.
+		typedef std::unique_ptr<STPSubscriberBenefit, STPCameraUnsubscriber> STPSubscriberStatus;
+
 	private:
 
 		STPEnvironment::STPCameraSetting Camera;
@@ -84,10 +113,10 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		struct STPPackedCameraBuffer;
 		//send all camera data to GPU so they are be accessed from shaders
-		STPBuffer CameraInformation;
+		STPBuffer Information;
 		STPPackedCameraBuffer* MappedBuffer;
 
-		std::vector<STPSubscriberBenefit*> CameraSubscriber;
+		std::vector<STPSubscriberBenefit*> Subscriber;
 
 		/**
 		 * @brief Update the camera vectors.
@@ -101,13 +130,6 @@ namespace SuperTerrainPlus::STPRealism {
 		*/
 		template<class Func>
 		void triggerSubscriberEvent(Func&&) const;
-
-		/**
-		 * @brief Find a subscriber instance in the database.
-		 * @param benefit The pointer to subscriber to be found.
-		 * @return The iterator in the registry.
-		*/
-		auto findSubcriber(STPSubscriberBenefit*) const;
 
 	public:
 
@@ -130,16 +152,11 @@ namespace SuperTerrainPlus::STPRealism {
 
 		/**
 		 * @brief Subscribe to a camera status change.
-		 * @param benefit A packet of data from user to receive event status.
-		 * This packet must remain valid until it is unsubscribed.
+		 * @return A packet of data for user to receive event status.
+		 * This packet depends on the subscribing camera instance, such that the camera should remain valid,
+		 * until the subscriber status is destroyed.
 		*/
-		void subscribe(STPSubscriberBenefit&);
-
-		/**
-		 * @brief Remove a previously subscribed listener from the camera.
-		 * @param benefit The packet instance to be removed.
-		*/
-		void unsubscribe(STPSubscriberBenefit&);
+		STPSubscriberStatus subscribe();
 
 		/**
 		 * @brief Bind the camera buffer to a target GL buffer.

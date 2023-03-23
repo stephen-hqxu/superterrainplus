@@ -3,7 +3,6 @@
 #include <glad/glad.h>
 
 //Error
-#include <SuperTerrain+/Exception/STPListenerError.h>
 #include <SuperTerrain+/Exception/STPValidationFailed.h>
 
 //Camera Calculation
@@ -49,6 +48,21 @@ public:
 
 };
 
+STPCamera::STPCameraUnsubscriber::STPCameraUnsubscriber(STPCamera* const camera) noexcept : Camera(camera) {
+
+}
+
+void STPCamera::STPCameraUnsubscriber::operator()(STPSubscriberBenefit* const benefit) const {
+	//it's okay to release memory first, because we are not dereferencing this pointer later
+	//this is to avoid exception memory leak
+	std::default_delete<STPSubscriberBenefit> {}(benefit);
+
+	//try to find this subscriber benefit and remove it
+	//this benefit must exist in the memory
+	this->Camera->Subscriber.erase(
+		std::find(this->Camera->Subscriber.cbegin(), this->Camera->Subscriber.cend(), benefit));
+}
+
 bool STPCamera::STPSubscriberBenefit::any() const noexcept {
 	return this->Moved || this->Rotated || this->Zoomed || this->AspectChanged;
 }
@@ -85,9 +99,9 @@ STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) :
 
 	/* ------------------------ camera buffer ------------------------- */
 	//set up buffer for camera transformation matrix
-	this->CameraInformation.bufferStorage(sizeof(STPPackedCameraBuffer), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
+	this->Information.bufferStorage(sizeof(STPPackedCameraBuffer), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
 	this->MappedBuffer =
-		reinterpret_cast<STPPackedCameraBuffer*>(this->CameraInformation.mapBufferRange(0, sizeof(STPPackedCameraBuffer),
+		reinterpret_cast<STPPackedCameraBuffer*>(this->Information.mapBufferRange(0, sizeof(STPPackedCameraBuffer),
 			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
 	STP_ASSERTION_VALIDATION(this->MappedBuffer, "Unable to map the camera buffer");
 	//buffer has been setup, clear the buffer before use
@@ -100,7 +114,7 @@ STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) :
 	this->MappedBuffer->Far = static_cast<float>(Cfar);
 	this->MappedBuffer->InvFar = static_cast<float>(1.0 / Cfar);
 	//update values
-	this->CameraInformation.flushMappedBufferRange(0, sizeof(STPPackedCameraBuffer));
+	this->Information.flushMappedBufferRange(0, sizeof(STPPackedCameraBuffer));
 }
 
 void STPCamera::updateViewSpace() {
@@ -119,38 +133,17 @@ void STPCamera::updateViewSpace() {
 
 template<class Func>
 inline void STPCamera::triggerSubscriberEvent(Func&& func) const {
-	std::for_each(this->CameraSubscriber.cbegin(), this->CameraSubscriber.cend(), std::forward<Func>(func));
+	std::for_each(this->Subscriber.cbegin(), this->Subscriber.cend(), std::forward<Func>(func));
 }
 
-inline auto STPCamera::findSubcriber(STPSubscriberBenefit* const benefit) const {
-	return std::find(this->CameraSubscriber.cbegin(), this->CameraSubscriber.cend(), benefit);
-}
-
-void STPCamera::subscribe(STPSubscriberBenefit& benefit) {
-	//make sure the same listener is not registered twice.
-	if (this->findSubcriber(&benefit) != this->CameraSubscriber.cend()) {
-		//the same instance is found
-		throw STP_LISTENER_ERROR_CREATE(&benefit, STPRepeatedListener);
-	}
-
-	//ok, add
-	this->CameraSubscriber.emplace_back(&benefit);
-}
-
-void STPCamera::unsubscribe(STPSubscriberBenefit& benefit) {
-	//try to find this instance
-	const auto it = this->findSubcriber(&benefit);
-	if (it == this->CameraSubscriber.cend()) {
-		//not found
-		throw STP_LISTENER_ERROR_CREATE(&benefit, STPListenerNotFound);
-	}
-
-	//found, remove it
-	this->CameraSubscriber.erase(it);
+STPCamera::STPSubscriberStatus STPCamera::subscribe() {
+	STPSubscriberStatus status = STPSubscriberStatus(new STPSubscriberBenefit {}, STPCameraUnsubscriber(this));
+	this->Subscriber.emplace_back(status.get());
+	return status;
 }
 
 void STPCamera::bindCameraBuffer(const STPOpenGL::STPenum target, const STPOpenGL::STPuint index) const {
-	this->CameraInformation.bindBase(target, index);
+	this->Information.bindBase(target, index);
 }
 
 void STPCamera::flush() {
@@ -174,20 +167,20 @@ void STPCamera::flush() {
 		//position has changed
 		if (this->PositionOutdated) {
 			this->MappedBuffer->Pos = this->Camera.Position;
-			this->CameraInformation.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, Pos), sizeof(vec3));
+			this->Information.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, Pos), sizeof(vec3));
 		}
 
 		//if position changes, view must also change
 		//view matrix has changed
 		this->MappedBuffer->V = static_cast<mat4>(this->View);
 		this->MappedBuffer->VNorm = static_cast<mat3x4>(static_cast<mat4>(this->View.asMatrix3x3d().inverse().transpose()));
-		this->CameraInformation.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, V), sizeof(mat4) + sizeof(mat3x4));
+		this->Information.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, V), sizeof(mat4) + sizeof(mat3x4));
 	}
 	if (this->ProjectionOutdated) {
 		//projection matrix has changed
 		this->MappedBuffer->P = static_cast<mat4>(this->PerspectiveProjection);
 		this->MappedBuffer->InvP = static_cast<mat4>(this->PerspectiveProjection.inverse());
-		this->CameraInformation.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, P), sizeof(mat4) * 2);
+		this->Information.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, P), sizeof(mat4) * 2);
 	}
 	//update compound matrices
 	if (this->ViewOutdated || this->ProjectionOutdated) {
@@ -197,7 +190,7 @@ void STPCamera::flush() {
 		this->MappedBuffer->PVr = static_cast<mat4>(this->PerspectiveProjection * (this->View.asMatrix3x3d()));
 		this->MappedBuffer->PV = static_cast<mat4>(proj_view);
 		this->MappedBuffer->InvPV = static_cast<mat4>(proj_view.inverse());
-		this->CameraInformation.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, PV), sizeof(mat4) * 2);
+		this->Information.flushMappedBufferRange(offsetof(STPPackedCameraBuffer, PV), sizeof(mat4) * 2);
 	}
 
 	//reset states

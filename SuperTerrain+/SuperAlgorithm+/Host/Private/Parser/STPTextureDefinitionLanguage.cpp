@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
 #include <utility>
 
 using std::string_view;
@@ -17,7 +16,6 @@ using std::vector;
 
 using std::unique_ptr;
 using std::make_unique;
-using std::make_optional;
 using std::as_const;
 
 using std::for_each;
@@ -309,7 +307,7 @@ STPResult::STPTextureVariable STPTextureDefinitionLanguage::STPResult::load(STPD
 		const auto& [texture_name, view_group_index] = texture;
 		//we have already checked the view group index at the end of parsing, so it must be valid
 		const TI::STPViewGroupID view_group_id = id_lookup[view_group_index];
-		varDic.try_emplace(texture_name, database.addTexture(view_group_id, make_optional(texture_name)), view_group_id);	
+		varDic.try_emplace(texture_name, database.addTexture(view_group_id, texture_name), view_group_id);	
 	});
 
 	//add splat rules into the database

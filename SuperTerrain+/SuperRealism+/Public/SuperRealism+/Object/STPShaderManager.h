@@ -21,7 +21,7 @@ namespace SuperTerrainPlus::STPRealism {
 	namespace STPShaderManager {
 
 		//Internal implementation of the shader manager
-		namespace STPShaderManagerDetail {
+		namespace STPDetail {
 
 			/**
 			 * @brief STPShaderDeleter calls glDeleteShader to remove a shader.
@@ -120,7 +120,7 @@ namespace SuperTerrainPlus::STPRealism {
 		};
 
 		//A GL shader object with managed memory lifetime
-		using STPShader = STPSmartGLuintObject<STPShaderManagerDetail::STPShaderDeleter>;
+		using STPShader = STPSmartGLuintObject<STPShaderManager::STPDetail::STPShaderDeleter>;
 
 		/**
 		 * @brief Initialise the shader manager for the current context.
@@ -128,21 +128,6 @@ namespace SuperTerrainPlus::STPRealism {
 		 * Each context only needs to be initialised once.
 		*/
 		STP_REALISM_API void initialise();
-
-		/**
-		 * @brief Add a shader source to GL include file tree.
-		 * @param name The name of the include shader.
-		 * @param source The string, i.e., source, of the shader.
-		 * @return True if the shader has been added, false if the same name has been included previously.
-		*/
-		STP_REALISM_API bool Addinclude(const std::string&, const std::string&) noexcept;
-
-		/**
-		 * @brief Remove a shader source from GL include file tree.
-		 * GL will throw error if name is not valid.
-		 * @param name The name of the include shader.
-		*/
-		STP_REALISM_API void Removeinclude(const std::string&) noexcept;
 
 		/**
 		 * @brief Attach source code to the current shader manager and compile. Previously attached source code will be removed.

@@ -66,13 +66,12 @@ static STPCascadedShadowMap::STPLightFrustum transformFrustum(STPCascadedShadowM
 }
 
 STPCascadedShadowMap::STPCascadedShadowMap(const unsigned int resolution, const STPLightFrustum& light_frustum) :
-	STPLightShadow(resolution, STPShadowMapFormat::Array), LightDirection(vec3(0.0f)), FocusEventData { }, LightFrustum(transformFrustum(light_frustum)) {
+	STPLightShadow(resolution, STPShadowMapFormat::Array), LightDirection(vec3(0.0f)),
+	LightFrustum(transformFrustum(light_frustum)), FocusEventData(this->LightFrustum.Focus->subscribe()) {
 	const auto& [div, band_radius, focus_camera, distance_mul] = this->LightFrustum;
 	STP_ASSERTION_NUMERIC_DOMAIN(distance_mul >= 1.0f, "A less-than-one shadow distance is not able to cover the view frustum");
 	STP_ASSERTION_NUMERIC_DOMAIN(div.size() > 0u, "There is no shadow level being defined");
 	STP_ASSERTION_NUMERIC_DOMAIN(band_radius >= 0.0f, "Shadow cascade band radius must be non-negative");
-	//register a camera callback
-	focus_camera->subscribe(this->FocusEventData);
 
 	/* -------------------------------- shadow data buffer allocation ---------------------------- */
 	const size_t lightSpaceDim = this->lightSpaceDimension(),
@@ -116,19 +115,6 @@ STPCascadedShadowMap::STPCascadedShadowMap(const unsigned int resolution, const 
 	this->LightSpaceMatrix = reinterpret_cast<mat4*>(this->ShadowData.mapBufferRange(shadowBufferMat_offset, shadowBufferMat_size,
 		GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
 	STP_ASSERTION_VALIDATION(this->LightSpaceMatrix, "Unable to map the shadow data buffer for cascaded shadow map");
-}
-
-using std::move;
-
-STPCascadedShadowMap::STPCascadedShadowMap(STPCascadedShadowMap&& csm) noexcept : 
-	STPLightShadow(move(csm)), LightDirection(csm.LightDirection), FocusEventData(csm.FocusEventData), LightFrustum(move(csm.LightFrustum)), 
-	LightSpaceMatrix(csm.LightSpaceMatrix) {
-	//register the new listener
-	this->LightFrustum.Focus->subscribe(this->FocusEventData);
-}
-
-STPCascadedShadowMap::~STPCascadedShadowMap() {
-	this->LightFrustum.Focus->unsubscribe(this->FocusEventData);
 }
 
 mat4 STPCascadedShadowMap::calcLightSpace(const double near, const double far, const STPMatrix4x4d& view) const {
@@ -270,11 +256,11 @@ const vec3& STPCascadedShadowMap::getDirection() const {
 }
 
 bool STPCascadedShadowMap::updateLightSpace() {
-	if (this->FocusEventData.any()) {
+	if (this->FocusEventData->any()) {
 		//camera update received
 		this->requireShadowMapUpdate();
 
-		this->FocusEventData.unset();
+		this->FocusEventData->unset();
 	}
 
 	if (this->ShadowMapShouldUpdate) {

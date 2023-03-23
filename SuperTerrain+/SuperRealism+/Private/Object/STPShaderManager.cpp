@@ -1,6 +1,7 @@
 #include <SuperRealism+/Object/STPShaderManager.h>
 //IO
 #include <SuperTerrain+/Utility/STPFile.h>
+#include <SuperTerrain+/Utility/STPStringUtility.h>
 #include <SuperRealism+/STPRealismInfo.h>
 //Log Output
 #include <SuperRealism+/Utility/STPLogHandler.hpp>
@@ -11,12 +12,12 @@
 //GLAD
 #include <glad/glad.h>
 
-//System
-#include <array>
-#include <sstream>
 #include <string_view>
+#include <algorithm>
+//System IO
+#include <filesystem>
+#include <sstream>
 
-using std::array;
 using std::string;
 using std::string_view;
 using std::istringstream;
@@ -24,7 +25,6 @@ using std::ostringstream;
 using std::vector;
 
 using std::endl;
-
 using std::make_unique;
 
 using namespace SuperTerrainPlus::STPRealism;
@@ -63,28 +63,18 @@ void STPLogHandler::handle(const string_view log) {
 
 /* STPShaderManager */
 
-constexpr static array<string_view, 9u> mShaderIncludeRegistry = {
-	"/Common/STPAnimatedWave.glsl",
-	"/Common/STPAtmosphericScattering.glsl",
-	"/Common/STPCameraInformation.glsl",
-	"/Common/STPGeometryBufferWriter.glsl",
-	"/Common/STPLightSpaceInformation.glsl",
-	"/Common/STPMaterialRegistry.glsl",
-	"/Common/STPNullPointer.glsl",
-	"/Common/STPRayTracedIntersectionData.glsl",
-	"/Common/STPSeparableShaderPredefine.glsl"
-};
-
-void STPShaderManager::STPShaderManagerDetail::STPShaderDeleter::operator()(const STPOpenGL::STPuint shader) const noexcept {
+void STPShaderManager::STPDetail::STPShaderDeleter::operator()(const STPOpenGL::STPuint shader) const noexcept {
 	glDeleteShader(shader);
 }
 
-STPShaderManager::STPShaderSource::STPShaderIncludePath& STPShaderManager::STPShaderSource::STPShaderIncludePath::operator[](const char* const path) {
+STPShaderManager::STPShaderSource::STPShaderIncludePath&
+	STPShaderManager::STPShaderSource::STPShaderIncludePath::operator[](const char* const path) {
 	this->Pathname.emplace_back(path);
 	return *this;
 }
 
-STPShaderManager::STPShaderSource::STPShaderSource(string&& name, string&& source) : SourceName(std::move(name)), Source(std::move(source)) {
+STPShaderManager::STPShaderSource::STPShaderSource(string&& name, string&& source) :
+	SourceName(std::move(name)), Source(std::move(source)) {
 
 }
 
@@ -139,33 +129,36 @@ unsigned int STPShaderManager::STPShaderSource::define(const STPMacroValueDictio
 	return macroReplaced;
 }
 
-inline static bool includeImpl(const char* const name, const size_t nameLen, const string& source) noexcept {
-	//check if path exists as named string
-	if (!glIsNamedStringARB(static_cast<GLint>(nameLen), name)) {
-		//try to add the named string to GL virtual include system
-		glNamedStringARB(GL_SHADER_INCLUDE_ARB, static_cast<GLint>(nameLen), name, static_cast<GLint>(source.size()), source.c_str());
-		return true;
-	}
-	return false;
-}
-
 void STPShaderManager::initialise() {
-	//load source code
-	for (const auto& path : mShaderIncludeRegistry) {
-		using namespace SuperTerrainPlus;
+	constexpr static auto ShaderIncludeRootFilename = STPStringUtility::concatCharArray(STPRealismInfo::ShaderPath, "/Common");
 
-		ostringstream filename;
-		filename << STPRealismInfo::ShaderPath << path;
-		includeImpl(path.data(), path.length(), STPFile::read(filename.str().c_str()));
+	//load shader include files by traversing all files in the include path
+	using namespace std::filesystem;
+	const path shaderRoot = path(STPRealismInfo::ShaderPath).make_preferred(),
+		shaderIncludeRoot = path(ShaderIncludeRootFilename.data()).make_preferred(),
+		shaderFileExt(".glsl");
+	directory_iterator shader_include_dir(shaderIncludeRoot);
+	for (const auto& entry : shader_include_dir) {
+		const path& entry_path = entry.path();
+		if (entry_path.extension() != shaderFileExt) {
+			//don't care about non-GLSL shader source
+			continue;
+		}
+		//load shader code into graphics context using the full filename
+		const string shader_code = STPFile::read(entry_path.string().c_str());
+		//we want to find the path relative to the shader root path
+		string relative_entry_path = entry_path.lexically_proximate(shaderRoot).string();
+
+		//normalise path separator so it is readable according to GL standard
+		//On POSIX this should do nothing since our filename will not contain this special symbol.
+		//On Windows this replaces back slashes with the forward ones.
+		std::replace(relative_entry_path.begin(), relative_entry_path.end(), '\\', '/');
+		relative_entry_path.reserve(relative_entry_path.length() + 1u);
+		relative_entry_path.insert(0u, 1u, '/');
+
+		glNamedStringARB(GL_SHADER_INCLUDE_ARB, static_cast<GLint>(relative_entry_path.length()),
+			relative_entry_path.c_str(), static_cast<GLint>(shader_code.length()), shader_code.c_str());
 	}
-}
-
-bool STPShaderManager::Addinclude(const string& name, const string& source) noexcept {
-	return includeImpl(name.c_str(), name.length(), source);
-}
-
-void STPShaderManager::Removeinclude(const string& name) noexcept {
-	glDeleteNamedStringARB(static_cast<GLint>(name.size()), name.c_str());
 }
 
 STPShaderManager::STPShader STPShaderManager::make(const STPOpenGL::STPenum type, const STPShaderSource& source) {

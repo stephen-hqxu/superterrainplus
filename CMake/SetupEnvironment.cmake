@@ -19,8 +19,10 @@ if(MSVC)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2 /Zc:lambda")
 
 	# disable warning about using stl in a dll project
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275")
-	set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -err-no -diag-suppress 1388,1394 -Xcompiler /wd4251,/wd4275")
+	set(STP_MSVC_WARNING "/wd4251 /wd4275")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STP_MSVC_WARNING}")
+	set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -err-no -diag-suppress 1388,1394 -Xcompiler \"${STP_MSVC_WARNING}\"")
+	unset(STP_MSVC_WARNING)
 
 	if(STP_ENABLE_WARNING)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
