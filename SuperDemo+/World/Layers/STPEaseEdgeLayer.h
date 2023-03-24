@@ -23,7 +23,7 @@ namespace {
 
 	public:
 
-		STPEaseEdgeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+		STPEaseEdgeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 			STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}

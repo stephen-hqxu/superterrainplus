@@ -12,7 +12,7 @@ namespace {
 	class STPRiverErodeLayer : public STPCrossLayer {
 	public:
 
-		STPRiverErodeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+		STPRiverErodeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 			STPCrossLayer(cache_size, global_seed, salt, parent) {
 			//parent: noise to river layer
 		}

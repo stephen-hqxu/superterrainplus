@@ -63,7 +63,7 @@ namespace {
 
 	public:
 
-		STPScaleLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const STPScaleType type, STPLayer* const parent) :
+		STPScaleLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const STPScaleType type, STPLayer& parent) :
 			STPLayer(cache_size, global_seed, salt, { parent }),
 			Type(type) {
 			//parent: undefined

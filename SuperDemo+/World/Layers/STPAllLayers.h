@@ -6,8 +6,6 @@
 
 //Storage
 #include <list>
-#include <vector>
-#include <memory>
 
 namespace STPDemo {
 
@@ -17,10 +15,14 @@ namespace STPDemo {
 	class STPLayerChainBuilder : public SuperTerrainPlus::STPDiversity::STPBiomeFactory {
 	private:
 
+		/**
+		 * @brief STPLayerPipeline contains a complete pipeline of layers to generate a biome map.
+		*/
+		struct STPLayerPipeline;
 		//store all constructed biome layer tree
-		std::list<std::vector<std::unique_ptr<SuperTerrainPlus::STPDiversity::STPLayer>>> LayerStructureStorage;
+		std::list<STPLayerPipeline> LayerStructureStorage;
 
-		SuperTerrainPlus::STPDiversity::STPLayer* supply() override;
+		SuperTerrainPlus::STPDiversity::STPLayer& supply() override;
 
 	public:
 
@@ -33,7 +35,7 @@ namespace STPDemo {
 		*/
 		STPLayerChainBuilder(glm::uvec2, SuperTerrainPlus::STPDiversity::Seed);
 
-		~STPLayerChainBuilder() = default;
+		~STPLayerChainBuilder();
 
 	};
 

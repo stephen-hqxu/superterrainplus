@@ -47,7 +47,7 @@ namespace {
 		class STPOceanTemperate : public STPCrossLayer {
 		public:
 
-			STPOceanTemperate(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPOceanTemperate(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 				STPCrossLayer(cache_size, global_seed, salt, parent) {
 				//parent: STPOceanExtreme
 			}
@@ -81,7 +81,7 @@ namespace {
 		class STPOceanExtreme : public STPCrossLayer {
 		public:
 
-			STPOceanExtreme(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPOceanExtreme(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 				STPCrossLayer(cache_size, global_seed, salt, parent) {
 				//parent: STPOceanNoise
 			}
@@ -117,7 +117,7 @@ namespace {
 		public:
 
 			STPOceanTransition(
-				const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+				const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 				STPLayer(cache_size, global_seed, salt, { parent }) {
 
 			}
@@ -160,7 +160,7 @@ namespace {
 		class STPOceanMix : public STPLayer {
 		public:
 
-			STPOceanMix(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const land, STPLayer* const ocean) :
+			STPOceanMix(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& land, STPLayer& ocean) :
 				STPLayer(cache_size, global_seed, salt, { land, ocean }) {
 				//parent 0: land
 				//parent 1: STPOceanTemperate

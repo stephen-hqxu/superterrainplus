@@ -17,7 +17,7 @@ namespace {
 		 * @param salt Random salt
 		 * @param parent The previous layer
 		*/
-		STPCrossLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+		STPCrossLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 			STPLayer(cache_size, global_seed, salt, { parent }) {
 
 		}

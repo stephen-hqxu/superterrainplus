@@ -49,7 +49,7 @@ namespace {
 
 	public:
 
-		STPBaseBiomeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+		STPBaseBiomeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 			STPLayer(cache_size, global_seed, salt, { parent }) {
 			//parent:: climate layer
 		}

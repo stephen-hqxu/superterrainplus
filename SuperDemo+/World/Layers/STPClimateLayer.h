@@ -31,7 +31,7 @@ namespace {
 		class STPClimateSingle : public STPLayer {
 		public:
 
-			STPClimateSingle(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPClimateSingle(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 				STPLayer(cache_size, global_seed, salt, { parent }) {
 
 			}
@@ -70,7 +70,7 @@ namespace {
 		class STPClimateModerate : public STPCrossLayer {
 		public:
 
-			STPClimateModerate(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPClimateModerate(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 				STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 			}
@@ -99,7 +99,7 @@ namespace {
 		class STPClimateExtreme : public STPCrossLayer {
 		public:
 
-			STPClimateExtreme(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+			STPClimateExtreme(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 				STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 			}

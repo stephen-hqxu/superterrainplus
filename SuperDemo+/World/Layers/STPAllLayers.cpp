@@ -43,48 +43,74 @@ namespace Reg = STPDemo::STPBiomeRegistry;
 #include "STPScaleLayer.h"
 #include "STPSmoothScaleLayer.h"
 
+/* --------------------------------- */
+
 using namespace STPDemo;
 
 //The size of individual cache
-static constexpr size_t Cachesize = 2048u;
+static constexpr size_t CacheSize = 2048u;
+
+#define LAYER_COMMON CacheSize, global
+
+struct STPLayerChainBuilder::STPLayerPipeline {
+public:
+
+	//for reduced verbosity, we use obfuscated naming, plus naming doesn't help much here
+	//base biome
+	//4096
+	STPContinentLayer A0;
+	//2048
+	STPScaleLayer B0;
+	STPLandLayer B1;
+	//1024
+	STPScaleLayer C0;
+	STPLandLayer C1, C2, C3;
+	STPIslandLayer C4;
+
+	//debug for speedy generation
+	STPScaleLayer D0, D1, D2;
+	STPVoronoiLayer D3, D4, D5;
+
+	//The layer where generation should start;
+	//remember to change it whenever the layer pipeline changes.
+	STPLayer& Root = this->D5;
+
+	/**
+	 * @brief Create a new layer pipeline.
+	 * @param global The global seed.
+	*/
+	STPLayerPipeline(const Seed global) :
+		A0(LAYER_COMMON, 23457829ull),
+		
+		B0(LAYER_COMMON, 875944ull, STPScaleLayer::STPScaleType::FUZZY, this->A0),
+		B1(LAYER_COMMON, 5748329ull, this->B0),
+
+		C0(LAYER_COMMON, 8947358941ull, STPScaleLayer::STPScaleType::NORMAL, this->B1),
+		C1(LAYER_COMMON, 361249673ull, this->C0),
+		C2(LAYER_COMMON, 8769575ull, this->C1),
+		C3(LAYER_COMMON, 43562783426564ull, this->C2),
+		C4(LAYER_COMMON, 74368ull, this->C3),
+
+		D0(LAYER_COMMON, 1ull, STPScaleLayer::STPScaleType::NORMAL, this->C4),
+		D1(LAYER_COMMON, 2ull, STPScaleLayer::STPScaleType::NORMAL, this->D0),
+		D2(LAYER_COMMON, 3ull, STPScaleLayer::STPScaleType::NORMAL, this->D1),
+		D3(LAYER_COMMON, 4ull, false, this->D2),
+		D4(LAYER_COMMON, 5ull, false, this->D3),
+		//the last layer can be uncached because each pixel is only referenced once
+		D5(0ull, global, 6ull, false, this->D4) {
+
+	}
+
+	~STPLayerPipeline() = default;
+
+};
 
 STPLayerChainBuilder::STPLayerChainBuilder(const glm::uvec2 dimension, const Seed global) : STPBiomeFactory(dimension), GlobalSeed(global) {
 
 }
 
-#define EMPLACE_LAYER(LAYER, ...) emplace_back(std::make_unique<LAYER>(__VA_ARGS__)).get()
+STPDemo::STPLayerChainBuilder::~STPLayerChainBuilder() = default;
 
-STPLayer* STPLayerChainBuilder::supply() {
-	//create a new manager, don't worry about deletion because our engine will manage it pretty well
-	auto& tree = this->LayerStructureStorage.emplace_back();
-	STPLayer* base;
-
-	//building layer chain
-	//we use a hand-typed random salt
-	//base biome
-	//4096
-	base = tree.EMPLACE_LAYER(STPContinentLayer, Cachesize, this->GlobalSeed, 23457829ull);
-	//2048
-	base = tree.EMPLACE_LAYER(STPScaleLayer, Cachesize, this->GlobalSeed, 875944ull, STPScaleLayer::STPScaleType::FUZZY, base);
-	base = tree.EMPLACE_LAYER(STPLandLayer, Cachesize, this->GlobalSeed, 5748329ull, base);
-	//1024
-	base = tree.EMPLACE_LAYER(STPScaleLayer, Cachesize, this->GlobalSeed, 8947358941ull, STPScaleLayer::STPScaleType::NORMAL, base);
-	base = tree.EMPLACE_LAYER(STPLandLayer, Cachesize, this->GlobalSeed, 361249673ull, base);
-	base = tree.EMPLACE_LAYER(STPLandLayer, Cachesize, this->GlobalSeed, 8769575ull, base);
-	base = tree.EMPLACE_LAYER(STPLandLayer, Cachesize, this->GlobalSeed, 43562783426564ull, base);
-	base = tree.EMPLACE_LAYER(STPIslandLayer, Cachesize, this->GlobalSeed, 74368ull, base);
-
-	//debug for speedy generation
-	base = tree.EMPLACE_LAYER(STPScaleLayer, Cachesize, this->GlobalSeed, 1ull, STPScaleLayer::STPScaleType::NORMAL, base);
-	base = tree.EMPLACE_LAYER(STPScaleLayer, Cachesize, this->GlobalSeed, 2ull, STPScaleLayer::STPScaleType::NORMAL, base);
-	base = tree.EMPLACE_LAYER(STPScaleLayer, Cachesize, this->GlobalSeed, 3ull, STPScaleLayer::STPScaleType::NORMAL, base);
-	base = tree.EMPLACE_LAYER(STPVoronoiLayer, Cachesize, this->GlobalSeed, 4ull, false, base);
-	base = tree.EMPLACE_LAYER(STPVoronoiLayer, Cachesize, this->GlobalSeed, 5ull, false, base);
-	//the last layer can be uncached because each pixel is only referenced once
-	base = tree.EMPLACE_LAYER(STPVoronoiLayer, 0u, this->GlobalSeed, 6ull, false, base);
-
-	tree.shrink_to_fit();
-
-	//return the pointer to the root of the layer tree
-	return base;
+STPLayer& STPLayerChainBuilder::supply() {
+	return this->LayerStructureStorage.emplace_back(this->GlobalSeed).Root;
 }

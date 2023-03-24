@@ -15,8 +15,8 @@ namespace {
 
 	public:
 
-		STPHillsLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const land,
-			STPLayer* const noise) : STPLayer(cache_size, global_seed, salt, { land, noise }) {
+		STPHillsLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& land,
+			STPLayer& noise) : STPLayer(cache_size, global_seed, salt, { land, noise }) {
 			//parent 0: land / biome
 			//parent 1: noise
 		}

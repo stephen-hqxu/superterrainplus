@@ -10,7 +10,7 @@ namespace {
 	class STPRiverMixLayer : public STPLayer {
 	public:
 
-		STPRiverMixLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent_land, STPLayer* const parent_river) :
+		STPRiverMixLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent_land, STPLayer& parent_river) :
 			STPLayer(cache_size, global_seed, salt, { parent_land, parent_river }) {
 			//parent 0: land
 			//parent 1: river noise

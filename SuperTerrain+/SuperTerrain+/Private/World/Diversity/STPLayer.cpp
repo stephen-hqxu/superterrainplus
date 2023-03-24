@@ -186,7 +186,7 @@ Sample STPLayer::STPLocalSampler::choose(const Sample var1, const Sample var2, c
 STPLayer::STPLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const STPAscendantInitialiser ascendant) :
 	AscendantCount(ascendant.size()), Ascendant(this->AscendantCount == 0u ? nullptr : make_unique<STPLayer*[]>(this->AscendantCount)),
 	Salt(salt), LayerSeed(STPLayer::seedLayer(global_seed, this->Salt)) {
-	std::copy(ascendant.begin(), ascendant.end(), this->Ascendant.get());
+	std::transform(ascendant.begin(), ascendant.end(), this->Ascendant.get(), [](auto asc) { return &asc.get(); });
 
 	//create a cache
 	if (cache_size > 0u) {

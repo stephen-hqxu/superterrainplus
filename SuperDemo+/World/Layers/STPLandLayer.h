@@ -12,7 +12,7 @@ namespace {
 	class STPLandLayer : public STPXCrossLayer {
 	public:
 
-		STPLandLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+		STPLandLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 			STPXCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}

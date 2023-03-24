@@ -45,7 +45,7 @@ namespace {
 
 	public:
 
-		STPVoronoiLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const bool is3D, STPLayer* const parent) :
+		STPVoronoiLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const bool is3D, STPLayer& parent) :
 			STPLayer(cache_size, global_seed, salt, { parent }),
 			is3D(is3D), voronoi_seed(std::hash<Seed> {}(global_seed)) {
 			

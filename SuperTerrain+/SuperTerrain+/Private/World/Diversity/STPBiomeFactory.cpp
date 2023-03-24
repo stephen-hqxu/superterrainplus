@@ -13,7 +13,7 @@ STPBiomeFactory::STPProductionLineCreator::STPProductionLineCreator(STPBiomeFact
 
 }
 
-STPLayer* STPBiomeFactory::STPProductionLineCreator::operator()() {
+STPLayer& STPBiomeFactory::STPProductionLineCreator::operator()() {
 	return this->Factory.supply();
 }
 
@@ -23,7 +23,7 @@ STPBiomeFactory::STPBiomeFactory(const uvec2 dimension) : LayerProductionLine(*t
 
 void STPBiomeFactory::operator()(Sample* const biomemap, const ivec2 offset) {
 	//request a production line
-	STPLayer* tree = this->LayerProductionLine.requestObject();
+	STPLayer& tree = this->LayerProductionLine.requestObject();
 
 	//y-component is interpreted as z coordinate in world space
 
@@ -33,10 +33,10 @@ void STPBiomeFactory::operator()(Sample* const biomemap, const ivec2 offset) {
 			//calculate the map index
 			const unsigned int index = x + z * this->BiomeDimension.x;
 			//get the biome at given coordinate
-			biomemap[index] = tree->retrieve(static_cast<int>(x) + offset.x, 0, static_cast<int>(z) + offset.y);
+			biomemap[index] = tree.retrieve(static_cast<int>(x) + offset.x, 0, static_cast<int>(z) + offset.y);
 		}
 	}
 
 	//free the producer
-	this->LayerProductionLine.returnObject(std::move(tree));
+	this->LayerProductionLine.returnObject(std::ref(tree));
 }

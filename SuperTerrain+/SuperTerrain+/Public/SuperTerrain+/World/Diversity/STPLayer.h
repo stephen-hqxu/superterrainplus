@@ -6,6 +6,7 @@
 #include "STPBiomeDefine.h"
 
 //System
+#include <utility>
 #include <memory>
 #include <type_traits>
 
@@ -144,7 +145,7 @@ namespace SuperTerrainPlus::STPDiversity {
 	public:
 
 		//A initialiser list of pointers to ascendant layer(s).
-		typedef std::initializer_list<STPLayer*> STPAscendantInitialiser;
+		typedef std::initializer_list<std::reference_wrapper<STPLayer>> STPAscendantInitialiser;
 
 		//Salt is a random value used to mix the global seed to generate layer and local seed
 		const Seed Salt;

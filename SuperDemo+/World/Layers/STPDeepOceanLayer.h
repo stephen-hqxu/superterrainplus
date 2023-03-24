@@ -12,7 +12,7 @@ namespace {
 	class STPDeepOceanLayer : public STPCrossLayer {
 	public:
 
-		STPDeepOceanLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
+		STPDeepOceanLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
 			STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
