@@ -49,12 +49,13 @@ protected:
 
 	Sample sample(int x, int y, int z) override {
 		//simply use the value from the parent
-		return this->getAscendant()->retrieve(x, y, z);
+		return this->getAscendant().retrieve(x, y, z);
 	}
 
 public:
 
-	NormalLayer(const size_t cache, const Seed seed, const Seed salt, STPLayer* const ascendant) : STPLayer(cache, seed, salt, ascendant) {
+	NormalLayer(const size_t cache, const Seed seed, const Seed salt, STPLayer* const ascendant) :
+		STPLayer(cache, seed, salt, { ascendant }) {
 
 	}
 
@@ -64,13 +65,13 @@ class MergingLayer : public STPLayer {
 protected:
 
 	Sample sample(const int x, const int y, const int z) override {
-		return static_cast<Sample>(this->getAscendant(0)->retrieve(x, y, z) + this->getAscendant(1)->retrieve(x, y, z));
+		return static_cast<Sample>(this->getAscendant(0).retrieve(x, y, z) + this->getAscendant(1).retrieve(x, y, z));
 	}
 
 public:
 
 	MergingLayer(const size_t cache, const Seed seed, const Seed salt, STPLayer* const asc1, STPLayer* const asc2) :
-		STPLayer(cache, seed, salt, asc1, asc2) {
+		STPLayer(cache, seed, salt, { asc1, asc2 }) {
 
 	}
 
@@ -211,8 +212,6 @@ SCENARIO("STPLayer connected with some testing layers for biome generation", "[D
 				THEN("The orphan layer properties should be validated") {
 					REQUIRE(FirstLayer->cacheSize() == 0u);
 					REQUIRE(FirstLayer->AscendantCount == 0u);
-					REQUIRE(FirstLayer->getAscendant() == nullptr);
-					REQUIRE(FirstLayer->getAscendant(123u) == nullptr);
 					REQUIRE_FALSE(FirstLayer->isMerging());
 				}
 
@@ -231,7 +230,7 @@ SCENARIO("STPLayer connected with some testing layers for biome generation", "[D
 					THEN("The properties of the new layer should be validated") {
 						REQUIRE(SecondLayer->cacheSize() == 32u);
 						REQUIRE(SecondLayer->AscendantCount == 1u);
-						REQUIRE(SecondLayer->getAscendant() == FirstLayer);
+						REQUIRE(&SecondLayer->getAscendant() == FirstLayer);
 						REQUIRE_FALSE(SecondLayer->isMerging());
 					}
 
@@ -254,7 +253,7 @@ SCENARIO("STPLayer connected with some testing layers for biome generation", "[D
 						THEN("The properties of all tree layers are validated") {
 							REQUIRE(MergeLayer->isMerging());
 							REQUIRE(MergeLayer->AscendantCount == 2u);
-							REQUIRE((MergeLayer->getAscendant(0) == BranchLayer1 && MergeLayer->getAscendant(1) == BranchLayer2));
+							REQUIRE((&MergeLayer->getAscendant(0) == BranchLayer1 && &MergeLayer->getAscendant(1) == BranchLayer2));
 						}
 
 						THEN("The output from the tree should be correct") {

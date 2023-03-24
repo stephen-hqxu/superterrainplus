@@ -8,7 +8,6 @@
 #include <string>
 
 namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPBiome provides an abstract base class for each biome definition

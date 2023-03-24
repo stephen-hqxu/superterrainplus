@@ -1,12 +1,10 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_RIVER_ERODE_LAYER_H_
+#define _STP_RIVER_ERODE_LAYER_H_
 
 #include "STPCrossLayer.h"
-#include "../Biomes/STPBiomeRegistry.h"
 
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPRiverErodeLayer erodes the river path to make it larger
@@ -21,10 +19,10 @@ namespace STPDemo {
 
 		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, Seed) override {
 			//centre is river, return a river if any of the sample is a river
-			if (!STPBiomeRegistry::applyAll([](const Sample val) -> bool {
-				return val != STPBiomeRegistry::River.ID;
+			if (!Reg::applyAll([](const Sample val) -> bool {
+				return val != Reg::River.ID;
 				}, north, east, south, west)) {
-				return STPBiomeRegistry::River.ID;
+				return Reg::River.ID;
 			}
 			
 			//otherwise don't touch
@@ -34,4 +32,4 @@ namespace STPDemo {
 	};
 
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_RIVER_ERODE_LAYER_H_

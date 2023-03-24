@@ -1,12 +1,10 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_CLIMATE_LAYER_H_
+#define _STP_CLIMATE_LAYER_H_
 
 #include "STPCrossLayer.h"
-#include "../Biomes/STPBiomeRegistry.h"
 
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPClimateLayer starts to populate the map with climate (temperature and precipitation/humidity) for later generation.
@@ -30,21 +28,21 @@ namespace STPDemo {
 		/**
 		 * @brief STPClimateSingle adds only cold or dry climate
 		*/
-		class STPClimateSingle : public SuperTerrainPlus::STPDiversity::STPLayer {
+		class STPClimateSingle : public STPLayer {
 		public:
 
 			STPClimateSingle(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
-				STPLayer(cache_size, global_seed, salt, parent) {
+				STPLayer(cache_size, global_seed, salt, { parent }) {
 
 			}
 
 			Sample sample(const int x, const int y, const int z) override {
 				//get the sample from the previous layer
-				const Sample val = this->getAscendant()->retrieve(x, y, z);
+				const Sample val = this->getAscendant().retrieve(x, y, z);
 				//get the local RNG
 				const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 
-				if (STPBiomeRegistry::isShallowOcean(val)) {
+				if (Reg::isShallowOcean(val)) {
 					//if it's ocean, we don't touch it
 					return val;
 				}
@@ -53,12 +51,12 @@ namespace STPDemo {
 				//1/6 chance of getting a forest or mountain
 				const Sample i = rng.nextValue(6);
 				switch (i) {
-				case 0u: return STPBiomeRegistry::Forest.ID;
+				case 0u: return Reg::Forest.ID;
 					break;
-				case 1u: return STPBiomeRegistry::Mountain.ID;
+				case 1u: return Reg::Mountain.ID;
 					break;
 				//otherwise it's still a plains
-				default: return STPBiomeRegistry::Plains.ID;
+				default: return Reg::Plains.ID;
 					break;
 				}
 
@@ -82,12 +80,12 @@ namespace STPDemo {
 				//escape the one that is extreme on the centre
 				//and either temperate on one of the other side
 				//and replace it with a more temperate biome
-				if (center == STPBiomeRegistry::Plains.ID
-					&& (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return !(val == STPBiomeRegistry::Mountain.ID || val == STPBiomeRegistry::Forest.ID);
+				if (center == Reg::Plains.ID
+					&& (!Reg::applyAll([](Sample val) -> bool {
+						return !(val == Reg::Mountain.ID || val == Reg::Forest.ID);
 						}, north, east, south, west))) {
 					//land
-					return STPBiomeRegistry::Desert.ID;
+					return Reg::Desert.ID;
 				}
 
 				return center;
@@ -111,15 +109,15 @@ namespace STPDemo {
 				//escape the one that is cold on the centre
 				//and either hot or warm on one of the other side
 				//extreme climate cannot be placed together
-				if (center != STPBiomeRegistry::Forest.ID
-					|| STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return val != STPBiomeRegistry::Plains.ID && val != STPBiomeRegistry::Desert.ID;
+				if (center != Reg::Forest.ID
+					|| Reg::applyAll([](Sample val) -> bool {
+						return val != Reg::Plains.ID && val != Reg::Desert.ID;
 						}, north, east, south, west)) {
 					//land
 					return center;
 				}
 
-				return STPBiomeRegistry::Mountain.ID;
+				return Reg::Mountain.ID;
 			}
 
 		};
@@ -127,4 +125,4 @@ namespace STPDemo {
 	};
 
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_CLIMATE_LAYER_H_

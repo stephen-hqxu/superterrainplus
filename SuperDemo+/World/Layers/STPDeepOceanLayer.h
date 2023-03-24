@@ -1,12 +1,10 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_DEEP_OCEAN_LAYER_H_
+#define _STP_DEEP_OCEAN_LAYER_H_
 
 #include "STPCrossLayer.h"
-#include "../Biomes/STPBiomeRegistry.h"
 
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPDeepOceanLayer adds deep ocean if it's surrounded by shallow ocean and not next to land
@@ -21,41 +19,41 @@ namespace STPDemo {
 
 		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, Seed) override {
 			//if the centre is not shallow or it's not even ocean, we can't change anything
-			if (!STPBiomeRegistry::isShallowOcean(center)) {
+			if (!Reg::isShallowOcean(center)) {
 				return center;
 			}
 
 			//test if we are surrounded by shallow ocean
 			Sample i = 0;
-			if (STPBiomeRegistry::isShallowOcean(north)) {
+			if (Reg::isShallowOcean(north)) {
 				i++;
 			}
-			if (STPBiomeRegistry::isShallowOcean(east)) {
+			if (Reg::isShallowOcean(east)) {
 				i++;
 			}
-			if (STPBiomeRegistry::isShallowOcean(south)) {
+			if (Reg::isShallowOcean(south)) {
 				i++;
 			}
-			if (STPBiomeRegistry::isShallowOcean(west)) {
+			if (Reg::isShallowOcean(west)) {
 				i++;
 			}
 			
 			//if we are surrounded, generate their relative deep ocean
 			if (i > 3) {
-				if (center == STPBiomeRegistry::Ocean.ID) {
-					return STPBiomeRegistry::DeepOcean.ID;
+				if (center == Reg::Ocean.ID) {
+					return Reg::DeepOcean.ID;
 				}
-				if (center == STPBiomeRegistry::WarmOcean.ID) {
-					return STPBiomeRegistry::DeepWarmOcean.ID;
+				if (center == Reg::WarmOcean.ID) {
+					return Reg::DeepWarmOcean.ID;
 				}
-				if (center == STPBiomeRegistry::LukewarmOcean.ID) {
-					return STPBiomeRegistry::DeepLukewarmOcean.ID;
+				if (center == Reg::LukewarmOcean.ID) {
+					return Reg::DeepLukewarmOcean.ID;
 				}
-				if (center == STPBiomeRegistry::ColdOcean.ID) {
-					return STPBiomeRegistry::DeepColdOcean.ID;
+				if (center == Reg::ColdOcean.ID) {
+					return Reg::DeepColdOcean.ID;
 				}
-				if (center == STPBiomeRegistry::FrozenOcean.ID) {
-					return STPBiomeRegistry::DeepFrozenOcean.ID;
+				if (center == Reg::FrozenOcean.ID) {
+					return Reg::DeepFrozenOcean.ID;
 				}
 
 			}
@@ -64,4 +62,4 @@ namespace STPDemo {
 		}
 	};
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_DEEP_OCEAN_LAYER_H_

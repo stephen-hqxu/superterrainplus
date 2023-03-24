@@ -1,26 +1,22 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_HILLS_LAYER_H_
+#define _STP_HILLS_LAYER_H_
 
-#include <SuperTerrain+/World/Diversity/STPLayer.h>
-#include "../Biomes/STPBiomeRegistry.h"
-
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPHillsLayer generates hills that are located at the central of some biomes from the noise function
 	*/
-	class STPHillsLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
+	class STPHillsLayer : public STPLayer {
 	private:
 
 		//Chance of having a hill
-		static constexpr short HILLS_CHANCE = 29;
+		static constexpr Sample HillsChance = 29u;
 
 	public:
 
 		STPHillsLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const land,
-			STPLayer* const noise) : STPLayer(cache_size, global_seed, salt, land, noise) {
+			STPLayer* const noise) : STPLayer(cache_size, global_seed, salt, { land, noise }) {
 			//parent 0: land / biome
 			//parent 1: noise
 		}
@@ -29,83 +25,83 @@ namespace STPDemo {
 			//get the local RNG
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 			//get the parent samples
-			const Sample land_val = this->getAscendant(0)->retrieve(x, y, z);
-			const Sample noise_val = this->getAscendant(1)->retrieve(x, y, z);
+			const Sample land_val = this->getAscendant(0).retrieve(x, y, z);
+			const Sample noise_val = this->getAscendant(1).retrieve(x, y, z);
 			
 			//chance of having a hill
-			const Sample is_hill = (noise_val - 2) % STPHillsLayer::HILLS_CHANCE;
+			const Sample is_hill = (noise_val - 2) % STPHillsLayer::HillsChance;
 
 			//1/3 chance to have a hill
 			if (rng.nextValue(3) == 0 || is_hill == 0) {
 				Sample l = land_val;
 				//convert biomes to their respective hill biome
-				if (land_val == STPBiomeRegistry::Desert.ID) {
-					l = STPBiomeRegistry::DesertHills.ID;
+				if (land_val == Reg::Desert.ID) {
+					l = Reg::DesertHills.ID;
 				}
-				else if (land_val == STPBiomeRegistry::Taiga.ID) {
-					l = STPBiomeRegistry::TaigaHills.ID;
+				else if (land_val == Reg::Taiga.ID) {
+					l = Reg::TaigaHills.ID;
 				}
-				else if (land_val == STPBiomeRegistry::Mountain.ID) {
-					l = STPBiomeRegistry::WoodedMountain.ID;
+				else if (land_val == Reg::Mountain.ID) {
+					l = Reg::WoodedMountain.ID;
 				}
-				else if (land_val == STPBiomeRegistry::SnowyTundra.ID || land_val == STPBiomeRegistry::SnowyTaiga.ID) {
-					l = STPBiomeRegistry::SnowyMountain.ID;
+				else if (land_val == Reg::SnowyTundra.ID || land_val == Reg::SnowyTaiga.ID) {
+					l = Reg::SnowyMountain.ID;
 				}
-				else if (land_val == STPBiomeRegistry::Plains.ID) {
-					l = rng.nextValue(3) == 0 ? STPBiomeRegistry::ForestHills.ID : STPBiomeRegistry::Forest.ID;
+				else if (land_val == Reg::Plains.ID) {
+					l = rng.nextValue(3) == 0 ? Reg::ForestHills.ID : Reg::Forest.ID;
 				}
-				else if (land_val == STPBiomeRegistry::Forest.ID) {
-					l = STPBiomeRegistry::ForestHills.ID;
+				else if (land_val == Reg::Forest.ID) {
+					l = Reg::ForestHills.ID;
 				}
-				else if (land_val == STPBiomeRegistry::Jungle.ID) {
-					l = STPBiomeRegistry::JungleHills.ID;
+				else if (land_val == Reg::Jungle.ID) {
+					l = Reg::JungleHills.ID;
 				}
-				else if (land_val == STPBiomeRegistry::Savannah.ID) {
-					l = STPBiomeRegistry::SavannahPlateau.ID;
+				else if (land_val == Reg::Savannah.ID) {
+					l = Reg::SavannahPlateau.ID;
 				}
-				else if (land_val == STPBiomeRegistry::Swamp.ID) {
-					l = STPBiomeRegistry::SwampHills.ID;
+				else if (land_val == Reg::Swamp.ID) {
+					l = Reg::SwampHills.ID;
 				}
-				else if (land_val == STPBiomeRegistry::Badlands.ID) {
-					l = STPBiomeRegistry::BadlandsPlateau.ID;
+				else if (land_val == Reg::Badlands.ID) {
+					l = Reg::BadlandsPlateau.ID;
 				}
 				//randomly generate some deep ocean as hills
-				else if (land_val == STPBiomeRegistry::Ocean.ID) {
-					l = STPBiomeRegistry::DeepOcean.ID;
+				else if (land_val == Reg::Ocean.ID) {
+					l = Reg::DeepOcean.ID;
 				}
-				else if (land_val == STPBiomeRegistry::WarmOcean.ID) {
-					l = STPBiomeRegistry::DeepWarmOcean.ID;
+				else if (land_val == Reg::WarmOcean.ID) {
+					l = Reg::DeepWarmOcean.ID;
 				}
-				else if (land_val == STPBiomeRegistry::LukewarmOcean.ID) {
-					l = STPBiomeRegistry::DeepLukewarmOcean.ID;
+				else if (land_val == Reg::LukewarmOcean.ID) {
+					l = Reg::DeepLukewarmOcean.ID;
 				}
-				else if (land_val == STPBiomeRegistry::ColdOcean.ID) {
-					l = STPBiomeRegistry::DeepColdOcean.ID;
+				else if (land_val == Reg::ColdOcean.ID) {
+					l = Reg::DeepColdOcean.ID;
 				}
-				else if (land_val == STPBiomeRegistry::FrozenOcean.ID) {
-					l = STPBiomeRegistry::DeepFrozenOcean.ID;
+				else if (land_val == Reg::FrozenOcean.ID) {
+					l = Reg::DeepFrozenOcean.ID;
 				}
 
 				//now let's add some island at the centre of some ocean, given 1/3 chance of spawning
-				if (STPBiomeRegistry::isOcean(land_val) && !STPBiomeRegistry::isShallowOcean(land_val) && rng.nextValue(3) == 0) {
+				if (Reg::isOcean(land_val) && !Reg::isShallowOcean(land_val) && rng.nextValue(3) == 0) {
 					//filter out deep ocean
 					//giving 1/2 chance of each biome, feel free to add some more...
-					l = rng.nextValue(2) == 0 ? STPBiomeRegistry::Plains.ID : STPBiomeRegistry::Forest.ID;
+					l = rng.nextValue(2) == 0 ? Reg::Plains.ID : Reg::Forest.ID;
 				}
 
 				//make sure the hill is strictly at the centre of the biome, not on the edge
 				if (l != land_val) {
 					unsigned char m = 0x00u;
-					if (land_val ==	this->getAscendant(0)->retrieve(x, y, z - 1)) {
+					if (land_val ==	this->getAscendant(0).retrieve(x, y, z - 1)) {
 						m++;
 					}
-					if (land_val == this->getAscendant(0)->retrieve(x + 1, y, z)) {
+					if (land_val == this->getAscendant(0).retrieve(x + 1, y, z)) {
 						m++;
 					}
-					if (land_val == this->getAscendant(0)->retrieve(x - 1, y, z)) {
+					if (land_val == this->getAscendant(0).retrieve(x - 1, y, z)) {
 						m++;
 					}
-					if (land_val == this->getAscendant(0)->retrieve(x, y, z + 1)) {
+					if (land_val == this->getAscendant(0).retrieve(x, y, z + 1)) {
 						m++;
 					}
 					if (m >= 0x03u) {
@@ -120,4 +116,4 @@ namespace STPDemo {
 	};
 
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_HILLS_LAYER_H_

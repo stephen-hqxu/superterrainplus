@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _STP_LAYERS_ALL_HPP_
-#define _STP_LAYERS_ALL_HPP_
+#ifndef _STP_ALL_LAYERS_H_
+#define _STP_ALL_LAYERS_H_
 
 #include <SuperTerrain+/World/Diversity/STPBiomeFactory.h>
 
@@ -10,7 +10,6 @@
 #include <memory>
 
 namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
 
 	/**
 	 * @brief STPLayerChainBuilder is an example biome layer chain builder
@@ -25,18 +24,18 @@ namespace STPDemo {
 
 	public:
 
-		const Seed GlobalSeed;
+		const SuperTerrainPlus::STPDiversity::Seed GlobalSeed;
 
 		/**
 		 * @brief Init the chain build
 		 * @param dimension The biome map dimension in 2D
 		 * @param global The global seed for generation
 		*/
-		STPLayerChainBuilder(glm::uvec2, Seed);
+		STPLayerChainBuilder(glm::uvec2, SuperTerrainPlus::STPDiversity::Seed);
 
 		~STPLayerChainBuilder() = default;
 
 	};
 
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_ALL_LAYERS_H_

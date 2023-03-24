@@ -1,12 +1,10 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_OCEAN_TEMPERATURE_LAYER_H_
+#define _STP_OCEAN_TEMPERATURE_LAYER_H_
 
 #include "STPCrossLayer.h"
-#include "../Biomes/STPBiomeRegistry.h"
 
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPOceanTemperatureLayer generates different temperature region for ocean biomes and smooth the transition as much as possible
@@ -17,7 +15,7 @@ namespace STPDemo {
 		/**
 		 * @brief STPOceanNoise setup warm and frozen ocean first with RNG
 		*/
-		class STPOceanNoise : public SuperTerrainPlus::STPDiversity::STPLayer {
+		class STPOceanNoise : public STPLayer {
 		public:
 
 			STPOceanNoise(const size_t cache_size, const Seed global_seed, const Seed salt) : STPLayer(cache_size, global_seed, salt) {
@@ -32,11 +30,11 @@ namespace STPDemo {
 				//given 1/3 chance for each temp
 				const Sample i = rng.nextValue(3);
 				switch (i) {
-				case 0u: return STPBiomeRegistry::FrozenOcean.ID;
+				case 0u: return Reg::FrozenOcean.ID;
 					break;
-				case 1u: return STPBiomeRegistry::WarmOcean.ID;
+				case 1u: return Reg::WarmOcean.ID;
 					break;
-				default: return STPBiomeRegistry::Ocean.ID;
+				default: return Reg::Ocean.ID;
 					break;
 				}
 			}
@@ -56,23 +54,23 @@ namespace STPDemo {
 
 			Sample sample(const Sample center, const Sample north, const Sample east, const Sample south,
 				const Sample west, Seed) override {
-				if (center != STPBiomeRegistry::LukewarmOcean.ID
-					|| STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return val != STPBiomeRegistry::ColdOcean.ID;
+				if (center != Reg::LukewarmOcean.ID
+					|| Reg::applyAll([](Sample val) -> bool {
+						return val != Reg::ColdOcean.ID;
 						}, north, east, south, west)) {
 					return center;
 				}
 
 				//or cold
-				if (center != STPBiomeRegistry::ColdOcean.ID
-					|| STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return val != STPBiomeRegistry::LukewarmOcean.ID;
+				if (center != Reg::ColdOcean.ID
+					|| Reg::applyAll([](Sample val) -> bool {
+						return val != Reg::LukewarmOcean.ID;
 						}, north, east, south, west)) {
 					return center;
 				}
 
 				//lukewarm meets cold in either order = ocean
-				return STPBiomeRegistry::Ocean.ID;
+				return Reg::Ocean.ID;
 			}
 
 		};
@@ -90,21 +88,21 @@ namespace STPDemo {
 
 			Sample sample(const Sample center, const Sample north, const Sample east, const Sample south,
 				const Sample west, Seed) override {
-				if (center == STPBiomeRegistry::WarmOcean.ID
-					&& (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return val != STPBiomeRegistry::FrozenOcean.ID;
+				if (center == Reg::WarmOcean.ID
+					&& (!Reg::applyAll([](Sample val) -> bool {
+						return val != Reg::FrozenOcean.ID;
 						}, north, east, south, west))) {
 					//warm meets frozen = lukewarm
-					return STPBiomeRegistry::LukewarmOcean.ID;
+					return Reg::LukewarmOcean.ID;
 				}
 
 				//or frozen, it can only be either of both, then vice versa
-				if (center == STPBiomeRegistry::FrozenOcean.ID
-					&& (!STPBiomeRegistry::applyAll([](Sample val) -> bool {
-						return val != STPBiomeRegistry::WarmOcean.ID;
+				if (center == Reg::FrozenOcean.ID
+					&& (!Reg::applyAll([](Sample val) -> bool {
+						return val != Reg::WarmOcean.ID;
 						}, north, east, south, west))) {
 					//frozen meets warm = cold
-					return STPBiomeRegistry::ColdOcean.ID;
+					return Reg::ColdOcean.ID;
 				}
 
 				//otherwise do nothing
@@ -115,37 +113,37 @@ namespace STPDemo {
 		/**
 		 * @brief STPOceanTransition smooths out the temp of the ocean when it meets land
 		*/
-		class STPOceanTransition : public SuperTerrainPlus::STPDiversity::STPLayer {
+		class STPOceanTransition : public STPLayer {
 		public:
 
 			STPOceanTransition(
 				const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
-				STPLayer(cache_size, global_seed, salt, parent) {
+				STPLayer(cache_size, global_seed, salt, { parent }) {
 
 			}
 
 			Sample sample(const int x, const int y, const int z) override {
 				//get the value from previous layer
-				const Sample val = this->getAscendant()->retrieve(x, y, z);
+				const Sample val = this->getAscendant().retrieve(x, y, z);
 				//don't touch it if it's land
-				if (!STPBiomeRegistry::isOcean(val)) {
+				if (!Reg::isOcean(val)) {
 					return val;
 				}
 
 				//testing for neighbours and check for lands
 				for (int rx = -8; rx <= 8; rx += 4) {
 					for (int rz = -8; rz <= 8; rz += 4) {
-						const Sample shift_xz = this->getAscendant()->retrieve(x + rx, y, z + rz);
-						if (STPBiomeRegistry::isOcean(shift_xz)) {
+						const Sample shift_xz = this->getAscendant().retrieve(x + rx, y, z + rz);
+						if (Reg::isOcean(shift_xz)) {
 							//we need to find neighbour who is land
 							continue;
 						}
 
-						if (val == STPBiomeRegistry::WarmOcean.ID) {
-							return STPBiomeRegistry::LukewarmOcean.ID;
+						if (val == Reg::WarmOcean.ID) {
+							return Reg::LukewarmOcean.ID;
 						}
-						if (val == STPBiomeRegistry::FrozenOcean.ID) {
-							return STPBiomeRegistry::ColdOcean.ID;
+						if (val == Reg::FrozenOcean.ID) {
+							return Reg::ColdOcean.ID;
 						}
 					}
 				}
@@ -159,25 +157,25 @@ namespace STPDemo {
 		/**
 		 * @brief STPOceanMix mixes ocean temp layers with the original land
 		*/
-		class STPOceanMix : public SuperTerrainPlus::STPDiversity::STPLayer {
+		class STPOceanMix : public STPLayer {
 		public:
 
 			STPOceanMix(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const land, STPLayer* const ocean) :
-				STPLayer(cache_size, global_seed, salt, land, ocean) {
+				STPLayer(cache_size, global_seed, salt, { land, ocean }) {
 				//parent 0: land
 				//parent 1: STPOceanTemperate
 			}
 
 			Sample sample(const int x, const int y, const int z) override {
 				//get the land value from the land layer
-				const Sample land = this->getAscendant(0)->retrieve(x, y, z);
+				const Sample land = this->getAscendant(0).retrieve(x, y, z);
 				//don't touch it if it's land
-				if (!STPBiomeRegistry::isOcean(land)) {
+				if (!Reg::isOcean(land)) {
 					return land;
 				}
 
 				//otherwise return the respective ocean section
-				return this->getAscendant(1)->retrieve(x, y, z);
+				return this->getAscendant(1).retrieve(x, y, z);
 			}
 
 		};
@@ -185,4 +183,4 @@ namespace STPDemo {
 	};
 
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_OCEAN_TEMPERATURE_LAYER_H_

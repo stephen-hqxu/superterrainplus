@@ -1,17 +1,15 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_VORONOI_LAYER_H_
+#define _STP_VORONOI_LAYER_H_
 
-#include <SuperTerrain+/World/Diversity/STPLayer.h>
-#include "../Biomes/STPBiomeRegistry.h"
+#include <functional>
 
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPVoronoiLayer performs Voronoi scaling (4:1 -> 1:1)
 	*/
-	class STPVoronoiLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
+	class STPVoronoiLayer : public STPLayer {
 	private:
 
 		const bool is3D;
@@ -47,8 +45,9 @@ namespace STPDemo {
 
 	public:
 
-		STPVoronoiLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const bool is3D, STPLayer* const parent)
-			: STPLayer(cache_size, global_seed, salt, parent), is3D(is3D), voronoi_seed(std::hash<Seed>{}(global_seed)) {
+		STPVoronoiLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const bool is3D, STPLayer* const parent) :
+			STPLayer(cache_size, global_seed, salt, { parent }),
+			is3D(is3D), voronoi_seed(std::hash<Seed> {}(global_seed)) {
 			
 		}
 
@@ -105,10 +104,10 @@ namespace STPDemo {
 				(index & 2u) == 0u ? lmn[1] : lmn[1] + 1,
 				(index & 1u) == 0u ? lmn[2] : lmn[2] + 1
 			};
-			return this->getAscendant()->retrieve(xyz[0], this->is3D ? xyz[1] : 0, xyz[2]);
+			return this->getAscendant().retrieve(xyz[0], this->is3D ? xyz[1] : 0, xyz[2]);
 		}
 
 	};
 
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_VORONOI_LAYER_H_

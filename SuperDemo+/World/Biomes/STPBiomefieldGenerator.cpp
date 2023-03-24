@@ -94,7 +94,7 @@ void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBu
 	//we only need host memory on biome map
 	const STPNearestNeighbourSampleRTextureBuffer::STPMergedBuffer biomemap_mem(
 		biomemap_buffer, STPNearestNeighbourSampleRTextureBuffer::STPMemoryLocation::HostMemory);
-	const Sample* const biomemap = biomemap_mem.getHost();
+	const SuperTerrainPlus::STPDiversity::Sample* const biomemap = biomemap_mem.getHost();
 	//get the stream, both buffer use the same stream
 	const cudaStream_t stream = heightmap_buffer.DeviceMemInfo.second;
 

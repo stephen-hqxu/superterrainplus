@@ -1,17 +1,13 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_XCROSS_LAYER_H_
+#define _STP_XCROSS_LAYER_H_
 
-//Base layer
-#include <SuperTerrain+/World/Diversity/STPLayer.h>
-
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPXCrossLayer is an extended version of regular layer, it takes in a X cross coordinate and then sample
 	*/
-	class STPXCrossLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
+	class STPXCrossLayer : public STPLayer {
 	public:
 
 		/**
@@ -22,19 +18,19 @@ namespace STPDemo {
 		 * @param parent The previous layer
 		*/
 		STPXCrossLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
-			STPLayer(cache_size, global_seed, salt, parent) {
+			STPLayer(cache_size, global_seed, salt, { parent }) {
 
 		}
 
 		Sample sample(const int x, const int y, const int z) override {
 			//sample in a X cross
-			STPLayer* const asc = this->getAscendant();
+			STPLayer& asc = this->getAscendant();
 			return this->sample(
-				asc->retrieve(x, y, z),
-				asc->retrieve(x + 1, y, z - 1),
-				asc->retrieve(x + 1, y, z + 1),
-				asc->retrieve(x - 1, y, z + 1),
-				asc->retrieve(x - 1, y, z - 1),
+				asc.retrieve(x, y, z),
+				asc.retrieve(x + 1, y, z - 1),
+				asc.retrieve(x + 1, y, z + 1),
+				asc.retrieve(x - 1, y, z + 1),
+				asc.retrieve(x - 1, y, z - 1),
 				this->seedLocal(x, z)
 			);
 		}
@@ -53,4 +49,4 @@ namespace STPDemo {
 
 	};
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_XCROSS_LAYER_H_

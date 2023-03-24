@@ -1,19 +1,15 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
-
-#include <SuperTerrain+/World/Diversity/STPLayer.h>
-#include "../Biomes/STPBiomeRegistry.h"
+#ifndef _STP_BASE_BIOME_LAYER_H_
+#define _STP_BASE_BIOME_LAYER_H_
 
 #include <array>
 
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPBaseBiomeLayer starts to add biomes based on the climate, and interpret temperature and precipitation to the actual biome
 	*/
-	class STPBaseBiomeLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
+	class STPBaseBiomeLayer : public STPLayer {
 	private:
 
 		template<size_t S>
@@ -24,37 +20,37 @@ namespace STPDemo {
 		//Since biome ids are loaded after runtime, so we can't make it static
 
 		const STPBiomeList<4u> DryBiomes = {
-			STPBiomeRegistry::Desert.ID,
-			STPBiomeRegistry::Savannah.ID,
-			STPBiomeRegistry::Plains.ID,
-			STPBiomeRegistry::Badlands.ID
+			Reg::Desert.ID,
+			Reg::Savannah.ID,
+			Reg::Plains.ID,
+			Reg::Badlands.ID
 		};
 
 		const STPBiomeList<5u> TemperateBiomes = {
-			STPBiomeRegistry::Jungle.ID,
-			STPBiomeRegistry::Forest.ID,
-			STPBiomeRegistry::Mountain.ID,
-			STPBiomeRegistry::Plains.ID,
-			STPBiomeRegistry::Swamp.ID
+			Reg::Jungle.ID,
+			Reg::Forest.ID,
+			Reg::Mountain.ID,
+			Reg::Plains.ID,
+			Reg::Swamp.ID
 		};
 
 		const STPBiomeList<4u> CoolBiomes = {
-			STPBiomeRegistry::Plains.ID,
-			STPBiomeRegistry::Mountain.ID,
-			STPBiomeRegistry::Forest.ID,
-			STPBiomeRegistry::Taiga.ID
+			Reg::Plains.ID,
+			Reg::Mountain.ID,
+			Reg::Forest.ID,
+			Reg::Taiga.ID
 		};
 
 		const STPBiomeList<3u> SnowyBiomes = {
-			STPBiomeRegistry::SnowyTaiga.ID,
-			STPBiomeRegistry::SnowyTundra.ID,
-			STPBiomeRegistry::SnowyMountain.ID
+			Reg::SnowyTaiga.ID,
+			Reg::SnowyTundra.ID,
+			Reg::SnowyMountain.ID
 		};
 
 	public:
 
 		STPBaseBiomeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer* const parent) :
-			STPLayer(cache_size, global_seed, salt, parent) {
+			STPLayer(cache_size, global_seed, salt, { parent }) {
 			//parent:: climate layer
 		}
 
@@ -62,27 +58,27 @@ namespace STPDemo {
 			//get the local RNG
 			STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 			//get the climate for this local coordinate
-			const Sample climate = this->getAscendant()->retrieve(x, y, z);
+			const Sample climate = this->getAscendant().retrieve(x, y, z);
 
 			//if it's ocean, we should leave it untouched
-			if (STPBiomeRegistry::isOcean(climate)) {
+			if (Reg::isOcean(climate)) {
 				return climate;
 			}
 			
 			//interpretation, compared to vanilla Minecraft, special climate has been removed, every biomes have the equal chance of spawning
-			if (climate == STPBiomeRegistry::Plains.ID) {
+			if (climate == Reg::Plains.ID) {
 				//dry and hot biome
 				return this->DryBiomes[rng.nextValue(static_cast<Sample>(this->DryBiomes.size()))];
 			}
-			if (climate == STPBiomeRegistry::Desert.ID) {
+			if (climate == Reg::Desert.ID) {
 				//temperate biome
 				return this->TemperateBiomes[rng.nextValue(static_cast<Sample>(this->TemperateBiomes.size()))];
 			}
-			if (climate == STPBiomeRegistry::Mountain.ID) {
+			if (climate == Reg::Mountain.ID) {
 				//cool biome
 				return this->CoolBiomes[rng.nextValue(static_cast<Sample>(this->CoolBiomes.size()))];
 			}
-			if (climate == STPBiomeRegistry::Forest.ID) {
+			if (climate == Reg::Forest.ID) {
 				//snowy and cold biome
 				return this->SnowyBiomes[rng.nextValue(static_cast<Sample>(this->SnowyBiomes.size()))];
 			}
@@ -94,4 +90,4 @@ namespace STPDemo {
 	};
 
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_BASE_BIOME_LAYER_H_

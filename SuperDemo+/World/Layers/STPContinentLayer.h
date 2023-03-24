@@ -1,17 +1,13 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_CONTINENT_LAYER_H_
+#define _STP_CONTINENT_LAYER_H_
 
-#include <SuperTerrain+/World/Diversity/STPLayer.h>
-#include "../Biomes/STPBiomeRegistry.h"
-
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPContinentLayer is the first layer of the biome generation chain, it generates land and ocean section
 	*/
-	class STPContinentLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
+	class STPContinentLayer : public STPLayer {
 	public:
 
 		STPContinentLayer(const size_t cache_size, const Seed global_seed, const Seed salt) : STPLayer(cache_size, global_seed, salt) {
@@ -23,8 +19,8 @@ namespace STPDemo {
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 
 			//we give 1/10 chance for land
-			return rng.nextValue(10u) == 0 ? STPBiomeRegistry::Plains.ID : STPBiomeRegistry::Ocean.ID;
+			return rng.nextValue(10u) == 0 ? Reg::Plains.ID : Reg::Ocean.ID;
 		}
 	};
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_CONTINENT_LAYER_H_

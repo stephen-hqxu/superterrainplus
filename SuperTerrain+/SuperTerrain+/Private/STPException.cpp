@@ -7,7 +7,6 @@
 #include <SuperTerrain+/Exception/STPInvalidEnum.h>
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
 #include <SuperTerrain+/Exception/STPIOException.h>
-#include <SuperTerrain+/Exception/STPListenerError.h>
 #include <SuperTerrain+/Exception/STPNumericDomainError.h>
 #include <SuperTerrain+/Exception/STPParserError.h>
 #include <SuperTerrain+/Exception/STPUnimplementedFeature.h>
@@ -16,10 +15,9 @@
 
 #include <cstdint>
 //String
+#include <iomanip>
 #include <sstream>
-#include <string_view>
 
-using std::string_view;
 using std::string;
 using std::ostringstream;
 
@@ -30,7 +28,7 @@ using namespace std::string_literals;
 
 using namespace SuperTerrainPlus::STPException;
 
-constexpr static size_t SeparatorWidth = 80u;
+constexpr static std::streamsize SeparatorWidth = 80;
 
 #define STP_EXCEPTION_SOURCE_INFO_DEF const char* const source, const char* const function, const int line
 #define STP_EXCEPTION_SOURCE_INFO_ARG source, function, line
@@ -57,18 +55,13 @@ STPSQLError::STPSQLError(const string& err_str, STP_EXCEPTION_SOURCE_INFO_DEF) :
 
 STPFundamentalException::STPBasic::STPBasic(const string& description, STP_EXCEPTION_SOURCE_INFO_DEF) :
 	Description(description), SourceFilename(source), FunctionName(function), Line(line) {
-	//format the message
 	ostringstream msg;
 	msg << this->SourceFilename << '(' << this->FunctionName << "):" << this->Line << endl;
-	this->Message = msg.str();
-
 	//add a fancy horizontal line
-	const size_t headerLength = this->Message.length();
-	this->Message.reserve(headerLength + SeparatorWidth + 1u + this->Description.length());
-	this->Message.append(SeparatorWidth, '-');
-	this->Message += '\n';
+	msg << std::setfill('-') << std::setw(SeparatorWidth) << '\n';
+	msg << this->Description << endl;
 
-	this->Message.append(this->Description);
+	this->Message = msg.str();
 }
 
 const char* STPFundamentalException::STPBasic::what() const noexcept {
@@ -77,22 +70,14 @@ const char* STPFundamentalException::STPBasic::what() const noexcept {
 
 STPFundamentalException::STPAssertion::STPAssertion(const char* const expression, const string& description,
 	STP_EXCEPTION_SOURCE_INFO_DEF) : STPBasic(description, STP_EXCEPTION_SOURCE_INFO_ARG) {
-	constexpr static string_view assertionHeader = "Assertion Failed:\n";
-	//format the message
-	string assertionMsg;
-	const string_view expr(expression);
-	assertionMsg.reserve(assertionHeader.length() + expr.length() + SeparatorWidth + 2u);
-	//put the message in the front
-	assertionMsg.append(assertionHeader);
-	assertionMsg.append(expr);
-
-	assertionMsg += '\n';
-	assertionMsg.append(SeparatorWidth, '.');
-	assertionMsg += '\n';
+	ostringstream msg;
+	msg << "Assertion Failed:\n" << expression << endl;
+	//horizontal bar
+	msg << std::setfill('.') << std::setw(SeparatorWidth) << '\n';
+	msg.flush();
 
 	//add to the original message
-	this->Message.reserve(this->Message.length() + assertionMsg.length());
-	this->Message.insert(0u, assertionMsg);
+	this->Message.insert(0u, msg.str());
 }
 
 /* STPInsufficientMemory.h */
@@ -133,21 +118,6 @@ STPInvalidEnvironment::STPInvalidEnvironment(const char* const expression, const
 STPIOException::STPIOException(const string& msg, STP_EXCEPTION_SOURCE_INFO_DEF) : STPBasic(msg, STP_EXCEPTION_SOURCE_INFO_ARG) {
 
 }
-
-/* STPListenerError.h */
-
-inline static string createListenerErrorMessage(const void* const ptr, const char* const error_desc) {
-	ostringstream msg;
-	msg << "The listener\n\'" << ptr << "\'\ncauses a listener error, the type of listener error is:\n" << error_desc << endl;
-	return msg.str();
-}
-
-#define STP_LISTENER_ERROR_CTOR(ERR_TYPE, ERR_DESC) \
-STPListenerError::STPListenerError(const void* const listener_ptr, ERR_TYPE, STP_EXCEPTION_SOURCE_INFO_DEF) : \
-	STPBasic(createListenerErrorMessage(listener_ptr, ERR_DESC), STP_EXCEPTION_SOURCE_INFO_ARG), GuiltyListener(listener_ptr)
-
-STP_LISTENER_ERROR_CTOR(STPRepeatedListener, "Repeated Listener") { }
-STP_LISTENER_ERROR_CTOR(STPListenerNotFound, "Listener Not Found") { }
 
 /* STPNumericDomainError.h */
 

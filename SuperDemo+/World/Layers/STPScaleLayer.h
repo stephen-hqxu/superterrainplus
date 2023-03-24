@@ -1,16 +1,13 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_SCALE_LAYER_H_
+#define _STP_SCALE_LAYER_H_
 
-#include <SuperTerrain+/World/Diversity/STPLayer.h>
-
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPScaleLayer scales the current layer and randomly choose the neighbouring cell to fill the new cells
 	*/
-	class STPScaleLayer : public SuperTerrainPlus::STPDiversity::STPLayer {
+	class STPScaleLayer : public STPLayer {
 	public:
 
 		/**
@@ -67,13 +64,14 @@ namespace STPDemo {
 	public:
 
 		STPScaleLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const STPScaleType type, STPLayer* const parent) :
-			STPLayer(cache_size, global_seed, salt, parent), Type(type) {
+			STPLayer(cache_size, global_seed, salt, { parent }),
+			Type(type) {
 			//parent: undefined
 		}
 
 		Sample sample(const int x, const int y, const int z) override {
 			//get the sample of the neighbour cell
-			const Sample i = this->getAscendant()->retrieve(x >> 1, y, z >> 1);
+			const Sample i = this->getAscendant().retrieve(x >> 1, y, z >> 1);
 			const int xb = x & 1, zb = z & 1;
 			//get local RNG
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x & -2, z & -2);
@@ -84,25 +82,25 @@ namespace STPDemo {
 			}
 
 			//otherwise, we need to randomly choose between neighbouring values
-			const Sample l = this->getAscendant()->retrieve(x >> 1, y, (z + 1) >> 1);
+			const Sample l = this->getAscendant().retrieve(x >> 1, y, (z + 1) >> 1);
 			const Sample m = rng.choose(i, l);
 
 			if (xb == 0) {
 				return m;
 			}
 
-			const Sample n = this->getAscendant()->retrieve((x + 1) >> 1, y, z >> 1);
+			const Sample n = this->getAscendant().retrieve((x + 1) >> 1, y, z >> 1);
 			const Sample o = rng.choose(i, n);
 
 			if (zb == 0) {
 				return o;
 			}
 
-			const Sample p = this->getAscendant()->retrieve((x + 1) >> 1, y, (z + 1) >> 1);
+			const Sample p = this->getAscendant().retrieve((x + 1) >> 1, y, (z + 1) >> 1);
 			return this->sample(i, n, l, p, rng);
 
 		}
 
 	};
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_SCALE_LAYER_H_

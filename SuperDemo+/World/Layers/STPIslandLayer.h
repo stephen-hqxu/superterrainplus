@@ -1,12 +1,10 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_ISLAND_LAYER_H_
+#define _STP_ISLAND_LAYER_H_
 
 #include "STPCrossLayer.h"
-#include "../Biomes/STPBiomeRegistry.h"
 
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPIslandLayer adds more lands if the near-neighbour are all ocean, a.k.a., remove too much ocean
@@ -25,9 +23,9 @@ namespace STPDemo {
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(local_seed);
 
 			//if we are surrounded by ocean, we have 1/2 of chance to generate a plain
-			return STPBiomeRegistry::applyAll(STPBiomeRegistry::isShallowOcean, center, north, east, south, west)
-				&& rng.nextValue(2) == 0 ? STPBiomeRegistry::Plains.ID : center;
+			return Reg::applyAll(Reg::isShallowOcean, center, north, east, south, west)
+				&& rng.nextValue(2) == 0 ? Reg::Plains.ID : center;
 		}
 	};
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_ISLAND_LAYER_H_

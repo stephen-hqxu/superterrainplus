@@ -17,7 +17,6 @@ Exception/STPInsufficientMemory.h
 Exception/STPInvalidEnum.h
 Exception/STPInvalidEnvironment.h
 Exception/STPIOException.h
-Exception/STPListenerError.h
 Exception/STPNumericDomainError.h
 Exception/STPParserError.h
 Exception/STPUnimplementedFeature.h
@@ -65,7 +64,6 @@ World/Chunk/STPNearestNeighbourTextureBuffer.h
 World/Diversity/STPBiomeDefine.h
 World/Diversity/STPBiomeFactory.h
 World/Diversity/STPLayer.h
-World/Diversity/STPLayer.inl
 # /World/Diversity/Texture
 World/Diversity/Texture/STPTextureDatabase.h
 World/Diversity/Texture/STPTextureFactory.h

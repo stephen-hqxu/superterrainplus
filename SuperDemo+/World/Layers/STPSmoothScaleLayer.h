@@ -1,11 +1,10 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_SMOOTH_SCALE_LAYER_H_
+#define _STP_SMOOTH_SCALE_LAYER_H_
 
 #include "STPCrossLayer.h"
 
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPSmoothScaleLayer scales previous sample smoothly, and only picks sample that are equals
@@ -35,4 +34,4 @@ namespace STPDemo {
 
 	};
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_SMOOTH_SCALE_LAYER_H_

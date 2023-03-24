@@ -1,12 +1,10 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_EDGE_BIOME_LAYER_H_
+#define _STP_EDGE_BIOME_LAYER_H_
 
 #include "STPCrossLayer.h"
-#include "../Biomes/STPBiomeRegistry.h"
 
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPEdgeBiomeLayer adds edge for biome connection, for instance adding beach between ocean and land
@@ -20,27 +18,27 @@ namespace STPDemo {
 		}
 
 		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, Seed) override {
-			if (STPBiomeRegistry::isOcean(center)) {
+			if (Reg::isOcean(center)) {
 				//ocean should be untouched
 				return center;
 			}
 
-			const bool snowy_area = STPBiomeRegistry::getPrecipitationType(center) == STPBiomeRegistry::STPPrecipitationType::SNOW;
+			const bool snowy_area = Reg::getPrecipitationType(center) == Reg::STPPrecipitationType::SNOW;
 			//if the centre is land and the surrounding has ocean, turn it into one of the edge biomes
-			if (!STPBiomeRegistry::applyAll([](const Sample val) -> bool {
-				return !STPBiomeRegistry::isOcean(val);
+			if (!Reg::applyAll([](const Sample val) -> bool {
+				return !Reg::isOcean(val);
 			}, north, east, south, west)) {
 				//if one of the surrounding is ocean...
 				if (snowy_area) {
 					//if it's cold...
-					return STPBiomeRegistry::SnowyBeach.ID;
+					return Reg::SnowyBeach.ID;
 				}
-				if (center == STPBiomeRegistry::Mountain.ID) {
+				if (center == Reg::Mountain.ID) {
 					//near the mountain?
-					return STPBiomeRegistry::StoneShore.ID;
+					return Reg::StoneShore.ID;
 				}
 
-				return STPBiomeRegistry::Beach.ID;
+				return Reg::Beach.ID;
 			}
 
 			//otherwise everything is untouched
@@ -50,4 +48,4 @@ namespace STPDemo {
 	};
 
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_EDGE_BIOME_LAYER_H_

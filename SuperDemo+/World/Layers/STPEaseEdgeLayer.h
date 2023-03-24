@@ -1,14 +1,12 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_EASE_EDGE_LAYER_H_
+#define _STP_EASE_EDGE_LAYER_H_
 
 #include "STPCrossLayer.h"
-#include "../Biomes/STPBiomeRegistry.h"
 
 #include <type_traits>
 
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPEaseEdgeLayer inserts temperate biomes between layers if the transition is not suitable
@@ -17,7 +15,7 @@ namespace STPDemo {
 	private:
 
 		template<typename... S>
-		inline static bool anyMatch(const STPBiome& biome, const S... id) noexcept {
+		inline static bool anyMatch(const STPDemo::STPBiome& biome, const S... id) noexcept {
 			static_assert(std::conjunction<std::is_same<S, Sample>...>::value, "Only biome IDs can be matched");
 
 			return ((biome.ID == id) || ...);
@@ -32,14 +30,14 @@ namespace STPDemo {
 
 		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, Seed) override {
 			//replace the edge by something else if it has conflict
-			if (center == STPBiomeRegistry::Desert.ID && STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::SnowyTundra, north, east, south, west)) {
-				return STPBiomeRegistry::WoodedMountain.ID;
+			if (center == Reg::Desert.ID && STPEaseEdgeLayer::anyMatch(Reg::SnowyTundra, north, east, south, west)) {
+				return Reg::WoodedMountain.ID;
 			}
-			if (center == STPBiomeRegistry::Swamp.ID
-				&& (STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::Desert, north, east, south, west)
-				|| STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::SnowyTundra, north, east, south, west)
-				|| STPEaseEdgeLayer::anyMatch(STPBiomeRegistry::SnowyTaiga, north, east, south, west))) {
-				return STPBiomeRegistry::Plains.ID;
+			if (center == Reg::Swamp.ID
+				&& (STPEaseEdgeLayer::anyMatch(Reg::Desert, north, east, south, west)
+				|| STPEaseEdgeLayer::anyMatch(Reg::SnowyTundra, north, east, south, west)
+				|| STPEaseEdgeLayer::anyMatch(Reg::SnowyTaiga, north, east, south, west))) {
+				return Reg::Plains.ID;
 			}
 
 			//otherwise do nothing
@@ -49,4 +47,4 @@ namespace STPDemo {
 	};
 
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_EASE_EDGE_LAYER_H_

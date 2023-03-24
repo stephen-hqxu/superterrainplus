@@ -17,7 +17,6 @@
 #include <glm/vec2.hpp>
 
 namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Sample;
 
 	/**
 	 * @brief STPBiomefieldGenerator is a sample implementation of multi-biome heightfield generator.

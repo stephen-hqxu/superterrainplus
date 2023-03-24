@@ -1,8 +1,15 @@
 #include "STPAllLayers.h"
 
+//Biome
+#include <SuperTerrain+/World/Diversity/STPLayer.h>
+#include "../Biomes/STPBiomeRegistry.h"
+
+using namespace SuperTerrainPlus::STPDiversity;
+namespace Reg = STPDemo::STPBiomeRegistry;
+
 //All layers are for demo purposes, developers are free to implement their own version with the interface
 
-//Include all layers in this files, do not include each layer individually
+//Include all layers in this files, do not include each layer individually; they all have internal linkage.
 //Note that all layers are for demo, in real application programmers can have their own implementation
 
 //Composite layer
@@ -36,21 +43,16 @@
 #include "STPScaleLayer.h"
 #include "STPSmoothScaleLayer.h"
 
-using std::make_unique;
-
-using glm::uvec2;
-
 using namespace STPDemo;
-using namespace SuperTerrainPlus::STPDiversity;
 
 //The size of individual cache
 static constexpr size_t Cachesize = 2048u;
 
-STPLayerChainBuilder::STPLayerChainBuilder(const uvec2 dimension, const Seed global) : STPBiomeFactory(dimension), GlobalSeed(global) {
+STPLayerChainBuilder::STPLayerChainBuilder(const glm::uvec2 dimension, const Seed global) : STPBiomeFactory(dimension), GlobalSeed(global) {
 
 }
 
-#define EMPLACE_LAYER(LAYER, ...) emplace_back(make_unique<LAYER>(__VA_ARGS__)).get()
+#define EMPLACE_LAYER(LAYER, ...) emplace_back(std::make_unique<LAYER>(__VA_ARGS__)).get()
 
 STPLayer* STPLayerChainBuilder::supply() {
 	//create a new manager, don't worry about deletion because our engine will manage it pretty well

@@ -73,6 +73,7 @@ Helpers/STPTerrainParaLoader.cpp
 Helpers/STPTextureStorage.cpp
 # /World/Biomes
 World/Biomes/STPBiomefieldGenerator.cpp
+World/Biomes/STPBiomeRegistry.cpp
 World/Biomes/STPCommonCompiler.cpp
 World/Biomes/STPSplatmapGenerator.cpp
 # /World/Layers

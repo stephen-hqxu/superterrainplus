@@ -9,6 +9,8 @@
 #include <memory>
 #include <type_traits>
 
+#include <initializer_list>
+
 namespace SuperTerrainPlus::STPDiversity {
 
 	/**
@@ -87,15 +89,6 @@ namespace SuperTerrainPlus::STPDiversity {
 		std::unique_ptr<STPLayerCache> Cache;
 
 		/**
-		 * @brief Create a layer.
-		 * @param ascendant_count The number of ascendant.
-		 * @param cache_size The size of cache.
-		 * @param global_seed The global seed.
-		 * @param salt The salt.
-		*/
-		STPLayer(size_t, size_t, Seed, Seed);
-
-		/**
 		 * @brief Generate a unique seed for this layer.
 		 * @param global_seed The seed that is used to generate the entire world.
 		 * @param salt A random number that is used to mix the global seed to generate layer seed.
@@ -150,13 +143,13 @@ namespace SuperTerrainPlus::STPDiversity {
 
 	public:
 
+		//A initialiser list of pointers to ascendant layer(s).
+		typedef std::initializer_list<STPLayer*> STPAscendantInitialiser;
+
 		//Salt is a random value used to mix the global seed to generate layer and local seed
 		const Seed Salt;
 		//Seed for each layer, the same layer under the same world seed and salt will always have the same layer seed
 		const Seed LayerSeed;
-
-		//@see The version of STPLayer that takes a variable number of ascendant
-		STPLayer(size_t, Seed, Seed);
 
 		/**
 		 * @brief Create a layer instance.
@@ -168,8 +161,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param ascendant... The next executed layer. If more than one layer is provided, the layer is merging.
 		 * Each ascendant should be dynamically allocated, memory will be freed when the layers are destroyed.
 		*/
-		template <class... Asc>
-		STPLayer(size_t, Seed, Seed, Asc*...);
+		STPLayer(size_t, Seed, Seed, STPAscendantInitialiser = {});
 
 		STPLayer(const STPLayer&) = delete;
 
@@ -203,9 +195,9 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * If not provided, it will default to 0, which is the first parent layer.
 		 * @return The ascendant at that index - the parent layers, who will be executed before this layer.
 		 * There might be more than one ascendant in case there is a merge in the execution chain.
-		 * Return null if index out of bound or no ascendant.
+		 * The behaviour of out of bound index or no ascendant is undefined.
 		*/
-		STPLayer* getAscendant(size_t = 0u) const noexcept;
+		STPLayer& getAscendant(size_t = 0u) noexcept;
 
 		/**
 		 * @brief Test if there is more than one parent in this layer
@@ -215,5 +207,4 @@ namespace SuperTerrainPlus::STPDiversity {
 
 	};
 }
-#include "STPLayer.inl"
 #endif//_STP_LAYER_H_

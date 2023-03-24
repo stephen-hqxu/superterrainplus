@@ -1,11 +1,10 @@
 #pragma once
-#ifdef _STP_LAYERS_ALL_HPP_
+#ifndef _STP_NOISE_TO_RIVER_LAYER_H_
+#define _STP_NOISE_TO_RIVER_LAYER_H_
 
 #include "STPCrossLayer.h"
 
-namespace STPDemo {
-	using SuperTerrainPlus::STPDiversity::Seed;
-	using SuperTerrainPlus::STPDiversity::Sample;
+namespace {
 
 	/**
 	 * @brief STPNoiseToRiverLayer converts to land noise layer to river by sampling the same noise value
@@ -31,10 +30,10 @@ namespace STPDemo {
 			const Sample i = STPNoiseToRiverLayer::filterRiver(center);
 			return i == STPNoiseToRiverLayer::filterRiver(north) && i == STPNoiseToRiverLayer::filterRiver(east)
 				&& i == STPNoiseToRiverLayer::filterRiver(south) && i == STPNoiseToRiverLayer::filterRiver(west)
-				? 0xFFFFu : STPBiomeRegistry::River.ID;
+				? 0xFFFFu : Reg::River.ID;
 		}
 
 	};
 
 }
-#endif//_STP_LAYERS_ALL_HPP_
+#endif//_STP_NOISE_TO_RIVER_LAYER_H_

@@ -18,7 +18,7 @@
 
 Procedural content generation is one of the most popular topics in computer graphics and allows us to generate data using the power of algorithms and minimise efforts spent on editing.
 
-*SuperTerrain+* is a built-from-scratch procedural terrain engine and real-time renderer started as my personal project in July, 2020 and later become my undergraduate dissertation project; now I mainly use it as a part-time project for exploring this area further and playing.
+*SuperTerrain+* is a built-from-scratch procedural terrain engine and real-time renderer started as my personal project in July, 2020 and later become my undergraduate dissertation project. As of current I am using it as a low-level procedural generation and rendering framework for my PhD research.
 
 *SuperTerrain+* provides a low-overhead, extendible and flexible interface, demonstrates application of modern programming and rendering techniques; with the help of extensive in-source documentations, this is also a great place for learning.
 
@@ -127,13 +127,16 @@ Test program:
 
 ## :building_construction: Project Structure
 
-### :card_index_dividers: Include directories
+### :card_index_dividers: Directory structure
 
-- CoreInterface
-  - SuperTerrain+
-- ModuleInterface
+- SuperDemo+
+- SuperTerrain+
   - SuperAlgorithm+
+    - Device
+	- Host
   - SuperRealism+
+  - SuperTerrain+
+- SuperTest+
 
 ### :dart: Build targets
 
@@ -146,7 +149,7 @@ Test program:
 - SuperDemo+: An application which demonstrates the usage of the main engine.
 - SuperTest+: Unit test program.
 
-### :ballot_box_with_check: CMake options
+### :ballot_box_with_check: Compile-time configurations
 
 | Option | Note | Default |
 | ------ | ---- | ------- |
@@ -201,7 +204,7 @@ The following extensions are not required but will be made used by the engine au
 
 - ~~[GL_NV_mesh_shader](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_mesh_shader.txt)~~
 - ~~[GL_NV_primitive_shading_rate](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_primitive_shading_rate.txt)~~
-- [GL_NV_representative_fragment_test](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_representative_fragment_test.txt)
+- ~~[GL_NV_representative_fragment_test](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_representative_fragment_test.txt)~~
 - ~~[GL_NV_shading_rate_image](https://www.khronos.org/registry/OpenGL/extensions/NV/NV_shading_rate_image.txt)~~
 
 ### :gear: Build Instruction

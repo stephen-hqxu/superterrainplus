@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <tuple>
+#include <algorithm>
 
 #include <cstring>
 
@@ -182,10 +183,11 @@ Sample STPLayer::STPLocalSampler::choose(const Sample var1, const Sample var2, c
 	return i == 0u ? var1 : i == 1u ? var2 : i == 2u ? var3 : var4;
 }
 
-STPLayer::STPLayer(const size_t ascendant_count, const size_t cache_size, const Seed global_seed, const Seed salt) :
-	AscendantCount(ascendant_count),
-	Ascendant(this->AscendantCount == 0u ? nullptr : make_unique<STPLayer*[]>(this->AscendantCount)), Salt(salt),
-	LayerSeed(STPLayer::seedLayer(global_seed, salt)) {
+STPLayer::STPLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const STPAscendantInitialiser ascendant) :
+	AscendantCount(ascendant.size()), Ascendant(this->AscendantCount == 0u ? nullptr : make_unique<STPLayer*[]>(this->AscendantCount)),
+	Salt(salt), LayerSeed(STPLayer::seedLayer(global_seed, this->Salt)) {
+	std::copy(ascendant.begin(), ascendant.end(), this->Ascendant.get());
+
 	//create a cache
 	if (cache_size > 0u) {
 		this->Cache = make_unique<STPLayerCache>(*this, cache_size);
@@ -210,10 +212,6 @@ Seed STPLayer::seedLocal(const int x, const int z) const noexcept {
 	local_seed = STPLayer::mixSeed(local_seed, x);
 	local_seed = STPLayer::mixSeed(local_seed, z);
 	return local_seed;
-}
-
-STPLayer::STPLayer(const size_t cache_size, const Seed global_seed, const Seed salt) : STPLayer(0u, cache_size, global_seed, salt) {
-	
 }
 
 size_t STPLayer::cacheSize() const noexcept {
@@ -245,8 +243,8 @@ Sample STPLayer::retrieve(const int x, const int y, const int z) {
 	return this->Cache->get(x, y, z);
 }
 
-STPLayer* STPLayer::getAscendant(const size_t index) const noexcept {
-	return index < this->AscendantCount ? this->Ascendant[index] : nullptr;
+STPLayer& STPLayer::getAscendant(const size_t index) noexcept {
+	return *this->Ascendant[index];
 }
 
 bool STPLayer::isMerging() const noexcept {
