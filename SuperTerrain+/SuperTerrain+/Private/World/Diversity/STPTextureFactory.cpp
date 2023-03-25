@@ -200,8 +200,8 @@ STPTextureInformation::STPSplatRuleDatabase STPTextureFactory::getSplatDatabase(
 }
 
 template<typename T>
-STPSmartDeviceMemory::STPDeviceMemory<T[]> STPTextureFactory::copyToDevice(const std::vector<T>& data) {
-	STPSmartDeviceMemory::STPDeviceMemory<T[]> device = STPSmartDeviceMemory::makeDevice<T[]>(data.size());
+STPSmartDeviceMemory::STPDevice<T[]> STPTextureFactory::copyToDevice(const std::vector<T>& data) {
+	STPSmartDeviceMemory::STPDevice<T[]> device = STPSmartDeviceMemory::makeDevice<T[]>(data.size());
 	//copy to device
 	STP_CHECK_CUDA(cudaMemcpy(device.get(), data.data(), sizeof(T) * data.size(), cudaMemcpyHostToDevice));
 

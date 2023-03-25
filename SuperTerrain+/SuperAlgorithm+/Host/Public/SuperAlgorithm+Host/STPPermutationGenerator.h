@@ -30,8 +30,8 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			struct {
 			public:
 
-				STPSmartDeviceMemory::STPDeviceMemory<unsigned char[]> Permutation;
-				STPSmartDeviceMemory::STPDeviceMemory<float[]> Gradient2D;
+				STPSmartDeviceMemory::STPDevice<unsigned char[]> Permutation;
+				STPSmartDeviceMemory::STPDevice<float[]> Gradient2D;
 
 			} DeviceMemory;
 

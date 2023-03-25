@@ -217,7 +217,6 @@ To simplify the setup process for the first-time build, the following resources 
 
 - Assets such as texture
 - stb_image.h
-- nanobench.h
 - Generated GLAD
 
 CMake will download the required files, from either *GitHub Releases* in this repository, or the respective repository of 3rd-party library, to a directory `STPResourceCache` located at the root of your binary directory. The build system will not re-download them if they already exist. The build system will automatically update these files whenever a newer version is available. Otherwise, if your older version fails to compile or run, simply deleting the respective directory within `STPResourceCache` can purge the cache and will force a re-download next time the program is built.

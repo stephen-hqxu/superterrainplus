@@ -73,8 +73,8 @@ namespace SuperTerrainPlus {
 			const STPNearestNeighbourTextureBuffer& Main;
 
 			//Depends on the memory location, they might be nullptr.
-			STPSmartDeviceMemory::STPPinnedMemory<MutableT[]> HostMem;
-			STPSmartDeviceMemory::STPStreamedDeviceMemory<MutableT[]> DeviceMem;
+			STPSmartDeviceMemory::STPHost<MutableT[]> HostMem;
+			STPSmartDeviceMemory::STPStreamedDevice<MutableT[]> DeviceMem;
 
 			/**
 			 * @brief Copy the texture between merged neighbour buffer and each individual chunk texture map.

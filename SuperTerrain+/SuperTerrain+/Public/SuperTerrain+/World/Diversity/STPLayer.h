@@ -8,9 +8,9 @@
 //System
 #include <utility>
 #include <memory>
-#include <type_traits>
 
 #include <initializer_list>
+#include <optional>
 
 namespace SuperTerrainPlus::STPDiversity {
 
@@ -77,17 +77,70 @@ namespace SuperTerrainPlus::STPDiversity {
 
 	private:
 
-		//The ascendant layer will be executed before this layer, like a singly linked list
-		//usually there is only one ascendant, but if there is a merge point in the chain, there will be multiple, depended on the actual implementation
-		//Basically it's {asc*, asc*...}
-		const std::unique_ptr<STPLayer*[]> Ascendant;
-
 		/**
 		 * @brief STPLayerCache is a smart caching system that stores computed layer sample and read directly from when available.
 		*/
-		class STPLayerCache;
+		class STPLayerCache {
+		private:
+
+			STPLayer& Layer;
+
+			//Store the key value for a coordinate
+			const std::unique_ptr<unsigned long long[]> Key;
+			//Store the sample number for a layer for a coordinate
+			const std::unique_ptr<Sample[]> Value;
+			//Mask is used to round the key value such that it will be suitable for looking up value in the hash table
+			const unsigned long long Mask;
+
+		public:
+
+			/**
+			 * @brief Init STPLayerCache with allocated spaces.
+			 * @param layer The dependent layer.
+			 * @param capacity The capacity of the cache, it must be power of 2.
+			*/
+			STPLayerCache(STPLayer&, size_t);
+
+			STPLayerCache(const STPLayerCache&) = delete;
+
+			STPLayerCache(STPLayerCache&&) = delete;
+
+			STPLayerCache& operator=(const STPLayerCache&) = delete;
+
+			STPLayerCache& operator=(STPLayerCache&&) = delete;
+
+			~STPLayerCache() = default;
+
+			/**
+			 * @brief Locate the cache entry associated with the world coordinate given.
+			 * If cache is found, read directly from the cache;
+			 * otherwise it will invoke the layer sample function to compute the value, and store into cache entry.
+			 * @param x The X world coordinate.
+			 * @param y The Y world coordinate.
+			 * @param z THe Z world coordinate.
+			 * @return The sample value at the current coordinate.
+			*/
+			Sample get(int, int, int);
+
+			/**
+			 * @brief Empty the content of the cache, size is not changed. This operation is not atomic.
+			*/
+			void clear() noexcept;
+
+			/**
+			 * @brief Retrieve the size of the cache.
+			 * @return The size of the cache.
+			*/
+			unsigned long long capacity() const noexcept;
+
+		};
+
+		//The ascendant layer will be executed before this layer, like a singly linked list
+		//usually there is only one ascendant, but if there is a merge point in the chain, there will be multiple,
+		//depended on the actual implementation Basically it's {asc*, asc*...}
+		const std::unique_ptr<STPLayer*[]> Ascendant;
 		//The cache in this layer
-		std::unique_ptr<STPLayerCache> Cache;
+		std::optional<STPLayerCache> Cache;
 
 		/**
 		 * @brief Generate a unique seed for this layer.
@@ -172,7 +225,7 @@ namespace SuperTerrainPlus::STPDiversity {
 
 		STPLayer& operator=(STPLayer&&) = delete;
 
-		virtual ~STPLayer();
+		virtual ~STPLayer() = default;
 
 		/**
 		 * @brief Query the cache size on this layer cache

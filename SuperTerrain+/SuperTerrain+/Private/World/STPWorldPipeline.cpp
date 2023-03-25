@@ -715,7 +715,7 @@ private:
 
 	//The transfer cache is used because cudaMemcpy2DArrayToArray does not have a streamed version.
 	//Each worker will have a transfer cache.
-	array<STPSmartDeviceMemory::STPPitchedDeviceMemory<unsigned char[]>, Parallelism> MapTransferCache;
+	array<STPSmartDeviceMemory::STPPitchedDevice<unsigned char[]>, Parallelism> MapTransferCache;
 	//N auxiliary workers
 	array<STPSmartDeviceObject::STPStream, Parallelism> MemoryWorker;
 	//synchronisation of N workers + the main working stream
@@ -1021,7 +1021,7 @@ private:
 
 	array<STPMemoryBlock, 2u> MemoryBuffer;
 	//clear buffer is just a memory filled with the same value as clear value.
-	STPSmartDeviceMemory::STPPitchedDeviceMemory<unsigned char[]> MapClearBuffer;
+	STPSmartDeviceMemory::STPPitchedDevice<unsigned char[]> MapClearBuffer;
 	//Store the CUDA array after mapping the back buffer
 	STPMemoryBlock::STPMappedMemoryUnit MappedBackBuffer;
 	bool isBackBufferMapped;

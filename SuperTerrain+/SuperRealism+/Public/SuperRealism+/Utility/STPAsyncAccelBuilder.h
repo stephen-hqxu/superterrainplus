@@ -24,7 +24,7 @@ namespace SuperTerrainPlus::STPRealism {
 	private:
 
 		//front and back buffer
-		typedef std::pair<STPSmartDeviceMemory::STPStreamedDeviceMemory<unsigned char[]>, OptixTraversableHandle> STPAccelStructBuffer;
+		typedef std::pair<STPSmartDeviceMemory::STPStreamedDevice<unsigned char[]>, OptixTraversableHandle> STPAccelStructBuffer;
 
 		STPAccelStructBuffer AccelStruct[2];
 		//pointer to each member in the acceleration structure buffer.

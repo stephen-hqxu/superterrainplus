@@ -1,4 +1,6 @@
 #include <SuperAlgorithm+Host/STPPermutationGenerator.h>
+//Allocator
+#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 
 //CUDA Runtime
 #include <cuda_runtime.h>
@@ -11,7 +13,6 @@
 #include <array>
 #include <limits>
 #include <algorithm>
-#include <memory>
 #include <utility>
 #include <random>
 
@@ -42,8 +43,7 @@ STPPermutationGenerator::STPPermutationTable STPPermutationGenerator::generate(c
 	const auto [seed, gradientSize, offset] = simplex_setting;
 
 	//initialise a RNG
-	std::mt19937_64 rng;
-	rng.seed(seed);
+	std::mt19937_64 rng(seed);
 
 	/* ----------------------------- generate permutation table ---------------------------- */
 	//we allocate memory in host and shuffle the table, then copy back to device
@@ -65,7 +65,7 @@ STPPermutationGenerator::STPPermutationTable STPPermutationGenerator::generate(c
 	//it's a 2D gradient table to we times 2
 	const size_t gradientTableSize = gradientSize * 2u;
 
-	const std::unique_ptr<float[]> gradientHost = std::make_unique<float[]>(gradientTableSize);
+	const STPSmartDeviceMemory::STPHost<float[]> gradientHost = STPSmartDeviceMemory::makeHost<float[]>(gradientTableSize);
 	for (auto [angle, counter] = make_pair(0.0, 0u); angle < TwoPi; angle += step, counter++) {
 		const double offset_angle = angle + offset;
 		gradientHost[counter * 2u] = static_cast<float>(glm::cos(offset_angle));
@@ -90,7 +90,5 @@ STPPermutationGenerator::STPPermutationTable STPPermutationGenerator::generate(c
 		grad_device.get(),
 		gradientSize
 	};
-
-	//OK
 	return result;
 }

@@ -103,22 +103,24 @@ namespace SuperTerrainPlus {
 		}
 
 		//STPStream is a smartly managed CUDA stream object.
-		using STPStream = STPUniqueResource<cudaStream_t, nullptr, STPImplementation::STPStreamDestroyer>;
+		using STPStream = STPUniqueResource<cudaStream_t, cudaStream_t {}, STPImplementation::STPStreamDestroyer>;
 		//STPEvent is a smartly managed CUDA event object.
-		using STPEvent = STPUniqueResource<cudaEvent_t, nullptr, STPImplementation::STPEventDestroyer>;
+		using STPEvent = STPUniqueResource<cudaEvent_t, cudaEvent_t {}, STPImplementation::STPEventDestroyer>;
 		//STPMemPool is a smartly managed CUDA memory pool object.
-		using STPMemPool = STPUniqueResource<cudaMemPool_t, nullptr, STPImplementation::STPMemPoolDestroyer>;
+		using STPMemPool = STPUniqueResource<cudaMemPool_t, cudaMemPool_t {}, STPImplementation::STPMemPoolDestroyer>;
 		//STPTexture is a smartly managed CUDA texture object.
-		using STPTexture = STPUniqueResource<cudaTextureObject_t, 0ull, STPImplementation::STPTextureDestroyer>;
+		using STPTexture = STPUniqueResource<cudaTextureObject_t, cudaTextureObject_t {}, STPImplementation::STPTextureDestroyer>;
 		//STPSurface is a smartly managed CUDA surface object.
-		using STPSurface = STPUniqueResource<cudaSurfaceObject_t, 0ull, STPImplementation::STPSurfaceDestroyer>;
+		using STPSurface = STPUniqueResource<cudaSurfaceObject_t, cudaSurfaceObject_t {}, STPImplementation::STPSurfaceDestroyer>;
 		//STPGraphicsResource is a smartly managed CUDA graphics resource.
-		using STPGraphicsResource = STPUniqueResource<cudaGraphicsResource_t, nullptr, STPImplementation::STPGraphicsResourceUnregisterer>;
+		using STPGraphicsResource = STPUniqueResource<cudaGraphicsResource_t, cudaGraphicsResource_t {},
+			STPImplementation::STPGraphicsResourceUnregisterer>;
 
 		//STPGLTextureObject is a smartly managed GL texture object.
-		using STPGLTextureObject = STPUniqueResource<STPOpenGL::STPuint, 0u, STPImplementation::STPGLTextureDeleter>;
+		using STPGLTextureObject = STPUniqueResource<STPOpenGL::STPuint, STPOpenGL::STPuint {}, STPImplementation::STPGLTextureDeleter>;
 		//STPGLBindlessTextureHandle is a smartly managed GL bindless texture handle to texture object.
-		using STPGLBindlessTextureHandle = STPUniqueResource<STPOpenGL::STPuint64, 0ull, STPImplementation::STPGLTextureHandleUnresidenter>;
+		using STPGLBindlessTextureHandle = STPUniqueResource<STPOpenGL::STPuint64, STPOpenGL::STPuint64 {},
+			STPImplementation::STPGLTextureHandleUnresidenter>;
 
 		/**
 		 * @brief Create a new CUDA stream.

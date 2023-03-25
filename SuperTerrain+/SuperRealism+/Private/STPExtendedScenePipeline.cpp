@@ -486,9 +486,9 @@ private:
 	//All stuff below correspond to each traceable object lives in the scene graph.
 	//Such that they all have the same length and same index.
 	//These pointers remain unchanged once they are allocated to avoid any headache of updating and synchronisation.
-	STPSmartDeviceMemory::STPDeviceMemory<OptixInstance[]> InstanceCache;
-	STPSmartDeviceMemory::STPDeviceMemory<const STPGeometryAttributeFormat::STPVertexFormat* const*[]> PrimitiveGeometry;
-	STPSmartDeviceMemory::STPDeviceMemory<const STPGeometryAttributeFormat::STPIndexFormat* const*[]> PrimitiveIndex;
+	STPSmartDeviceMemory::STPDevice<OptixInstance[]> InstanceCache;
+	STPSmartDeviceMemory::STPDevice<const STPGeometryAttributeFormat::STPVertexFormat* const*[]> PrimitiveGeometry;
+	STPSmartDeviceMemory::STPDevice<const STPGeometryAttributeFormat::STPIndexFormat* const*[]> PrimitiveIndex;
 
 	//A separate stream from the renderer, so that rendering and build task can overlap.
 	STPSmartDeviceObject::STPStream ASBuildStream;
@@ -503,7 +503,7 @@ private:
 	STPUpdateList PendingGeometryUpdate;
 	mutable mutex UpdateListLock;
 
-	STPSmartDeviceMemory::STPStreamedDeviceMemory<unsigned char[]> RootASMemory;
+	STPSmartDeviceMemory::STPStreamedDevice<unsigned char[]> RootASMemory;
 	OptixTraversableHandle RootASHandle;
 
 public:
@@ -629,7 +629,7 @@ public:
 		//output, just return the old memory back to the pool, don't care about reusing
 		this->RootASMemory = STPSmartDeviceMemory::makeStreamedDevice<unsigned char[]>(build_memPool, build_stream, tlas_size.outputSizeInBytes);
 		//temp
-		const STPSmartDeviceMemory::STPStreamedDeviceMemory<unsigned char[]> tlas_temp_mem =
+		const STPSmartDeviceMemory::STPStreamedDevice<unsigned char[]> tlas_temp_mem =
 			STPSmartDeviceMemory::makeStreamedDevice<unsigned char[]>(build_memPool, build_stream, tlas_size.tempSizeInBytes);
 
 		//build TLAS
@@ -684,15 +684,15 @@ private:
 	array<unsigned int, 3u> IntersectionStackSize;
 
 		//ray generation
-	tuple<STPSmartDeviceMemory::STPDeviceMemory<STPLaunchedRayRecord>,
+	tuple<STPSmartDeviceMemory::STPDevice<STPLaunchedRayRecord>,
 		//closest hit
-		STPSmartDeviceMemory::STPDeviceMemory<STPPrimitiveHitRecord>,
+		STPSmartDeviceMemory::STPDevice<STPPrimitiveHitRecord>,
 		//miss
-		STPSmartDeviceMemory::STPDeviceMemory<STPEnvironmentHitRecord>> IntersectionRecord;
+		STPSmartDeviceMemory::STPDevice<STPEnvironmentHitRecord>> IntersectionRecord;
 	//the shader binding table for the intersection pipeline
 	OptixShaderBindingTable IntersectionShader;
 
-	const STPSmartDeviceMemory::STPDeviceMemory<STPScreenSpaceRayIntersectionData> IntersectionGlobalData;
+	const STPSmartDeviceMemory::STPDevice<STPScreenSpaceRayIntersectionData> IntersectionGlobalData;
 
 	/**
 	 * @brief Get a char pointer to the global data.

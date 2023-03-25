@@ -75,13 +75,13 @@ namespace SuperTerrainPlus {
 			*/
 			STPRNGCreator(const STPEnvironment::STPHeightfieldSetting&);
 
-			STPSmartDeviceMemory::STPDeviceMemory<STPcurandRNG[]> operator()(cudaStream_t) const;
+			STPSmartDeviceMemory::STPDevice<STPcurandRNG[]> operator()(cudaStream_t) const;
 
 		};
 
 		//heightfield generation parameters
 		const STPEnvironment::STPHeightfieldSetting HeightfieldSettingHost;
-		STPSmartDeviceMemory::STPDeviceMemory<STPEnvironment::STPRainDropSetting> RainDropSettingDevice;
+		STPSmartDeviceMemory::STPDevice<STPEnvironment::STPRainDropSetting> RainDropSettingDevice;
 		//nearest neighbour information for no neighbour logic, diversity generation and erosion, respectively
 		const STPNearestNeighbourInformation NoNeighbour, DiversityNeighbour, ErosionNeighbour;
 
@@ -92,8 +92,8 @@ namespace SuperTerrainPlus {
 		const struct STPErosionBrushMemory {
 		public:
 
-			STPSmartDeviceMemory::STPDeviceMemory<int[]> Index;
-			STPSmartDeviceMemory::STPDeviceMemory<float[]> Weight;
+			STPSmartDeviceMemory::STPDevice<int[]> Index;
+			STPSmartDeviceMemory::STPDevice<float[]> Weight;
 
 			//shallow copy of the erosion brush data so they can be used from the device
 			STPErosionBrush ErosionBrushRawData;
@@ -104,7 +104,7 @@ namespace SuperTerrainPlus {
 		STPSmartDeviceObject::STPMemPool MapCacheDevice;
 		STPObjectPool<STPSmartDeviceObject::STPStream, STPStreamCreator> StreamPool;
 		//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independence
-		STPObjectPool<STPSmartDeviceMemory::STPDeviceMemory<STPcurandRNG[]>, STPRNGCreator> RNGPool;
+		STPObjectPool<STPSmartDeviceMemory::STPDevice<STPcurandRNG[]>, STPRNGCreator> RNGPool;
 
 		//extract the chunk setting out for convenience.
 		STPHeightfieldGenerator(const STPGeneratorSetup&, const STPEnvironment::STPChunkSetting&);

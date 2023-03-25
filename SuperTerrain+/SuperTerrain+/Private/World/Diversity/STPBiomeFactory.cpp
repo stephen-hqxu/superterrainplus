@@ -38,5 +38,5 @@ void STPBiomeFactory::operator()(Sample* const biomemap, const ivec2 offset) {
 	}
 
 	//free the producer
-	this->LayerProductionLine.returnObject(std::ref(tree));
+	this->LayerProductionLine.returnObject(tree);
 }

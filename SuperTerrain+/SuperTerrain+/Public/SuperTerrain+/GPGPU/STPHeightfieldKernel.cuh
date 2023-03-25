@@ -31,7 +31,7 @@ namespace SuperTerrainPlus {
 	namespace STPHeightfieldKernel {
 
 		typedef curandStatePhilox4_32_10 STPcurand_t;
-		typedef STPSmartDeviceMemory::STPDeviceMemory<STPcurand_t[]> STPcurand_arr;
+		typedef STPSmartDeviceMemory::STPDevice<STPcurand_t[]> STPcurand_arr;
 		/**
 		 * @brief Init the curand generator for each thread
 		 * @param seed The seed for each generator

@@ -52,7 +52,7 @@ namespace SuperTerrainPlus::STPDiversity {
 	private:
 
 		//stores local chunk information
-		STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation[]> LocalChunkInfo;
+		STPSmartDeviceMemory::STPDevice<STPTextureInformation::STPSplatGeneratorInformation::STPLocalChunkInformation[]> LocalChunkInfo;
 
 		//A collection of all texture data
 		std::vector<STPSmartDeviceObject::STPGLTextureObject> Texture;
@@ -70,12 +70,12 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPTextureDatabase::STPDatabaseView::STPTextureTypeRecord ValidType;
 
 		//Convert sample to index in spalt registry
-		STPSmartDeviceMemory::STPDeviceMemory<Sample[]> SplatLookup_d;
+		STPSmartDeviceMemory::STPDevice<Sample[]> SplatLookup_d;
 		size_t SplatLookupCount;
-		STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPSplatRegistry[]> SplatRegistry_d;
+		STPSmartDeviceMemory::STPDevice<STPTextureInformation::STPSplatRegistry[]> SplatRegistry_d;
 		//Splat configurations
-		STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPAltitudeNode[]> AltitudeRegistry_d;
-		STPSmartDeviceMemory::STPDeviceMemory<STPTextureInformation::STPGradientNode[]> GradientRegistry_d;
+		STPSmartDeviceMemory::STPDevice<STPTextureInformation::STPAltitudeNode[]> AltitudeRegistry_d;
+		STPSmartDeviceMemory::STPDevice<STPTextureInformation::STPGradientNode[]> GradientRegistry_d;
 
 		//Lookup table to convert an ID to index to the final array
 		template<typename T>
@@ -99,7 +99,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @return The smart device pointer with the data copied over.
 		*/
 		template<typename T>
-		static STPSmartDeviceMemory::STPDeviceMemory<T[]> copyToDevice(const std::vector<T>&);
+		static STPSmartDeviceMemory::STPDevice<T[]> copyToDevice(const std::vector<T>&);
 
 		/**
 		 * @brief Launch a device kernel to generate rule-based biome-dependent terrain splatmap 
@@ -111,7 +111,8 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * Moreover information about chunks such as map dimension are available in the base class.
 		 * @param stream The kernel stream generation work will be sent to.
 		*/
-		virtual void splat(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t, const STPTextureInformation::STPSplatGeneratorInformation&, cudaStream_t) const = 0;
+		virtual void splat(cudaTextureObject_t, cudaTextureObject_t, cudaSurfaceObject_t,
+			const STPTextureInformation::STPSplatGeneratorInformation&, cudaStream_t) const = 0;
 
 	protected:
 

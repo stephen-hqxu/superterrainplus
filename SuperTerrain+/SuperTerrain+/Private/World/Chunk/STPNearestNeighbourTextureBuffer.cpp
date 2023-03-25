@@ -22,7 +22,7 @@ STPNearestNeighbourTextureBuffer<T, MM>::STPMergedBuffer::STPMergedBuffer(
 	const auto [mem_pool, stream] = this->Main.DeviceMemInfo;
 
 	//allocate host memory, we need host memory regardless of memory location
-	this->HostMem = STPSmartDeviceMemory::makePinned<MutableT[]>(total_pixel);
+	this->HostMem = STPSmartDeviceMemory::makeHost<MutableT[]>(total_pixel);
 	if constexpr (MM != STPNearestNeighbourTextureBufferMemoryMode::WriteOnly) {
 		//need to copy from each neighbour chunk to a merged buffer, in read only or read/write mode
 		this->copyNeighbourTexture<true>();

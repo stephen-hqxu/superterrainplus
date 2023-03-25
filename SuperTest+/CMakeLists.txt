@@ -2,15 +2,7 @@ set(STP_UNIT_TEST "SuperTest+")
 set(STP_CONSOLE_REPORTER "stp_console")
 
 find_package(Catch2 3.3 REQUIRED CONFIG)
-
-include(DownloadResource)
-# benchmarking library by `nanobench`
-downloadResource(
-URL "https://raw.githubusercontent.com/martinus/nanobench/v4.3.11/src/include/nanobench.h"
-FILENAME "nanobench-4.3.11/nanobench"
-EXTENSION ".h"
-PATH STP_NANOBENCH_DIR
-)
+find_package(nanobench REQUIRED CONFIG)
 
 # unit test codes
 add_executable(${STP_UNIT_TEST})
@@ -22,7 +14,6 @@ STPTestInformation.h
 set(STP_UNIT_TEST_SOURCE
 STPTestMain.cpp
 # /Setup
-Setup/STPBenchmark.cpp
 Setup/STPConsoleReporter.cpp
 # /SuperAlgorithm+
 SuperAlgorithm+/STPTestCmdParser.cpp
@@ -70,7 +61,7 @@ PRIVATE ${STP_NANOBENCH_DIR}
 # link with the main program that needs to be tested and catch2
 target_link_libraries(${STP_UNIT_TEST}
 PRIVATE ${STP_MAIN_ENGINE} ${STP_ALGORITHM_HOST_ENGINE}
-PRIVATE Catch2::Catch2
+PRIVATE Catch2::Catch2 nanobench::nanobench
 )
 
 # catch2 with CTest integration

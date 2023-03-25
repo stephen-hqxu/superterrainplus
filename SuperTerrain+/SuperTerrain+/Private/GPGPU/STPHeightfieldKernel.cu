@@ -18,7 +18,8 @@ __global__ static void hydraulicErosionKERNEL(
 
 __global__ static void texture32Fto16KERNEL(float*, unsigned short*, uvec2);
 
-__host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(const unsigned long long seed, const unsigned int count, const cudaStream_t stream) {
+__host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(
+	const unsigned long long seed, const unsigned int count, const cudaStream_t stream) {
 	//determine launch parameters
 	int Mingridsize, gridsize, blocksize;
 	STP_CHECK_CUDA(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &curandInitKERNEL));

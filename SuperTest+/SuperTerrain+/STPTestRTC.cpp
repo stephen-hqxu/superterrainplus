@@ -65,7 +65,7 @@ protected:
 		"#endif//_MatrixArithmeticVersion_			\n";
 	constexpr static char ExternalHeaderName[] = "MatrixArithmeticVersion";
 
-	STPSmartDeviceMemory::STPDeviceMemory<float[]> MatA, MatB, MatOut, MatBuffer;
+	STPSmartDeviceMemory::STPDevice<float[]> MatA, MatB, MatOut, MatBuffer;
 
 	CUfunction MattransformAdd, MattransformSub, Matscale;
 

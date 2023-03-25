@@ -43,7 +43,7 @@ OptixTraversableHandle STPAsyncAccelBuilder::compact(const STPCompactInformation
 	auto& [back_mem, back_handle] = *this->BackBuffer;
 	//allocate spare memory
 	OptixTraversableHandle compactHandle;
-	STPSmartDeviceMemory::STPStreamedDeviceMemory<unsigned char[]> compactMem =
+	STPSmartDeviceMemory::STPStreamedDevice<unsigned char[]> compactMem =
 		STPSmartDeviceMemory::makeStreamedDevice<unsigned char[]>(memPool, stream, outputBufferSize);
 
 	//compact

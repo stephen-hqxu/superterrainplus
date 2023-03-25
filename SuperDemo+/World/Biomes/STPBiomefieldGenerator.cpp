@@ -106,9 +106,9 @@ void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBu
 	/* ------------------------------------------ populate device memory ------------------------------------------- */
 	//calculate the size of allocation, in number of element
 	const auto [bin_size, offset_size] = histogram_buffer.size();
-	const STPSmartDeviceMemory::STPStreamedDeviceMemory<STPSingleHistogram::STPBin> bin_device =
+	const STPSmartDeviceMemory::STPStreamedDevice<STPSingleHistogram::STPBin> bin_device =
 		STPSmartDeviceMemory::makeStreamedDevice<STPSingleHistogram::STPBin>(this->HistogramCacheDevice.get(), stream, bin_size);
-	const STPSmartDeviceMemory::STPStreamedDeviceMemory<unsigned int> offset_device =
+	const STPSmartDeviceMemory::STPStreamedDevice<unsigned int> offset_device =
 		STPSmartDeviceMemory::makeStreamedDevice<unsigned int>(this->HistogramCacheDevice.get(), stream, offset_size);
 	
 	const STPSingleHistogram histogram_d { bin_device.get(), offset_device.get() };

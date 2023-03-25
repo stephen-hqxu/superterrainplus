@@ -7,7 +7,6 @@
 //System
 #include <memory>
 #include <type_traits>
-#include <optional>
 
 namespace SuperTerrainPlus {
 
@@ -28,7 +27,7 @@ namespace SuperTerrainPlus {
 
 			//Delete pinned host memory using cudaFreeHost();
 			template<typename T>
-			struct STPPinnedMemoryDeleter {
+			struct STPHostDeleter {
 			public:
 
 				void operator()(T*) const;
@@ -37,7 +36,7 @@ namespace SuperTerrainPlus {
 
 			//Delete device memory using cudaFree();
 			template<typename T>
-			struct STPDeviceMemoryDeleter {
+			struct STPDeviceDeleter {
 			public:
 
 				void operator()(T*) const;
@@ -46,16 +45,14 @@ namespace SuperTerrainPlus {
 
 			//Delete device memory using cudaFreeAsync();
 			template<typename T>
-			struct STPStreamedDeviceMemoryDeleter {
+			struct STPStreamedDeviceDeleter {
 			private:
 
-				std::optional<cudaStream_t> Stream;
+				cudaStream_t Stream;
 
 			public:
 
-				STPStreamedDeviceMemoryDeleter() = default;
-
-				STPStreamedDeviceMemoryDeleter(cudaStream_t);
+				STPStreamedDeviceDeleter(cudaStream_t = cudaStream_t {}) noexcept;
 
 				void operator()(T*) const;
 
@@ -63,28 +60,28 @@ namespace SuperTerrainPlus {
 
 		}
 
-		//STPPinnedMemory is a pinned host memory version of std::unique_ptr.
+		//STPHost is a pinned host memory version of std::unique_ptr.
 		//The deleter utilises cudaFreeHost()
 		template<typename T>
-		using STPPinnedMemory = STPImplementation::STPMemoryManager<T, STPImplementation::STPPinnedMemoryDeleter>;
+		using STPHost = STPImplementation::STPMemoryManager<T, STPImplementation::STPHostDeleter>;
 
-		//STPDeviceMemory is a normal device memory version of std::unique_ptr.
+		//STPDevice is a normal device memory version of std::unique_ptr.
 		//The deleter utilises cudaFree()
 		template<typename T>
-		using STPDeviceMemory = STPImplementation::STPMemoryManager<T, STPImplementation::STPDeviceMemoryDeleter>;
+		using STPDevice = STPImplementation::STPMemoryManager<T, STPImplementation::STPDeviceDeleter>;
 
-		//STPStreamedDeviceMemory is a stream-ordered device memory deleter.
+		//STPStreamedDevice is a stream-ordered device memory deleter.
 		//The deleter utilises cudaFreeAsync()
 		//However the caller should guarantee the availability of the stream when the memory is destroyed
 		template<typename T>
-		using STPStreamedDeviceMemory = STPImplementation::STPMemoryManager<T, STPImplementation::STPStreamedDeviceMemoryDeleter>;
+		using STPStreamedDevice = STPImplementation::STPMemoryManager<T, STPImplementation::STPStreamedDeviceDeleter>;
 
 		/**
-		 * @brief STPPitchedDeviceMemory is a managed device memory with pitch.
+		 * @brief STPPitchedDevice is a managed device memory with pitch.
 		 * The deleter utilises cudaFree()
 		*/
 		template<typename T>
-		struct STPPitchedDeviceMemory : public STPDeviceMemory<T> {
+		struct STPPitchedDevice : public STPDevice<T> {
 		public:
 
 			size_t Pitch;
@@ -92,45 +89,45 @@ namespace SuperTerrainPlus {
 			/**
 			 * @brief Create an empty pitched device memory.
 			*/
-			STPPitchedDeviceMemory();
+			STPPitchedDevice() noexcept;
 
 			/**
 			 * @brief Create a new managed pitched device memory.
 			 * @param ptr The pitched device pointer.
 			 * @param pitch The pointer pitch.
 			*/
-			STPPitchedDeviceMemory(typename STPDeviceMemory<T>::pointer, size_t);
+			STPPitchedDevice(typename STPDevice<T>::pointer, size_t) noexcept;
 
-			STPPitchedDeviceMemory(STPPitchedDeviceMemory&&) noexcept = default;
+			STPPitchedDevice(STPPitchedDevice&&) noexcept = default;
 
-			STPPitchedDeviceMemory& operator=(STPPitchedDeviceMemory&&) noexcept = default;
+			STPPitchedDevice& operator=(STPPitchedDevice&&) noexcept = default;
 
-			~STPPitchedDeviceMemory() = default;
+			~STPPitchedDevice() = default;
 
 		};
 
 		//Some helper functions
 
 		/**
-		 * @brief Create a STPPinnedMemory which is a smart pointer to page-locked memory with default pinned memory allocator.
+		 * @brief Create a STPHost which is a smart pointer to page-locked memory with default pinned memory allocator.
 		 * @tparam T The type of the pointer.
 		 * @param size THe number of element of T to be allocated.
 		 * @return The smart pointer to the memory allocated.
 		*/
 		template<typename T>
-		STPPinnedMemory<T> makePinned(size_t = 1u);
+		STPHost<T> makeHost(size_t = 1u);
 
 		/**
-		 * @brief Create a STPDeviceMemory which is a smart pointer to device memory with default device deleter
+		 * @brief Create a STPDevice which is a smart pointer to device memory with default device deleter
 		 * @tparam T The type of the pointer
 		 * @param size The number of element of T to be allocated (WARNING: NOT the size in byte)
 		 * @return The smart pointer to the memory allocated
 		*/
 		template<typename T>
-		STPDeviceMemory<T> makeDevice(size_t = 1u);
+		STPDevice<T> makeDevice(size_t = 1u);
 
 		/**
-		 * @brief Create a STPStreamedDeviceMemory which is a smart pointer to device memory with stream-ordered device deleter
+		 * @brief Create a STPStreamedDevice which is a smart pointer to device memory with stream-ordered device deleter
 		 * @tparam T The type of the pointer
 		 * @param size The number of element of T to be allocated (WARNING: NOT the size in byte)
 		 * @param memPool The device memory pool that the memory will be allocated from
@@ -138,17 +135,17 @@ namespace SuperTerrainPlus {
 		 * @return The streamed smart pointer to the memory allocated
 		*/
 		template<typename T>
-		STPStreamedDeviceMemory<T> makeStreamedDevice(cudaMemPool_t, cudaStream_t, size_t = 1u);
+		STPStreamedDevice<T> makeStreamedDevice(cudaMemPool_t, cudaStream_t, size_t = 1u);
 
 		/**
-		 * @brief Create a STPPitchedDeviceMemory which is a smart pointer to pitched device memory with regular device deleter.
+		 * @brief Create a STPPitchedDevice which is a smart pointer to pitched device memory with regular device deleter.
 		 * @tparam T The type of the pointer.
 		 * @param width The width of the memory, in the number of element.
 		 * @param height The height of the memory, in the number of element.
 		 * @return The smart pointer the pitched memory allocated.
 		*/
 		template<typename T>
-		STPPitchedDeviceMemory<T> makePitchedDevice(size_t, size_t);
+		STPPitchedDevice<T> makePitchedDevice(size_t, size_t);
 
 	}
 

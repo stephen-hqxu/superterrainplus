@@ -77,7 +77,7 @@ namespace {
 		static_assert(std::is_trivially_destructible_v<T>, "type must be trivially destructible");
 
 		//The type of memory for the array list.
-		typedef std::conditional_t<Pinned, SuperTerrainPlus::STPSmartDeviceMemory::STPPinnedMemory<T[]>, unique_ptr<T[]>> STPMemory;
+		typedef std::conditional_t<Pinned, SuperTerrainPlus::STPSmartDeviceMemory::STPHost<T[]>, unique_ptr<T[]>> STPMemory;
 		
 		//The data held by the array list.
 		STPMemory Memory;
@@ -102,7 +102,7 @@ namespace {
 			//allocate a cache
 			STPMemory cache;
 			if constexpr (Pinned) {
-				cache = SuperTerrainPlus::STPSmartDeviceMemory::makePinned<T[]>(new_capacity);
+				cache = SuperTerrainPlus::STPSmartDeviceMemory::makeHost<T[]>(new_capacity);
 			} else {
 				cache = make_unique<T[]>(new_capacity);
 			}

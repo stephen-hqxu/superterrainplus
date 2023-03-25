@@ -29,7 +29,7 @@ STPHeightfieldGenerator::STPRNGCreator::STPRNGCreator(const STPEnvironment::STPH
 
 }
 
-inline STPSmartDeviceMemory::STPDeviceMemory<STPHeightfieldGenerator::STPcurandRNG[]>
+inline STPSmartDeviceMemory::STPDevice<STPHeightfieldGenerator::STPcurandRNG[]>
 	STPHeightfieldGenerator::STPRNGCreator::operator()(const cudaStream_t stream) const {
 	return STPHeightfieldKernel::curandInit(this->Seed, this->Length, stream);
 }
@@ -168,7 +168,7 @@ void STPHeightfieldGenerator::generate(float* const heightfield, const STPDivers
 
 void STPHeightfieldGenerator::erode(float* const* const heightfield_original, unsigned short* const* const heightfield_low) {
 	PREPARE_GENERATION_DATA();
-	STPSmartDeviceMemory::STPDeviceMemory<STPcurandRNG[]> rng_buffer = move(this->RNGPool.requestObject(stream));
+	STPSmartDeviceMemory::STPDevice<STPcurandRNG[]> rng_buffer = move(this->RNGPool.requestObject(stream));
 	//limit the scope of texture buffer to ensure their memory is sync'ed and freed at destruction before we return our memory back to the pool
 	{
 		const STPNearestNeighbourFloatRWTextureBuffer heightmap_buffer(heightfield_original, this->ErosionNeighbour, device_object);
