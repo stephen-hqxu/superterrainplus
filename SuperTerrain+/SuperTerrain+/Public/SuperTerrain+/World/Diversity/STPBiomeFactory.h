@@ -10,8 +10,6 @@
 //GLM
 #include <glm/vec2.hpp>
 
-#include <utility>
-
 namespace SuperTerrainPlus::STPDiversity {
 
 	/**
@@ -34,15 +32,17 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @brief Initialise a production line creator.
 			 * @param factory The dependent biome factory.
 			*/
-			STPProductionLineCreator(STPBiomeFactory&);
+			STPProductionLineCreator(STPBiomeFactory&) noexcept;
 
-			STPLayer& operator()();
+			~STPProductionLineCreator() = default;
+
+			STPLayer* operator()();
 
 		};
 		//Basically it behaves like a memory pool.
 		//Whenever operator() is called, we search for an empty production line, and use that to generate biome.
 		//If no available production line can be found, ask more production line from the manufacturer.
-		STPObjectPool<std::reference_wrapper<STPLayer>, STPProductionLineCreator> LayerProductionLine;
+		STPObjectPool<STPLayer*, STPProductionLineCreator> LayerProductionLine;
 
 		/**
 		 * @brief A layer supplier, which provides the algorithm for layer generation and creates a new layer tree structure.

@@ -51,14 +51,14 @@ namespace SuperTerrainPlus {
 		 * @return The requesting object.
 		*/
 		template<typename... Arg>
-		[[nodiscard]] T requestObject(Arg&&...);
+		[[nodiscard]] T request(Arg&&...);
 
 		/**
 		 * @brief Return the object into the object pool.
 		 * It is an undefined behaviour if the object is not requested from the pool.
 		 * @param obj The object to be returned.
 		*/
-		void returnObject(T&&);
+		void release(T&&);
 
 	};
 }

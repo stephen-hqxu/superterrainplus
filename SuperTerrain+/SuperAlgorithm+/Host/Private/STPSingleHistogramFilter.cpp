@@ -48,10 +48,10 @@ inline static To castBit(const From source) noexcept {
 	using std::is_arithmetic;
 	static_assert(std::conjunction_v<is_arithmetic<To>, is_arithmetic<From>> && sizeof(To) == sizeof(From),
 		"The source and destination type must both be primitive and have the same size");
-
-	To dst;
-	std::memcpy(&dst, &source, sizeof(From));
-	return dst;
+	//I really want to use `bit_cast` because `memcpy` is too ugly.
+	//I know it is not portable, but most compilers use this function signature for C++20 `bit_cast`.
+	//We will replace it with the proper standard library bit_cast soon anyway, this is for transition.
+	return __builtin_bit_cast(To, source);
 }
 
 /* Implementation of custom data structure */
@@ -401,7 +401,7 @@ namespace {
 			//Get the bin for a biome sample.
 			//If bin doesn't exist, a new bin is created.
 			//check if the sample is in the dictionary
-			const int diff = static_cast<int>(this->Dictionary.size() - sample);
+			const int diff = static_cast<int>(this->Dictionary.size()) - static_cast<int>(sample);
 
 			//get the biome using the index from dictionary
 			//if not we need to insert that many extra entries so we can use sample to index the dictionary directly
@@ -412,7 +412,7 @@ namespace {
 				//biome not exist, add and initialise
 				this->Bin.emplace_back(sample, count);
 				//record the index in the bin and store to dictionary
-				bin_index = static_cast<unsigned int>(this->Bin.size()) - 1;
+				bin_index = static_cast<unsigned int>(this->Bin.size() - 1u);
 			} else {
 				//increment count
 				this->Bin[bin_index].Weight += count;
@@ -430,7 +430,7 @@ namespace {
 		void decrement(const Sample sample, const unsigned int count) {
 			//our algorithm guarantees the bin has been increment by this sample before, so no check is needed
 			unsigned int& bin_index = this->Dictionary[sample];
-			unsigned int& quant = this->Bin[static_cast<unsigned int>(bin_index)].Weight;
+			unsigned int& quant = this->Bin[bin_index].Weight;
 
 			if (quant <= count) {
 				//update the dictionary entries linearly, basically it's a rehash in hash table
@@ -526,6 +526,7 @@ static void filterVertical(const Sample* const sample_map, STPInternalHistogramB
 	histogram_output.clear();
 	worker_cache.clear();
 
+	const int radius_signed = static_cast<int>(radius);
 	//we assume the radius never goes out of the nearest neighbour boundary
 	//we are traversing the a row-major sample_map column by column
 	for (unsigned int i = w_range.x; i < w_range.y; i++) {
@@ -537,7 +538,7 @@ static void filterVertical(const Sample* const sample_map, STPInternalHistogramB
 			di = ti + (radius + 1u) * nn_rangeX;
 
 		//load the radius into accumulator
-		for (int j = -static_cast<int>(radius); j <= static_cast<int>(radius); j++) {
+		for (int j = -radius_signed; j <= radius_signed; j++) {
 			worker_cache.increment(sample_map[ti + j * nn_rangeX], 1u);
 		}
 		//copy the first pixel to buffer
@@ -612,6 +613,7 @@ static void filterHorizontal(const STPHistogramBuffer<InPin>& histogram_input,
 	histogram_output.clear();
 	worker_cache.clear();
 
+	const int radius_signed = static_cast<int>(radius);
 	//we use the output from vertical pass as "texture", and assume the output pixels are always available
 	//remind that the Output from vertical stage is a column-major matrix and we are traversing it row by row
 	for (unsigned int i = h_range.x; i < h_range.y; i++) {
@@ -623,7 +625,7 @@ static void filterHorizontal(const STPHistogramBuffer<InPin>& histogram_input,
 			ri = ti + (radius + 1u) * dimension.y;
 
 		//load radius strip for the first pixel into accumulator
-		for (int j = -static_cast<int>(radius); j <= static_cast<int>(radius); j++) {
+		for (int j = -radius_signed; j <= radius_signed; j++) {
 			auto bin_offset = histogram_input.HistogramStartOffset.cbegin() + (ti + j * dimension.y);
 			const unsigned int bin_start = *bin_offset,
 				bin_end = *(bin_offset + 1);

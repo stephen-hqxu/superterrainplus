@@ -9,8 +9,8 @@ inline SuperTerrainPlus::STPObjectPool<T, New>::STPObjectPool(Arg&&... creator_a
 
 template<class T, class New>
 template<typename... Arg>
-inline T SuperTerrainPlus::STPObjectPool<T, New>::requestObject(Arg&&... creator_arg) {
-	std::unique_lock request_lock(this->PoolLock);
+inline T SuperTerrainPlus::STPObjectPool<T, New>::request(Arg&&... creator_arg) {
+	const std::unique_lock request_lock(this->PoolLock);
 
 	if (this->ObjectPool.empty()) {
 		//no more object available, request a new one and return
@@ -23,8 +23,8 @@ inline T SuperTerrainPlus::STPObjectPool<T, New>::requestObject(Arg&&... creator
 }
 
 template<class T, class New>
-inline void SuperTerrainPlus::STPObjectPool<T, New>::returnObject(T&& obj) {
-	std::unique_lock return_lock(this->PoolLock);
+inline void SuperTerrainPlus::STPObjectPool<T, New>::release(T&& obj) {
+	const std::unique_lock return_lock(this->PoolLock);
 
 	//return object back to the queue
 	this->ObjectPool.emplace(std::move(obj));

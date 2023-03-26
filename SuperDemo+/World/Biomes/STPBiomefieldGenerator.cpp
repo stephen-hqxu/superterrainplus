@@ -99,7 +99,7 @@ void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBu
 	const cudaStream_t stream = heightmap_buffer.DeviceMemInfo.second;
 
 	//histogram filter
-	STPSingleHistogramFilter::STPFilterBuffer histogram_buffer = this->BufferPool.requestObject();
+	STPSingleHistogramFilter::STPFilterBuffer histogram_buffer = this->BufferPool.request();
 	const STPSingleHistogram histogram_h = this->GenerateBiomeHistogram(
 		biomemap, biomemap_buffer.NeighbourInfo, histogram_buffer, this->InterpolationRadius);
 
@@ -121,7 +121,7 @@ void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBu
 	
 	//returning the buffer back to the pool, make sure all copies are done
 	STP_CHECK_CUDA(cudaStreamSynchronize(stream));
-	this->BufferPool.returnObject(move(histogram_buffer));
+	this->BufferPool.release(move(histogram_buffer));
 
 	/* -------------------------------------- launch kernel ----------------------------------------- */
 	const float2 gpu_offset = make_float2(offset.x, offset.y);

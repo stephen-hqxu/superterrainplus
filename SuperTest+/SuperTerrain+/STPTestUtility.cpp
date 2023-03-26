@@ -274,22 +274,22 @@ TEMPLATE_TEST_CASE_METHOD(ObjectPoolTester, "STPObjectPool reuses object wheneve
 	GIVEN("A fresh object pool") {
 
 		WHEN("An object is requested") {
-			auto Obj = this->requestObject();
+			auto Obj = this->request();
 
 			THEN("The requested object should be constructed appropriately") {
 				REQUIRE(*Obj == static_cast<TestType>(123));
 			}
 
 			AND_WHEN("The object is returned and re-requested") {
-				this->returnObject(move(Obj));
-				auto ReObj = this->requestObject();
+				this->release(move(Obj));
+				auto ReObj = this->request();
 
 				THEN("The requested object should be the same as the first object") {
 					REQUIRE(*ReObj == static_cast<TestType>(123));
 				}
 
 				AND_WHEN("Another object is requested while the pool is empty") {
-					auto AnotherObj = this->requestObject();
+					auto AnotherObj = this->request();
 
 					THEN("The newly requested object should be newly created") {
 						REQUIRE(*AnotherObj == static_cast<TestType>(124));

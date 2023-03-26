@@ -9,12 +9,12 @@ using std::make_unique;
 
 using namespace SuperTerrainPlus::STPDiversity;
 
-STPBiomeFactory::STPProductionLineCreator::STPProductionLineCreator(STPBiomeFactory& factory) : Factory(factory) {
+STPBiomeFactory::STPProductionLineCreator::STPProductionLineCreator(STPBiomeFactory& factory) noexcept : Factory(factory) {
 
 }
 
-STPLayer& STPBiomeFactory::STPProductionLineCreator::operator()() {
-	return this->Factory.supply();
+STPLayer* STPBiomeFactory::STPProductionLineCreator::operator()() {
+	return &this->Factory.supply();
 }
 
 STPBiomeFactory::STPBiomeFactory(const uvec2 dimension) : LayerProductionLine(*this), BiomeDimension(dimension) {
@@ -23,7 +23,7 @@ STPBiomeFactory::STPBiomeFactory(const uvec2 dimension) : LayerProductionLine(*t
 
 void STPBiomeFactory::operator()(Sample* const biomemap, const ivec2 offset) {
 	//request a production line
-	STPLayer& tree = this->LayerProductionLine.requestObject();
+	STPLayer& tree = *this->LayerProductionLine.request();
 
 	//y-component is interpreted as z coordinate in world space
 
@@ -38,5 +38,5 @@ void STPBiomeFactory::operator()(Sample* const biomemap, const ivec2 offset) {
 	}
 
 	//free the producer
-	this->LayerProductionLine.returnObject(tree);
+	this->LayerProductionLine.release(&tree);
 }

@@ -447,7 +447,7 @@ private:
 			//get the memory of all neighbour
 			//since biomemap is read only, we can safely read from the database and get the biomemap memory,
 			//even if some neighbours may overlap and be read by multiple threads
-			unique_ptr<void*[]> neighbour_biome_mem = this->DiversityNeighbourMemoryPool.requestObject();
+			unique_ptr<void*[]> neighbour_biome_mem = this->DiversityNeighbourMemoryPool.request();
 			const Sample** const neighbour_biome = const_cast<const Sample**>(reinterpret_cast<Sample**>(neighbour_biome_mem.get()));
 			transform(neighbour_offset.begin(), neighbour_offset.end(), neighbour_biome,
 				[&db, centre_chunk = chunkCoord](const auto chunk_coord_offset) {
@@ -456,7 +456,7 @@ private:
 			//invoke generator
 			this->HeightfieldGenerator.generate(chunk.heightmap(), neighbour_biome, static_cast<vec2>(this->calcMapOffset(chunkCoord)));
 			//return memory
-			this->DiversityNeighbourMemoryPool.returnObject(std::move(neighbour_biome_mem));
+			this->DiversityNeighbourMemoryPool.release(std::move(neighbour_biome_mem));
 
 			chunk.Completeness = STPChunk::STPChunkCompleteness::HeightmapReady;
 		};
@@ -494,8 +494,8 @@ private:
 			const STPChunk::STPChunkNeighbourOffset& neighbour_offset = this->ErosionNeighbourOffset;
 			
 			//get memory, we need to 2 neighbour sets
-			unique_ptr<void*[]> neighbour_heightmap_mem = this->ErosionNeighbourMemoryPool.requestObject(),
-				neighbour_heightmap_low_mem = this->ErosionNeighbourMemoryPool.requestObject();
+			unique_ptr<void*[]> neighbour_heightmap_mem = this->ErosionNeighbourMemoryPool.request(),
+				neighbour_heightmap_low_mem = this->ErosionNeighbourMemoryPool.request();
 			float** const neighbour_heightmap = reinterpret_cast<float**>(neighbour_heightmap_mem.get());
 			unsigned short** const neighbour_heightmap_low = reinterpret_cast<unsigned short**>(neighbour_heightmap_low_mem.get());
 			//prepare pointers
@@ -508,8 +508,8 @@ private:
 			//where the magic happens
 			this->HeightfieldGenerator.erode(neighbour_heightmap, neighbour_heightmap_low);
 			//clean up
-			this->ErosionNeighbourMemoryPool.returnObject(std::move(neighbour_heightmap_mem));
-			this->ErosionNeighbourMemoryPool.returnObject(std::move(neighbour_heightmap_low_mem));
+			this->ErosionNeighbourMemoryPool.release(std::move(neighbour_heightmap_mem));
+			this->ErosionNeighbourMemoryPool.release(std::move(neighbour_heightmap_low_mem));
 
 			chunk.Completeness = STPChunk::STPChunkCompleteness::Complete;
 		};

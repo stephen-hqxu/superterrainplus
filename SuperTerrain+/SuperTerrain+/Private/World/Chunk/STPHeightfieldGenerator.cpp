@@ -147,11 +147,11 @@ STPHeightfieldGenerator::STPHeightfieldGenerator(const STPGeneratorSetup& setup,
 	STP_CHECK_CUDA(cudaMemPoolSetAttribute(this->MapCacheDevice.get(), cudaMemPoolAttrReleaseThreshold, &release_thres));
 }
 
-#define PREPARE_GENERATION_DATA() STPSmartDeviceObject::STPStream smart_stream = this->StreamPool.requestObject(); \
+#define PREPARE_GENERATION_DATA() STPSmartDeviceObject::STPStream smart_stream = this->StreamPool.request(); \
 const cudaStream_t stream = smart_stream.get(); \
 const auto device_object = make_pair(this->MapCacheDevice.get(), stream)
 
-#define CLEANUP_GENERATION_DATA() this->StreamPool.returnObject(move(smart_stream))
+#define CLEANUP_GENERATION_DATA() this->StreamPool.release(move(smart_stream))
 
 void STPHeightfieldGenerator::generate(float* const heightfield, const STPDiversity::Sample* const* const biomemap, const vec2 offset) {
 	PREPARE_GENERATION_DATA();
@@ -168,7 +168,7 @@ void STPHeightfieldGenerator::generate(float* const heightfield, const STPDivers
 
 void STPHeightfieldGenerator::erode(float* const* const heightfield_original, unsigned short* const* const heightfield_low) {
 	PREPARE_GENERATION_DATA();
-	STPSmartDeviceMemory::STPDevice<STPcurandRNG[]> rng_buffer = move(this->RNGPool.requestObject(stream));
+	STPSmartDeviceMemory::STPDevice<STPcurandRNG[]> rng_buffer = move(this->RNGPool.request(stream));
 	//limit the scope of texture buffer to ensure their memory is sync'ed and freed at destruction before we return our memory back to the pool
 	{
 		const STPNearestNeighbourFloatRWTextureBuffer heightmap_buffer(heightfield_original, this->ErosionNeighbour, device_object);
@@ -190,6 +190,6 @@ void STPHeightfieldGenerator::erode(float* const* const heightfield_original, un
 		//destruction of memory is streamed order, wait for the stream after those texture buffer die
 	}
 	STP_CHECK_CUDA(cudaStreamSynchronize(stream));
-	this->RNGPool.returnObject(move(rng_buffer));
+	this->RNGPool.release(move(rng_buffer));
 	CLEANUP_GENERATION_DATA();
 }

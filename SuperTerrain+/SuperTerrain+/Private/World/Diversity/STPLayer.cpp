@@ -51,6 +51,7 @@ inline static unsigned long long uniqueHash(const int x, const int y, const int 
 
 /**
  * @brief An algorithm to convert key value to a raw index value in order to locate the sample value in the hash table.
+ * This algorithm is based on *MurmurHash3 64-bit*.
  * @param key The value of the key.
  * @return The raw index value, it's not the same as index, do remember to limit the range of the index using mask.
 */
