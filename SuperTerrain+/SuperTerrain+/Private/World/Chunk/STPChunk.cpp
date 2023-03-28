@@ -13,40 +13,39 @@ using std::unique_ptr;
 using std::make_unique;
 
 using namespace SuperTerrainPlus;
-using STPDiversity::Sample;
 
 STPChunk::STPChunk(const uvec2 size) : MapDimension(size), Completeness(STPChunkCompleteness::Empty) {
 	const unsigned int num_pixel = this->MapDimension.x * this->MapDimension.y;
 	STP_ASSERTION_NUMERIC_DOMAIN(num_pixel > 0u, "The dimension of texture must not be zero");
 
 	//allocate memory for each map
-	this->Biomemap = make_unique<Sample[]>(num_pixel);
-	this->Heightmap = make_unique<float[]>(num_pixel);
-	this->LowHeightmap = make_unique<unsigned short[]>(num_pixel);
+	this->Biomemap = make_unique<STPSample_t[]>(num_pixel);
+	this->HeightmapFloat = make_unique<STPHeightFloat_t[]>(num_pixel);
+	this->HeightmapFixed = make_unique<STPHeightFixed_t[]>(num_pixel);
 }
 
-Sample* STPChunk::biomemap() noexcept {
+STPSample_t* STPChunk::biomemap() noexcept {
 	return this->Biomemap.get();
 }
 
-const Sample* STPChunk::biomemap() const noexcept {
+const STPSample_t* STPChunk::biomemap() const noexcept {
 	return this->Biomemap.get();
 }
 
-float* STPChunk::heightmap() noexcept {
-	return this->Heightmap.get();
+STPHeightFloat_t* STPChunk::heightmapFloat() noexcept {
+	return this->HeightmapFloat.get();
 }
 
-const float* STPChunk::heightmap() const noexcept {
-	return this->Heightmap.get();
+const STPHeightFloat_t* STPChunk::heightmapFloat() const noexcept {
+	return this->HeightmapFloat.get();
 }
 
-unsigned short* STPChunk::heightmapLow() noexcept {
-	return this->LowHeightmap.get();
+STPHeightFixed_t* STPChunk::heightmapFixed() noexcept {
+	return this->HeightmapFixed.get();
 }
 
-const unsigned short* STPChunk::heightmapLow() const noexcept {
-	return this->LowHeightmap.get();
+const STPHeightFixed_t* STPChunk::heightmapFixed() const noexcept {
+	return this->HeightmapFixed.get();
 }
 
 const ivec2* STPChunk::STPChunkNeighbourOffset::begin() const noexcept {

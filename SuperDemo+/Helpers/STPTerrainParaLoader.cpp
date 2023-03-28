@@ -9,6 +9,8 @@ namespace Env = SuperTerrainPlus::STPEnvironment;
 
 using namespace STPDemo;
 
+using SuperTerrainPlus::STPSeed_t;
+
 using SuperTerrainPlus::STPAlgorithm::STPINIData::STPINIStorageView;
 using SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView;
 
@@ -90,7 +92,7 @@ Env::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const STPINISectionVi
 	return chunks_options;
 }
 
-Env::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(const STPINISectionView& section, const unsigned long long generator_seed) {
+Env::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(const STPINISectionView& section, const STPSeed_t generator_seed) {
 	//get the default settings
 	Env::STPHeightfieldSetting launch_options = { };
 	Env::STPRainDropSetting& raindrop_options = launch_options.Erosion;
@@ -115,7 +117,7 @@ Env::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(const STPIN
 	return launch_options;
 }
 
-Env::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplexSetting(const STPINISectionView& section, const unsigned long long simplex_seed) {
+Env::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplexSetting(const STPINISectionView& section, const STPSeed_t simplex_seed) {
 	Env::STPSimplexNoiseSetting noise_option = { };
 
 	noise_option.Seed = simplex_seed;
@@ -203,7 +205,7 @@ Env::STPAuroraSetting STPTerrainParaLoader::getAuroraSetting(const STPINISection
 	return aurora;
 }
 
-Env::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(const STPINISectionView& section, const unsigned long long ao_seed) {
+Env::STPOcclusionKernelSetting STPTerrainParaLoader::getAOSetting(const STPINISectionView& section, const STPSeed_t ao_seed) {
 	Env::STPOcclusionKernelSetting ao_kernel = { };
 
 	ao_kernel.RandomSampleSeed = ao_seed;
@@ -267,14 +269,13 @@ Env::STPBidirectionalScatteringSetting STPTerrainParaLoader::getBSDFSetting(cons
 }
 
 void STPTerrainParaLoader::loadBiomeParameters(const STPINIStorageView& biomeini) {
-	using namespace SuperTerrainPlus::STPDiversity;
 	namespace BR = STPDemo::STPBiomeRegistry;
 	const auto load = [&biomeini](STPDemo::STPBiome& biome, const string_view name) -> void {
 		const STPINISectionView& curr_biome = biomeini.at(name);
 
 		//assigning props
 		biome.Name = curr_biome.at("name").String;
-		biome.ID = curr_biome.at("id").to<Sample>();
+		biome.ID = curr_biome.at("id").to<SuperTerrainPlus::STPSample_t>();
 		biome.Temperature = curr_biome.at("temperature").to<float>();
 		biome.Precipitation = curr_biome.at("precipitation").to<float>();
 		biome.Scale = curr_biome.at("scale").to<float>();

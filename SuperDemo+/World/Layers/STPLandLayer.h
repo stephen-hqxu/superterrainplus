@@ -12,20 +12,20 @@ namespace {
 	class STPLandLayer : public STPXCrossLayer {
 	public:
 
-		STPLandLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
+		STPLandLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, STPLayer& parent) :
 			STPXCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 
-		Sample sample(const Sample center, const Sample ne, const Sample se, const Sample sw, const Sample nw,
-			const Seed local_seed) override {
+		STPSample_t sample(const STPSample_t center, const STPSample_t ne, const STPSample_t se, const STPSample_t sw,
+			const STPSample_t nw, const STPSeed_t local_seed) override {
 			//get the local RNG
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(local_seed);
 
 			//if the centre is not ocean or all surroundings are ocean
 			if (!Reg::isShallowOcean(center) || Reg::applyAll(Reg::isShallowOcean, sw, se, ne, nw)) {
 				//opposite, if the centre is ocean or all surroundings are not
-				if (Reg::isShallowOcean(center) || Reg::applyAll([](Sample val) -> bool {
+				if (Reg::isShallowOcean(center) || Reg::applyAll([](STPSample_t val) -> bool {
 					return !Reg::isShallowOcean(val); 
 					}, sw, se, ne, nw) || rng.nextValue(5) != 0u) {
 					//then we have 1/5 chance to return the biome pointing to centre
@@ -49,7 +49,7 @@ namespace {
 				return center;
 			}
 
-			Sample i = 1u, j = 1u;
+			STPSample_t i = 1u, j = 1u;
 			//if we are surrounded by ocean, create lands with ever-decreased chance
 			if (!Reg::isShallowOcean(nw) && rng.nextValue(i++) == 0) {
 				j = nw;

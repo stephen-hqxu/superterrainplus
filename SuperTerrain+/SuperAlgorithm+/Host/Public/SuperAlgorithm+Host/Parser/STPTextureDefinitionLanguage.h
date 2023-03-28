@@ -43,9 +43,9 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			//For each texture name, maps to an index to the view group data structure.
 			std::unordered_map<std::string_view, size_t> DeclaredTexture;
 			//The altitude rules for each sample.
-			std::vector<std::tuple<STPDiversity::Sample, float, std::string_view>> Altitude;
+			std::vector<std::tuple<STPSample_t, float, std::string_view>> Altitude;
 			//The gradient rules for each sample.
-			std::vector<std::tuple<STPDiversity::Sample, float, float, float, float, std::string_view>> Gradient;
+			std::vector<std::tuple<STPSample_t, float, float, float, float, std::string_view>> Gradient;
 
 			/**
 			 * @brief Load all defined texture rules into a texture database.

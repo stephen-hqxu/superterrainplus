@@ -83,7 +83,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param biomemap The output where biome map will be stored, must be preallocated with enough space
 		 * @param offset The offset of the biome map, that is equivalent to the world coordinate.
 		*/
-		void operator()(Sample*, glm::ivec2);
+		void operator()(STPSample_t*, glm::ivec2);
 
 	};
 

@@ -61,7 +61,6 @@ World/Chunk/STPHeightfieldGenerator.h
 World/Chunk/STPNearestNeighbourInformation.hpp
 World/Chunk/STPNearestNeighbourTextureBuffer.h
 # /World/Diversity
-World/Diversity/STPBiomeDefine.h
 World/Diversity/STPBiomeFactory.h
 World/Diversity/STPLayer.h
 # /World/Diversity/Texture
@@ -70,5 +69,6 @@ World/Diversity/Texture/STPTextureFactory.h
 World/Diversity/Texture/STPTextureInformation.hpp
 World/Diversity/Texture/STPTextureType.hpp
 # /World
+World/STPWorldMapPixelFormat.hpp
 World/STPWorldPipeline.h
 )

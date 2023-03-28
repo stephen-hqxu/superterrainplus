@@ -22,7 +22,7 @@ using std::for_each;
 
 using std::endl;
 
-using SuperTerrainPlus::STPDiversity::Sample;
+using SuperTerrainPlus::STPSample_t;
 using SuperTerrainPlus::STPDiversity::STPTextureDatabase;
 
 using namespace SuperTerrainPlus::STPAlgorithm;
@@ -152,7 +152,7 @@ static void processRule(STPTDLLexer& lexer, STPResult& result) {
 
 	while (true) {
 		//we got a sample ID
-		const Sample rule4Sample = lexer.expect<TDLUnsignedInteger>()->to<Sample>();
+		const STPSample_t rule4Sample = lexer.expect<TDLUnsignedInteger>()->to<STPSample_t>();
 		lexer.expect<Assignment>();
 		lexer.expect<ParameterBlockStart>();
 

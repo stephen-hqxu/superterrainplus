@@ -2,6 +2,8 @@
 #ifndef _STP_HEIGHTFIELD_PARA_LOADER_H_
 #define _STP_HEIGHTFIELD_PARA_LOADER_H_
 
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
+
 //INI
 #include <SuperAlgorithm+Host/Parser/STPINIData.hpp>
 
@@ -50,7 +52,7 @@ namespace STPDemo {
 		 * @return The launch parameter, if certain parameters are missing in the section, exception will be thrown.
 		*/
 		SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting getGeneratorSetting(
-			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, unsigned long long);
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, SuperTerrainPlus::STPSeed_t);
 
 		/**
 		 * @brief Load the simplex noise setting..
@@ -59,7 +61,7 @@ namespace STPDemo {
 		 * @return The noise parameter, if certain parameters are missing in the section, exception will be thrown.
 		*/
 		SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting getSimplexSetting(
-			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, unsigned long long);
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, SuperTerrainPlus::STPSeed_t);
 
 		/**
 		 * @brief Load the settings for procedural sky rendering.
@@ -92,7 +94,7 @@ namespace STPDemo {
 		 * @return The AO setting.
 		*/
 		SuperTerrainPlus::STPEnvironment::STPOcclusionKernelSetting getAOSetting(
-			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, unsigned long long);
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, SuperTerrainPlus::STPSeed_t);
 
 		/**
 		 * @brief Load the settings for water rendering.

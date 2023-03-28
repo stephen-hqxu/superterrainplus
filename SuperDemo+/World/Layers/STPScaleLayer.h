@@ -25,9 +25,10 @@ namespace {
 		//The scaling type for this layer
 		const STPScaleType Type;
 
-		Sample sample(const Sample center, const Sample e, const Sample s, const Sample se, const STPLayer::STPLocalSampler& rng) {
+		STPSample_t sample(const STPSample_t center, const STPSample_t e, const STPSample_t s, const STPSample_t se,
+			const STPLayer::STPLocalSampler& rng) noexcept {
 			//choose randomly between each cell
-			const Sample ret = rng.choose(center, e, s, se);
+			const STPSample_t ret = rng.choose(center, e, s, se);
 
 			if (this->Type == STPScaleType::FUZZY) {
 				return ret;
@@ -63,15 +64,15 @@ namespace {
 
 	public:
 
-		STPScaleLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const STPScaleType type, STPLayer& parent) :
+		STPScaleLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, const STPScaleType type, STPLayer& parent) :
 			STPLayer(cache_size, global_seed, salt, { parent }),
 			Type(type) {
 			//parent: undefined
 		}
 
-		Sample sample(const int x, const int y, const int z) override {
+		STPSample_t sample(const int x, const int y, const int z) override {
 			//get the sample of the neighbour cell
-			const Sample i = this->getAscendant().retrieve(x >> 1, y, z >> 1);
+			const STPSample_t i = this->getAscendant().retrieve(x >> 1, y, z >> 1);
 			const int xb = x & 1, zb = z & 1;
 			//get local RNG
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x & -2, z & -2);
@@ -82,21 +83,21 @@ namespace {
 			}
 
 			//otherwise, we need to randomly choose between neighbouring values
-			const Sample l = this->getAscendant().retrieve(x >> 1, y, (z + 1) >> 1);
-			const Sample m = rng.choose(i, l);
+			const STPSample_t l = this->getAscendant().retrieve(x >> 1, y, (z + 1) >> 1);
+			const STPSample_t m = rng.choose(i, l);
 
 			if (xb == 0) {
 				return m;
 			}
 
-			const Sample n = this->getAscendant().retrieve((x + 1) >> 1, y, z >> 1);
-			const Sample o = rng.choose(i, n);
+			const STPSample_t n = this->getAscendant().retrieve((x + 1) >> 1, y, z >> 1);
+			const STPSample_t o = rng.choose(i, n);
 
 			if (zb == 0) {
 				return o;
 			}
 
-			const Sample p = this->getAscendant().retrieve((x + 1) >> 1, y, (z + 1) >> 1);
+			const STPSample_t p = this->getAscendant().retrieve((x + 1) >> 1, y, (z + 1) >> 1);
 			return this->sample(i, n, l, p, rng);
 
 		}

@@ -17,10 +17,10 @@
 #include <list>
 #include <memory>
 
-using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPDiversity;
-using SuperTerrainPlus::STPDiversity::Sample;
-using SuperTerrainPlus::STPDiversity::Seed;
+namespace Err = SuperTerrainPlus::STPException;
+
+using SuperTerrainPlus::STPDiversity::STPLayer, SuperTerrainPlus::STPDiversity::STPBiomeFactory;
+using SuperTerrainPlus::STPSample_t, SuperTerrainPlus::STPSeed_t;
 
 using std::vector;
 using std::list;
@@ -33,14 +33,14 @@ using glm::uvec2;
 class RootLayer : public STPLayer {
 protected:
 
-	Sample sample(const int x, const int y, const int z) override {
+	STPSample_t sample(const int x, const int y, const int z) override {
 		//unsigned type wins!!!
-		return static_cast<Sample>(1u + x + y + z);
+		return static_cast<STPSample_t>(1u + x + y + z);
 	}
 
 public:
 
-	RootLayer(const size_t cache, const Seed seed, const Seed salt) : STPLayer(cache, seed, salt) {
+	RootLayer(const size_t cache, const STPSeed_t seed, const STPSeed_t salt) : STPLayer(cache, seed, salt) {
 
 	}
 
@@ -49,14 +49,14 @@ public:
 class NormalLayer : public STPLayer {
 protected:
 
-	Sample sample(int x, int y, int z) override {
+	STPSample_t sample(int x, int y, int z) override {
 		//simply use the value from the parent
 		return this->getAscendant().retrieve(x, y, z);
 	}
 
 public:
 
-	NormalLayer(const size_t cache, const Seed seed, const Seed salt, STPLayer& ascendant) :
+	NormalLayer(const size_t cache, const STPSeed_t seed, const STPSeed_t salt, STPLayer& ascendant) :
 		STPLayer(cache, seed, salt, { ascendant }) {
 
 	}
@@ -66,13 +66,13 @@ public:
 class MergingLayer : public STPLayer {
 protected:
 
-	Sample sample(const int x, const int y, const int z) override {
-		return static_cast<Sample>(this->getAscendant(0).retrieve(x, y, z) + this->getAscendant(1).retrieve(x, y, z));
+	STPSample_t sample(const int x, const int y, const int z) override {
+		return static_cast<STPSample_t>(this->getAscendant(0).retrieve(x, y, z) + this->getAscendant(1).retrieve(x, y, z));
 	}
 
 public:
 
-	MergingLayer(const size_t cache, const Seed seed, const Seed salt, STPLayer& asc1, STPLayer& asc2) :
+	MergingLayer(const size_t cache, const STPSeed_t seed, const STPSeed_t salt, STPLayer& asc1, STPLayer& asc2) :
 		STPLayer(cache, seed, salt, { asc1, asc2 }) {
 
 	}
@@ -82,13 +82,13 @@ public:
 class RandomLayer : public STPLayer {
 private:
 
-	Sample sample(const int x, int, const int z) override {
-		return static_cast<Sample>(this->seedLocal(x, z));
+	STPSample_t sample(const int x, int, const int z) override {
+		return static_cast<STPSample_t>(this->seedLocal(x, z));
 	}
 
 protected:
 
-	inline Sample getValue(const ivec2 coord) {
+	inline STPSample_t getValue(const ivec2 coord) {
 		return this->sample(coord.x, 0, coord.y);
 	}
 
@@ -109,13 +109,13 @@ SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG",
 
 	GIVEN("A random seed to be mixed with another seed") {
 		const auto SeedSalt = GENERATE(take(3, chunk(2, random(-123456789876ll, 66666666666ll))));
-		const Seed OldSeed = static_cast<unsigned long long>(SeedSalt[0]);
+		const STPSeed_t OldSeed = static_cast<STPSeed_t>(SeedSalt[0]);
 
 		WHEN("Another seed needs to be generated from the original seed") {
 
 			THEN("The two seeds are distinct") {
 				//two seeds might be the same (very unlikely)
-				const Seed NewSeed = RandomLayer::mixSeed(OldSeed, SeedSalt[1]);
+				const STPSeed_t NewSeed = RandomLayer::mixSeed(OldSeed, SeedSalt[1]);
 				const bool SeedEqual = NewSeed == OldSeed;
 
 				CHECK_FALSE(SeedEqual);
@@ -136,16 +136,16 @@ SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG",
 		const ivec2 Coord = this->getRandomCoord();
 
 		WHEN("Local seed is retrieved from the layer") {
-			const Sample Value1 = this->getValue(Coord);
+			const STPSample_t Value1 = this->getValue(Coord);
 
 			THEN("Seed should be deterministic when the input is the same") {
-				const Sample Value2 = this->getValue(Coord);
+				const STPSample_t Value2 = this->getValue(Coord);
 				CHECK(Value2 == Value1);
 			}
 
 			THEN("Seed should be random when the inputs are different") {
 				const ivec2 NewCoord = this->getRandomCoord();
-				const Sample Value2 = this->getValue(NewCoord);
+				const STPSample_t Value2 = this->getValue(NewCoord);
 
 				const bool result = Value2 == Value1;
 				CHECKED_IF(result) {
@@ -157,11 +157,11 @@ SCENARIO_METHOD(RandomLayer, "STPLayer generates random seed with built-in RNG",
 		}
 
 		WHEN("Asking for a local random number generator from the layer") {
-			const Seed LocalSeed = this->seedLocal(Coord.x, Coord.y);
+			const STPSeed_t LocalSeed = this->seedLocal(Coord.x, Coord.y);
 
 			THEN("The RNG loaded with the same local seed should produce the same sequence of output") {
 				constexpr static unsigned int BucketSize = 16u;
-				constexpr static Sample Bound = std::numeric_limits<Sample>::max();
+				constexpr static STPSample_t Bound = std::numeric_limits<STPSample_t>::max();
 
 				const STPLayer::STPLocalSampler RNG1 = this->createLocalSampler(LocalSeed),
 					RNG2 = this->createLocalSampler(LocalSeed);
@@ -192,8 +192,8 @@ SCENARIO("STPLayer connected with some testing layers for biome generation", "[D
 		AND_GIVEN("Some random numbers as seeds") {
 			using std::make_pair;
 			//we are not using RNG, so doesn't matter
-			constexpr Seed RandomSeed = 0ull;
-			constexpr Seed Salt = 0ull;
+			constexpr STPSeed_t RandomSeed = 0ull;
+			constexpr STPSeed_t Salt = 0ull;
 
 			WHEN("Create one layer with the unsupported cache size") {
 
@@ -202,7 +202,7 @@ SCENARIO("STPLayer connected with some testing layers for biome generation", "[D
 						[]() {
 							RootLayer root(3u, RandomSeed, Salt);
 						}(),
-						STPException::STPNumericDomainError);
+						Err::STPNumericDomainError);
 				}
 
 			}
@@ -265,7 +265,7 @@ SCENARIO("STPLayer connected with some testing layers for biome generation", "[D
 
 							REQUIRE(FAST_SAMPLE(MergeLayer, Coordinate) == TreeSample);
 							CHECK_FALSE(FAST_SAMPLE(MergeLayer, -Coordinate) == TreeSample);
-							REQUIRE(TreeSample == static_cast<Sample>(BranchSample1 + BranchSample2));
+							REQUIRE(TreeSample == static_cast<STPSample_t>(BranchSample1 + BranchSample2));
 						}
 					}
 				}
@@ -313,15 +313,15 @@ protected:
 
 	constexpr static uvec2 Dimension = uvec2(4u);
 	constexpr static unsigned int PixelCount = Dimension.x * Dimension.y;
-	constexpr static Seed RandomSeed = 0ull;
-	constexpr static Seed Salt = 0ull;
+	constexpr static STPSeed_t RandomSeed = 0ull;
+	constexpr static STPSeed_t Salt = 0ull;
 
 	STPLayer& supply() override {
 		return this->LayerTree.emplace_back().MergeLayer;
 	}
 
-	inline Sample getExpected(const unsigned int index, const ivec2& offset) const {
-		return static_cast<Sample>(((index % BiomeFactoryTester::Dimension.x) + (index / BiomeFactoryTester::Dimension.y) + offset.x + offset.y + 1) * 2);
+	inline STPSample_t getExpected(const unsigned int index, const ivec2& offset) const {
+		return static_cast<STPSample_t>(((index % BiomeFactoryTester::Dimension.x) + (index / BiomeFactoryTester::Dimension.y) + offset.x + offset.y + 1) * 2);
 	}
 
 public:
@@ -334,7 +334,7 @@ public:
 
 	}
 
-	void generateMap(Sample* const biomemap, const ivec2& offset) {
+	void generateMap(STPSample_t* const biomemap, const ivec2& offset) {
 		(*this)(biomemap, offset);
 	}
 
@@ -345,7 +345,7 @@ SCENARIO_METHOD(BiomeFactoryTester, "STPBiomeFactory can be used to produce biom
 	WHEN("Dimension is some invalid values") {
 
 		THEN("Biome factory should reject the values") {
-			REQUIRE_THROWS_AS(BiomeFactoryTester(uvec2(0u, 4u)), STPException::STPNumericDomainError);
+			REQUIRE_THROWS_AS(BiomeFactoryTester(uvec2(0u, 4u)), Err::STPNumericDomainError);
 		}
 
 	}
@@ -357,8 +357,8 @@ SCENARIO_METHOD(BiomeFactoryTester, "STPBiomeFactory can be used to produce biom
 		}
 
 		AND_GIVEN("A world coordinate for generation") {
-			Sample BiomeMap[BiomeFactoryTester::PixelCount];
-			Sample AnotherBiomeMap[BiomeFactoryTester::PixelCount];
+			STPSample_t BiomeMap[BiomeFactoryTester::PixelCount];
+			STPSample_t AnotherBiomeMap[BiomeFactoryTester::PixelCount];
 
 			const auto Coordinate = GENERATE(take(1, chunk(2, random(-666666666, 666666666))));
 			const ivec2 Offset = ivec2(Coordinate[0], Coordinate[1]);

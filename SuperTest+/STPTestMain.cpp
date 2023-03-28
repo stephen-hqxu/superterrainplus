@@ -17,8 +17,6 @@
 
 #include <string>
 
-using namespace SuperTerrainPlus;
-
 using std::cout, std::cerr, std::endl;
 using std::ofstream;
 
@@ -32,7 +30,7 @@ cudaMemPool_t STPTestInformation::TestDeviceMemoryPool;
 int main(const int argc, const char* const* const argv) {
 	//setup the engine
 	try {
-		STPEngineInitialiser::initialise(SelectedDevice, nullptr);
+		SuperTerrainPlus::STPEngineInitialiser::initialise(SelectedDevice, nullptr);
 	} catch (const std::exception& err) {
 		cerr << err.what() << endl;
 		std::terminate();

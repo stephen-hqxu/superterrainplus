@@ -10,16 +10,17 @@ namespace {
 	class STPRiverMixLayer : public STPLayer {
 	public:
 
-		STPRiverMixLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent_land, STPLayer& parent_river) :
+		STPRiverMixLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt,
+			STPLayer& parent_land, STPLayer& parent_river) :
 			STPLayer(cache_size, global_seed, salt, { parent_land, parent_river }) {
 			//parent 0: land
 			//parent 1: river noise
 		}
 
-		Sample sample(const int x, const int y, const int z) override {
+		STPSample_t sample(const int x, const int y, const int z) override {
 			//get the parent values
-			const Sample land_val = this->getAscendant(0).retrieve(x, y, z);
-			const Sample river_val = this->getAscendant(1).retrieve(x, y, z);
+			const STPSample_t land_val = this->getAscendant(0).retrieve(x, y, z);
+			const STPSample_t river_val = this->getAscendant(1).retrieve(x, y, z);
 
 			//if the land section points to an ocean, don't touch
 			//(you can't have river inside the ocean right?)

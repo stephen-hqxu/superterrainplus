@@ -3,7 +3,7 @@
 #define _STP_NEAREST_NEIGHBOUR_TEXTURE_BUFFER_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-#include "../Diversity/STPBiomeDefine.h"
+#include "../STPWorldMapPixelFormat.hpp"
 //Neighbour Data
 #include "STPNearestNeighbourInformation.hpp"
 //Memory
@@ -184,18 +184,18 @@ namespace SuperTerrainPlus {
 
 	};
 
-	//float, write only
-	typedef STPNearestNeighbourTextureBuffer<float, STPNearestNeighbourTextureBufferMemoryMode::WriteOnly>
-		STPNearestNeighbourFloatWTextureBuffer;
-	//float, read write
-	typedef STPNearestNeighbourTextureBuffer<float, STPNearestNeighbourTextureBufferMemoryMode::ReadWrite>
-		STPNearestNeighbourFloatRWTextureBuffer;
-	//Sample, read only
-	typedef STPNearestNeighbourTextureBuffer<STPDiversity::Sample, STPNearestNeighbourTextureBufferMemoryMode::ReadOnly>
+	//floating-point heightmap, write only
+	typedef STPNearestNeighbourTextureBuffer<STPHeightFloat_t, STPNearestNeighbourTextureBufferMemoryMode::WriteOnly>
+		STPNearestNeighbourHeightFloatWTextureBuffer;
+	//floating-point heightmap, read write
+	typedef STPNearestNeighbourTextureBuffer<STPHeightFloat_t, STPNearestNeighbourTextureBufferMemoryMode::ReadWrite>
+		STPNearestNeighbourHeightFloatRWTextureBuffer;
+	//sample type biomemap, read only
+	typedef STPNearestNeighbourTextureBuffer<STPSample_t, STPNearestNeighbourTextureBufferMemoryMode::ReadOnly>
 		STPNearestNeighbourSampleRTextureBuffer;
-	//unsigned short, write only
-	typedef STPNearestNeighbourTextureBuffer<unsigned short, STPNearestNeighbourTextureBufferMemoryMode::WriteOnly>
-		STPNearestNeighbourRenderWTextureBuffer;
+	//fixed-point heightmap, write only
+	typedef STPNearestNeighbourTextureBuffer<STPHeightFixed_t, STPNearestNeighbourTextureBufferMemoryMode::WriteOnly>
+		STPNearestNeighbourHeightFixedWTextureBuffer;
 
 }
 #endif//_STP_NEAREST_NEIGHBOUR_TEXTURE_BUFFER_H_

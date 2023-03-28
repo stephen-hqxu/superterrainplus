@@ -70,7 +70,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		STPTextureDatabase::STPDatabaseView::STPTextureTypeRecord ValidType;
 
 		//Convert sample to index in spalt registry
-		STPSmartDeviceMemory::STPDevice<Sample[]> SplatLookup_d;
+		STPSmartDeviceMemory::STPDevice<STPSample_t[]> SplatLookup_d;
 		size_t SplatLookupCount;
 		STPSmartDeviceMemory::STPDevice<STPTextureInformation::STPSplatRegistry[]> SplatRegistry_d;
 		//Splat configurations

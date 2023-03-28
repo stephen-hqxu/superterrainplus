@@ -37,17 +37,17 @@ inline STPSmartDeviceMemory::STPDevice<STPHeightfieldGenerator::STPcurandRNG[]>
 /**
  * @brief Generate the erosion brush.
  * @tparam T The erosion brush memory
- * @param freeslip_rangeX  The number of element on the free-slip heightmap in the free-slip chunk range in X direction,
- * i.e., the X dimension of the free-slip map.
+ * @param dimensionX  The X dimension of the texture.
+ * This should usually be the dimension of the texture including all chunk nearest neighbours.
  * @param erosion_radius The radius of erosion.
  * @return The memory containing generated erosion brush.
 */
 template<class T>
-static T generateErosionBrush(const unsigned int freeslip_rangeX, const unsigned int erosion_radius) {
+static T generateErosionBrush(const unsigned int dimensionX, const unsigned int erosion_radius) {
 	//radius must be greater than 0
 	STP_ASSERTION_NUMERIC_DOMAIN(erosion_radius > 0u, "Erosion brush radius must be a positive integer");
 	//none of the component should be zero
-	STP_ASSERTION_NUMERIC_DOMAIN(freeslip_rangeX > 0u, "Free-slip range row count should be positive");
+	STP_ASSERTION_NUMERIC_DOMAIN(dimensionX > 0u, "Dimension row count should be positive");
 	/* -------------------------------------- Generate Erosion Brush ------------------------------- */
 	const int radius = static_cast<int>(erosion_radius),
 		radiusSqr = radius * radius;
@@ -67,7 +67,7 @@ static T generateErosionBrush(const unsigned int freeslip_rangeX, const unsigned
 				const double currentbrushWeight = 1.0 - glm::sqrt(sqrDst) / radius;
 				weightSum += currentbrushWeight;
 				//store
-				indexCache.emplace_back(brushY * static_cast<int>(freeslip_rangeX) + brushX);
+				indexCache.emplace_back(brushY * static_cast<int>(dimensionX) + brushX);
 				weightCache.emplace_back(static_cast<float>(currentbrushWeight));
 			}
 		}
@@ -153,11 +153,11 @@ const auto device_object = make_pair(this->MapCacheDevice.get(), stream)
 
 #define CLEANUP_GENERATION_DATA() this->StreamPool.release(move(smart_stream))
 
-void STPHeightfieldGenerator::generate(float* const heightfield, const STPDiversity::Sample* const* const biomemap, const vec2 offset) {
+void STPHeightfieldGenerator::generate(STPHeightFloat_t* const heightfield, const STPSample_t* const* const biomemap, const vec2 offset) {
 	PREPARE_GENERATION_DATA();
 	{
 		//generate a new heightmap using diversity generator and store it to the output
-		const STPNearestNeighbourFloatWTextureBuffer heightmap_buffer(&heightfield, this->NoNeighbour, device_object);
+		const STPNearestNeighbourHeightFloatWTextureBuffer heightmap_buffer(&heightfield, this->NoNeighbour, device_object);
 		const STPNearestNeighbourSampleRTextureBuffer samplemap_buffer(biomemap, this->DiversityNeighbour, device_object);
 
 		this->generateHeightmap(heightmap_buffer, samplemap_buffer, offset);
@@ -166,25 +166,25 @@ void STPHeightfieldGenerator::generate(float* const heightfield, const STPDivers
 	CLEANUP_GENERATION_DATA();
 }
 
-void STPHeightfieldGenerator::erode(float* const* const heightfield_original, unsigned short* const* const heightfield_low) {
+void STPHeightfieldGenerator::erode(STPHeightFloat_t* const* const heightfield_original, STPHeightFixed_t* const* const heightfield_low) {
 	PREPARE_GENERATION_DATA();
 	STPSmartDeviceMemory::STPDevice<STPcurandRNG[]> rng_buffer = move(this->RNGPool.request(stream));
 	//limit the scope of texture buffer to ensure their memory is sync'ed and freed at destruction before we return our memory back to the pool
 	{
-		const STPNearestNeighbourFloatRWTextureBuffer heightmap_buffer(heightfield_original, this->ErosionNeighbour, device_object);
-		const STPNearestNeighbourRenderWTextureBuffer low_heightmap_buffer(heightfield_low, this->ErosionNeighbour, device_object);
+		const STPNearestNeighbourHeightFloatRWTextureBuffer heightmap_float_buffer(heightfield_original, this->ErosionNeighbour, device_object);
+		const STPNearestNeighbourHeightFixedWTextureBuffer heightmap_fixed_buffer(heightfield_low, this->ErosionNeighbour, device_object);
 		//create merged memory from the texture buffer
-		STPNearestNeighbourFloatRWTextureBuffer::STPMergedBuffer heightmap_merged(heightmap_buffer,
-			STPNearestNeighbourFloatRWTextureBuffer::STPMemoryLocation::DeviceMemory);
-		STPNearestNeighbourRenderWTextureBuffer::STPMergedBuffer low_heightmap_merged(low_heightmap_buffer,
-			STPNearestNeighbourRenderWTextureBuffer::STPMemoryLocation::DeviceMemory);
+		STPNearestNeighbourHeightFloatRWTextureBuffer::STPMergedBuffer heightmap_float_merged(heightmap_float_buffer,
+			STPNearestNeighbourHeightFloatRWTextureBuffer::STPMemoryLocation::DeviceMemory);
+		STPNearestNeighbourHeightFixedWTextureBuffer::STPMergedBuffer heightmap_fixed_merged(heightmap_fixed_buffer,
+			STPNearestNeighbourHeightFixedWTextureBuffer::STPMemoryLocation::DeviceMemory);
 
 		//erosion
-		STPHeightfieldKernel::hydraulicErosion(heightmap_merged.getDevice(), this->RainDropSettingDevice.get(),
+		STPHeightfieldKernel::hydraulicErosion(heightmap_float_merged.getDevice(), this->RainDropSettingDevice.get(),
 			this->ErosionNeighbour, this->ErosionBrush.ErosionBrushRawData,
 			this->HeightfieldSettingHost.Erosion.RainDropCount, rng_buffer.get(), stream);
 		//generate low quality heightfield
-		STPHeightfieldKernel::texture32Fto16(heightmap_merged.getDevice(), low_heightmap_merged.getDevice(),
+		STPHeightfieldKernel::formatHeightmap(heightmap_float_merged.getDevice(), heightmap_fixed_merged.getDevice(),
 			this->ErosionNeighbour.TotalMapSize, stream);
 
 		//destruction of memory is streamed order, wait for the stream after those texture buffer die

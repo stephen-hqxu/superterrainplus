@@ -17,12 +17,12 @@ namespace {
 		 * @param salt Random salt
 		 * @param parent The previous layer
 		*/
-		STPXCrossLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
+		STPXCrossLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, STPLayer& parent) :
 			STPLayer(cache_size, global_seed, salt, { parent }) {
 
 		}
 
-		Sample sample(const int x, const int y, const int z) override {
+		STPSample_t sample(const int x, const int y, const int z) override {
 			//sample in a X cross
 			STPLayer& asc = this->getAscendant();
 			return this->sample(
@@ -45,7 +45,7 @@ namespace {
 		 * @param local_seed The seed for this local generation
 		 * @return Sample id or value, depended on the actual implementation.
 		*/
-		virtual Sample sample(Sample, Sample, Sample, Sample, Sample, Seed) = 0;
+		virtual STPSample_t sample(STPSample_t, STPSample_t, STPSample_t, STPSample_t, STPSample_t, STPSeed_t) = 0;
 
 	};
 }

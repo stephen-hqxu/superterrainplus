@@ -21,7 +21,7 @@ STPBiomeFactory::STPBiomeFactory(const uvec2 dimension) : LayerProductionLine(*t
 	STP_ASSERTION_NUMERIC_DOMAIN(dimension.x > 0u && dimension.y > 0u, "Biomemap should have strictly positive dimension in both vector components");
 }
 
-void STPBiomeFactory::operator()(Sample* const biomemap, const ivec2 offset) {
+void STPBiomeFactory::operator()(STPSample_t* const biomemap, const ivec2 offset) {
 	//request a production line
 	STPLayer& tree = *this->LayerProductionLine.request();
 

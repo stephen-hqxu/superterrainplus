@@ -3,6 +3,7 @@
 #define _STP_HEIGHTFIELD_GENERATOR_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
+#include "../STPWorldMapPixelFormat.hpp"
 //Engine
 #include "STPDiversityGenerator.hpp"
 #include "STPNearestNeighbourTextureBuffer.h"
@@ -63,7 +64,7 @@ namespace SuperTerrainPlus {
 		struct STPRNGCreator {
 		private:
 
-			const unsigned long long Seed;
+			const STPSeed_t Seed;
 			//The array length of the RNG
 			const unsigned int Length;
 
@@ -117,8 +118,6 @@ namespace SuperTerrainPlus {
 		*/
 		STPHeightfieldGenerator(const STPGeneratorSetup&);
 
-		~STPHeightfieldGenerator() = default;
-
 		STPHeightfieldGenerator(const STPHeightfieldGenerator&) = delete;
 
 		STPHeightfieldGenerator(STPHeightfieldGenerator&&) = delete;
@@ -126,6 +125,8 @@ namespace SuperTerrainPlus {
 		STPHeightfieldGenerator& operator=(const STPHeightfieldGenerator&) = delete;
 
 		STPHeightfieldGenerator& operator=(STPHeightfieldGenerator&&) = delete;
+
+		~STPHeightfieldGenerator() = default;
 
 		/**
 		 * @brief Generate a multi-biome terrain heightfield.
@@ -139,7 +140,7 @@ namespace SuperTerrainPlus {
 		 * @param offset The x vector specify the offset on x direction of the map and z on y direction of the map.
 		 * This is to specify the offset of heightmap in the world coordinate.
 		*/
-		void generate(float*, const STPDiversity::Sample* const*, glm::vec2);
+		void generate(STPHeightFloat_t*, const STPSample_t* const*, glm::vec2);
 
 		/**
 		 * @brief Perform hydraulic erosion algorithm to erode the rough terrain into a more natural form.
@@ -153,7 +154,7 @@ namespace SuperTerrainPlus {
 		 * Erosion happens in-place on this memory.
 		 * @param heightfield_low The output of the low quality heightmap, which will be an exact copy of the eroded heightmap.
 		*/
-		void erode(float* const*, unsigned short* const*);
+		void erode(STPHeightFloat_t* const*, STPHeightFixed_t* const*);
 
 	};
 

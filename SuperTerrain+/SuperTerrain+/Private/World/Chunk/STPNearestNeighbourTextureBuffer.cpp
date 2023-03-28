@@ -11,7 +11,6 @@
 #include <cassert>
 
 using namespace SuperTerrainPlus;
-using STPDiversity::Sample;
 
 using glm::uvec2;
 
@@ -146,7 +145,7 @@ inline unsigned int STPNearestNeighbourTextureBuffer<T, MM>::calcNeighbourPixel(
 //Explicit Instantiation
 #define NN_TEXTURE_BUFFER(TYPEA, TYPEB) \
 	template class STP_API SuperTerrainPlus::STPNearestNeighbourTextureBuffer<TYPEA, STPNearestNeighbourTextureBufferMemoryMode::TYPEB>
-NN_TEXTURE_BUFFER(float, WriteOnly);
-NN_TEXTURE_BUFFER(float, ReadWrite);
-NN_TEXTURE_BUFFER(Sample, ReadOnly);
-NN_TEXTURE_BUFFER(unsigned short, WriteOnly);
+NN_TEXTURE_BUFFER(STPHeightFloat_t, WriteOnly);
+NN_TEXTURE_BUFFER(STPHeightFloat_t, ReadWrite);
+NN_TEXTURE_BUFFER(STPSample_t, ReadOnly);
+NN_TEXTURE_BUFFER(STPHeightFixed_t, WriteOnly);

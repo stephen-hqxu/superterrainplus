@@ -33,7 +33,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		 * @return The pointer to the corresponding splat registry. nullptr if no splat registry is found for this
 		 * sample.
 		*/
-		__device__ const STPDiversity::STPTextureInformation::STPSplatRegistry* findSplatRegistry(STPDiversity::Sample) const;
+		__device__ const STPDiversity::STPTextureInformation::STPSplatRegistry* findSplatRegistry(STPSample_t) const;
 
 		/**
 		 * @brief Get the active region for this sample and altitude.

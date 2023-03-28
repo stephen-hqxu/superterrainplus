@@ -12,19 +12,20 @@ namespace {
 	class STPDeepOceanLayer : public STPCrossLayer {
 	public:
 
-		STPDeepOceanLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
+		STPDeepOceanLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, STPLayer& parent) :
 			STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 
-		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, Seed) override {
+		STPSample_t sample(const STPSample_t center, const STPSample_t north, const STPSample_t east,
+			const STPSample_t south, const STPSample_t west, STPSeed_t) override {
 			//if the centre is not shallow or it's not even ocean, we can't change anything
 			if (!Reg::isShallowOcean(center)) {
 				return center;
 			}
 
 			//test if we are surrounded by shallow ocean
-			Sample i = 0;
+			STPSample_t i = 0;
 			if (Reg::isShallowOcean(north)) {
 				i++;
 			}

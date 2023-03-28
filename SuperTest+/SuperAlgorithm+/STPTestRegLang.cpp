@@ -7,13 +7,11 @@
 //String
 #include <string_view>
 
-using namespace SuperTerrainPlus::STPAlgorithm;
-
 using std::string_view;
 using std::nullopt;
 
 namespace {
-	namespace RL = STPRegularLanguage;
+	namespace RL = SuperTerrainPlus::STPAlgorithm::STPRegularLanguage;
 	namespace CC = RL::STPCharacterClass;
 	namespace Q = RL::STPQuantifier;
 

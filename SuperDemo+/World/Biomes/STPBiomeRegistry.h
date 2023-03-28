@@ -14,7 +14,7 @@ namespace STPDemo {
 	*/
 	namespace STPBiomeRegistry {
 
-		using SuperTerrainPlus::STPDiversity::Sample;
+		using SuperTerrainPlus::STPSample_t;
 
 		/**
 		 * @brief STPPrecipitationType states the type of precipitation
@@ -29,7 +29,7 @@ namespace STPDemo {
 		};
 
 		//A table of settings for registered biome
-		extern std::unordered_map<Sample, const STPBiome*> Registry;
+		extern std::unordered_map<STPSample_t, const STPBiome*> Registry;
 
 		//A table of registered biome id, note that biomes are unordered
 
@@ -186,28 +186,28 @@ namespace STPDemo {
 		 * @param val The biome id to be checked against
 		 * @return True if it's a shallow ocean
 		*/
-		bool isShallowOcean(Sample) noexcept;
+		bool isShallowOcean(STPSample_t) noexcept;
 
 		/**
 		 * @brief Check if it's an ocean, regardless of biome variations
 		 * @param val The biome id to be checked against
 		 * @return True if it's an ocean biome.
 		*/
-		bool isOcean(Sample) noexcept;
+		bool isOcean(STPSample_t) noexcept;
 
 		/**
 		 * @brief Check if it's a river biome, regardless of biome variations
 		 * @param val The biome id to be checked against
 		 * @return True if it's a river biome
 		*/
-		bool isRiver(Sample) noexcept;
+		bool isRiver(STPSample_t) noexcept;
 
 		/**
 		 * @brief Get the precipitation type for this sample biome
 		 * @param val The biome id
 		 * @return The precipitation type of this biome
 		*/
-		STPPrecipitationType getPrecipitationType(Sample);
+		STPPrecipitationType getPrecipitationType(STPSample_t);
 
 		/**
 		 * @brief Apply the checker function to each samples
@@ -216,7 +216,7 @@ namespace STPDemo {
 		 * @return True if all samples pass the checker function
 		*/
 		template <typename... S>
-		inline bool applyAll(bool (*checker)(Sample), const S... samples) noexcept {
+		inline bool applyAll(bool (*checker)(STPSample_t), const S... samples) noexcept {
 			if constexpr (sizeof...(S) == 0) {
 				return true;
 			} else {
@@ -231,7 +231,7 @@ namespace STPDemo {
 		 * @param fallback If comparator is not equal to comparable, return this value
 		 * @return Comparable if comparator equals comparable otherwise fallback value
 		*/
-		Sample CAS(Sample, Sample, Sample) noexcept;
+		STPSample_t CAS(STPSample_t, STPSample_t, STPSample_t) noexcept;
 	}
 
 }

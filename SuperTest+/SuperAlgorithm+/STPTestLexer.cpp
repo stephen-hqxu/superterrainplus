@@ -24,8 +24,8 @@ using std::string;
 using std::string_view;
 using std::array;
 
-using namespace SuperTerrainPlus::STPAlgorithm;
-namespace STPParserError = SuperTerrainPlus::STPException::STPParserError;
+using SuperTerrainPlus::STPAlgorithm::STPBasicStringAdaptor;
+namespace Err = SuperTerrainPlus::STPException;
 
 TEMPLATE_TEST_CASE("STPBasicStringAdaptor can convert between string and desired types",
 	"[AlgorithmHost][STPBasicStringAdaptor]", string, string_view) {
@@ -84,10 +84,11 @@ TEMPLATE_TEST_CASE("STPBasicStringAdaptor can convert between string and desired
 
 }
 
-namespace RL = STPRegularLanguage;
+namespace RL = SuperTerrainPlus::STPAlgorithm::STPRegularLanguage;
 namespace CC = RL::STPCharacterClass;
 
-using EOS = STPLexical::EndOfSequence;
+using EOS = SuperTerrainPlus::STPAlgorithm::STPLexical::EndOfSequence;
+using SuperTerrainPlus::STPAlgorithm::STPLexer;
 
 namespace {
 	using RL::STPQuantifier::StrictMany;
@@ -132,7 +133,7 @@ SCENARIO("STPLexer can perform basic lexical operations", "[AlgorithmHost][STPLe
 			DataLexer Lexer(InvalidTokenSource, LexerName, BrokenSourceName);
 
 			THEN("The lexer fails due to appearance of a undefined token") {
-				REQUIRE_THROWS_AS(Lexer.expect<DataLineEnd>(), STPParserError::STPInvalidSyntax);
+				REQUIRE_THROWS_AS(Lexer.expect<DataLineEnd>(), Err::STPParserError::STPInvalidSyntax);
 			}
 
 		}
@@ -204,7 +205,7 @@ SCENARIO("STPLexer can perform basic lexical operations", "[AlgorithmHost][STPLe
 				constexpr static string_view BadInput = "bb";
 				SymbolSwitchLexer LexerBad(BadInput, LexerName, InputName);
 
-				CHECK_THROWS_AS(LexerBad.expect(), STPParserError::STPInvalidSyntax);
+				CHECK_THROWS_AS(LexerBad.expect(), Err::STPParserError::STPInvalidSyntax);
 			}
 
 		}

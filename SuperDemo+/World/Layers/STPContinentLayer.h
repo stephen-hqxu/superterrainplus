@@ -10,11 +10,11 @@ namespace {
 	class STPContinentLayer : public STPLayer {
 	public:
 
-		STPContinentLayer(const size_t cache_size, const Seed global_seed, const Seed salt) : STPLayer(cache_size, global_seed, salt) {
+		STPContinentLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt) : STPLayer(cache_size, global_seed, salt) {
 
 		}
 
-		Sample sample(const int x, int, const int z) override {
+		STPSample_t sample(const int x, int, const int z) override {
 			//get the RNG for this coordinate
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 

@@ -22,7 +22,7 @@ using std::string;
 constexpr static string_view TestINIFilename = "./TestData/Data.ini";
 
 namespace STPFile = SuperTerrainPlus::STPFile;
-using namespace SuperTerrainPlus::STPAlgorithm;
+namespace STPINIParser = SuperTerrainPlus::STPAlgorithm::STPINIParser;
 
 using Catch::Matchers::ContainsSubstring;
 using Catch::Matchers::SizeIs;

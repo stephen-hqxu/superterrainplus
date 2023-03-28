@@ -16,19 +16,19 @@ namespace {
 
 		template<typename... S>
 		inline static bool anyMatch(const STPDemo::STPBiome& biome, const S... id) noexcept {
-			static_assert(std::conjunction<std::is_same<S, Sample>...>::value, "Only biome IDs can be matched");
-
+			static_assert(std::conjunction<std::is_same<S, STPSample_t>...>::value, "Only biome IDs can be matched");
 			return ((biome.ID == id) || ...);
 		}
 
 	public:
 
-		STPEaseEdgeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
+		STPEaseEdgeLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, STPLayer& parent) :
 			STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 
-		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, Seed) override {
+		STPSample_t sample(const STPSample_t center, const STPSample_t north, const STPSample_t east,
+			const STPSample_t south, const STPSample_t west, STPSeed_t) override {
 			//replace the edge by something else if it has conflict
 			if (center == Reg::Desert.ID && STPEaseEdgeLayer::anyMatch(Reg::SnowyTundra, north, east, south, west)) {
 				return Reg::WoodedMountain.ID;

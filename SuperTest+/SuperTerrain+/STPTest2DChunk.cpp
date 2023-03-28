@@ -15,9 +15,8 @@
 
 #include <algorithm>
 
-using namespace SuperTerrainPlus;
-
-using STPDiversity::Sample;
+using SuperTerrainPlus::STPSample_t, SuperTerrainPlus::STPHeightFloat_t, SuperTerrainPlus::STPHeightFixed_t;
+using SuperTerrainPlus::STPChunk;
 
 using glm::ivec2;
 using glm::uvec2;
@@ -118,7 +117,7 @@ SCENARIO_METHOD(ChunkTester, "STPChunk data structure stores chunk status and te
 	GIVEN("An invalid chunk object with zero in any of the dimension component") {
 
 		THEN("Construction of such chunk is not allowed") {
-			REQUIRE_THROWS_AS(STPChunk(uvec2(0u, 128u)), STPException::STPNumericDomainError);
+			REQUIRE_THROWS_AS(STPChunk(uvec2(0u, 128u)), SuperTerrainPlus::STPException::STPNumericDomainError);
 		}
 
 	}
@@ -131,19 +130,19 @@ SCENARIO_METHOD(ChunkTester, "STPChunk data structure stores chunk status and te
 		}
 
 		AND_GIVEN("Some texture values") {
-			constexpr float float_value = -756.5f;
-			constexpr Sample biome_value = 5u;
-			constexpr unsigned short buffer_value = 123u;
+			constexpr STPHeightFloat_t float_value = -756.5f;
+			constexpr STPSample_t biome_value = 5u;
+			constexpr STPHeightFixed_t buffer_value = 123u;
 
 			WHEN("Trying to write some data into the texture") {
-				ChunkTester::fillValue(this->heightmap(), float_value);
+				ChunkTester::fillValue(this->heightmapFloat(), float_value);
 				ChunkTester::fillValue(this->biomemap(), biome_value);
-				ChunkTester::fillValue(this->heightmapLow(), buffer_value);
+				ChunkTester::fillValue(this->heightmapFixed(), buffer_value);
 
 				THEN("Value can be retrieved without being corrupted") {
-					ChunkTester::testMapValue(this->heightmap(), float_value);
+					ChunkTester::testMapValue(this->heightmapFloat(), float_value);
 					ChunkTester::testMapValue(this->biomemap(), biome_value);
-					ChunkTester::testMapValue(this->heightmapLow(), buffer_value);
+					ChunkTester::testMapValue(this->heightmapFixed(), buffer_value);
 				}
 			}
 		}

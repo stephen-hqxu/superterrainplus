@@ -1,11 +1,11 @@
 #include "STPBiomeRegistry.h"
 
-using SuperTerrainPlus::STPDiversity::Sample;
+using SuperTerrainPlus::STPSample_t;
 using namespace STPDemo;
 namespace Reg = STPBiomeRegistry;
 
 /* -------------------------------- Definition of Biome Variables -------------------------- */
-std::unordered_map<Sample, const STPBiome*> Reg::Registry;
+std::unordered_map<STPSample_t, const STPBiome*> Reg::Registry;
 
 #define DEF_BIOME(NAME) STPBiome Reg::NAME
 DEF_BIOME(Ocean);
@@ -106,23 +106,23 @@ void Reg::registerBiomes() {
 	initialised = true;
 }
 
-bool Reg::isShallowOcean(const Sample val) noexcept {
+bool Reg::isShallowOcean(const STPSample_t val) noexcept {
 	return val == STPBiomeRegistry::Ocean.ID || val == STPBiomeRegistry::FrozenOcean.ID
 		|| val == STPBiomeRegistry::WarmOcean.ID || val == STPBiomeRegistry::LukewarmOcean.ID
 		|| val == STPBiomeRegistry::ColdOcean.ID;
 }
 
-bool Reg::isOcean(const Sample val) noexcept {
+bool Reg::isOcean(const STPSample_t val) noexcept {
 	return STPBiomeRegistry::isShallowOcean(val) || val == STPBiomeRegistry::DeepOcean.ID
 		|| val == STPBiomeRegistry::DeepWarmOcean.ID || val == STPBiomeRegistry::DeepLukewarmOcean.ID
 		|| val == STPBiomeRegistry::DeepColdOcean.ID || val == STPBiomeRegistry::DeepFrozenOcean.ID;
 }
 
-bool Reg::isRiver(const Sample val) noexcept {
+bool Reg::isRiver(const STPSample_t val) noexcept {
 	return val == STPBiomeRegistry::River.ID || val == STPBiomeRegistry::FrozenRiver.ID;
 }
 
-Reg::STPPrecipitationType Reg::getPrecipitationType(const Sample val) {
+Reg::STPPrecipitationType Reg::getPrecipitationType(const STPSample_t val) {
 	const STPBiome& biome = *STPBiomeRegistry::Registry[val];
 
 	//we check for precipitation first, some biome like taiga, even it's cold but it's dry so it won't snow nor rain
@@ -140,6 +140,6 @@ Reg::STPPrecipitationType Reg::getPrecipitationType(const Sample val) {
 	return STPPrecipitationType::RAIN;
 }
 
-Sample Reg::CAS(const Sample comparator, const Sample comparable, const Sample fallback) noexcept {
+STPSample_t Reg::CAS(const STPSample_t comparator, const STPSample_t comparable, const STPSample_t fallback) noexcept {
 	return comparator == comparable ? comparable : fallback;
 }

@@ -92,7 +92,7 @@ namespace STPDemo {
 
 		~STPBiomefieldGenerator() override = default;
 
-		void operator()(const SuperTerrainPlus::STPNearestNeighbourFloatWTextureBuffer&,
+		void operator()(const SuperTerrainPlus::STPNearestNeighbourHeightFloatWTextureBuffer&,
 			const SuperTerrainPlus::STPNearestNeighbourSampleRTextureBuffer&, glm::vec2) override;
 
 	};

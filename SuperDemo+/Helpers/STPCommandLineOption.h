@@ -2,6 +2,8 @@
 #ifndef _STP_COMMAND_LINE_OPTION_H_
 #define _STP_COMMAND_LINE_OPTION_H_
 
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
+
 //Data
 #include <tuple>
 #include <optional>
@@ -32,7 +34,7 @@ namespace STPDemo {
 
 			//The seed value for the whole generator.
 			//If not specified, use the application's default.
-			std::optional<unsigned long long> GeneratorSeed;
+			std::optional<SuperTerrainPlus::STPSeed_t> GeneratorSeed;
 
 			//Set the starting time in a day at the beginning of the program.
 			std::optional<unsigned int> DayStart;

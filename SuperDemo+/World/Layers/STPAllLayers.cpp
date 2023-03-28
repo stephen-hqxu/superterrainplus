@@ -4,6 +4,8 @@
 #include <SuperTerrain+/World/Diversity/STPLayer.h>
 #include "../Biomes/STPBiomeRegistry.h"
 
+using SuperTerrainPlus::STPSample_t, SuperTerrainPlus::STPSeed_t;
+
 using namespace SuperTerrainPlus::STPDiversity;
 namespace Reg = STPDemo::STPBiomeRegistry;
 
@@ -79,7 +81,7 @@ public:
 	 * @brief Create a new layer pipeline.
 	 * @param global The global seed.
 	*/
-	STPLayerPipeline(const Seed global) :
+	STPLayerPipeline(const STPSeed_t global) :
 		A0(LAYER_COMMON, 23457829ull),
 		
 		B0(LAYER_COMMON, 875944ull, STPScaleLayer::STPScaleType::FUZZY, this->A0),
@@ -105,7 +107,7 @@ public:
 
 };
 
-STPLayerChainBuilder::STPLayerChainBuilder(const glm::uvec2 dimension, const Seed global) : STPBiomeFactory(dimension), GlobalSeed(global) {
+STPLayerChainBuilder::STPLayerChainBuilder(const glm::uvec2 dimension, const STPSeed_t global) : STPBiomeFactory(dimension), GlobalSeed(global) {
 
 }
 

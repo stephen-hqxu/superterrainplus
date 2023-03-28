@@ -31,14 +31,14 @@ namespace {
 		class STPClimateSingle : public STPLayer {
 		public:
 
-			STPClimateSingle(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
+			STPClimateSingle(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, STPLayer& parent) :
 				STPLayer(cache_size, global_seed, salt, { parent }) {
 
 			}
 
-			Sample sample(const int x, const int y, const int z) override {
+			STPSample_t sample(const int x, const int y, const int z) override {
 				//get the sample from the previous layer
-				const Sample val = this->getAscendant().retrieve(x, y, z);
+				const STPSample_t val = this->getAscendant().retrieve(x, y, z);
 				//get the local RNG
 				const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 
@@ -49,7 +49,7 @@ namespace {
 
 				//generate land portion
 				//1/6 chance of getting a forest or mountain
-				const Sample i = rng.nextValue(6);
+				const STPSample_t i = rng.nextValue(6);
 				switch (i) {
 				case 0u: return Reg::Forest.ID;
 					break;
@@ -70,18 +70,18 @@ namespace {
 		class STPClimateModerate : public STPCrossLayer {
 		public:
 
-			STPClimateModerate(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
+			STPClimateModerate(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, STPLayer& parent) :
 				STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 			}
 
-			Sample sample(const Sample center, const Sample north, const Sample east, const Sample south,
-				const Sample west, Seed) override {
+			STPSample_t sample(const STPSample_t center, const STPSample_t north, const STPSample_t east, const STPSample_t south,
+				const STPSample_t west, STPSeed_t) override {
 				//escape the one that is extreme on the centre
 				//and either temperate on one of the other side
 				//and replace it with a more temperate biome
 				if (center == Reg::Plains.ID
-					&& (!Reg::applyAll([](Sample val) -> bool {
+					&& (!Reg::applyAll([](STPSample_t val) -> bool {
 						return !(val == Reg::Mountain.ID || val == Reg::Forest.ID);
 						}, north, east, south, west))) {
 					//land
@@ -99,18 +99,18 @@ namespace {
 		class STPClimateExtreme : public STPCrossLayer {
 		public:
 
-			STPClimateExtreme(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
+			STPClimateExtreme(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, STPLayer& parent) :
 				STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 			}
 
-			Sample sample(const Sample center, const Sample north, const Sample east, const Sample south,
-				const Sample west, Seed) override {
+			STPSample_t sample(const STPSample_t center, const STPSample_t north, const STPSample_t east, const STPSample_t south,
+				const STPSample_t west, STPSeed_t) override {
 				//escape the one that is cold on the centre
 				//and either hot or warm on one of the other side
 				//extreme climate cannot be placed together
 				if (center != Reg::Forest.ID
-					|| Reg::applyAll([](Sample val) -> bool {
+					|| Reg::applyAll([](STPSample_t val) -> bool {
 						return val != Reg::Plains.ID && val != Reg::Desert.ID;
 						}, north, east, south, west)) {
 					//land

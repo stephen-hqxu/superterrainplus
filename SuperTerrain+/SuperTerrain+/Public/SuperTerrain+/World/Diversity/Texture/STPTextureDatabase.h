@@ -91,7 +91,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param upperBound The upper limit of altitude the region will be active
 			 * @param texture_id The texture to be used in this region
 			*/
-			void addAltitude(Sample, float, STPTextureInformation::STPTextureID);
+			void addAltitude(STPSample_t, float, STPTextureInformation::STPTextureID);
 
 			/**
 			 * @brief Get the number of altitude structure in the table
@@ -108,7 +108,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param upperBound Region ends with altitude lower than this value
 			 * @param texture_id The texture ID to be used in this region
 			*/
-			void addGradient(Sample, float, float, float, float, STPTextureInformation::STPTextureID);
+			void addGradient(STPSample_t, float, float, float, float, STPTextureInformation::STPTextureID);
 
 			/**
 			 * @brief Get the number of gradient structure in the table
@@ -137,10 +137,10 @@ namespace SuperTerrainPlus::STPDiversity {
 
 			//A result set contains sample to each splat configuration mapping
 			template<class N>
-			using STPNodeRecord = std::vector<std::pair<Sample, N>>;
+			using STPNodeRecord = std::vector<std::pair<STPSample_t, N>>;
 			typedef STPNodeRecord<STPTextureInformation::STPAltitudeNode> STPAltitudeRecord;
 			typedef STPNodeRecord<STPTextureInformation::STPGradientNode> STPGradientRecord;
-			typedef std::vector<std::tuple<Sample, size_t, size_t>> STPSampleRecord;
+			typedef std::vector<std::tuple<STPSample_t, size_t, size_t>> STPSampleRecord;
 
 			//A vector contains map group ID with corresponding map group properties
 			typedef std::vector<std::tuple<

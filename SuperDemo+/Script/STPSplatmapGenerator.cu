@@ -24,7 +24,7 @@ constexpr static float
 #include <SuperAlgorithm+Device/STPTextureSplatRuleWrapper.cuh>
 
 using namespace SuperTerrainPlus::STPAlgorithm;
-using SuperTerrainPlus::STPDiversity::Sample;
+using SuperTerrainPlus::STPSample_t, SuperTerrainPlus::STPRegion_t;
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
 
@@ -106,7 +106,7 @@ __global__ void generateTextureSplatmap(const cudaTextureObject_t biomemap_tex, 
 	//add some simplex noise to the slopFactor and height value, reminder: range is [-1,1]
 	const float noise = generateNoise(x, y, make_float2(local_info.ChunkMapOffsetX, local_info.ChunkMapOffsetY));
 	//get information about the current position
-	const Sample biome = tex2D<Sample>(biomemap_tex, SamplingPosition.x, SamplingPosition.y);
+	const STPSample_t biome = tex2D<STPSample_t>(biomemap_tex, SamplingPosition.x, SamplingPosition.y);
 	const float height = __saturatef(tex2D<float>(heightmap_tex, SamplingPosition.x, SamplingPosition.y) + noise);
 
 	const STPTextureSplatRuleWrapper splatWrapper(*SplatDatabase);
@@ -120,7 +120,8 @@ __global__ void generateTextureSplatmap(const cudaTextureObject_t biomemap_tex, 
 	}
 	//write whatever region to the splatmap
 	//out-of-boundary write will be caught by CUDA (safely) and will crash the program with error
-	surf2Dwrite(static_cast<unsigned char>(region), splatmap_surf, SamplingPosition.x * sizeof(unsigned char), SamplingPosition.y, cudaBoundaryModeTrap);
+	surf2Dwrite(static_cast<STPRegion_t>(region), splatmap_surf, SamplingPosition.x * sizeof(STPRegion_t),
+		SamplingPosition.y, cudaBoundaryModeTrap);
 }
 
 __device__ float generateNoise(const unsigned int x, const unsigned int y, const float2 offset) {

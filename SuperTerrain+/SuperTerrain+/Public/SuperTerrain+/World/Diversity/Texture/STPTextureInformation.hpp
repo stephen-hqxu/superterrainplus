@@ -3,7 +3,7 @@
 #define _STP_TEXTURE_INFORMATION_HPP_
 
 //Biome
-#include "../STPBiomeDefine.h"
+#include "../../STPWorldMapPixelFormat.hpp"
 
 #ifndef __CUDACC_RTC__
 #include <SuperTerrain+/STPOpenGL.h>
@@ -96,7 +96,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		public:
 
 			//An array of sample, the index of a sample can be used to locate the sample in the splat registry.
-			const Sample* SplatRegistryDictionary;
+			const STPSample_t* SplatRegistryDictionary;
 			unsigned int DictionaryEntryCount;
 			//An array that contains terrain splat configuration for each sample.
 			const STPTextureInformation::STPSplatRegistry* SplatRegistry;

@@ -68,13 +68,15 @@ try { \
 }
 
 STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STPChunkSetting& chunk,
-	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) : SimplexPermutation(STPAlgorithm::STPPermutationGenerator::generate(simplex_setting)),
+	const STPEnvironment::STPSimplexNoiseSetting& simplex_setting) :
+	SimplexPermutation(STPAlgorithm::STPPermutationGenerator::generate(simplex_setting)),
 	Dimension(chunk.MapSize), RenderingRange(chunk.RenderDistance) {
 	const auto commonSourceInfo = [capabilityOption = "-arch=sm_" + to_string(STPEngineInitialiser::architecture(0))]() {
 		using SuperTerrainPlus::STPStringUtility::concatCharArray;
 		constexpr static auto coreIncludeOption = concatCharArray("-I ", STPCoreInfo::CoreInclude);
 		constexpr static auto hostIncludeOption = concatCharArray("-I ", STPAlgorithm::STPAlgorithmHostInfo::HostInclude);
 		constexpr static auto deviceIncludeOption = concatCharArray("-I ", STPAlgorithm::STPAlgorithmDeviceInfo::DeviceInclude);
+		constexpr static auto cudaIncludeOption = concatCharArray("-I ", STPCoreInfo::CUDAInclude);
 
 		STPDeviceRuntimeBinary::STPSourceInformation info;
 		//setup compiler options
@@ -92,7 +94,8 @@ STPCommonCompiler::STPCommonCompiler(const SuperTerrainPlus::STPEnvironment::STP
 			//set include paths
 			[coreIncludeOption.data()]
 			[hostIncludeOption.data()]
-			[deviceIncludeOption.data()];
+			[deviceIncludeOption.data()]
+			[cudaIncludeOption.data()];
 
 		return info;
 	}();

@@ -2,14 +2,8 @@
 #ifndef _STP_DIVERSITY_GENERATOR_HPP_
 #define _STP_DIVERSITY_GENERATOR_HPP_
 
-//CUDA Runtime
-#include <cuda_runtime.h>
-//Biome Defines
-#include "../Diversity/STPBiomeDefine.h"
-//Sample Map Neighbour
 #include "STPNearestNeighbourTextureBuffer.h"
 
-//GLM
 #include <glm/vec2.hpp>
 
 namespace SuperTerrainPlus {
@@ -40,7 +34,7 @@ namespace SuperTerrainPlus {
 		 * Biomemap uses nearest neighbour logic.
 		 * @param offset The offset of maps in world coordinate.
 		*/
-		virtual void operator()(const STPNearestNeighbourFloatWTextureBuffer&, const STPNearestNeighbourSampleRTextureBuffer&, glm::vec2) = 0;
+		virtual void operator()(const STPNearestNeighbourHeightFloatWTextureBuffer&, const STPNearestNeighbourSampleRTextureBuffer&, glm::vec2) = 0;
 
 	};
 

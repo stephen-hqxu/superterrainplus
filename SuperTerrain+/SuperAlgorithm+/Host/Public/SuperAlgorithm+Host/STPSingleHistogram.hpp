@@ -3,7 +3,7 @@
 #define _STP_SINGLE_HISTOGRAM_HPP_
 
 //Engine Component
-#include <SuperTerrain+/World/Diversity/STPBiomeDefine.h>
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
 
 namespace SuperTerrainPlus::STPAlgorithm {
 
@@ -25,7 +25,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		public:
 
 			//The item the bin is current holding
-			STPDiversity::Sample Item;
+			STPSample_t Item;
 			//The weight of this bin.
 			//Use a floating point type to denote a normalised weight of this item,
 			//	it's the count divided by the sum of count over all items in this histogram.

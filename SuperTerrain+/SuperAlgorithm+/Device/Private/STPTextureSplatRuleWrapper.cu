@@ -5,7 +5,7 @@
 using namespace SuperTerrainPlus::STPAlgorithm;
 
 namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
-using SuperTerrainPlus::STPDiversity::Sample;
+using SuperTerrainPlus::STPSample_t;
 
 /**
  * @brief Perform lower bound binary search with custom comparator.
@@ -66,11 +66,11 @@ __device__ STPTextureSplatRuleWrapper::~STPTextureSplatRuleWrapper() {
 
 }
 
-__device__ const STPTI::STPSplatRegistry* STPTextureSplatRuleWrapper::findSplatRegistry(const Sample sample) const {
+__device__ const STPTI::STPSplatRegistry* STPTextureSplatRuleWrapper::findSplatRegistry(const STPSample_t sample) const {
 	//binary search this sample in the registry dictionary
 	//here because biomemap is generally a large scale texture, most threads in a half warp should have the same sample
 	//so memory access should basically be aligned
-	const Sample* const dic_beg = this->SplatRule.SplatRegistryDictionary,
+	const STPSample_t* const dic_beg = this->SplatRule.SplatRegistryDictionary,
 		*const dic_end = dic_beg + this->SplatRule.DictionaryEntryCount,
 		*const dic_it = lowerBound(dic_beg, dic_end, sample);
 	if (dic_it == dic_end) {

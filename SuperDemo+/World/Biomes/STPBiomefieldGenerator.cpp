@@ -75,7 +75,7 @@ inline auto STPBiomefieldGenerator::STPHistogramBufferCreator::operator()() cons
 	return STPSingleHistogramFilter::STPFilterBuffer(this->BufferExecution);
 }
 	
-void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBuffer& heightmap_buffer,
+void STPBiomefieldGenerator::operator()(const STPNearestNeighbourHeightFloatWTextureBuffer& heightmap_buffer,
 	const STPNearestNeighbourSampleRTextureBuffer& biomemap_buffer, const vec2 offset) {
 	//this function is called from multiple threads, consolidate the device context before calling any driver API function
 	STP_CHECK_CUDA(cudaSetDevice(0));
@@ -88,13 +88,13 @@ void STPBiomefieldGenerator::operator()(const STPNearestNeighbourFloatWTextureBu
 		Dimgridsize = (this->MapSize + Dimblocksize - 1u) / Dimblocksize;
 
 	//retrieve raw texture
-	const STPNearestNeighbourFloatWTextureBuffer::STPMergedBuffer heightmap_mem(
-		heightmap_buffer, STPNearestNeighbourFloatWTextureBuffer::STPMemoryLocation::DeviceMemory);
-	float* const heightmap = heightmap_mem.getDevice();
+	const STPNearestNeighbourHeightFloatWTextureBuffer::STPMergedBuffer heightmap_mem(
+		heightmap_buffer, STPNearestNeighbourHeightFloatWTextureBuffer::STPMemoryLocation::DeviceMemory);
+	STPHeightFloat_t* const heightmap = heightmap_mem.getDevice();
 	//we only need host memory on biome map
 	const STPNearestNeighbourSampleRTextureBuffer::STPMergedBuffer biomemap_mem(
 		biomemap_buffer, STPNearestNeighbourSampleRTextureBuffer::STPMemoryLocation::HostMemory);
-	const SuperTerrainPlus::STPDiversity::Sample* const biomemap = biomemap_mem.getHost();
+	const SuperTerrainPlus::STPSample_t* const biomemap = biomemap_mem.getHost();
 	//get the stream, both buffer use the same stream
 	const cudaStream_t stream = heightmap_buffer.DeviceMemInfo.second;
 

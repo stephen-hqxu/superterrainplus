@@ -42,7 +42,7 @@ namespace SuperTerrainPlus::STPRealism {
 		//A lookup table define water height at different biomes.
 		//The water level should use the same height metric as the terrain height value, and hence should be in range [0, 1].
 		//If no water level is defined for a biome, the biome is assumed to have no water.
-		typedef std::unordered_map<STPDiversity::Sample, float> STPBiomeWaterLevel;
+		typedef std::unordered_map<STPSample_t, float> STPBiomeWaterLevel;
 
 		/**
 		 * @brief Initialise a new water object.

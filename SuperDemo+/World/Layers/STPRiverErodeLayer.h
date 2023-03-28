@@ -12,14 +12,15 @@ namespace {
 	class STPRiverErodeLayer : public STPCrossLayer {
 	public:
 
-		STPRiverErodeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
+		STPRiverErodeLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, STPLayer& parent) :
 			STPCrossLayer(cache_size, global_seed, salt, parent) {
 			//parent: noise to river layer
 		}
 
-		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, Seed) override {
+		STPSample_t sample(const STPSample_t center, const STPSample_t north, const STPSample_t east,
+			const STPSample_t south, const STPSample_t west, STPSeed_t) override {
 			//centre is river, return a river if any of the sample is a river
-			if (!Reg::applyAll([](const Sample val) -> bool {
+			if (!Reg::applyAll([](const STPSample_t val) -> bool {
 				return val != Reg::River.ID;
 				}, north, east, south, west)) {
 				return Reg::River.ID;

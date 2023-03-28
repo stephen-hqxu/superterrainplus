@@ -9,6 +9,7 @@
 using std::make_unique;
 
 using namespace SuperTerrainPlus::STPDiversity;
+using SuperTerrainPlus::STPSample_t, SuperTerrainPlus::STPSeed_t;
 
 /**
  * @brief Check if the number is power of 2.
@@ -65,14 +66,14 @@ inline static unsigned long long mixKey(unsigned long long key) noexcept {
 }
 
 STPLayer::STPLayerCache::STPLayerCache(STPLayer& layer, const size_t capacity) :
-	Layer(layer), Key(make_unique<unsigned long long[]>(capacity)), Value(make_unique<Sample[]>(capacity)),
+	Layer(layer), Key(make_unique<unsigned long long[]>(capacity)), Value(make_unique<STPSample_t[]>(capacity)),
 	Mask(capacity - 1ull) {
 	STP_ASSERTION_NUMERIC_DOMAIN(isPow2(capacity), "The capacity of the layer cache must be a power of 2");
 	//make sure the hash table starts at 0
 	this->clear();
 }
 
-Sample STPLayer::STPLayerCache::get(const int x, const int y, const int z) {
+STPSample_t STPLayer::STPLayerCache::get(const int x, const int y, const int z) {
 	//calculate the key
 	const unsigned long long key = uniqueHash(x, y, z);
 	//locate the index in our hash table
@@ -83,7 +84,7 @@ Sample STPLayer::STPLayerCache::get(const int x, const int y, const int z) {
 		return this->Value[index];
 	}
 	//cache miss, compute
-	const Sample sample = this->Layer.sample(x, y, z);
+	const STPSample_t sample = this->Layer.sample(x, y, z);
 	//store cache entry
 	this->Key[index] = key;
 	this->Value[index] = sample;
@@ -94,39 +95,40 @@ void STPLayer::STPLayerCache::clear() noexcept {
 	const unsigned long long capacity = this->capacity();
 	//to avoid hash collision for key (it's equivalent to -1 with signed integer)
 	std::memset(this->Key.get(), 0xFFu, sizeof(unsigned long long) * capacity);
-	std::memset(this->Value.get(), 0x00u, sizeof(Sample) * capacity);
+	std::memset(this->Value.get(), 0x00u, sizeof(STPSample_t) * capacity);
 }
 
 unsigned long long STPLayer::STPLayerCache::capacity() const noexcept {
 	return this->Mask + 1ull;
 }
 
-STPLayer::STPLocalSampler::STPLocalSampler(const Seed layer_seed, const Seed local_seed) noexcept :
+STPLayer::STPLocalSampler::STPLocalSampler(const STPSeed_t layer_seed, const STPSeed_t local_seed) noexcept :
 	LayerSeed(layer_seed), LocalSeed(local_seed) {
 
 }
 
-Sample STPLayer::STPLocalSampler::nextValue(const Sample range) const noexcept {
+STPSample_t STPLayer::STPLocalSampler::nextValue(const STPSample_t range) const noexcept {
 	//Please do not use standard library rng, it will trash the performance
 	
 	//the original Minecraft implementation uses floorMod, which produces the same result as "%" when both inputs have the same sign
-	const Sample val = static_cast<Sample>((this->LocalSeed >> 24ull) % static_cast<Seed>(range));
+	const STPSample_t val = static_cast<STPSample_t>((this->LocalSeed >> 24ull) % static_cast<STPSeed_t>(range));
 
 	//advance to the next sequence
 	this->LocalSeed = STPLayer::mixSeed(this->LocalSeed, this->LayerSeed);
 	return val;
 }
 
-Sample STPLayer::STPLocalSampler::choose(const Sample var1, const Sample var2) const noexcept {
+STPSample_t STPLayer::STPLocalSampler::choose(const STPSample_t var1, const STPSample_t var2) const noexcept {
 	return this->nextValue(2u) == 0u ? var1 : var2;
 }
 
-Sample STPLayer::STPLocalSampler::choose(const Sample var1, const Sample var2, const Sample var3, const Sample var4) const noexcept {
-	const Sample i = this->nextValue(4u);
+STPSample_t STPLayer::STPLocalSampler::choose(const STPSample_t var1, const STPSample_t var2,
+	const STPSample_t var3, const STPSample_t var4) const noexcept {
+	const STPSample_t i = this->nextValue(4u);
 	return i == 0u ? var1 : i == 1u ? var2 : i == 2u ? var3 : var4;
 }
 
-STPLayer::STPLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const STPAscendantInitialiser ascendant) :
+STPLayer::STPLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, const STPAscendantInitialiser ascendant) :
 	AscendantCount(ascendant.size()), Ascendant(this->AscendantCount == 0u ? nullptr : make_unique<STPLayer*[]>(this->AscendantCount)),
 	Salt(salt), LayerSeed(STPLayer::seedLayer(global_seed, this->Salt)) {
 	std::transform(ascendant.begin(), ascendant.end(), this->Ascendant.get(), [](auto asc) { return &asc.get(); });
@@ -137,18 +139,18 @@ STPLayer::STPLayer(const size_t cache_size, const Seed global_seed, const Seed s
 	}
 }
 
-Seed STPLayer::seedLayer(const Seed global_seed, const Seed salt) noexcept {
-	Seed midSalt = STPLayer::mixSeed(salt, salt);
+STPSeed_t STPLayer::seedLayer(const STPSeed_t global_seed, const STPSeed_t salt) noexcept {
+	STPSeed_t midSalt = STPLayer::mixSeed(salt, salt);
 	midSalt = STPLayer::mixSeed(midSalt, midSalt);
 	midSalt = STPLayer::mixSeed(midSalt, midSalt);
-	Seed layer_seed = STPLayer::mixSeed(global_seed, midSalt);
+	STPSeed_t layer_seed = STPLayer::mixSeed(global_seed, midSalt);
 	layer_seed = STPLayer::mixSeed(layer_seed, midSalt);
 	layer_seed = STPLayer::mixSeed(layer_seed, midSalt);
 	return layer_seed;
 }
 
-Seed STPLayer::seedLocal(const int x, const int z) const noexcept {
-	Seed local_seed = STPLayer::mixSeed(this->LayerSeed, x);
+STPSeed_t STPLayer::seedLocal(const int x, const int z) const noexcept {
+	STPSeed_t local_seed = STPLayer::mixSeed(this->LayerSeed, x);
 	local_seed = STPLayer::mixSeed(local_seed, z);
 	local_seed = STPLayer::mixSeed(local_seed, x);
 	local_seed = STPLayer::mixSeed(local_seed, z);
@@ -160,7 +162,7 @@ size_t STPLayer::cacheSize() const noexcept {
 	return this->Cache ? this->Cache->capacity() : 0u ;
 }
 
-STPLayer::STPLocalSampler STPLayer::createLocalSampler(const Seed local_seed) const noexcept {
+STPLayer::STPLocalSampler STPLayer::createLocalSampler(const STPSeed_t local_seed) const noexcept {
 	return STPLayer::STPLocalSampler(this->LayerSeed, local_seed);
 }
 
@@ -168,13 +170,13 @@ STPLayer::STPLocalSampler STPLayer::createLocalSampler(const int x, const int z)
 	return this->createLocalSampler(this->seedLocal(x, z));
 }
 
-Seed STPLayer::mixSeed(Seed s, const long long fac) noexcept {
+STPSeed_t STPLayer::mixSeed(STPSeed_t s, const long long fac) noexcept {
 	s *= s * 6364136223846793005ull + 1442695040888963407ull;
 	s += fac;
 	return s;
 }
 
-Sample STPLayer::retrieve(const int x, const int y, const int z) {
+STPSample_t STPLayer::retrieve(const int x, const int y, const int z) {
 	if (!this->Cache) {
 		//this layer has no cache
 		return this->sample(x, y, z);

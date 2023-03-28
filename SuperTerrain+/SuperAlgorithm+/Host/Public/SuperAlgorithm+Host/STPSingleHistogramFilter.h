@@ -3,7 +3,7 @@
 #define _STP_SINGLE_HISTOGRAM_FILTER_H_
 
 #include <SuperAlgorithm+Host/STPAlgorithmDefine.h>
-#include <SuperTerrain+/World/Diversity/STPBiomeDefine.h>
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
 //Engine Components
 #include <SuperTerrain+/World/Chunk/STPNearestNeighbourInformation.hpp>
 #include <SuperTerrain+/Utility/STPThreadPool.h>
@@ -131,7 +131,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		public:
 
 			//The input sample map for filter.
-			const STPDiversity::Sample* const SampleMap;
+			const STPSample_t* const SampleMap;
 			//The information about the nearest_neighbour logic applies to the sample-map.
 			const STPNearestNeighbourInformation& NeighbourInfo;
 			//The filter buffer that will be for running the single histogram filter, and also output the final output.
@@ -187,7 +187,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 		 * The same output can be retrieved later from the input filter buffer.
 		 * @see STPFilterBuffer
 		*/
-		STPSingleHistogram operator()(const STPDiversity::Sample*, const STPNearestNeighbourInformation&, STPFilterBuffer&, unsigned int);
+		STPSingleHistogram operator()(const STPSample_t*, const STPNearestNeighbourInformation&, STPFilterBuffer&, unsigned int);
 
 	};
 

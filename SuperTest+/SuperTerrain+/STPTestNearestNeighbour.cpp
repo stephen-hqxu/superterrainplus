@@ -29,8 +29,8 @@
 #include <algorithm>
 #include <optional>
 
-using namespace SuperTerrainPlus;
-using STPDiversity::Sample;
+using SuperTerrainPlus::STPSample_t;
+using SuperTerrainPlus::STPNearestNeighbourInformation, SuperTerrainPlus::STPNearestNeighbourTextureBuffer;
 
 using glm::uvec2;
 
@@ -41,7 +41,7 @@ using Catch::Matchers::Predicate;
 using Catch::Matchers::AllMatch;
 using Catch::Matchers::RangeEquals;
 
-typedef STPNearestNeighbourTextureBufferMemoryMode NNTBMM;
+typedef SuperTerrainPlus::STPNearestNeighbourTextureBufferMemoryMode NNTBMM;
 
 template<typename T, NNTBMM MM>
 class NNBufferTester {
@@ -149,7 +149,7 @@ public:
 
 TEMPLATE_TEST_CASE_METHOD_SIG(NNBufferTester, "STPNearestNeighbourTextureBuffer can handle merged texture request for neighbour chunk "
 	"logic using different memory mode on arbitrary memory location", "[Chunk][STPNearestNeighbourTextureBuffer]",
-	((typename T, NNTBMM MM), T, MM), (Sample, NNTBMM::ReadOnly), (float, NNTBMM::WriteOnly), (float, NNTBMM::ReadWrite)) {
+	((typename T, NNTBMM MM), T, MM), (STPSample_t, NNTBMM::ReadOnly), (float, NNTBMM::WriteOnly), (float, NNTBMM::ReadWrite)) {
 	using CurrentTester = NNBufferTester<T, MM>;
 
 	GIVEN("A range of nearest neighbour chunks") {

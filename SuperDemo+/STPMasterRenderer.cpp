@@ -1,6 +1,6 @@
 #include "STPMasterRenderer.h"
 
-#include <SuperTerrain+/World/Diversity/STPBiomeDefine.h>
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
 
 //SuperRealism+ Engine
 #include <SuperRealism+/STPScenePipeline.h>
@@ -76,6 +76,8 @@ namespace Rdr = SuperTerrainPlus::STPRealism;
 //Environment
 namespace Env = SuperTerrainPlus::STPEnvironment;
 
+using SuperTerrainPlus::STPSeed_t;
+
 using namespace STPDemo;
 
 class STPMasterRenderer::STPRendererData {
@@ -126,7 +128,7 @@ public:
 		const STPCommandLineOption::STPResult& cmd) :
 		engineINI(engine), biomeINI(biome), SceneMaterial(1u), ViewPosition(camera.cameraStatus().Position) {
 		//get the global seed
-		const auto seed = cmd.GeneratorSeed.value_or(engineINI.at("Global").at("seed").to<unsigned long long>());
+		const auto seed = cmd.GeneratorSeed.value_or(engineINI.at("Global").at("seed").to<STPSeed_t>());
 
 		//loading terrain parameters
 		const Env::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI.at("simplex"), seed);
@@ -139,7 +141,7 @@ public:
 			this->WorldManager.emplace(string(this->biomeINI.at("").at("texture_path_prefix").String), chunk_setting, simplex);
 
 			this->WorldManager->attachBiomeFactory<STPDemo::STPLayerChainBuilder>(chunk_setting.MapSize,
-				static_cast<SuperTerrainPlus::STPDiversity::Seed>(seed));
+				static_cast<STPSeed_t>(seed));
 			this->WorldManager->attachDiversityGenerator<STPDemo::STPBiomefieldGenerator>
 				(this->WorldManager->SharedProgram, chunk_setting.MapSize, this->biomeINI.at("").at("interpolationRadius").to<unsigned int>());
 			this->WorldManager->attachTextureFactory<STPDemo::STPSplatmapGenerator>

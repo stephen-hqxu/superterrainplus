@@ -22,9 +22,9 @@
 
 #include <glm/trigonometric.hpp>
 
-using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPAlgorithm;
-using namespace SuperTerrainPlus::STPEnvironment;
+namespace Err = SuperTerrainPlus::STPException;
+namespace PermGen = SuperTerrainPlus::STPAlgorithm::STPPermutationGenerator;
+using SuperTerrainPlus::STPEnvironment::STPSimplexNoiseSetting;
 
 using std::unique_ptr;
 using std::make_unique;
@@ -51,7 +51,7 @@ public:
 protected:
 
 	const SimplexArg Args;
-	const STPPermutationGenerator::STPPermutationTable Result;
+	const PermGen::STPPermutationTable Result;
 
 	void copyTable() {
 		//copy device table back to host
@@ -66,11 +66,11 @@ protected:
 
 public:
 
-	PermutationGenTester() : Args(), Result(STPPermutationGenerator::generate(this->Args)) {
+	PermutationGenTester() : Args(), Result(PermGen::generate(this->Args)) {
 		this->copyTable();
 	}
 
-	PermutationGenTester(const SimplexArg args) : Args(args), Result(STPPermutationGenerator::generate(this->Args)) {
+	PermutationGenTester(const SimplexArg args) : Args(args), Result(PermGen::generate(this->Args)) {
 		this->copyTable();
 	}
 
@@ -91,7 +91,7 @@ SCENARIO_METHOD(PermutationGenTester, "STPPermutationGenerator can a generate de
 		InvalidArg.Distribution = 0u;
 
 		THEN("Construction of permutation generator should be prevented") {
-			REQUIRE_THROWS_AS(STPPermutationGenerator::generate(InvalidArg), STPException::STPInvalidEnvironment);
+			REQUIRE_THROWS_AS(PermGen::generate(InvalidArg), Err::STPInvalidEnvironment);
 		}
 
 	}

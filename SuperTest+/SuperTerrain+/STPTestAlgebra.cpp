@@ -14,7 +14,7 @@
 
 #include <type_traits>
 
-using namespace SuperTerrainPlus;
+using SuperTerrainPlus::STPVector4d, SuperTerrainPlus::STPMatrix4x4d;
 
 using glm::dmat3;
 using glm::vec4;

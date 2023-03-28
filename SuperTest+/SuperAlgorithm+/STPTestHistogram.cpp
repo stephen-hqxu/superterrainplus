@@ -17,10 +17,12 @@
 
 #include <glm/vec2.hpp>
 
-using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPAlgorithm;
+namespace Err = SuperTerrainPlus::STPException;
 
-using SuperTerrainPlus::STPDiversity::Sample;
+using SuperTerrainPlus::STPNearestNeighbourInformation;
+using SuperTerrainPlus::STPAlgorithm::STPSingleHistogramFilter, SuperTerrainPlus::STPAlgorithm::STPSingleHistogram;
+
+using SuperTerrainPlus::STPSample_t;
 using FiltBuf = STPSingleHistogramFilter::STPFilterBuffer;
 using Exec = FiltBuf::STPExecutionType;
 
@@ -29,7 +31,7 @@ using glm::uvec2;
 using std::pair;
 using std::make_pair;
 
-#define EXPECT_PAIR(X, Y) make_pair<Sample>(X, Y)
+#define EXPECT_PAIR(X, Y) make_pair<STPSample_t>(X, Y)
 
 class HistogramTester : protected STPSingleHistogramFilter {
 private:
@@ -39,7 +41,7 @@ private:
 	constexpr static uvec2 TotalDimension = Dimension * Neighbour;
 
 	//reference texture
-	constexpr static Sample Texture[] = {
+	constexpr static STPSample_t Texture[] = {
 		2, 0, 2, 0, 1, 1, 0, 3, 3, 2, 1, 2,
 		0, 1, 2, 1, 1, 1, 3, 2, 2, 0, 0, 1,
 		0, 1, 0, 2, 1, 3, 1, 1, 1, 2, 1, 0,
@@ -73,7 +75,7 @@ protected:
 	void verifyHistogram(const STPSingleHistogram& result) {
 		//verify it using human brain...
 		constexpr static unsigned int TrialOffset[] = { 0u, 8u, 15u };
-		constexpr static pair<Sample, float> Expected[] = {
+		constexpr static pair<STPSample_t, float> Expected[] = {
 			//0-1
 			EXPECT_PAIR(0u, 0.24f),
 			EXPECT_PAIR(3u, 0.24f),
@@ -120,11 +122,11 @@ SCENARIO_METHOD(HistogramTester, "STPSingleHistogramFilter analyses a sample tex
 
 			THEN("Error should be thrown to prevent bad things to happen") {
 				//radius is zero
-				REQUIRE_THROWS_AS(this->execute(this->SerialBuffer, 0u), STPException::STPNumericDomainError);
+				REQUIRE_THROWS_AS(this->execute(this->SerialBuffer, 0u), Err::STPNumericDomainError);
 				//radius is bigger than the total texture size
-				REQUIRE_THROWS_AS(this->execute(this->ParallelBuffer, 128u), STPException::STPNumericDomainError);
+				REQUIRE_THROWS_AS(this->execute(this->ParallelBuffer, 128u), Err::STPNumericDomainError);
 				//radius is not an even number
-				REQUIRE_THROWS_AS(this->execute(this->SerialBuffer, 3u), STPException::STPNumericDomainError);
+				REQUIRE_THROWS_AS(this->execute(this->SerialBuffer, 3u), Err::STPNumericDomainError);
 			}
 
 		}
@@ -202,7 +204,7 @@ private:
 		Bench& Profiler;
 
 		STPSingleHistogramFilter& Filter;
-		const Sample* const Image;
+		const STPSample_t* const Image;
 		FiltBuf& Buffer;
 
 	};
@@ -212,7 +214,7 @@ private:
 	//The current problem size is determined by: initial * growth^{i} \forall i \in [0, iteration]
 	constexpr static unsigned int DimensionGrowth = 2u, DimensionIteration = 6u,
 		RadiusGrowth = 3u, RadiusIteration = 4u;
-	constexpr static array<Sample, 4u> SampleRangeTrial = { 2u, 8u, 15u, 30u };
+	constexpr static array<STPSample_t, 4u> SampleRangeTrial = { 2u, 8u, 15u, 30u };
 
 	constexpr static uvec2 SampleDimensionInitial = uvec2(16u),
 		SampleNeighbourCount = uvec2(3u);
@@ -221,7 +223,7 @@ private:
 	//The default sizes are when we are varying one parameter while fixing others to this value
 	constexpr static uvec2 DefaultSampleDimension = uvec2(192u);
 	constexpr static unsigned int DefaultFilterRadius = 16u;
-	constexpr static Sample DefaultSampleRangeMax = 5u;
+	constexpr static STPSample_t DefaultSampleRangeMax = 5u;
 
 	//calculated values from the settings above
 	constexpr static uvec2 DefaultSampleTotalDimension = DefaultSampleDimension * SampleNeighbourCount;
@@ -240,7 +242,7 @@ private:
 		return dim_str.str();
 	}
 
-	static string formatSampleRange(const Sample range_max) {
+	static string formatSampleRange(const STPSample_t range_max) {
 		ostringstream range_str;
 		range_str << "[0, " << range_max << ']';
 		return range_str.str();
@@ -282,7 +284,7 @@ private:
 
 		for (const auto rangeMax : SampleRangeTrial) {
 			//regenerate the test image with a different range
-			generate_n(const_cast<Sample*>(image), DefaultSampleTextureSize,
+			generate_n(const_cast<STPSample_t*>(image), DefaultSampleTextureSize,
 				[&generator, rangeMax]() noexcept { return generator.bounded(rangeMax); });
 
 			profiler.complexityN(rangeMax)
@@ -326,8 +328,8 @@ public:
 		};
 
 		/* ---------------------------------- allocate random sample texture -------------------------- */
-		const unique_ptr<Sample[]> TestSampleMemory = make_unique<Sample[]>(MaxSampleTextureSize);
-		Sample* const TestSample = TestSampleMemory.get();
+		const unique_ptr<STPSample_t[]> TestSampleMemory = make_unique<STPSample_t[]>(MaxSampleTextureSize);
+		STPSample_t* const TestSample = TestSampleMemory.get();
 
 		using namespace std::string_literals;
 		//create filter buffer

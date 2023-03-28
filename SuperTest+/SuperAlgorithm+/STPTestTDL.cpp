@@ -18,9 +18,11 @@
 //This is a TDL with correct syntax
 constexpr static char TerrainTDL[] = "./TestData/Terrain.tdl";
 
-using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPAlgorithm;
-using namespace SuperTerrainPlus::STPDiversity;
+namespace Err = SuperTerrainPlus::STPException;
+namespace STPFile = SuperTerrainPlus::STPFile;
+namespace TDL = SuperTerrainPlus::STPAlgorithm::STPTextureDefinitionLanguage;
+
+using SuperTerrainPlus::STPDiversity::STPTextureDatabase;
 
 using std::string;
 using std::optional;
@@ -32,16 +34,16 @@ SCENARIO("TDL interpreter parses a TDL script", "[AlgorithmHost][Texture][STPTex
 
 			THEN("TDL can be parsed from source code") {
 				const string TestTDLString = STPFile::read(TerrainTDL);
-				STPTextureDefinitionLanguage::STPResult Result;
+				TDL::STPResult Result;
 				REQUIRE_NOTHROW([&Result, &TestTDLString]() {
-					Result = STPTextureDefinitionLanguage::read(TestTDLString.c_str(), TerrainTDL);
+					Result = TDL::read(TestTDLString.c_str(), TerrainTDL);
 				}());
 
 				AND_THEN("Splat rules can be loaded into texture database correctly") {
 					STPTextureDatabase Database;
 					auto& SplatBuilder = Database.splatBuilder();
 					const auto View = Database.visit();
-					STPTextureDefinitionLanguage::STPResult::STPTextureVariable TexVar;
+					TDL::STPResult::STPTextureVariable TexVar;
 
 					REQUIRE_NOTHROW([&Result, &TexVar, &Database]() { TexVar = Result.load(Database); }());
 
@@ -94,13 +96,13 @@ SCENARIO("TDL interpreter parses a TDL script", "[AlgorithmHost][Texture][STPTex
 
 #define CHECK_GENERIC_TDL_ERROR(INPUT, EXC, MAT) \
 	CHECK_THROWS_MATCHES(tryParse(INPUT), EXC, MessageMatches(MAT))
-#define CHECK_SYNTAX_ERROR(INPUT, MAT) CHECK_GENERIC_TDL_ERROR(INPUT, STPException::STPParserError::STPInvalidSyntax, MAT)
-#define CHECK_SEMANTIC_ERROR(INPUT, MAT) CHECK_GENERIC_TDL_ERROR(INPUT, STPException::STPParserError::STPSemanticError, MAT)
+#define CHECK_SYNTAX_ERROR(INPUT, MAT) CHECK_GENERIC_TDL_ERROR(INPUT, Err::STPParserError::STPInvalidSyntax, MAT)
+#define CHECK_SEMANTIC_ERROR(INPUT, MAT) CHECK_GENERIC_TDL_ERROR(INPUT, Err::STPParserError::STPSemanticError, MAT)
 
 	GIVEN("A TDL source with incorrect syntax and semantics") {
 		using namespace Catch::Matchers;
 		const auto tryParse = [](const char* const src) {
-			STPTextureDefinitionLanguage::read(src, "BrokenTDLTest");
+			TDL::read(src, "BrokenTDLTest");
 		};
 
 		WHEN("There is a syntactic error") {

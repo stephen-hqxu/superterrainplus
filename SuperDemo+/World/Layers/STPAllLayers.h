@@ -26,14 +26,14 @@ namespace STPDemo {
 
 	public:
 
-		const SuperTerrainPlus::STPDiversity::Seed GlobalSeed;
+		const SuperTerrainPlus::STPSeed_t GlobalSeed;
 
 		/**
 		 * @brief Init the chain build
 		 * @param dimension The biome map dimension in 2D
 		 * @param global The global seed for generation
 		*/
-		STPLayerChainBuilder(glm::uvec2, SuperTerrainPlus::STPDiversity::Seed);
+		STPLayerChainBuilder(glm::uvec2, SuperTerrainPlus::STPSeed_t);
 
 		~STPLayerChainBuilder();
 

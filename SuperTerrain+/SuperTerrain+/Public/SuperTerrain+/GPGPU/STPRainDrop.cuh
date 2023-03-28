@@ -7,11 +7,13 @@
 #ifndef _STP_RAINDROP_CUH_
 #define _STP_RAINDROP_CUH_
 
-//CUDA Runtime
-#include <cuda_runtime.h>
+#include "../World/STPWorldMapPixelFormat.hpp"
 //Settings
 #include "../Environment/STPRainDropSetting.h"
 #include "../World/Chunk/STPErosionBrush.hpp"
+
+//CUDA Runtime
+#include <cuda_runtime.h>
 
 //GLM
 #include <glm/vec2.hpp>
@@ -54,7 +56,7 @@ namespace SuperTerrainPlus {
 		 * @param map The floating point heightmap with free slip configurations
 		 * @return Height and Gradients, will be defined in vec3 as (height, gradientX, gradientY);
 		*/
-		__device__ glm::vec3 calcHeightGradients(const float*) const;
+		__device__ glm::vec3 calcHeightGradients(const STPHeightFloat_t*) const;
 
 	public:
 
@@ -67,7 +69,7 @@ namespace SuperTerrainPlus {
 		*/
 		__device__ STPRainDrop(glm::vec2, float, float, glm::uvec2);
 
-		__device__ ~STPRainDrop();
+		~STPRainDrop() = default;
 
 		/**
 		 * @brief Performing hydraulic erosion algorithm to descend the raindrop downhill once, 
@@ -76,7 +78,7 @@ namespace SuperTerrainPlus {
 		 * @param settings - The raindrop settings for erosion.
 		 * @param brush - The generated erosion brush table.
 		*/
-		__device__ void operator()(float*, const STPEnvironment::STPRainDropSetting&, const STPErosionBrush&);
+		__device__ void operator()(STPHeightFloat_t*, const STPEnvironment::STPRainDropSetting&, const STPErosionBrush&);
 
 	};
 

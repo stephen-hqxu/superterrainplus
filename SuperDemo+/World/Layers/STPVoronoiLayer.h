@@ -12,22 +12,22 @@ namespace {
 	class STPVoronoiLayer : public STPLayer {
 	private:
 
-		const bool is3D;
+		const bool Is3D;
 
-		const Seed voronoi_seed;
+		const STPSeed_t VoronoiSeed;
 
-		static double sqrtDist(const Seed seed, const int x, const int y, const int z, const double xFrac,
+		static double sqrtDist(const STPSeed_t seed, const int x, const int y, const int z, const double xFrac,
 			const double yFrac, const double zFrac) noexcept {
-			static constexpr auto distribute = [](const Seed seed) constexpr -> double {
+			static constexpr auto distribute = [](const STPSeed_t seed) constexpr noexcept -> double {
 				const double d = static_cast<double>(static_cast<unsigned int>((seed >> 24ull) % 1024ull)) / 1024.0;
 				return (d - 0.5) * 0.9;
 			};
 
-			static constexpr auto sqr = [](const double n) constexpr -> double {
+			static constexpr auto sqr = [](const double n) constexpr noexcept -> double {
 				return n * n;
 			};
 
-			Seed mixed = STPLayer::mixSeed(seed, x);
+			STPSeed_t mixed = STPLayer::mixSeed(seed, x);
 			mixed = STPLayer::mixSeed(mixed, y);
 			mixed = STPLayer::mixSeed(mixed, z);
 			mixed = STPLayer::mixSeed(mixed, x);
@@ -45,17 +45,13 @@ namespace {
 
 	public:
 
-		STPVoronoiLayer(const size_t cache_size, const Seed global_seed, const Seed salt, const bool is3D, STPLayer& parent) :
+		STPVoronoiLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, const bool is3D, STPLayer& parent) :
 			STPLayer(cache_size, global_seed, salt, { parent }),
-			is3D(is3D), voronoi_seed(std::hash<Seed> {}(global_seed)) {
+			Is3D(is3D), VoronoiSeed(std::hash<STPSeed_t> {}(global_seed)) {
 			
 		}
 
-		inline bool is3DScaling() const {
-			return this->is3D;
-		}
-
-		Sample sample(const int x, const int y, const int z) override {
+		STPSample_t sample(const int x, const int y, const int z) override {
 			const int ijk[3] = {
 				x - 2, 
 				y - 2, 
@@ -85,7 +81,7 @@ namespace {
 					bl[1] ? def[1] : def[1] - 1.0,
 					bl[2] ? def[2] : def[2] - 1.0
 				};
-				ds[c] = STPVoronoiLayer::sqrtDist(this->voronoi_seed, a_abc[0], a_abc[1], a_abc[2], ghs[0], ghs[1], ghs[2]);
+				ds[c] = STPVoronoiLayer::sqrtDist(this->VoronoiSeed, a_abc[0], a_abc[1], a_abc[2], ghs[0], ghs[1], ghs[2]);
 			}
 
 			unsigned int index = 0u;
@@ -104,7 +100,7 @@ namespace {
 				(index & 2u) == 0u ? lmn[1] : lmn[1] + 1,
 				(index & 1u) == 0u ? lmn[2] : lmn[2] + 1
 			};
-			return this->getAscendant().retrieve(xyz[0], this->is3D ? xyz[1] : 0, xyz[2]);
+			return this->getAscendant().retrieve(xyz[0], this->Is3D ? xyz[1] : 0, xyz[2]);
 		}
 
 	};

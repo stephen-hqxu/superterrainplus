@@ -2,6 +2,8 @@
 #ifndef _STP_HEIGHTFIELD_SETTING_H_
 #define _STP_HEIGHTFIELD_SETTING_H_
 
+#include "../World/STPWorldMapPixelFormat.hpp"
+
 #include "STPRainDropSetting.h"
 
 namespace SuperTerrainPlus::STPEnvironment {
@@ -14,7 +16,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 
 		//Heightfield Generator Parameters
 		//the seed used for any random operation during generation
-		unsigned long long Seed;
+		STPSeed_t Seed;
 
 		//Hydraulic erosion parameters.
 		STPRainDropSetting Erosion;

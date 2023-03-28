@@ -303,7 +303,7 @@ STPTextureDatabase::STPTextureSplatBuilder::STPTextureSplatBuilder(
 }
 
 void STPTextureDatabase::STPTextureSplatBuilder::addAltitude(
-	const Sample sample, const float upperBound, const STPTextureInformation::STPTextureID texture_id) {
+	const STPSample_t sample, const float upperBound, const STPTextureInformation::STPTextureID texture_id) {
 	static constexpr string_view AddAltitude = 
 		"INSERT INTO AltitudeStructure (ASID, Sample, UpperBound, TID) VALUES(?, ?, ?, ?)";
 	sqlite3_stmt* const altitude_stmt = this->Database.getStmt(STPTextureDatabaseImpl::AddAltitude, AddAltitude);
@@ -324,7 +324,7 @@ size_t STPTextureDatabase::STPTextureSplatBuilder::altitudeSize() const {
 	return this->Database.getInt(GetAltitudeCount);
 }
 
-void STPTextureDatabase::STPTextureSplatBuilder::addGradient(const Sample sample, const float minGradient, const float maxGradient,
+void STPTextureDatabase::STPTextureSplatBuilder::addGradient(const STPSample_t sample, const float minGradient, const float maxGradient,
 	const float lowerBound, const float upperBound, const STPTextureInformation::STPTextureID texture_id) {
 	static constexpr string_view AddGradient =
 		"INSERT INTO GradientStructure (GSID, Sample, minGradient, maxGradient, LowerBound, UpperBound, TID) VALUES(?, ?, ?, ?, ?, ?, ?);";
@@ -366,7 +366,7 @@ STPTextureDatabase::STPDatabaseView::STPAltitudeRecord STPTextureDatabase::STPDa
 	//structure the altitude records and add them into the vector
 	while (this->Impl.execStmt(altitude_stmt)) {
 		STPTextureInformation::STPAltitudeNode& newAlt =
-			altitude_rec.emplace_back(static_cast<Sample>(sqlite3_column_int(altitude_stmt, 0)), STPTextureInformation::STPAltitudeNode()).second;
+			altitude_rec.emplace_back(static_cast<STPSample_t>(sqlite3_column_int(altitude_stmt, 0)), STPTextureInformation::STPAltitudeNode()).second;
 		newAlt.UpperBound = static_cast<float>(sqlite3_column_double(altitude_stmt, 1));
 		newAlt.Reference.DatabaseKey = static_cast<STPTextureInformation::STPTextureID>(sqlite3_column_int(altitude_stmt, 2));
 	}
@@ -386,7 +386,7 @@ STPTextureDatabase::STPDatabaseView::STPGradientRecord STPTextureDatabase::STPDa
 	//structure then add
 	while (this->Impl.execStmt(gradient_stmt)) {
 		STPTextureInformation::STPGradientNode& newGra =
-			gradient_rec.emplace_back(static_cast<Sample>(sqlite3_column_int(gradient_stmt, 0)), STPTextureInformation::STPGradientNode()).second;
+			gradient_rec.emplace_back(static_cast<STPSample_t>(sqlite3_column_int(gradient_stmt, 0)), STPTextureInformation::STPGradientNode()).second;
 		newGra.minGradient = static_cast<float>(sqlite3_column_double(gradient_stmt, 1));
 		newGra.maxGradient = static_cast<float>(sqlite3_column_double(gradient_stmt, 2));
 		newGra.LowerBound = static_cast<float>(sqlite3_column_double(gradient_stmt, 3));
@@ -417,7 +417,7 @@ STPTextureDatabase::STPDatabaseView::STPSampleRecord STPTextureDatabase::STPData
 	//insert into sample array
 	while (this->Impl.execStmt(affected_stmt)) {
 		sample_rec.emplace_back(
-			static_cast<Sample>(sqlite3_column_int(affected_stmt, 0)),
+			static_cast<STPSample_t>(sqlite3_column_int(affected_stmt, 0)),
 			static_cast<size_t>(sqlite3_column_int(affected_stmt, 1)),
 			static_cast<size_t>(sqlite3_column_int(affected_stmt, 2))
 		);

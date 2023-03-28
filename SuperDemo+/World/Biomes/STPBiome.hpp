@@ -3,7 +3,7 @@
 #define _STP_BIOME_HPP_
 
 #include "STPBiomeProperty.hpp"
-#include <SuperTerrain+/World/Diversity/STPBiomeDefine.h>
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
 //String
 #include <string>
 
@@ -17,7 +17,7 @@ namespace STPDemo {
 
 		//Identification and texture control
 		//The id of this biome, for convention id equals the index of the biome registry, but it's free to choose the value of the id
-		SuperTerrainPlus::STPDiversity::Sample ID;
+		SuperTerrainPlus::STPSample_t ID;
 		//The name of this biome
 		std::string Name;
 		//The temperature of this biome

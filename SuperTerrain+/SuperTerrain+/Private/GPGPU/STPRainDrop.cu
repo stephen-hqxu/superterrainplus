@@ -15,16 +15,12 @@ using glm::vec2;
 using glm::vec3;
 using glm::vec4;
 
-__device__ STPRainDrop::STPRainDrop(const vec2 position, const float WaterVolume, const float MovementSpeed, const uvec2 dimension) : 
-	Position(position), Direction(0.0f), Speed(MovementSpeed), Volume(WaterVolume), Dimension(dimension) {
+__device__ STPRainDrop::STPRainDrop(const vec2 position, const float water_volume, const float movement_speed, const uvec2 dimension) : 
+	Position(position), Direction(0.0f), Speed(movement_speed), Volume(water_volume), Dimension(dimension) {
 
 }
 
-__device__ STPRainDrop::~STPRainDrop() {
-
-}
-
-__device__ vec3 STPRainDrop::calcHeightGradients(const float* const map) const {
+__device__ vec3 STPRainDrop::calcHeightGradients(const STPHeightFloat_t* const map) const {
 	const unsigned int rowCount = this->Dimension.x;
 	//result
 	vec3 height_gradients;
@@ -54,15 +50,16 @@ __device__ vec3 STPRainDrop::calcHeightGradients(const float* const map) const {
 	return height_gradients;
 }
 
-__device__ void STPRainDrop::operator()(float* const map, const STPEnvironment::STPRainDropSetting& settings, const STPErosionBrush& brush) {
+__device__ void STPRainDrop::operator()(STPHeightFloat_t* const map, const STPEnvironment::STPRainDropSetting& settings,
+	const STPErosionBrush& brush) {
 	const auto [raw_brushIndex, raw_brushWeight, brushSize] = brush;
 	const unsigned int brushRadius = settings.ErosionBrushRadius;
 
 	//Cache erosion brush to shared memory
 	//Erosion brush indices then weights
 	extern __shared__ unsigned char ErosionBrush[];
-	int* const brushIndices = reinterpret_cast<int*>(ErosionBrush);
-	float* const brushWeights = reinterpret_cast<float*>(ErosionBrush + sizeof(int) * brushSize);
+	int* const brushIndices = new (ErosionBrush) int[brushSize];
+	float* const brushWeights = new (ErosionBrush + sizeof(int) * brushSize) float[brushSize];
 	{
 		unsigned int iteration = 0u;
 		while (iteration < brushSize) {
@@ -166,10 +163,10 @@ __device__ void STPRainDrop::operator()(float* const map, const STPEnvironment::
 				this->Sediment += deltaSediment;
 			}
 		}
+
 		//update droplet's speed and water content
 		this->Speed = sqrtf(fmaxf(0.0f, this->Speed * this->Speed + deltaHeight * settings.Gravity));//Newton's 2nd Law
 		this->Speed *= 1.0f - settings.Friction;//Newton's Friction Equation
 		this->Volume *= (1.0f - settings.EvaporateSpeed);
-
 	}
 }

@@ -137,7 +137,7 @@ STPTextureFactory::STPTextureFactory(const STPTextureDatabase::STPDatabaseView& 
 
 	//then we can start building splat rule data structure
 	{
-		vector<Sample> spalt_lookup;
+		vector<STPSample_t> spalt_lookup;
 		vector<STPTextureInformation::STPSplatRegistry> splat_reg;
 
 		//loop through sample used

@@ -13,7 +13,7 @@ namespace {
 	private:
 
 		template<size_t S>
-		using STPBiomeList = std::array<Sample, S>;
+		using STPBiomeList = std::array<STPSample_t, S>;
 
 		//A table of interpretation
 		//If we want higher chance of spawning for specific biomes, just repeat that one
@@ -49,16 +49,16 @@ namespace {
 
 	public:
 
-		STPBaseBiomeLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
+		STPBaseBiomeLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, STPLayer& parent) :
 			STPLayer(cache_size, global_seed, salt, { parent }) {
 			//parent:: climate layer
 		}
 
-		Sample sample(const int x, const int y, const int z) override {
+		STPSample_t sample(const int x, const int y, const int z) override {
 			//get the local RNG
 			STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 			//get the climate for this local coordinate
-			const Sample climate = this->getAscendant().retrieve(x, y, z);
+			const STPSample_t climate = this->getAscendant().retrieve(x, y, z);
 
 			//if it's ocean, we should leave it untouched
 			if (Reg::isOcean(climate)) {
@@ -68,19 +68,19 @@ namespace {
 			//interpretation, compared to vanilla Minecraft, special climate has been removed, every biomes have the equal chance of spawning
 			if (climate == Reg::Plains.ID) {
 				//dry and hot biome
-				return this->DryBiomes[rng.nextValue(static_cast<Sample>(this->DryBiomes.size()))];
+				return this->DryBiomes[rng.nextValue(static_cast<STPSample_t>(this->DryBiomes.size()))];
 			}
 			if (climate == Reg::Desert.ID) {
 				//temperate biome
-				return this->TemperateBiomes[rng.nextValue(static_cast<Sample>(this->TemperateBiomes.size()))];
+				return this->TemperateBiomes[rng.nextValue(static_cast<STPSample_t>(this->TemperateBiomes.size()))];
 			}
 			if (climate == Reg::Mountain.ID) {
 				//cool biome
-				return this->CoolBiomes[rng.nextValue(static_cast<Sample>(this->CoolBiomes.size()))];
+				return this->CoolBiomes[rng.nextValue(static_cast<STPSample_t>(this->CoolBiomes.size()))];
 			}
 			if (climate == Reg::Forest.ID) {
 				//snowy and cold biome
-				return this->SnowyBiomes[rng.nextValue(static_cast<Sample>(this->SnowyBiomes.size()))];
+				return this->SnowyBiomes[rng.nextValue(static_cast<STPSample_t>(this->SnowyBiomes.size()))];
 			}
 
 			//this usually won't happen, but just in case

@@ -82,6 +82,7 @@ class STPWorldPipeline::STPGeneratorManager {
 private:
 
 	//create a new array of pointers containing exact number of neighbour entry
+	template<typename T>
 	struct STPNeighbourArrayCreator {
 	public:
 
@@ -97,11 +98,14 @@ private:
 
 		~STPNeighbourArrayCreator() = default;
 
-		inline unique_ptr<void*[]> operator()() const {
-			return make_unique<void*[]>(this->NeighbourCount);
+		inline unique_ptr<T*[]> operator()() const {
+			return make_unique<T*[]>(this->NeighbourCount);
 		}
 
 	};
+	//a handy wrapper type of object pool for storing neighbour chunk memory
+	template<typename T>
+	using STPNeighbourMemoryPool = STPObjectPool<unique_ptr<T*[]>, STPNeighbourArrayCreator<T>>;
 
 	STPWorldPipeline& Pipeline;
 	const STPEnvironment::STPChunkSetting& ChunkSetting;
@@ -136,7 +140,9 @@ private:
 
 	/* ------------------------------------------------- memory pool ---------------------------------------------------- */
 	const STPChunk::STPChunkNeighbourOffset DiversityNeightbourOffset, ErosionNeighbourOffset;
-	STPObjectPool<unique_ptr<void*[]>, STPNeighbourArrayCreator> DiversityNeighbourMemoryPool, ErosionNeighbourMemoryPool;
+	STPNeighbourMemoryPool<STPSample_t> DiversityNeighbourMemoryPool;
+	STPNeighbourMemoryPool<STPHeightFloat_t> ErosionFloatNeighbourMemoryPool;
+	STPNeighbourMemoryPool<STPHeightFixed_t> ErosionFixedNeighbourMemoryPool;
 
 	//used by function to merge neighbour chunks
 	struct STPNeighbourUnionCache {
@@ -447,14 +453,14 @@ private:
 			//get the memory of all neighbour
 			//since biomemap is read only, we can safely read from the database and get the biomemap memory,
 			//even if some neighbours may overlap and be read by multiple threads
-			unique_ptr<void*[]> neighbour_biome_mem = this->DiversityNeighbourMemoryPool.request();
-			const Sample** const neighbour_biome = const_cast<const Sample**>(reinterpret_cast<Sample**>(neighbour_biome_mem.get()));
+			auto neighbour_biome_mem = this->DiversityNeighbourMemoryPool.request();
+			const STPSample_t** const neighbour_biome = const_cast<const STPSample_t**>(neighbour_biome_mem.get());
 			transform(neighbour_offset.begin(), neighbour_offset.end(), neighbour_biome,
 				[&db, centre_chunk = chunkCoord](const auto chunk_coord_offset) {
 					return db.find(centre_chunk + chunk_coord_offset)->second.biomemap();
 				});
 			//invoke generator
-			this->HeightfieldGenerator.generate(chunk.heightmap(), neighbour_biome, static_cast<vec2>(this->calcMapOffset(chunkCoord)));
+			this->HeightfieldGenerator.generate(chunk.heightmapFloat(), neighbour_biome, static_cast<vec2>(this->calcMapOffset(chunkCoord)));
 			//return memory
 			this->DiversityNeighbourMemoryPool.release(std::move(neighbour_biome_mem));
 
@@ -494,22 +500,22 @@ private:
 			const STPChunk::STPChunkNeighbourOffset& neighbour_offset = this->ErosionNeighbourOffset;
 			
 			//get memory, we need to 2 neighbour sets
-			unique_ptr<void*[]> neighbour_heightmap_mem = this->ErosionNeighbourMemoryPool.request(),
-				neighbour_heightmap_low_mem = this->ErosionNeighbourMemoryPool.request();
-			float** const neighbour_heightmap = reinterpret_cast<float**>(neighbour_heightmap_mem.get());
-			unsigned short** const neighbour_heightmap_low = reinterpret_cast<unsigned short**>(neighbour_heightmap_low_mem.get());
+			auto neighbour_heightmap_float_mem = this->ErosionFloatNeighbourMemoryPool.request();
+			auto neighbour_heightmap_fixed_mem = this->ErosionFixedNeighbourMemoryPool.request();
+			STPHeightFloat_t** const neighbour_heightmap_float = neighbour_heightmap_float_mem.get();
+			STPHeightFixed_t** const neighbour_heightmap_fixed = neighbour_heightmap_fixed_mem.get();
 			//prepare pointers
 			for (unsigned int local_idx = 0u; local_idx < neighbour_offset.NeighbourOffsetCount; local_idx++) {
 				STPChunk& curr_chunk = this->ChunkDatabase.find(chunkCoord + neighbour_offset[local_idx])->second;
 
-				neighbour_heightmap[local_idx] = curr_chunk.heightmap();
-				neighbour_heightmap_low[local_idx] = curr_chunk.heightmapLow();
+				neighbour_heightmap_float[local_idx] = curr_chunk.heightmapFloat();
+				neighbour_heightmap_fixed[local_idx] = curr_chunk.heightmapFixed();
 			}
 			//where the magic happens
-			this->HeightfieldGenerator.erode(neighbour_heightmap, neighbour_heightmap_low);
+			this->HeightfieldGenerator.erode(neighbour_heightmap_float, neighbour_heightmap_fixed);
 			//clean up
-			this->ErosionNeighbourMemoryPool.release(std::move(neighbour_heightmap_mem));
-			this->ErosionNeighbourMemoryPool.release(std::move(neighbour_heightmap_low_mem));
+			this->ErosionFloatNeighbourMemoryPool.release(std::move(neighbour_heightmap_float_mem));
+			this->ErosionFixedNeighbourMemoryPool.release(std::move(neighbour_heightmap_fixed_mem));
 
 			chunk.Completeness = STPChunk::STPChunkCompleteness::Complete;
 		};
@@ -579,9 +585,11 @@ public:
 		Pipeline(pipeline), ChunkSetting(this->Pipeline.ChunkSetting),
 		DiversityNeightbourOffset(this->calcNeighbourOffset(this->ChunkSetting.DiversityNearestNeighbour)),
 		ErosionNeighbourOffset(this->calcNeighbourOffset(this->ChunkSetting.ErosionNearestNeighbour)),
-		DiversityNeighbourMemoryPool(this->ChunkSetting.DiversityNearestNeighbour), ErosionNeighbourMemoryPool(this->ChunkSetting.ErosionNearestNeighbour),
-		BiomemapGenerator(*setup.BiomemapGenerator), HeightfieldGenerator(*setup.HeightfieldGenerator), SplatmapGenerator(*setup.SplatmapGenerator), 
-		GeneratorWorker(5u) {
+		DiversityNeighbourMemoryPool(this->ChunkSetting.DiversityNearestNeighbour),
+		ErosionFloatNeighbourMemoryPool(this->ChunkSetting.ErosionNearestNeighbour),
+		ErosionFixedNeighbourMemoryPool(this->ChunkSetting.ErosionNearestNeighbour),
+		BiomemapGenerator(*setup.BiomemapGenerator), HeightfieldGenerator(*setup.HeightfieldGenerator),
+		SplatmapGenerator(*setup.SplatmapGenerator), GeneratorWorker(5u) {
 		//reserve memory for various cache
 		//we consider the maximum number of possible nearest neighbour chunk for each generation stage
 		constexpr static auto calcEntryCount = [](const uvec2& entry_range) constexpr -> size_t {
@@ -709,9 +717,9 @@ class STPConcurrentStreamManager {
 private:
 
 	//Specifies how many parallel worker should be used.
-	constexpr static unsigned char Parallelism = 4u;
+	constexpr static size_t Parallelism = 4u;
 	//Locate the currently active memory worker.
-	unsigned char WorkerIndex = 0u;
+	size_t WorkerIndex = 0u;
 
 	//The transfer cache is used because cudaMemcpy2DArrayToArray does not have a streamed version.
 	//Each worker will have a transfer cache.
@@ -790,7 +798,7 @@ public:
 	 * @return The currently active memory worker.
 	*/
 	inline cudaStream_t nextWorker() noexcept {
-		const unsigned char idx = this->WorkerIndex++;
+		const size_t idx = this->WorkerIndex++;
 		//wrap the index around
 		this->WorkerIndex %= STPConcurrentStreamManager::Parallelism;
 		return this->MemoryWorker[idx].get();
@@ -819,9 +827,9 @@ public:
 	constexpr static size_t MemoryUnitCapacity = 3u;
 	//Channel size in byte (not bit) for each map.
 	constexpr static size_t MemoryFormat[3] = {
-		sizeof(Sample),
-		sizeof(unsigned short),
-		sizeof(unsigned char)
+		sizeof(STPSample_t),
+		sizeof(STPHeightFixed_t),
+		sizeof(STPRegion_t)
 	};
 	//Maximum value of memory format
 	constexpr static size_t MaxMemoryFormat = *std::max_element(MemoryFormat, MemoryFormat + MemoryUnitCapacity);
@@ -1596,7 +1604,7 @@ STPWorldPipeline::STPWorldLoadStatus STPWorldPipeline::load(const dvec3& viewPos
 		//Otherwise we loop through the main response.
 		for (const auto entry : valid_heightmap_reload ? *valid_heightmap_reload : request_response) {
 			const auto& [chunk_world_coord, chunk] = *entry;
-			mem_mgr.sendChunkToBuffer(map_data, chunk.heightmapLow(), STPTerrainMapType::Heightmap,
+			mem_mgr.sendChunkToBuffer(map_data, chunk.heightmapFixed(), STPTerrainMapType::Heightmap,
 				toLocalIndex(chunk_world_coord), stream_mgr.nextWorker());
 		}
 		//end of auxiliary workers

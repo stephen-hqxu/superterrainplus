@@ -50,11 +50,10 @@ using Catch::Matchers::AllMatch;
 using Catch::Matchers::Predicate;
 using Catch::Matchers::MessageMatches;
 
-using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPAlgorithm;
-namespace Cmd = STPCommandLineParser;
+namespace Err = SuperTerrainPlus::STPException;
+namespace Cmd = SuperTerrainPlus::STPAlgorithm::STPCommandLineParser;
 
-#define THROW_AS_PARSER_ERROR(EXPR) REQUIRE_THROWS_AS(EXPR, STPException::STPParserError::STPSemanticError)
+#define THROW_AS_PARSER_ERROR(EXPR) REQUIRE_THROWS_AS(EXPR, Err::STPParserError::STPSemanticError)
 #define COMPARE_FLOAT(VALUE, TARGET) CHECK_THAT(VALUE, Catch::Matchers::WithinRel(TARGET, std::numeric_limits<float>::epsilon() * 500.0f))
 #define COMPARE_FLOAT_RESULT(VALUE, EXPECTED) CHECK_THAT(VALUE, Catch::Matchers::WithinULP(EXPECTED, 50ull))
 
@@ -426,14 +425,14 @@ inline static string getEncodedArgument(const C* const... arg) {
 }
 
 #define RUN_VALIDATION_GENERIC(INPUT, EXC, MAT) CHECK_THROWS_MATCHES(Cmd::validate(INPUT), EXC, MessageMatches(MAT))
-#define RUN_VALIDATION_MATCH(INPUT, MAT) RUN_VALIDATION_GENERIC(INPUT, STPException::STPValidationFailed, MAT)
-#define RUN_NUMERIC_MATCH(INPUT, MAT) RUN_VALIDATION_GENERIC(INPUT, STPException::STPNumericDomainError, MAT)
+#define RUN_VALIDATION_MATCH(INPUT, MAT) RUN_VALIDATION_GENERIC(INPUT, Err::STPValidationFailed, MAT)
+#define RUN_NUMERIC_MATCH(INPUT, MAT) RUN_VALIDATION_GENERIC(INPUT, Err::STPNumericDomainError, MAT)
 
 #define RUN_PARSER(INPUT) CHECK(this->startParser(INPUT))
 
 #define RUN_PARSER_ERROR(INPUT) THROW_AS_PARSER_ERROR(this->startParser(INPUT))
 #define RUN_PARSER_ERROR_MATCH(INPUT, MAT) CHECK_THROWS_MATCHES(this->startParser(INPUT), \
-	STPException::STPParserError::STPSemanticError, MessageMatches(MAT))
+	Err::STPParserError::STPSemanticError, MessageMatches(MAT))
 
 SCENARIO_METHOD(CmdParserTester, "STPCommandLineParser can parsed command line based on application configuration",
 	"[AlgorithmHost][STPCommandLineParser]") {

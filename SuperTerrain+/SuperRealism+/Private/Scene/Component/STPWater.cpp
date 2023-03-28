@@ -76,7 +76,7 @@ STPWater::STPWater(const STPHeightfieldTerrain& terrain, const STPBiomeWaterLeve
 	const unique_ptr<float[]> waterLevelDict = make_unique<float[]>(biomeCount);
 	for (unsigned int i = 0u; i < biomeCount; i++) {
 		//find water level at the biome
-		auto biome_it = water_level.find(static_cast<STPDiversity::Sample>(i));
+		auto biome_it = water_level.find(static_cast<STPSample_t>(i));
 		//biome not found, fill a zero; or set the value
 		waterLevelDict[i] = (biome_it == water_level.cend()) ? DefaultWaterLevel : biome_it->second;
 	}

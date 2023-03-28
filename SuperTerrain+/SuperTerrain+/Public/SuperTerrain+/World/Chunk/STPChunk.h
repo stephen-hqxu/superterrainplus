@@ -3,7 +3,7 @@
 #define _STP_CHUNK_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-#include "../Diversity/STPBiomeDefine.h"
+#include "../STPWorldMapPixelFormat.hpp"
 
 //GLM
 #include <glm/vec2.hpp>
@@ -38,11 +38,11 @@ namespace SuperTerrainPlus {
 	private:
 
 		//The biomemap, each biome is said to be a *sample*, the underlying interpretation of pixel value is implementation defined.
-		std::unique_ptr<STPDiversity::Sample[]> Biomemap;
+		std::unique_ptr<STPSample_t[]> Biomemap;
 		//The heightmap where each pixel is a normalised height value.
-		std::unique_ptr<float[]> Heightmap;
+		std::unique_ptr<STPHeightFloat_t[]> HeightmapFloat;
 		//A direct copy of the heightmap but in a cheaper pixel format for real-time streaming and rendering.
-		std::unique_ptr<unsigned short[]> LowHeightmap;
+		std::unique_ptr<STPHeightFixed_t[]> HeightmapFixed;
 
 	public:
 
@@ -70,14 +70,14 @@ namespace SuperTerrainPlus {
 		~STPChunk() = default;
 
 		/* ---------------------------- functions to retrieve individual maps --------------------------- */
-		STPDiversity::Sample* biomemap() noexcept;
-		const STPDiversity::Sample* biomemap() const noexcept;
+		STPSample_t* biomemap() noexcept;
+		const STPSample_t* biomemap() const noexcept;
 
-		float* heightmap() noexcept;
-		const float* heightmap() const noexcept;
+		STPHeightFloat_t* heightmapFloat() noexcept;
+		const STPHeightFloat_t* heightmapFloat() const noexcept;
 
-		unsigned short* heightmapLow() noexcept;
-		const unsigned short* heightmapLow() const noexcept;
+		STPHeightFixed_t* heightmapFixed() noexcept;
+		const STPHeightFixed_t* heightmapFixed() const noexcept;
 		/* ------------------------------ helper functions for chunk logic ------------------------------ */
 
 		/**

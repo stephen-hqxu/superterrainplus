@@ -3,7 +3,7 @@
 #define _STP_LAYER_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
-#include "STPBiomeDefine.h"
+#include "../STPWorldMapPixelFormat.hpp"
 
 //System
 #include <utility>
@@ -30,9 +30,9 @@ namespace SuperTerrainPlus::STPDiversity {
 		private:
 
 			//Layer seed for a particular layer implementation
-			const Seed LayerSeed;
+			const STPSeed_t LayerSeed;
 			//local seed varies from world coordinate, but the same coordinate will always yield the same local seed
-			mutable Seed LocalSeed;
+			mutable STPSeed_t LocalSeed;
 
 		public:
 
@@ -41,7 +41,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param layer_seed Layer seed that is unique to each layer.
 			 * @param local_seed Local seed that is unique to each world coordinate for every layer.
 			*/
-			STPLocalSampler(Seed, Seed) noexcept;
+			STPLocalSampler(STPSeed_t, STPSeed_t) noexcept;
 
 			~STPLocalSampler() = default;
 
@@ -50,7 +50,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param range The range from 0u to the specified value.
 			 * @return The next sequence.
 			*/
-			Sample nextValue(Sample) const noexcept;
+			STPSample_t nextValue(STPSample_t) const noexcept;
 
 			/**
 			 * @brief Select randomly among two variables.
@@ -58,7 +58,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param var2 The second variable to choose.
 			 * @return The chosen value of the variable.
 			*/
-			Sample choose(Sample, Sample) const noexcept;
+			STPSample_t choose(STPSample_t, STPSample_t) const noexcept;
 
 			/**
 			 * @brief Select randomly among four variables.
@@ -68,7 +68,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param vaw4 The forth variable to choose.
 			 * @return The chosen value of the variable.
 			*/
-			Sample choose(Sample, Sample, Sample, Sample) const noexcept;
+			STPSample_t choose(STPSample_t, STPSample_t, STPSample_t, STPSample_t) const noexcept;
 
 		};
 
@@ -88,7 +88,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			//Store the key value for a coordinate
 			const std::unique_ptr<unsigned long long[]> Key;
 			//Store the sample number for a layer for a coordinate
-			const std::unique_ptr<Sample[]> Value;
+			const std::unique_ptr<STPSample_t[]> Value;
 			//Mask is used to round the key value such that it will be suitable for looking up value in the hash table
 			const unsigned long long Mask;
 
@@ -120,7 +120,7 @@ namespace SuperTerrainPlus::STPDiversity {
 			 * @param z THe Z world coordinate.
 			 * @return The sample value at the current coordinate.
 			*/
-			Sample get(int, int, int);
+			STPSample_t get(int, int, int);
 
 			/**
 			 * @brief Empty the content of the cache, size is not changed. This operation is not atomic.
@@ -148,7 +148,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param salt A random number that is used to mix the global seed to generate layer seed.
 		 * @return The layer seed.
 		*/
-		static Seed seedLayer(Seed, Seed) noexcept;
+		static STPSeed_t seedLayer(STPSeed_t, STPSeed_t) noexcept;
 
 		/**
 		 * @brief Sample the layer, given the world coordinate and return a sample point.
@@ -158,7 +158,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param z The z coordinate on the terrain
 		 * @return Sample id or value, depended on the actual implementation.
 		*/
-		virtual Sample sample(int, int, int) = 0;
+		virtual STPSample_t sample(int, int, int) = 0;
 
 	protected:
 
@@ -168,21 +168,21 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param z The z coordinate in world.
 		 * @return The local seed associated with the world coordinate.
 		*/
-		Seed seedLocal(int, int) const noexcept;
+		STPSeed_t seedLocal(int, int) const noexcept;
 
 		/**
 		 * @brief Create a random number generator for the specified local seed.
 		 * @param local_seed The local seed from which the generator is built on.
 		 * @return The generator with the specified local seed. The same local seed will always give the same sequence of random number.
 		*/
-		STPLocalSampler createLocalSampler(Seed) const noexcept;
+		STPLocalSampler createLocalSampler(STPSeed_t) const noexcept;
 
 		/**
 		 * @brief Create a random number generator for the specified world coordinate.
 		 * @param x The x coordinate in the world.
 		 * @param z The z coordinate in the world.
 		 * @return A deterministic generator for the specified world coordinate.
-		 * @see createLocalSampler(Seed)
+		 * @see createLocalSampler(STPSeed_t)
 		*/
 		STPLocalSampler createLocalSampler(int, int) const noexcept;
 
@@ -193,7 +193,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param fac The factor that is used to mix
 		 * @return The mixed seed
 		*/
-		static Seed mixSeed(Seed, long long) noexcept;
+		static STPSeed_t mixSeed(STPSeed_t, long long) noexcept;
 
 	public:
 
@@ -201,9 +201,9 @@ namespace SuperTerrainPlus::STPDiversity {
 		typedef std::initializer_list<std::reference_wrapper<STPLayer>> STPAscendantInitialiser;
 
 		//Salt is a random value used to mix the global seed to generate layer and local seed
-		const Seed Salt;
+		const STPSeed_t Salt;
 		//Seed for each layer, the same layer under the same world seed and salt will always have the same layer seed
-		const Seed LayerSeed;
+		const STPSeed_t LayerSeed;
 
 		/**
 		 * @brief Create a layer instance.
@@ -215,7 +215,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param ascendant... The next executed layer. If more than one layer is provided, the layer is merging.
 		 * Each ascendant should be dynamically allocated, memory will be freed when the layers are destroyed.
 		*/
-		STPLayer(size_t, Seed, Seed, STPAscendantInitialiser = {});
+		STPLayer(size_t, STPSeed_t, STPSeed_t, STPAscendantInitialiser = {});
 
 		STPLayer(const STPLayer&) = delete;
 
@@ -241,7 +241,7 @@ namespace SuperTerrainPlus::STPDiversity {
 		 * @param z The z coordinate on the terrain
 		 * @return The cached value
 		*/
-		Sample retrieve(int, int, int);
+		STPSample_t retrieve(int, int, int);
 
 		/**
 		 * @brief Get the parent layer with specified index.

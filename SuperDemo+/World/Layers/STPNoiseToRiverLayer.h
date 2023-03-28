@@ -4,6 +4,8 @@
 
 #include "STPCrossLayer.h"
 
+#include <limits>
+
 namespace {
 
 	/**
@@ -12,25 +14,26 @@ namespace {
 	class STPNoiseToRiverLayer : public STPCrossLayer {
 	private:
 
-		inline static Sample filterRiver(Sample val) {
+		inline static STPSample_t filterRiver(STPSample_t val) noexcept {
 			//giving 1/2 chance of having a river
-			return val >= 2 ? 2 + (val & 1) : val;
+			return val >= 2u ? 2u + (val & 1u) : val;
 		}
 
 	public:
 
-		STPNoiseToRiverLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& parent) :
+		STPNoiseToRiverLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, STPLayer& parent) :
 			STPCrossLayer(cache_size, global_seed, salt, parent) {
 
 		}
 
-		Sample sample(const Sample center, const Sample north, const Sample east, const Sample south, const Sample west, Seed) override {
+		STPSample_t sample(const STPSample_t center, const STPSample_t north, const STPSample_t east,
+			const STPSample_t south, const STPSample_t west, STPSeed_t) override {
 			//filter the river
 			//basically it's an edge detector
-			const Sample i = STPNoiseToRiverLayer::filterRiver(center);
+			const STPSample_t i = STPNoiseToRiverLayer::filterRiver(center);
 			return i == STPNoiseToRiverLayer::filterRiver(north) && i == STPNoiseToRiverLayer::filterRiver(east)
 				&& i == STPNoiseToRiverLayer::filterRiver(south) && i == STPNoiseToRiverLayer::filterRiver(west)
-				? 0xFFFFu : Reg::River.ID;
+				? std::numeric_limits<STPSample_t>::max() : Reg::River.ID;
 		}
 
 	};

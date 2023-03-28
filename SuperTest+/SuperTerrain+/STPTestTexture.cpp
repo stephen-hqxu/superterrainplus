@@ -15,8 +15,10 @@
 
 #include <algorithm>
 
-using namespace SuperTerrainPlus;
-using namespace SuperTerrainPlus::STPDiversity;
+namespace Err = SuperTerrainPlus::STPException;
+namespace TexInf = SuperTerrainPlus::STPDiversity::STPTextureInformation;
+
+using SuperTerrainPlus::STPDiversity::STPTextureType, SuperTerrainPlus::STPDiversity::STPTextureDatabase;
 
 using glm::uvec2;
 
@@ -128,7 +130,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 			AND_WHEN("Some texture maps are added into the container") {
 
 				THEN("Map should not be inserted if the containers are invalid") {
-					REQUIRE_THROWS_AS(this->addMap(6666666u, STPTextureType::Albedo, 66666666u, DummyTexture), STPException::STPSQLError);
+					REQUIRE_THROWS_AS(this->addMap(6666666u, STPTextureType::Albedo, 66666666u, DummyTexture), Err::STPSQLError);
 					REQUIRE(this->mapSize() == 0u);
 				}
 
@@ -162,8 +164,8 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 						WHEN("Splat map does not reference a valid texture") {
 
 							THEN("Splat rule is hence considered to be invalid and should not be added") {
-								REQUIRE_THROWS_AS(Splat.addAltitude(0u, 0.2f, 666666u), STPException::STPSQLError);
-								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.2f, 0.8f, 0.0f, 1.0f, 666666u), STPException::STPSQLError);
+								REQUIRE_THROWS_AS(Splat.addAltitude(0u, 0.2f, 666666u), Err::STPSQLError);
+								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.2f, 0.8f, 0.0f, 1.0f, 666666u), Err::STPSQLError);
 
 								REQUIRE(Splat.altitudeSize() == 0u);
 								REQUIRE(Splat.gradientSize() == 0u);
@@ -174,8 +176,8 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 						WHEN("Splat rules violate boundary conditions, e.g., max < min") {
 							
 							THEN("Splat rule should not be added") {
-								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.2f, 0.8f, 0.8f, 0.3f, DummyTex), STPException::STPSQLError);
-								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.9f, 0.1f, 0.0f, 1.0f, DummyTex), STPException::STPSQLError);
+								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.2f, 0.8f, 0.8f, 0.3f, DummyTex), Err::STPSQLError);
+								REQUIRE_THROWS_AS(Splat.addGradient(0u, 0.9f, 0.1f, 0.0f, 1.0f, DummyTex), Err::STPSQLError);
 
 								REQUIRE(Splat.gradientSize() == 0u);
 							}
@@ -216,7 +218,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 
 		THEN("Loading all data into the database in batch should be successful") {
 			//view group
-			STPTextureInformation::STPViewGroupID ViewGroup[2];
+			TexInf::STPViewGroupID ViewGroup[2];
 			static constexpr STPTextureDatabase::STPViewGroupDescription big_scale = {
 				64u,
 				32u,
@@ -233,7 +235,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 			//we deliberately add data in a random order, so we can verify later if all result sets are ordered correctly
 			//we will also be adding some unused texture and group and check if the database filters out unused containers
 			//texture
-			STPTextureInformation::STPTextureID Tex[5];
+			TexInf::STPTextureID Tex[5];
 			Tex[0] = this->addTexture(ViewGroup[0], "grass");
 			Tex[1] = this->addTexture(ViewGroup[1]);
 			Tex[2] = this->addTexture(ViewGroup[1], "small_grass");
@@ -241,7 +243,7 @@ SCENARIO_METHOD(STPTextureDatabase, "STPTextureDatabase can store texture inform
 			Tex[4] = this->addTexture(ViewGroup[1], "soil");
 
 			//map group
-			STPTextureInformation::STPMapGroupID MapGroup[5];
+			TexInf::STPMapGroupID MapGroup[5];
 			static constexpr STPTextureDatabase::STPMapGroupDescription x2_rgb = {
 					uvec2(2u),
 					4u,

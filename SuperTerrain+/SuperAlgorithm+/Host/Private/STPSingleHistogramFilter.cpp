@@ -17,7 +17,7 @@
 #include <cstring>
 
 using namespace SuperTerrainPlus::STPAlgorithm;
-using SuperTerrainPlus::STPDiversity::Sample;
+using SuperTerrainPlus::STPSample_t;
 
 using glm::vec2;
 using glm::uvec2;
@@ -397,7 +397,7 @@ namespace {
 		 * @param sample The sample bin that will be operated on
 		 * @param count The number to increment
 		*/
-		void increment(const Sample sample, const unsigned int count) {
+		void increment(const STPSample_t sample, const unsigned int count) {
 			//Get the bin for a biome sample.
 			//If bin doesn't exist, a new bin is created.
 			//check if the sample is in the dictionary
@@ -427,7 +427,7 @@ namespace {
 		 * @param sample The sample bin that will be operated on
 		 * @param count The number to decrement
 		*/
-		void decrement(const Sample sample, const unsigned int count) {
+		void decrement(const STPSample_t sample, const unsigned int count) {
 			//our algorithm guarantees the bin has been increment by this sample before, so no check is needed
 			unsigned int& bin_index = this->Dictionary[sample];
 			unsigned int& quant = this->Bin[bin_index].Weight;
@@ -519,7 +519,7 @@ static void copyToBuffer(STPHistogramBuffer<BufPin>& buffer, STPAccumulator& acc
  * The range end applies as well (central image x index plus dimension plus radius)
  * @param radius The radius of the filter.
 */
-static void filterVertical(const Sample* const sample_map, STPInternalHistogramBuffer& histogram_output,
+static void filterVertical(const STPSample_t* const sample_map, STPInternalHistogramBuffer& histogram_output,
 	STPAccumulator& worker_cache, const unsigned int nn_rangeX, const unsigned int dimensionY,
 	const unsigned int vertical_start_offset, const uvec2 w_range, const unsigned int radius) {
 	//clear both
@@ -867,7 +867,7 @@ void STPSingleHistogramFilter::filterDistributed(const STPFilterKernelData& data
 	}
 }
 
-STPSingleHistogram STPSingleHistogramFilter::operator()(const Sample* const samplemap,
+STPSingleHistogram STPSingleHistogramFilter::operator()(const STPSample_t* const samplemap,
 	const STPNearestNeighbourInformation& nn_info, STPFilterBuffer& filter_buffer, const unsigned int radius) {
 	//do some simple runtime check
 	//first make sure radius is an even number

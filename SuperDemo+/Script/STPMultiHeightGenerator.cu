@@ -7,7 +7,7 @@
 #include <STPBiomeProperty>
 
 using namespace SuperTerrainPlus::STPAlgorithm;
-using SuperTerrainPlus::STPDiversity::Sample;
+using SuperTerrainPlus::STPSample_t, SuperTerrainPlus::STPHeightFloat_t;
 
 __constant__ STPDemo::STPBiomeProperty BiomeTable[2];
 
@@ -30,7 +30,8 @@ using namespace STPCommonGenerator;
  * @param biomemap_histogram - The biomemap histogram to decide the weight of each biome in a pixel
  * @param offset - Controlling the offset on x, y directions
 */
-__global__ void generateMultiBiomeHeightmap(float* const height_storage, const STPSingleHistogram biomemap_histogram, const float2 offset) {
+__global__ void generateMultiBiomeHeightmap(STPHeightFloat_t* const height_storage,
+	const STPSingleHistogram biomemap_histogram, const float2 offset) {
 	//the current thread index, starting from top-left corner
 	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
 		y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -43,15 +44,12 @@ __global__ void generateMultiBiomeHeightmap(float* const height_storage, const S
 	//grab the current biome setting
 	//we need to always make sure current biome can be referenced by the biomeID given in biome table
 	float height = 0.0f;
-	STPSingleHistogramWrapper::iterate(biomemap_histogram, index, [&height, &offset, x, y](Sample biomeID, float weight) {
+	STPSingleHistogramWrapper::iterate(biomemap_histogram, index, [&height, &offset, x, y](STPSample_t biomeID, float weight) {
 		const STPDemo::STPBiomeProperty& current_biome = BiomeTable[biomeID];
 		height += weight * sampleSimplexNoise(make_uint2(x, y), current_biome, offset);
 	});
 	
-	//generate simplex noise terrain
-	//finally, output the texture
-	height_storage[index] = height;//we have only allocated R32F format;
-	
+	height_storage[index] = static_cast<STPHeightFloat_t>(height);
 }
 
 __device__ float sampleSimplexNoise(const uint2 coord, const STPDemo::STPBiomeProperty& parameter, const float2 offset) {

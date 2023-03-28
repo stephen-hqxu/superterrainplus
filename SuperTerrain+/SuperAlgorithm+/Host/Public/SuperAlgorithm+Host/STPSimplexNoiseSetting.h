@@ -3,6 +3,7 @@
 #define _STP_SIMPLEX_NOISE_SETTING_H_
 
 #include <SuperAlgorithm+Host/STPAlgorithmDefine.h>
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
 
 namespace SuperTerrainPlus::STPEnvironment {
 
@@ -13,7 +14,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 	public:
 
 		//Determine the seed used for the RNG
-		unsigned long long Seed;
+		STPSeed_t Seed;
 		//Determine how many gradient stretch will have, default is 8, each of them will be 45 degree apart.
 		//Higher value will make the terrain looks more random with less systematic pattern
 		unsigned int Distribution;

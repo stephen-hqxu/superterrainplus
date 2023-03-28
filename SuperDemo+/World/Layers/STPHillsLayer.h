@@ -11,29 +11,29 @@ namespace {
 	private:
 
 		//Chance of having a hill
-		static constexpr Sample HillsChance = 29u;
+		static constexpr STPSample_t HillsChance = 29u;
 
 	public:
 
-		STPHillsLayer(const size_t cache_size, const Seed global_seed, const Seed salt, STPLayer& land,
+		STPHillsLayer(const size_t cache_size, const STPSeed_t global_seed, const STPSeed_t salt, STPLayer& land,
 			STPLayer& noise) : STPLayer(cache_size, global_seed, salt, { land, noise }) {
 			//parent 0: land / biome
 			//parent 1: noise
 		}
 
-		Sample sample(const int x, const int y, const int z) override {
+		STPSample_t sample(const int x, const int y, const int z) override {
 			//get the local RNG
 			const STPLayer::STPLocalSampler rng = this->createLocalSampler(x, z);
 			//get the parent samples
-			const Sample land_val = this->getAscendant(0).retrieve(x, y, z);
-			const Sample noise_val = this->getAscendant(1).retrieve(x, y, z);
+			const STPSample_t land_val = this->getAscendant(0).retrieve(x, y, z);
+			const STPSample_t noise_val = this->getAscendant(1).retrieve(x, y, z);
 			
 			//chance of having a hill
-			const Sample is_hill = (noise_val - 2) % STPHillsLayer::HillsChance;
+			const STPSample_t is_hill = (noise_val - 2) % STPHillsLayer::HillsChance;
 
 			//1/3 chance to have a hill
 			if (rng.nextValue(3) == 0 || is_hill == 0) {
-				Sample l = land_val;
+				STPSample_t l = land_val;
 				//convert biomes to their respective hill biome
 				if (land_val == Reg::Desert.ID) {
 					l = Reg::DesertHills.ID;
