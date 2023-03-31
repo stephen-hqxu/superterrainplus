@@ -2,9 +2,9 @@
 
 using namespace SuperTerrainPlus::STPAlgorithm;
 
-constexpr static float F2 = 0.3660254038;// 0.5 * (sqrt(3.0) - 1.0)
-constexpr static float G2 = 0.2113248654;// (3.0 - sqrt(3.0)) / 6.0
-constexpr static float H2 = -1.0 + 2.0 * G2;
+constexpr static float F2 = 0.3660254038f;// 0.5 * (sqrt(3.0) - 1.0)
+constexpr static float G2 = 0.2113248654f;// (3.0 - sqrt(3.0)) / 6.0
+constexpr static float H2 = -1.0f + 2.0f * G2;
 
 __device__ __forceinline__ static float dot2D(const float v1x, const float v1y, const float v2x, const float v2y) {
 	return v1x * v2x + v1y * v2y;

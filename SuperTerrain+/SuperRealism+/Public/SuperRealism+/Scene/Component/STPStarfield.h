@@ -10,6 +10,8 @@
 #include "STPSkybox.h"
 #include "../Light/STPLightSpectrum.h"
 
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
+
 namespace SuperTerrainPlus::STPRealism {
 
 	/**
@@ -67,9 +69,8 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Update the starfield renderer settings.
 		 * @param starfield_setting The new setting.
-		 * @param rng_seed Specifies a seed used for an internal hash function.
 		*/
-		void setStarfield(const STPEnvironment::STPStarfieldSetting&, unsigned int);
+		void setStarfield(const STPEnvironment::STPStarfieldSetting&);
 
 		void updateAnimationTimer(double) override;
 

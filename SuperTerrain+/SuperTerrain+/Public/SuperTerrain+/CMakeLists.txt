@@ -43,6 +43,8 @@ Utility/Memory/STPSmartDeviceObject.h
 # /Utility
 Utility/STPDatabaseErrorHandler.hpp
 Utility/STPDeviceErrorHandler.hpp
+Utility/STPDeviceLaunchSetup.cuh
+Utility/STPDeviceLaunchSetup.inl
 Utility/STPFile.h
 Utility/STPGenericErrorHandlerBlueprint.hpp
 Utility/STPHashCombine.h

@@ -22,7 +22,7 @@ layout(location = 0) out vec4 FragColor;
 
 layout(bindless_sampler) uniform sampler1D StarColorSpectrum;
 
-uniform uint RandomSeed;
+uniform uvec3 RandomSeed;
 uniform StarfieldSetting Star;
 //control star shining
 uniform float ShineTime;

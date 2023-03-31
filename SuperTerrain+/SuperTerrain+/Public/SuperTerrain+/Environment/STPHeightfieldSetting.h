@@ -14,14 +14,14 @@ namespace SuperTerrainPlus::STPEnvironment {
 	struct STP_API STPHeightfieldSetting {
 	public:
 
-		//Heightfield Generator Parameters
-		//the seed used for any random operation during generation
+		//The seed used for randomly rolling the starting position of individual raindrop.
 		STPSeed_t Seed;
 
 		//Hydraulic erosion parameters.
 		STPRainDropSetting Erosion;
 
 		void validate() const;
+
 	};
 
 }

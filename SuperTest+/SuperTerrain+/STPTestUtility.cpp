@@ -5,6 +5,7 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
+#include <catch2/generators/catch_generators_range.hpp>
 //Matcher
 #include <catch2/matchers/catch_matchers_string.hpp>
 
@@ -17,11 +18,16 @@
 //SuperTerrain+/SuperTerrain+/Utility
 #include <SuperTerrain+/Utility/STPThreadPool.h>
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
+#include <SuperTerrain+/Utility/STPDeviceLaunchSetup.cuh>
 #include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 //SuperTerrain+/SuperTerrain+/Exception
 #include <SuperTerrain+/Exception/API/STPCUDAError.h>
 #include <SuperTerrain+/Exception/STPNumericDomainError.h>
+
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <stdexcept>
 #include <algorithm>
@@ -31,7 +37,14 @@
 
 using Catch::Matchers::ContainsSubstring;
 
-using namespace SuperTerrainPlus;
+namespace Err = SuperTerrainPlus::STPException;
+namespace DevMem = SuperTerrainPlus::STPSmartDeviceMemory;
+namespace DevLach = SuperTerrainPlus::STPDeviceLaunchSetup;
+
+using SuperTerrainPlus::STPThreadPool, SuperTerrainPlus::STPObjectPool;
+
+using glm::uvec2, glm::uvec3;
+using glm::make_vec2, glm::make_vec3;
 
 using std::atomic;
 using std::optional;
@@ -107,7 +120,7 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded worklo
 	GIVEN("An invalid thread pool with zero worker") {
 
 		THEN("Thread pool should throw an error") {
-			REQUIRE_THROWS_AS(STPThreadPool(0u), STPException::STPNumericDomainError);
+			REQUIRE_THROWS_AS(STPThreadPool(0u), Err::STPNumericDomainError);
 		}
 
 	}
@@ -161,7 +174,7 @@ SCENARIO_METHOD(ThreadPoolTester, "STPThreadPool used in a multi-threaded worklo
 				WHEN("The end index is less than the begin index, resulting in negative number of iteration") {
 
 					THEN("Loop parallelisation fails with an error") {
-						REQUIRE_THROWS_AS(this->submitLoopWork(Counter, 321u, 123u), STPException::STPNumericDomainError);
+						REQUIRE_THROWS_AS(this->submitLoopWork(Counter, 321u, 123u), Err::STPNumericDomainError);
 					}
 
 				}
@@ -237,9 +250,9 @@ SCENARIO("STPDeviceErrorHandler reports CUDA API error", "[Utility][STPDeviceErr
 			AND_WHEN("API call throws error") {
 
 				THEN("Error should be reported") {
-					CHECK_THROWS_AS(STP_CHECK_CUDA(cudaError::cudaErrorInvalidValue), STPException::STPCUDAError);
-					CHECK_THROWS_AS(STP_CHECK_CUDA(CUresult::CUDA_ERROR_INVALID_VALUE), STPException::STPCUDAError);
-					CHECK_THROWS_AS(STP_CHECK_CUDA(nvrtcResult::NVRTC_ERROR_OUT_OF_MEMORY), STPException::STPCUDAError);
+					CHECK_THROWS_AS(STP_CHECK_CUDA(cudaError::cudaErrorInvalidValue), Err::STPCUDAError);
+					CHECK_THROWS_AS(STP_CHECK_CUDA(CUresult::CUDA_ERROR_INVALID_VALUE), Err::STPCUDAError);
+					CHECK_THROWS_AS(STP_CHECK_CUDA(nvrtcResult::NVRTC_ERROR_OUT_OF_MEMORY), Err::STPCUDAError);
 				}
 
 			}
@@ -319,9 +332,9 @@ SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Util
 		WHEN("A smart device memory is requested") {
 			constexpr static size_t RowSize2D = sizeof(unsigned int) * 4u;
 
-			auto DeviceData = STPSmartDeviceMemory::makeDevice<unsigned int[]>(8);
-			auto StreamedDeviceData = STPSmartDeviceMemory::makeStreamedDevice<unsigned int[]>(STPTestInformation::TestDeviceMemoryPool, 0, 8);
-			auto PitchedDeviceData = STPSmartDeviceMemory::makePitchedDevice<unsigned int[]>(4, 2);
+			auto DeviceData = DevMem::makeDevice<unsigned int[]>(8);
+			auto StreamedDeviceData = DevMem::makeStreamedDevice<unsigned int[]>(STPTestInformation::TestDeviceMemoryPool, 0, 8);
+			auto PitchedDeviceData = DevMem::makePitchedDevice<unsigned int[]>(4, 2);
 
 			THEN("Smart device memory can be used like normal memory") {
 				constexpr static size_t DataSize = sizeof(unsigned int) * 8u;
@@ -347,6 +360,66 @@ SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Util
 				STP_CHECK_CUDA(cudaMemcpy2D(ReturnedData.get(), RowSize2D, PitchedDeviceData.get(),
 					PitchedDeviceData.Pitch, RowSize2D, 2, cudaMemcpyDeviceToHost));
 				VERIFY_DATA();
+			}
+
+		}
+
+	}
+
+}
+
+#define CALC_LAUNCH_CONFIG(VEC) DevLach::determineLaunchConfiguration<Blk>(blockSize, VEC)
+
+template<DevLach::STPDimensionSize Blk, class VecArr>
+inline static DevLach::STPLaunchConfiguration computeLaunchConfiguration(const int blockSize, const VecArr& threadDim) {
+	switch (threadDim.size()) {
+	case 1u:
+		return CALC_LAUNCH_CONFIG(threadDim.front());
+	case 2u:
+		return CALC_LAUNCH_CONFIG(make_vec2(threadDim.data()));
+	default:
+		return CALC_LAUNCH_CONFIG(make_vec3(threadDim.data()));
+	}
+}
+
+TEMPLATE_TEST_CASE_SIG("STPDeviceLaunchSetup can automatically configure the best device launch setting",
+	"[Utility][STPDeviceLaunchSetup]", ((DevLach::STPDimensionSize BlockDim), BlockDim), 1u, 2u, 3u) {
+	
+	GIVEN("Desired block and grid dimensions") {
+		const auto BlockSize = GENERATE(take(3, range(DevLach::WarpSize, 32u * DevLach::WarpSize, DevLach::WarpSize)));
+		const DevLach::STPDimensionSize ThreadDim =
+			static_cast<DevLach::STPDimensionSize>(GENERATE(values({ 1u, 2u, 3u })));
+		const auto ThreadDimVec = GENERATE_COPY(take(3, chunk(ThreadDim, random(1u, 2048u))));
+
+		WHEN("Device launch configuration is calculated based on these values") {
+			const auto [LaunchGrid, LaunchBlock] = computeLaunchConfiguration<BlockDim>(BlockSize, ThreadDimVec);
+
+			THEN("The launch configuration calculated is optimal") {
+				const auto verifyGridSize = [BlockSize](const auto gridComp, const auto blockComp, const auto threadComp) -> void {
+					//the number of thread should be no less than requested
+					CHECK(gridComp * blockComp >= threadComp);
+					//and there should not be more idling thread than the multiple of block size
+					CHECK(gridComp * blockComp - threadComp <= BlockSize);
+				};
+
+				//non-zero checking
+				REQUIRE((LaunchGrid.x > 0u && LaunchGrid.y > 0u && LaunchGrid.z > 0u));
+				REQUIRE((LaunchBlock.x > 0u && LaunchBlock.y > 0u && LaunchBlock.z > 0u));
+
+				//block size checking
+				CHECK(LaunchBlock.x * LaunchBlock.y * LaunchBlock.z == BlockSize);
+				//grid size checking
+				switch (ThreadDimVec.size()) {
+				case 3u:
+					verifyGridSize(LaunchGrid.z, LaunchBlock.z, ThreadDimVec[2]);
+					[[fallthrough]];
+				case 2u:
+					verifyGridSize(LaunchGrid.y, LaunchBlock.y, ThreadDimVec[1]);
+					[[fallthrough]];
+				default:
+					verifyGridSize(LaunchGrid.x, LaunchBlock.x, ThreadDimVec[0]);
+					break;
+				}
 			}
 
 		}

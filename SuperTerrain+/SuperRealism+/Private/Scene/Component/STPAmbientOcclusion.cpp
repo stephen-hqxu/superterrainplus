@@ -16,14 +16,13 @@
 #include <memory>
 #include <functional>
 #include <algorithm>
+#include <utility>
 
 //GLM
 #include <glm/vec3.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-using std::uniform_real_distribution;
-using std::mt19937_64;
 using std::unique_ptr;
 using std::make_unique;
 
@@ -46,8 +45,7 @@ STPAmbientOcclusion::STPOcclusionKernelInstance::STPOcclusionKernelInstance(
 }
 
 STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kernel_instance, STPGaussianFilter&& filter,
-	const STPScreen::STPScreenInitialiser& kernel_init) :
-	RandomRotationVector(GL_TEXTURE_2D),
+	const STPScreen::STPScreenInitialiser& kernel_init) : RandomRotationVector(GL_TEXTURE_2D),
 	NoiseDimension(kernel_instance.Kernel.RotationVectorSize), BlurWorker(std::move(filter)) {
 	const char* const ssao_source_file = SSAOShaderFilename.data();
 	STPShaderManager::STPShaderSource ssao_source(ssao_source_file, STPFile::read(ssao_source_file));
@@ -66,9 +64,9 @@ STPAmbientOcclusion::STPAmbientOcclusion(const STPOcclusionKernelInstance& kerne
 	const auto& kernel_setting = kernel_instance.Kernel;
 	/* --------------------------------- setup random number generators ------------------------------ */
 	//setup random number generators
-	uniform_real_distribution dist(0.0f, 1.0f); //generates random floats between 0.0 and 1.0
-	mt19937_64 rngMachine(kernel_setting.RandomSampleSeed);
-	const STPOcclusionKernelInstance::STPKernelRNG rng = std::bind(dist, rngMachine);
+	std::uniform_real_distribution dist(0.0f, 1.0f); //generates random floats between 0.0 and 1.0
+	std::mt19937_64 rngMachine(kernel_setting.RandomSampleSeed);
+	const STPOcclusionKernelInstance::STPKernelRNG rng = std::bind(dist, std::ref(rngMachine));
 
 	/* ------------------------------------------ setup texture ------------------------------------ */
 	this->GBufferSampler.wrap(GL_CLAMP_TO_EDGE);

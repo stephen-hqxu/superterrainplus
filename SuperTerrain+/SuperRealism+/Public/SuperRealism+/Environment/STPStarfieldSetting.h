@@ -3,6 +3,7 @@
 #define _STP_STARFIELD_SETTING_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
 
 namespace SuperTerrainPlus::STPEnvironment {
 
@@ -11,6 +12,9 @@ namespace SuperTerrainPlus::STPEnvironment {
 	*/
 	struct STP_REALISM_API STPStarfieldSetting {
 	public:
+
+		//A random seed to control the shining animation of stars.
+		STPSeed_t Seed;
 
 		//Control how likely star will appear at each position.
 		//Higher likelihood makes the starfield denser.

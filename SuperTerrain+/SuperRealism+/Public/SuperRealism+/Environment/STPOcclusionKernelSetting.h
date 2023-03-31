@@ -3,6 +3,7 @@
 #define _STP_OCCLUSION_KERNEL_SETTING_H_
 
 #include <SuperRealism+/STPRealismDefine.h>
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
 
 #include <glm/vec2.hpp>
 
@@ -15,7 +16,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 	public:
 
 		//The seed used to generate those random samples
-		unsigned long long RandomSampleSeed;
+		STPSeed_t RandomSampleSeed;
 		//Specifies the number of random rotation vector to be used for sampling on the screen.
 		//More random vectors give better approximation but may lead to more noisy results.
 		//All rotation vectors are stored in a 2D texture and tile onto the rendering screen,

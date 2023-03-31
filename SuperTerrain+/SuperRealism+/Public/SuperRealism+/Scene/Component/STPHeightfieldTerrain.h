@@ -15,6 +15,7 @@
 
 //Terrain Generator
 #include <SuperTerrain+/World/STPWorldPipeline.h>
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
 #include "../../Environment/STPMeshSetting.h"
 
 //GLM
@@ -68,7 +69,7 @@ namespace SuperTerrainPlus::STPRealism {
 			glm::uvec3 NoiseDimension;
 			//Set the seed for a texture of random number used during rendering, and regenerate the random texture
 			//with the dimension initialised.
-			unsigned long long NoiseSeed;
+			STPSeed_t NoiseSeed;
 
 			//Specify the normalmap blending algorithm to be used during rendering.
 			STPNormalBlendingAlgorithm NormalBlender;

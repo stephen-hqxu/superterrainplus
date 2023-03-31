@@ -23,6 +23,8 @@ namespace SuperTerrainPlus::STPAlgorithm {
 	*/
 	namespace STPSimplexNoise {
 
+#pragma warning(push)
+#pragma warning(disable : 4324)//warning about padding
 		/**
 		 * @brief STPFractalSimplexInformation specifies parameters for computing fractal simplex noise.
 		*/
@@ -52,6 +54,7 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			//In each octave this value will be multiplied by lacunarity.
 			float Frequency = 1.0f;
 		};
+#pragma warning(pop)
 
 		/**
 		 * @brief Generate 2D simplex noise.

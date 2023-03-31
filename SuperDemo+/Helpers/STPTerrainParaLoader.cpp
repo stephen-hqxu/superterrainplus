@@ -158,9 +158,10 @@ pair<Env::STPSunSetting, Env::STPAtmosphereSetting> STPTerrainParaLoader::getSky
 	return pair(sun, atmo);
 }
 
-Env::STPStarfieldSetting STPTerrainParaLoader::getStarfieldSetting(const STPINISectionView& section) {
+Env::STPStarfieldSetting STPTerrainParaLoader::getStarfieldSetting(const STPINISectionView& section, const STPSeed_t star_seed) {
 	Env::STPStarfieldSetting star = { };
 
+	star.Seed = star_seed;
 	star.InitialLikelihood = section.at("init_likelihood").to<float>();
 	star.OctaveLikelihoodMultiplier = section.at("likelihood_mul").to<float>();
 	star.InitialScale = section.at("init_scale").to<float>();

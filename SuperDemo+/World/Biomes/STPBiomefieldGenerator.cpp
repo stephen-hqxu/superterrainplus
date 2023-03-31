@@ -1,6 +1,7 @@
 #include "STPBiomefieldGenerator.h"
 
 #include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
+#include <SuperTerrain+/Utility/STPDeviceLaunchSetup.cuh>
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 //Biome
@@ -80,12 +81,11 @@ void STPBiomefieldGenerator::operator()(const STPNearestNeighbourHeightFloatWTex
 	//this function is called from multiple threads, consolidate the device context before calling any driver API function
 	STP_CHECK_CUDA(cudaSetDevice(0));
 
-	int Mingridsize, blocksize;
+	int minGridSize, bestBlockSize;
 	//smart launch configuration
-	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->GeneratorEntry, nullptr, 0u, 0));
-	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
-		//under-sampled heightmap, and super-sample it back with interpolation
-		Dimgridsize = (this->MapSize + Dimblocksize - 1u) / Dimblocksize;
+	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&minGridSize, &bestBlockSize, this->GeneratorEntry, nullptr, 0u, 0));
+	(void)minGridSize;
+	const auto [gridSize, blockSize] = STPDeviceLaunchSetup::determineLaunchConfiguration<2u>(bestBlockSize, this->MapSize);
 
 	//retrieve raw texture
 	const STPNearestNeighbourHeightFloatWTextureBuffer::STPMergedBuffer heightmap_mem(
@@ -142,8 +142,8 @@ void STPBiomefieldGenerator::operator()(const STPNearestNeighbourHeightFloatWTex
 		CU_LAUNCH_PARAM_END
 	};
 	STP_CHECK_CUDA(cuLaunchKernel(this->GeneratorEntry,
-		Dimgridsize.x, Dimgridsize.y, 1u,
-		Dimblocksize.x, Dimblocksize.y, 1u,
+		gridSize.x, gridSize.y, gridSize.z,
+		blockSize.x, blockSize.y, blockSize.z,
 		0u, stream, nullptr, config));
 
 	//free histogram device memory

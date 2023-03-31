@@ -16,23 +16,30 @@ if(MSVC)
 	# MSVC legacy lambda breaks sometimes if we define a super complex lambda (like super nesting)
 	# so we want the standard-conforming lambda
 	# TODO: this can be removed when the project is ported to C++ 20
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2 /Zc:lambda")
-
+	# we also need the C++ version macro for some external libraries to detect the standard correctly
+	set(STP_MSVC_FLAG "/arch:AVX2 /Zc:lambda /Zc:__cplusplus")
 	# disable warning about using stl in a dll project
-	set(STP_MSVC_WARNING "/wd4251 /wd4275")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STP_MSVC_WARNING}")
-	set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -err-no -diag-suppress 1388,1394 -Xcompiler \"${STP_MSVC_WARNING}\"")
-	unset(STP_MSVC_WARNING)
+	set(STP_MSVC_FLAG "${STP_MSVC_FLAG} /wd4251 /wd4275")
+	set(STP_MSVC_CUDA_FLAG "-err-no -diag-suppress 1388,1394")
 
 	if(STP_ENABLE_WARNING)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
+		set(STP_MSVC_FLAG "${STP_MSVC_FLAG} /W4")
 	endif()
+
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STP_MSVC_FLAG}")
+	set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${STP_MSVC_CUDA_FLAG} -Xcompiler \"${STP_MSVC_FLAG}\"")
+	unset(STP_MSVC_CUDA_FLAG)
+	unset(STP_MSVC_FLAG)
 else()
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
+	set(STP_COMPILER_FLAG "-mavx2 -mfma")
 
 	if(STP_ENABLE_WARNING)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
+		set(STP_COMPILER_FLAG "${STP_COMPILER_FLAG} -Wall -Wextra -pedantic")
 	endif()
+
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${STP_COMPILER_FLAG}")
+	set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler \"${STP_COMPILER_FLAG}\"")
+	unset(STP_COMPILER_FLAG)
 endif()
 
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON) # -rdc=true

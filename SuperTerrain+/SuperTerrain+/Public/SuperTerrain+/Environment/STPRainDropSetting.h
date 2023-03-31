@@ -4,9 +4,6 @@
 
 #include <SuperTerrain+/STPCoreDefine.h>
 
-//GLM
-#include <glm/vec2.hpp>
-
 namespace SuperTerrainPlus::STPEnvironment {
 
 	/**

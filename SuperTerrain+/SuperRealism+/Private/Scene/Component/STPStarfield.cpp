@@ -7,6 +7,16 @@
 
 #include <glad/glad.h>
 
+#include <glm/gtc/type_ptr.hpp>
+
+#include <cstdint>
+#include <random>
+#include <limits>
+#include <array>
+#include <algorithm>
+#include <functional>
+#include <utility>
+
 using namespace SuperTerrainPlus::STPRealism;
 
 constexpr static auto StarfieldShaderFilename =
@@ -30,8 +40,19 @@ STPStarfield::STPStarfield(const STPStarfieldModel& starfield_model, const STPSk
 	this->StarfieldBox.SkyboxRenderer.uniform(glProgramUniformHandleui64ARB, "StarColorSpectrum", this->StarlightSpectrum.spectrumHandle());
 }
 
-void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starfield_setting, const unsigned int rng_seed) {
+void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starfield_setting) {
 	starfield_setting.validate();
+
+	using std::numeric_limits;
+	using glm::uvec3;
+	//generate random vector seed
+	std::mt19937_64 rng_engine(starfield_setting.Seed);
+	std::uniform_int_distribution rng_dist(numeric_limits<std::uint32_t>::min(), numeric_limits<std::uint32_t>::max());
+	
+	std::array<std::uint32_t, uvec3::length()> random_arr;
+	std::generate(random_arr.begin(), random_arr.end(),
+		[next = std::bind(rng_dist, std::ref(rng_engine))]() { return next(); });
+	const uvec3 random_vec = glm::make_vec3(random_arr.data());
 
 	this->StarfieldBox.SkyboxRenderer.uniform(glProgramUniform1f, "Star.iLklh", starfield_setting.InitialLikelihood)
 		.uniform(glProgramUniform1f, "Star.OctLklhMul", starfield_setting.OctaveLikelihoodMultiplier)
@@ -42,7 +63,7 @@ void STPStarfield::setStarfield(const STPEnvironment::STPStarfieldSetting& starf
 		.uniform(glProgramUniform1f, "Star.LumMul", starfield_setting.LuminosityMultiplier)
 		.uniform(glProgramUniform1f, "Star.MinAlt", starfield_setting.MinimumAltitude)
 		.uniform(glProgramUniform1ui, "Star.Oct", starfield_setting.Octave)
-		.uniform(glProgramUniform1ui, "RandomSeed", rng_seed);
+		.uniform(glProgramUniform3uiv, "RandomSeed", 1, glm::value_ptr(random_vec));
 }
 
 void STPStarfield::updateAnimationTimer(const double second) {

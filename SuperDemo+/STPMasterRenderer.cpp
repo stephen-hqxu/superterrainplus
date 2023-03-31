@@ -271,7 +271,7 @@ public:
 		{
 			//starfield
 			const Env::STPStarfieldSetting starfield_setting =
-				STPTerrainParaLoader::getStarfieldSetting(this->engineINI.at("Night"));
+				STPTerrainParaLoader::getStarfieldSetting(this->engineINI.at("Night"), seed);
 
 			Rdr::STPLightSpectrum starfield_spec(4u, GL_SRGB8);
 			const array<glm::u8vec3, 4u> starfield_spec_data {{
@@ -288,7 +288,7 @@ public:
 			};
 
 			this->StarfieldRenderer.emplace(starfield_model, skybox_renderer_init);
-			this->StarfieldRenderer->setStarfield(starfield_setting, static_cast<unsigned int>(seed));
+			this->StarfieldRenderer->setStarfield(starfield_setting);
 			this->RenderPipeline->add(*this->StarfieldRenderer);
 		}
 		{

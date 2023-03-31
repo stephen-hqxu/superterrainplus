@@ -3,6 +3,8 @@
 //SuperAlgorithm+ Device library
 #include <SuperAlgorithm+Device/STPSingleHistogramWrapper.cuh>
 
+#include <SuperTerrain+/Utility/STPDeviceLaunchSetup.cuh>
+
 //Biome parameters
 #include <STPBiomeProperty>
 
@@ -33,8 +35,7 @@ using namespace STPCommonGenerator;
 __global__ void generateMultiBiomeHeightmap(STPHeightFloat_t* const height_storage,
 	const STPSingleHistogram biomemap_histogram, const float2 offset) {
 	//the current thread index, starting from top-left corner
-	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
-		y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	const auto [x, y] = SuperTerrainPlus::STPDeviceLaunchSetup::calcThreadIndex<2u>();
 	if (x >= Dimension->x || y >= Dimension->y) {
 		return;
 	}
@@ -44,7 +45,8 @@ __global__ void generateMultiBiomeHeightmap(STPHeightFloat_t* const height_stora
 	//grab the current biome setting
 	//we need to always make sure current biome can be referenced by the biomeID given in biome table
 	float height = 0.0f;
-	STPSingleHistogramWrapper::iterate(biomemap_histogram, index, [&height, &offset, x, y](STPSample_t biomeID, float weight) {
+	//TODO: structured binding can be captured directly in C++ 20
+	STPSingleHistogramWrapper::iterate(biomemap_histogram, index, [&height, &offset, x = x, y = y](STPSample_t biomeID, float weight) {
 		const STPDemo::STPBiomeProperty& current_biome = BiomeTable[biomeID];
 		height += weight * sampleSimplexNoise(make_uint2(x, y), current_biome, offset);
 	});

@@ -74,10 +74,11 @@ namespace STPDemo {
 		/**
 		 * @brief Load the settings for procedural starfield rendering.
 		 * @param section The INI section contains the star settings.
+		 * @param star_seed The seed for starfield.
 		 * @return Setting for starfield.
 		*/
 		SuperTerrainPlus::STPEnvironment::STPStarfieldSetting getStarfieldSetting(
-			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
+			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, SuperTerrainPlus::STPSeed_t);
 
 		/**
 		 * @brief Load the settings for procedural aurora rendering.

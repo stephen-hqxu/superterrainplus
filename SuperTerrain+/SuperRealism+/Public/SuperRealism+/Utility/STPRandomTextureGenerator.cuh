@@ -6,11 +6,12 @@
 #ifndef _STP_RANDOM_TEXTURE_GENERATOR_CUH_
 #define _STP_RANDOM_TEXTURE_GENERATOR_CUH_
 
+#include "../Object/STPTexture.h"
+
+#include <SuperTerrain+/World/STPWorldMapPixelFormat.hpp>
+
 //CUDA
 #include <cuda_runtime.h>
-
-//GLM
-#include <glm/vec3.hpp>
 
 namespace SuperTerrainPlus::STPRealism {
 
@@ -22,16 +23,15 @@ namespace SuperTerrainPlus::STPRealism {
 		/**
 		 * @brief Generate a random texture.
 		 * @tparam T The type of the texture to be generated.
-		 * @param output The output CUDA array where the generated data will be stored.
-		 * @param dimension The dimension of the texture, unused components must be 1.
-		 * For example if only a 2D texture is required, z component must be 1.
-		 * Use of zero component will return exception.
+		 * @param output The output GL texture object where the generated data will be stored.
+		 * The generation size will be inferred from the underlying texture directly.
 		 * @param seed The seed for generating the noise texture.
 		 * @param min The minimum value the noise should have.
 		 * @param max The maximum value the noise should have.
+		 * @param stream An optional CUDA stream to be used.
 		*/
 		template<typename T>
-		__host__ void generate(cudaArray_t, glm::uvec3, unsigned long long, T, T);
+		__host__ void generate(const STPTexture&, STPSeed_t, T, T, cudaStream_t);
 
 	}
 

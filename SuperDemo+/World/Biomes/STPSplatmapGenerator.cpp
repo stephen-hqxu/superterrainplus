@@ -1,6 +1,6 @@
 #include "STPSplatmapGenerator.h"
 
-#include <iostream>
+#include <SuperTerrain+/Utility/STPDeviceLaunchSetup.cuh>
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
@@ -11,6 +11,8 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+#include <iostream>
 
 using namespace STPDemo;
 using namespace SuperTerrainPlus::STPDiversity;
@@ -62,11 +64,12 @@ namespace STPTI = SuperTerrainPlus::STPDiversity::STPTextureInformation;
 
 void STPSplatmapGenerator::splat(const cudaTextureObject_t biomemap_tex, const cudaTextureObject_t heightmap_tex,
 	const cudaSurfaceObject_t splatmap_surf, const STPTI::STPSplatGeneratorInformation& info, const cudaStream_t stream) const {
-	int Mingridsize, blocksize;
+	int minGridSize, bestBlockSize;
 	//smart launch config
-	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, this->SplatmapEntry, nullptr, 0u, 0));
-	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u);
-	const uvec3 Dimgridsize = uvec3((this->MapDimension + Dimblocksize - 1u) / Dimblocksize, info.LocalCount);
+	STP_CHECK_CUDA(cuOccupancyMaxPotentialBlockSize(&minGridSize, &bestBlockSize, this->SplatmapEntry, nullptr, 0u, 0));
+	(void)minGridSize;
+	const auto [gridSize, blockSize] = SuperTerrainPlus::STPDeviceLaunchSetup::determineLaunchConfiguration<2u>(
+		bestBlockSize, uvec3(this->MapDimension, info.LocalCount));
 
 	//launch kernel
 	constexpr static size_t BufferSize = sizeof(biomemap_tex) + sizeof(heightmap_tex) + sizeof(splatmap_surf)
@@ -89,7 +92,7 @@ void STPSplatmapGenerator::splat(const cudaTextureObject_t biomemap_tex, const c
 		CU_LAUNCH_PARAM_END
 	};
 	STP_CHECK_CUDA(cuLaunchKernel(this->SplatmapEntry,
-		Dimgridsize.x, Dimgridsize.y, Dimgridsize.z,
-		Dimblocksize.x, Dimblocksize.y, 1u,
+		gridSize.x, gridSize.y, gridSize.z,
+		blockSize.x, blockSize.y, blockSize.z,
 		0u, stream, nullptr, config));
 }

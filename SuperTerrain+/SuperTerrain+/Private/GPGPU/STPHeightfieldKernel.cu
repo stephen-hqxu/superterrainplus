@@ -1,5 +1,7 @@
 #include <SuperTerrain+/GPGPU/STPHeightfieldKernel.cuh>
 
+#include <SuperTerrain+/Utility/STPDeviceLaunchSetup.cuh>
+
 //Error
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 
@@ -20,16 +22,13 @@ __global__ static void formatHeightmapKERNEL(STPHeightFloat_t*, STPHeightFixed_t
 
 __host__ STPHeightfieldKernel::STPcurand_arr STPHeightfieldKernel::curandInit(
 	const STPSeed_t seed, const unsigned int count, const cudaStream_t stream) {
-	//determine launch parameters
-	int Mingridsize, gridsize, blocksize;
-	STP_CHECK_CUDA(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &curandInitKERNEL));
-	gridsize = (count + blocksize - 1) / blocksize;
+	const auto [gridSize, blockSize] = STPDeviceLaunchSetup::determineLaunchConfiguration<1u>(curandInitKERNEL, count);
 
 	//allocating spaces for rng storage array
 	//because RNG storage is persistent, i.e., we will be keep reusing it once allocated, no need to allocate from a memory pool.
 	STPcurand_arr rng = STPSmartDeviceMemory::makeDevice<STPcurand_t[]>(count);
 	//and send to kernel to init rng sequences
-	curandInitKERNEL<<<gridsize, blocksize, 0, stream>>>(rng.get(), seed, count);
+	curandInitKERNEL<<<gridSize, blockSize, 0, stream>>>(rng.get(), seed, count);
 	STP_CHECK_CUDA(cudaGetLastError());
 
 	return rng;
@@ -40,27 +39,19 @@ __host__ void STPHeightfieldKernel::hydraulicErosion(STPHeightFloat_t* const hei
 	const STPErosionBrush& brush, const unsigned int raindrop_count, STPcurand_t* const rng, const cudaStream_t stream) {
 	//brush contains two components: weights (float) and indices (int)
 	const unsigned int erosionBrushCache_size = brush.BrushSize * (sizeof(int) + sizeof(float));
-	//launch para
-	int Mingridsize, gridsize, blocksize;
-	STP_CHECK_CUDA(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &hydraulicErosionKERNEL, erosionBrushCache_size));
-	gridsize = (raindrop_count + blocksize - 1) / blocksize;
+	const auto [gridSize, blockSize] = STPDeviceLaunchSetup::determineLaunchConfiguration<1u>(hydraulicErosionKERNEL,
+		raindrop_count, erosionBrushCache_size);
 
-	//erode the heightmap
-	hydraulicErosionKERNEL<<<gridsize, blocksize, erosionBrushCache_size, stream>>>(
+	hydraulicErosionKERNEL<<<gridSize, blockSize, erosionBrushCache_size, stream>>>(
 		heightmap_storage, raindrop_setting, nn_info, brush, rng);
 	STP_CHECK_CUDA(cudaGetLastError());
 }
 
 __host__ void STPHeightfieldKernel::formatHeightmap(STPHeightFloat_t* const input, STPHeightFixed_t* const output,
 	const uvec2 dimension, const cudaStream_t stream) {
-	int Mingridsize, blocksize;
-	STP_CHECK_CUDA(cudaOccupancyMaxPotentialBlockSize(&Mingridsize, &blocksize, &formatHeightmapKERNEL));
-	const uvec2 Dimblocksize(32u, static_cast<unsigned int>(blocksize) / 32u),
-		Dimgridsize = (dimension + Dimblocksize - 1u) / Dimblocksize;
+	const auto [gridSize, blockSize] = STPDeviceLaunchSetup::determineLaunchConfiguration<2u>(formatHeightmapKERNEL, dimension);
 
-	//compute
-	formatHeightmapKERNEL<<<dim3(Dimgridsize.x, Dimgridsize.y), dim3(Dimblocksize.x, Dimblocksize.y), 0, stream>>>(
-		input, output, dimension);
+	formatHeightmapKERNEL<<<gridSize, blockSize, 0, stream>>>(input, output, dimension);
 	STP_CHECK_CUDA(cudaGetLastError());
 }
 
@@ -72,7 +63,7 @@ using glm::vec2;
 
 __global__ void curandInitKERNEL(STPHeightfieldKernel::STPcurand_t* const rng, const STPSeed_t seed, const unsigned int count) {
 	//current working index
-	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
+	const auto [index] = STPDeviceLaunchSetup::calcThreadIndex<1u>();
 	if (index >= count) {
 		return;
 	}
@@ -88,7 +79,7 @@ __global__ void hydraulicErosionKERNEL(STPHeightFloat_t* const heightmap_storage
 	const STPEnvironment::STPRainDropSetting* const raindrop_setting, const STPNearestNeighbourInformation nn_info,
 	const STPErosionBrush brush, STPHeightfieldKernel::STPcurand_t* const rng) {
 	//current working index
-	const unsigned int index = threadIdx.x + blockIdx.x * blockDim.x;
+	const auto [index] = STPDeviceLaunchSetup::calcThreadIndex<1u>();
 	if (index >= raindrop_setting->RainDropCount) {
 		return;
 	}
@@ -122,9 +113,8 @@ __global__ void hydraulicErosionKERNEL(STPHeightFloat_t* const heightmap_storage
 
 __global__ void formatHeightmapKERNEL(STPHeightFloat_t* const input, STPHeightFixed_t* const output, const uvec2 dimension) {
 	//the current working pixel
-	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
-		y = (blockIdx.y * blockDim.y) + threadIdx.y,
-		index = x + y * dimension.x;
+	const auto [x, y] = STPDeviceLaunchSetup::calcThreadIndex<2u>();
+	const unsigned int index = x + y * dimension.x;
 	//range check
 	if (x >= dimension.x || y >= dimension.y) {
 		return;

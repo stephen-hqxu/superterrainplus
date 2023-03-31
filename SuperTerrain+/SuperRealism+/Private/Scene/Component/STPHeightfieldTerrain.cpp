@@ -17,8 +17,6 @@
 
 //GLAD
 #include <glad/glad.h>
-//CUDA-GL
-#include <cuda_gl_interop.h>
 
 #include <array>
 #include <limits>
@@ -30,7 +28,6 @@
 
 using std::array;
 using std::make_unique;
-using std::numeric_limits;
 using std::unique_ptr;
 
 using glm::ivec2;
@@ -196,20 +193,16 @@ STPHeightfieldTerrain::STPHeightfieldTerrain(STPWorldPipeline& generator_pipelin
 	this->NoiseSample.filter(GL_NEAREST, GL_LINEAR);
 	{
 		//generate noise texture
-		const STPSmartDeviceObject::STPGraphicsResource res_managed = STPSmartDeviceObject::makeGLImageResource(
-			*this->NoiseSample, GL_TEXTURE_3D, cudaGraphicsRegisterFlagsWriteDiscard);
-		cudaGraphicsResource_t res = res_managed.get();
-		//map
-		cudaArray_t random_buffer;
-		STP_CHECK_CUDA(cudaGraphicsMapResources(1, &res));
-		STP_CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&random_buffer, res, 0u, 0u));
+		using namespace SuperTerrainPlus::STPSmartDeviceObject;
+		using std::numeric_limits;
 
-		//compute
-		STPRandomTextureGenerator::generate<unsigned char>(random_buffer, option.NoiseDimension, option.NoiseSeed,
-			numeric_limits<unsigned char>::min(), numeric_limits<unsigned char>::max());
+		STPStream managed_stream = makeStream(cudaStreamNonBlocking);
+		const cudaStream_t stream = managed_stream.get();
 
-		//clear up
-		STP_CHECK_CUDA(cudaGraphicsUnmapResources(1, &res));
+		STPRandomTextureGenerator::generate(this->NoiseSample, option.NoiseSeed, numeric_limits<unsigned char>::min(),
+			numeric_limits<unsigned char>::max(), stream);
+
+		STP_CHECK_CUDA(cudaStreamSynchronize(stream));
 	}
 	//create bindless handle for noise sampler
 	this->NoiseSampleHandle = STPBindlessTexture::make(this->NoiseSample);

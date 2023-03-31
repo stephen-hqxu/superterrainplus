@@ -23,6 +23,8 @@ constexpr static float
 //SuperAlgorithm+ Device library
 #include <SuperAlgorithm+Device/STPTextureSplatRuleWrapper.cuh>
 
+#include <SuperTerrain+/Utility/STPDeviceLaunchSetup.cuh>
+
 using namespace SuperTerrainPlus::STPAlgorithm;
 using SuperTerrainPlus::STPSample_t, SuperTerrainPlus::STPRegion_t;
 
@@ -62,10 +64,8 @@ using namespace STPCommonGenerator;
 */
 __global__ void generateTextureSplatmap(const cudaTextureObject_t biomemap_tex, const cudaTextureObject_t heightmap_tex,
 	const cudaSurfaceObject_t splatmap_surf, const STPTI::STPSplatGeneratorInformation splat_info) {
-	const unsigned int x = (blockIdx.x * blockDim.x) + threadIdx.x,
-		y = (blockIdx.y * blockDim.y) + threadIdx.y,
-		//block is in 2D, so threadIdx.z is always 0 and blockDim.z is always 1
-		z = blockIdx.z;
+	//block is in 2D, so threadIdx.z is always 0 and blockDim.z is always 1
+	const auto [x, y, z] = SuperTerrainPlus::STPDeviceLaunchSetup::calcThreadIndex<3u>();
 	if (x >= Dimension->x || y >= Dimension->y || z >= splat_info.LocalCount) {
 		return;
 	}
