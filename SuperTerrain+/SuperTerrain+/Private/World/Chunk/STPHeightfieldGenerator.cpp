@@ -23,21 +23,20 @@ inline STPSmartDeviceObject::STPStream STPHeightfieldGenerator::STPStreamCreator
 	return STPSmartDeviceObject::makeStream(cudaStreamNonBlocking);
 }
 
-STPHeightfieldGenerator::STPRNGCreator::STPRNGCreator(const STPEnvironment::STPHeightfieldSetting& heightfield_setting) :
-	Seed(heightfield_setting.Seed),
-	Length(heightfield_setting.Erosion.RainDropCount) {
+STPHeightfieldGenerator::STPRainDropGeneratorFactory::STPRainDropGeneratorFactory(
+	const STPHeightfieldGenerator& heightfield_gen, const STPEnvironment::STPRainDropSetting& raindrop_setting) noexcept :
+	Setting(heightfield_gen.RainDropSettingDevice.get()), GeneratorLength(raindrop_setting.RainDropCount) {
 
 }
 
-inline STPSmartDeviceMemory::STPDevice<STPHeightfieldGenerator::STPcurandRNG[]>
-	STPHeightfieldGenerator::STPRNGCreator::operator()(const cudaStream_t stream) const {
-	return STPHeightfieldKernel::curandInit(this->Seed, this->Length, stream);
+inline auto STPHeightfieldGenerator::STPRainDropGeneratorFactory::operator()(const cudaStream_t stream) const {
+	return STPHeightfieldKernel::initialiseRainDropGenerator(this->Setting, this->GeneratorLength, stream);
 }
 
 /**
  * @brief Generate the erosion brush.
  * @tparam T The erosion brush memory
- * @param dimensionX  The X dimension of the texture.
+ * @param dimensionX The X dimension of the texture.
  * This should usually be the dimension of the texture including all chunk nearest neighbours.
  * @param erosion_radius The radius of erosion.
  * @return The memory containing generated erosion brush.
@@ -113,26 +112,29 @@ inline static STPNearestNeighbourInformation createNeighbourInfo(const uvec2 map
 	};
 }
 
-STPHeightfieldGenerator::STPHeightfieldGenerator(const STPGeneratorSetup& setup) : STPHeightfieldGenerator(setup, *setup.ChunkSetting) {
+STPHeightfieldGenerator::STPHeightfieldGenerator(const STPGeneratorSetup& setup) :
+	STPHeightfieldGenerator(setup, *setup.ChunkSetting, *setup.RainDropSetting) {
 
 }
 
-STPHeightfieldGenerator::STPHeightfieldGenerator(const STPGeneratorSetup& setup, const STPEnvironment::STPChunkSetting& chk_setting) :
-	HeightfieldSettingHost(*setup.HeightfieldSetting),
+STPHeightfieldGenerator::STPHeightfieldGenerator(const STPGeneratorSetup& setup,
+	const STPEnvironment::STPChunkSetting& chk_setting, const STPEnvironment::STPRainDropSetting& rd_setting) :
+	RainDropSettingDevice(STPSmartDeviceMemory::makeDevice<STPEnvironment::STPRainDropSetting>()),
+
 	NoNeighbour(createNeighbourInfo(chk_setting.MapSize, uvec2(1u))),
 	DiversityNeighbour(createNeighbourInfo(chk_setting.MapSize, chk_setting.DiversityNearestNeighbour)),
 	ErosionNeighbour(createNeighbourInfo(chk_setting.MapSize, chk_setting.ErosionNearestNeighbour)),
-	generateHeightmap(*setup.DiversityGenerator),
-	ErosionBrush(generateErosionBrush<STPErosionBrushMemory>(chk_setting.ErosionNearestNeighbour.x * chk_setting.MapSize.x,
-		this->HeightfieldSettingHost.Erosion.ErosionBrushRadius)),
-	RNGPool(this->HeightfieldSettingHost) {
-	chk_setting.validate();
-	this->HeightfieldSettingHost.validate();
 
-	//allocating space
-	//heightfield settings
-	this->RainDropSettingDevice = STPSmartDeviceMemory::makeDevice<STPEnvironment::STPRainDropSetting>();
-	STP_CHECK_CUDA(cudaMemcpy(this->RainDropSettingDevice.get(), &this->HeightfieldSettingHost.Erosion,
+	generateHeightmap(*setup.DiversityGenerator),
+
+	ErosionBrush(generateErosionBrush<STPErosionBrushMemory>(
+		chk_setting.ErosionNearestNeighbour.x * chk_setting.MapSize.x, rd_setting.ErosionBrushRadius)),
+	RainDropGeneratorPool(*this, rd_setting) {
+	chk_setting.validate();
+	rd_setting.validate();
+
+	//prepare device memory for raindrop settings
+	STP_CHECK_CUDA(cudaMemcpy(this->RainDropSettingDevice.get(), &rd_setting,
 		sizeof(STPEnvironment::STPRainDropSetting), cudaMemcpyHostToDevice));
 
 	//create memory pool
@@ -168,7 +170,7 @@ void STPHeightfieldGenerator::generate(STPHeightFloat_t* const heightfield, cons
 
 void STPHeightfieldGenerator::erode(STPHeightFloat_t* const* const heightfield_original, STPHeightFixed_t* const* const heightfield_low) {
 	PREPARE_GENERATION_DATA();
-	STPSmartDeviceMemory::STPDevice<STPcurandRNG[]> rng_buffer = move(this->RNGPool.request(stream));
+	STPHeightfieldKernel::STPRainDropGeneratorMemory rng_buffer = move(this->RainDropGeneratorPool.request(stream));
 	//limit the scope of texture buffer to ensure their memory is sync'ed and freed at destruction before we return our memory back to the pool
 	{
 		const STPNearestNeighbourHeightFloatRWTextureBuffer heightmap_float_buffer(heightfield_original, this->ErosionNeighbour, device_object);
@@ -181,8 +183,8 @@ void STPHeightfieldGenerator::erode(STPHeightFloat_t* const* const heightfield_o
 
 		//erosion
 		STPHeightfieldKernel::hydraulicErosion(heightmap_float_merged.getDevice(), this->RainDropSettingDevice.get(),
-			this->ErosionNeighbour, this->ErosionBrush.ErosionBrushRawData,
-			this->HeightfieldSettingHost.Erosion.RainDropCount, rng_buffer.get(), stream);
+			rng_buffer.get(), this->RainDropGeneratorPool.Creator.GeneratorLength, this->ErosionNeighbour,
+			this->ErosionBrush.ErosionBrushRawData, stream);
 		//generate low quality heightfield
 		STPHeightfieldKernel::formatHeightmap(heightmap_float_merged.getDevice(), heightmap_fixed_merged.getDevice(),
 			this->ErosionNeighbour.TotalMapSize, stream);
@@ -190,6 +192,6 @@ void STPHeightfieldGenerator::erode(STPHeightFloat_t* const* const heightfield_o
 		//destruction of memory is streamed order, wait for the stream after those texture buffer die
 	}
 	STP_CHECK_CUDA(cudaStreamSynchronize(stream));
-	this->RNGPool.release(move(rng_buffer));
+	this->RainDropGeneratorPool.release(move(rng_buffer));
 	CLEANUP_GENERATION_DATA();
 }

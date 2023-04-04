@@ -9,7 +9,7 @@
 
 //Settings
 #include <SuperTerrain+/Environment/STPChunkSetting.h>
-#include <SuperTerrain+/Environment/STPHeightfieldSetting.h>
+#include <SuperTerrain+/Environment/STPRainDropSetting.h>
 #include <SuperAlgorithm+Host/STPSimplexNoiseSetting.h>
 #include <SuperRealism+/Environment/STPMeshSetting.h>
 #include <SuperRealism+/Environment/STPSunSetting.h>
@@ -46,12 +46,12 @@ namespace STPDemo {
 			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&);
 
 		/**
-		 * @brief Load the launch settings for terrain.
+		 * @brief Load the settings for terrain erosion.
 		 * @param section The INI section that contains the launch parameter.
 		 * @param generator_seed The generator seed.
-		 * @return The launch parameter, if certain parameters are missing in the section, exception will be thrown.
+		 * @return The heightfield erosion parameters, if certain parameters are missing in the section, exception will be thrown.
 		*/
-		SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting getGeneratorSetting(
+		SuperTerrainPlus::STPEnvironment::STPRainDropSetting getRainDropSetting(
 			const SuperTerrainPlus::STPAlgorithm::STPINIData::STPINISectionView&, SuperTerrainPlus::STPSeed_t);
 
 		/**

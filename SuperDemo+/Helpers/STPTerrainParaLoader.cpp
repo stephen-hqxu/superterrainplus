@@ -92,13 +92,13 @@ Env::STPChunkSetting STPTerrainParaLoader::getChunkSetting(const STPINISectionVi
 	return chunks_options;
 }
 
-Env::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(const STPINISectionView& section, const STPSeed_t generator_seed) {
+Env::STPRainDropSetting STPTerrainParaLoader::getRainDropSetting(const STPINISectionView& section, const STPSeed_t generator_seed) {
 	//get the default settings
-	Env::STPHeightfieldSetting launch_options = { };
-	Env::STPRainDropSetting& raindrop_options = launch_options.Erosion;
+	Env::STPRainDropSetting raindrop_options = { };
 	
-	//set the parameter one by one, enjoy :)
-	launch_options.Seed = generator_seed;
+	raindrop_options.Seed = generator_seed;
+	raindrop_options.RainDropCount = section.at("iteration").to<unsigned int>();
+
 	raindrop_options.Inertia = section.at("inertia").to<float>();
 	raindrop_options.SedimentCapacityFactor = section.at("sediment_capacity_factor").to<float>();
 	raindrop_options.minSedimentCapacity = section.at("min_sediment_capacity").to<float>();
@@ -111,10 +111,9 @@ Env::STPHeightfieldSetting STPTerrainParaLoader::getGeneratorSetting(const STPIN
 	raindrop_options.EvaporateSpeed = section.at("evaporate_speed").to<float>();
 	raindrop_options.Gravity = section.at("gravity").to<float>();
 	raindrop_options.ErosionBrushRadius = section.at("brush_radius").to<unsigned int>();
-	raindrop_options.RainDropCount = section.at("iteration").to<unsigned int>();
 
 	//return the value
-	return launch_options;
+	return raindrop_options;
 }
 
 Env::STPSimplexNoiseSetting STPTerrainParaLoader::getSimplexSetting(const STPINISectionView& section, const STPSeed_t simplex_seed) {

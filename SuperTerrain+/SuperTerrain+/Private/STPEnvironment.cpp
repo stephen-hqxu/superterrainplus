@@ -1,5 +1,4 @@
 #include <SuperTerrain+/Environment/STPChunkSetting.h>
-#include <SuperTerrain+/Environment/STPHeightfieldSetting.h>
 #include <SuperTerrain+/Environment/STPRainDropSetting.h>
 
 #include <SuperTerrain+/Exception/STPInvalidEnvironment.h>
@@ -42,13 +41,6 @@ void STPChunkSetting::validate() const {
 	ASSERT_CHUNK(isOdd(this->RenderDistance));
 }
 
-//STPHeightfieldSetting.h
-
-void STPHeightfieldSetting::validate() const {
-	//check the raindrop parameter plus also heightmap parameter
-	this->Erosion.validate();
-}
-
 //STPRainDropSetting.h
 
 #define ASSERT_RAINDROP(EXPR) STP_ASSERTION_ENVIRONMENT(EXPR, STPRainDropSetting)
@@ -58,6 +50,7 @@ void STPRainDropSetting::validate() const {
 		return value >= lower && value <= upper;
 	};
 
+	ASSERT_RAINDROP(this->RainDropCount > 0u);
 	ASSERT_RAINDROP(checkRange(this->Inertia, 0.0f, 1.0f));
 	ASSERT_RAINDROP(this->SedimentCapacityFactor > 0.0f);
 	ASSERT_RAINDROP(this->minSedimentCapacity >= 0.0f);

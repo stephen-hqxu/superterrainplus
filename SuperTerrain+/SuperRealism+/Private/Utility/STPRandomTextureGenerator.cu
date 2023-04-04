@@ -72,9 +72,6 @@ __host__ static tuple<STPGraphicsResource, STPSurface, uvec3> prepareGLRandomIma
 	desc.res.array.array = random_buffer;
 
 	//get dimension, a texture is always an array memory, so the buffer size is specified in element count rather than byte
-	constexpr static auto toDimension = [](const size_t extent) constexpr noexcept -> unsigned int {
-		return std::max(static_cast<unsigned int>(extent), 1u);
-	};
 	cudaExtent buffer_dim;
 	STP_CHECK_CUDA(cudaArrayGetInfo(nullptr, &buffer_dim, nullptr, random_buffer));
 	const auto [width, height, depth] = buffer_dim;
@@ -82,11 +79,7 @@ __host__ static tuple<STPGraphicsResource, STPSurface, uvec3> prepareGLRandomIma
 	return make_tuple(
 		std::move(res_managed),
 		makeSurface(desc),
-		uvec3(
-			toDimension(width),
-			toDimension(height),
-			toDimension(depth)
-		)
+		uvec3(width, height, depth)
 	);
 }
 
@@ -94,7 +87,7 @@ template<typename T>
 __host__ void STPRandomTextureGenerator::generate(const STPTexture& output, const STPSeed_t seed,
 	const T min, const T max, const cudaStream_t stream) {
 	const auto [managed_resource, managed_surface, dimension] = prepareGLRandomImage(output, stream);
-	//calculate launch configuration, always treat this as a 3D texture
+	//always use 3D block, this function will automatically clamp back to the optimal block dimension.
 	const auto [gridSize, blockSize] =
 		STPDeviceLaunchSetup::determineLaunchConfiguration<3u>(generateRandomTextureKERNEL<T>, dimension);
 

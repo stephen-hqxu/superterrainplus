@@ -26,6 +26,7 @@ constexpr static const char* BenchmarkResultPath = "./BenchmarkResult";
 
 //Initialise shared data
 cudaMemPool_t STPTestInformation::TestDeviceMemoryPool;
+int STPTestInformation::WarpSize;
 
 int main(const int argc, const char* const* const argv) {
 	//setup the engine
@@ -39,6 +40,9 @@ int main(const int argc, const char* const* const argv) {
 	STP_CHECK_CUDA(cudaDeviceGetDefaultMemPool(&STPTestInformation::TestDeviceMemoryPool, SelectedDevice));
 	cuuint64_t memLimit = 1024ull * 1024ull;//1 MB
 	STP_CHECK_CUDA(cudaMemPoolSetAttribute(STPTestInformation::TestDeviceMemoryPool, cudaMemPoolAttrReleaseThreshold, &memLimit));
+
+	//get device attributes
+	STP_CHECK_CUDA(cudaDeviceGetAttribute(&STPTestInformation::WarpSize, cudaDevAttrWarpSize, SelectedDevice));
 
 	//setup benchmark result directory
 	const std::filesystem::path benchmarkPath = BenchmarkResultPath;

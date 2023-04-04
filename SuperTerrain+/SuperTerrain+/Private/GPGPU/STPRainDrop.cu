@@ -60,20 +60,13 @@ __device__ void STPRainDrop::operator()(STPHeightFloat_t* const map, const STPEn
 	extern __shared__ unsigned char ErosionBrush[];
 	int* const brushIndices = new (ErosionBrush) int[brushSize];
 	float* const brushWeights = new (ErosionBrush + sizeof(int) * brushSize) float[brushSize];
-	{
-		unsigned int iteration = 0u;
-		while (iteration < brushSize) {
-			unsigned int idx = threadIdx.x + iteration;
-			if (idx < brushSize) {
-				//check and make sure index is not out of bound
-				//otherwise we can utilise most threads and copy everything in parallel
-				brushIndices[idx] = raw_brushIndex[idx];
-				brushWeights[idx] = raw_brushWeight[idx];
-			}
-			//if erosion brush size is greater than number of thread in a block
-			//we need to warp around and reuse some threads to finish the rests
-			iteration += blockDim.x;
-		}
+	for (unsigned int idx = threadIdx.x; idx < brushSize; idx += blockDim.x) {
+		//check and make sure index is not out of bound
+		//otherwise we can utilise most threads and copy everything in parallel
+		brushIndices[idx] = raw_brushIndex[idx];
+		brushWeights[idx] = raw_brushWeight[idx];
+		//if erosion brush size is greater than number of thread in a block
+		//we need to warp around and reuse some threads to finish the rests
 	}
 	__syncthreads();
 

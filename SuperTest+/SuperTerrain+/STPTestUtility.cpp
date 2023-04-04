@@ -20,7 +20,6 @@
 #include <SuperTerrain+/Utility/STPDeviceErrorHandler.hpp>
 #include <SuperTerrain+/Utility/STPDeviceLaunchSetup.cuh>
 #include <SuperTerrain+/Utility/Memory/STPObjectPool.h>
-#include <SuperTerrain+/Utility/Memory/STPSmartDeviceMemory.h>
 //SuperTerrain+/SuperTerrain+/Exception
 #include <SuperTerrain+/Exception/API/STPCUDAError.h>
 #include <SuperTerrain+/Exception/STPNumericDomainError.h>
@@ -29,7 +28,6 @@
 #include <glm/vec3.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <stdexcept>
 #include <algorithm>
 #include <atomic>
 #include <optional>
@@ -38,8 +36,9 @@
 using Catch::Matchers::ContainsSubstring;
 
 namespace Err = SuperTerrainPlus::STPException;
-namespace DevMem = SuperTerrainPlus::STPSmartDeviceMemory;
 namespace DevLach = SuperTerrainPlus::STPDeviceLaunchSetup;
+
+namespace Info = STPTestInformation;
 
 using SuperTerrainPlus::STPThreadPool, SuperTerrainPlus::STPObjectPool;
 
@@ -318,56 +317,6 @@ TEMPLATE_TEST_CASE_METHOD(ObjectPoolTester, "STPObjectPool reuses object wheneve
 
 }
 
-#define VERIFY_DATA() REQUIRE(std::all_of(ReturnedData.get(), ReturnedData.get() + 8, compareData))
-
-SCENARIO("STPSmartDeviceMemory allocates and auto-delete device pointer", "[Utility][STPSmartDeviceMemory]") {
-	
-	GIVEN("A piece of host data that is needed to be copied to device memory") {
-		const unique_ptr<unsigned int[]> HostData = make_unique<unsigned int[]>(8);
-		const unique_ptr<unsigned int[]> ReturnedData = make_unique<unsigned int[]>(8);
-
-		const unsigned int Data = GENERATE(take(3, random(0u, 66666666u)));
-		std::fill_n(HostData.get(), 8, Data);
-
-		WHEN("A smart device memory is requested") {
-			constexpr static size_t RowSize2D = sizeof(unsigned int) * 4u;
-
-			auto DeviceData = DevMem::makeDevice<unsigned int[]>(8);
-			auto StreamedDeviceData = DevMem::makeStreamedDevice<unsigned int[]>(STPTestInformation::TestDeviceMemoryPool, 0, 8);
-			auto PitchedDeviceData = DevMem::makePitchedDevice<unsigned int[]>(4, 2);
-
-			THEN("Smart device memory can be used like normal memory") {
-				constexpr static size_t DataSize = sizeof(unsigned int) * 8u;
-				const auto compareData = [Data](const auto i) {
-					return i == Data;
-				};
-
-				//copy back and forth
-				//regular device memory
-				STP_CHECK_CUDA(cudaMemcpy(DeviceData.get(), HostData.get(), DataSize, cudaMemcpyHostToDevice));
-				STP_CHECK_CUDA(cudaMemcpy(ReturnedData.get(), DeviceData.get(), DataSize, cudaMemcpyDeviceToHost));
-				VERIFY_DATA();
-
-				//stream-ordered device memory
-				STP_CHECK_CUDA(cudaMemcpyAsync(StreamedDeviceData.get(), HostData.get(), DataSize, cudaMemcpyHostToDevice, 0));
-				STP_CHECK_CUDA(cudaMemcpyAsync(ReturnedData.get(), StreamedDeviceData.get(), DataSize, cudaMemcpyDeviceToHost, 0));
-				STP_CHECK_CUDA(cudaStreamSynchronize(0));
-				VERIFY_DATA();
-
-				//pitched device memory
-				STP_CHECK_CUDA(cudaMemcpy2D(PitchedDeviceData.get(), PitchedDeviceData.Pitch, HostData.get(),
-					RowSize2D, RowSize2D, 2, cudaMemcpyHostToDevice));
-				STP_CHECK_CUDA(cudaMemcpy2D(ReturnedData.get(), RowSize2D, PitchedDeviceData.get(),
-					PitchedDeviceData.Pitch, RowSize2D, 2, cudaMemcpyDeviceToHost));
-				VERIFY_DATA();
-			}
-
-		}
-
-	}
-
-}
-
 #define CALC_LAUNCH_CONFIG(VEC) DevLach::determineLaunchConfiguration<Blk>(blockSize, VEC)
 
 template<DevLach::STPDimensionSize Blk, class VecArr>
@@ -382,13 +331,12 @@ inline static DevLach::STPLaunchConfiguration computeLaunchConfiguration(const i
 	}
 }
 
-TEMPLATE_TEST_CASE_SIG("STPDeviceLaunchSetup can automatically configure the best device launch setting",
+TEMPLATE_TEST_CASE_SIG("STPDeviceLaunchSetup can automatically configure the best device launch setting for any block dimension",
 	"[Utility][STPDeviceLaunchSetup]", ((DevLach::STPDimensionSize BlockDim), BlockDim), 1u, 2u, 3u) {
 	
 	GIVEN("Desired block and grid dimensions") {
-		const auto BlockSize = GENERATE(take(3, range(DevLach::WarpSize, 32u * DevLach::WarpSize, DevLach::WarpSize)));
-		const DevLach::STPDimensionSize ThreadDim =
-			static_cast<DevLach::STPDimensionSize>(GENERATE(values({ 1u, 2u, 3u })));
+		const auto BlockSize = static_cast<unsigned int>(GENERATE(take(3, range(Info::WarpSize, 32 * Info::WarpSize, Info::WarpSize))));
+		const auto ThreadDim = static_cast<DevLach::STPDimensionSize>(GENERATE(values({ 1u, 2u, 3u })));
 		const auto ThreadDimVec = GENERATE_COPY(take(3, chunk(ThreadDim, random(1u, 2048u))));
 
 		WHEN("Device launch configuration is calculated based on these values") {

@@ -9,6 +9,7 @@
 //Emit Helper
 #include <catch2/internal/catch_console_colour.hpp>
 #include <catch2/catch_test_case_info.hpp>
+#include <catch2/catch_get_random_seed.hpp>
 
 using namespace Catch;
 
@@ -242,6 +243,9 @@ public:
 		//write the information about the current run
 		this->emitCentreString(STPConsoleReporter::getView(run.value.runInfo.name));
 		this->emitSymbol('.');
+
+		//write test settings
+		m_stream << "Random Seed: " << Catch::getSeed() << endl;
 
 		//for each test case in a run
 		const auto& total_case = run.children;

@@ -191,7 +191,7 @@ STPWorldManager::STPWorldManager(const string& tex_filename_prefix, const STPEnv
 STPWorldManager::~STPWorldManager() = default;
 
 void STPWorldManager::linkProgram(const STPEnvironment::STPChunkSetting& chunk_setting,
-	const STPEnvironment::STPHeightfieldSetting& heightfield_setting) {
+	const STPEnvironment::STPRainDropSetting& raindrop_setting) {
 	this->linkStatus = false;
 	//error checking
 	if (!this->BiomeFactory) {
@@ -204,7 +204,7 @@ void STPWorldManager::linkProgram(const STPEnvironment::STPChunkSetting& chunk_s
 	//create generator and storage unit first
 	STPHeightfieldGenerator::STPGeneratorSetup setup = { };
 	setup.ChunkSetting = &chunk_setting;
-	setup.HeightfieldSetting = &heightfield_setting;
+	setup.RainDropSetting = &raindrop_setting;
 	setup.DiversityGenerator = this->DiversityGenerator.get();
 	this->ChunkGenerator.emplace(setup);
 

@@ -5,7 +5,6 @@ STPOpenGL.h
 STPSQLite.h
 # /Environment
 Environment/STPChunkSetting.h
-Environment/STPHeightfieldSetting.h
 Environment/STPRainDropSetting.h
 # /Exception/API
 Exception/API/STPCUDAError.h

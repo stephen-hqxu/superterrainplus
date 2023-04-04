@@ -64,7 +64,8 @@ __device__ float STPSimplexNoise::simplex2D(const STPPermutation& permutation, c
 	grad_i[2] = perm[ii + 1u + perm[jj + 1u]] % permutation.Gradient2DSize;
 
 	//calculate the weight from 3 corners
-	for (unsigned int vertex = 0u; vertex < 3u; vertex++) {
+#pragma unroll
+	for (int vertex = 0; vertex < 3; vertex++) {
 		weight[vertex] = 0.5f - dst_x[vertex] * dst_x[vertex] - dst_y[vertex] * dst_y[vertex];
 		if (weight[vertex] <= 0.0f) {
 			corner[vertex] = 0.0f;

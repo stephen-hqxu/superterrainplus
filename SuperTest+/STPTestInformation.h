@@ -14,6 +14,8 @@ namespace STPTestInformation {
 
 	//CUDA device default memory pool, defined in the main file
 	extern cudaMemPool_t TestDeviceMemoryPool;
+	//Device attributes
+	extern int WarpSize;
 
 	/**
 	 * @brief Render the benchmark result to a file.

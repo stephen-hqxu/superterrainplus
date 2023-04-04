@@ -134,7 +134,7 @@ public:
 		const Env::STPSimplexNoiseSetting simplex = STPTerrainParaLoader::getSimplexSetting(this->biomeINI.at("simplex"), seed);
 		const Env::STPChunkSetting chunk_setting = STPTerrainParaLoader::getChunkSetting(this->engineINI.at("Generators"));
 		STPTerrainParaLoader::loadBiomeParameters(this->biomeINI);
-		const Env::STPHeightfieldSetting heightfield_setting = STPTerrainParaLoader::getGeneratorSetting(this->engineINI.at("2DTerrainINF"), seed);
+		const Env::STPRainDropSetting raindrop_setting = STPTerrainParaLoader::getRainDropSetting(this->engineINI.at("2DTerrainINF"), seed);
 
 		//setup world manager
 		try {
@@ -148,7 +148,7 @@ public:
 				(this->WorldManager->SharedProgram, this->WorldManager->getTextureDatabase(), chunk_setting,
 					this->engineINI.at("Global").at("Anisotropy").to<float>());
 
-			this->WorldManager->linkProgram(chunk_setting, heightfield_setting);
+			this->WorldManager->linkProgram(chunk_setting, raindrop_setting);
 			if (!this->WorldManager) {
 				//do not proceed if it fails
 				std::terminate();

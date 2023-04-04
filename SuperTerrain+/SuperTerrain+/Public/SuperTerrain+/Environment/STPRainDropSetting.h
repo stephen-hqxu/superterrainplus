@@ -3,6 +3,7 @@
 #define _STP_RAIN_DROP_SETTING_H_
 
 #include <SuperTerrain+/STPCoreDefine.h>
+#include "../World/STPWorldMapPixelFormat.hpp"
 
 namespace SuperTerrainPlus::STPEnvironment {
 
@@ -14,8 +15,11 @@ namespace SuperTerrainPlus::STPEnvironment {
 	struct STP_API STPRainDropSetting {
 	public:
 
+		//The seed used for randomly rolling the starting position of individual raindrop.
+		STPSeed_t Seed;
 		//The number of raindrop presented to perform hydraulic erosion
 		unsigned int RainDropCount;
+
 		//At zero, water will instantly change direction to flow downhill. At one, water will never change direction. Ranged [0,1]
 		float Inertia;
 		//Multiplier for how much sediment a droplet can carry.
@@ -38,6 +42,7 @@ namespace SuperTerrainPlus::STPEnvironment {
 		float EvaporateSpeed;
 		//Control how fast water droplet descends.
 		float Gravity;
+
 		//Determine the radius of the droplet that can brush out sediment
 		//Specify the radius of the brush. Determines the radius in which sediment is taken from the rock layer.
 		//The smaller radius is, the deeper and more distinct the ravines will be.

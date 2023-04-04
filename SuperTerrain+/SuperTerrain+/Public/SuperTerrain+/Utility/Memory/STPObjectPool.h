@@ -16,9 +16,12 @@ namespace SuperTerrainPlus {
 	*/
 	template<class T, class New>
 	class STPObjectPool {
-	private:
+	public:
 
 		New Creator;
+
+	private:
+
 		std::queue<T> ObjectPool;
 
 		std::mutex PoolLock;

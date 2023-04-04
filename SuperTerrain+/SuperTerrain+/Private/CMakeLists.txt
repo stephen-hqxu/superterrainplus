@@ -9,6 +9,7 @@ GPGPU/STPDeviceRuntimeProgram.cpp
 GPGPU/STPHeightfieldKernel.cu
 GPGPU/STPRainDrop.cu
 # /Utility
+Utility/STPDeviceLaunchSetup.cpp
 Utility/STPFile.cpp
 Utility/STPSmartDeviceObject.cpp
 Utility/STPThreadPool.cpp

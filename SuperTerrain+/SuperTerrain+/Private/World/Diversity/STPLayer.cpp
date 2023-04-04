@@ -11,6 +11,7 @@ using std::make_unique;
 using namespace SuperTerrainPlus::STPDiversity;
 using SuperTerrainPlus::STPSample_t, SuperTerrainPlus::STPSeed_t;
 
+//TODO: this function can be removed and use the bit manipulation library in C++ 20
 /**
  * @brief Check if the number is power of 2.
  * @param val The value to check.

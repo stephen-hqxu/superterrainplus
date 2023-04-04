@@ -4,7 +4,7 @@
 
 //World
 #include <SuperTerrain+/Environment/STPChunkSetting.h>
-#include <SuperTerrain+/Environment/STPHeightfieldSetting.h>
+#include <SuperTerrain+/Environment/STPRainDropSetting.h>
 //Compiler
 #include "./Biomes/STPCommonCompiler.h"
 
@@ -110,10 +110,10 @@ namespace STPDemo {
 		/**
 		 * @brief Link all pipeline stages together.
 		 * @param chunk_setting All chunk settings, it will be copied under the object.
-		 * @param heightfield_setting All heightfield settings, also copied.
+		 * @param raindrop_setting All heightfield erosion settings, also copied.
 		*/
 		void linkProgram(const SuperTerrainPlus::STPEnvironment::STPChunkSetting&,
-			const SuperTerrainPlus::STPEnvironment::STPHeightfieldSetting&);
+			const SuperTerrainPlus::STPEnvironment::STPRainDropSetting&);
 
 		/**
 		 * @brief Get the link status of the current world manager.

@@ -12,7 +12,7 @@
 #include "../../Utility/Memory/STPSmartDeviceMemory.h"
 #include "../../Utility/Memory/STPObjectPool.h"
 //Settings
-#include "../../Environment/STPHeightfieldSetting.h"
+#include "../../Environment/STPRainDropSetting.h"
 #include "../../Environment/STPChunkSetting.h"
 
 //CUDA
@@ -37,8 +37,8 @@ namespace SuperTerrainPlus {
 
 			//All parameters for the chunk to be linked with this generator.
 			const STPEnvironment::STPChunkSetting* ChunkSetting;
-			//All parameters for heightfield generation to be linked with this generator.
-			const STPEnvironment::STPHeightfieldSetting* HeightfieldSetting;
+			//All parameters for heightfield hydraulic erosion during heightfield generation.
+			const STPEnvironment::STPRainDropSetting* RainDropSetting;
 			//A generator responsible for generating a multi-biome heightmap.
 			STPDiversityGenerator* DiversityGenerator;
 
@@ -46,7 +46,7 @@ namespace SuperTerrainPlus {
 
 	private:
 
-		typedef curandStatePhilox4_32_10 STPcurandRNG;
+		typedef curandStatePhilox4_32_10 STPRainDropGenerator;
 
 		/**
 		 * @brief STPStreamCreator is the default stream creator for the heightfield generator.
@@ -59,30 +59,32 @@ namespace SuperTerrainPlus {
 		};
 
 		/**
-		 * @brief STPRNGCreator allocates memory for the heightfield random number generator.
+		 * @brief STPRainDropGeneratorFactory creates generators for raindrop during heightfield hydraulic erosion.
 		*/
-		struct STPRNGCreator {
-		private:
-
-			const STPSeed_t Seed;
-			//The array length of the RNG
-			const unsigned int Length;
-
+		struct STPRainDropGeneratorFactory {
 		public:
 
-			/**
-			 * @brief Initialise the RNG creator.
-			 * @param heightfield_setting The heightfield setting to be used.
-			*/
-			STPRNGCreator(const STPEnvironment::STPHeightfieldSetting&);
+			//Raindrop setting on device memory space.
+			const STPEnvironment::STPRainDropSetting* const Setting;
+			//The number of generator to be created, each raindrop gets one generator.
+			//This value equals to the number of raindrop.
+			const unsigned int GeneratorLength;
 
-			STPSmartDeviceMemory::STPDevice<STPcurandRNG[]> operator()(cudaStream_t) const;
+			/**
+			 * @brief Initialise the raindrop generator factory.
+			 * @param heightfield_gen The heightfield generator.
+			 * @param raindrop_setting The raindrop setting, must be available on host memory.
+			*/
+			STPRainDropGeneratorFactory(const STPHeightfieldGenerator&, const STPEnvironment::STPRainDropSetting&) noexcept;
+
+			~STPRainDropGeneratorFactory() = default;
+
+			auto operator()(cudaStream_t) const;
 
 		};
 
 		//heightfield generation parameters
-		const STPEnvironment::STPHeightfieldSetting HeightfieldSettingHost;
-		STPSmartDeviceMemory::STPDevice<STPEnvironment::STPRainDropSetting> RainDropSettingDevice;
+		const STPSmartDeviceMemory::STPDevice<STPEnvironment::STPRainDropSetting> RainDropSettingDevice;
 		//nearest neighbour information for no neighbour logic, diversity generation and erosion, respectively
 		const STPNearestNeighbourInformation NoNeighbour, DiversityNeighbour, ErosionNeighbour;
 
@@ -104,11 +106,11 @@ namespace SuperTerrainPlus {
 		//Temp cache on device for heightmap computation
 		STPSmartDeviceObject::STPMemPool MapCacheDevice;
 		STPObjectPool<STPSmartDeviceObject::STPStream, STPStreamCreator> StreamPool;
-		//curand random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independence
-		STPObjectPool<STPSmartDeviceMemory::STPDevice<STPcurandRNG[]>, STPRNGCreator> RNGPool;
+		//random number generator for erosion, each generator will be dedicated for one thread, i.e., thread independence
+		STPObjectPool<STPSmartDeviceMemory::STPDevice<STPRainDropGenerator[]>, STPRainDropGeneratorFactory> RainDropGeneratorPool;
 
 		//extract the chunk setting out for convenience.
-		STPHeightfieldGenerator(const STPGeneratorSetup&, const STPEnvironment::STPChunkSetting&);
+		STPHeightfieldGenerator(const STPGeneratorSetup&, const STPEnvironment::STPChunkSetting&, const STPEnvironment::STPRainDropSetting&);
 
 	public:
 
