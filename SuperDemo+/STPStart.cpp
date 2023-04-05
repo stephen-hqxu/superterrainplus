@@ -79,10 +79,7 @@ namespace {
 	optional<STPDemo::STPMasterRenderer> MasterEngine;
 	STPLogConsolePrinter RendererLogHandler;
 	//Camera
-#pragma warning(push)
-#pragma warning(disable: 4324)//padding due to alignment of AVX
 	optional<SuperTerrainPlus::STPRealism::STPCamera> MainCamera;
-#pragma warning(pop)
 
 	/* ------------------------------ callback functions ----------------------------------- */
 	GLFWwindow* GLCanvas = nullptr;

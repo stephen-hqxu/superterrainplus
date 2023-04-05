@@ -1,21 +1,19 @@
 #include <SuperRealism+/Utility/STPCamera.h>
 
-#include <glad/glad.h>
-
 //Error
 #include <SuperTerrain+/Exception/STPValidationFailed.h>
 
-//Camera Calculation
 #include <glm/trigonometric.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <algorithm>
-#include <cstring>
-
-//GLM
 #include <glm/mat3x4.hpp>
 #include <glm/mat4x4.hpp>
+
+#include <glad/glad.h>
+
+#include <algorithm>
+#include <cstring>
 
 using glm::vec2;
 using glm::vec3;
@@ -100,9 +98,8 @@ STPCamera::STPCamera(const STPEnvironment::STPCameraSetting& props) :
 	/* ------------------------ camera buffer ------------------------- */
 	//set up buffer for camera transformation matrix
 	this->Information.bufferStorage(sizeof(STPPackedCameraBuffer), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
-	this->MappedBuffer =
-		reinterpret_cast<STPPackedCameraBuffer*>(this->Information.mapBufferRange(0, sizeof(STPPackedCameraBuffer),
-			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
+	this->MappedBuffer = new (this->Information.mapBufferRange(0, sizeof(STPPackedCameraBuffer),
+		GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT)) STPPackedCameraBuffer;
 	STP_ASSERTION_VALIDATION(this->MappedBuffer, "Unable to map the camera buffer");
 	//buffer has been setup, clear the buffer before use
 	std::memset(this->MappedBuffer, 0x00u, sizeof(STPPackedCameraBuffer));

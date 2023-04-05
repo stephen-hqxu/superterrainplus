@@ -55,8 +55,8 @@ STPAmbientLight::STPAmbientLight(STPLightSpectrum&& spectrum) : STPSceneLight(mo
 	this->LightData.makeResident(GL_READ_ONLY);
 
 	//get the pointer to ambient light spectrum coordinate
-	this->AmbSpecCoord = reinterpret_cast<float*>(this->LightData.mapBufferRange(offsetof(STPPackedAmbientLightBuffer, SpecCoord), sizeof(float), 
-		GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
+	this->AmbSpecCoord = new (this->LightData.mapBufferRange(offsetof(STPPackedAmbientLightBuffer, SpecCoord),
+		sizeof(float), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT)) float;
 }
 
 const STPLightShadow* STPAmbientLight::getLightShadow() const {
@@ -109,8 +109,8 @@ STPDirectionalLight::STPDirectionalLight(STPDirectionalLightShadow&& dir_shadow,
 	unsigned char* const mappedDirBuf = reinterpret_cast<unsigned char*>(this->LightData.mapBufferRange(offsetof(STPPackedDirectionalLightBuffer, Dir),
 		sizeof(vec3) + sizeof(float), GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
 	//assign mapped pointers
-	this->Dir = reinterpret_cast<vec3*>(mappedDirBuf);
-	this->DirSpecCoord = reinterpret_cast<float*>(mappedDirBuf + sizeof(vec3));
+	this->Dir = new (mappedDirBuf) vec3;
+	this->DirSpecCoord = new (mappedDirBuf + sizeof(vec3)) float;
 }
 
 const STPLightShadow* STPDirectionalLight::getLightShadow() const {

@@ -30,8 +30,8 @@ STPMaterialLibrary::STPMaterialID STPMaterialLibrary::add(const STPMaterialPrope
 
 	this->MaterialMemory[mat_idx] = mat_prop;
 	//send to device
-	STPMaterialProperty* const mat_device = reinterpret_cast<STPMaterialProperty*>(
-		this->MaterialBuffer.mapBufferRange(sizeof(STPMaterialProperty) * mat_idx, sizeof(STPMaterialProperty), GL_MAP_WRITE_BIT));
+	STPMaterialProperty* const mat_device = new (this->MaterialBuffer.mapBufferRange(
+		sizeof(STPMaterialProperty) * mat_idx, sizeof(STPMaterialProperty), GL_MAP_WRITE_BIT)) STPMaterialProperty;
 	*mat_device = mat_prop;
 	this->MaterialBuffer.unmapBuffer();
 

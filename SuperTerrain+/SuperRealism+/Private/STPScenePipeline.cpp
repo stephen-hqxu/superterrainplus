@@ -147,14 +147,13 @@ public:
 		}
 
 		/* ----------------------------------------- light space buffer ------------------------------------------------- */
-		const size_t lightSpaceSize = sizeof(STPPackLightSpaceBuffer);
+		constexpr static size_t lightSpaceSize = sizeof(STPPackLightSpaceBuffer);
 
 		this->LightSpaceBuffer.bufferStorage(lightSpaceSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
 		this->LightSpaceBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 1u);
 		//map this buffer
-		this->MappedBuffer = reinterpret_cast<STPPackLightSpaceBuffer*>(
-			this->LightSpaceBuffer.mapBufferRange(0, lightSpaceSize,
-				GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT));
+		this->MappedBuffer = new (this->LightSpaceBuffer.mapBufferRange(0, lightSpaceSize,
+			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT)) STPPackLightSpaceBuffer;
 		STP_ASSERTION_VALIDATION(this->MappedBuffer, "Unable to map light space information buffer to shader storage buffer");
 		//clear the garbage data
 		memset(this->MappedBuffer, 0x00, lightSpaceSize);

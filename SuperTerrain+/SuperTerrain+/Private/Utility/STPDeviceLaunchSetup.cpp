@@ -1,4 +1,5 @@
 #include <SuperTerrain+/Utility/STPDeviceLaunchSetup.cuh>
+#include <SuperTerrain+/STPPlatform.h>
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -79,10 +80,10 @@ inline static unsigned int calcNearestPowerOf2Divisor(const unsigned int a, cons
 	//This method essentially checks if all trailing bits of `a` is zero, but requires a loop.
 	//Then we can derive a new formula based on this idea by finding the number of trailing zero of `a`.
 	constexpr static auto countTrailingZero = [](const unsigned int n) constexpr noexcept -> unsigned int {
-#pragma warning(push)
-#pragma warning(disable: 4146)//use minus sign on unsigned number
+STP_COMPILER_WARNING_PUSH
+STP_COMPILER_WARNING_SUPPRESS_MSVC(4146)//use minus sign on unsigned number
 		return MultiplyDeBruijnBitPosition[(static_cast<std::uint32_t>(n & -n) * 0x077CB531u) >> 27u];
-#pragma warning(pop)
+STP_COMPILER_WARNING_POP
 	};
 
 	if (a <= b) {

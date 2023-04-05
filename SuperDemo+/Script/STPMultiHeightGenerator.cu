@@ -62,9 +62,9 @@ __device__ float sampleSimplexNoise(const uint2 coord, const STPDemo::STPBiomePr
 	fractal_desc.Persistence = pers;
 	fractal_desc.Lacunarity = lacu;
 	fractal_desc.Octave = octave;
-	fractal_desc.HalfDimension = *HalfDimension;
-	fractal_desc.Offset = offset;
 	fractal_desc.Scale = scale;
+	fractal_desc.Offset = offset;
+	fractal_desc.HalfDimension = *HalfDimension;
 	
 	//scale the output noise
 	return STPSimplexNoise::simplex2DFractal(*Permutation, 1.0f * coord.x, 1.0f * coord.y, fractal_desc)

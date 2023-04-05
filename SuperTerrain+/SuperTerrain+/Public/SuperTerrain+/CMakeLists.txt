@@ -2,6 +2,7 @@ target_sources(${STP_MAIN_ENGINE} PRIVATE
 STPCoreDefine.h
 STPEngineInitialiser.h
 STPOpenGL.h
+STPPlatform.h
 STPSQLite.h
 # /Environment
 Environment/STPChunkSetting.h

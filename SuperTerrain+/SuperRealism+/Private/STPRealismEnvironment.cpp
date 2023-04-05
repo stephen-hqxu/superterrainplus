@@ -35,7 +35,6 @@ void STPAtmosphereSetting::validate() const {
 	ASSERT_ATMO(this->AtmosphereRadius > 0.0f);
 	ASSERT_ATMO(this->PlanetRadius <= this->AtmosphereRadius);
 	ASSERT_ATMO(this->ViewAltitude > 0.0f);
-	ASSERT_ATMO(this->ViewAltitude >= this->PlanetRadius);
 	ASSERT_ATMO(this->RayleighCoefficient != zeroVec3);
 	ASSERT_ATMO(this->MieCoefficient > 0.0f);
 	ASSERT_ATMO(this->RayleighScale > 0.0f);

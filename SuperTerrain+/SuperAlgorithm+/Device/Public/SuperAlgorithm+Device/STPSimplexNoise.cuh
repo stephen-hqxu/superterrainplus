@@ -23,8 +23,6 @@ namespace SuperTerrainPlus::STPAlgorithm {
 	*/
 	namespace STPSimplexNoise {
 
-#pragma warning(push)
-#pragma warning(disable : 4324)//warning about padding
 		/**
 		 * @brief STPFractalSimplexInformation specifies parameters for computing fractal simplex noise.
 		*/
@@ -37,15 +35,13 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			float Lacunarity;
 			//Octave denotes the number phase to be performed in a fractal operation.
 			unsigned int Octave;
+			//Specify the scale of the noise.
+			float Scale;
+			//Specify the offset of the noise.
+			float2 Offset;
 			//The half dimension of the generated texture using simplex noise fractal.
 			//By using half dimension, noise is scaled at the centre of the image instead of the edge.
 			float2 HalfDimension;
-			//Specify the offset of the noise.
-			float2 Offset;
-			//Specify the scale of the noise.
-			float Scale;
-
-			/* The following variables will be changed at the end of the execution, as outputs */
 			
 			//The initial amplitude of the fractal.
 			//In each octave this value will be multiplied by persistence.
@@ -54,7 +50,6 @@ namespace SuperTerrainPlus::STPAlgorithm {
 			//In each octave this value will be multiplied by lacunarity.
 			float Frequency = 1.0f;
 		};
-#pragma warning(pop)
 
 		/**
 		 * @brief Generate 2D simplex noise.

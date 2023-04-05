@@ -84,7 +84,7 @@ __device__ float STPSimplexNoise::simplex2D(const STPPermutation& permutation, c
 __device__ float STPSimplexNoise::simplex2DFractal(const STPPermutation& permutation,
 	const float x, const float y, const STPFractalSimplexInformation& desc) {
 	//extract all settings
-	const auto [pers, lacu, oct, half_dim, offset, scale, init_amp, init_freq] = desc;
+	const auto [pers, lacu, oct, scale, offset, half_dim, init_amp, init_freq] = desc;
 	float fractal = 0.0f;
 	float amplitude = init_amp,
 		frequency = init_freq;

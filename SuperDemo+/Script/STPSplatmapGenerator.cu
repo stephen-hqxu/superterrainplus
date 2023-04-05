@@ -130,9 +130,9 @@ __device__ float generateNoise(const unsigned int x, const unsigned int y, const
 	fractal_info.Persistence = Per;
 	fractal_info.Lacunarity = Lac;
 	fractal_info.Octave = 3u;
-	fractal_info.HalfDimension = *HalfDimension;
-	fractal_info.Offset = offset;
 	fractal_info.Scale = NoiseScale;
+	fractal_info.Offset = offset;
+	fractal_info.HalfDimension = *HalfDimension;
 
 	return STPSimplexNoise::simplex2DFractal(*Permutation, 1.0f * x, 1.0f * y, fractal_info) * NoiseContribution;
 }

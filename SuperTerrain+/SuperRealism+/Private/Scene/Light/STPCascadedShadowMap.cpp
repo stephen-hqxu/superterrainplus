@@ -1,4 +1,5 @@
 #include <SuperRealism+/Scene/Light/STPCascadedShadowMap.h>
+#include <SuperTerrain+/STPPlatform.h>
 //Error
 #include <SuperTerrain+/Exception/STPNumericDomainError.h>
 #include <SuperTerrain+/Exception/STPValidationFailed.h>
@@ -14,6 +15,8 @@
 #include <glm/ext/matrix_transform.hpp>
 
 //System
+#include <cstring>
+
 #include <numeric>
 #include <limits>
 #include <functional>
@@ -93,27 +96,27 @@ STPCascadedShadowMap::STPCascadedShadowMap(const unsigned int resolution, const 
 	STP_ASSERTION_VALIDATION(shadowData_init, "Unable to map shadow data buffer to setup initial data for cascaded shadow map");
 
 	//zero fill
-	memset(shadowData_init, 0x00, shadowBuffer_size);
+	std::memset(shadowData_init, 0x00, shadowBuffer_size);
 	//fixed data header
-	STPPackedCSMBufferHeader* const dataHeader = reinterpret_cast<STPPackedCSMBufferHeader*>(shadowData_init);
+	STPPackedCSMBufferHeader* const dataHeader = new (shadowData_init) STPPackedCSMBufferHeader;
 	dataHeader->LiDim = static_cast<unsigned int>(lightSpaceDim);
 	dataHeader->LiSpacePtr = this->ShadowDataAddress + shadowBufferMat_offset;
 	dataHeader->DivPtr = this->ShadowDataAddress + shadowBufferDiv_offset;
 
 	//skip light space matrix, send frustum divisor
-	float* const shadowData_div = reinterpret_cast<float*>(shadowData_init + shadowBufferDiv_offset);
-#pragma warning(push)
-#pragma warning(disable: 4244)//precision lost from double -> float
+	float* const shadowData_div = new (shadowData_init + shadowBufferDiv_offset) float[div.size()];
+STP_COMPILER_WARNING_PUSH
+STP_COMPILER_WARNING_SUPPRESS_MSVC(4244)//precision loss from double -> float
 	std::copy(div.cbegin(), div.cend(), shadowData_div);
-#pragma warning(pop)
+STP_COMPILER_WARNING_POP
 
 	//flush data, with persistent mapping it is allowed to perform buffer subdata operation
 	this->ShadowData.unmapBuffer();
 	/* ------------------------------------------------------------------------------------------------------ */
 
 	//assigned the light space matrix pointer
-	this->LightSpaceMatrix = reinterpret_cast<mat4*>(this->ShadowData.mapBufferRange(shadowBufferMat_offset, shadowBufferMat_size,
-		GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
+	this->LightSpaceMatrix = new (this->ShadowData.mapBufferRange(shadowBufferMat_offset, shadowBufferMat_size,
+		GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT)) mat4[lightSpaceDim];
 	STP_ASSERTION_VALIDATION(this->LightSpaceMatrix, "Unable to map the shadow data buffer for cascaded shadow map");
 }
 
